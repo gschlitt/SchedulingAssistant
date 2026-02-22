@@ -23,6 +23,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly Section _section;
     private readonly Action<Section> _onSave;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
+    private readonly bool _includeSaturday;
 
     /// <summary>
     /// Set by the view to close the hosting window when Save or Cancel is invoked.
@@ -36,12 +37,14 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<Instructor> instructors,
         IReadOnlyList<Room> rooms,
         IReadOnlyList<LegalStartTime> legalStartTimes,
+        bool includeSaturday,
         Action<Section> onSave)
     {
         _section = section;
         IsNew = isNew;
         _onSave = onSave;
         _legalStartTimes = legalStartTimes;
+        _includeSaturday = includeSaturday;
 
         Courses = new ObservableCollection<Course>(courses);
         Instructors = new ObservableCollection<Instructor>(instructors);
@@ -55,13 +58,13 @@ public partial class SectionEditViewModel : ViewModelBase
         Notes = section.Notes;
 
         foreach (var entry in section.Schedule)
-            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, entry));
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, entry));
     }
 
     [RelayCommand]
     private void AddMeeting()
     {
-        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes));
+        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday));
     }
 
     [RelayCommand]

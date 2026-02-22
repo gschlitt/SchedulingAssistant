@@ -51,6 +51,9 @@
                     <!-- Settings dropdown menu -->
                     <Menu Background="Transparent" VerticalAlignment="Center">
                         <MenuItem Header="Settings" Classes="nav" Padding="14,8">
+                            <MenuItem Header="Settings…"
+                                      Command="{Binding NavigateToSettingsCommand}" />
+                            <Separator />
                             <MenuItem Header="Block Lengths"
                                       Command="{Binding NavigateToBlockLengthsCommand}" />
                         </MenuItem>

@@ -85,5 +85,6 @@ public partial class App : Application
         services.AddTransient<LegalStartTimeListViewModel>();
         services.AddTransient<SubjectListViewModel>();
         services.AddTransient<CourseListViewModel>();
+        services.AddTransient<SettingsViewModel>();
     }
 }

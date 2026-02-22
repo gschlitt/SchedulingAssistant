@@ -93,7 +93,9 @@ public partial class SectionListViewModel : ViewModelBase
         var instructors = _instructorRepo.GetAll();
         var rooms = _roomRepo.GetAll();
         var legalStartTimes = _legalStartTimeRepo.GetAll();
+        var includeSaturday = AppSettings.Load().IncludeSaturday;
         var editVm = new SectionEditViewModel(section, isNew, courses, instructors, rooms, legalStartTimes,
+            includeSaturday,
             onSave: s => { if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s); Load(); });
         ShowEditWindow?.Invoke(editVm);
     }

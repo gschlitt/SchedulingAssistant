@@ -12,7 +12,7 @@ public class SectionListItemViewModel
     public string Heading { get; }
     public IReadOnlyList<string> ScheduleLines { get; }
 
-    private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri"];
+    private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     public SectionListItemViewModel(Section section, Dictionary<string, Course> courseLookup)
     {

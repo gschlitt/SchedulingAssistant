@@ -15,6 +15,7 @@ public class AppSettings
         Path.Combine(SettingsDir, "settings.json");
 
     public string? DatabasePath { get; set; }
+    public bool IncludeSaturday { get; set; } = false;
 
     public static AppSettings Load()
     {

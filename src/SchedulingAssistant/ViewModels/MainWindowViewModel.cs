@@ -99,4 +99,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Block Lengths");
+
+    [RelayCommand]
+    private void NavigateToSettings() => OpenFlyout<SettingsViewModel>("Settings");
 }

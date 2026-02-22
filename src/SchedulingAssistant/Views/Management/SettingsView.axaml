@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="16" MaxWidth="480" HorizontalAlignment="Left">
+
+        <TextBlock Text="Scheduling" FontWeight="SemiBold" FontSize="14" />
+
+        <CheckBox Content="Include Saturday as an available scheduling day"
+                  IsChecked="{Binding IncludeSaturday}" />
+
+        <TextBlock Text="Changes take effect the next time you open the section editor."
+                   FontSize="11" Foreground="#666666" />
+
+    </StackPanel>
+
+</UserControl>

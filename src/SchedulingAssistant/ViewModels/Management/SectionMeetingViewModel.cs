@@ -12,23 +12,29 @@ public partial class SectionMeetingViewModel : ViewModelBase
     [ObservableProperty] private int? _selectedStartTime;
     [ObservableProperty] private ObservableCollection<int> _availableStartTimes = new();
 
-    public ObservableCollection<DayOption> AvailableDays { get; } = new(
-    [
-        new DayOption(1, "Monday"),
-        new DayOption(2, "Tuesday"),
-        new DayOption(3, "Wednesday"),
-        new DayOption(4, "Thursday"),
-        new DayOption(5, "Friday"),
-    ]);
-
+    public ObservableCollection<DayOption> AvailableDays { get; }
     public ObservableCollection<double> AvailableBlockLengths { get; }
 
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
 
-    public SectionMeetingViewModel(IReadOnlyList<LegalStartTime> legalStartTimes, SectionDaySchedule? existing = null)
+    public SectionMeetingViewModel(IReadOnlyList<LegalStartTime> legalStartTimes,
+        bool includeSaturday,
+        SectionDaySchedule? existing = null)
     {
         _legalStartTimes = legalStartTimes;
         AvailableBlockLengths = new ObservableCollection<double>(legalStartTimes.Select(l => l.BlockLength));
+
+        var days = new List<DayOption>
+        {
+            new(1, "Monday"),
+            new(2, "Tuesday"),
+            new(3, "Wednesday"),
+            new(4, "Thursday"),
+            new(5, "Friday"),
+        };
+        if (includeSaturday)
+            days.Add(new(6, "Saturday"));
+        AvailableDays = new ObservableCollection<DayOption>(days);
 
         if (existing != null)
         {
