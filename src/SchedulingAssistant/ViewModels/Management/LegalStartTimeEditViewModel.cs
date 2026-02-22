@@ -103,7 +103,9 @@ public partial class StartTimeRowViewModel : ViewModelBase
         Minutes = minutes;
         _onRemove = onRemove;
         int h = minutes / 60, m = minutes % 60;
-        Label = $"{h:D2}:{m:D2}";
+        var period = h < 12 ? "am" : "pm";
+        var h12 = h % 12 == 0 ? 12 : h % 12;
+        Label = m == 0 ? $"{h12}{period}" : $"{h12}:{m:D2}{period}";
     }
 
     [RelayCommand]

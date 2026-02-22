@@ -32,6 +32,24 @@
         <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#C5DAEF" />
         </Style>
+
+        <!-- Settings menu: strip chrome from the Menu container itself -->
+        <Style Selector="Menu">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- Top-level MenuItem styled like a nav button -->
+        <Style Selector="MenuItem.nav">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="MenuItem.nav:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="#C5DAEF" />
+        </Style>
+        <Style Selector="MenuItem.nav:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="#C5DAEF" />
+        </Style>
     </Application.Styles>
 
     <Application.Resources>
