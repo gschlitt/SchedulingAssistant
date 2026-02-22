@@ -38,11 +38,6 @@ public class SectionListItemViewModel
             .ToList();
     }
 
-    private static string FormatMinutes(int minutes)
-    {
-        int h = minutes / 60, m = minutes % 60;
-        var period = h < 12 ? "am" : "pm";
-        var h12 = h % 12 == 0 ? 12 : h % 12;
-        return m == 0 ? $"{h12}{period}" : $"{h12}:{m:D2}{period}";
-    }
+    private static string FormatMinutes(int minutes) =>
+        $"{minutes / 60:D2}{minutes % 60:D2}";
 }

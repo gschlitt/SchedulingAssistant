@@ -11,8 +11,7 @@ public class MinutesToTimeConverter : IValueConverter
     {
         if (value is int minutes)
         {
-            int h = minutes / 60, m = minutes % 60;
-            return $"{h:D2}:{m:D2}";
+            return $"{minutes / 60:D2}{minutes % 60:D2}";
         }
         return value?.ToString() ?? string.Empty;
     }
