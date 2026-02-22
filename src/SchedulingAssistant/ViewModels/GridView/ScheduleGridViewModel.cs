@@ -74,20 +74,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 allMeetings.Add((slot.Day, slot.StartMinutes, slot.EndMinutes, line1, line2, line3));
         }
 
-        // Determine visible time range
-        if (allMeetings.Count == 0)
-        {
-            GridData = new GridData(480, 1260, dayNumbers
-                .Select(d => new GridDayColumn(dayNames[d], []))
-                .ToList());
-            return;
-        }
-
-        int rawFirst = allMeetings.Min(m => m.Start);
-        int rawLast  = allMeetings.Max(m => m.End);
-        // Snap to half-hour boundaries
-        int firstRow = (rawFirst / 30) * 30;
-        int lastRow  = ((rawLast + 29) / 30) * 30;
+        // Time range: snap first start down to half-hour, always end at 2200
+        const int lastRow = 22 * 60; // 1320 = 22:00
+        int firstRow = allMeetings.Count > 0
+            ? (allMeetings.Min(m => m.Start) / 30) * 30
+            : 8 * 60; // default 08:00 when no meetings
 
         // Build per-day tile lists with overlap layout
         var dayColumns = new List<GridDayColumn>();

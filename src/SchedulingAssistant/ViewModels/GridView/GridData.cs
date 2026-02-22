@@ -28,6 +28,6 @@ public record GridData(
     int LastRowMinutes,
     IReadOnlyList<GridDayColumn> DayColumns)
 {
-    public static readonly GridData Empty = new(480, 1260, []);
+    public static readonly GridData Empty = new(480, 22 * 60, []);
     public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0);
 }

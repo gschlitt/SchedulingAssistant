@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.ViewModels.GridView;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
@@ -16,6 +17,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly RoomRepository _roomRepo;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
     private readonly SemesterContext _semesterContext;
+    private readonly ScheduleGridViewModel _scheduleGridVm;
 
     [ObservableProperty] private ObservableCollection<SectionListItemViewModel> _sectionItems = new();
     [ObservableProperty] private SectionListItemViewModel? _selectedItem;
@@ -33,7 +35,8 @@ public partial class SectionListViewModel : ViewModelBase
         InstructorRepository instructorRepo,
         RoomRepository roomRepo,
         LegalStartTimeRepository legalStartTimeRepo,
-        SemesterContext semesterContext)
+        SemesterContext semesterContext,
+        ScheduleGridViewModel scheduleGridVm)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -41,6 +44,7 @@ public partial class SectionListViewModel : ViewModelBase
         _roomRepo = roomRepo;
         _legalStartTimeRepo = legalStartTimeRepo;
         _semesterContext = semesterContext;
+        _scheduleGridVm = scheduleGridVm;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
 
@@ -96,7 +100,12 @@ public partial class SectionListViewModel : ViewModelBase
         var includeSaturday = AppSettings.Load().IncludeSaturday;
         var editVm = new SectionEditViewModel(section, isNew, courses, instructors, rooms, legalStartTimes,
             includeSaturday,
-            onSave: s => { if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s); Load(); });
+            onSave: s =>
+            {
+                if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
+                Load();
+                _scheduleGridVm.Reload();
+            });
         ShowEditWindow?.Invoke(editVm);
     }
 
@@ -106,6 +115,7 @@ public partial class SectionListViewModel : ViewModelBase
         if (SelectedSection is null) return;
         _sectionRepo.Delete(SelectedSection.Id);
         Load();
+        _scheduleGridVm.Reload();
     }
 
     private static Section CloneSection(Section s) => new()
