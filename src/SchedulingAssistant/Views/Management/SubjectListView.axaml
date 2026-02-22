@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.SubjectListView"
+             x:DataType="vm:SubjectListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <TextBlock Grid.Row="0" Text="Subjects" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <!-- Edit form -->
+        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:SubjectEditViewModel}">
+                    <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
+
+                        <TextBlock Text="Name" />
+                        <TextBox Text="{Binding Name}" />
+                        <TextBlock Text="{Binding ValidationError}"
+                                   Foreground="Red" FontSize="12"
+                                   IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                        <TextBlock Text="Department" />
+                        <TextBox Text="{Binding Department}" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Save" Command="{Binding SaveCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Subjects}"
+                  SelectedItem="{Binding SelectedSubject}"
+                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Department" Binding="{Binding Department}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

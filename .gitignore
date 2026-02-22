@@ -1,0 +1,32 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider
+.idea/
+
+# .NET / NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+packages/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# App data / databases
+*.db
+*.db-shm
+*.db-wal
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Windows reserved device name (should not exist)
+nul

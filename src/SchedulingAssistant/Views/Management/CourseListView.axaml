@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.CourseListView"
+             x:DataType="vm:CourseListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Courses" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" />
+
+        <!-- Subject selector -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <TextBlock Text="Subject:" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding Subjects}"
+                      SelectedItem="{Binding SelectedSubject}"
+                      DisplayMemberBinding="{Binding Name}"
+                      MinWidth="250" />
+        </StackPanel>
+
+        <!-- Edit form -->
+        <ContentControl Grid.Row="2" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:CourseEditViewModel}">
+                    <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding FormTitle}" FontSize="16" FontWeight="SemiBold" />
+
+                        <TextBlock Text="Calendar Code (e.g. MATH101)" />
+                        <TextBox Text="{Binding CalendarCode}" />
+                        <TextBlock Text="{Binding ValidationError}"
+                                   Foreground="Red" FontSize="12"
+                                   IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                        <TextBlock Text="Title" />
+                        <TextBox Text="{Binding CourseTitle}" />
+
+                        <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Save" Command="{Binding SaveCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!-- List -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Courses}"
+                  SelectedItem="{Binding SelectedCourse}"
+                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Calendar Code" Binding="{Binding CalendarCode}" Width="150" />
+                <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*" />
+                <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="80" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <Button Content="Add" Command="{Binding AddCommand}"
+                    IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

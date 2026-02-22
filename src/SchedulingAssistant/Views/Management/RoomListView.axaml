@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.RoomListView"
+             x:DataType="vm:RoomListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <TextBlock Grid.Row="0" Text="Rooms" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:RoomEditViewModel}">
+                    <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Building" Margin="0,0,8,4" />
+                            <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding Building}" Margin="0,0,8,8" />
+
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Room Number" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding RoomNumber}" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity" Margin="0,0,0,4" />
+                            <NumericUpDown Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                           Value="{Binding Capacity}" Minimum="0" FormatString="0" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Features" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Features}" Margin="0,0,0,8" />
+                        </Grid>
+
+                        <TextBlock Text="Notes" />
+                        <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="60" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Save" Command="{Binding SaveCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Rooms}"
+                  SelectedItem="{Binding SelectedRoom}"
+                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Building" Binding="{Binding Building}" Width="*" />
+                <DataGridTextColumn Header="Room #" Binding="{Binding RoomNumber}" Width="100" />
+                <DataGridTextColumn Header="Capacity" Binding="{Binding Capacity}" Width="100" />
+                <DataGridTextColumn Header="Features" Binding="{Binding Features}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedRoom, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedRoom, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

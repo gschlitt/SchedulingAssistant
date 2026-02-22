@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.InstructorListView"
+             x:DataType="vm:InstructorListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <TextBlock Grid.Row="0" Text="Instructors" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <!-- Edit form -->
+        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:InstructorEditViewModel}">
+                    <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" >
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="First Name" Margin="0,0,8,4" />
+                            <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding FirstName}" Margin="0,0,8,8" />
+
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Last Name" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding LastName}" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Initials" Margin="0,0,8,4" />
+                            <TextBox   Grid.Row="3" Grid.Column="0" Text="{Binding Initials}" Margin="0,0,8,8" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Department" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="3" Grid.Column="1" Text="{Binding Department}" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Email" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Email}" Margin="0,0,0,8" />
+                        </Grid>
+
+                        <TextBlock Text="{Binding ValidationError}"
+                                   Foreground="Red" FontSize="12"
+                                   IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                        <TextBlock Text="Notes" />
+                        <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="60" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Save" Command="{Binding SaveCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Instructors}"
+                  SelectedItem="{Binding SelectedInstructor}"
+                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Last Name" Binding="{Binding LastName}" Width="*" />
+                <DataGridTextColumn Header="First Name" Binding="{Binding FirstName}" Width="*" />
+                <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="80" />
+                <DataGridTextColumn Header="Department" Binding="{Binding Department}" Width="*" />
+                <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

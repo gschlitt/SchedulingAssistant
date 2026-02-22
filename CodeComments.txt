@@ -1,0 +1,4 @@
+LegalStartTime class: StartTimes are not measured in minutes from midnight but rather the 24 hour clock
+SectionDaySchedule: StartMinutes should be starting time, again in 24 hour clock, will need to calculate EndMinutes properly  Maybe not there' a converter. Check.
+Semester: take off sort order and get rid of any display elements that reference it. Use the sort order of the string array
+

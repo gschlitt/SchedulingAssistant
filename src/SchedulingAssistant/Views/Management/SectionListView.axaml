@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.SectionListView"
+             x:DataType="vm:SectionListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <ListBox Grid.Row="0"
+                 ItemsSource="{Binding SectionItems}"
+                 SelectedItem="{Binding SelectedItem}"
+                 x:Name="SectionListBox">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
+                    <StackPanel Spacing="2" Margin="2,4">
+                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding ScheduleLines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#555555" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="4,6,4,4">
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

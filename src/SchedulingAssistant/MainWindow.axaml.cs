@@ -1,0 +1,181 @@
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using SchedulingAssistant.Controls;
+using SchedulingAssistant.Services;
+using SchedulingAssistant.ViewModels;
+using SchedulingAssistant.Views;
+using SchedulingAssistant.Views.GridView;
+using SchedulingAssistant.Views.Management;
+using System;
+using System.Threading.Tasks;
+
+namespace SchedulingAssistant;
+
+public partial class MainWindow : Window
+{
+    private DetachedPanelWindow? _sectionEditorWindow;
+    private DetachedPanelWindow? _workloadWindow;
+    private DetachedPanelWindow? _scheduleGridWindow;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape && DataContext is MainWindowViewModel vm && vm.FlyoutPage is not null)
+            {
+                vm.FlyoutPage = null;
+                e.Handled = true;
+            }
+        };
+    }
+
+    protected override async void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        await RunStartupAsync();
+    }
+
+    private async Task RunStartupAsync()
+    {
+        var settings = AppSettings.Load();
+        string? dbPath = null;
+
+        if (!string.IsNullOrWhiteSpace(settings.DatabasePath) && File.Exists(settings.DatabasePath))
+        {
+            // Happy path — saved path exists and file is there.
+            dbPath = settings.DatabasePath;
+        }
+        else
+        {
+            var mode = string.IsNullOrWhiteSpace(settings.DatabasePath)
+                ? DatabaseLocationMode.FirstRun
+                : DatabaseLocationMode.NotFound;
+
+            dbPath = await ShowLocationDialogAsync(mode);
+
+            if (dbPath is null)
+            {
+                // User cancelled — inform and exit.
+                await ShowCancelMessageAsync();
+                (Avalonia.Application.Current?.ApplicationLifetime as
+                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                    ?.Shutdown();
+                return;
+            }
+
+            settings.DatabasePath = dbPath;
+            settings.Save();
+        }
+
+        // Initialize DI and DB, wire up the view model, then reveal the window.
+        DataContext = App.InitializeServices(dbPath);
+        IsVisible = true;
+        Activate();
+    }
+
+    private async Task<string?> ShowLocationDialogAsync(DatabaseLocationMode mode)
+    {
+        var dialog = new DatabaseLocationDialog(mode);
+        await dialog.ShowDialog(this);
+        return dialog.ChosenPath;
+    }
+
+    private async Task ShowCancelMessageAsync()
+    {
+        var msg = new Window
+        {
+            Title = "Scheduling Assistant",
+            Width = 400,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true
+        };
+
+        var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
+        var panel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(28),
+            Spacing = 16
+        };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "A database location must be chosen before Scheduling Assistant can open. The application will now close.",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13
+        });
+        panel.Children.Add(ok);
+        msg.Content = panel;
+
+        ok.Click += (_, _) => msg.Close();
+        await msg.ShowDialog(this);
+    }
+
+    private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;
+
+    // ── Flyout backdrop ─────────────────────────────────────────────────────
+
+    private void OnFlyoutBackdropPressed(object? sender, PointerPressedEventArgs e)
+    {
+        Vm.FlyoutPage = null;
+    }
+
+    // ── Detach handlers ─────────────────────────────────────────────────────
+
+    private void OnSectionEditorDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+        DetachSlot(slot, ref _sectionEditorWindow,
+            () => new SectionListView { DataContext = Vm.SectionListVm },
+            () => { slot.IsVisible = true; _sectionEditorWindow = null; });
+    }
+
+    private void OnWorkloadDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+        DetachSlot(slot, ref _workloadWindow,
+            () => new TextBlock
+            {
+                Text = "Workload View (coming soon)",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brushes.Gray
+            },
+            () => { slot.IsVisible = true; _workloadWindow = null; });
+    }
+
+    private void OnScheduleGridDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+        DetachSlot(slot, ref _scheduleGridWindow,
+            () => new ScheduleGridView { DataContext = Vm.ScheduleGridVm },
+            () => { slot.IsVisible = true; _scheduleGridWindow = null; });
+    }
+
+    // ── Core detach mechanism ───────────────────────────────────────────────
+
+    private void DetachSlot(
+        DetachablePanel slot,
+        ref DetachedPanelWindow? existingWindow,
+        Func<Control> buildContent,
+        Action onReattach)
+    {
+        if (existingWindow is not null)
+        {
+            existingWindow.Activate();
+            return;
+        }
+
+        slot.IsVisible = false;
+
+        var win = new DetachedPanelWindow { OnReattach = onReattach };
+        win.SetContent(slot.Header, buildContent());
+        existingWindow = win;
+        win.Show(this);
+    }
+}

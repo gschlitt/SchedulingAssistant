@@ -1,0 +1,155 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SchedulingAssistant.ViewModels"
+        xmlns:views="using:SchedulingAssistant.Views.Management"
+        xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
+        xmlns:controls="using:SchedulingAssistant.Controls"
+        x:Class="SchedulingAssistant.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:CompileBindings="False"
+        Title="Scheduling Assistant"
+        Width="1400" Height="800"
+        MinWidth="900" MinHeight="600">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Top menu bar -->
+        <Border Grid.Row="0" Background="#AECBF0" Padding="12,0" BorderBrush="#7AAAD4" BorderThickness="0,0,0,1">
+            <DockPanel>
+
+                <!-- Semester picker, right-aligned -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center" Margin="8,0">
+                    <Border Width="1" Background="#7AAAD4" Margin="0,6" />
+                    <TextBlock Text="Semester:" Foreground="#333" FontSize="12"
+                               VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding SemesterContext.SemesterDisplays}"
+                              SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}"
+                              DisplayMemberBinding="{Binding DisplayName}"
+                              MinWidth="220"
+                              VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Nav buttons, left-aligned -->
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DatabaseName}"
+                               FontWeight="SemiBold" FontSize="13"
+                               VerticalAlignment="Center"
+                               Margin="4,0,8,0" />
+                    <Border Width="1" Background="#7AAAD4" Margin="0,6,8,6" />
+                    <Button Content="Subjects" Command="{Binding NavigateToSubjectsCommand}" Classes="nav" />
+                    <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" />
+                    <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" />
+                    <Button Content="Rooms" Command="{Binding NavigateToRoomsCommand}" Classes="nav" />
+
+                    <Border Width="1" Background="#7AAAD4" Margin="8,6" />
+
+                    <Button Content="Academic Years" Command="{Binding NavigateToAcademicYearsCommand}" Classes="nav" />
+                    <Button Content="Block Lengths" Command="{Binding NavigateToBlockLengthsCommand}" Classes="nav" />
+                </StackPanel>
+
+            </DockPanel>
+        </Border>
+
+        <!-- Main body: layered panel (permanent grid beneath, flyout overlay above) -->
+        <Panel Grid.Row="1">
+
+            <!-- Layer 0: permanent three-panel grid -->
+            <Grid ColumnDefinitions="300,4,*">
+
+                <!-- Left column: Section Editor (top) + Workload (bottom) -->
+                <Grid Grid.Column="0" RowDefinitions="*,4,200">
+
+                    <!-- Section Editor slot (detachable) -->
+                    <controls:DetachablePanel Grid.Row="0"
+                                              x:Name="SectionEditorPanel"
+                                              Header="Sections"
+                                              DetachRequested="OnSectionEditorDetach">
+                        <controls:DetachablePanel.PanelContent>
+                            <views:SectionListView DataContext="{Binding SectionListVm}" />
+                        </controls:DetachablePanel.PanelContent>
+                    </controls:DetachablePanel>
+
+                    <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="4"
+                                  HorizontalAlignment="Stretch" Background="#DDD" />
+
+                    <!-- Workload slot (detachable, placeholder) -->
+                    <controls:DetachablePanel Grid.Row="2"
+                                              x:Name="WorkloadPanel"
+                                              Header="Workload"
+                                              DetachRequested="OnWorkloadDetach">
+                        <controls:DetachablePanel.PanelContent>
+                            <TextBlock Text="Workload View (coming soon)"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="#888" FontSize="12" />
+                        </controls:DetachablePanel.PanelContent>
+                    </controls:DetachablePanel>
+
+                </Grid>
+
+                <!-- Column splitter -->
+                <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="4"
+                              VerticalAlignment="Stretch" Background="#DDD" />
+
+                <!-- Right column: Schedule Grid (permanent, detachable) -->
+                <controls:DetachablePanel Grid.Column="2"
+                                          x:Name="ScheduleGridPanel"
+                                          Header="Schedule Grid"
+                                          DetachRequested="OnScheduleGridDetach">
+                    <controls:DetachablePanel.PanelContent>
+                        <gridViews:ScheduleGridView DataContext="{Binding ScheduleGridVm}" />
+                    </controls:DetachablePanel.PanelContent>
+                </controls:DetachablePanel>
+
+            </Grid>
+
+            <!-- Layer 1: management flyout overlay -->
+            <Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+                <!-- Dim backdrop — clicking it closes the flyout -->
+                <Border Background="#50000000"
+                        PointerPressed="OnFlyoutBackdropPressed" />
+
+                <!-- Flyout panel (drops from top) -->
+                <Border VerticalAlignment="Top"
+                        HorizontalAlignment="Stretch"
+                        MaxHeight="650"
+                        Background="White"
+                        BoxShadow="0 4 20 2 #50000000"
+                        CornerRadius="0,0,6,6"
+                        Margin="8,0,8,0">
+                    <Grid RowDefinitions="Auto,*">
+
+                        <!-- Flyout header -->
+                        <Border Grid.Row="0" Background="#F5F5F5"
+                                BorderBrush="#DDD" BorderThickness="0,0,0,1"
+                                Padding="16,10">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right"
+                                        Content="✕"
+                                        Command="{Binding CloseFlyoutCommand}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="8,4"
+                                        FontSize="14" />
+                                <TextBlock Text="{Binding FlyoutTitle}"
+                                           FontWeight="SemiBold"
+                                           FontSize="15"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Flyout content (scrollable) -->
+                        <ScrollViewer Grid.Row="1">
+                            <ContentControl Content="{Binding FlyoutPage}" Margin="16" />
+                        </ScrollViewer>
+
+                    </Grid>
+                </Border>
+
+            </Panel>
+
+        </Panel>
+
+    </Grid>
+</Window>

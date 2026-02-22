@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.LegalStartTimeListView"
+             x:DataType="vm:LegalStartTimeListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <TextBlock Grid.Row="0" Text="Block Lengths" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:LegalStartTimeEditViewModel}">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*,300" MaxWidth="700" HorizontalAlignment="Left">
+
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+                        <!-- Block length (only editable when new) -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4" Margin="0,0,16,12">
+                            <TextBlock Text="Block Length (hours)" />
+                            <NumericUpDown Value="{Binding BlockLength}"
+                                           Minimum="0.5" Maximum="8" Increment="0.5" FormatString="0.0"
+                                           IsEnabled="{Binding IsNew}" />
+                        </StackPanel>
+
+                        <!-- Start times list -->
+                        <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4" Margin="0,0,16,0">
+                            <TextBlock Text="Start Times" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding StartTimeRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StartTimeRowViewModel}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                                            <TextBlock Text="{Binding Label}" Width="60" VerticalAlignment="Center" />
+                                            <Button Content="✕" Command="{Binding RemoveCommand}" Padding="6,2" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- Add start time -->
+                        <StackPanel Grid.Row="3" Grid.Column="0" Spacing="4" Margin="0,12,16,0">
+                            <TextBlock Text="Add Start Time (e.g. 8:30 or 1430)" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{Binding NewStartTime}" Width="120" />
+                                <Button Content="Add" Command="{Binding AddStartTimeCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding ValidationError}" Foreground="Red"
+                                       IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+
+                        <!-- Save / Cancel -->
+                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Bottom">
+                            <Button Content="Save" Command="{Binding SaveCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                        </StackPanel>
+
+                    </Grid>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Entries}"
+                  SelectedItem="{Binding SelectedEntry}"
+                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Block Length (hrs)" Binding="{Binding BlockLength}" Width="160" />
+                <DataGridTemplateColumn Header="Start Times" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding StartTimes}"
+                                       TextWrapping="Wrap" Margin="4,2" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

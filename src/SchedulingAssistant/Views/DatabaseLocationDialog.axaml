@@ -1,0 +1,95 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SchedulingAssistant.Views.DatabaseLocationDialog"
+        Title="Scheduling Assistant — Database Location"
+        Width="520" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Border Padding="32,28,32,24">
+        <StackPanel Spacing="14">
+
+            <TextBlock x:Name="HeadingText"
+                       FontSize="16" FontWeight="SemiBold"
+                       TextWrapping="Wrap" />
+
+            <TextBlock x:Name="BodyText"
+                       FontSize="13"
+                       Foreground="#444"
+                       TextWrapping="Wrap" />
+
+            <Border Height="1" Background="#DDD" Margin="0,4" />
+
+            <!-- "Create new" section: name + folder -->
+            <StackPanel x:Name="CreateSection" Spacing="10" IsVisible="False">
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Database name:" FontSize="13" />
+                    <TextBox x:Name="NameBox"
+                             Watermark="e.g. MyUniversity"
+                             TextChanged="OnNameOrFolderChanged" />
+                    <TextBlock x:Name="NameValidation"
+                               FontSize="11" Foreground="#CC0000"
+                               IsVisible="False" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Save in folder:" FontSize="13" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox x:Name="FolderBox"
+                                 Grid.Column="0"
+                                 IsReadOnly="True"
+                                 Watermark="No folder selected"
+                                 VerticalAlignment="Center"  />
+                        <Button Grid.Column="1"
+                                Content="Browse…"
+                                Margin="8,0,0,0"
+                                Click="OnBrowseFolderClicked" />
+                    </Grid>
+                </StackPanel>
+
+                <TextBlock x:Name="PreviewPath"
+                           FontSize="11" Foreground="#555"
+                           TextWrapping="Wrap"
+                           IsVisible="False" />
+
+            </StackPanel>
+
+            <!-- "Open existing" section: file picker result -->
+            <StackPanel x:Name="OpenSection" Spacing="10" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox x:Name="ExistingPathBox"
+                             Grid.Column="0"
+                             IsReadOnly="True"
+                             Watermark="No file selected"
+                             VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="Browse…"
+                            Margin="8,0,0,0"
+                            Click="OnBrowseFileClicked" />
+                </Grid>
+            </StackPanel>
+
+            <!-- NotFound: choose mode buttons (shown before a mode is picked) -->
+            <StackPanel x:Name="NotFoundModeRow" Orientation="Horizontal" Spacing="8" IsVisible="False">
+                <Button Content="Open existing database…"
+                        Click="OnOpenExistingModeClicked" />
+                <Button Content="Create new database…"
+                        Click="OnCreateNewModeClicked" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8"
+                        HorizontalAlignment="Right" Margin="0,8,0,0">
+                <Button x:Name="OkButton"
+                        Content="OK"
+                        IsEnabled="False"
+                        Click="OnOkClicked" />
+                <Button Content="Cancel"
+                        Click="OnCancelClicked" />
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+
+</Window>
