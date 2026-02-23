@@ -6,10 +6,12 @@ using Avalonia.Media;
 using SchedulingAssistant.Controls;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
+using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.GridView;
 using SchedulingAssistant.Views.Management;
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant;
@@ -117,6 +119,35 @@ public partial class MainWindow : Window
     }
 
     private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;
+
+    // ── Left-column auto-sizing ──────────────────────────────────────────────
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.SectionListVm.PropertyChanged += OnSectionListVmPropertyChanged;
+            UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
+        }
+    }
+
+    private void OnSectionListVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SectionListViewModel.IsEditing))
+            UpdateLeftColumnWidth(Vm.SectionListVm.IsEditing);
+    }
+
+    private void UpdateLeftColumnWidth(bool isEditing)
+    {
+        var grid = this.FindControl<Grid>("ThreePanelGrid");
+        if (grid is null) return;
+        // Collapsed: 220 px (summary cards); Expanded: 500 px (editor form)
+        grid.ColumnDefinitions[0].Width = isEditing
+            ? new GridLength(500, GridUnitType.Pixel)
+            : new GridLength(220, GridUnitType.Pixel);
+    }
 
     // ── Flyout backdrop ─────────────────────────────────────────────────────
 

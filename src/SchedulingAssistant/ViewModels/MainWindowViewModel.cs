@@ -102,4 +102,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void NavigateToSettings() => OpenFlyout<SettingsViewModel>("Settings");
+
+    [RelayCommand]
+    private void NavigateToSectionProperties() => OpenFlyout<SectionPropertiesViewModel>("Section Properties");
 }

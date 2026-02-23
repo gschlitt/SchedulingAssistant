@@ -4,21 +4,28 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-/// <summary>Represents a single scheduled meeting added to a section (one day + block length + start time).</summary>
+/// <summary>Represents a single scheduled meeting within a section — day, time, room, and meeting type.</summary>
 public partial class SectionMeetingViewModel : ViewModelBase
 {
     [ObservableProperty] private int _selectedDay;
     [ObservableProperty] private double? _selectedBlockLength;
     [ObservableProperty] private int? _selectedStartTime;
     [ObservableProperty] private ObservableCollection<int> _availableStartTimes = new();
+    [ObservableProperty] private string? _selectedMeetingTypeId;
+    [ObservableProperty] private string? _selectedRoomId;
 
     public ObservableCollection<DayOption> AvailableDays { get; }
     public ObservableCollection<double> AvailableBlockLengths { get; }
+    public ObservableCollection<SectionPropertyValue> MeetingTypes { get; }
+    public ObservableCollection<Room> Rooms { get; }
 
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
 
-    public SectionMeetingViewModel(IReadOnlyList<LegalStartTime> legalStartTimes,
+    public SectionMeetingViewModel(
+        IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
+        IReadOnlyList<SectionPropertyValue> meetingTypes,
+        IReadOnlyList<Room> rooms,
         SectionDaySchedule? existing = null)
     {
         _legalStartTimes = legalStartTimes;
@@ -36,6 +43,17 @@ public partial class SectionMeetingViewModel : ViewModelBase
             days.Add(new(6, "Saturday"));
         AvailableDays = new ObservableCollection<DayOption>(days);
 
+        // Prepend a "(none)" sentinel so the user can clear the meeting type
+        var mtList = new List<SectionPropertyValue>
+            { new SectionPropertyValue { Id = "", Name = "(none)" } };
+        mtList.AddRange(meetingTypes);
+        MeetingTypes = new ObservableCollection<SectionPropertyValue>(mtList);
+
+        // Prepend a "(none)" sentinel for room
+        var roomList = new List<Room> { new Room { Id = "", Building = "(none)", RoomNumber = "" } };
+        roomList.AddRange(rooms);
+        Rooms = new ObservableCollection<Room>(roomList);
+
         if (existing != null)
         {
             _selectedDay = existing.Day;
@@ -43,10 +61,14 @@ public partial class SectionMeetingViewModel : ViewModelBase
             _selectedBlockLength = AvailableBlockLengths.FirstOrDefault(b => Math.Abs(b - blockLengthHours) < 0.01);
             RefreshStartTimes();
             _selectedStartTime = existing.StartMinutes;
+            _selectedMeetingTypeId = existing.MeetingTypeId ?? "";
+            _selectedRoomId = existing.RoomId ?? "";
         }
         else
         {
             _selectedDay = 1;
+            _selectedMeetingTypeId = "";
+            _selectedRoomId = "";
         }
     }
 
@@ -72,7 +94,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
         {
             Day = SelectedDay,
             StartMinutes = SelectedStartTime.Value,
-            DurationMinutes = (int)(SelectedBlockLength.Value * 60)
+            DurationMinutes = (int)(SelectedBlockLength.Value * 60),
+            MeetingTypeId = string.IsNullOrEmpty(SelectedMeetingTypeId) ? null : SelectedMeetingTypeId,
+            RoomId = string.IsNullOrEmpty(SelectedRoomId) ? null : SelectedRoomId,
         };
     }
 }

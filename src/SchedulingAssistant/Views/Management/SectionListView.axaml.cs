@@ -1,12 +1,14 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.VisualTree;
 using SchedulingAssistant.ViewModels.Management;
+using System.ComponentModel;
 
 namespace SchedulingAssistant.Views.Management;
 
 public partial class SectionListView : UserControl
 {
+    private SectionListViewModel? _vm;
+
     public SectionListView()
     {
         InitializeComponent();
@@ -18,24 +20,38 @@ public partial class SectionListView : UserControl
 
     private void OnDataContextChanged(object? sender, System.EventArgs e)
     {
-        if (DataContext is SectionListViewModel vm)
-            vm.ShowEditWindow = ShowEditWindowHandler;
+        if (_vm is not null)
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+
+        _vm = DataContext as SectionListViewModel;
+
+        if (_vm is not null)
+            _vm.PropertyChanged += OnVmPropertyChanged;
+
+        UpdateAddFormHost();
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SectionListViewModel.EditVm) or nameof(SectionListViewModel.ExpandedItem))
+            UpdateAddFormHost();
+    }
+
+    private void UpdateAddFormHost()
+    {
+        var addFormHost = this.FindControl<Border>("AddFormHost");
+        var addFormContent = this.FindControl<ContentControl>("AddFormContent");
+        if (addFormHost is null || addFormContent is null) return;
+
+        // Show "Add" form at top only when adding a new section (EditVm set, no existing item expanded)
+        bool isAddMode = _vm?.EditVm is not null && _vm.ExpandedItem is null;
+        addFormHost.IsVisible = isAddMode;
+        addFormContent.Content = isAddMode ? _vm!.EditVm : null;
     }
 
     private void OnListBoxDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (DataContext is SectionListViewModel vm && vm.SelectedItem is { } item)
-            vm.EditItem(item);
-    }
-
-    private void ShowEditWindowHandler(SectionEditViewModel editVm)
-    {
-        var win = new SectionEditWindow();
-        editVm.RequestClose = () => win.Close();
-        win.DataContext = editVm;
-        if (TopLevel.GetTopLevel(this) is Window ownerWindow)
-            win.Show(ownerWindow);
-        else
-            win.Show();
+        if (_vm is not null && _vm.SelectedItem is { } item)
+            _vm.EditItem(item);
     }
 }

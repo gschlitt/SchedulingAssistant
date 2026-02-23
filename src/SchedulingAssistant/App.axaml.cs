@@ -73,6 +73,7 @@ public partial class App : Application
         services.AddTransient<SubjectRepository>();
         services.AddTransient<CourseRepository>();
         services.AddTransient<SectionRepository>();
+        services.AddTransient<SectionPropertyRepository>();
 
         // ViewModels
         services.AddSingleton<MainWindowViewModel>();
@@ -86,5 +87,6 @@ public partial class App : Application
         services.AddTransient<SubjectListViewModel>();
         services.AddTransient<CourseListViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<SectionPropertiesViewModel>();
     }
 }

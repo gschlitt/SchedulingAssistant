@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -17,6 +18,10 @@ public partial class InstructorEditViewModel : ViewModelBase
     [ObservableProperty] private string _email = string.Empty;
     [ObservableProperty] private string _department = string.Empty;
     [ObservableProperty] private string _notes = string.Empty;
+
+    // Staff Type single-select (includes a leading "(none)" sentinel with Id="")
+    [ObservableProperty] private ObservableCollection<SectionPropertyValue> _staffTypes = new();
+    [ObservableProperty] private string? _selectedStaffTypeId;
 
     public string Title => IsNew ? "Add Instructor" : "Edit Instructor";
     public bool IsNew { get; }
@@ -44,6 +49,7 @@ public partial class InstructorEditViewModel : ViewModelBase
     public InstructorEditViewModel(
         Instructor instructor,
         bool isNew,
+        IReadOnlyList<SectionPropertyValue> staffTypes,
         Action<Instructor> onSave,
         Action onCancel,
         Func<string, bool> initialsExist)
@@ -54,12 +60,19 @@ public partial class InstructorEditViewModel : ViewModelBase
         _onCancel = onCancel;
         _initialsExist = initialsExist;
 
+        // Build sentinel list: "(none)" first
+        var list = new List<SectionPropertyValue>
+            { new SectionPropertyValue { Id = "", Name = "(none)" } };
+        list.AddRange(staffTypes);
+        StaffTypes = new ObservableCollection<SectionPropertyValue>(list);
+
         FirstName = instructor.FirstName;
         LastName = instructor.LastName;
         Initials = instructor.Initials;
         Email = instructor.Email;
         Department = instructor.Department;
         Notes = instructor.Notes;
+        SelectedStaffTypeId = instructor.StaffTypeId ?? "";
     }
 
     partial void OnFirstNameChanged(string value) => AutoInitials();
@@ -84,6 +97,7 @@ public partial class InstructorEditViewModel : ViewModelBase
         _instructor.Email = Email.Trim();
         _instructor.Department = Department.Trim();
         _instructor.Notes = Notes.Trim();
+        _instructor.StaffTypeId = string.IsNullOrEmpty(SelectedStaffTypeId) ? null : SelectedStaffTypeId;
         _onSave(_instructor);
     }
 

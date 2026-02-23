@@ -65,8 +65,13 @@ public class DatabaseContext : IDisposable
                 id TEXT PRIMARY KEY,
                 semester_id TEXT NOT NULL,
                 course_id TEXT,
-                instructor_id TEXT,
                 room_id TEXT,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
+
+            CREATE TABLE IF NOT EXISTS SectionPropertyValues (
+                id   TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}'
             );
             """;
@@ -78,34 +83,7 @@ public class DatabaseContext : IDisposable
     /// </summary>
     private void Migrate()
     {
-        // Add course_id column to Sections if it doesn't exist (pre-Course era databases)
-        if (!ColumnExists("Sections", "course_id"))
-        {
-            using var cmd = Connection.CreateCommand();
-            cmd.CommandText = "ALTER TABLE Sections ADD COLUMN course_id TEXT";
-            cmd.ExecuteNonQuery();
-        }
-
-        // Add academic_year_id column to Semesters if it doesn't exist
-        if (!ColumnExists("Semesters", "academic_year_id"))
-        {
-            using var cmd = Connection.CreateCommand();
-            cmd.CommandText = "ALTER TABLE Semesters ADD COLUMN academic_year_id TEXT NOT NULL DEFAULT ''";
-            cmd.ExecuteNonQuery();
-        }
-    }
-
-    private bool ColumnExists(string table, string column)
-    {
-        using var cmd = Connection.CreateCommand();
-        cmd.CommandText = $"PRAGMA table_info({table})";
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
-        {
-            if (reader.GetString(1).Equals(column, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
+        // No pending migrations.
     }
 
     public void Dispose()

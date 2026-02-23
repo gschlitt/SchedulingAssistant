@@ -9,6 +9,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class InstructorListViewModel : ViewModelBase
 {
     private readonly InstructorRepository _repo;
+    private readonly SectionPropertyRepository _propertyRepo;
 
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
     [ObservableProperty] private Instructor? _selectedInstructor;
@@ -17,20 +18,25 @@ public partial class InstructorListViewModel : ViewModelBase
     /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
     public Func<string, Task>? ShowError { get; set; }
 
-    public InstructorListViewModel(InstructorRepository repo)
+    public InstructorListViewModel(InstructorRepository repo, SectionPropertyRepository propertyRepo)
     {
         _repo = repo;
+        _propertyRepo = propertyRepo;
         Load();
     }
 
     private void Load() =>
         Instructors = new ObservableCollection<Instructor>(_repo.GetAll());
 
+    private IReadOnlyList<SectionPropertyValue> GetStaffTypes() =>
+        _propertyRepo.GetAll(SectionPropertyTypes.StaffType);
+
     [RelayCommand]
     private void Add()
     {
         var instructor = new Instructor();
         EditVm = new InstructorEditViewModel(instructor, isNew: true,
+            staffTypes: GetStaffTypes(),
             onSave: i => { _repo.Insert(i); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials));
@@ -41,8 +47,19 @@ public partial class InstructorListViewModel : ViewModelBase
     {
         if (SelectedInstructor is null) return;
         var s = SelectedInstructor;
-        var copy = new Instructor { Id = s.Id, FirstName = s.FirstName, LastName = s.LastName, Initials = s.Initials, Email = s.Email, Department = s.Department, Notes = s.Notes };
+        var copy = new Instructor
+        {
+            Id = s.Id,
+            FirstName = s.FirstName,
+            LastName = s.LastName,
+            Initials = s.Initials,
+            Email = s.Email,
+            Department = s.Department,
+            Notes = s.Notes,
+            StaffTypeId = s.StaffTypeId,
+        };
         EditVm = new InstructorEditViewModel(copy, isNew: false,
+            staffTypes: GetStaffTypes(),
             onSave: i => { _repo.Update(i); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials, excludeId: copy.Id));

@@ -9,4 +9,5 @@ public class Instructor
     public string Email { get; set; } = string.Empty;
     public string Department { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public string? StaffTypeId { get; set; }
 }

@@ -41,6 +41,7 @@
                     <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" />
                     <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" />
                     <Button Content="Rooms" Command="{Binding NavigateToRoomsCommand}" Classes="nav" />
+                    <Button Content="Section Properties" Command="{Binding NavigateToSectionPropertiesCommand}" Classes="nav" />
 
                     <Border Width="1" Background="#7AAAD4" Margin="8,6" />
 
@@ -67,7 +68,7 @@
         <Panel Grid.Row="1">
 
             <!-- Layer 0: permanent three-panel grid -->
-            <Grid ColumnDefinitions="300,4,*">
+            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="220,4,*">
 
                 <!-- Left column: Section Editor (top) + Workload (bottom) -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
@@ -77,6 +78,25 @@
                                               x:Name="SectionEditorPanel"
                                               Header="Sections"
                                               DetachRequested="OnSectionEditorDetach">
+                        <controls:DetachablePanel.HeaderExtra>
+                            <StackPanel Orientation="Horizontal" Spacing="3"
+                                        DataContext="{Binding SectionListVm}">
+                                <Button Content="Add"
+                                        Command="{Binding AddCommand}"
+                                        FontSize="10" Padding="5,1"
+                                        MinHeight="0" MinWidth="0" />
+                                <Button Content="Edit"
+                                        Command="{Binding EditCommand}"
+                                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        FontSize="10" Padding="5,1"
+                                        MinHeight="0" MinWidth="0" />
+                                <Button Content="Delete"
+                                        Command="{Binding DeleteCommand}"
+                                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        FontSize="10" Padding="5,1"
+                                        MinHeight="0" MinWidth="0" />
+                            </StackPanel>
+                        </controls:DetachablePanel.HeaderExtra>
                         <controls:DetachablePanel.PanelContent>
                             <views:SectionListView DataContext="{Binding SectionListVm}" />
                         </controls:DetachablePanel.PanelContent>

@@ -1,15 +1,18 @@
 namespace SchedulingAssistant.ViewModels.GridView;
 
 /// <summary>
-/// A single section meeting to be drawn as a tile.
-/// Line1 = course calendar code (or section code if no course)
-/// Line2 = section code
-/// Line3 = instructor initials (may be empty)
+/// One section entry within a tile.
+/// Label = "HIST101 A" (course code + section code, or just section code)
+/// Initials = instructor initials (may be empty)
+/// </summary>
+public record TileEntry(string Label, string Initials);
+
+/// <summary>
+/// A single tile drawn on the grid, potentially containing multiple co-scheduled sections
+/// (same start time and duration).
 /// </summary>
 public record GridTile(
-    string Line1,
-    string Line2,
-    string Line3,
+    IReadOnlyList<TileEntry> Entries,
     int StartMinutes,
     int EndMinutes,
     /// <summary>0-based column index within an overlap cluster.</summary>

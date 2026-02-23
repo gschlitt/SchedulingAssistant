@@ -57,21 +57,24 @@ public partial class ScheduleGridViewModel : ViewModelBase
         };
 
         // Collect all meetings across all sections, tagged with display info
-        var allMeetings = new List<(int Day, int Start, int End, string Line1, string Line2, string Line3)>();
+        var allMeetings = new List<(int Day, int Start, int End, string Label, string Initials)>();
 
         foreach (var section in sections)
         {
             var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
                 ? course.CalendarCode : null;
-            var initials = section.InstructorId is not null && instructorLookup.TryGetValue(section.InstructorId, out var instr)
+            // For grid display use the first instructor's initials (multi-instructor: join if needed)
+            var firstId = section.InstructorIds.FirstOrDefault();
+            var initials = firstId is not null && instructorLookup.TryGetValue(firstId, out var instr)
                 ? instr.Initials : string.Empty;
 
-            var line1 = calCode ?? section.SectionCode;
-            var line2 = calCode is not null ? section.SectionCode : string.Empty;
-            var line3 = initials;
+            // "HIST101 A" or just section code if no course assigned
+            var label = calCode is not null
+                ? $"{calCode} {section.SectionCode}"
+                : section.SectionCode;
 
             foreach (var slot in section.Schedule)
-                allMeetings.Add((slot.Day, slot.StartMinutes, slot.EndMinutes, line1, line2, line3));
+                allMeetings.Add((slot.Day, slot.StartMinutes, slot.EndMinutes, label, initials));
         }
 
         // Time range: snap first start down to half-hour, always end at 2200
@@ -87,6 +90,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             var dayMeetings = allMeetings
                 .Where(m => m.Day == dayNum)
                 .OrderBy(m => m.Start).ThenBy(m => m.End)
+                .Select(m => (m.Day, m.Start, m.End, m.Label, m.Initials))
                 .ToList();
 
             var tiles = ComputeTiles(dayMeetings);
@@ -97,33 +101,49 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Assigns overlap columns to a sorted list of meetings for one day.
-    /// Meetings with identical start+end are stacked (same tile slot, sequential overlap index).
-    /// Overlapping meetings (one starts before another ends) are placed side-by-side.
+    /// Builds positioned tiles for one day's meetings.
+    /// Meetings with identical start+end are merged into a single tile (stacked entries).
+    /// Overlapping meetings (different time spans) are placed side-by-side.
     /// </summary>
     private static List<GridTile> ComputeTiles(
-        List<(int Day, int Start, int End, string Line1, string Line2, string Line3)> meetings)
+        List<(int Day, int Start, int End, string Label, string Initials)> meetings)
     {
         var tiles = new List<GridTile>();
         if (meetings.Count == 0) return tiles;
 
-        // Group into overlap clusters: a cluster is a maximal set of meetings
-        // where each meeting overlaps with at least one other in the set.
-        var clusters = new List<List<int>>(); // each list = indices into meetings
+        // Step 1: merge meetings with identical start+end into combined tile entries.
+        // Key = (Start, End); value = accumulated entries.
+        var merged = new List<(int Start, int End, List<TileEntry> Entries)>();
+        var mergeIndex = new Dictionary<(int, int), int>();
+
+        foreach (var m in meetings)
+        {
+            var key = (m.Start, m.End);
+            if (mergeIndex.TryGetValue(key, out int idx))
+            {
+                merged[idx].Entries.Add(new TileEntry(m.Label, m.Initials));
+            }
+            else
+            {
+                mergeIndex[key] = merged.Count;
+                merged.Add((m.Start, m.End, [new TileEntry(m.Label, m.Initials)]));
+            }
+        }
+
+        // Sort merged tiles by start then end (for cluster algorithm)
+        merged.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.End.CompareTo(b.End));
+
+        // Step 2: group into overlap clusters (maximal sets where each tile overlaps at least one other)
+        var clusters = new List<List<int>>();
         var clusterMaxEnd = new List<int>();
 
-        for (int i = 0; i < meetings.Count; i++)
+        for (int i = 0; i < merged.Count; i++)
         {
-            var m = meetings[i];
-            // Find a cluster this meeting overlaps with (start < cluster's current max end)
+            var m = merged[i];
             int clusterIdx = -1;
             for (int c = 0; c < clusters.Count; c++)
             {
-                if (m.Start < clusterMaxEnd[c])
-                {
-                    clusterIdx = c;
-                    break;
-                }
+                if (m.Start < clusterMaxEnd[c]) { clusterIdx = c; break; }
             }
             if (clusterIdx == -1)
             {
@@ -137,16 +157,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
             }
         }
 
+        // Step 3: within each cluster assign column slots greedily
         foreach (var cluster in clusters)
         {
-            // Within a cluster, assign column slots greedily.
-            // Track the end time of the last meeting placed in each column slot.
             var colEnds = new List<int>();
 
             foreach (var idx in cluster)
             {
-                var m = meetings[idx];
-                // Find a column where the previous meeting has ended
+                var m = merged[idx];
                 int col = -1;
                 for (int c = 0; c < colEnds.Count; c++)
                 {
@@ -155,13 +173,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (col == -1) { col = colEnds.Count; colEnds.Add(0); }
                 colEnds[col] = m.End;
 
-                tiles.Add(new GridTile(m.Line1, m.Line2, m.Line3,
-                    m.Start, m.End, col, cluster.Count));
+                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count));
             }
 
-            // Now that we know actual number of columns used, fix OverlapCount
+            // Fix OverlapCount to actual column count used
             int actualCols = colEnds.Count;
-            // Replace tiles from this cluster with correct OverlapCount
             for (int t = tiles.Count - cluster.Count; t < tiles.Count; t++)
             {
                 var old = tiles[t];

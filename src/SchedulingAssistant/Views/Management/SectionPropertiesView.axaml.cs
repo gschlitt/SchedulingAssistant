@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace SchedulingAssistant.Views.Management;
 
-public partial class SectionEditWindow : Window
+public partial class SectionPropertiesView : UserControl
 {
-    public SectionEditWindow()
+    public SectionPropertiesView()
     {
         InitializeComponent();
     }

@@ -20,6 +20,11 @@
                             BorderThickness="0"
                             FontSize="13"
                             Cursor="Hand" />
+                    <!-- Extra controls injected by the host (e.g. Add/Edit/Delete for Sections) -->
+                    <ContentPresenter DockPanel.Dock="Right"
+                                      Content="{Binding #Root.HeaderExtra}"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,4,0" />
                     <TextBlock Text="{Binding #Root.Header}"
                                FontWeight="SemiBold"
                                FontSize="13"

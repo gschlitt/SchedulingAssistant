@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.SectionPropertiesView"
+             x:DataType="vm:SectionPropertiesViewModel"
+             x:CompileBindings="False">
+
+    <Grid ColumnDefinitions="160,*">
+
+        <!-- Left: category sidebar -->
+        <Border Grid.Column="0"
+                BorderBrush="#DDDDDD" BorderThickness="0,0,1,0"
+                Padding="0,0,8,0">
+            <ListBox ItemsSource="{Binding Categories}"
+                     SelectedItem="{Binding SelectedCategory}"
+                     Background="Transparent"
+                     BorderThickness="0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:SectionPropertyListViewModel}">
+                        <TextBlock Text="{Binding DisplayName}"
+                                   Padding="8,6"
+                                   FontSize="13" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Right: management list for the selected category (ViewLocator resolves SectionPropertyListView) -->
+        <ContentControl Grid.Column="1"
+                        Content="{Binding SelectedCategory}"
+                        Margin="16,0,0,0" />
+
+    </Grid>
+</UserControl>

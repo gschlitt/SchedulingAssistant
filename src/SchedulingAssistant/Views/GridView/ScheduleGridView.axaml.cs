@@ -145,6 +145,32 @@ public partial class ScheduleGridView : UserControl
 
                 tileH = Math.Max(tileH, 18);
 
+                var stack = new StackPanel { Spacing = 0 };
+
+                for (int ei = 0; ei < tile.Entries.Count; ei++)
+                {
+                    var entry = tile.Entries[ei];
+
+                    if (ei > 0)
+                        stack.Children.Add(new Border
+                        {
+                            Height = 1,
+                            Background = TileBorder,
+                            Margin = new Thickness(0, 2, 0, 2),
+                        });
+
+                    var labelText = string.IsNullOrEmpty(entry.Initials)
+                        ? entry.Label
+                        : $"{entry.Label}  {entry.Initials}";
+                    stack.Children.Add(new TextBlock
+                    {
+                        Text = labelText,
+                        FontSize = 11,
+                        FontWeight = FontWeight.SemiBold,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                    });
+                }
+
                 var border = new Border
                 {
                     Width            = tileW - TilePadding,
@@ -155,37 +181,9 @@ public partial class ScheduleGridView : UserControl
                     CornerRadius     = new CornerRadius(3),
                     Padding          = new Thickness(3, 2),
                     ClipToBounds     = true,
+                    Child            = stack,
                 };
 
-                var stack = new StackPanel { Spacing = 0 };
-
-                if (!string.IsNullOrEmpty(tile.Line1))
-                    stack.Children.Add(new TextBlock
-                    {
-                        Text = tile.Line1,
-                        FontSize = 11,
-                        FontWeight = FontWeight.SemiBold,
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                    });
-
-                if (!string.IsNullOrEmpty(tile.Line2))
-                    stack.Children.Add(new TextBlock
-                    {
-                        Text = tile.Line2,
-                        FontSize = 10,
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                    });
-
-                if (!string.IsNullOrEmpty(tile.Line3))
-                    stack.Children.Add(new TextBlock
-                    {
-                        Text = tile.Line3,
-                        FontSize = 10,
-                        Foreground = new SolidColorBrush(Color.Parse("#444444")),
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                    });
-
-                border.Child = stack;
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, tileY);
                 _canvas.Children.Add(border);

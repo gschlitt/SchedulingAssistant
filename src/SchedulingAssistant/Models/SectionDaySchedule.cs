@@ -12,4 +12,10 @@ public class SectionDaySchedule
     public int DurationMinutes { get; set; }
 
     public int EndMinutes => StartMinutes + DurationMinutes;
+
+    /// <summary>Optional meeting type ID referencing a SectionPropertyValue of type "meetingType".</summary>
+    public string? MeetingTypeId { get; set; }
+
+    /// <summary>Optional room ID for this specific meeting.</summary>
+    public string? RoomId { get; set; }
 }

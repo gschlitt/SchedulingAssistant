@@ -13,6 +13,9 @@ public partial class DetachablePanel : UserControl
     public static readonly StyledProperty<object?> PanelContentProperty =
         AvaloniaProperty.Register<DetachablePanel, object?>(nameof(PanelContent));
 
+    public static readonly StyledProperty<object?> HeaderExtraProperty =
+        AvaloniaProperty.Register<DetachablePanel, object?>(nameof(HeaderExtra));
+
     public string Header
     {
         get => GetValue(HeaderProperty);
@@ -23,6 +26,12 @@ public partial class DetachablePanel : UserControl
     {
         get => GetValue(PanelContentProperty);
         set => SetValue(PanelContentProperty, value);
+    }
+
+    public object? HeaderExtra
+    {
+        get => GetValue(HeaderExtraProperty);
+        set => SetValue(HeaderExtraProperty, value);
     }
 
     /// <summary>

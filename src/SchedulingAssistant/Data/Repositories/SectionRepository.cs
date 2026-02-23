@@ -9,7 +9,7 @@ public class SectionRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT id, semester_id, course_id, instructor_id, room_id, data FROM Sections WHERE semester_id = $sid ORDER BY data ->> 'sectionCode'";
+            "SELECT id, semester_id, course_id, data FROM Sections WHERE semester_id = $sid ORDER BY data ->> 'sectionCode'";
         cmd.Parameters.AddWithValue("$sid", semesterId);
         return ReadSections(cmd);
     }
@@ -18,7 +18,7 @@ public class SectionRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT id, semester_id, course_id, instructor_id, room_id, data FROM Sections WHERE id = $id";
+            "SELECT id, semester_id, course_id, data FROM Sections WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", id);
         return ReadSections(cmd).FirstOrDefault();
     }
@@ -26,13 +26,12 @@ public class SectionRepository(DatabaseContext db)
     public void Insert(Section section)
     {
         using var cmd = db.Connection.CreateCommand();
+        // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
         cmd.CommandText =
-            "INSERT INTO Sections (id, semester_id, course_id, instructor_id, room_id, data) VALUES ($id, $sid, $cid, $iid, $rid, $data)";
+            "INSERT INTO Sections (id, semester_id, course_id, room_id, data) VALUES ($id, $sid, $cid, NULL, $data)";
         cmd.Parameters.AddWithValue("$id", section.Id);
         cmd.Parameters.AddWithValue("$sid", section.SemesterId);
         cmd.Parameters.AddWithValue("$cid", (object?)section.CourseId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$iid", (object?)section.InstructorId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$rid", (object?)section.RoomId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(section));
         cmd.ExecuteNonQuery();
     }
@@ -40,13 +39,12 @@ public class SectionRepository(DatabaseContext db)
     public void Update(Section section)
     {
         using var cmd = db.Connection.CreateCommand();
+        // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
         cmd.CommandText =
-            "UPDATE Sections SET semester_id = $sid, course_id = $cid, instructor_id = $iid, room_id = $rid, data = $data WHERE id = $id";
+            "UPDATE Sections SET semester_id = $sid, course_id = $cid, room_id = NULL, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", section.Id);
         cmd.Parameters.AddWithValue("$sid", section.SemesterId);
         cmd.Parameters.AddWithValue("$cid", (object?)section.CourseId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$iid", (object?)section.InstructorId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$rid", (object?)section.RoomId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(section));
         cmd.ExecuteNonQuery();
     }
@@ -77,12 +75,10 @@ public class SectionRepository(DatabaseContext db)
         var results = new List<Section>();
         while (reader.Read())
         {
-            var section = JsonHelpers.Deserialize<Section>(reader.GetString(5));
+            var section = JsonHelpers.Deserialize<Section>(reader.GetString(3));
             section.Id = reader.GetString(0);
             section.SemesterId = reader.GetString(1);
             section.CourseId = reader.IsDBNull(2) ? null : reader.GetString(2);
-            section.InstructorId = reader.IsDBNull(3) ? null : reader.GetString(3);
-            section.RoomId = reader.IsDBNull(4) ? null : reader.GetString(4);
             results.Add(section);
         }
         return results;

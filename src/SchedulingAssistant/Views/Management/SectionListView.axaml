@@ -1,40 +1,427 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             xmlns:models="using:SchedulingAssistant.Models"
              x:Class="SchedulingAssistant.Views.Management.SectionListView"
              x:DataType="vm:SectionListViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="*,Auto">
+   <UserControl.Resources>
+        <!-- Shared template for the inline edit form, used for both Add and Edit -->
+        <DataTemplate x:Key="InlineEditFormTemplate" DataType="{x:Type vm:SectionEditViewModel}">
+            <StackPanel Spacing="4">
 
-        <ListBox Grid.Row="0"
-                 ItemsSource="{Binding SectionItems}"
-                 SelectedItem="{Binding SelectedItem}"
-                 x:Name="SectionListBox">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
-                    <StackPanel Spacing="2" Margin="2,4">
-                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
-                        <ItemsControl ItemsSource="{Binding ScheduleLines}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#555555" />
+                <!-- Save / Cancel (top) -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,2">
+                    <Button Content="Save"   Command="{Binding SaveCommand}"   FontSize="10" Padding="6,2" />
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" FontSize="10" Padding="6,2" />
+                </StackPanel>
+
+                <!-- Course + Section Code + Section Type side by side -->
+                <Grid ColumnDefinitions="110,64,90" Margin="0,0,0,0">
+                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                        <TextBlock Text="Course" FontSize="10" Foreground="#555" />
+                        <ComboBox ItemsSource="{Binding Courses}"
+                                  SelectedValueBinding="{Binding Id}"
+                                  SelectedValue="{Binding SelectedCourseId}"
+                                  FontSize="11"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:Course}">
+                                    <TextBlock Text="{Binding CalendarCode}" FontSize="11" />
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+                    <StackPanel Grid.Column="1" Margin="0,0,4,0">
+                        <TextBlock Text="Section Code" FontSize="10" Foreground="#555" />
+                        <TextBox Text="{Binding SectionCode}" FontSize="11" Height="24" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Section Type" FontSize="10" Foreground="#555" />
+                        <ComboBox ItemsSource="{Binding SectionTypes}"
+                                  SelectedValueBinding="{Binding Id}"
+                                  SelectedValue="{Binding SelectedSectionTypeId}"
+                                  DisplayMemberBinding="{Binding Name}"
+                                  FontSize="11"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Grid>
 
-        <!-- Toolbar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="4,6,4,4">
-            <Button Content="Add" Command="{Binding AddCommand}" />
-            <Button Content="Edit" Command="{Binding EditCommand}"
-                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <Button Content="Delete" Command="{Binding DeleteCommand}"
-                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <!-- Schedule -->
+                <TextBlock Text="Schedule" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,2,0,0" />
+                <ItemsControl ItemsSource="{Binding Meetings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:SectionMeetingViewModel}">
+                            <Border BorderBrush="#BBBBBB" BorderThickness="1" CornerRadius="3"
+                                    Padding="5,4" Margin="0,0,0,4">
+
+                                <!-- Columns: Day=90, Len=60, Start=60, MtgType=70, Room=*, ✕=24 -->
+                                <Grid ColumnDefinitions="90,90,90,90,90,24" RowDefinitions="Auto,Auto">
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Day"    FontSize="9" Foreground="#777" Margin="0,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Length" FontSize="9" Foreground="#777" Margin="2,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Start"  FontSize="9" Foreground="#777" Margin="2,0,2,1" />
+                                    <!-- "Mtg Type" stacked -->
+                                    <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Spacing="0" Margin="2,0,2,1">
+                                        <TextBlock Text="Mtg"  FontSize="9" Foreground="#777" LineHeight="10" />
+                                        <TextBlock Text="Type" FontSize="9" Foreground="#777" LineHeight="10" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Room"   FontSize="9" Foreground="#777" Margin="2,0,2,1" />
+
+                                    <!-- Day -->
+                                    <ComboBox Grid.Row="1" Grid.Column="0"
+                                              ItemsSource="{Binding AvailableDays}"
+                                              SelectedValueBinding="{Binding Day}"
+                                              SelectedValue="{Binding SelectedDay}"
+                                              FontSize="11" Padding="3,1"
+                                              Margin="0,0,2,0"
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:DayOption}">
+                                                <TextBlock Text="{Binding Name}" FontSize="11" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+
+                                    <!-- Length -->
+                                    <ComboBox Grid.Row="1" Grid.Column="1"
+                                              ItemsSource="{Binding AvailableBlockLengths}"
+                                              SelectedItem="{Binding SelectedBlockLength}"
+                                              PlaceholderText="—"
+                                              FontSize="11" Padding="3,1"
+                                              Margin="2,0,2,0"
+                                              HorizontalAlignment="Stretch" />
+
+                                    <!-- Start -->
+                                    <ComboBox Grid.Row="1" Grid.Column="2"
+                                              ItemsSource="{Binding AvailableStartTimes}"
+                                              SelectedItem="{Binding SelectedStartTime}"
+                                              PlaceholderText="—"
+                                              FontSize="11" Padding="3,1"
+                                              Margin="2,0,2,0"
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Converter={StaticResource MinutesToTimeConverter}}" FontSize="11" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+
+                                    <!-- Meeting Type -->
+                                    <ComboBox Grid.Row="1" Grid.Column="3"
+                                              ItemsSource="{Binding MeetingTypes}"
+                                              SelectedValueBinding="{Binding Id}"
+                                              SelectedValue="{Binding SelectedMeetingTypeId}"
+                                              DisplayMemberBinding="{Binding Name}"
+                                              FontSize="11" Padding="3,1"
+                                              Margin="2,0,2,0"
+                                              HorizontalAlignment="Stretch" />
+
+                                    <!-- Room -->
+                                    <ComboBox Grid.Row="1" Grid.Column="4"
+                                              ItemsSource="{Binding Rooms}"
+                                              SelectedValueBinding="{Binding Id}"
+                                              SelectedValue="{Binding SelectedRoomId}"
+                                              FontSize="11" Padding="3,1"
+                                              Margin="2,0,2,0"
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:Room}">
+                                                <TextBlock FontSize="11">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Building" />
+                                                            <Binding Path="RoomNumber" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+
+                                    <!-- Remove button -->
+                                    <Button Grid.Row="1" Grid.Column="5"
+                                            Content="✕"
+                                            Command="{Binding $parent[ItemsControl].DataContext.RemoveMeetingCommand}"
+                                            CommandParameter="{Binding}"
+                                            FontSize="10"
+                                            Margin="2,0,0,0"
+                                            Padding="3,2"
+                                            ToolTip.Tip="Remove" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button Content="+ meeting" Command="{Binding AddMeetingCommand}" FontSize="10" Padding="4,2" />
+
+                <!-- Instructor + Tags side by side -->
+                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
+
+                    <!-- Left: Instructor multi-select expander -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Instructor(s)" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                            <Expander.Styles>
+                                <Style Selector="ToggleButton">
+                                    <Setter Property="Padding" Value="4,2" />
+                                    <Setter Property="MinHeight" Value="22" />
+                                </Style>
+                            </Expander.Styles>
+                            <Expander.Header>
+                                <TextBlock Text="{Binding InstructorSummary}"
+                                           FontSize="11" Foreground="#333"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Expander.Header>
+                            <Border MaxHeight="120" BorderThickness="0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding InstructorSelections}" Margin="2,2,2,2">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1,2,1">
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsSelected}"
+                                                              Content="{Binding DisplayName}"
+                                                              FontSize="11"
+                                                              Padding="2,1"
+                                                              VerticalAlignment="Center" />
+                                                    <TextBox Grid.Column="2"
+                                                             Text="{Binding WorkloadText}"
+                                                             Width="36"
+                                                             FontSize="11"
+                                                             Height="22"
+                                                             Padding="3,1"
+                                                             IsVisible="{Binding IsSelected}"
+                                                             Watermark="1"
+                                                             TextAlignment="Center"
+                                                             Margin="3,0,0,0"
+                                                             VerticalAlignment="Center" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+
+                    <!-- Right: Tags expander -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Tags" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                            <Expander.Styles>
+                                <Style Selector="ToggleButton">
+                                    <Setter Property="Padding" Value="4,2" />
+                                    <Setter Property="MinHeight" Value="22" />
+                                </Style>
+                            </Expander.Styles>
+                            <Expander.Header>
+                                <TextBlock Text="{Binding TagSummary}"
+                                           FontSize="11" Foreground="#333"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Expander.Header>
+                            <Border MaxHeight="120" BorderThickness="0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding TagSelections}" Margin="2,2,2,2">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
+                                                <CheckBox IsChecked="{Binding IsSelected}"
+                                                          Content="{Binding Value.Name}"
+                                                          FontSize="11"
+                                                          Padding="2,1"
+                                                          Margin="2,0,0,1" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+
+                </Grid>
+
+                <!-- Reserve Codes + Resources side by side -->
+                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
+
+                    <!-- Left: Reserve Codes expander (checkbox + integer TextBox per row) -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Reserve Codes" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                            <Expander.Styles>
+                                <Style Selector="ToggleButton">
+                                    <Setter Property="Padding" Value="4,2" />
+                                    <Setter Property="MinHeight" Value="22" />
+                                </Style>
+                            </Expander.Styles>
+                            <Expander.Header>
+                                <TextBlock Text="{Binding ReserveSummary}"
+                                           FontSize="11" Foreground="#333"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Expander.Header>
+                            <Border MaxHeight="150" BorderThickness="0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding ReserveSelections}" Margin="2,2,2,2">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:ReserveSelectionViewModel}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1,2,1">
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsSelected}"
+                                                              Content="{Binding Value.Name}"
+                                                              FontSize="11"
+                                                              Padding="2,1"
+                                                              VerticalAlignment="Center" />
+                                                    <TextBox Grid.Column="2"
+                                                             Text="{Binding CodeText}"
+                                                             Width="44"
+                                                             FontSize="11"
+                                                             Height="22"
+                                                             Padding="3,1"
+                                                             IsVisible="{Binding IsSelected}"
+                                                             Watermark="#"
+                                                             TextAlignment="Center"
+                                                             Margin="6,0,0,0"
+                                                             VerticalAlignment="Center" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+
+                    <!-- Right: Resources expander -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Resources" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                            <Expander.Styles>
+                                <Style Selector="ToggleButton">
+                                    <Setter Property="Padding" Value="4,2" />
+                                    <Setter Property="MinHeight" Value="22" />
+                                </Style>
+                            </Expander.Styles>
+                            <Expander.Header>
+                                <TextBlock Text="{Binding ResourceSummary}"
+                                           FontSize="11" Foreground="#333"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Expander.Header>
+                            <Border MaxHeight="120" BorderThickness="0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding ResourceSelections}" Margin="2,2,2,2">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:ResourceSelectionViewModel}">
+                                                <CheckBox IsChecked="{Binding IsSelected}"
+                                                          Content="{Binding Value.Name}"
+                                                          FontSize="11"
+                                                          Padding="2,1"
+                                                          Margin="2,0,0,1" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+
+                </Grid>
+
+                <!-- Campus (left half) -->
+                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Campus" FontSize="10" Foreground="#555" Margin="0,0,0,1" />
+                        <ComboBox ItemsSource="{Binding Campuses}"
+                                  SelectedValueBinding="{Binding Id}"
+                                  SelectedValue="{Binding SelectedCampusId}"
+                                  DisplayMemberBinding="{Binding Name}"
+                                  FontSize="11"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Notes (at bottom) -->
+                <TextBlock Text="Notes" FontSize="10" Foreground="#555" Margin="0,4,0,0" />
+                <TextBox Text="{Binding Notes}" FontSize="11" AcceptsReturn="True" Height="44" Padding="4,2" />
+
+                <!-- Save / Cancel (bottom) -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                    <Button Content="Save"   Command="{Binding SaveCommand}"   FontSize="11" Padding="8,3" />
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" FontSize="11" Padding="8,3" />
+                </StackPanel>
+
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer x:Name="ListScrollViewer">
+        <StackPanel>
+
+            <!-- "Add new section" inline form at top of list -->
+            <Border x:Name="AddFormHost"
+                    IsVisible="False"
+                    Background="#EEF5FF"
+                    BorderBrush="#7AAAD4" BorderThickness="0,0,0,2"
+                    Padding="8,6,8,8">
+                <StackPanel>
+                    <TextBlock Text="New Section" FontSize="11" FontWeight="SemiBold" Foreground="#334" Margin="0,0,0,4" />
+                    <ContentControl x:Name="AddFormContent"
+                                    ContentTemplate="{StaticResource InlineEditFormTemplate}" />
+                </StackPanel>
+            </Border>
+
+            <ListBox ItemsSource="{Binding SectionItems}"
+                     SelectedItem="{Binding SelectedItem}"
+                     x:Name="SectionListBox"
+                     SelectionMode="Single"
+                     Background="Transparent"
+                     BorderThickness="0">
+                <ListBox.ItemContainerTheme>
+                    <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </ControlTheme>
+                </ListBox.ItemContainerTheme>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
+                        <Border BorderBrush="#DDDDDD" BorderThickness="0,0,0,1">
+                            <StackPanel>
+
+                                <!-- Collapsed summary row (always visible) -->
+                                <StackPanel Spacing="1" Margin="6,4,6,4">
+                                    <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" />
+                                    <ItemsControl ItemsSource="{Binding ScheduleLines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontSize="10" Foreground="#555555" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <ItemsControl ItemsSource="{Binding PropertyLines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontSize="10" Foreground="#777777" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <!-- Inline edit form — shown when this item IsExpanded -->
+                                <Border IsVisible="{Binding IsExpanded}"
+                                        Background="#EEF5FF"
+                                        BorderBrush="#7AAAD4" BorderThickness="3,0,0,0"
+                                        Padding="8,6,6,8">
+                                    <ContentControl Content="{Binding $parent[UserControl].DataContext.EditVm}"
+                                                    ContentTemplate="{StaticResource InlineEditFormTemplate}" />
+                                </Border>
+
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
         </StackPanel>
+    </ScrollViewer>
 
-    </Grid>
 </UserControl>

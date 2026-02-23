@@ -16,7 +16,7 @@
                     <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
 
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" >
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" >
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="First Name" Margin="0,0,8,4" />
                             <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding FirstName}" Margin="0,0,8,8" />
 
@@ -31,6 +31,15 @@
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Email" Margin="0,0,0,4" />
                             <TextBox   Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Email}" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Staff Type" Margin="0,0,8,4" />
+                            <ComboBox  Grid.Row="7" Grid.Column="0"
+                                       ItemsSource="{Binding StaffTypes}"
+                                       SelectedValueBinding="{Binding Id}"
+                                       SelectedValue="{Binding SelectedStaffTypeId}"
+                                       DisplayMemberBinding="{Binding Name}"
+                                       HorizontalAlignment="Stretch"
+                                       Margin="0,0,8,8" />
                         </Grid>
 
                         <TextBlock Text="{Binding ValidationError}"

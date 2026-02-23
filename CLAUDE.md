@@ -32,5 +32,19 @@ A scheduling **visualization and information management tool** for university ad
 - Extensive filtering by section attributes (instructor, room, department, etc.)
 - No conflict detection required
 
+## Schedule Grid Design Principles
+- **Conserve vertical real estate**: pack as much information as possible onto a single line within each tile. Course code, section code, and instructor initials are all written on one line (e.g. "HIST101 A  JRS"). Never use a separate line for initials if it can be avoided.
+- Co-scheduled sections (identical start time and duration) share one tile, with entries stacked vertically and separated by a thin rule.
+- Overlapping sections (different time spans) appear side-by-side in the same day column.
+
+## Section List Design Principles
+- **Conserve vertical space**: the list panel is narrow and tall; minimize unnecessary padding, margins, and font sizes wherever possible
+- The section list is an always-visible left panel, not a flyout or modal
+- Editing a section expands its card inline within the list — no separate window
+- Adding a new section shows a form at the top of the list
+- Controls inside the expanded editor are compact (FontSize 10–11, tight padding) to conserve vertical space
+- The summary row (heading + schedule lines) remains visible above the expanded form
+- Only one section can be open for editing at a time; opening another collapses the previous
+
 ## Decisions Not Yet Made
 - Exact fields on Section, Instructor, Room (beyond what's described above)
