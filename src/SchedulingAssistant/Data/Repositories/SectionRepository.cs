@@ -61,6 +61,25 @@ public class SectionRepository(DatabaseContext db)
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
+    /// <summary>
+    /// Returns true if another section for the same course in the same semester already uses
+    /// <paramref name="sectionCode"/> (case-insensitive).
+    /// Pass <paramref name="excludeId"/> = the current section's id when editing (null for new sections).
+    /// </summary>
+    public bool ExistsBySectionCode(string semesterId, string courseId, string sectionCode, string? excludeId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = excludeId is null
+            ? "SELECT COUNT(*) FROM Sections WHERE semester_id = $sid AND course_id = $cid AND LOWER(data ->> 'sectionCode') = LOWER($code)"
+            : "SELECT COUNT(*) FROM Sections WHERE semester_id = $sid AND course_id = $cid AND LOWER(data ->> 'sectionCode') = LOWER($code) AND id != $excludeId";
+        cmd.Parameters.AddWithValue("$sid", semesterId);
+        cmd.Parameters.AddWithValue("$cid", courseId);
+        cmd.Parameters.AddWithValue("$code", sectionCode);
+        if (excludeId is not null)
+            cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+    }
+
     public void Delete(string id)
     {
         using var cmd = db.Connection.CreateCommand();

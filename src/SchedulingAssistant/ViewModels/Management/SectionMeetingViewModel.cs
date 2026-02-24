@@ -26,7 +26,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
         bool includeSaturday,
         IReadOnlyList<SectionPropertyValue> meetingTypes,
         IReadOnlyList<Room> rooms,
-        SectionDaySchedule? existing = null)
+        SectionDaySchedule? existing = null,
+        double? defaultBlockLength = null)
     {
         _legalStartTimes = legalStartTimes;
         AvailableBlockLengths = new ObservableCollection<double>(legalStartTimes.Select(l => l.BlockLength));
@@ -69,6 +70,15 @@ public partial class SectionMeetingViewModel : ViewModelBase
             _selectedDay = 1;
             _selectedMeetingTypeId = "";
             _selectedRoomId = "";
+
+            // Apply preferred block length if set and available
+            if (defaultBlockLength.HasValue
+                && AvailableBlockLengths.Any(b => Math.Abs(b - defaultBlockLength.Value) < 0.01))
+            {
+                _selectedBlockLength = defaultBlockLength;
+                RefreshStartTimes();
+                // Leave SelectedStartTime unset — user still picks the time
+            }
         }
     }
 

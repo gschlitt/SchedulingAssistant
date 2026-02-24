@@ -18,7 +18,7 @@ public partial class SectionPropertiesViewModel : ViewModelBase
             new(SectionPropertyTypes.SectionType, "Section Type",  repo),
             new(SectionPropertyTypes.MeetingType, "Meeting Type",  repo),
             new(SectionPropertyTypes.StaffType,   "Staff Type",    repo),
-            new(SectionPropertyTypes.Campus,      "Campus",        repo),
+            new(SectionPropertyTypes.Campus,      "Campus",        repo, showAbbreviation: true),
             new(SectionPropertyTypes.Tag,         "Tags",          repo),
             new(SectionPropertyTypes.Resource,    "Resources",     repo),
             new(SectionPropertyTypes.Reserve,     "Reserve Codes", repo),

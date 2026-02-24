@@ -11,6 +11,17 @@ public partial class SectionPropertyEditViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private string _name = string.Empty;
 
+    /// <summary>
+    /// The section code abbreviation field value. Only relevant when ShowAbbreviation is true.
+    /// </summary>
+    [ObservableProperty] private string _abbreviation = string.Empty;
+
+    /// <summary>
+    /// When true, the "Section Code Abbreviation" field is shown in the edit form.
+    /// Currently only true for the Campus property type.
+    /// </summary>
+    public bool ShowAbbreviation { get; }
+
     public string Title => IsNew ? "Add" : "Edit";
     public bool IsNew { get; }
 
@@ -37,20 +48,26 @@ public partial class SectionPropertyEditViewModel : ViewModelBase
         bool isNew,
         Action<SectionPropertyValue> onSave,
         Action onCancel,
-        Func<string, bool> nameExists)
+        Func<string, bool> nameExists,
+        bool showAbbreviation = false)
     {
         _value = value;
         IsNew = isNew;
         _onSave = onSave;
         _onCancel = onCancel;
         _nameExists = nameExists;
+        ShowAbbreviation = showAbbreviation;
         Name = value.Name;
+        Abbreviation = value.SectionCodeAbbreviation ?? string.Empty;
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
     {
         _value.Name = Name.Trim();
+        _value.SectionCodeAbbreviation = ShowAbbreviation && Abbreviation.Trim().Length > 0
+            ? Abbreviation.Trim()
+            : null;
         _onSave(_value);
     }
 

@@ -15,6 +15,32 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<SectionMeetingViewModel> _meetings = new();
     [ObservableProperty] private ObservableCollection<Course> _courses;
 
+    // ── Step-gate state ──────────────────────────────────────────────────────
+
+    /// <summary>True once a course is selected; enables the Section Code field.</summary>
+    public bool IsSectionCodeEnabled => !string.IsNullOrEmpty(SelectedCourseId);
+
+    /// <summary>
+    /// True when course is selected, section code is non-empty, and the code has been
+    /// validated as unique (by CommitSectionCode on LostFocus or at construction).
+    /// Purely derived from the validated course+code snapshot.
+    /// </summary>
+    public bool AreOtherFieldsEnabled =>
+        !string.IsNullOrEmpty(SelectedCourseId)
+        && !string.IsNullOrEmpty(SectionCode.Trim())
+        && SectionCodeError == null
+        && _validatedCourseId == SelectedCourseId
+        && string.Equals(_validatedSectionCode, SectionCode.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Error message shown beneath Section Code; null when no error.</summary>
+    [ObservableProperty] private string? _sectionCodeError;
+
+    /// <summary>Snapshot of the course+code pair that was last validated successfully.</summary>
+    private string? _validatedCourseId;
+    private string? _validatedSectionCode;
+
+    private readonly Func<string, string, bool> _isSectionCodeDuplicate;
+
     // Instructor multi-select
     [ObservableProperty] private ObservableCollection<InstructorSelectionViewModel> _instructorSelections = new();
 
@@ -86,11 +112,64 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly IReadOnlyList<SectionPropertyValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _rooms;
     private readonly bool _includeSaturday;
+    private readonly double? _defaultBlockLength;
 
     /// <summary>
     /// Set by the view to close the hosting window when Save or Cancel is invoked.
     /// </summary>
     public Action? RequestClose { get; set; }
+
+    // ── Step-gate partial callbacks ──────────────────────────────────────────
+    // These only clear stale errors and re-raise the computed properties.
+    // AreOtherFieldsEnabled compares the live values against the validated snapshot,
+    // so no mutable flag needs to be maintained here.
+
+    partial void OnSectionCodeErrorChanged(string? value)
+    {
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    partial void OnSelectedCourseIdChanged(string? value)
+    {
+        SectionCodeError = null;
+        OnPropertyChanged(nameof(IsSectionCodeEnabled));
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    partial void OnSectionCodeChanged(string value)
+    {
+        SectionCodeError = null;
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    /// <summary>
+    /// Called when the Section Code field loses focus (hooked in the view's code-behind).
+    /// Validates uniqueness and, if valid, records the validated course+code pair so that
+    /// <see cref="AreOtherFieldsEnabled"/> becomes true.
+    /// </summary>
+    public void CommitSectionCode()
+    {
+        var code = SectionCode.Trim();
+        if (string.IsNullOrEmpty(SelectedCourseId) || string.IsNullOrEmpty(code))
+        {
+            OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+            return;
+        }
+
+        if (_isSectionCodeDuplicate(SelectedCourseId, code))
+        {
+            SectionCodeError = "A section with this code already exists for this course in the selected semester.";
+            _validatedCourseId = null;
+            _validatedSectionCode = null;
+        }
+        else
+        {
+            SectionCodeError = null;
+            _validatedCourseId = SelectedCourseId;
+            _validatedSectionCode = code;
+        }
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
 
     public SectionEditViewModel(
         Section section,
@@ -106,7 +185,9 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SectionPropertyValue> allTags,
         IReadOnlyList<SectionPropertyValue> allResources,
         IReadOnlyList<SectionPropertyValue> allReserves,
-        Action<Section> onSave)
+        Func<string, string, bool> isSectionCodeDuplicate,
+        Action<Section> onSave,
+        double? defaultBlockLength = null)
     {
         _section = section;
         IsNew = isNew;
@@ -115,12 +196,24 @@ public partial class SectionEditViewModel : ViewModelBase
         _meetingTypes = meetingTypes;
         _rooms = rooms;
         _includeSaturday = includeSaturday;
+        _defaultBlockLength = defaultBlockLength;
+        _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
         Courses = new ObservableCollection<Course>(courses);
 
         SelectedCourseId = section.CourseId;
-        SectionCode = section.SectionCode;
-        Notes = section.Notes;
+        SectionCode      = section.SectionCode;
+        Notes            = section.Notes;
+
+        // If both fields are already populated (edit or copy-with-code), record them as
+        // the validated pair so AreOtherFieldsEnabled computes to true immediately.
+        // This is immune to Avalonia re-firing setters — the computed property just
+        // compares live values against these snapshots.
+        if (!string.IsNullOrEmpty(section.CourseId) && !string.IsNullOrEmpty(section.SectionCode))
+        {
+            _validatedCourseId = section.CourseId;
+            _validatedSectionCode = section.SectionCode;
+        }
 
         // Instructor multi-select with workload
         InstructorSelections = new ObservableCollection<InstructorSelectionViewModel>(
@@ -155,9 +248,10 @@ public partial class SectionEditViewModel : ViewModelBase
             }));
         WireReserveSummary();
 
-        // Meetings — pass rooms down so each meeting can show its own room picker
+        // Meetings — pass rooms down so each meeting can show its own room picker.
+        // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
-            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, meetingTypes, rooms, entry));
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, meetingTypes, rooms, entry, defaultBlockLength));
     }
 
     /// <summary>
@@ -224,7 +318,8 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void AddMeeting()
     {
-        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms));
+        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms,
+            defaultBlockLength: _defaultBlockLength));
     }
 
     [RelayCommand]
@@ -236,8 +331,21 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void Save()
     {
+        var trimmedCode = SectionCode.Trim();
+
+        // Guard: must have course and section code
+        if (string.IsNullOrEmpty(SelectedCourseId) || string.IsNullOrEmpty(trimmedCode))
+            return;
+
+        // Guard: section code must be unique (re-check in case user bypassed LostFocus)
+        if (_isSectionCodeDuplicate(SelectedCourseId, trimmedCode))
+        {
+            SectionCodeError = "A section with this code already exists for this course in the selected semester.";
+            return;
+        }
+
         _section.CourseId = SelectedCourseId;
-        _section.SectionCode = SectionCode.Trim();
+        _section.SectionCode = trimmedCode;
         _section.Notes = Notes.Trim();
         _section.Schedule = Meetings
             .Select(m => m.ToSchedule())

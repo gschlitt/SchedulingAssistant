@@ -6,6 +6,8 @@ using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -32,6 +34,9 @@ public partial class SectionListViewModel : ViewModelBase
     partial void OnEditVmChanged(SectionEditViewModel? value) => OnPropertyChanged(nameof(IsEditing));
 
     public Section? SelectedSection => SelectedItem?.Section;
+
+    /// <summary>Set by the view code-behind to display error messages.</summary>
+    public Func<string, Task>? ShowError { get; set; }
 
     public SectionListViewModel(
         SectionRepository sectionRepo,
@@ -133,7 +138,8 @@ public partial class SectionListViewModel : ViewModelBase
         var instructors     = _instructorRepo.GetAll();
         var rooms           = _roomRepo.GetAll();
         var legalStartTimes = _legalStartTimeRepo.GetAll();
-        var includeSaturday = AppSettings.Load().IncludeSaturday;
+        var settings        = AppSettings.Load();
+        var includeSaturday = settings.IncludeSaturday;
 
         var sectionTypes  = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
         var meetingTypes  = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
@@ -142,21 +148,132 @@ public partial class SectionListViewModel : ViewModelBase
         var allResources  = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
         var allReserves   = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
 
+        var semesterId = _semesterContext.SelectedSemesterDisplay!.Semester.Id;
         var editVm = new SectionEditViewModel(
             section, isNew,
             courses, instructors, rooms, legalStartTimes, includeSaturday,
             sectionTypes, meetingTypes, campuses,
             allTags, allResources, allReserves,
+            isSectionCodeDuplicate: (courseId, code) =>
+                _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, isNew ? null : section.Id),
             onSave: s =>
             {
                 if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
                 CollapseEditor();
                 Load();
                 _scheduleGridVm.Reload();
-            });
+            },
+            defaultBlockLength: settings.PreferredBlockLength);
         editVm.RequestClose = CollapseEditor;
         ExpandedItem = listItem;
         if (listItem is not null) listItem.IsExpanded = true;
+        EditVm = editVm;
+    }
+
+    [RelayCommand]
+    private async Task Copy()
+    {
+        if (SelectedItem is null) return;
+        var source = SelectedItem.Section;
+
+        var semester = _semesterContext.SelectedSemesterDisplay?.Semester;
+        if (semester is null) return;
+
+        // Derive a candidate section code by incrementing the trailing integer suffix, if any.
+        string? newCode = null;
+        if (!string.IsNullOrEmpty(source.CourseId))
+        {
+            var match = Regex.Match(source.SectionCode, @"^(.*?)(\d+)$");
+            if (match.Success)
+            {
+                var prefix = match.Groups[1].Value;
+                var number = int.Parse(match.Groups[2].Value);
+                var candidate = $"{prefix}{number + 1}";
+                if (!_sectionRepo.ExistsBySectionCode(semester.Id, source.CourseId, candidate, excludeId: null))
+                    newCode = candidate;
+                else
+                    await (ShowError?.Invoke(
+                        $"Could not auto-assign a section code: \"{candidate}\" already exists for this course. " +
+                        "The section code has been left blank — please enter one before saving.") ?? Task.CompletedTask);
+            }
+        }
+
+        var newSection = new Section
+        {
+            SemesterId = semester.Id,
+            CourseId   = source.CourseId,
+            SectionCode = newCode ?? string.Empty,
+        };
+
+        // Insert the new section immediately after the selected one in the list.
+        // We open the editor without pre-inserting — the editor's onSave will insert it.
+        // But we need it to appear *below* the selected item, so we insert a placeholder
+        // list item first, then open the editor on it.
+        OpenCopy(newSection, afterItem: SelectedItem);
+    }
+
+    private void OpenCopy(Section section, SectionListItemViewModel afterItem)
+    {
+        // Collapse any currently open editor
+        if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
+
+        var courses         = _courseRepo.GetAllActive();
+        var instructors     = _instructorRepo.GetAll();
+        var rooms           = _roomRepo.GetAll();
+        var legalStartTimes = _legalStartTimeRepo.GetAll();
+        var settings        = AppSettings.Load();
+        var includeSaturday = settings.IncludeSaturday;
+
+        var sectionTypes  = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
+        var meetingTypes  = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
+        var campuses      = _propertyRepo.GetAll(SectionPropertyTypes.Campus);
+        var allTags       = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
+        var allResources  = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
+        var allReserves   = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
+
+        // Build a minimal placeholder list item so the editor can expand inline.
+        var courseLookup     = _courseRepo.GetAll().ToDictionary(c => c.Id);
+        var instructorLookup = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+        var roomLookup       = _roomRepo.GetAll().ToDictionary(r => r.Id);
+        var sectionTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
+        var campusLookup      = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
+        var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
+        var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
+        var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
+
+        var placeholder = new SectionListItemViewModel(
+            section, courseLookup, instructorLookup, roomLookup,
+            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup);
+
+        // Insert immediately after the source item
+        int insertIndex = SectionItems.IndexOf(afterItem) + 1;
+        SectionItems.Insert(insertIndex, placeholder);
+
+        var semesterId = _semesterContext.SelectedSemesterDisplay!.Semester.Id;
+        var editVm = new SectionEditViewModel(
+            section, isNew: true,
+            courses, instructors, rooms, legalStartTimes, includeSaturday,
+            sectionTypes, meetingTypes, campuses,
+            allTags, allResources, allReserves,
+            isSectionCodeDuplicate: (courseId, code) =>
+                _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null),
+            onSave: s =>
+            {
+                _sectionRepo.Insert(s);
+                CollapseEditor();
+                Load();
+                _scheduleGridVm.Reload();
+            },
+            defaultBlockLength: settings.PreferredBlockLength);
+        editVm.RequestClose = () =>
+        {
+            // If cancelled, remove the placeholder row
+            SectionItems.Remove(placeholder);
+            CollapseEditor();
+        };
+
+        ExpandedItem = placeholder;
+        placeholder.IsExpanded = true;
         EditVm = editVm;
     }
 

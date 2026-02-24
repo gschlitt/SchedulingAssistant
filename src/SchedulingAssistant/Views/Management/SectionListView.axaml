@@ -18,7 +18,7 @@
                 </StackPanel>
 
                 <!-- Course + Section Code + Section Type side by side -->
-                <Grid ColumnDefinitions="110,64,90" Margin="0,0,0,0">
+                <Grid ColumnDefinitions="110,80,90" Margin="0,0,0,0">
                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
                         <TextBlock Text="Course" FontSize="10" Foreground="#555" />
                         <ComboBox ItemsSource="{Binding Courses}"
@@ -35,9 +35,15 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,4,0">
                         <TextBlock Text="Section Code" FontSize="10" Foreground="#555" />
-                        <TextBox Text="{Binding SectionCode}" FontSize="11" Height="24" />
+                        <TextBox x:Name="SectionCodeBox"
+                                 Text="{Binding SectionCode}"
+                                 IsEnabled="{Binding IsSectionCodeEnabled}"
+                                 FontSize="11" Height="24" />
+                        <TextBlock Text="{Binding SectionCodeError}"
+                                   IsVisible="{Binding SectionCodeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   FontSize="9" Foreground="#CC0000" TextWrapping="Wrap" Margin="0,1,0,0" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Grid.Column="2" IsEnabled="{Binding AreOtherFieldsEnabled}">
                         <TextBlock Text="Section Type" FontSize="10" Foreground="#555" />
                         <ComboBox ItemsSource="{Binding SectionTypes}"
                                   SelectedValueBinding="{Binding Id}"
@@ -47,6 +53,9 @@
                                   HorizontalAlignment="Stretch" />
                     </StackPanel>
                 </Grid>
+
+                <!-- Fields below Course+Code are disabled until course and unique code are committed -->
+                <StackPanel IsEnabled="{Binding AreOtherFieldsEnabled}" Spacing="0">
 
                 <!-- Schedule -->
                 <TextBlock Text="Schedule" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,2,0,0" />
@@ -343,6 +352,9 @@
                 <!-- Notes (at bottom) -->
                 <TextBlock Text="Notes" FontSize="10" Foreground="#555" Margin="0,4,0,0" />
                 <TextBox Text="{Binding Notes}" FontSize="11" AcceptsReturn="True" Height="44" Padding="4,2" />
+
+                </StackPanel>
+                <!-- End AreOtherFieldsEnabled gate -->
 
                 <!-- Save / Cancel (bottom) -->
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">

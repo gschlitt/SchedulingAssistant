@@ -22,6 +22,11 @@
                                    Foreground="Red" FontSize="12"
                                    IsVisible="{Binding ValidationError,
                                        Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <!-- Abbreviation field — only shown for Campus -->
+                        <StackPanel IsVisible="{Binding ShowAbbreviation}" Spacing="4">
+                            <TextBlock Text="Section Code Abbreviation" />
+                            <TextBox Text="{Binding Abbreviation}" />
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Content="Save" Command="{Binding SaveCommand}" />
                             <Button Content="Cancel" Command="{Binding CancelCommand}" />
@@ -41,6 +46,10 @@
                   CanUserSortColumns="True">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Abbreviation"
+                                    Binding="{Binding SectionCodeAbbreviation}"
+                                    Width="140"
+                                    IsVisible="{Binding $parent[UserControl].DataContext.ShowAbbreviation}" />
             </DataGrid.Columns>
         </DataGrid>
 

@@ -13,6 +13,12 @@ public partial class SectionPropertyListViewModel : ViewModelBase
 
     public string DisplayName { get; }
 
+    /// <summary>
+    /// When true, the "Section Code Abbreviation" field is shown in the edit form and
+    /// as a column in the list. Currently only true for the Campus property type.
+    /// </summary>
+    public bool ShowAbbreviation { get; }
+
     [ObservableProperty] private ObservableCollection<SectionPropertyValue> _items = new();
     [ObservableProperty] private SectionPropertyValue? _selectedItem;
     [ObservableProperty] private SectionPropertyEditViewModel? _editVm;
@@ -23,11 +29,13 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     public SectionPropertyListViewModel(
         string propertyType,
         string displayName,
-        SectionPropertyRepository repo)
+        SectionPropertyRepository repo,
+        bool showAbbreviation = false)
     {
         _type = propertyType;
         DisplayName = displayName;
         _repo = repo;
+        ShowAbbreviation = showAbbreviation;
         Load();
     }
 
@@ -41,18 +49,25 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         EditVm = new SectionPropertyEditViewModel(value, isNew: true,
             onSave: v => { _repo.Insert(_type, v); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
-            nameExists: name => _repo.ExistsByName(_type, name));
+            nameExists: name => _repo.ExistsByName(_type, name),
+            showAbbreviation: ShowAbbreviation);
     }
 
     [RelayCommand]
     private void Edit()
     {
         if (SelectedItem is null) return;
-        var copy = new SectionPropertyValue { Id = SelectedItem.Id, Name = SelectedItem.Name };
+        var copy = new SectionPropertyValue
+        {
+            Id = SelectedItem.Id,
+            Name = SelectedItem.Name,
+            SectionCodeAbbreviation = SelectedItem.SectionCodeAbbreviation,
+        };
         EditVm = new SectionPropertyEditViewModel(copy, isNew: false,
             onSave: v => { _repo.Update(v); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
-            nameExists: name => _repo.ExistsByName(_type, name, excludeId: copy.Id));
+            nameExists: name => _repo.ExistsByName(_type, name, excludeId: copy.Id),
+            showAbbreviation: ShowAbbreviation);
     }
 
     [RelayCommand]

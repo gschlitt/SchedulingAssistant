@@ -1,4 +1,11 @@
-LegalStartTime class: StartTimes are not measured in minutes from midnight but rather the 24 hour clock
-SectionDaySchedule: StartMinutes should be starting time, again in 24 hour clock, will need to calculate EndMinutes properly  Maybe not there' a converter. Check.
-Semester: take off sort order and get rid of any display elements that reference it. Use the sort order of the string array
+Would like business objects to have friendly references to the other business objects, in the db. 
+
+New section should go after currently selected section, if any, or at bottom of list.
+
+A section code chooser: user selects prefix "AB, CH..." and app sets up ABN where N is the next available section number, user
+has option to provide their own.
+
+Sorting on sections
+
+Bug:grid should always begin at 830. Right now if there's a single section iwht some time, it begins at that ime.
 

@@ -90,6 +90,11 @@
                                         IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         FontSize="10" Padding="5,1"
                                         MinHeight="0" MinWidth="0" />
+                                <Button Content="Copy"
+                                        Command="{Binding CopyCommand}"
+                                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        FontSize="10" Padding="5,1"
+                                        MinHeight="0" MinWidth="0" />
                                 <Button Content="Delete"
                                         Command="{Binding DeleteCommand}"
                                         IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"

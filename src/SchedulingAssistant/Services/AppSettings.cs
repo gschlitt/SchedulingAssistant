@@ -16,6 +16,7 @@ public class AppSettings
 
     public string? DatabasePath { get; set; }
     public bool IncludeSaturday { get; set; } = false;
+    public double? PreferredBlockLength { get; set; } = null;
 
     public static AppSettings Load()
     {

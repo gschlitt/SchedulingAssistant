@@ -1,7 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
 using SchedulingAssistant.ViewModels.Management;
 using System.ComponentModel;
+using System.Threading.Tasks;
 
 namespace SchedulingAssistant.Views.Management;
 
@@ -16,6 +19,20 @@ public partial class SectionListView : UserControl
 
         var listBox = this.FindControl<ListBox>("SectionListBox")!;
         listBox.DoubleTapped += OnListBoxDoubleTapped;
+
+        // The Section Code TextBox lives inside a DataTemplate, so we can't attach to it
+        // directly. Instead we listen for the routed LostFocus event bubbling up from any
+        // child named "SectionCodeBox" and forward it to the VM's CommitSectionCode().
+        // CommitSectionCode validates uniqueness and, if clean, records the validated
+        // course+code snapshot that unlocks the rest of the form (see SectionEditViewModel).
+        AddHandler(LostFocusEvent, OnAnyLostFocus, RoutingStrategies.Bubble);
+    }
+
+    // Triggered whenever any child TextBox loses focus; we filter on the control name.
+    private void OnAnyLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (e.Source is TextBox { Name: "SectionCodeBox" })
+            _vm?.EditVm?.CommitSectionCode();
     }
 
     private void OnDataContextChanged(object? sender, System.EventArgs e)
@@ -26,13 +43,53 @@ public partial class SectionListView : UserControl
         _vm = DataContext as SectionListViewModel;
 
         if (_vm is not null)
+        {
             _vm.PropertyChanged += OnVmPropertyChanged;
+            // Wire the ShowError delegate so the VM can show modal notices (e.g. copy
+            // conflicts) without taking a hard dependency on Avalonia Window APIs.
+            _vm.ShowError = ShowErrorAsync;
+        }
 
         UpdateAddFormHost();
     }
 
+    // Displays a simple modal notice window. Used by SectionListViewModel.ShowError.
+    private async Task ShowErrorAsync(string message)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+
+        var msg = new Window
+        {
+            Title = "Notice",
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ShowInTaskbar = false
+        };
+
+        var body = new TextBlock
+        {
+            Text = message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13
+        };
+
+        var okBtn = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Right };
+        okBtn.Click += (_, _) => msg.Close();
+
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 16 };
+        panel.Children.Add(body);
+        panel.Children.Add(okBtn);
+        msg.Content = panel;
+
+        await msg.ShowDialog(owner);
+    }
+
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // EditVm and ExpandedItem together determine whether the top-of-list Add form is shown.
         if (e.PropertyName is nameof(SectionListViewModel.EditVm) or nameof(SectionListViewModel.ExpandedItem))
             UpdateAddFormHost();
     }
@@ -43,7 +100,8 @@ public partial class SectionListView : UserControl
         var addFormContent = this.FindControl<ContentControl>("AddFormContent");
         if (addFormHost is null || addFormContent is null) return;
 
-        // Show "Add" form at top only when adding a new section (EditVm set, no existing item expanded)
+        // The Add form appears at the top of the list only when EditVm is set and no
+        // existing list item is expanded (which would mean we're in Edit/Copy mode instead).
         bool isAddMode = _vm?.EditVm is not null && _vm.ExpandedItem is null;
         addFormHost.IsVisible = isAddMode;
         addFormContent.Content = isAddMode ? _vm!.EditVm : null;
