@@ -17,10 +17,10 @@
                     <Button Content="Cancel" Command="{Binding CancelCommand}" FontSize="10" Padding="6,2" />
                 </StackPanel>
 
-                <!-- Course + Section Code + Section Type side by side -->
-                <Grid ColumnDefinitions="110,80,90" Margin="0,0,0,0">
+                <!-- Course + Abbreviation (new only) + Section Code + Section Type side by side -->
+                <Grid ColumnDefinitions="110,Auto,80,90" Margin="0,0,0,0">
                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                        <TextBlock Text="Course" FontSize="10" Foreground="#555" />
+                        <TextBlock Text="Course" FontSize="10" Foreground="{StaticResource TextLabel}" />
                         <ComboBox ItemsSource="{Binding Courses}"
                                   SelectedValueBinding="{Binding Id}"
                                   SelectedValue="{Binding SelectedCourseId}"
@@ -33,18 +33,29 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="0,0,4,0">
-                        <TextBlock Text="Section Code" FontSize="10" Foreground="#555" />
+                    <StackPanel Grid.Column="1" Margin="0,0,4,0"
+                                IsVisible="{Binding IsNew}"
+                                IsEnabled="{Binding IsSectionCodeEnabled}">
+                        <TextBlock Text="Abbrev" FontSize="10" Foreground="{StaticResource TextLabel}" />
+                        <ComboBox ItemsSource="{Binding AbbreviationOptions}"
+                                  SelectedValueBinding="{Binding Value}"
+                                  SelectedValue="{Binding SelectedAbbreviation}"
+                                  DisplayMemberBinding="{Binding Label}"
+                                  FontSize="11" MinWidth="70"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,4,0">
+                        <TextBlock Text="Section Code" FontSize="10" Foreground="{StaticResource TextLabel}" />
                         <TextBox x:Name="SectionCodeBox"
                                  Text="{Binding SectionCode}"
                                  IsEnabled="{Binding IsSectionCodeEnabled}"
                                  FontSize="11" Height="24" />
                         <TextBlock Text="{Binding SectionCodeError}"
                                    IsVisible="{Binding SectionCodeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                   FontSize="9" Foreground="#CC0000" TextWrapping="Wrap" Margin="0,1,0,0" />
+                                   FontSize="9" Foreground="{StaticResource TextValidationError}" TextWrapping="Wrap" Margin="0,1,0,0" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2" IsEnabled="{Binding AreOtherFieldsEnabled}">
-                        <TextBlock Text="Section Type" FontSize="10" Foreground="#555" />
+                    <StackPanel Grid.Column="3" IsEnabled="{Binding AreOtherFieldsEnabled}">
+                        <TextBlock Text="Section Type" FontSize="10" Foreground="{StaticResource TextLabel}" />
                         <ComboBox ItemsSource="{Binding SectionTypes}"
                                   SelectedValueBinding="{Binding Id}"
                                   SelectedValue="{Binding SelectedSectionTypeId}"
@@ -58,25 +69,25 @@
                 <StackPanel IsEnabled="{Binding AreOtherFieldsEnabled}" Spacing="0">
 
                 <!-- Schedule -->
-                <TextBlock Text="Schedule" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,2,0,0" />
+                <TextBlock Text="Schedule" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,2,0,0" />
                 <ItemsControl ItemsSource="{Binding Meetings}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:SectionMeetingViewModel}">
-                            <Border BorderBrush="#BBBBBB" BorderThickness="1" CornerRadius="3"
+                            <Border BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1" CornerRadius="3"
                                     Padding="5,4" Margin="0,0,0,4">
 
                                 <!-- Columns: Day=90, Len=60, Start=60, MtgType=70, Room=*, ✕=24 -->
                                 <Grid ColumnDefinitions="90,90,90,90,90,24" RowDefinitions="Auto,Auto">
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Day"    FontSize="9" Foreground="#777" Margin="0,0,2,1" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Length" FontSize="9" Foreground="#777" Margin="2,0,2,1" />
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Start"  FontSize="9" Foreground="#777" Margin="2,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Day"    FontSize="9" Foreground="{StaticResource TextMuted}" Margin="0,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Length" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Start"  FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
                                     <!-- "Mtg Type" stacked -->
                                     <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Spacing="0" Margin="2,0,2,1">
-                                        <TextBlock Text="Mtg"  FontSize="9" Foreground="#777" LineHeight="10" />
-                                        <TextBlock Text="Type" FontSize="9" Foreground="#777" LineHeight="10" />
+                                        <TextBlock Text="Mtg"  FontSize="9" Foreground="{StaticResource TextMuted}" LineHeight="10" />
+                                        <TextBlock Text="Type" FontSize="9" Foreground="{StaticResource TextMuted}" LineHeight="10" />
                                     </StackPanel>
-                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Room"   FontSize="9" Foreground="#777" Margin="2,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Room"   FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
 
                                     <!-- Day -->
                                     <ComboBox Grid.Row="1" Grid.Column="0"
@@ -164,15 +175,27 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Button Content="+ meeting" Command="{Binding AddMeetingCommand}" FontSize="10" Padding="4,2" />
+                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
+                    <Button Content="+ meeting" Command="{Binding AddMeetingCommand}" FontSize="10" Padding="4,2" />
+                    <Button Content="{Binding Pattern1Label}"
+                            Command="{Binding ApplyPattern1Command}"
+                            IsVisible="{Binding HasPattern1}"
+                            FontSize="10" Padding="4,2"
+                            ToolTip.Tip="Apply Pattern 1" />
+                    <Button Content="{Binding Pattern2Label}"
+                            Command="{Binding ApplyPattern2Command}"
+                            IsVisible="{Binding HasPattern2}"
+                            FontSize="10" Padding="4,2"
+                            ToolTip.Tip="Apply Pattern 2" />
+                </StackPanel>
 
                 <!-- Instructor + Tags side by side -->
-                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
+                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0" HorizontalAlignment="Left" MaxWidth="400">
 
                     <!-- Left: Instructor multi-select expander -->
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Instructor(s)" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                        <TextBlock Text="Instructor(s)" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
                             <Expander.Styles>
                                 <Style Selector="ToggleButton">
                                     <Setter Property="Padding" Value="4,2" />
@@ -181,7 +204,7 @@
                             </Expander.Styles>
                             <Expander.Header>
                                 <TextBlock Text="{Binding InstructorSummary}"
-                                           FontSize="11" Foreground="#333"
+                                           FontSize="11" Foreground="{StaticResource TextFaint}"
                                            TextTrimming="CharacterEllipsis" />
                             </Expander.Header>
                             <Border MaxHeight="120" BorderThickness="0">
@@ -218,8 +241,8 @@
 
                     <!-- Right: Tags expander -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Tags" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                        <TextBlock Text="Tags" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
                             <Expander.Styles>
                                 <Style Selector="ToggleButton">
                                     <Setter Property="Padding" Value="4,2" />
@@ -228,7 +251,7 @@
                             </Expander.Styles>
                             <Expander.Header>
                                 <TextBlock Text="{Binding TagSummary}"
-                                           FontSize="11" Foreground="#333"
+                                           FontSize="11" Foreground="{StaticResource TextFaint}"
                                            TextTrimming="CharacterEllipsis" />
                             </Expander.Header>
                             <Border MaxHeight="120" BorderThickness="0">
@@ -252,12 +275,12 @@
                 </Grid>
 
                 <!-- Reserve Codes + Resources side by side -->
-                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
+                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0" HorizontalAlignment="Left" MaxWidth="400">
 
                     <!-- Left: Reserve Codes expander (checkbox + integer TextBox per row) -->
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Reserve Codes" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                        <TextBlock Text="Reserve Codes" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
                             <Expander.Styles>
                                 <Style Selector="ToggleButton">
                                     <Setter Property="Padding" Value="4,2" />
@@ -266,7 +289,7 @@
                             </Expander.Styles>
                             <Expander.Header>
                                 <TextBlock Text="{Binding ReserveSummary}"
-                                           FontSize="11" Foreground="#333"
+                                           FontSize="11" Foreground="{StaticResource TextFaint}"
                                            TextTrimming="CharacterEllipsis" />
                             </Expander.Header>
                             <Border MaxHeight="150" BorderThickness="0">
@@ -303,8 +326,8 @@
 
                     <!-- Right: Resources expander -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Resources" FontSize="10" FontWeight="SemiBold" Foreground="#555" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="#BBBBBB" BorderThickness="1">
+                        <TextBlock Text="Resources" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
+                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
                             <Expander.Styles>
                                 <Style Selector="ToggleButton">
                                     <Setter Property="Padding" Value="4,2" />
@@ -313,7 +336,7 @@
                             </Expander.Styles>
                             <Expander.Header>
                                 <TextBlock Text="{Binding ResourceSummary}"
-                                           FontSize="11" Foreground="#333"
+                                           FontSize="11" Foreground="{StaticResource TextFaint}"
                                            TextTrimming="CharacterEllipsis" />
                             </Expander.Header>
                             <Border MaxHeight="120" BorderThickness="0">
@@ -339,7 +362,7 @@
                 <!-- Campus (left half) -->
                 <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Campus" FontSize="10" Foreground="#555" Margin="0,0,0,1" />
+                        <TextBlock Text="Campus" FontSize="10" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
                         <ComboBox ItemsSource="{Binding Campuses}"
                                   SelectedValueBinding="{Binding Id}"
                                   SelectedValue="{Binding SelectedCampusId}"
@@ -350,7 +373,7 @@
                 </Grid>
 
                 <!-- Notes (at bottom) -->
-                <TextBlock Text="Notes" FontSize="10" Foreground="#555" Margin="0,4,0,0" />
+                <TextBlock Text="Notes" FontSize="10" Foreground="{StaticResource TextLabel}" Margin="0,4,0,0" />
                 <TextBox Text="{Binding Notes}" FontSize="11" AcceptsReturn="True" Height="44" Padding="4,2" />
 
                 </StackPanel>
@@ -366,21 +389,29 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <ScrollViewer x:Name="ListScrollViewer">
-        <StackPanel>
+    <Grid RowDefinitions="Auto,*">
 
-            <!-- "Add new section" inline form at top of list -->
-            <Border x:Name="AddFormHost"
-                    IsVisible="False"
-                    Background="#EEF5FF"
-                    BorderBrush="#7AAAD4" BorderThickness="0,0,0,2"
-                    Padding="8,6,8,8">
-                <StackPanel>
-                    <TextBlock Text="New Section" FontSize="11" FontWeight="SemiBold" Foreground="#334" Margin="0,0,0,4" />
-                    <ContentControl x:Name="AddFormContent"
-                                    ContentTemplate="{StaticResource InlineEditFormTemplate}" />
-                </StackPanel>
-            </Border>
+        <!-- Error banner (only visible when LastErrorMessage is set) -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="{StaticResource ErrorBannerBackground}" BorderBrush="{StaticResource ErrorBannerBorder}" BorderThickness="0,0,0,1"
+                Padding="6,3">
+            <DockPanel>
+                <Button DockPanel.Dock="Right"
+                        Content="✕"
+                        Command="{Binding DismissErrorCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="3,1" FontSize="10"
+                        ToolTip.Tip="Dismiss" />
+                <TextBlock Text="{Binding LastErrorMessage}"
+                           FontSize="10" Foreground="{StaticResource ErrorBannerText}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+
+    <ScrollViewer x:Name="ListScrollViewer" Grid.Row="1">
+        <StackPanel>
 
             <ListBox ItemsSource="{Binding SectionItems}"
                      SelectedItem="{Binding SelectedItem}"
@@ -396,32 +427,63 @@
                 </ListBox.ItemContainerTheme>
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
-                        <Border BorderBrush="#DDDDDD" BorderThickness="0,0,0,1">
+                        <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,1">
                             <StackPanel>
 
-                                <!-- Collapsed summary row (always visible) -->
-                                <StackPanel Spacing="1" Margin="6,4,6,4">
-                                    <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" />
-                                    <ItemsControl ItemsSource="{Binding ScheduleLines}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding}" FontSize="10" Foreground="#555555" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <ItemsControl ItemsSource="{Binding PropertyLines}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding}" FontSize="10" Foreground="#777777" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
+                                <!-- Summary row (always visible) -->
+                                <Grid ColumnDefinitions="Auto,*" Margin="2,4,6,4">
+                                    <!-- Collapse/expand toggle -->
+                                    <Button Grid.Column="0"
+                                            Command="{Binding ToggleCollapsedCommand}"
+                                            Background="Transparent" BorderThickness="0"
+                                            Padding="2,0" MinWidth="0" MinHeight="0"
+                                            VerticalAlignment="Top" Margin="0,1,2,0"
+                                            Cursor="Hand">
+                                        <Panel>
+                                            <TextBlock Text="▶" FontSize="8" Foreground="{StaticResource TextLabel}"
+                                                       IsVisible="{Binding IsCollapsed}" />
+                                            <TextBlock Text="▼" FontSize="8" Foreground="{StaticResource TextLabel}"
+                                                       IsVisible="{Binding !IsCollapsed}" />
+                                        </Panel>
+                                    </Button>
+                                    <StackPanel Grid.Column="1" Spacing="1">
+                                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" />
+                                        <Grid ColumnDefinitions="Auto,8,*"
+                                              IsVisible="{Binding !IsCollapsed}">
+                                            <!-- Left: schedule lines -->
+                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding ScheduleLines}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource TextFaint}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <!-- Right: property stack -->
+                                            <StackPanel Grid.Column="2" Spacing="0">
+                                                <TextBlock Text="{Binding InstructorLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           IsVisible="{Binding InstructorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding TagLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding ReserveLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding ResourceLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding NoteLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
 
                                 <!-- Inline edit form — shown when this item IsExpanded -->
                                 <Border IsVisible="{Binding IsExpanded}"
-                                        Background="#EEF5FF"
-                                        BorderBrush="#7AAAD4" BorderThickness="3,0,0,0"
+                                        Background="{StaticResource EditorBackground}"
+                                        BorderBrush="{StaticResource EditorBorder}" BorderThickness="3,0,0,0"
                                         Padding="8,6,6,8">
                                     <ContentControl Content="{Binding $parent[UserControl].DataContext.EditVm}"
                                                     ContentTemplate="{StaticResource InlineEditFormTemplate}" />
@@ -435,5 +497,7 @@
 
         </StackPanel>
     </ScrollViewer>
+
+    </Grid>
 
 </UserControl>

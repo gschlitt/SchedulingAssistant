@@ -1,13 +1,43 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
+             xmlns:local="using:SchedulingAssistant.Views.GridView"
              x:Class="SchedulingAssistant.Views.GridView.ScheduleGridView"
              x:DataType="vm:ScheduleGridViewModel"
              x:CompileBindings="False">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto">
-        <Canvas x:Name="GridCanvas" />
-    </ScrollViewer>
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- Row 0: Filter bar - always visible -->
+        <local:GridFilterView Grid.Row="0" DataContext="{Binding Filter}" />
+
+        <!-- Row 1: Error banner (only visible when LastErrorMessage is set) -->
+        <Border Grid.Row="1"
+                IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="{StaticResource ErrorBannerBackground}" BorderBrush="{StaticResource ErrorBannerBorder}" BorderThickness="0,0,0,1"
+                Padding="8,4">
+            <DockPanel>
+                <Button DockPanel.Dock="Right"
+                        Content="✕"
+                        Command="{Binding DismissErrorCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="4,1" FontSize="11"
+                        ToolTip.Tip="Dismiss" />
+                <TextBlock Text="{Binding LastErrorMessage}"
+                           FontSize="11" Foreground="{StaticResource ErrorBannerText}"
+                           VerticalAlignment="Center"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+
+        <!-- Row 2: Grid canvas -->
+        <ScrollViewer Grid.Row="2"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+            <Canvas x:Name="GridCanvas" />
+        </ScrollViewer>
+
+    </Grid>
 
 </UserControl>

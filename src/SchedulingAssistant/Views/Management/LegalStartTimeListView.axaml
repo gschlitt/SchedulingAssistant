@@ -46,7 +46,7 @@
                                 <TextBox Text="{Binding NewStartTime}" Width="120" />
                                 <Button Content="Add" Command="{Binding AddStartTimeCommand}" />
                             </StackPanel>
-                            <TextBlock Text="{Binding ValidationError}" Foreground="Red"
+                            <TextBlock Text="{Binding ValidationError}" Foreground="{StaticResource TextError}"
                                        IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
                         </StackPanel>
 

@@ -13,6 +13,7 @@ using SchedulingAssistant.Views.Management;
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace SchedulingAssistant;
 
@@ -33,13 +34,44 @@ public partial class MainWindow : Window
                 vm.FlyoutPage = null;
                 e.Handled = true;
             }
+
+#if DEBUG
+            // DEV-ONLY hotkeys for testing error banners. Remove before shipping.
+            // Ctrl+Shift+E → simulate schedule grid error
+            // Ctrl+Shift+W → simulate section list error
+            if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)
+                && DataContext is MainWindowViewModel debugVm)
+            {
+                if (e.Key == Key.E)
+                {
+                    debugVm.ScheduleGridVm.SimulateReloadError();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.W)
+                {
+                    debugVm.SectionListVm.SimulateLoadError();
+                    e.Handled = true;
+                }
+            }
+#endif
         };
     }
 
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        await RunStartupAsync();
+        try
+        {
+            await RunStartupAsync();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "Unhandled exception during startup");
+            await ShowStartupErrorAsync(ex);
+            (Avalonia.Application.Current?.ApplicationLifetime as
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                ?.Shutdown();
+        }
     }
 
     private async Task RunStartupAsync()
@@ -85,6 +117,52 @@ public partial class MainWindow : Window
         var dialog = new DatabaseLocationDialog(mode);
         await dialog.ShowDialog(this);
         return dialog.ChosenPath;
+    }
+
+    private async Task ShowStartupErrorAsync(Exception ex)
+    {
+        var logDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "SchedulingAssistant", "Logs");
+
+        var msg = new Window
+        {
+            Title = "Scheduling Assistant — Startup Error",
+            Width = 480,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true
+        };
+
+        var ok = new Button { Content = "Close", HorizontalAlignment = HorizontalAlignment.Center };
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(28), Spacing = 12 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Scheduling Assistant encountered an error during startup and cannot continue.",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13,
+            FontWeight = FontWeight.SemiBold
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = ex.Message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 12,
+            Foreground = Brushes.DarkRed
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"A full error log has been written to:\n{logDir}",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 11,
+            Foreground = Brushes.Gray
+        });
+        panel.Children.Add(ok);
+        msg.Content = panel;
+
+        ok.Click += (_, _) => msg.Close();
+        await msg.ShowDialog(this);
     }
 
     private async Task ShowCancelMessageAsync()

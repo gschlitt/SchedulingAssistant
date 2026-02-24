@@ -14,14 +14,15 @@
     <Grid RowDefinitions="Auto,*">
 
         <!-- Top menu bar -->
-        <Border Grid.Row="0" Background="#AECBF0" Padding="12,0" BorderBrush="#7AAAD4" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{StaticResource ChromeBackground}" Padding="12,0"
+                BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1">
             <DockPanel>
 
                 <!-- Semester picker, right-aligned -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
                             VerticalAlignment="Center" Margin="8,0">
-                    <Border Width="1" Background="#7AAAD4" Margin="0,6" />
-                    <TextBlock Text="Semester:" Foreground="#333" FontSize="12"
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+                    <TextBlock Text="Semester:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
                                VerticalAlignment="Center" />
                     <ComboBox ItemsSource="{Binding SemesterContext.SemesterDisplays}"
                               SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}"
@@ -36,18 +37,18 @@
                                FontWeight="SemiBold" FontSize="13"
                                VerticalAlignment="Center"
                                Margin="4,0,8,0" />
-                    <Border Width="1" Background="#7AAAD4" Margin="0,6,8,6" />
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6,8,6" />
                     <Button Content="Subjects" Command="{Binding NavigateToSubjectsCommand}" Classes="nav" />
                     <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" />
                     <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" />
                     <Button Content="Rooms" Command="{Binding NavigateToRoomsCommand}" Classes="nav" />
                     <Button Content="Section Properties" Command="{Binding NavigateToSectionPropertiesCommand}" Classes="nav" />
 
-                    <Border Width="1" Background="#7AAAD4" Margin="8,6" />
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="8,6" />
 
                     <Button Content="Academic Years" Command="{Binding NavigateToAcademicYearsCommand}" Classes="nav" />
 
-                    <Border Width="1" Background="#7AAAD4" Margin="8,6" />
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="8,6" />
 
                     <!-- Settings dropdown menu -->
                     <Menu Background="Transparent" VerticalAlignment="Center">
@@ -57,6 +58,8 @@
                             <Separator />
                             <MenuItem Header="Block Lengths"
                                       Command="{Binding NavigateToBlockLengthsCommand}" />
+                            <MenuItem Header="Block Patterns"
+                                      Command="{Binding NavigateToBlockPatternsCommand}" />
                         </MenuItem>
                     </Menu>
                 </StackPanel>
@@ -81,6 +84,17 @@
                         <controls:DetachablePanel.HeaderExtra>
                             <StackPanel Orientation="Horizontal" Spacing="3"
                                         DataContext="{Binding SectionListVm}">
+                                <Button Content="▼" ToolTip.Tip="Expand all cards"
+                                        Command="{Binding ExpandAllCommand}"
+                                        FontSize="9" Padding="4,1"
+                                        MinHeight="0" MinWidth="0"
+                                        Background="Transparent" BorderThickness="0" />
+                                <Button Content="▶" ToolTip.Tip="Collapse all cards"
+                                        Command="{Binding CollapseAllCommand}"
+                                        FontSize="9" Padding="4,1"
+                                        MinHeight="0" MinWidth="0"
+                                        Background="Transparent" BorderThickness="0" />
+                                <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="2,2" />
                                 <Button Content="Add"
                                         Command="{Binding AddCommand}"
                                         FontSize="10" Padding="5,1"
@@ -108,7 +122,7 @@
                     </controls:DetachablePanel>
 
                     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="4"
-                                  HorizontalAlignment="Stretch" Background="#DDD" />
+                                  HorizontalAlignment="Stretch" Background="{StaticResource GridSplitterColor}" />
 
                     <!-- Workload slot (detachable, placeholder) -->
                     <controls:DetachablePanel Grid.Row="2"
@@ -118,7 +132,7 @@
                         <controls:DetachablePanel.PanelContent>
                             <TextBlock Text="Workload View (coming soon)"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Foreground="#888" FontSize="12" />
+                                       Foreground="{StaticResource TextMuted}" FontSize="12" />
                         </controls:DetachablePanel.PanelContent>
                     </controls:DetachablePanel>
 
@@ -126,13 +140,30 @@
 
                 <!-- Column splitter -->
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="4"
-                              VerticalAlignment="Stretch" Background="#DDD" />
+                              VerticalAlignment="Stretch" Background="{StaticResource GridSplitterColor}" />
 
                 <!-- Right column: Schedule Grid (permanent, detachable) -->
                 <controls:DetachablePanel Grid.Column="2"
                                           x:Name="ScheduleGridPanel"
                                           Header="Schedule Grid"
                                           DetachRequested="OnScheduleGridDetach">
+                    <controls:DetachablePanel.HeaderExtra>
+                        <!-- "● Filtered" badge — only visible when a filter is active -->
+                        <Border DataContext="{Binding ScheduleGridVm.Filter}"
+                                IsVisible="{Binding IsActive}"
+                                Background="{StaticResource FilterBadgeBackground}"
+                                BorderBrush="{StaticResource FilterBadgeBorder}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Padding="5,1"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="{Binding ActiveSummary}">
+                            <TextBlock Text="● Filtered"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource FilterBadgeText}" />
+                        </Border>
+                    </controls:DetachablePanel.HeaderExtra>
                     <controls:DetachablePanel.PanelContent>
                         <gridViews:ScheduleGridView DataContext="{Binding ScheduleGridVm}" />
                     </controls:DetachablePanel.PanelContent>
@@ -144,22 +175,22 @@
             <Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
 
                 <!-- Dim backdrop — clicking it closes the flyout -->
-                <Border Background="#50000000"
+                <Border Background="{StaticResource FlyoutScrim}"
                         PointerPressed="OnFlyoutBackdropPressed" />
 
                 <!-- Flyout panel (drops from top) -->
                 <Border VerticalAlignment="Top"
                         HorizontalAlignment="Stretch"
                         MaxHeight="650"
-                        Background="White"
+                        Background="{StaticResource FlyoutBackground}"
                         BoxShadow="0 4 20 2 #50000000"
                         CornerRadius="0,0,6,6"
                         Margin="8,0,8,0">
                     <Grid RowDefinitions="Auto,*">
 
                         <!-- Flyout header -->
-                        <Border Grid.Row="0" Background="#F5F5F5"
-                                BorderBrush="#DDD" BorderThickness="0,0,0,1"
+                        <Border Grid.Row="0" Background="{StaticResource FlyoutHeaderBackground}"
+                                BorderBrush="{StaticResource FlyoutHeaderBorder}" BorderThickness="0,0,0,1"
                                 Padding="16,10">
                             <DockPanel>
                                 <Button DockPanel.Dock="Right"

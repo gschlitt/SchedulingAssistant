@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -12,9 +13,16 @@ public partial class SectionListItemViewModel : ObservableObject
     public Section Section { get; }
     public string Heading { get; }
     public IReadOnlyList<string> ScheduleLines { get; }
-    public IReadOnlyList<string> PropertyLines { get; }
+
+    // Right-side summary properties (displayed in order top-to-bottom)
+    public string? InstructorLine { get; }
+    public string? TagLine { get; }
+    public string? ReserveLine { get; }
+    public string? ResourceLine { get; }
+    public string? NoteLine { get; }
 
     [ObservableProperty] private bool _isExpanded;
+    [ObservableProperty] private bool _isCollapsed;
 
     private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -53,10 +61,7 @@ public partial class SectionListItemViewModel : ObservableObject
             })
             .ToList();
 
-        // Build property summary lines for collapsed card
-        var lines = new List<string>();
-
-        // Instructors (with workload in brackets if present)
+        // Build individual summary properties for the right-side stack
         var instructorParts = section.InstructorAssignments
             .Select(a =>
             {
@@ -66,41 +71,32 @@ public partial class SectionListItemViewModel : ObservableObject
             })
             .Where(n => n is not null)
             .ToList();
-        if (instructorParts.Count > 0)
-            lines.Add($"Instructor: {string.Join("; ", instructorParts)}");
-
-        if (section.SectionTypeId is not null &&
-            sectionTypeLookup.TryGetValue(section.SectionTypeId, out var sType))
-            lines.Add($"Type: {sType.Name}");
-
-        if (section.CampusId is not null &&
-            campusLookup.TryGetValue(section.CampusId, out var campus))
-            lines.Add($"Campus: {campus.Name}");
+        InstructorLine = instructorParts.Count > 0 ? string.Join("; ", instructorParts) : null;
 
         var tagNames = section.TagIds
             .Select(id => tagLookup.TryGetValue(id, out var t) ? t.Name : null)
             .Where(n => n is not null)
             .ToList();
-        if (tagNames.Count > 0)
-            lines.Add($"Tags: {string.Join(", ", tagNames)}");
-
-        var resourceNames = section.ResourceIds
-            .Select(id => resourceLookup.TryGetValue(id, out var r) ? r.Name : null)
-            .Where(n => n is not null)
-            .ToList();
-        if (resourceNames.Count > 0)
-            lines.Add($"Resources: {string.Join(", ", resourceNames)}");
+        TagLine = tagNames.Count > 0 ? string.Join(", ", tagNames) : null;
 
         var reserveParts = section.Reserves
             .Select(r => reserveLookup.TryGetValue(r.ReserveId, out var rv)
                 ? $"{rv.Name}:{r.Code}" : null)
             .Where(n => n is not null)
             .ToList();
-        if (reserveParts.Count > 0)
-            lines.Add($"Reserves: [{string.Join(", ", reserveParts)}]");
+        ReserveLine = reserveParts.Count > 0 ? string.Join(", ", reserveParts) : null;
 
-        PropertyLines = lines;
+        var resourceNames = section.ResourceIds
+            .Select(id => resourceLookup.TryGetValue(id, out var r) ? r.Name : null)
+            .Where(n => n is not null)
+            .ToList();
+        ResourceLine = resourceNames.Count > 0 ? string.Join(", ", resourceNames) : null;
+
+        NoteLine = !string.IsNullOrWhiteSpace(section.Notes) ? section.Notes : null;
     }
+
+    [RelayCommand]
+    private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
 
     private static string FormatMinutes(int minutes) =>
         $"{minutes / 60:D2}{minutes % 60:D2}";

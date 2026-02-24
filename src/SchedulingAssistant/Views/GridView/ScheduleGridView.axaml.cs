@@ -17,13 +17,20 @@ public partial class ScheduleGridView : UserControl
     private const double TilePadding      = 3;
     private const double DayColumnMinWidth = 120;
 
-    private static readonly IBrush TileFill        = new SolidColorBrush(Color.Parse("#C8DFF8"));
-    private static readonly IBrush TileBorder      = new SolidColorBrush(Color.Parse("#7AAAD4"));
-    private static readonly IBrush RuleBrush       = new SolidColorBrush(Color.Parse("#E0E0E0"));
-    private static readonly IBrush HourRuleBrush   = new SolidColorBrush(Color.Parse("#C8C8C8"));
-    private static readonly IBrush HeaderFill      = new SolidColorBrush(Color.Parse("#AECBF0"));
-    private static readonly IBrush HeaderBorder    = new SolidColorBrush(Color.Parse("#7AAAD4"));
-    private static readonly IBrush GutterBg        = new SolidColorBrush(Color.Parse("#F5F5F5"));
+    // Brushes resolved from AppColors.axaml at first render (after resources are loaded).
+    private static IBrush Res(string key) =>
+        Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
+            ? b : Brushes.Transparent;
+
+    private static IBrush TileFill           => Res("TileFill");
+    private static IBrush TileFillSelected   => Res("TileFillSelected");
+    private static IBrush TileBorder         => Res("TileBorder");
+    private static IBrush TileBorderSelected => Res("TileBorderSelected");
+    private static IBrush RuleBrush          => Res("GridRuleLine");
+    private static IBrush HourRuleBrush      => Res("GridHourRuleLine");
+    private static IBrush HeaderFill         => Res("ChromeBackground");
+    private static IBrush HeaderBorder       => Res("ChromeBorder");
+    private static IBrush GutterBg           => Res("GridGutterBackground");
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
@@ -50,7 +57,8 @@ public partial class ScheduleGridView : UserControl
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ScheduleGridViewModel.GridData))
+        if (e.PropertyName == nameof(ScheduleGridViewModel.GridData) ||
+            e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
             Render();
     }
 
@@ -121,7 +129,7 @@ public partial class ScheduleGridView : UserControl
             {
                 Text = label,
                 FontSize = isHour ? 11 : 9,
-                Foreground = isHour ? Brushes.Black : new SolidColorBrush(Color.Parse("#666666")),
+                Foreground = isHour ? Brushes.Black : Res("GridTimeHalfHourText"),
                 Width = TimeGutterWidth - 4,
                 TextAlignment = TextAlignment.Right,
             };
@@ -131,6 +139,9 @@ public partial class ScheduleGridView : UserControl
         }
 
         // ── Section tiles ──────────────────────────────────────────────────
+        var selectedId = _vm?.SelectedSectionId;
+        var entryCursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
+
         for (int d = 0; d < dayCount; d++)
         {
             double dayX = TimeGutterWidth + d * dayColWidth;
@@ -150,6 +161,7 @@ public partial class ScheduleGridView : UserControl
                 for (int ei = 0; ei < tile.Entries.Count; ei++)
                 {
                     var entry = tile.Entries[ei];
+                    bool entrySelected = selectedId is not null && entry.SectionId == selectedId;
 
                     if (ei > 0)
                         stack.Children.Add(new Border
@@ -162,26 +174,45 @@ public partial class ScheduleGridView : UserControl
                     var labelText = string.IsNullOrEmpty(entry.Initials)
                         ? entry.Label
                         : $"{entry.Label}  {entry.Initials}";
-                    stack.Children.Add(new TextBlock
+
+                    var entryId = entry.SectionId;
+                    var entryRow = new Border
                     {
-                        Text = labelText,
-                        FontSize = 11,
-                        FontWeight = FontWeight.SemiBold,
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                    });
+                        Background  = entrySelected ? TileFillSelected : Brushes.Transparent,
+                        CornerRadius = new CornerRadius(2),
+                        Padding     = new Thickness(1, 0),
+                        Cursor      = entryCursor,
+                        Child       = new TextBlock
+                        {
+                            Text = labelText,
+                            FontSize = 11,
+                            FontWeight = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
+                            Foreground = entrySelected ? TileBorderSelected : Brushes.Black,
+                            TextTrimming = TextTrimming.CharacterEllipsis,
+                        },
+                    };
+                    entryRow.PointerPressed += (_, e) =>
+                    {
+                        if (e.ClickCount >= 2)
+                            _vm?.EditRequested?.Invoke(entryId);
+                        else
+                            _vm?.SelectSection(entryId);
+                        e.Handled = true;
+                    };
+                    stack.Children.Add(entryRow);
                 }
 
                 var border = new Border
                 {
-                    Width            = tileW - TilePadding,
-                    Height           = tileH,
-                    Background       = TileFill,
-                    BorderBrush      = TileBorder,
-                    BorderThickness  = new Thickness(1),
-                    CornerRadius     = new CornerRadius(3),
-                    Padding          = new Thickness(3, 2),
-                    ClipToBounds     = true,
-                    Child            = stack,
+                    Width           = tileW - TilePadding,
+                    Height          = tileH,
+                    Background      = TileFill,
+                    BorderBrush     = TileBorder,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius    = new CornerRadius(3),
+                    Padding         = new Thickness(3, 2),
+                    ClipToBounds    = true,
+                    Child           = stack,
                 };
 
                 Canvas.SetLeft(border, tileX);
@@ -197,7 +228,7 @@ public partial class ScheduleGridView : UserControl
         var tb = new TextBlock
         {
             Text = "No sections scheduled for this semester.",
-            Foreground = new SolidColorBrush(Color.Parse("#888888")),
+            Foreground = Res("GridDayHeaderText"),
             FontSize = 13,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,

@@ -3,7 +3,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using SchedulingAssistant.ViewModels.Management;
-using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant.Views.Management;
@@ -37,20 +36,14 @@ public partial class SectionListView : UserControl
 
     private void OnDataContextChanged(object? sender, System.EventArgs e)
     {
-        if (_vm is not null)
-            _vm.PropertyChanged -= OnVmPropertyChanged;
-
         _vm = DataContext as SectionListViewModel;
 
         if (_vm is not null)
         {
-            _vm.PropertyChanged += OnVmPropertyChanged;
             // Wire the ShowError delegate so the VM can show modal notices (e.g. copy
             // conflicts) without taking a hard dependency on Avalonia Window APIs.
             _vm.ShowError = ShowErrorAsync;
         }
-
-        UpdateAddFormHost();
     }
 
     // Displays a simple modal notice window. Used by SectionListViewModel.ShowError.
@@ -85,26 +78,6 @@ public partial class SectionListView : UserControl
         msg.Content = panel;
 
         await msg.ShowDialog(owner);
-    }
-
-    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // EditVm and ExpandedItem together determine whether the top-of-list Add form is shown.
-        if (e.PropertyName is nameof(SectionListViewModel.EditVm) or nameof(SectionListViewModel.ExpandedItem))
-            UpdateAddFormHost();
-    }
-
-    private void UpdateAddFormHost()
-    {
-        var addFormHost = this.FindControl<Border>("AddFormHost");
-        var addFormContent = this.FindControl<ContentControl>("AddFormContent");
-        if (addFormHost is null || addFormContent is null) return;
-
-        // The Add form appears at the top of the list only when EditVm is set and no
-        // existing list item is expanded (which would mean we're in Edit/Copy mode instead).
-        bool isAddMode = _vm?.EditVm is not null && _vm.ExpandedItem is null;
-        addFormHost.IsVisible = isAddMode;
-        addFormContent.Content = isAddMode ? _vm!.EditVm : null;
     }
 
     private void OnListBoxDoubleTapped(object? sender, TappedEventArgs e)

@@ -4,8 +4,9 @@ namespace SchedulingAssistant.ViewModels.GridView;
 /// One section entry within a tile.
 /// Label = "HIST101 A" (course code + section code, or just section code)
 /// Initials = instructor initials (may be empty)
+/// SectionId = the section's database ID (used for selection/highlighting)
 /// </summary>
-public record TileEntry(string Label, string Initials);
+public record TileEntry(string Label, string Initials, string SectionId);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

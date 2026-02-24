@@ -1,0 +1,234 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
+             x:Class="SchedulingAssistant.Views.GridView.GridFilterView"
+             x:DataType="vm:GridFilterViewModel"
+             x:CompileBindings="False">
+
+    <UserControl.Styles>
+        <!-- Compact expander: strip all default padding/min-height from the header toggle -->
+        <Style Selector="Expander">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Expander /template/ ToggleButton">
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <!-- The arrow+content row inside the ToggleButton -->
+        <Style Selector="Expander /template/ ToggleButton /template/ Grid">
+            <Setter Property="Margin" Value="0" />
+        </Style>
+        <!-- The arrow shape itself — tighten its margin -->
+        <Style Selector="Expander /template/ ToggleButton /template/ Shape">
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+        <!-- Compact checkbox style -->
+        <Style Selector="CheckBox">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="4,1" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{StaticResource FilterBarBackground}"
+            BorderBrush="{StaticResource ChromeBorder}"
+            BorderThickness="0,0,0,1"
+            Padding="4,1">
+
+        <DockPanel>
+
+            <!-- Right side: Clear All button + active summary -->
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                        Spacing="6" VerticalAlignment="Center" Margin="6,0,0,0">
+                <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,4" />
+                <Button Content="Clear All"
+                        Command="{Binding ClearAllCommand}"
+                        IsEnabled="{Binding IsActive}"
+                        FontSize="10"
+                        Padding="6,2"
+                        MinHeight="0" MinWidth="0"
+                        VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Active summary label — right of expanders, left of button group -->
+            <TextBlock x:Name="ActiveSummaryLabel"
+                       DockPanel.Dock="Right"
+                       Text="{Binding ActiveSummary}"
+                       FontSize="10"
+                       FontStyle="Italic"
+                       Foreground="{StaticResource GridDayHeaderText}"
+                       VerticalAlignment="Center"
+                       Margin="8,0,0,0"
+                       MaxWidth="340"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="NoWrap" />
+
+            <!-- Left side: horizontal row of filter expanders -->
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Top">
+
+                    <!-- Instructor -->
+                    <Expander x:Name="InstructorExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="InstructorHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Instructors}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                    <!-- Room -->
+                    <Expander x:Name="RoomExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="RoomHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Rooms}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                    <!-- Subject -->
+                    <Expander x:Name="SubjectExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="SubjectHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Subjects}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                    <!-- Campus -->
+                    <Expander x:Name="CampusExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="CampusHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Campuses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                    <!-- Section Type -->
+                    <Expander x:Name="SectionTypeExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="SectionTypeHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding SectionTypes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                    <!-- Tags -->
+                    <Expander x:Name="TagsExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="TagsHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Tags}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                    <!-- Meeting Type -->
+                    <Expander x:Name="MeetingTypeExpander">
+                        <Expander.Header>
+                            <TextBlock x:Name="MeetingTypeHeader" FontSize="11" />
+                        </Expander.Header>
+                        <Border Background="{StaticResource FilterExpanderContent}"
+                                BorderBrush="{StaticResource FilterExpanderBorder}"
+                                BorderThickness="1" CornerRadius="3"
+                                Padding="4,2" MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding MeetingTypes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      Content="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
+                </StackPanel>
+            </ScrollViewer>
+
+        </DockPanel>
+    </Border>
+
+</UserControl>

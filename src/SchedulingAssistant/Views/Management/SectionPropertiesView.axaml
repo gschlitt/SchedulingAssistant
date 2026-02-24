@@ -9,7 +9,7 @@
 
         <!-- Left: category sidebar -->
         <Border Grid.Column="0"
-                BorderBrush="#DDDDDD" BorderThickness="0,0,1,0"
+                BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,1,0"
                 Padding="0,0,8,0">
             <ListBox ItemsSource="{Binding Categories}"
                      SelectedItem="{Binding SelectedCategory}"

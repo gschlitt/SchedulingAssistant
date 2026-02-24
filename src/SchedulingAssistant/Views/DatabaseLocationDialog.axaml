@@ -16,10 +16,10 @@
 
             <TextBlock x:Name="BodyText"
                        FontSize="13"
-                       Foreground="#444"
+                       Foreground="{StaticResource TextSubtle}"
                        TextWrapping="Wrap" />
 
-            <Border Height="1" Background="#DDD" Margin="0,4" />
+            <Border Height="1" Background="{StaticResource FlyoutHeaderBorder}" Margin="0,4" />
 
             <!-- "Create new" section: name + folder -->
             <StackPanel x:Name="CreateSection" Spacing="10" IsVisible="False">
@@ -30,7 +30,7 @@
                              Watermark="e.g. MyUniversity"
                              TextChanged="OnNameOrFolderChanged" />
                     <TextBlock x:Name="NameValidation"
-                               FontSize="11" Foreground="#CC0000"
+                               FontSize="11" Foreground="{StaticResource TextValidationError}"
                                IsVisible="False" />
                 </StackPanel>
 
@@ -50,7 +50,7 @@
                 </StackPanel>
 
                 <TextBlock x:Name="PreviewPath"
-                           FontSize="11" Foreground="#555"
+                           FontSize="11" Foreground="{StaticResource TextLabel}"
                            TextWrapping="Wrap"
                            IsVisible="False" />
 

@@ -1,11 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
+
+public record CampusAbbreviationOption(string Value, string Label);
 
 public partial class SectionEditViewModel : ViewModelBase
 {
@@ -14,6 +17,10 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private string _notes = string.Empty;
     [ObservableProperty] private ObservableCollection<SectionMeetingViewModel> _meetings = new();
     [ObservableProperty] private ObservableCollection<Course> _courses;
+
+    // Campus abbreviation auto-suggest (new sections only)
+    [ObservableProperty] private ObservableCollection<CampusAbbreviationOption> _abbreviationOptions = new();
+    [ObservableProperty] private string? _selectedAbbreviation;
 
     // ── Step-gate state ──────────────────────────────────────────────────────
 
@@ -114,6 +121,26 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly bool _includeSaturday;
     private readonly double? _defaultBlockLength;
 
+    // ── Block-pattern shortcuts ───────────────────────────────────────────────
+
+    private readonly BlockPattern? _pattern1;
+    private readonly BlockPattern? _pattern2;
+
+    /// <summary>Label for the "Apply" button for Pattern 1 (null when no pattern is saved).</summary>
+    public string? Pattern1Label => _pattern1 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 2 (null when no pattern is saved).</summary>
+    public string? Pattern2Label => _pattern2 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>True when Pattern 1 is configured and can be applied.</summary>
+    public bool HasPattern1 => _pattern1 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 2 is configured and can be applied.</summary>
+    public bool HasPattern2 => _pattern2 is { Days.Count: > 0 };
+
+    /// <summary>Maps campus abbreviation (case-insensitive) → campus Id for auto-setting campus from section code.</summary>
+    private readonly Dictionary<string, string> _abbreviationToCampusId = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Set by the view to close the hosting window when Save or Cancel is invoked.
     /// </summary>
@@ -132,8 +159,26 @@ public partial class SectionEditViewModel : ViewModelBase
     partial void OnSelectedCourseIdChanged(string? value)
     {
         SectionCodeError = null;
+        SelectedAbbreviation = "";
         OnPropertyChanged(nameof(IsSectionCodeEnabled));
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    partial void OnSelectedAbbreviationChanged(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(SelectedCourseId))
+            return;
+
+        for (int n = 1; n <= 999; n++)
+        {
+            var candidate = $"{value}{n}";
+            if (!_isSectionCodeDuplicate(SelectedCourseId, candidate))
+            {
+                SectionCode = candidate;
+                CommitSectionCode();
+                return;
+            }
+        }
     }
 
     partial void OnSectionCodeChanged(string value)
@@ -167,8 +212,28 @@ public partial class SectionEditViewModel : ViewModelBase
             SectionCodeError = null;
             _validatedCourseId = SelectedCourseId;
             _validatedSectionCode = code;
+
+            // Auto-set campus if the code matches {abbreviation}{integer}
+            TrySetCampusFromCode(code);
         }
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    /// <summary>
+    /// If <paramref name="code"/> is of the form {abbreviation}{integer} where the prefix
+    /// matches a campus abbreviation, auto-select that campus.
+    /// </summary>
+    private void TrySetCampusFromCode(string code)
+    {
+        // Strip trailing digits to get the prefix
+        int i = code.Length;
+        while (i > 0 && char.IsDigit(code[i - 1]))
+            i--;
+        if (i == 0 || i == code.Length) return; // all digits or no trailing digits
+
+        var prefix = code[..i];
+        if (_abbreviationToCampusId.TryGetValue(prefix, out var campusId))
+            SelectedCampusId = campusId;
     }
 
     public SectionEditViewModel(
@@ -199,6 +264,16 @@ public partial class SectionEditViewModel : ViewModelBase
         _defaultBlockLength = defaultBlockLength;
         _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
+        // Load saved block patterns for the shortcut buttons
+        var settings = AppSettings.Load();
+        _pattern1 = settings.Pattern1;
+        _pattern2 = settings.Pattern2;
+
+        // Build abbreviation → campus Id lookup (used by CommitSectionCode to auto-set campus)
+        foreach (var c in campuses)
+            if (!string.IsNullOrEmpty(c.SectionCodeAbbreviation))
+                _abbreviationToCampusId[c.SectionCodeAbbreviation] = c.Id;
+
         Courses = new ObservableCollection<Course>(courses);
 
         SelectedCourseId = section.CourseId;
@@ -213,6 +288,17 @@ public partial class SectionEditViewModel : ViewModelBase
         {
             _validatedCourseId = section.CourseId;
             _validatedSectionCode = section.SectionCode;
+        }
+
+        // Campus abbreviation options (new sections only)
+        if (isNew)
+        {
+            var abbrevList = new List<CampusAbbreviationOption> { new("", "(none)") };
+            foreach (var c in campuses)
+                if (!string.IsNullOrEmpty(c.SectionCodeAbbreviation))
+                    abbrevList.Add(new(c.SectionCodeAbbreviation, $"{c.SectionCodeAbbreviation} — {c.Name}"));
+            AbbreviationOptions = new ObservableCollection<CampusAbbreviationOption>(abbrevList);
+            SelectedAbbreviation = "";
         }
 
         // Instructor multi-select with workload
@@ -326,6 +412,41 @@ public partial class SectionEditViewModel : ViewModelBase
     private void RemoveMeeting(SectionMeetingViewModel meeting)
     {
         Meetings.Remove(meeting);
+    }
+
+    [RelayCommand]
+    private void ApplyPattern1() => ApplyPattern(_pattern1);
+
+    [RelayCommand]
+    private void ApplyPattern2() => ApplyPattern(_pattern2);
+
+    /// <summary>
+    /// Replaces the current meeting list with one meeting per day in the pattern.
+    /// Block length and start time are inherited from the first existing meeting (if any),
+    /// otherwise block length falls back to <see cref="_defaultBlockLength"/> and start time
+    /// is left unset so the user can choose it.
+    /// </summary>
+    private void ApplyPattern(BlockPattern? pattern)
+    {
+        if (pattern is null || pattern.Days.Count == 0) return;
+
+        // Snapshot block length and start time from the first current meeting that has a block length set.
+        var first = Meetings.FirstOrDefault(m => m.SelectedBlockLength.HasValue);
+        double? blockLength = first?.SelectedBlockLength ?? _defaultBlockLength;
+        int? startTime = first?.SelectedStartTime;
+
+        Meetings.Clear();
+        foreach (var day in pattern.Days.Order())
+        {
+            var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms,
+                defaultBlockLength: blockLength);
+            // Override the default day selection to the pattern day.
+            meeting.SelectedDay = day;
+            // Restore the start time from the source meeting (overrides whatever the constructor picked).
+            if (startTime.HasValue && meeting.AvailableStartTimes.Contains(startTime.Value))
+                meeting.SelectedStartTime = startTime;
+            Meetings.Add(meeting);
+        }
     }
 
     [RelayCommand]

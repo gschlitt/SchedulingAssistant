@@ -3,12 +3,12 @@
              x:Class="SchedulingAssistant.Controls.DetachablePanel"
              x:Name="Root">
 
-    <Border BorderBrush="#7AAAD4" BorderThickness="1">
+    <Border BorderBrush="{StaticResource ChromeBorder}" BorderThickness="1">
         <Grid RowDefinitions="Auto,*">
 
             <!-- Panel header bar -->
-            <Border Grid.Row="0" Background="#AECBF0"
-                    BorderBrush="#7AAAD4" BorderThickness="0,0,0,1"
+            <Border Grid.Row="0" Background="{StaticResource ChromeBackground}"
+                    BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1"
                     Padding="8,4">
                 <DockPanel>
                     <Button DockPanel.Dock="Right"

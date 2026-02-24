@@ -13,7 +13,7 @@
                   IsChecked="{Binding IncludeSaturday}" />
 
         <TextBlock Text="Changes take effect the next time you open the section editor."
-                   FontSize="11" Foreground="#666666" />
+                   FontSize="11" Foreground="{StaticResource TextDimLabel}" />
 
     </StackPanel>
 

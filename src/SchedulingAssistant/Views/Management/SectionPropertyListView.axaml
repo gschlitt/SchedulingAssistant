@@ -19,7 +19,7 @@
                         <TextBlock Text="Name" />
                         <TextBox Text="{Binding Name}" />
                         <TextBlock Text="{Binding ValidationError}"
-                                   Foreground="Red" FontSize="12"
+                                   Foreground="{StaticResource TextError}" FontSize="12"
                                    IsVisible="{Binding ValidationError,
                                        Converter={x:Static ObjectConverters.IsNotNull}}" />
                         <!-- Abbreviation field — only shown for Campus -->

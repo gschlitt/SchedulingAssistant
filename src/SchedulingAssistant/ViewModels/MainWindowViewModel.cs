@@ -105,4 +105,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void NavigateToSectionProperties() => OpenFlyout<SectionPropertiesViewModel>("Section Properties");
+
+    [RelayCommand]
+    private void NavigateToBlockPatterns() => OpenFlyout<BlockPatternListViewModel>("Block Patterns");
 }

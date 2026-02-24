@@ -1,3 +1,4 @@
+using SchedulingAssistant.Models;
 using System.Text.Json;
 
 namespace SchedulingAssistant.Services;
@@ -17,6 +18,10 @@ public class AppSettings
     public string? DatabasePath { get; set; }
     public bool IncludeSaturday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;
+
+    /// <summary>Up to two saved favourite meeting-day patterns.</summary>
+    public BlockPattern? Pattern1 { get; set; }
+    public BlockPattern? Pattern2 { get; set; }
 
     public static AppSettings Load()
     {

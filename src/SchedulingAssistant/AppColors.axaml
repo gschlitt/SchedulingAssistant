@@ -1,0 +1,80 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ══════════════════════════════════════════════════════════════════
+        Application Colour Palette
+        Change values here to retheme the entire application.
+        ══════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Primary chrome (menu bar, panel headers, grid day headers) ── -->
+    <SolidColorBrush x:Key="ChromeBackground"       Color="#AECBF0" />
+    <SolidColorBrush x:Key="ChromeBorder"           Color="#7AAAD4" />
+
+    <!-- ── Buttons ───────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="ButtonBackground"       Color="#AECBF0" />
+    <SolidColorBrush x:Key="ButtonBorder"           Color="#7AAAD4" />
+    <SolidColorBrush x:Key="ButtonHover"            Color="#C5DAEF" />
+    <SolidColorBrush x:Key="ButtonPressed"          Color="#90B8E8" />
+
+    <!-- ── Schedule grid tiles ───────────────────────────────────────── -->
+    <SolidColorBrush x:Key="TileFill"              Color="#C8DFF8" />
+    <SolidColorBrush x:Key="TileFillSelected"      Color="#FFD966" />
+    <SolidColorBrush x:Key="TileBorder"            Color="#7AAAD4" />
+    <SolidColorBrush x:Key="TileBorderSelected"    Color="#B8860B" />
+
+    <!-- ── Schedule grid canvas chrome ──────────────────────────────── -->
+    <SolidColorBrush x:Key="GridRuleLine"          Color="#E0E0E0" />
+    <SolidColorBrush x:Key="GridHourRuleLine"      Color="#C8C8C8" />
+    <SolidColorBrush x:Key="GridGutterBackground"  Color="#F5F5F5" />
+    <SolidColorBrush x:Key="GridTimeHalfHourText"  Color="#666666" />
+    <SolidColorBrush x:Key="GridDayHeaderText"     Color="#888888" />
+
+    <!-- ── Filter bar ─────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="FilterBarBackground"   Color="#EEF4FC" />
+    <SolidColorBrush x:Key="FilterExpanderBorder"  Color="#C0D8F0" />
+    <SolidColorBrush x:Key="FilterExpanderContent" Color="White"   />
+    <SolidColorBrush x:Key="FilterActiveHeader"    Color="#B85C00" />
+    <SolidColorBrush x:Key="FilterInactiveHeader"  Color="#333333" />
+
+    <!-- ── "● Filtered" badge in panel header ────────────────────────── -->
+    <SolidColorBrush x:Key="FilterBadgeBackground" Color="#FFE0B2" />
+    <SolidColorBrush x:Key="FilterBadgeBorder"     Color="#E08000" />
+    <SolidColorBrush x:Key="FilterBadgeText"       Color="#B85C00" />
+
+    <!-- ── Error / warning banners ───────────────────────────────────── -->
+    <SolidColorBrush x:Key="ErrorBannerBackground" Color="#FFF3CD" />
+    <SolidColorBrush x:Key="ErrorBannerBorder"     Color="#E6A817" />
+    <SolidColorBrush x:Key="ErrorBannerText"       Color="#7A4E00" />
+
+    <!-- ── Inline section editor highlight ───────────────────────────── -->
+    <SolidColorBrush x:Key="EditorBackground"      Color="#EEF5FF" />
+    <SolidColorBrush x:Key="EditorBorder"          Color="#7AAAD4" />
+
+    <!-- ── Flyout overlay ─────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="FlyoutScrim"           Color="#50000000" />
+    <SolidColorBrush x:Key="FlyoutBackground"      Color="White"   />
+    <SolidColorBrush x:Key="FlyoutHeaderBackground" Color="#F5F5F5" />
+    <SolidColorBrush x:Key="FlyoutHeaderBorder"    Color="#DDDDDD" />
+    <SolidColorBrush x:Key="FlyoutShadow"          Color="#50000000" />
+
+    <!-- ── General UI structure ───────────────────────────────────────── -->
+    <SolidColorBrush x:Key="SeparatorLine"         Color="#7AAAD4" />
+    <SolidColorBrush x:Key="GridSplitterColor"     Color="#DDDDDD" />
+    <SolidColorBrush x:Key="SubduedBorder"         Color="#BBBBBB" />
+    <SolidColorBrush x:Key="ItemSeparator"         Color="#DDDDDD" />
+
+    <!-- ── Text roles ─────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="TextPrimary"           Color="Black"   />
+    <SolidColorBrush x:Key="TextSecondary"         Color="#555555" />
+    <SolidColorBrush x:Key="TextMuted"             Color="#777777" />
+    <SolidColorBrush x:Key="TextFaint"             Color="#333333" />
+    <SolidColorBrush x:Key="TextSubtle"            Color="#444444" />
+    <SolidColorBrush x:Key="TextLabel"             Color="#555555" />
+    <SolidColorBrush x:Key="TextDimLabel"          Color="#666666" />
+    <SolidColorBrush x:Key="TextSemesterLabel"     Color="#333333" />
+    <SolidColorBrush x:Key="TextValidationError"   Color="#CC0000" />
+    <SolidColorBrush x:Key="TextError"             Color="Red"     />
+
+</ResourceDictionary>

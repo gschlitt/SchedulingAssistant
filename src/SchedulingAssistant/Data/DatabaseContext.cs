@@ -8,14 +8,24 @@ public class DatabaseContext : IDisposable
 
     public DatabaseContext(string dbPath)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
-        Connection = new SqliteConnection($"Data Source={dbPath}");
-        Connection.Open();
+            Connection = new SqliteConnection($"Data Source={dbPath}");
+            Connection.Open();
 
-        InitializeSchema();
-        Migrate();
-        SeedData.EnsureSeeded(Connection);
+            InitializeSchema();
+            Migrate();
+            SeedData.EnsureSeeded(Connection);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to open or initialize the database at '{dbPath}'. " +
+                "The file may be locked by another process, corrupted, or the path may be invalid.",
+                ex);
+        }
     }
 
     private void InitializeSchema()

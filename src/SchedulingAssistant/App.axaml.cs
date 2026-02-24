@@ -15,6 +15,12 @@ public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
 
+    /// <summary>
+    /// Logger available app-wide, including before DI is fully initialized.
+    /// Set early in InitializeServices so it can be used during startup error handling.
+    /// </summary>
+    public static IAppLogger Logger { get; private set; } = new FileAppLogger();
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -44,6 +50,13 @@ public partial class App : Application
         ConfigureServices(services, dbPath);
         Services = services.BuildServiceProvider();
 
+        // Expose the singleton logger from DI so any code using App.Logger
+        // gets the same instance.
+        Logger = Services.GetRequiredService<IAppLogger>();
+
+        // Prune old log files (non-throwing).
+        if (Logger is FileAppLogger fal) fal.PruneOldLogs();
+
         // Eagerly initialize the database (schema creation + seeding).
         Services.GetRequiredService<DatabaseContext>();
 
@@ -60,6 +73,10 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services, string dbPath)
     {
+        // Logger — singleton so the same instance is used everywhere.
+        // Swap FileAppLogger for a remote/database implementation here when ready.
+        services.AddSingleton<IAppLogger>(new FileAppLogger());
+
         // Services
         services.AddSingleton<SemesterContext>();
 
@@ -77,7 +94,14 @@ public partial class App : Application
 
         // ViewModels
         services.AddSingleton<MainWindowViewModel>();
-        services.AddSingleton<ScheduleGridViewModel>();
+        services.AddSingleton<ScheduleGridViewModel>(sp => new ScheduleGridViewModel(
+            sp.GetRequiredService<SectionRepository>(),
+            sp.GetRequiredService<CourseRepository>(),
+            sp.GetRequiredService<InstructorRepository>(),
+            sp.GetRequiredService<RoomRepository>(),
+            sp.GetRequiredService<SubjectRepository>(),
+            sp.GetRequiredService<SectionPropertyRepository>(),
+            sp.GetRequiredService<SemesterContext>()));
         services.AddSingleton<SectionListViewModel>();
         services.AddTransient<InstructorListViewModel>();
         services.AddTransient<RoomListViewModel>();
@@ -88,5 +112,6 @@ public partial class App : Application
         services.AddTransient<CourseListViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SectionPropertiesViewModel>();
+        services.AddTransient<BlockPatternListViewModel>();
     }
 }

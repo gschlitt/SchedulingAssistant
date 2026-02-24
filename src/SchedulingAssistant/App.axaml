@@ -5,32 +5,41 @@
              x:Class="SchedulingAssistant.App"
              RequestedThemeVariant="Light">
 
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://SchedulingAssistant/AppColors.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
-        <FluentTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+        <SimpleTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
         <Style Selector="Button">
-            <Setter Property="Background" Value="#AECBF0" />
-            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Background" Value="{StaticResource ButtonBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#7AAAD4" />
+            <Setter Property="BorderBrush" Value="{StaticResource ButtonBorder}" />
             <Setter Property="CornerRadius" Value="4" />
         </Style>
         <Style Selector="Button:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#C5DAEF" />
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
         <Style Selector="Button:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#90B8E8" />
+            <Setter Property="Background" Value="{StaticResource ButtonPressed}" />
         </Style>
         <Style Selector="Button.nav">
             <Setter Property="Padding" Value="14,8" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="FontSize" Value="13" />
         </Style>
         <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#C5DAEF" />
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
 
         <!-- Settings menu: strip chrome from the Menu container itself -->
@@ -40,21 +49,17 @@
         <!-- Top-level MenuItem styled like a nav button -->
         <Style Selector="MenuItem.nav">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="CornerRadius" Value="4" />
         </Style>
         <Style Selector="MenuItem.nav:pointerover /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="#C5DAEF" />
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
         <Style Selector="MenuItem.nav:selected /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="#C5DAEF" />
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
     </Application.Styles>
-
-    <Application.Resources>
-        <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
-    </Application.Resources>
 
     <Application.DataTemplates>
         <local:ViewLocator />
