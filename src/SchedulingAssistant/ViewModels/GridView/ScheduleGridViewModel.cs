@@ -22,6 +22,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
     [ObservableProperty] private string? _selectedSectionId;
     [ObservableProperty] private string? _lastErrorMessage;
 
+    /// <summary>Display name of the selected semester, e.g. "2025-2026 — Fall"</summary>
+    [ObservableProperty] private string _semesterLine = string.Empty;
+
+    /// <summary>Selected subject filter names, e.g. "History · Mathematics". Empty when no subject filter active.</summary>
+    [ObservableProperty] private string _subjectFilterSummary = string.Empty;
+
+    /// <summary>e.g. "12 sections · 28 meetings shown"</summary>
+    [ObservableProperty] private string _statsLine = string.Empty;
+
     /// <summary>Filter state. Exposed so the view can bind to it.</summary>
     public GridFilterViewModel Filter { get; } = new();
 
@@ -98,14 +107,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             App.Logger.LogError(ex, "ScheduleGridViewModel.Reload");
             GridData = GridData.Empty;
+            StatsLine = string.Empty;
             LastErrorMessage = "An error occurred loading the schedule grid. See logs for details.";
         }
     }
 
     private void ReloadCore()
     {
-        var semester = _semesterContext.SelectedSemesterDisplay?.Semester;
-        if (semester is null) { GridData = GridData.Empty; return; }
+        var semesterDisplay = _semesterContext.SelectedSemesterDisplay;
+        var semester = semesterDisplay?.Semester;
+        if (semester is null)
+        {
+            GridData = GridData.Empty;
+            SemesterLine = string.Empty;
+            SubjectFilterSummary = string.Empty;
+            StatsLine = string.Empty;
+            return;
+        }
 
         // ── Build lookup tables ────────────────────────────────────────────────
         var sections         = _sectionRepo.GetAll(semester.Id);
@@ -227,6 +245,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         GridData = new GridData(firstRow, lastRow, dayColumns);
+
+        // ── Update title bar summary properties ───────────────────────────────
+        SemesterLine = _semesterContext.SelectedSemesterDisplay?.DisplayName ?? string.Empty;
+
+        var selectedSubjectNames = Filter.Subjects
+            .Where(s => s.IsSelected)
+            .Select(s => s.Name)
+            .ToList();
+        SubjectFilterSummary = selectedSubjectNames.Count > 0
+            ? string.Join(" · ", selectedSubjectNames)
+            : string.Empty;
+
+        int sectionCount = allMeetings.Select(m => m.SectionId).Distinct().Count();
+        int meetingCount = allMeetings.Count;
+        StatsLine = sectionCount == 0
+            ? "No sections shown"
+            : $"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · {meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")} shown";
     }
 
     /// <summary>

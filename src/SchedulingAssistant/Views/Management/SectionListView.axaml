@@ -6,6 +6,29 @@
              x:DataType="vm:SectionListViewModel"
              x:CompileBindings="False">
 
+    <UserControl.Styles>
+        <!-- Compact popup trigger button: looks like a bordered label, toggles popup open/closed -->
+        <Style Selector="ToggleButton.EditorPopupTrigger">
+            <Setter Property="Background" Value="{StaticResource FilterExpanderContent}" />
+            <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}" />
+            <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="ToggleButton.EditorPopupTrigger:pointerover">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.EditorPopupTrigger:checked">
+            <Setter Property="Background" Value="{StaticResource FilterExpanderBorder}" />
+        </Style>
+    </UserControl.Styles>
+
    <UserControl.Resources>
         <!-- Shared template for the inline edit form, used for both Add and Edit -->
         <DataTemplate x:Key="InlineEditFormTemplate" DataType="{x:Type vm:SectionEditViewModel}">
@@ -192,84 +215,84 @@
                 <!-- Instructor + Tags side by side -->
                 <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0" HorizontalAlignment="Left" MaxWidth="400">
 
-                    <!-- Left: Instructor multi-select expander -->
+                    <!-- Left: Instructor multi-select popup -->
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Instructor(s)" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
-                            <Expander.Styles>
-                                <Style Selector="ToggleButton">
-                                    <Setter Property="Padding" Value="4,2" />
-                                    <Setter Property="MinHeight" Value="22" />
-                                </Style>
-                            </Expander.Styles>
-                            <Expander.Header>
-                                <TextBlock Text="{Binding InstructorSummary}"
-                                           FontSize="11" Foreground="{StaticResource TextFaint}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Expander.Header>
-                            <Border MaxHeight="120" BorderThickness="0">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding InstructorSelections}" Margin="2,2,2,2">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
-                                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1,2,1">
-                                                    <CheckBox Grid.Column="0"
-                                                              IsChecked="{Binding IsSelected}"
-                                                              Content="{Binding DisplayName}"
-                                                              FontSize="11"
-                                                              Padding="2,1"
-                                                              VerticalAlignment="Center" />
-                                                    <TextBox Grid.Column="2"
-                                                             Text="{Binding WorkloadText}"
-                                                             Width="36"
-                                                             FontSize="11"
-                                                             Height="22"
-                                                             Padding="3,1"
-                                                             IsVisible="{Binding IsSelected}"
-                                                             Watermark="1"
-                                                             TextAlignment="Center"
-                                                             Margin="3,0,0,0"
-                                                             VerticalAlignment="Center" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Border>
-                        </Expander>
+                        <Panel>
+                            <ToggleButton x:Name="InstructorToggle"
+                                          Classes="EditorPopupTrigger"
+                                          Content="{Binding InstructorSummary}" />
+                            <Popup PlacementTarget="{Binding #InstructorToggle}"
+                                   Placement="Bottom"
+                                   IsOpen="{Binding #InstructorToggle.IsChecked, Mode=TwoWay}"
+                                   IsLightDismissEnabled="True">
+                                <Border Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1" CornerRadius="3"
+                                        Padding="2" MaxHeight="160" MinWidth="160">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding InstructorSelections}" Margin="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1,2,1">
+                                                        <CheckBox Grid.Column="0"
+                                                                  IsChecked="{Binding IsSelected}"
+                                                                  Content="{Binding DisplayName}"
+                                                                  FontSize="11"
+                                                                  Padding="2,1"
+                                                                  VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="2"
+                                                                 Text="{Binding WorkloadText}"
+                                                                 Width="36"
+                                                                 FontSize="11"
+                                                                 Height="22"
+                                                                 Padding="3,1"
+                                                                 IsVisible="{Binding IsSelected}"
+                                                                 Watermark="1"
+                                                                 TextAlignment="Center"
+                                                                 Margin="3,0,0,0"
+                                                                 VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
 
-                    <!-- Right: Tags expander -->
+                    <!-- Right: Tags popup -->
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Tags" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
-                            <Expander.Styles>
-                                <Style Selector="ToggleButton">
-                                    <Setter Property="Padding" Value="4,2" />
-                                    <Setter Property="MinHeight" Value="22" />
-                                </Style>
-                            </Expander.Styles>
-                            <Expander.Header>
-                                <TextBlock Text="{Binding TagSummary}"
-                                           FontSize="11" Foreground="{StaticResource TextFaint}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Expander.Header>
-                            <Border MaxHeight="120" BorderThickness="0">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding TagSelections}" Margin="2,2,2,2">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Value.Name}"
-                                                          FontSize="11"
-                                                          Padding="2,1"
-                                                          Margin="2,0,0,1" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Border>
-                        </Expander>
+                        <Panel>
+                            <ToggleButton x:Name="TagsToggle"
+                                          Classes="EditorPopupTrigger"
+                                          Content="{Binding TagSummary}" />
+                            <Popup PlacementTarget="{Binding #TagsToggle}"
+                                   Placement="Bottom"
+                                   IsOpen="{Binding #TagsToggle.IsChecked, Mode=TwoWay}"
+                                   IsLightDismissEnabled="True">
+                                <Border Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1" CornerRadius="3"
+                                        Padding="2" MaxHeight="160" MinWidth="140">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding TagSelections}" Margin="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
+                                                    <CheckBox IsChecked="{Binding IsSelected}"
+                                                              Content="{Binding Value.Name}"
+                                                              FontSize="11"
+                                                              Padding="2,1"
+                                                              Margin="2,0,0,1" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
 
                 </Grid>
@@ -277,84 +300,84 @@
                 <!-- Reserve Codes + Resources side by side -->
                 <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0" HorizontalAlignment="Left" MaxWidth="400">
 
-                    <!-- Left: Reserve Codes expander (checkbox + integer TextBox per row) -->
+                    <!-- Left: Reserve Codes popup -->
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Reserve Codes" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
-                            <Expander.Styles>
-                                <Style Selector="ToggleButton">
-                                    <Setter Property="Padding" Value="4,2" />
-                                    <Setter Property="MinHeight" Value="22" />
-                                </Style>
-                            </Expander.Styles>
-                            <Expander.Header>
-                                <TextBlock Text="{Binding ReserveSummary}"
-                                           FontSize="11" Foreground="{StaticResource TextFaint}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Expander.Header>
-                            <Border MaxHeight="150" BorderThickness="0">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding ReserveSelections}" Margin="2,2,2,2">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:ReserveSelectionViewModel}">
-                                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1,2,1">
-                                                    <CheckBox Grid.Column="0"
-                                                              IsChecked="{Binding IsSelected}"
+                        <Panel>
+                            <ToggleButton x:Name="ReservesToggle"
+                                          Classes="EditorPopupTrigger"
+                                          Content="{Binding ReserveSummary}" />
+                            <Popup PlacementTarget="{Binding #ReservesToggle}"
+                                   Placement="Bottom"
+                                   IsOpen="{Binding #ReservesToggle.IsChecked, Mode=TwoWay}"
+                                   IsLightDismissEnabled="True">
+                                <Border Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1" CornerRadius="3"
+                                        Padding="2" MaxHeight="180" MinWidth="160">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding ReserveSelections}" Margin="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ReserveSelectionViewModel}">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1,2,1">
+                                                        <CheckBox Grid.Column="0"
+                                                                  IsChecked="{Binding IsSelected}"
+                                                                  Content="{Binding Value.Name}"
+                                                                  FontSize="11"
+                                                                  Padding="2,1"
+                                                                  VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="2"
+                                                                 Text="{Binding CodeText}"
+                                                                 Width="44"
+                                                                 FontSize="11"
+                                                                 Height="22"
+                                                                 Padding="3,1"
+                                                                 IsVisible="{Binding IsSelected}"
+                                                                 Watermark="#"
+                                                                 TextAlignment="Center"
+                                                                 Margin="6,0,0,0"
+                                                                 VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+                    </StackPanel>
+
+                    <!-- Right: Resources popup -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Resources" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
+                        <Panel>
+                            <ToggleButton x:Name="ResourcesToggle"
+                                          Classes="EditorPopupTrigger"
+                                          Content="{Binding ResourceSummary}" />
+                            <Popup PlacementTarget="{Binding #ResourcesToggle}"
+                                   Placement="Bottom"
+                                   IsOpen="{Binding #ResourcesToggle.IsChecked, Mode=TwoWay}"
+                                   IsLightDismissEnabled="True">
+                                <Border Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1" CornerRadius="3"
+                                        Padding="2" MaxHeight="160" MinWidth="140">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding ResourceSelections}" Margin="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ResourceSelectionViewModel}">
+                                                    <CheckBox IsChecked="{Binding IsSelected}"
                                                               Content="{Binding Value.Name}"
                                                               FontSize="11"
                                                               Padding="2,1"
-                                                              VerticalAlignment="Center" />
-                                                    <TextBox Grid.Column="2"
-                                                             Text="{Binding CodeText}"
-                                                             Width="44"
-                                                             FontSize="11"
-                                                             Height="22"
-                                                             Padding="3,1"
-                                                             IsVisible="{Binding IsSelected}"
-                                                             Watermark="#"
-                                                             TextAlignment="Center"
-                                                             Margin="6,0,0,0"
-                                                             VerticalAlignment="Center" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Border>
-                        </Expander>
-                    </StackPanel>
-
-                    <!-- Right: Resources expander -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Resources" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
-                        <Expander Padding="0" BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
-                            <Expander.Styles>
-                                <Style Selector="ToggleButton">
-                                    <Setter Property="Padding" Value="4,2" />
-                                    <Setter Property="MinHeight" Value="22" />
-                                </Style>
-                            </Expander.Styles>
-                            <Expander.Header>
-                                <TextBlock Text="{Binding ResourceSummary}"
-                                           FontSize="11" Foreground="{StaticResource TextFaint}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Expander.Header>
-                            <Border MaxHeight="120" BorderThickness="0">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding ResourceSelections}" Margin="2,2,2,2">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:ResourceSelectionViewModel}">
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Value.Name}"
-                                                          FontSize="11"
-                                                          Padding="2,1"
-                                                          Margin="2,0,0,1" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Border>
-                        </Expander>
+                                                              Margin="2,0,0,1" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
 
                 </Grid>

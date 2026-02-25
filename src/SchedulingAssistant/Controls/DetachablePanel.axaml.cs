@@ -16,6 +16,13 @@ public partial class DetachablePanel : UserControl
     public static readonly StyledProperty<object?> HeaderExtraProperty =
         AvaloniaProperty.Register<DetachablePanel, object?>(nameof(HeaderExtra));
 
+    /// <summary>
+    /// Optional content placed inline to the right of the Header text (left-justified).
+    /// Used for contextual info like semester name and stats.
+    /// </summary>
+    public static readonly StyledProperty<object?> HeaderContextProperty =
+        AvaloniaProperty.Register<DetachablePanel, object?>(nameof(HeaderContext));
+
     public string Header
     {
         get => GetValue(HeaderProperty);
@@ -32,6 +39,12 @@ public partial class DetachablePanel : UserControl
     {
         get => GetValue(HeaderExtraProperty);
         set => SetValue(HeaderExtraProperty, value);
+    }
+
+    public object? HeaderContext
+    {
+        get => GetValue(HeaderContextProperty);
+        set => SetValue(HeaderContextProperty, value);
     }
 
     /// <summary>

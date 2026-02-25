@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using SchedulingAssistant.ViewModels.GridView;
 using System.Collections.Specialized;
@@ -50,7 +51,6 @@ public partial class GridFilterView : UserControl
 
     private void SubscribeCollection(System.Collections.ObjectModel.ObservableCollection<FilterItemViewModel> col)
     {
-        // When the collection is rebuilt, re-subscribe to each item
         col.CollectionChanged += OnCollectionChanged;
         foreach (var item in col)
             item.PropertyChanged += OnItemChanged;
@@ -82,36 +82,33 @@ public partial class GridFilterView : UserControl
     private void UpdateAllHeaders()
     {
         if (_vm is null) return;
-        SetHeader(InstructorHeader,   InstructorExpander,   "Instructor",    _vm.Instructors);
-        SetHeader(RoomHeader,         RoomExpander,         "Room",          _vm.Rooms);
-        SetHeader(SubjectHeader,      SubjectExpander,      "Subject",       _vm.Subjects);
-        SetHeader(CampusHeader,       CampusExpander,       "Campus",        _vm.Campuses);
-        SetHeader(SectionTypeHeader,  SectionTypeExpander,  "Section Type",  _vm.SectionTypes);
-        SetHeader(TagsHeader,         TagsExpander,         "Tags",          _vm.Tags);
-        SetHeader(MeetingTypeHeader,  MeetingTypeExpander,  "Meeting Type",  _vm.MeetingTypes);
-
-        // Update summary label foreground
-        ActiveSummaryLabel.Foreground = _vm.IsActive ? ActiveHeaderBrush : InactiveHeaderBrush;
+        SetHeader(InstructorToggle,  InstructorPanel,  "Instructor",   _vm.Instructors);
+        SetHeader(RoomToggle,        RoomPanel,        "Room",         _vm.Rooms);
+        SetHeader(SubjectToggle,     SubjectPanel,     "Subject",      _vm.Subjects);
+        SetHeader(CampusToggle,      CampusPanel,      "Campus",       _vm.Campuses);
+        SetHeader(SectionTypeToggle, SectionTypePanel, "Section Type", _vm.SectionTypes);
+        SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags);
+        SetHeader(MeetingTypeToggle, MeetingTypePanel, "Meeting Type", _vm.MeetingTypes);
     }
 
     private static void SetHeader(
-        TextBlock label,
-        Expander expander,
+        ToggleButton toggle,
+        Panel panel,
         string dimensionName,
         IEnumerable<FilterItemViewModel> items)
     {
         var list = items.ToList();
         if (list.Count == 0)
         {
-            // No options available — hide the expander entirely
-            expander.IsVisible = false;
+            // No options available — hide the button+popup panel entirely
+            panel.IsVisible = false;
             return;
         }
 
-        expander.IsVisible = true;
+        panel.IsVisible = true;
         int selected = list.Count(i => i.IsSelected);
-        label.Text       = selected > 0 ? $"{dimensionName} ({selected})" : dimensionName;
-        label.Foreground = selected > 0 ? ActiveHeaderBrush : InactiveHeaderBrush;
-        label.FontWeight = selected > 0 ? FontWeight.SemiBold : FontWeight.Normal;
+        toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▾" : $"{dimensionName} ▾";
+        toggle.Foreground = selected > 0 ? ActiveHeaderBrush : InactiveHeaderBrush;
+        toggle.FontWeight = selected > 0 ? FontWeight.SemiBold : FontWeight.Normal;
     }
 }

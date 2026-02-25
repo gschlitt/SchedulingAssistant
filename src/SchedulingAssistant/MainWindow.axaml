@@ -145,25 +145,53 @@
                 <!-- Right column: Schedule Grid (permanent, detachable) -->
                 <controls:DetachablePanel Grid.Column="2"
                                           x:Name="ScheduleGridPanel"
-                                          Header="Schedule Grid"
+                                          Header="Schedule View"
                                           DetachRequested="OnScheduleGridDetach">
-                    <controls:DetachablePanel.HeaderExtra>
-                        <!-- "● Filtered" badge — only visible when a filter is active -->
-                        <Border DataContext="{Binding ScheduleGridVm.Filter}"
-                                IsVisible="{Binding IsActive}"
-                                Background="{StaticResource FilterBadgeBackground}"
-                                BorderBrush="{StaticResource FilterBadgeBorder}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                Padding="5,1"
-                                VerticalAlignment="Center"
-                                ToolTip.Tip="{Binding ActiveSummary}">
-                            <TextBlock Text="● Filtered"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource FilterBadgeText}" />
-                        </Border>
-                    </controls:DetachablePanel.HeaderExtra>
+                    <controls:DetachablePanel.HeaderContext>
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+
+                            <!-- Semester -->
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3" />
+                            <TextBlock Text="{Binding ScheduleGridVm.SemesterLine}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+
+                            <!-- Subject filter (only shown when active) -->
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+                                    IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding ScheduleGridVm.SubjectFilterSummary}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <!-- Stats (always shown) -->
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+                                    IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding ScheduleGridVm.StatsLine}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <!-- Filtered by (only shown when filter active) -->
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+                                    IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
+                            <TextBlock Text="Filtered by:"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource FilterBadgeText}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
+                            <TextBlock Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource FilterBadgeText}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="400"
+                                       IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
+
+                        </StackPanel>
+                    </controls:DetachablePanel.HeaderContext>
                     <controls:DetachablePanel.PanelContent>
                         <gridViews:ScheduleGridView DataContext="{Binding ScheduleGridVm}" />
                     </controls:DetachablePanel.PanelContent>

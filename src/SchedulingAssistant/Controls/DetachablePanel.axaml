@@ -20,15 +20,19 @@
                             BorderThickness="0"
                             FontSize="13"
                             Cursor="Hand" />
-                    <!-- Extra controls injected by the host (e.g. Add/Edit/Delete for Sections) -->
+                    <!-- Extra controls injected by the host (e.g. Add/Edit/Delete for Sections) — right-aligned -->
                     <ContentPresenter DockPanel.Dock="Right"
                                       Content="{Binding #Root.HeaderExtra}"
                                       VerticalAlignment="Center"
                                       Margin="0,0,4,0" />
+                    <!-- Panel title -->
                     <TextBlock Text="{Binding #Root.Header}"
                                FontWeight="SemiBold"
                                FontSize="13"
                                VerticalAlignment="Center" />
+                    <!-- Context info (semester, stats, filter) — left-justified after title -->
+                    <ContentPresenter Content="{Binding #Root.HeaderContext}"
+                                      VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
 
