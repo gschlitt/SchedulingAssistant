@@ -77,21 +77,49 @@ public partial class ScheduleGridView : UserControl
         double availWidth = Math.Max(_canvas.Bounds.Width, Bounds.Width);
         int dayCount = data.DayColumns.Count;
 
-        // Calculate minimum day column width based on maximum overlap count per day
-        // to ensure tiles have adequate horizontal space for content
-        double minDayColWidth = DayColumnMinWidth;
-        foreach (var dayCol in data.DayColumns)
+        // Calculate minimum width for each day independently based on its maximum overlap count
+        var dayColWidths = new double[dayCount];
+        double totalMinWidth = TimeGutterWidth;
+
+        for (int d = 0; d < dayCount; d++)
         {
-            int maxOverlapCount = dayCol.Tiles.Count > 0 ? dayCol.Tiles.Max(t => t.OverlapCount) : 1;
-            double requiredWidth = maxOverlapCount * MinTileWidth + TilePadding;
-            minDayColWidth = Math.Max(minDayColWidth, requiredWidth);
+            double minWidth = DayColumnMinWidth;
+            var dayCol = data.DayColumns[d];
+
+            if (dayCol.Tiles.Count > 0)
+            {
+                int maxOverlapCount = dayCol.Tiles.Max(t => t.OverlapCount);
+                double requiredWidth = maxOverlapCount * MinTileWidth + TilePadding;
+                minWidth = Math.Max(minWidth, requiredWidth);
+            }
+
+            dayColWidths[d] = minWidth;
+            totalMinWidth += minWidth;
         }
 
-        // Use the larger of: window-based width or content-based minimum width
-        double dayColWidth = Math.Max(minDayColWidth,
-            (availWidth - TimeGutterWidth) / dayCount);
+        // Adjust widths if extra space is available
+        double totalWidth = totalMinWidth;
+        if (totalMinWidth <= availWidth)
+        {
+            // Extra space available: distribute it evenly across all days
+            double extraSpace = availWidth - totalMinWidth;
+            double extraPerDay = extraSpace / dayCount;
 
-        double totalWidth  = TimeGutterWidth + dayColWidth * dayCount;
+            for (int d = 0; d < dayCount; d++)
+            {
+                dayColWidths[d] += extraPerDay;
+            }
+
+            totalWidth = availWidth;
+        }
+
+        // Pre-calculate cumulative X-offsets for each day
+        var dayXOffsets = new double[dayCount + 1];
+        dayXOffsets[0] = TimeGutterWidth;
+        for (int d = 0; d < dayCount; d++)
+        {
+            dayXOffsets[d + 1] = dayXOffsets[d] + dayColWidths[d];
+        }
 
         // ── Phase 1 & 2: Measure tile content heights and build height map ───
         var tileHeightMap = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
@@ -203,15 +231,17 @@ public partial class ScheduleGridView : UserControl
 
         // ── Day header row ─────────────────────────────────────────────────
         // Header background strip
-        AddRect(_canvas, TimeGutterWidth, 0, dayColWidth * dayCount, DayHeaderHeight,
+        AddRect(_canvas, TimeGutterWidth, 0, totalWidth - TimeGutterWidth, DayHeaderHeight,
             HeaderFill, HeaderBorder, borderThickness: new Thickness(0, 0, 0, 1));
 
         for (int d = 0; d < dayCount; d++)
         {
-            double x = TimeGutterWidth + d * dayColWidth;
+            double dayX = dayXOffsets[d];
+            double dayColWidth = dayColWidths[d];
+
             // Vertical separator between day columns
             if (d > 0)
-                AddLine(_canvas, x, 0, x, totalHeight, HeaderBorder, 1);
+                AddLine(_canvas, dayX, 0, dayX, totalHeight, HeaderBorder, 1);
 
             var tb = new TextBlock
             {
@@ -222,7 +252,7 @@ public partial class ScheduleGridView : UserControl
                 Width = dayColWidth,
                 TextAlignment = TextAlignment.Center,
             };
-            Canvas.SetLeft(tb, x);
+            Canvas.SetLeft(tb, dayX);
             Canvas.SetTop(tb, (DayHeaderHeight - 14) / 2);
             _canvas.Children.Add(tb);
         }
@@ -255,7 +285,9 @@ public partial class ScheduleGridView : UserControl
         // ── Section tiles (with adjusted heights and positions) ──────────────
         for (int d = 0; d < dayCount; d++)
         {
-            double dayX = TimeGutterWidth + d * dayColWidth;
+            double dayX = dayXOffsets[d];
+            double dayColWidth = dayColWidths[d];
+
             foreach (var tile in data.DayColumns[d].Tiles)
             {
                 double tileW = (dayColWidth - TilePadding) / tile.OverlapCount;
