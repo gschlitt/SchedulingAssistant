@@ -79,7 +79,108 @@ public partial class ScheduleGridView : UserControl
             (availWidth - TimeGutterWidth) / dayCount);
 
         double totalWidth  = TimeGutterWidth + dayColWidth * dayCount;
-        double totalHeight = DayHeaderHeight + TimeToY(data.LastRowMinutes, data.FirstRowMinutes);
+
+        // ── Phase 1 & 2: Measure tile content heights and build height map ───
+        var tileHeightMap = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
+        var selectedId = _vm?.SelectedSectionId;
+        var entryCursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
+
+        // Collect all tiles for offset calculation
+        var allTiles = new List<(int day, GridTile tile, double timeBasedHeight)>();
+
+        for (int d = 0; d < dayCount; d++)
+        {
+            foreach (var tile in data.DayColumns[d].Tiles)
+            {
+                // Calculate time-based height
+                double timeBasedH = TimeToY(tile.EndMinutes, data.FirstRowMinutes)
+                                  - TimeToY(tile.StartMinutes, data.FirstRowMinutes)
+                                  - TilePadding * 2;
+                timeBasedH = Math.Max(timeBasedH, 18);
+
+                // Build the StackPanel to measure content
+                var stack = new StackPanel { Spacing = 0 };
+                for (int ei = 0; ei < tile.Entries.Count; ei++)
+                {
+                    var entry = tile.Entries[ei];
+                    bool entrySelected = selectedId is not null && entry.SectionId == selectedId;
+
+                    if (ei > 0)
+                        stack.Children.Add(new Border
+                        {
+                            Height = 1,
+                            Background = TileBorder,
+                            Margin = new Thickness(0, 2, 0, 2),
+                        });
+
+                    var labelText = string.IsNullOrEmpty(entry.Initials)
+                        ? entry.Label
+                        : $"{entry.Label}  {entry.Initials}";
+
+                    var entryRow = new Border
+                    {
+                        Background  = entrySelected ? TileFillSelected : Brushes.Transparent,
+                        CornerRadius = new CornerRadius(2),
+                        Padding     = new Thickness(1, 0),
+                        Child       = new TextBlock
+                        {
+                            Text = labelText,
+                            FontSize = 11,
+                            FontWeight = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
+                            Foreground = entrySelected ? TileBorderSelected : Brushes.Black,
+                            TextTrimming = TextTrimming.CharacterEllipsis,
+                        },
+                    };
+                    stack.Children.Add(entryRow);
+                }
+
+                // Measure content height
+                stack.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double actualH = stack.DesiredSize.Height;
+
+                var key = (tile.StartMinutes, tile.EndMinutes);
+                tileHeightMap[key] = (timeBasedH, actualH);
+                allTiles.Add((d, tile, timeBasedH));
+            }
+        }
+
+        // ── Phase 3: Calculate cumulative gridline offsets ───────────────────
+        var gridlineYOffsets = new Dictionary<int, double>();
+        double cumulativeOffset = 0;
+
+        for (int mins = data.FirstRowMinutes; mins <= data.LastRowMinutes; mins += 30)
+        {
+            gridlineYOffsets[mins] = cumulativeOffset;
+
+            // For this half-hour slot, find the maximum expansion needed
+            double expansionThisSlot = 0;
+
+            foreach (var (_, tile, timeBasedH) in allTiles)
+            {
+                // Check if this tile spans this half-hour
+                if (tile.StartMinutes <= mins && mins < tile.EndMinutes)
+                {
+                    var (_, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
+
+                    if (actualH > timeBasedH)
+                    {
+                        // This tile expands. Calculate proportional expansion for this slot.
+                        int tileSpanMinutes = tile.EndMinutes - tile.StartMinutes;
+                        double expansionFraction = 1.0 / (tileSpanMinutes / 30.0);
+                        double tileExpansion = actualH - timeBasedH;
+                        double slotExpansion = tileExpansion * expansionFraction;
+
+                        expansionThisSlot = Math.Max(expansionThisSlot, slotExpansion);
+                    }
+                }
+            }
+
+            cumulativeOffset += expansionThisSlot;
+        }
+
+        // ── Phase 4: Redraw with adjusted height accounting for expansions ───
+        double totalHeight = DayHeaderHeight + TimeToY(data.LastRowMinutes, data.FirstRowMinutes)
+                           + gridlineYOffsets[data.LastRowMinutes];
 
         _canvas.Width  = totalWidth;
         _canvas.Height = totalHeight;
@@ -113,10 +214,10 @@ public partial class ScheduleGridView : UserControl
             _canvas.Children.Add(tb);
         }
 
-        // ── Time rows + horizontal rules ───────────────────────────────────
+        // ── Time rows + horizontal rules (with adjusted Y-coordinates) ───────
         for (int mins = data.FirstRowMinutes; mins <= data.LastRowMinutes; mins += 30)
         {
-            double y = DayHeaderHeight + TimeToY(mins, data.FirstRowMinutes);
+            double y = DayHeaderHeight + TimeToY(mins, data.FirstRowMinutes) + gridlineYOffsets[mins];
             bool isHour = mins % 60 == 0;
 
             // Rule line
@@ -138,10 +239,7 @@ public partial class ScheduleGridView : UserControl
             _canvas.Children.Add(timeTb);
         }
 
-        // ── Section tiles ──────────────────────────────────────────────────
-        var selectedId = _vm?.SelectedSectionId;
-        var entryCursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
-
+        // ── Section tiles (with adjusted heights and positions) ──────────────
         for (int d = 0; d < dayCount; d++)
         {
             double dayX = TimeGutterWidth + d * dayColWidth;
@@ -149,13 +247,14 @@ public partial class ScheduleGridView : UserControl
             {
                 double tileW = (dayColWidth - TilePadding) / tile.OverlapCount;
                 double tileX = dayX + tile.OverlapIndex * tileW + TilePadding / 2;
-                double tileY = DayHeaderHeight + TimeToY(tile.StartMinutes, data.FirstRowMinutes) + TilePadding;
-                double tileH = TimeToY(tile.EndMinutes, data.FirstRowMinutes)
-                             - TimeToY(tile.StartMinutes, data.FirstRowMinutes)
-                             - TilePadding * 2;
 
-                tileH = Math.Max(tileH, 18);
+                // Get adjusted Y position and height
+                var (timeBasedH, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
+                double adjustedTileY = DayHeaderHeight + TimeToY(tile.StartMinutes, data.FirstRowMinutes)
+                                     + gridlineYOffsets[tile.StartMinutes] + TilePadding;
+                double adjustedTileH = Math.Max(timeBasedH, actualH - TilePadding * 2);
 
+                // Rebuild the StackPanel (we need fresh instance with event handlers)
                 var stack = new StackPanel { Spacing = 0 };
 
                 for (int ei = 0; ei < tile.Entries.Count; ei++)
@@ -205,18 +304,18 @@ public partial class ScheduleGridView : UserControl
                 var border = new Border
                 {
                     Width           = tileW - TilePadding,
-                    Height          = tileH,
+                    Height          = adjustedTileH,
                     Background      = TileFill,
                     BorderBrush     = TileBorder,
                     BorderThickness = new Thickness(1),
                     CornerRadius    = new CornerRadius(3),
                     Padding         = new Thickness(3, 2),
-                    ClipToBounds    = true,
+                    ClipToBounds    = false,
                     Child           = stack,
                 };
 
                 Canvas.SetLeft(border, tileX);
-                Canvas.SetTop(border, tileY);
+                Canvas.SetTop(border, adjustedTileY);
                 _canvas.Children.Add(border);
             }
         }
