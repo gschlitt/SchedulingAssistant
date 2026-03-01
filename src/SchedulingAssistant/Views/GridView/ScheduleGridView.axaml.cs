@@ -16,6 +16,7 @@ public partial class ScheduleGridView : UserControl
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double TilePadding      = 3;
     private const double DayColumnMinWidth = 120;
+    private const double MinTileWidth     = 100;  // Minimum horizontal space per tile to avoid text clipping
 
     // Brushes resolved from AppColors.axaml at first render (after resources are loaded).
     private static IBrush Res(string key) =>
@@ -75,7 +76,19 @@ public partial class ScheduleGridView : UserControl
         // Available width for day columns
         double availWidth = Math.Max(_canvas.Bounds.Width, Bounds.Width);
         int dayCount = data.DayColumns.Count;
-        double dayColWidth = Math.Max(DayColumnMinWidth,
+
+        // Calculate minimum day column width based on maximum overlap count per day
+        // to ensure tiles have adequate horizontal space for content
+        double minDayColWidth = DayColumnMinWidth;
+        foreach (var dayCol in data.DayColumns)
+        {
+            int maxOverlapCount = dayCol.Tiles.Count > 0 ? dayCol.Tiles.Max(t => t.OverlapCount) : 1;
+            double requiredWidth = maxOverlapCount * MinTileWidth + TilePadding;
+            minDayColWidth = Math.Max(minDayColWidth, requiredWidth);
+        }
+
+        // Use the larger of: window-based width or content-based minimum width
+        double dayColWidth = Math.Max(minDayColWidth,
             (availWidth - TimeGutterWidth) / dayCount);
 
         double totalWidth  = TimeGutterWidth + dayColWidth * dayCount;
