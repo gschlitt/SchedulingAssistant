@@ -98,10 +98,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToAcademicYears() => OpenFlyout<AcademicYearListViewModel>("Academic Years");
 
     [RelayCommand]
-    private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Block Lengths");
-
-    [RelayCommand]
-    private void NavigateToSettings() => OpenFlyout<SettingsViewModel>("Settings");
+    private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Scheduling");
 
     [RelayCommand]
     private void NavigateToSectionProperties() => OpenFlyout<SectionPropertiesViewModel>("Section Properties");

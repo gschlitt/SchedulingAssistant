@@ -5,9 +5,9 @@
              x:DataType="vm:LegalStartTimeListViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto">
+    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto">
 
-        <TextBlock Grid.Row="0" Text="Block Lengths" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <TextBlock Grid.Row="0" Text="Scheduling" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
 
         <ContentControl Grid.Row="1" Content="{Binding EditVm}">
             <ContentControl.ContentTemplate>
@@ -99,6 +99,15 @@
                       SelectedItem="{Binding SelectedPreferredOption}"
                       DisplayMemberBinding="{Binding Label}"
                       Width="120" />
+        </StackPanel>
+
+        <!-- Include Saturday setting -->
+        <StackPanel Grid.Row="4" Spacing="8" Margin="0,24,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <CheckBox Content="Include Saturday as an available scheduling day"
+                      IsChecked="{Binding IncludeSaturday}" />
+            <TextBlock Text="Changes take effect the next time you open the section editor."
+                       FontSize="11" Foreground="{StaticResource TextDimLabel}" />
         </StackPanel>
 
     </Grid>

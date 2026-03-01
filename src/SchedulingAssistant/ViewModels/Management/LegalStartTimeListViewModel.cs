@@ -18,6 +18,29 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
     [ObservableProperty] private LegalStartTime? _selectedEntry;
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
 
+    // ── Include Saturday setting ──────────────────────────────────────────────
+
+    private bool _includeSaturday;
+
+    /// <summary>
+    /// Whether Saturday is available as a scheduling day.
+    /// Writes through immediately to AppSettings on change.
+    /// </summary>
+    public bool IncludeSaturday
+    {
+        get => _includeSaturday;
+        set
+        {
+            if (_includeSaturday == value) return;
+            _includeSaturday = value;
+            OnPropertyChanged();
+
+            var settings = AppSettings.Load();
+            settings.IncludeSaturday = value;
+            settings.Save();
+        }
+    }
+
     // ── Preferred block length ────────────────────────────────────────────────
 
     /// <summary>Options list for the preferred-block-length ComboBox, rebuilt when entries change.</summary>
@@ -54,6 +77,8 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
     {
         Entries = new ObservableCollection<LegalStartTime>(_repo.GetAll());
         RebuildPreferredOptions();
+        _includeSaturday = AppSettings.Load().IncludeSaturday;
+        OnPropertyChanged(nameof(IncludeSaturday));
     }
 
     private void RebuildPreferredOptions()
