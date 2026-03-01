@@ -248,11 +248,18 @@ public partial class ScheduleGridView : UserControl
                 double tileW = (dayColWidth - TilePadding) / tile.OverlapCount;
                 double tileX = dayX + tile.OverlapIndex * tileW + TilePadding / 2;
 
-                // Get adjusted Y position and height
+                // Get adjusted Y position and height using adjusted gridline positions
                 var (timeBasedH, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
-                double adjustedTileY = DayHeaderHeight + TimeToY(tile.StartMinutes, data.FirstRowMinutes)
-                                     + gridlineYOffsets[tile.StartMinutes] + TilePadding;
-                double adjustedTileH = Math.Max(timeBasedH, actualH - TilePadding * 2);
+
+                double startY = DayHeaderHeight + TimeToY(tile.StartMinutes, data.FirstRowMinutes)
+                              + gridlineYOffsets[tile.StartMinutes];
+                double endY = DayHeaderHeight + TimeToY(tile.EndMinutes, data.FirstRowMinutes)
+                            + gridlineYOffsets[tile.EndMinutes];
+
+                double adjustedTileY = startY + TilePadding;
+                // Height is the distance between adjusted gridlines, minus padding; but at least the measured content height
+                double gridlineSpanH = endY - startY - TilePadding * 2;
+                double adjustedTileH = Math.Max(gridlineSpanH, actualH);
 
                 // Rebuild the StackPanel (we need fresh instance with event handlers)
                 var stack = new StackPanel { Spacing = 0 };
