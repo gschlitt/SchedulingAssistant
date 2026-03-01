@@ -143,6 +143,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToBlockPatterns() => OpenFlyout<BlockPatternListViewModel>("Block Patterns");
 
+#if DEBUG
+    [RelayCommand]
+    private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
+#endif
+
     // ── File menu commands ────────────────────────────────────────────────────
 
     [RelayCommand]

@@ -114,5 +114,10 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SectionPropertiesViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
+
+#if DEBUG
+        services.AddTransient<DebugTestDataGenerator>();
+        services.AddTransient<DebugTestDataViewModel>();
+#endif
     }
 }
