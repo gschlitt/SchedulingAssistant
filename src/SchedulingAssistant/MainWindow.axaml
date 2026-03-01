@@ -83,15 +83,13 @@
                         </MenuItem>
                     </Menu>
 
-#if DEBUG
-                    <!-- Debug menu (dev only) -->
-                    <Menu Background="Transparent" VerticalAlignment="Center">
+                    <!-- Debug menu (added in code-behind in DEBUG mode) -->
+                    <Menu x:Name="DebugMenu" Background="Transparent" VerticalAlignment="Center" IsVisible="False">
                         <MenuItem Header="Debug" Classes="nav" Padding="14,8">
                             <MenuItem Header="Debug View…"
                                       Command="{Binding OpenDebugCommand}" />
                         </MenuItem>
                     </Menu>
-#endif
                 </StackPanel>
 
             </DockPanel>

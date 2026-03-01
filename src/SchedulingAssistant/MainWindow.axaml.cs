@@ -287,6 +287,13 @@ public partial class MainWindow : Window
         {
             vm.SectionListVm.PropertyChanged += OnSectionListVmPropertyChanged;
             UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
+
+#if DEBUG
+            // Show debug menu in DEBUG mode
+            var debugMenu = this.FindControl<Menu>("DebugMenu");
+            if (debugMenu is not null)
+                debugMenu.IsVisible = true;
+#endif
         }
     }
 
