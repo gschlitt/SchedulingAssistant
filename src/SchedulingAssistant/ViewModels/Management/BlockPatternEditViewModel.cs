@@ -61,7 +61,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
         }
 
         ValidationError = null;
-        _onSave(new BlockPattern { Slot = _slot, Name = trimmedName, Days = selectedDays });
+        _onSave(new BlockPattern { Name = trimmedName, Days = selectedDays });
     }
 
     [RelayCommand]

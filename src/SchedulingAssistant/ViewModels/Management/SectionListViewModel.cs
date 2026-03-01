@@ -18,6 +18,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly InstructorRepository _instructorRepo;
     private readonly RoomRepository _roomRepo;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
+    private readonly BlockPatternRepository _blockPatternRepo;
     private readonly SemesterContext _semesterContext;
     private readonly ScheduleGridViewModel _scheduleGridVm;
     private readonly SectionPropertyRepository _propertyRepo;
@@ -84,6 +85,7 @@ public partial class SectionListViewModel : ViewModelBase
         InstructorRepository instructorRepo,
         RoomRepository roomRepo,
         LegalStartTimeRepository legalStartTimeRepo,
+        BlockPatternRepository blockPatternRepo,
         SemesterContext semesterContext,
         ScheduleGridViewModel scheduleGridVm,
         SectionPropertyRepository propertyRepo)
@@ -93,6 +95,7 @@ public partial class SectionListViewModel : ViewModelBase
         _instructorRepo = instructorRepo;
         _roomRepo = roomRepo;
         _legalStartTimeRepo = legalStartTimeRepo;
+        _blockPatternRepo = blockPatternRepo;
         _semesterContext = semesterContext;
         _scheduleGridVm = scheduleGridVm;
         _propertyRepo = propertyRepo;
@@ -256,6 +259,7 @@ public partial class SectionListViewModel : ViewModelBase
                 Load(selectSectionId: s.Id);
                 _scheduleGridVm.Reload();
             },
+            _blockPatternRepo,
             defaultBlockLength: settings.PreferredBlockLength);
         editVm.RequestClose = () =>
         {
@@ -342,6 +346,7 @@ public partial class SectionListViewModel : ViewModelBase
                 Load(selectSectionId: s.Id);
                 _scheduleGridVm.Reload();
             },
+            _blockPatternRepo,
             defaultBlockLength: settings.PreferredBlockLength);
         editVm.RequestClose = CollapseEditor;
         ExpandedItem = listItem;
@@ -443,6 +448,7 @@ public partial class SectionListViewModel : ViewModelBase
                 Load(selectSectionId: s.Id);
                 _scheduleGridVm.Reload();
             },
+            _blockPatternRepo,
             defaultBlockLength: settings.PreferredBlockLength);
         editVm.RequestClose = () =>
         {

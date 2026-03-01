@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
@@ -252,6 +253,7 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SectionPropertyValue> allReserves,
         Func<string, string, bool> isSectionCodeDuplicate,
         Action<Section> onSave,
+        BlockPatternRepository blockPatternRepository,
         double? defaultBlockLength = null)
     {
         _section = section;
@@ -265,9 +267,9 @@ public partial class SectionEditViewModel : ViewModelBase
         _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
         // Load saved block patterns for the shortcut buttons
-        var settings = AppSettings.Load();
-        _pattern1 = settings.Pattern1;
-        _pattern2 = settings.Pattern2;
+        var allPatterns = blockPatternRepository.GetAll();
+        _pattern1 = allPatterns.Count > 0 ? allPatterns[0] : null;
+        _pattern2 = allPatterns.Count > 1 ? allPatterns[1] : null;
 
         // Build abbreviation → campus Id lookup (used by CommitSectionCode to auto-set campus)
         foreach (var c in campuses)

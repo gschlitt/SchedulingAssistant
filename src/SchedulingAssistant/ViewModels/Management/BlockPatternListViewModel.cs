@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 
@@ -7,23 +8,29 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
 /// Manages the two fixed block-pattern favourite slots shown in the Block Patterns flyout.
-/// Patterns are stored in AppSettings (not the DB) as they are app-level preferences.
+/// Patterns are stored in the database so all users of the same database see the same patterns.
 /// </summary>
 public partial class BlockPatternListViewModel : ViewModelBase
 {
+    private readonly BlockPatternRepository _patternRepository;
+
     public BlockPatternSlotViewModel Slot1 { get; }
     public BlockPatternSlotViewModel Slot2 { get; }
 
     /// <summary>True while either slot is being edited; used to disable the other slot's buttons.</summary>
     public bool IsEditingAny => Slot1.IsEditing || Slot2.IsEditing;
 
-    public BlockPatternListViewModel()
+    public BlockPatternListViewModel(BlockPatternRepository patternRepository)
     {
-        var settings = AppSettings.Load();
-        var includeSaturday = settings.IncludeSaturday;
+        _patternRepository = patternRepository;
+        var includeSaturday = AppSettings.Load().IncludeSaturday;
 
-        Slot1 = new BlockPatternSlotViewModel(1, settings.Pattern1, includeSaturday, OnSlotEditingChanged);
-        Slot2 = new BlockPatternSlotViewModel(2, settings.Pattern2, includeSaturday, OnSlotEditingChanged);
+        var allPatterns = _patternRepository.GetAll();
+        var pattern1 = allPatterns.Count > 0 ? allPatterns[0] : null;
+        var pattern2 = allPatterns.Count > 1 ? allPatterns[1] : null;
+
+        Slot1 = new BlockPatternSlotViewModel(1, pattern1, includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot2 = new BlockPatternSlotViewModel(2, pattern2, includeSaturday, _patternRepository, OnSlotEditingChanged);
     }
 
     private void OnSlotEditingChanged() => OnPropertyChanged(nameof(IsEditingAny));
@@ -31,7 +38,7 @@ public partial class BlockPatternListViewModel : ViewModelBase
 
 /// <summary>
 /// View model for one fixed pattern slot (1 or 2).
-/// Handles Edit and Clear in place, persisting immediately to AppSettings.
+/// Handles Edit and Clear in place, persisting immediately to the database.
 /// </summary>
 public partial class BlockPatternSlotViewModel : ViewModelBase
 {
@@ -47,17 +54,20 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
     public string DisplayName => Pattern?.Name is { Length: > 0 } n ? n : "(not set)";
 
     private readonly bool _includeSaturday;
+    private readonly BlockPatternRepository _patternRepository;
     private readonly Action _onEditingChanged;
 
     public BlockPatternSlotViewModel(
         int slotNumber,
         BlockPattern? pattern,
         bool includeSaturday,
+        BlockPatternRepository patternRepository,
         Action onEditingChanged)
     {
         SlotNumber = slotNumber;
         _pattern = pattern;
         _includeSaturday = includeSaturday;
+        _patternRepository = patternRepository;
         _onEditingChanged = onEditingChanged;
     }
 
@@ -81,12 +91,19 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
             _includeSaturday,
             onSave: p =>
             {
+                if (Pattern?.Id is { } existingId)
+                {
+                    // Update existing pattern
+                    p.Id = existingId;
+                    _patternRepository.Update(p);
+                }
+                else
+                {
+                    // Insert new pattern
+                    _patternRepository.Insert(p);
+                }
                 Pattern = p;
                 EditVm = null;
-                var settings = AppSettings.Load();
-                if (SlotNumber == 1) settings.Pattern1 = p;
-                else                 settings.Pattern2 = p;
-                settings.Save();
             },
             onCancel: () => EditVm = null);
     }
@@ -94,11 +111,11 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
     [RelayCommand]
     private void Clear()
     {
+        if (Pattern?.Id is { } id)
+        {
+            _patternRepository.Delete(id);
+        }
         Pattern = null;
         EditVm = null;
-        var settings = AppSettings.Load();
-        if (SlotNumber == 1) settings.Pattern1 = null;
-        else                 settings.Pattern2 = null;
-        settings.Save();
     }
 }

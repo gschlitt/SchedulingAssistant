@@ -84,6 +84,12 @@ public class DatabaseContext : IDisposable
                 type TEXT NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS BlockPatterns (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }
@@ -93,7 +99,15 @@ public class DatabaseContext : IDisposable
     /// </summary>
     private void Migrate()
     {
-        // No pending migrations.
+        using var cmd = Connection.CreateCommand();
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS BlockPatterns (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
+            """;
+        cmd.ExecuteNonQuery();
     }
 
     public void Dispose()

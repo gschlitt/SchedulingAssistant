@@ -87,6 +87,7 @@ public partial class App : Application
         services.AddTransient<InstructorRepository>();
         services.AddTransient<RoomRepository>();
         services.AddTransient<LegalStartTimeRepository>();
+        services.AddTransient<BlockPatternRepository>();
         services.AddTransient<SubjectRepository>();
         services.AddTransient<CourseRepository>();
         services.AddTransient<SectionRepository>();
