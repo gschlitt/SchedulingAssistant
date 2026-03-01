@@ -1,10 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.Views;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
 using System;
+using System.Collections.ObjectModel;
+using System.IO;
 
 namespace SchedulingAssistant.ViewModels;
 
@@ -48,7 +52,40 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _databaseName = string.Empty;
 
+    /// <summary>
+    /// Observable list of recent database files for the Files menu.
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<RecentDatabaseItem> _recentDatabases = new();
+
+    /// <summary>
+    /// Reference to the main window for file operations.
+    /// Set by MainWindow.axaml.cs after instantiation.
+    /// </summary>
+    public MainWindow? MainWindowReference { get; set; }
+
     internal void SetDatabaseName(string name) => DatabaseName = name;
+
+    /// <summary>
+    /// Populate the recent databases list from AppSettings.
+    /// Call this after the VM is created and the main window is available.
+    /// </summary>
+    public void LoadRecentDatabases()
+    {
+        RecentDatabases.Clear();
+        var settings = AppSettings.Load();
+        foreach (var path in settings.RecentDatabases)
+        {
+            if (File.Exists(path))
+            {
+                RecentDatabases.Add(new RecentDatabaseItem
+                {
+                    Path = path,
+                    DisplayName = Path.GetFileName(path)
+                });
+            }
+        }
+    }
 
     public MainWindowViewModel(
         IServiceProvider services,
@@ -105,4 +142,42 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void NavigateToBlockPatterns() => OpenFlyout<BlockPatternListViewModel>("Block Patterns");
+
+    // ── File menu commands ────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task OpenDatabase()
+    {
+        if (MainWindowReference is null) return;
+
+        var dialog = new DatabaseLocationDialog(DatabaseLocationMode.OpenExisting);
+        await dialog.ShowDialog(MainWindowReference);
+
+        if (dialog.ChosenPath is not null)
+        {
+            await MainWindowReference.SwitchDatabaseAsync(dialog.ChosenPath);
+        }
+    }
+
+    [RelayCommand]
+    private async Task NewDatabase()
+    {
+        if (MainWindowReference is null) return;
+
+        var dialog = new DatabaseLocationDialog(DatabaseLocationMode.FirstRun);
+        dialog.Title = "Create New Database";
+        await dialog.ShowDialog(MainWindowReference);
+
+        if (dialog.ChosenPath is not null)
+        {
+            await MainWindowReference.SwitchDatabaseAsync(dialog.ChosenPath);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenRecentDatabase(string? databasePath)
+    {
+        if (databasePath is null || MainWindowReference is null) return;
+        await MainWindowReference.SwitchDatabaseAsync(databasePath);
+    }
 }

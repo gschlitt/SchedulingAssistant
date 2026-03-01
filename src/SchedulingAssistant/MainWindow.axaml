@@ -33,6 +33,29 @@
 
                 <!-- Nav buttons, left-aligned -->
                 <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+
+                    <!-- Files menu (far left) -->
+                    <Menu Background="Transparent" VerticalAlignment="Center">
+                        <MenuItem Header="Files" Classes="nav" Padding="14,8">
+                            <MenuItem Header="Open…" Command="{Binding OpenDatabaseCommand}" />
+                            <MenuItem Header="New…" Command="{Binding NewDatabaseCommand}" />
+                            <Separator IsVisible="{Binding RecentDatabases.Count}" />
+                            <MenuItem Header="Recent Files"
+                                      IsVisible="{Binding RecentDatabases.Count}"
+                                      ItemsSource="{Binding RecentDatabases}">
+                                <MenuItem.ItemTemplate>
+                                    <DataTemplate>
+                                        <MenuItem Header="{Binding DisplayName}"
+                                                  Command="{Binding DataContext.OpenRecentDatabaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  CommandParameter="{Binding Path}" />
+                                    </DataTemplate>
+                                </MenuItem.ItemTemplate>
+                            </MenuItem>
+                        </MenuItem>
+                    </Menu>
+
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6,8,6" />
+
                     <TextBlock Text="{Binding DatabaseName}"
                                FontWeight="SemiBold" FontSize="13"
                                VerticalAlignment="Center"

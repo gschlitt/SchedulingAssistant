@@ -62,6 +62,14 @@ public partial class MainWindow : Window
         base.OnOpened(e);
         try
         {
+            // Show splash screen for 2 seconds
+            var splash = new SplashScreen();
+            splash.Show();
+
+            await Task.Delay(2000);
+
+            splash.Close();
+
             await RunStartupAsync();
         }
         catch (Exception ex)
@@ -106,10 +114,50 @@ public partial class MainWindow : Window
             settings.Save();
         }
 
+        // Record this database in recent list
+        settings.AddRecentDatabase(dbPath);
+
         // Initialize DI and DB, wire up the view model, then reveal the window.
-        DataContext = App.InitializeServices(dbPath);
+        var vm = App.InitializeServices(dbPath);
+        DataContext = vm;
+
+        // Set the main window reference and load recent databases
+        vm.MainWindowReference = this;
+        vm.LoadRecentDatabases();
+
         IsVisible = true;
         Activate();
+    }
+
+    /// <summary>
+    /// Switch to a different database without restarting the app.
+    /// Call this from the Files menu to open a different database.
+    /// The database file will be created if it doesn't exist.
+    /// </summary>
+    public async Task SwitchDatabaseAsync(string newDatabasePath)
+    {
+        try
+        {
+            // Update settings and record in recent list
+            var settings = AppSettings.Load();
+            settings.DatabasePath = newDatabasePath;
+            settings.Save();
+            settings.AddRecentDatabase(newDatabasePath);
+
+            // Reinitialize DI and set new data context
+            // DatabaseContext will create the file if it doesn't exist
+            var vm = App.InitializeServices(newDatabasePath);
+            DataContext = vm;
+
+            // Reload recent databases in the menu
+            vm.MainWindowReference = this;
+            vm.LoadRecentDatabases();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "Failed to switch database");
+            await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
+        }
     }
 
     private async Task<string?> ShowLocationDialogAsync(DatabaseLocationMode mode)
@@ -186,6 +234,37 @@ public partial class MainWindow : Window
         panel.Children.Add(new TextBlock
         {
             Text = "A database location must be chosen before Scheduling Assistant can open. The application will now close.",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13
+        });
+        panel.Children.Add(ok);
+        msg.Content = panel;
+
+        ok.Click += (_, _) => msg.Close();
+        await msg.ShowDialog(this);
+    }
+
+    private async Task ShowMessageAsync(string title, string message)
+    {
+        var msg = new Window
+        {
+            Title = title,
+            Width = 400,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true
+        };
+
+        var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
+        var panel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(28),
+            Spacing = 16
+        };
+        panel.Children.Add(new TextBlock
+        {
+            Text = message,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             FontSize = 13
         });

@@ -7,7 +7,8 @@ namespace SchedulingAssistant.Views;
 public enum DatabaseLocationMode
 {
     FirstRun,
-    NotFound
+    NotFound,
+    OpenExisting
 }
 
 public partial class DatabaseLocationDialog : Window
@@ -32,6 +33,12 @@ public partial class DatabaseLocationDialog : Window
                 "Give your database a name and choose where to save it. " +
                 "You can use a local folder or a shared network drive so colleagues can use the same database.";
             ShowCreateSection();
+        }
+        else if (mode == DatabaseLocationMode.OpenExisting)
+        {
+            HeadingText.Text = "Open Database";
+            BodyText.Text = "Choose an existing database file to open.";
+            OnOpenExistingModeClicked(null, null!);
         }
         else
         {
