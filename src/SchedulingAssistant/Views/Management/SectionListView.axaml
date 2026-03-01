@@ -198,7 +198,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,0" IsEnabled="{Binding AreOtherFieldsEnabled}">
                     <Button Content="+ meeting" Command="{Binding AddMeetingCommand}" FontSize="10" Padding="4,2" />
                     <Button Content="{Binding Pattern1Label}"
                             Command="{Binding ApplyPattern1Command}"
@@ -210,6 +210,21 @@
                             IsVisible="{Binding HasPattern2}"
                             FontSize="10" Padding="4,2"
                             ToolTip.Tip="Apply Pattern 2" />
+                    <Button Content="{Binding Pattern3Label}"
+                            Command="{Binding ApplyPattern3Command}"
+                            IsVisible="{Binding HasPattern3}"
+                            FontSize="10" Padding="4,2"
+                            ToolTip.Tip="Apply Pattern 3" />
+                    <Button Content="{Binding Pattern4Label}"
+                            Command="{Binding ApplyPattern4Command}"
+                            IsVisible="{Binding HasPattern4}"
+                            FontSize="10" Padding="4,2"
+                            ToolTip.Tip="Apply Pattern 4" />
+                    <Button Content="{Binding Pattern5Label}"
+                            Command="{Binding ApplyPattern5Command}"
+                            IsVisible="{Binding HasPattern5}"
+                            FontSize="10" Padding="4,2"
+                            ToolTip.Tip="Apply Pattern 5" />
                 </StackPanel>
 
                 <!-- Instructor + Tags side by side -->

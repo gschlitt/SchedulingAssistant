@@ -59,6 +59,9 @@ public class DebugTestDataGenerator
         var reserves = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
         var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
 
+        // Track codes generated in this batch to avoid duplicates within the batch
+        var codesInBatch = new Dictionary<string, HashSet<string>>();
+
         for (int i = 0; i < count; i++)
         {
             var section = new Section { SemesterId = semesterId };
@@ -67,8 +70,13 @@ public class DebugTestDataGenerator
             var course = courses[_random.Next(courses.Count)];
             section.CourseId = course.Id;
 
-            // Generate unique section code
-            section.SectionCode = GenerateUniqueCode(course.Id, semesterId);
+            // Generate unique section code (avoiding both DB and batch-local duplicates)
+            section.SectionCode = GenerateUniqueCode(course.Id, semesterId, codesInBatch);
+
+            // Track this code in the batch
+            if (!codesInBatch.ContainsKey(course.Id))
+                codesInBatch[course.Id] = new HashSet<string>();
+            codesInBatch[course.Id].Add(section.SectionCode);
 
             // Generate schedule from block patterns or random times
             if (blockPatterns.Count > 0)
@@ -93,16 +101,20 @@ public class DebugTestDataGenerator
         return sections;
     }
 
-    private string GenerateUniqueCode(string courseId, string semesterId)
+    private string GenerateUniqueCode(string courseId, string semesterId, Dictionary<string, HashSet<string>> codesInBatch)
     {
         // Try codes like A1, A2, A3... B1, B2, B3... etc
         char prefix = 'A';
         int suffix = 1;
 
+        // Get the set of codes already generated in this batch for this course
+        var batchCodes = codesInBatch.ContainsKey(courseId) ? codesInBatch[courseId] : new HashSet<string>();
+
         while (prefix <= 'Z')
         {
             var code = $"{prefix}{suffix}";
-            if (!_sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null))
+            // Check both: database doesn't have it AND batch doesn't have it
+            if (!_sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null) && !batchCodes.Contains(code))
                 return code;
 
             suffix++;

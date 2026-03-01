@@ -96,21 +96,28 @@ public partial class SectionListViewModel : ViewModelBase
                 return;
             }
 
+            App.Logger.LogInfo($"Starting generation of {count} sections for semester {semesterId}", "GenerateRandomSections");
+
             var generator = new DebugTestDataGenerator(
                 _sectionRepo, _courseRepo, _instructorRepo, _roomRepo,
                 _legalStartTimeRepo, _blockPatternRepo, _propertyRepo);
 
             var sections = generator.GenerateSections(count, semesterId);
+            App.Logger.LogInfo($"Generator created {sections.Count} sections", "GenerateRandomSections");
 
             foreach (var section in sections)
             {
+                App.Logger.LogInfo($"Inserting section {section.Id} ({section.SectionCode}) for course {section.CourseId}", "GenerateRandomSections");
                 _sectionRepo.Insert(section);
             }
 
+            App.Logger.LogInfo("All sections inserted, calling Load()...", "GenerateRandomSections");
             Load();
+
+            App.Logger.LogInfo("Load() complete, calling ScheduleGridVm.Reload()...", "GenerateRandomSections");
             _scheduleGridVm.Reload();
 
-            App.Logger.LogInfo($"Generated {sections.Count} test sections", "GenerateRandomSections");
+            App.Logger.LogInfo($"Generated {sections.Count} test sections successfully", "GenerateRandomSections");
         }
         catch (Exception ex)
         {
@@ -193,6 +200,8 @@ public partial class SectionListViewModel : ViewModelBase
         var semester = _semesterContext.SelectedSemesterDisplay?.Semester;
         if (semester is null) { SectionItems = new(); return; }
 
+        App.Logger.LogInfo($"LoadCore: Loading sections for semester {semester.Id}", "LoadCore");
+
         var courseLookup     = _courseRepo.GetAll().ToDictionary(c => c.Id);
         var instructorLookup = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var roomLookup       = _roomRepo.GetAll().ToDictionary(r => r.Id);
@@ -211,6 +220,8 @@ public partial class SectionListViewModel : ViewModelBase
             .ToHashSet();
 
         var sections = _sectionRepo.GetAll(semester.Id);
+        App.Logger.LogInfo($"LoadCore: Retrieved {sections.Count} sections from database", "LoadCore");
+
         SectionItems = new ObservableCollection<SectionListItemViewModel>(
             sections.Select(s =>
             {
@@ -222,6 +233,8 @@ public partial class SectionListViewModel : ViewModelBase
                     vm.IsCollapsed = true;
                 return vm;
             }));
+
+        App.Logger.LogInfo($"LoadCore: Built {SectionItems.Count} view items", "LoadCore");
 
         // Re-select the specified section so the user can see where it ended up.
         if (selectSectionId is not null)

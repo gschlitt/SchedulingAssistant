@@ -7,18 +7,22 @@ using SchedulingAssistant.Services;
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// Manages the two fixed block-pattern favourite slots shown in the Block Patterns flyout.
+/// Manages up to five block-pattern favourite slots shown in the Block Patterns flyout.
 /// Patterns are stored in the database so all users of the same database see the same patterns.
 /// </summary>
 public partial class BlockPatternListViewModel : ViewModelBase
 {
     private readonly BlockPatternRepository _patternRepository;
+    private const int MaxSlots = 5;
 
     public BlockPatternSlotViewModel Slot1 { get; }
     public BlockPatternSlotViewModel Slot2 { get; }
+    public BlockPatternSlotViewModel Slot3 { get; }
+    public BlockPatternSlotViewModel Slot4 { get; }
+    public BlockPatternSlotViewModel Slot5 { get; }
 
-    /// <summary>True while either slot is being edited; used to disable the other slot's buttons.</summary>
-    public bool IsEditingAny => Slot1.IsEditing || Slot2.IsEditing;
+    /// <summary>True while any slot is being edited; used to disable other slot's buttons.</summary>
+    public bool IsEditingAny => Slot1.IsEditing || Slot2.IsEditing || Slot3.IsEditing || Slot4.IsEditing || Slot5.IsEditing;
 
     public BlockPatternListViewModel(BlockPatternRepository patternRepository)
     {
@@ -26,11 +30,15 @@ public partial class BlockPatternListViewModel : ViewModelBase
         var includeSaturday = AppSettings.Load().IncludeSaturday;
 
         var allPatterns = _patternRepository.GetAll();
-        var pattern1 = allPatterns.Count > 0 ? allPatterns[0] : null;
-        var pattern2 = allPatterns.Count > 1 ? allPatterns[1] : null;
+        var patterns = Enumerable.Range(0, MaxSlots)
+            .Select(i => allPatterns.Count > i ? allPatterns[i] : null)
+            .ToList();
 
-        Slot1 = new BlockPatternSlotViewModel(1, pattern1, includeSaturday, _patternRepository, OnSlotEditingChanged);
-        Slot2 = new BlockPatternSlotViewModel(2, pattern2, includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot1 = new BlockPatternSlotViewModel(1, patterns[0], includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot2 = new BlockPatternSlotViewModel(2, patterns[1], includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, _patternRepository, OnSlotEditingChanged);
     }
 
     private void OnSlotEditingChanged() => OnPropertyChanged(nameof(IsEditingAny));

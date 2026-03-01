@@ -126,6 +126,9 @@ public partial class SectionEditViewModel : ViewModelBase
 
     private readonly BlockPattern? _pattern1;
     private readonly BlockPattern? _pattern2;
+    private readonly BlockPattern? _pattern3;
+    private readonly BlockPattern? _pattern4;
+    private readonly BlockPattern? _pattern5;
 
     /// <summary>Label for the "Apply" button for Pattern 1 (null when no pattern is saved).</summary>
     public string? Pattern1Label => _pattern1 is { Name.Length: > 0 } p ? p.Name : null;
@@ -133,11 +136,29 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <summary>Label for the "Apply" button for Pattern 2 (null when no pattern is saved).</summary>
     public string? Pattern2Label => _pattern2 is { Name.Length: > 0 } p ? p.Name : null;
 
+    /// <summary>Label for the "Apply" button for Pattern 3 (null when no pattern is saved).</summary>
+    public string? Pattern3Label => _pattern3 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 4 (null when no pattern is saved).</summary>
+    public string? Pattern4Label => _pattern4 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 5 (null when no pattern is saved).</summary>
+    public string? Pattern5Label => _pattern5 is { Name.Length: > 0 } p ? p.Name : null;
+
     /// <summary>True when Pattern 1 is configured and can be applied.</summary>
     public bool HasPattern1 => _pattern1 is { Days.Count: > 0 };
 
     /// <summary>True when Pattern 2 is configured and can be applied.</summary>
     public bool HasPattern2 => _pattern2 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 3 is configured and can be applied.</summary>
+    public bool HasPattern3 => _pattern3 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 4 is configured and can be applied.</summary>
+    public bool HasPattern4 => _pattern4 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 5 is configured and can be applied.</summary>
+    public bool HasPattern5 => _pattern5 is { Days.Count: > 0 };
 
     /// <summary>Maps campus abbreviation (case-insensitive) → campus Id for auto-setting campus from section code.</summary>
     private readonly Dictionary<string, string> _abbreviationToCampusId = new(StringComparer.OrdinalIgnoreCase);
@@ -270,6 +291,9 @@ public partial class SectionEditViewModel : ViewModelBase
         var allPatterns = blockPatternRepository.GetAll();
         _pattern1 = allPatterns.Count > 0 ? allPatterns[0] : null;
         _pattern2 = allPatterns.Count > 1 ? allPatterns[1] : null;
+        _pattern3 = allPatterns.Count > 2 ? allPatterns[2] : null;
+        _pattern4 = allPatterns.Count > 3 ? allPatterns[3] : null;
+        _pattern5 = allPatterns.Count > 4 ? allPatterns[4] : null;
 
         // Build abbreviation → campus Id lookup (used by CommitSectionCode to auto-set campus)
         foreach (var c in campuses)
@@ -421,6 +445,15 @@ public partial class SectionEditViewModel : ViewModelBase
 
     [RelayCommand]
     private void ApplyPattern2() => ApplyPattern(_pattern2);
+
+    [RelayCommand]
+    private void ApplyPattern3() => ApplyPattern(_pattern3);
+
+    [RelayCommand]
+    private void ApplyPattern4() => ApplyPattern(_pattern4);
+
+    [RelayCommand]
+    private void ApplyPattern5() => ApplyPattern(_pattern5);
 
     /// <summary>
     /// Replaces the current meeting list with one meeting per day in the pattern.
