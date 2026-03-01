@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels"
+             x:Class="SchedulingAssistant.Views.DebugTestDataView"
+             x:DataType="vm:DebugTestDataViewModel"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="16" Margin="20">
+        <StackPanel Spacing="8">
+            <TextBlock Text="Number of sections to generate:" FontSize="13" FontWeight="SemiBold" />
+            <TextBox Text="{Binding SectionCount}"
+                     Watermark="Enter count (1-1000)"
+                     FontSize="12" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <Button Content="Generate"
+                    Command="{Binding GenerateCommand}"
+                    IsEnabled="{Binding !IsGenerating}"
+                    MinWidth="120"
+                    Padding="16,8" />
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    MinWidth="120"
+                    Padding="16,8" />
+        </StackPanel>
+
+        <TextBlock Text="{Binding StatusMessage}"
+                   TextWrapping="Wrap"
+                   FontSize="12"
+                   Foreground="#333333"
+                   IsVisible="{Binding StatusMessage, Converter={StaticResource StringNullOrEmptyToFalseConverter}}" />
+
+        <TextBlock IsVisible="{Binding IsGenerating}"
+                   Text="Generating..."
+                   TextAlignment="Center"
+                   FontSize="12"
+                   Foreground="#666666" />
+    </StackPanel>
+
+</UserControl>
