@@ -28,8 +28,7 @@
         <TextBlock Text="{Binding StatusMessage}"
                    TextWrapping="Wrap"
                    FontSize="12"
-                   Foreground="#333333"
-                   IsVisible="{Binding StatusMessage, Converter={StaticResource StringNullOrEmptyToFalseConverter}}" />
+                   Foreground="#333333" />
 
         <TextBlock IsVisible="{Binding IsGenerating}"
                    Text="Generating..."

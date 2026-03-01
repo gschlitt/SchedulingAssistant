@@ -5,9 +5,9 @@ using SchedulingAssistant.ViewModels.Management;
 
 namespace SchedulingAssistant.ViewModels;
 
-#if DEBUG
 public partial class DebugTestDataViewModel : ViewModelBase
 {
+#if DEBUG
     [ObservableProperty] private int _sectionCount = 10;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private bool _isGenerating;
@@ -61,5 +61,5 @@ public partial class DebugTestDataViewModel : ViewModelBase
     {
         _mainWindowVm.CloseFlyoutCommand.Execute(null);
     }
-}
 #endif
+}

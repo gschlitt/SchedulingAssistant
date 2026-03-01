@@ -2,7 +2,6 @@ using Avalonia.Controls;
 
 namespace SchedulingAssistant.Views;
 
-#if DEBUG
 public partial class DebugTestDataView : UserControl
 {
     public DebugTestDataView()
@@ -10,4 +9,3 @@ public partial class DebugTestDataView : UserControl
         InitializeComponent();
     }
 }
-#endif
