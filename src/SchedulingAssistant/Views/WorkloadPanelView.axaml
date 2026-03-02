@@ -101,7 +101,7 @@
                                                 <Button Content="{Binding Label}"
                                                         Classes="chip"
                                                         Classes.release="{Binding IsRelease}"
-                                                        Classes.selected="{Binding DataContext.SelectedSectionId, ElementName=Root, Converter={StaticResource IsSelectedConverter}, ConverterParameter={Binding Id}}"
+                                                        Classes.selected="{Binding IsSelected}"
                                                         Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
                                                         CommandParameter="{Binding}"
                                                         Margin="2,1" />

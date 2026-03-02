@@ -20,7 +20,6 @@
 
             <!-- Converters -->
             <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
-            <conv:IsSelectedConverter x:Key="IsSelectedConverter" />
         </ResourceDictionary>
     </Application.Resources>
 

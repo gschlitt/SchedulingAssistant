@@ -1,5 +1,8 @@
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
+multiple instructors should shown on week view
+Booking cards need to show all info
+Multiple semesters!
 
 Would like business objects to have friendly references to the other business objects, in the db. 
 

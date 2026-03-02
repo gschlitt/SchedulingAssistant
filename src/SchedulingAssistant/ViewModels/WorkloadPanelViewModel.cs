@@ -21,6 +21,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     [ObservableProperty] private string? _lastErrorMessage;
     [ObservableProperty] private string? _selectedSectionId;
 
+    partial void OnSelectedSectionIdChanged(string? value) => UpdateItemSelection();
+
     /// <summary>Fired when the user clicks a work item chip.</summary>
     public event Action<WorkloadItemViewModel>? ItemClicked;
 
@@ -173,4 +175,11 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
     [RelayCommand]
     private void HandleItemClick(WorkloadItemViewModel item) => ItemClicked?.Invoke(item);
+
+    private void UpdateItemSelection()
+    {
+        foreach (var row in Rows)
+            foreach (var item in row.Items)
+                item.IsSelected = item.Id == SelectedSectionId;
+    }
 }
