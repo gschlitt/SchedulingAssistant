@@ -1,4 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -346,9 +349,152 @@ public partial class MainWindow : Window
     private void OnScheduleGridDetach(object? sender, EventArgs e)
     {
         var slot = (DetachablePanel)sender!;
+        var headerContext = CreateScheduleGridHeaderContext();
         DetachSlot(slot, ref _scheduleGridWindow,
             () => new ScheduleGridView { DataContext = Vm.ScheduleGridVm },
-            () => { slot.IsVisible = true; _scheduleGridWindow = null; });
+            () => { slot.IsVisible = true; _scheduleGridWindow = null; },
+            headerContext);
+    }
+
+    private StackPanel CreateScheduleGridHeaderContext()
+    {
+        var stack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        // Academic Unit name
+        var auTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        auTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.AcademicUnitName") { Source = Vm });
+        auTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.AcademicUnitName")
+        {
+            Source = Vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(auTextBlock);
+
+        // Separator (only shown when Academic Unit is available)
+        var auSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        auSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.AcademicUnitName")
+        {
+            Source = Vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(auSeparator);
+
+        // Semester
+        var semesterTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        semesterTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.SemesterLine") { Source = Vm });
+        stack.Children.Add(semesterTextBlock);
+
+        // Subject filter separator (only shown when subject filter is active)
+        var subjectSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        subjectSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
+        {
+            Source = Vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(subjectSeparator);
+
+        // Subject filter
+        var subjectTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        subjectTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.SubjectFilterSummary") { Source = Vm });
+        subjectTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
+        {
+            Source = Vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(subjectTextBlock);
+
+        // Stats separator
+        var statsSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        statsSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
+        {
+            Source = Vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(statsSeparator);
+
+        // Stats
+        var statsTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        statsTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.StatsLine") { Source = Vm });
+        statsTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
+        {
+            Source = Vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(statsTextBlock);
+
+        // Filter separator
+        var filterSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        filterSeparator.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
+        stack.Children.Add(filterSeparator);
+
+        // "Filtered by:" label
+        var filteredByLabel = new TextBlock
+        {
+            Text = "Filtered by:",
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            FontWeight = FontWeight.Bold,
+            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        filteredByLabel.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
+        stack.Children.Add(filteredByLabel);
+
+        // Filter summary
+        var filterTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            FontWeight = FontWeight.Bold,
+            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 400
+        };
+        filterTextBlock.Bind(TextBlock.TextProperty, new Binding("Filter.ActiveSummary") { Source = Vm.ScheduleGridVm });
+        filterTextBlock.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
+        stack.Children.Add(filterTextBlock);
+
+        return stack;
     }
 
     // ── Core detach mechanism ───────────────────────────────────────────────
