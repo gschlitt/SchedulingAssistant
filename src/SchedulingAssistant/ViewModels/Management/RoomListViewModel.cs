@@ -10,6 +10,8 @@ public partial class RoomListViewModel : ViewModelBase
 {
     private readonly RoomRepository _repo;
 
+    public string DisplayName => "Rooms";
+
     [ObservableProperty] private ObservableCollection<Room> _rooms = new();
     [ObservableProperty] private Room? _selectedRoom;
     [ObservableProperty] private RoomEditViewModel? _editVm;

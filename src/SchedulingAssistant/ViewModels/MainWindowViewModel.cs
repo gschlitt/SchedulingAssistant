@@ -123,9 +123,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToInstructors() => OpenFlyout<InstructorListViewModel>("Instructors");
 
     [RelayCommand]
-    private void NavigateToRooms() => OpenFlyout<RoomListViewModel>("Rooms");
-
-    [RelayCommand]
     private void NavigateToSemesters() => OpenFlyout<SemesterListViewModel>("Semesters");
 
     [RelayCommand]

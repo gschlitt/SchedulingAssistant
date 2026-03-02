@@ -63,7 +63,6 @@
                     <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6,8,6" />
                     <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" />
                     <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" />
-                    <Button Content="Rooms" Command="{Binding NavigateToRoomsCommand}" Classes="nav" />
                     <Button Content="Section Properties" Command="{Binding NavigateToSectionPropertiesCommand}" Classes="nav" />
 
                     <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="8,6" />
