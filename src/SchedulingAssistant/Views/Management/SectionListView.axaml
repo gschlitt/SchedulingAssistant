@@ -445,8 +445,9 @@
             </DockPanel>
         </Border>
 
-    <ScrollViewer x:Name="ListScrollViewer" Grid.Row="1">
-        <StackPanel>
+    <ScrollViewer x:Name="ListScrollViewer" Grid.Row="1"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel HorizontalAlignment="Stretch">
 
             <ListBox ItemsSource="{Binding SectionItems}"
                      SelectedItem="{Binding SelectedItem}"

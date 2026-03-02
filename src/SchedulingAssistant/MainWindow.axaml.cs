@@ -348,8 +348,7 @@ public partial class MainWindow : Window
         var slot = (DetachablePanel)sender!;
         DetachSlot(slot, ref _scheduleGridWindow,
             () => new ScheduleGridView { DataContext = Vm.ScheduleGridVm },
-            () => { slot.IsVisible = true; _scheduleGridWindow = null; },
-            slot.HeaderContext);
+            () => { slot.IsVisible = true; _scheduleGridWindow = null; });
     }
 
     // ── Core detach mechanism ───────────────────────────────────────────────

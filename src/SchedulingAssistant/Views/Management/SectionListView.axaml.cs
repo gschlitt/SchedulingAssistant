@@ -1,8 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using SchedulingAssistant.ViewModels.Management;
+using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant.Views.Management;
@@ -25,6 +28,9 @@ public partial class SectionListView : UserControl
         // CommitSectionCode validates uniqueness and, if clean, records the validated
         // course+code snapshot that unlocks the rest of the form (see SectionEditViewModel).
         AddHandler(LostFocusEvent, OnAnyLostFocus, RoutingStrategies.Bubble);
+
+        // Measure content width after layout completes
+        AttachedToVisualTree += (_, _) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
     }
 
     // Triggered whenever any child TextBox loses focus; we filter on the control name.
@@ -43,6 +49,54 @@ public partial class SectionListView : UserControl
             // Wire the ShowError delegate so the VM can show modal notices (e.g. copy
             // conflicts) without taking a hard dependency on Avalonia Window APIs.
             _vm.ShowError = ShowErrorAsync;
+
+            // Subscribe to list changes to update column width
+            _vm.PropertyChanged += OnViewModelPropertyChanged;
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SectionListViewModel.SectionItems))
+        {
+            // Defer measurement until after layout is updated
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
+        }
+    }
+
+    private void UpdateColumnWidth()
+    {
+        // Measure the content's desired width
+        var scrollViewer = this.FindControl<ScrollViewer>("ListScrollViewer");
+        var stackPanel = scrollViewer?.Content as StackPanel;
+
+        if (stackPanel is null) return;
+
+        // Force layout pass to get accurate measurements
+        stackPanel.Measure(new Avalonia.Size(double.PositiveInfinity, double.PositiveInfinity));
+        var desiredWidth = stackPanel.DesiredSize.Width;
+
+        // Add padding for margins and scrollbar space (safety margin)
+        var requiredWidth = Math.Ceiling(desiredWidth) + 12;
+
+        // Find the MainWindow and ThreePanelGrid
+        var mainWindow = TopLevel.GetTopLevel(this) as MainWindow;
+        if (mainWindow is null) return;
+
+        var threePanelGrid = mainWindow.FindControl<Grid>("ThreePanelGrid");
+        if (threePanelGrid is null) return;
+
+        // Only update if not editing (when editing, it's already 500px)
+        var isEditing = _vm?.IsEditing ?? false;
+        if (isEditing) return;
+
+        var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
+
+        // Only update if the required width is significantly larger than current
+        // (use a threshold of 20px to avoid constant small adjustments)
+        if (requiredWidth > currentWidth + 20)
+        {
+            threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
         }
     }
 
