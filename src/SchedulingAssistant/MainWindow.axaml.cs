@@ -308,14 +308,20 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(SectionListViewModel.IsEditing))
             UpdateLeftColumnWidth(Vm.SectionListVm.IsEditing);
+        else if (e.PropertyName == nameof(SectionListViewModel.SelectedItem))
+            Vm.WorkloadPanelVm.SelectedSectionId = Vm.SectionListVm.SelectedItem?.Section.Id;
     }
 
     private void OnScheduleGridVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // When a tile is clicked in the Schedule Grid, sync the selection back to the Section List
+        // When a tile is clicked in the Schedule Grid, sync the selection back to the Section List and Workload View
         if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
         {
             var sectionId = Vm.ScheduleGridVm.SelectedSectionId;
+
+            // Update Workload View selection
+            Vm.WorkloadPanelVm.SelectedSectionId = sectionId;
+
             if (string.IsNullOrEmpty(sectionId))
             {
                 // Clear selection in Section List if grid cleared

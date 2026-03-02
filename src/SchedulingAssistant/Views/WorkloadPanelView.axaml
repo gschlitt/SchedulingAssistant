@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="using:SchedulingAssistant.Converters"
              x:Class="SchedulingAssistant.Views.WorkloadPanelView"
              x:Name="Root"
              x:CompileBindings="False">
@@ -20,6 +21,17 @@
         <Style Selector="Button.chip.release">
             <Setter Property="Background" Value="#EDE8F5" />
             <Setter Property="BorderBrush" Value="#B0A0C8" />
+        </Style>
+        <!-- Selected chip: darker highlight -->
+        <Style Selector="Button.chip.selected">
+            <Setter Property="Background" Value="#5BA3D0" />
+            <Setter Property="BorderBrush" Value="#2E5C7A" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.chip.release.selected">
+            <Setter Property="Background" Value="#9D7EB8" />
+            <Setter Property="BorderBrush" Value="#5D3E7F" />
         </Style>
     </UserControl.Styles>
 
@@ -89,6 +101,7 @@
                                                 <Button Content="{Binding Label}"
                                                         Classes="chip"
                                                         Classes.release="{Binding IsRelease}"
+                                                        Classes.selected="{Binding DataContext.SelectedSectionId, ElementName=Root, Converter={StaticResource IsSelectedConverter}, ConverterParameter={Binding Id}}"
                                                         Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
                                                         CommandParameter="{Binding}"
                                                         Margin="2,1" />

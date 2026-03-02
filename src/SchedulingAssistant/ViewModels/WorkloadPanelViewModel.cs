@@ -19,6 +19,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
     [ObservableProperty] private ObservableCollection<WorkloadRowViewModel> _rows = new();
     [ObservableProperty] private string? _lastErrorMessage;
+    [ObservableProperty] private string? _selectedSectionId;
 
     /// <summary>Fired when the user clicks a work item chip.</summary>
     public event Action<WorkloadItemViewModel>? ItemClicked;
