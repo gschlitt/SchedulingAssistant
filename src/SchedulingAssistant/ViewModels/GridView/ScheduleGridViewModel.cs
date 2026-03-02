@@ -243,9 +243,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             // ── Build display label ────────────────────────────────────────────
             var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
                 ? course.CalendarCode : null;
-            var firstId  = section.InstructorIds.FirstOrDefault();
-            var initials = firstId is not null && instructorLookup.TryGetValue(firstId, out var instr)
-                ? instr.Initials : string.Empty;
+            var initials = string.Join(" ", section.InstructorIds
+                .Where(id => instructorLookup.TryGetValue(id, out _))
+                .Select(id => instructorLookup[id].Initials));
             var label = calCode is not null
                 ? $"{calCode} {section.SectionCode}"
                 : section.SectionCode;
@@ -428,9 +428,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             // Build display label for this section
             var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
                 ? course.CalendarCode : null;
-            var firstId = section.InstructorIds.FirstOrDefault();
-            var initials = firstId is not null && instructorLookup.TryGetValue(firstId, out var instr)
-                ? instr.Initials : string.Empty;
+            var initials = string.Join(" ", section.InstructorIds
+                .Where(id => instructorLookup.TryGetValue(id, out _))
+                .Select(id => instructorLookup[id].Initials));
             var label = calCode is not null
                 ? $"{calCode} {section.SectionCode}"
                 : section.SectionCode;

@@ -16,7 +16,7 @@ public partial class ScheduleGridView : UserControl
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double TilePadding      = 3;
     private const double DayColumnMinWidth = 120;
-    private const double MinTileWidth     = 100;  // Minimum horizontal space per tile to avoid text clipping
+    private const double MinTileWidth     = 115;  // Minimum horizontal space per tile to accommodate multiple instructor initials
 
     // Resources resolved from App.axaml at first render (after resources are loaded).
     private static IBrush Res(string key) =>
