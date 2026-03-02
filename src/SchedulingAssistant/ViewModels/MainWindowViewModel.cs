@@ -137,6 +137,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToBlockPatterns() => OpenFlyout<BlockPatternListViewModel>("Block Patterns");
 
+    [RelayCommand]
+    private void NavigateToAcademicUnits() => OpenFlyout<AcademicUnitListViewModel>("Academic Units");
+
 #if DEBUG
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");

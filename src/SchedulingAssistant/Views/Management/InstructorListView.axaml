@@ -16,7 +16,7 @@
                     <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
 
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" >
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="First Name" Margin="0,0,8,4" />
                             <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding FirstName}" Margin="0,0,8,8" />
 
@@ -26,28 +26,27 @@
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Initials" Margin="0,0,8,4" />
                             <TextBox   Grid.Row="3" Grid.Column="0" Text="{Binding Initials}" Margin="0,0,8,8" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Department" Margin="0,0,0,4" />
-                            <TextBox   Grid.Row="3" Grid.Column="1" Text="{Binding Department}" Margin="0,0,0,8" />
-
-                            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Email" Margin="0,0,0,4" />
-                            <TextBox   Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Email}" Margin="0,0,0,8" />
-
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Staff Type" Margin="0,0,8,4" />
-                            <ComboBox  Grid.Row="7" Grid.Column="0"
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Staff Type" Margin="0,0,0,4" />
+                            <ComboBox  Grid.Row="3" Grid.Column="1"
                                        ItemsSource="{Binding StaffTypes}"
                                        SelectedValueBinding="{Binding Id}"
                                        SelectedValue="{Binding SelectedStaffTypeId}"
                                        DisplayMemberBinding="{Binding Name}"
                                        HorizontalAlignment="Stretch"
-                                       Margin="0,0,8,8" />
+                                       Margin="0,0,0,8" />
                         </Grid>
 
                         <TextBlock Text="{Binding ValidationError}"
                                    Foreground="{StaticResource TextError}" FontSize="12"
                                    IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
+                        <TextBlock Text="Email" />
+                        <TextBox Text="{Binding Email}" />
+
                         <TextBlock Text="Notes" />
                         <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="60" />
+
+                        <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Content="Save" Command="{Binding SaveCommand}" />
@@ -58,21 +57,25 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <DataGrid Grid.Row="1"
-                  ItemsSource="{Binding Instructors}"
-                  SelectedItem="{Binding SelectedInstructor}"
-                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  CanUserSortColumns="True">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Last Name" Binding="{Binding LastName}" Width="*" />
-                <DataGridTextColumn Header="First Name" Binding="{Binding FirstName}" Width="*" />
-                <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="80" />
-                <DataGridTextColumn Header="Department" Binding="{Binding Department}" Width="*" />
-                <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="*" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- List view: checkbox + grid -->
+        <StackPanel Grid.Row="1" Spacing="8" IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <CheckBox Content="Show only active instructors"
+                      IsChecked="{Binding ShowOnlyActive}" />
+
+            <DataGrid ItemsSource="{Binding Instructors}"
+                      SelectedItem="{Binding SelectedInstructor}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Last Name" Binding="{Binding LastName}" Width="*" />
+                    <DataGridTextColumn Header="First Name" Binding="{Binding FirstName}" Width="*" />
+                    <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="80" />
+                    <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="*" />
+                    <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="70" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">

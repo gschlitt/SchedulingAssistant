@@ -78,6 +78,8 @@
                                       Command="{Binding NavigateToBlockLengthsCommand}" />
                             <MenuItem Header="Block Patterns"
                                       Command="{Binding NavigateToBlockPatternsCommand}" />
+                            <MenuItem Header="Academic Units"
+                                      Command="{Binding NavigateToAcademicUnitsCommand}" />
                         </MenuItem>
                     </Menu>
 

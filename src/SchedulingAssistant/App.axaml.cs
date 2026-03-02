@@ -79,6 +79,7 @@ public partial class App : Application
 
         // Services
         services.AddSingleton<SemesterContext>();
+        services.AddTransient<AcademicUnitService>();
 
         // Data layer — DatabaseContext receives the resolved path directly.
         services.AddSingleton<DatabaseContext>(_ => new DatabaseContext(dbPath));
@@ -92,6 +93,7 @@ public partial class App : Application
         services.AddTransient<CourseRepository>();
         services.AddTransient<SectionRepository>();
         services.AddTransient<SectionPropertyRepository>();
+        services.AddTransient<AcademicUnitRepository>();
 
         // ViewModels
         services.AddSingleton<MainWindowViewModel>();
@@ -114,6 +116,7 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SectionPropertiesViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
+        services.AddTransient<AcademicUnitListViewModel>();
 
         // Data export utilities
         services.AddTransient<LegalStartTimesDataExporter>();

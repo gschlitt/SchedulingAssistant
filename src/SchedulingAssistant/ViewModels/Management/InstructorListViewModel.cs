@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -14,6 +15,7 @@ public partial class InstructorListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
     [ObservableProperty] private Instructor? _selectedInstructor;
     [ObservableProperty] private InstructorEditViewModel? _editVm;
+    [ObservableProperty] private bool _showOnlyActive = true;
 
     /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
     public Func<string, Task>? ShowError { get; set; }
@@ -22,11 +24,24 @@ public partial class InstructorListViewModel : ViewModelBase
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
+        ShowOnlyActive = AppSettings.Load().ShowOnlyActiveInstructors;
         Load();
     }
 
-    private void Load() =>
-        Instructors = new ObservableCollection<Instructor>(_repo.GetAll());
+    private void Load()
+    {
+        var all = _repo.GetAll();
+        var filtered = ShowOnlyActive ? all.Where(i => i.IsActive).ToList() : all;
+        Instructors = new ObservableCollection<Instructor>(filtered);
+    }
+
+    partial void OnShowOnlyActiveChanged(bool value)
+    {
+        Load();
+        var settings = AppSettings.Load();
+        settings.ShowOnlyActiveInstructors = value;
+        settings.Save();
+    }
 
     private IReadOnlyList<SectionPropertyValue> GetStaffTypes() =>
         _propertyRepo.GetAll(SectionPropertyTypes.StaffType);
@@ -54,8 +69,8 @@ public partial class InstructorListViewModel : ViewModelBase
             LastName = s.LastName,
             Initials = s.Initials,
             Email = s.Email,
-            Department = s.Department,
             Notes = s.Notes,
+            IsActive = s.IsActive,
             StaffTypeId = s.StaffTypeId,
         };
         EditVm = new InstructorEditViewModel(copy, isNew: false,

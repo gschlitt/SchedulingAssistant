@@ -1,5 +1,5 @@
 
-Section editor needs a subject combobox prior to course selector
+
 
 Would like business objects to have friendly references to the other business objects, in the db. 
 

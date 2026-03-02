@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.AcademicUnitListView"
+             x:DataType="vm:AcademicUnitListViewModel"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="16" MaxWidth="400" HorizontalAlignment="Left">
+
+        <TextBlock Text="Academic Unit" FontSize="20" FontWeight="SemiBold" />
+
+        <!-- Display form (when not editing) -->
+        <StackPanel Spacing="8" IsVisible="{Binding !IsEditing}">
+            <TextBlock Text="Name" />
+            <Border BorderBrush="{StaticResource ControlBorder}" BorderThickness="1"
+                    Padding="8,6" Background="{StaticResource ControlBackground}">
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+            </Border>
+            <Button Content="Edit" Command="{Binding EditCommand}" Width="80" HorizontalAlignment="Left" />
+        </StackPanel>
+
+        <!-- Edit form (when editing) -->
+        <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+            <TextBlock Text="Name" />
+            <TextBox Text="{Binding Name}" />
+
+            <TextBlock Text="{Binding ValidationError}"
+                       Foreground="{StaticResource TextError}" FontSize="12"
+                       IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Save" Command="{Binding SaveCommand}" />
+                <Button Content="Cancel" Command="{Binding CancelCommand}" />
+            </StackPanel>
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

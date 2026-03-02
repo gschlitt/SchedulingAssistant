@@ -17,6 +17,7 @@ public class AppSettings
     public string? DatabasePath { get; set; }
     public bool IncludeSaturday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;
+    public bool ShowOnlyActiveInstructors { get; set; } = true;
 
     /// <summary>Recently opened database paths (most recent first). Max 10 entries.</summary>
     public List<string> RecentDatabases { get; set; } = new();

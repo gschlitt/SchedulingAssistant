@@ -7,7 +7,7 @@ public class Instructor
     public string FirstName { get; set; } = string.Empty;
     public string Initials { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string Department { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
     public string? StaffTypeId { get; set; }
+    public bool IsActive { get; set; } = true;
 }

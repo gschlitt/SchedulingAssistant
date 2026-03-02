@@ -16,8 +16,8 @@ public partial class InstructorEditViewModel : ViewModelBase
     private string _initials = string.Empty;
 
     [ObservableProperty] private string _email = string.Empty;
-    [ObservableProperty] private string _department = string.Empty;
     [ObservableProperty] private string _notes = string.Empty;
+    [ObservableProperty] private bool _isActive = true;
 
     // Staff Type single-select (includes a leading "(none)" sentinel with Id="")
     [ObservableProperty] private ObservableCollection<SectionPropertyValue> _staffTypes = new();
@@ -70,8 +70,8 @@ public partial class InstructorEditViewModel : ViewModelBase
         LastName = instructor.LastName;
         Initials = instructor.Initials;
         Email = instructor.Email;
-        Department = instructor.Department;
         Notes = instructor.Notes;
+        IsActive = instructor.IsActive;
         SelectedStaffTypeId = instructor.StaffTypeId ?? "";
     }
 
@@ -95,8 +95,8 @@ public partial class InstructorEditViewModel : ViewModelBase
         _instructor.LastName = LastName.Trim();
         _instructor.Initials = Initials.Trim();
         _instructor.Email = Email.Trim();
-        _instructor.Department = Department.Trim();
         _instructor.Notes = Notes.Trim();
+        _instructor.IsActive = IsActive;
         _instructor.StaffTypeId = string.IsNullOrEmpty(SelectedStaffTypeId) ? null : SelectedStaffTypeId;
         _onSave(_instructor);
     }

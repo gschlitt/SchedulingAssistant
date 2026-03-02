@@ -6,11 +6,26 @@ namespace SchedulingAssistant.Data;
 public static class SeedData
 {
     /// <summary>
-    /// Called by DatabaseContext after schema initialization. New databases are left empty —
-    /// users create their first academic year explicitly, at which point they are offered
-    /// the persisted configuration if it exists.
+    /// Called by DatabaseContext after schema initialization.
+    /// Ensures there is exactly one Academic Unit in the database.
     /// </summary>
-    public static void EnsureSeeded(SqliteConnection conn) { }
+    public static void EnsureSeeded(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM AcademicUnits";
+        var count = Convert.ToInt32(cmd.ExecuteScalar());
+
+        if (count == 0)
+        {
+            // Create a default Academic Unit
+            cmd.CommandText = "INSERT INTO AcademicUnits (id, data) VALUES ($id, $data)";
+            cmd.Parameters.Clear();
+            var unit = new SchedulingAssistant.Models.AcademicUnit { Name = "Default" };
+            cmd.Parameters.AddWithValue("$id", unit.Id);
+            cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
+            cmd.ExecuteNonQuery();
+        }
+    }
 
     /// <summary>
     /// Import persisted start times data for a specific academic year.

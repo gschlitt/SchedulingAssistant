@@ -92,6 +92,11 @@ public class DatabaseContext : IDisposable
                 name TEXT NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS AcademicUnits (
+                id TEXT PRIMARY KEY,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }
@@ -108,6 +113,15 @@ public class DatabaseContext : IDisposable
             CREATE TABLE IF NOT EXISTS BlockPatterns (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
+            """;
+        cmd.ExecuteNonQuery();
+
+        // AcademicUnits table (if missing)
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS AcademicUnits (
+                id TEXT PRIMARY KEY,
                 data TEXT NOT NULL DEFAULT '{}'
             );
             """;
