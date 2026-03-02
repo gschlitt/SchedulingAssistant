@@ -11,6 +11,7 @@ public partial class FilterItemViewModel : ViewModelBase
     public string Name { get; }
 
     [ObservableProperty] private bool _isSelected;
+    [ObservableProperty] private bool _isOverlayActive;
 
     public FilterItemViewModel(string id, string name)
     {

@@ -43,8 +43,132 @@ public partial class GridFilterViewModel : ViewModelBase
     [ObservableProperty] private bool _isActive;
     [ObservableProperty] private string _activeSummary = string.Empty;
 
+    // ── Overlay state ─────────────────────────────────────────────────────────
+
+    [ObservableProperty] private string? _overlayType = null;      // "Instructor", "Room", "Tag", or null
+    [ObservableProperty] private string? _selectedOverlayId = null;
+    [ObservableProperty] private string _overlaySummary = string.Empty;
+
+    public bool HasOverlay => OverlayType is not null && !string.IsNullOrEmpty(SelectedOverlayId);
+
     /// <summary>Fired whenever any filter selection changes. Wired to ScheduleGridViewModel.Reload.</summary>
     public event Action? FilterChanged;
+
+    // ── Overlay commands ──────────────────────────────────────────────────────
+
+    [RelayCommand]
+    public void SetInstructorOverlay(string? instructorId)
+    {
+        // Toggle off if the same item is already the active overlay
+        if (!string.IsNullOrEmpty(instructorId) && OverlayType == "Instructor" && SelectedOverlayId == instructorId)
+            ClearOverlayCore();
+        else
+        {
+            ClearOverlayCore();
+            if (!string.IsNullOrEmpty(instructorId))
+            {
+                OverlayType = "Instructor";
+                SelectedOverlayId = instructorId;
+            }
+        }
+        RefreshOverlaySummary();
+        RefreshOverlayActiveStates();
+        RefreshDerived();
+        FilterChanged?.Invoke();
+    }
+
+    [RelayCommand]
+    public void SetRoomOverlay(string? roomId)
+    {
+        if (!string.IsNullOrEmpty(roomId) && OverlayType == "Room" && SelectedOverlayId == roomId)
+            ClearOverlayCore();
+        else
+        {
+            ClearOverlayCore();
+            if (!string.IsNullOrEmpty(roomId))
+            {
+                OverlayType = "Room";
+                SelectedOverlayId = roomId;
+            }
+        }
+        RefreshOverlaySummary();
+        RefreshOverlayActiveStates();
+        RefreshDerived();
+        FilterChanged?.Invoke();
+    }
+
+    [RelayCommand]
+    public void SetTagOverlay(string? tagId)
+    {
+        if (!string.IsNullOrEmpty(tagId) && OverlayType == "Tag" && SelectedOverlayId == tagId)
+            ClearOverlayCore();
+        else
+        {
+            ClearOverlayCore();
+            if (!string.IsNullOrEmpty(tagId))
+            {
+                OverlayType = "Tag";
+                SelectedOverlayId = tagId;
+            }
+        }
+        RefreshOverlaySummary();
+        RefreshOverlayActiveStates();
+        RefreshDerived();
+        FilterChanged?.Invoke();
+    }
+
+    [RelayCommand]
+    public void ClearOverlay()
+    {
+        ClearOverlayCore();
+        RefreshOverlaySummary();
+        RefreshOverlayActiveStates();
+        RefreshDerived();
+        FilterChanged?.Invoke();
+    }
+
+    private void ClearOverlayCore()
+    {
+        OverlayType = null;
+        SelectedOverlayId = null;
+    }
+
+    private void RefreshOverlaySummary()
+    {
+        if (!HasOverlay)
+        {
+            OverlaySummary = string.Empty;
+            return;
+        }
+
+        // Resolve ID to name using the relevant collection
+        string? name = null;
+        if (OverlayType == "Instructor")
+            name = Instructors.FirstOrDefault(i => i.Id == SelectedOverlayId)?.Name;
+        else if (OverlayType == "Room")
+            name = Rooms.FirstOrDefault(r => r.Id == SelectedOverlayId)?.Name;
+        else if (OverlayType == "Tag")
+            name = Tags.FirstOrDefault(t => t.Id == SelectedOverlayId)?.Name;
+
+        if (name is null)
+            OverlaySummary = string.Empty;
+        else
+            OverlaySummary = $"Overlay: {OverlayType} {name}";
+    }
+
+    /// <summary>
+    /// Updates the IsOverlayActive flag on each item in Instructors, Rooms, and Tags
+    /// to reflect the current overlay state. Called after any overlay change or rebuild.
+    /// </summary>
+    private void RefreshOverlayActiveStates()
+    {
+        foreach (var item in Instructors)
+            item.IsOverlayActive = OverlayType == "Instructor" && item.Id == SelectedOverlayId;
+        foreach (var item in Rooms)
+            item.IsOverlayActive = OverlayType == "Room" && item.Id == SelectedOverlayId;
+        foreach (var item in Tags)
+            item.IsOverlayActive = OverlayType == "Tag" && item.Id == SelectedOverlayId;
+    }
 
     // ── Populate ──────────────────────────────────────────────────────────────
 
@@ -114,6 +238,8 @@ public partial class GridFilterViewModel : ViewModelBase
             id => levelLookup.TryGetValue(id, out var v) ? v : id);
 
         RefreshDerived();
+        RefreshOverlaySummary();
+        RefreshOverlayActiveStates();  // Restore IsOverlayActive flags after collection rebuild
     }
 
     /// <summary>
@@ -160,12 +286,15 @@ public partial class GridFilterViewModel : ViewModelBase
             foreach (var col in AllCollections())
                 foreach (var item in col.ToList())   // ToList() snapshots so iteration is safe
                     item.IsSelected = false;
+            ClearOverlayCore();
         }
         finally
         {
             FilterChanged = handler;
         }
         RefreshDerived();
+        RefreshOverlaySummary();
+        RefreshOverlayActiveStates();
         FilterChanged?.Invoke();
     }
 
@@ -190,7 +319,7 @@ public partial class GridFilterViewModel : ViewModelBase
         AppendSummaryPart(parts, "Meeting Type",  MeetingTypes);
         AppendSummaryPart(parts, "Level",         Levels);
 
-        IsActive = parts.Count > 0;
+        IsActive = parts.Count > 0 || HasOverlay;
         ActiveSummary = parts.Count > 0
             ? string.Join("  ·  ", parts)
             : "No filters active";

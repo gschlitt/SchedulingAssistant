@@ -31,6 +31,7 @@ public partial class ScheduleGridView : UserControl
     private static IBrush TileFillSelected   => Res("TileFillSelected");
     private static IBrush TileBorder         => Res("TileBorder");
     private static IBrush TileBorderSelected => Res("TileBorderSelected");
+    private static IBrush OverlayFrameBorder => Res("OverlayFrameBorder");
     private static IBrush RuleBrush          => Res("GridRuleLine");
     private static IBrush HourRuleBrush      => Res("GridHourRuleLine");
     private static IBrush HeaderFill         => Res("ChromeBackground");
@@ -333,16 +334,18 @@ public partial class ScheduleGridView : UserControl
                     var entryId = entry.SectionId;
                     var entryRow = new Border
                     {
-                        Background  = entrySelected ? TileFillSelected : Brushes.Transparent,
+                        Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
                         CornerRadius = new CornerRadius(2),
-                        Padding     = new Thickness(1, 0),
-                        Cursor      = entryCursor,
-                        Child       = new TextBlock
+                        Padding      = new Thickness(1, 0),
+                        Cursor       = entryCursor,
+                        Child        = new TextBlock
                         {
                             Text = labelText,
                             FontSize = 11,
                             FontWeight = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground = entrySelected ? TileBorderSelected : Brushes.Black,
+                            Foreground = entrySelected ? TileBorderSelected
+                                       : entry.IsOverlay ? OverlayFrameBorder
+                                       : Brushes.Black,
                             TextTrimming = TextTrimming.CharacterEllipsis,
                         },
                     };
@@ -357,13 +360,14 @@ public partial class ScheduleGridView : UserControl
                     stack.Children.Add(entryRow);
                 }
 
+                bool tileHasOverlay = tile.Entries.Any(e => e.IsOverlay);
                 var border = new Border
                 {
                     Width           = tileW - TilePadding,
                     Height          = adjustedTileH,
                     Background      = TileFill,
-                    BorderBrush     = TileBorder,
-                    BorderThickness = new Thickness(1),
+                    BorderBrush     = tileHasOverlay ? OverlayFrameBorder : TileBorder,
+                    BorderThickness = tileHasOverlay ? new Thickness(2) : new Thickness(1),
                     CornerRadius    = new CornerRadius(3),
                     Padding         = new Thickness(3, 2),
                     ClipToBounds    = false,
