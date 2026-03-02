@@ -180,14 +180,14 @@
                             <!-- Semester -->
                             <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3" />
                             <TextBlock Text="{Binding ScheduleGridVm.SemesterLine}"
-                                       FontSize="12"
+                                       FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center" />
 
                             <!-- Subject filter (only shown when active) -->
                             <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
                                     IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding ScheduleGridVm.SubjectFilterSummary}"
-                                       FontSize="12"
+                                       FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
@@ -195,7 +195,7 @@
                             <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
                                     IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding ScheduleGridVm.StatsLine}"
-                                       FontSize="12"
+                                       FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
@@ -203,13 +203,13 @@
                             <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
                                     IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
                             <TextBlock Text="Filtered by:"
-                                       FontSize="12"
+                                       FontSize="{StaticResource FontSizeLarge}"
                                        FontWeight="Bold"
                                        Foreground="{StaticResource FilterBadgeText}"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
                             <TextBlock Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
-                                       FontSize="12"
+                                       FontSize="{StaticResource FontSizeLarge}"
                                        FontWeight="Bold"
                                        Foreground="{StaticResource FilterBadgeText}"
                                        VerticalAlignment="Center"

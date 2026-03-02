@@ -18,10 +18,14 @@ public partial class ScheduleGridView : UserControl
     private const double DayColumnMinWidth = 120;
     private const double MinTileWidth     = 100;  // Minimum horizontal space per tile to avoid text clipping
 
-    // Brushes resolved from AppColors.axaml at first render (after resources are loaded).
+    // Resources resolved from App.axaml at first render (after resources are loaded).
     private static IBrush Res(string key) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
             ? b : Brushes.Transparent;
+
+    private static double FontSizeFromResource(string key) =>
+        Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
+            ? d : 12;
 
     private static IBrush TileFill           => Res("TileFill");
     private static IBrush TileFillSelected   => Res("TileFillSelected");
@@ -247,7 +251,7 @@ public partial class ScheduleGridView : UserControl
             {
                 Text = data.DayColumns[d].Header,
                 FontWeight = FontWeight.SemiBold,
-                FontSize = 12,
+                FontSize = FontSizeFromResource("FontSizeXLarge"),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Width = dayColWidth,
                 TextAlignment = TextAlignment.Center,

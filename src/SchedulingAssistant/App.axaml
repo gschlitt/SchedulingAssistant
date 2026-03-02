@@ -10,6 +10,14 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://SchedulingAssistant/AppColors.axaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Font sizes -->
+            <x:Double x:Key="FontSizeSmall">10</x:Double>
+            <x:Double x:Key="FontSizeNormal">12</x:Double>
+            <x:Double x:Key="FontSizeMedium">13</x:Double>
+            <x:Double x:Key="FontSizeLarge">16</x:Double>
+            <x:Double x:Key="FontSizeXLarge">18</x:Double>
+
             <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
         </ResourceDictionary>
     </Application.Resources>
