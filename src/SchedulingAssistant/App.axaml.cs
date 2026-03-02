@@ -94,6 +94,7 @@ public partial class App : Application
         services.AddTransient<SectionRepository>();
         services.AddTransient<SectionPropertyRepository>();
         services.AddTransient<AcademicUnitRepository>();
+        services.AddTransient<ReleaseRepository>();
 
         // ViewModels
         services.AddSingleton<MainWindowViewModel>();
@@ -107,7 +108,13 @@ public partial class App : Application
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>()));
         services.AddSingleton<SectionListViewModel>();
-        services.AddTransient<InstructorListViewModel>();
+        services.AddTransient<InstructorListViewModel>(sp => new InstructorListViewModel(
+            sp.GetRequiredService<InstructorRepository>(),
+            sp.GetRequiredService<SectionPropertyRepository>(),
+            sp.GetRequiredService<SectionRepository>(),
+            sp.GetRequiredService<CourseRepository>(),
+            sp.GetRequiredService<ReleaseRepository>(),
+            sp.GetRequiredService<SemesterContext>()));
         services.AddTransient<RoomListViewModel>();
         services.AddTransient<SemesterListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();

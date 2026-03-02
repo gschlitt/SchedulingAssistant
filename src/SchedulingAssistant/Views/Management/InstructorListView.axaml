@@ -5,86 +5,212 @@
              x:DataType="vm:InstructorListViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <!-- Three-column layout: Instructors | Workload | Release Management -->
+    <Grid ColumnDefinitions="*,1,240,1,240" RowDefinitions="Auto,*" Margin="0,0,0,0">
 
-        <TextBlock Grid.Row="0" Text="Instructors" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <!-- HEADER: Instructor name spanning middle and right columns -->
+        <Border Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="3" Background="White" BorderThickness="0,0,0,1" BorderBrush="#CCCCCC" Padding="8,12">
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="Selected:" FontSize="12" Foreground="#666666" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding SelectedInstructor.FirstName}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding SelectedInstructor.LastName}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
 
-        <!-- Edit form -->
-        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
-            <ContentControl.ContentTemplate>
-                <DataTemplate DataType="{x:Type vm:InstructorEditViewModel}">
-                    <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
+        <!-- LEFT COLUMN: Instructor list and edit -->
+        <StackPanel Grid.Row="1" Grid.Column="0" Spacing="8" Margin="0,0,12,0">
+            <TextBlock Text="Instructors" FontSize="14" FontWeight="SemiBold" />
 
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="First Name" Margin="0,0,8,4" />
-                            <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding FirstName}" Margin="0,0,8,8" />
+            <!-- Edit form -->
+            <ContentControl Content="{Binding EditVm}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate DataType="{x:Type vm:InstructorEditViewModel}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" />
 
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Last Name" Margin="0,0,0,4" />
-                            <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding LastName}" Margin="0,0,0,8" />
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="First Name" Margin="0,0,4,2" FontSize="10" />
+                                <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding FirstName}" Margin="0,0,4,6" FontSize="10" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Initials" Margin="0,0,8,4" />
-                            <TextBox   Grid.Row="3" Grid.Column="0" Text="{Binding Initials}" Margin="0,0,8,8" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Last Name" Margin="0,0,0,2" FontSize="10" />
+                                <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding LastName}" Margin="0,0,0,6" FontSize="10" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Staff Type" Margin="0,0,0,4" />
-                            <ComboBox  Grid.Row="3" Grid.Column="1"
-                                       ItemsSource="{Binding StaffTypes}"
-                                       SelectedValueBinding="{Binding Id}"
-                                       SelectedValue="{Binding SelectedStaffTypeId}"
-                                       DisplayMemberBinding="{Binding Name}"
-                                       HorizontalAlignment="Stretch"
-                                       Margin="0,0,0,8" />
-                        </Grid>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Initials" Margin="0,0,4,2" FontSize="10" />
+                                <TextBox   Grid.Row="3" Grid.Column="0" Text="{Binding Initials}" Margin="0,0,4,6" FontSize="10" />
 
-                        <TextBlock Text="{Binding ValidationError}"
-                                   Foreground="{StaticResource TextError}" FontSize="12"
-                                   IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="Staff Type" Margin="0,0,0,2" FontSize="10" />
+                                <ComboBox  Grid.Row="3" Grid.Column="1"
+                                           ItemsSource="{Binding StaffTypes}"
+                                           SelectedValueBinding="{Binding Id}"
+                                           SelectedValue="{Binding SelectedStaffTypeId}"
+                                           DisplayMemberBinding="{Binding Name}"
+                                           HorizontalAlignment="Stretch"
+                                           FontSize="10"
+                                           Margin="0,0,0,6" />
+                            </Grid>
 
-                        <TextBlock Text="Email" />
-                        <TextBox Text="{Binding Email}" />
+                            <TextBlock Text="{Binding ValidationError}"
+                                       Foreground="{StaticResource TextError}" FontSize="9"
+                                       IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                        <TextBlock Text="Notes" />
-                        <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="60" />
+                            <TextBlock Text="Email" FontSize="10" />
+                            <TextBox Text="{Binding Email}" FontSize="10" />
 
-                        <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
+                            <TextBlock Text="Notes" FontSize="10" />
+                            <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="40" FontSize="10" />
 
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Save" Command="{Binding SaveCommand}" />
-                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                            <CheckBox Content="Active" IsChecked="{Binding IsActive}" FontSize="10" />
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Save" Command="{Binding SaveCommand}" FontSize="10" Padding="6,3" />
+                                <Button Content="Cancel" Command="{Binding CancelCommand}" FontSize="10" Padding="6,3" />
+                            </StackPanel>
                         </StackPanel>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
+
+            <!-- List view: checkbox + grid (hidden when editing) -->
+            <StackPanel Spacing="6" IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+                <CheckBox Content="Only active" IsChecked="{Binding ShowOnlyActive}" FontSize="10" />
+
+                <DataGrid ItemsSource="{Binding Instructors}"
+                          SelectedItem="{Binding SelectedInstructor}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserSortColumns="False"
+                          MaxHeight="350"
+                          BorderThickness="1"
+                          BorderBrush="#CCCCCC">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Last" Binding="{Binding LastName}" Width="*" FontSize="10" />
+                        <DataGridTextColumn Header="Init" Binding="{Binding Initials}" Width="50" FontSize="10" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="3">
+                    <Button Content="Add" Command="{Binding AddCommand}" FontSize="10" Padding="5,3" Width="45" />
+                    <Button Content="Edit" Command="{Binding EditCommand}" FontSize="10" Padding="5,3" Width="45"
+                            IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <Button Content="Delete" Command="{Binding DeleteCommand}" FontSize="10" Padding="5,3" Width="55"
+                            IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- MIDDLE COLUMN: Workload display -->
+        <Border Grid.Row="1" Grid.Column="2" Background="White" BorderThickness="1" BorderBrush="#CCCCCC" Padding="8">
+            <StackPanel Spacing="8" DataContext="{Binding WorkloadVm}">
+                <TextBlock Text="Semester Workload" FontSize="14" FontWeight="SemiBold" />
+
+                <!-- Sections heading -->
+                <TextBlock Text="Sections" FontSize="11" FontWeight="SemiBold" Foreground="#333333" Margin="0,4,0,0" />
+
+                <!-- Assigned sections list -->
+                <ItemsControl ItemsSource="{Binding AssignedSections}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*,50" Margin="0,1">
+                                <TextBlock Grid.Column="0" Text="{Binding Display}" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding WorkloadValue, StringFormat=0.##}" FontSize="9" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Info about editing sections -->
+                <TextBlock Text="⚠ Sections are edited in Section Editor" FontSize="8" Foreground="#666666" FontStyle="Italic" TextWrapping="Wrap" Margin="0,2,0,0" />
+
+                <!-- Releases heading -->
+                <TextBlock Text="Releases" FontSize="11" FontWeight="SemiBold" Foreground="#333333" Margin="0,6,0,0" />
+
+                <!-- Releases list -->
+                <ItemsControl ItemsSource="{Binding Releases}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*,50" Margin="0,1">
+                                <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="9" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding WorkloadValue, StringFormat=0.##}" FontSize="9" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Total workload -->
+                <Separator Margin="0,6,0,6" />
+                <Grid ColumnDefinitions="*,50">
+                    <TextBlock Grid.Column="0" Text="Total" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding TotalWorkload, StringFormat=0.##}" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- RIGHT COLUMN: Release management -->
+        <Border Grid.Row="1" Grid.Column="4" Background="White" BorderThickness="1" BorderBrush="#CCCCCC" Padding="8">
+            <StackPanel Spacing="8" DataContext="{Binding ReleaseVm}">
+                <TextBlock Text="Non-instructional Workload" FontSize="14" FontWeight="SemiBold" />
+
+                <!-- Release edit form -->
+                <ContentControl Content="{Binding EditVm}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="{x:Type vm:ReleaseEditViewModel}">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="New Release" FontSize="11" FontWeight="SemiBold" />
+
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Title" FontSize="10" />
+                                    <TextBox Text="{Binding Title}" FontSize="10" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Workload" FontSize="10" />
+                                    <TextBox Text="{Binding WorkloadText}" FontSize="10" />
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding ValidationError}" Foreground="{StaticResource TextError}"
+                                           FontSize="9" IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <Button Content="Save" Command="{Binding SaveCommand}" FontSize="10" Padding="6,3" />
+                                    <Button Content="Cancel" Command="{Binding CancelCommand}" FontSize="10" Padding="6,3" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+
+                <!-- Releases list (hidden when editing) -->
+                <StackPanel Spacing="4" IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+                    <DataGrid ItemsSource="{Binding Releases}"
+                              SelectedItem="{Binding SelectedRelease}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserSortColumns="False"
+                              MaxHeight="280"
+                              BorderThickness="1"
+                              BorderBrush="#CCCCCC">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*" FontSize="10" />
+                            <DataGridTextColumn Header="Workload" Binding="{Binding WorkloadValue, StringFormat=0.##}" Width="70" FontSize="10" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- CRUD buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <Button Content="Add" Command="{Binding AddCommand}" FontSize="10" Padding="5,3" Width="45" />
+                        <Button Content="Edit" Command="{Binding EditCommand}" FontSize="10" Padding="5,3" Width="45"
+                                IsEnabled="{Binding SelectedRelease, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <Button Content="Delete" Command="{Binding DeleteCommand}" FontSize="10" Padding="5,3" Width="55"
+                                IsEnabled="{Binding SelectedRelease, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     </StackPanel>
-                </DataTemplate>
-            </ContentControl.ContentTemplate>
-        </ContentControl>
 
-        <!-- List view: checkbox + grid -->
-        <StackPanel Grid.Row="1" Spacing="8" IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-            <CheckBox Content="Show only active instructors"
-                      IsChecked="{Binding ShowOnlyActive}" />
-
-            <DataGrid ItemsSource="{Binding Instructors}"
-                      SelectedItem="{Binding SelectedInstructor}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      CanUserSortColumns="True">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Last Name" Binding="{Binding LastName}" Width="*" />
-                    <DataGridTextColumn Header="First Name" Binding="{Binding FirstName}" Width="*" />
-                    <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="80" />
-                    <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="*" />
-                    <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="70" />
-                </DataGrid.Columns>
-            </DataGrid>
-        </StackPanel>
-
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
-                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-            <Button Content="Add" Command="{Binding AddCommand}" />
-            <Button Content="Edit" Command="{Binding EditCommand}"
-                    IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <Button Content="Delete" Command="{Binding DeleteCommand}"
-                    IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        </StackPanel>
+                    <!-- Error message -->
+                    <TextBlock Text="{Binding LastErrorMessage}" Foreground="{StaticResource TextError}" FontSize="8"
+                               IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
     </Grid>
 </UserControl>

@@ -97,6 +97,13 @@ public class DatabaseContext : IDisposable
                 id TEXT PRIMARY KEY,
                 data TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS Releases (
+                id TEXT PRIMARY KEY,
+                semester_id TEXT NOT NULL,
+                instructor_id TEXT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }
@@ -122,6 +129,17 @@ public class DatabaseContext : IDisposable
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS AcademicUnits (
                 id TEXT PRIMARY KEY,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
+            """;
+        cmd.ExecuteNonQuery();
+
+        // Releases table (if missing)
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS Releases (
+                id TEXT PRIMARY KEY,
+                semester_id TEXT NOT NULL,
+                instructor_id TEXT NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}'
             );
             """;
