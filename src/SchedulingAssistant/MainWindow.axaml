@@ -19,16 +19,29 @@
                 BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1">
             <DockPanel>
 
-                <!-- Semester picker, right-aligned -->
+                <!-- Academic Year and Semester pickers, right-aligned -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
                             VerticalAlignment="Center" Margin="8,0">
                     <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+
+                    <!-- Academic Year selector -->
+                    <TextBlock Text="Academic Year:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
+                               VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding SemesterContext.AcademicYears}"
+                              SelectedItem="{Binding SemesterContext.SelectedAcademicYear}"
+                              DisplayMemberBinding="{Binding Name}"
+                              MinWidth="120"
+                              VerticalAlignment="Center" />
+
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+
+                    <!-- Semester selector (filtered by selected academic year) -->
                     <TextBlock Text="Semester:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
                                VerticalAlignment="Center" />
-                    <ComboBox ItemsSource="{Binding SemesterContext.SemesterDisplays}"
+                    <ComboBox ItemsSource="{Binding SemesterContext.FilteredSemesters}"
                               SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}"
                               DisplayMemberBinding="{Binding DisplayName}"
-                              MinWidth="220"
+                              MinWidth="120"
                               VerticalAlignment="Center" />
                 </StackPanel>
 
