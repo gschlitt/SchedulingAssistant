@@ -23,6 +23,7 @@
     <SolidColorBrush x:Key="TileFillSelected"      Color="#FFD966" />
     <SolidColorBrush x:Key="TileBorder"            Color="#7AAAD4" />
     <SolidColorBrush x:Key="TileBorderSelected"    Color="#B8860B" />
+    <SolidColorBrush x:Key="OverlayFrameBorder"    Color="#E74C3C" />
 
     <!-- ── Schedule grid canvas chrome ──────────────────────────────── -->
     <SolidColorBrush x:Key="GridRuleLine"          Color="#E0E0E0" />

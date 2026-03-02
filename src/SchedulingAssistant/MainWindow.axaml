@@ -203,13 +203,24 @@
                                        FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center" />
 
-                            <!-- Subject filter (only shown when active) -->
-                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+							<!-- Subject filter (only shown when active) -->
+
+							<Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
                                     IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding ScheduleGridVm.SubjectFilterSummary}"
                                        FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <!-- Overlay (only shown when active) -->
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+                                    IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding ScheduleGridVm.Filter.OverlaySummary}"
+                                       FontSize="{StaticResource FontSizeLarge}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource FilterActiveHeader}"
+                                       FontWeight="SemiBold"
+                                       IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
                             <!-- Stats (always shown) -->
                             <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
