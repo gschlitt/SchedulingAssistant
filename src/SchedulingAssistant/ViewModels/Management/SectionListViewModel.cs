@@ -18,6 +18,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly InstructorRepository _instructorRepo;
     private readonly RoomRepository _roomRepo;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
+    private readonly SemesterRepository _semesterRepo;
     private readonly BlockPatternRepository _blockPatternRepo;
     private readonly SemesterContext _semesterContext;
     private readonly ScheduleGridViewModel _scheduleGridVm;
@@ -100,7 +101,7 @@ public partial class SectionListViewModel : ViewModelBase
 
             var generator = new DebugTestDataGenerator(
                 _sectionRepo, _courseRepo, _instructorRepo, _roomRepo,
-                _legalStartTimeRepo, _blockPatternRepo, _propertyRepo);
+                _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _propertyRepo);
 
             var sections = generator.GenerateSections(count, semesterId);
             App.Logger.LogInfo($"Generator created {sections.Count} sections", "GenerateRandomSections");
@@ -132,6 +133,7 @@ public partial class SectionListViewModel : ViewModelBase
         InstructorRepository instructorRepo,
         RoomRepository roomRepo,
         LegalStartTimeRepository legalStartTimeRepo,
+        SemesterRepository semesterRepo,
         BlockPatternRepository blockPatternRepo,
         SemesterContext semesterContext,
         ScheduleGridViewModel scheduleGridVm,
@@ -142,6 +144,7 @@ public partial class SectionListViewModel : ViewModelBase
         _instructorRepo = instructorRepo;
         _roomRepo = roomRepo;
         _legalStartTimeRepo = legalStartTimeRepo;
+        _semesterRepo = semesterRepo;
         _blockPatternRepo = blockPatternRepo;
         _semesterContext = semesterContext;
         _scheduleGridVm = scheduleGridVm;
@@ -265,10 +268,13 @@ public partial class SectionListViewModel : ViewModelBase
         // Collapse any currently open editor
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
+        var ayId = _semesterContext.SelectedSemesterDisplay?.Semester.AcademicYearId;
+        if (string.IsNullOrEmpty(ayId)) return;
+
         var courses         = _courseRepo.GetAllActive();
         var instructors     = _instructorRepo.GetAll();
         var rooms           = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll();
+        var legalStartTimes = _legalStartTimeRepo.GetAll(ayId);
         var settings        = AppSettings.Load();
         var includeSaturday = settings.IncludeSaturday;
 
@@ -370,10 +376,13 @@ public partial class SectionListViewModel : ViewModelBase
         // Collapse any currently open editor
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
+        var ayId = _semesterContext.SelectedSemesterDisplay?.Semester.AcademicYearId;
+        if (string.IsNullOrEmpty(ayId)) return;
+
         var courses         = _courseRepo.GetAllActive();
         var instructors     = _instructorRepo.GetAll();
         var rooms           = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll();
+        var legalStartTimes = _legalStartTimeRepo.GetAll(ayId);
         var settings        = AppSettings.Load();
         var includeSaturday = settings.IncludeSaturday;
 
@@ -454,10 +463,13 @@ public partial class SectionListViewModel : ViewModelBase
         // Collapse any currently open editor
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
+        var ayId = _semesterContext.SelectedSemesterDisplay?.Semester.AcademicYearId;
+        if (string.IsNullOrEmpty(ayId)) return;
+
         var courses         = _courseRepo.GetAllActive();
         var instructors     = _instructorRepo.GetAll();
         var rooms           = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll();
+        var legalStartTimes = _legalStartTimeRepo.GetAll(ayId);
         var settings        = AppSettings.Load();
         var includeSaturday = settings.IncludeSaturday;
 

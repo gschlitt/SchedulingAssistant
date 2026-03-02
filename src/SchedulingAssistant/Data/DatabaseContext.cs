@@ -56,8 +56,10 @@ public class DatabaseContext : IDisposable
             );
 
             CREATE TABLE IF NOT EXISTS LegalStartTimes (
-                block_length REAL PRIMARY KEY,
-                start_times TEXT NOT NULL
+                academic_year_id TEXT NOT NULL,
+                block_length REAL NOT NULL,
+                start_times TEXT NOT NULL,
+                PRIMARY KEY (academic_year_id, block_length)
             );
 
             CREATE TABLE IF NOT EXISTS Subjects (
@@ -100,6 +102,8 @@ public class DatabaseContext : IDisposable
     private void Migrate()
     {
         using var cmd = Connection.CreateCommand();
+
+        // BlockPatterns table (if missing)
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS BlockPatterns (
                 id TEXT PRIMARY KEY,
@@ -108,6 +112,24 @@ public class DatabaseContext : IDisposable
             );
             """;
         cmd.ExecuteNonQuery();
+
+        // Add academic_year_id column to LegalStartTimes if it doesn't exist
+        // (for databases upgraded from the old schema)
+        cmd.CommandText = """
+            PRAGMA table_info(LegalStartTimes);
+            """;
+        using var reader = cmd.ExecuteReader();
+        var columns = new HashSet<string>();
+        while (reader.Read())
+            columns.Add((string)reader[1]);
+
+        if (!columns.Contains("academic_year_id"))
+        {
+            cmd.CommandText = """
+                ALTER TABLE LegalStartTimes ADD COLUMN academic_year_id TEXT DEFAULT '';
+                """;
+            cmd.ExecuteNonQuery();
+        }
     }
 
     public void Dispose()

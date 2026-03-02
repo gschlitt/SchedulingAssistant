@@ -16,6 +16,7 @@ public class DebugTestDataGenerator
     private readonly InstructorRepository _instructorRepo;
     private readonly RoomRepository _roomRepo;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
+    private readonly SemesterRepository _semesterRepo;
     private readonly BlockPatternRepository _blockPatternRepo;
     private readonly SectionPropertyRepository _propertyRepo;
 
@@ -25,6 +26,7 @@ public class DebugTestDataGenerator
         InstructorRepository instructorRepo,
         RoomRepository roomRepo,
         LegalStartTimeRepository legalStartTimeRepo,
+        SemesterRepository semesterRepo,
         BlockPatternRepository blockPatternRepo,
         SectionPropertyRepository propertyRepo)
     {
@@ -33,6 +35,7 @@ public class DebugTestDataGenerator
         _instructorRepo = instructorRepo;
         _roomRepo = roomRepo;
         _legalStartTimeRepo = legalStartTimeRepo;
+        _semesterRepo = semesterRepo;
         _blockPatternRepo = blockPatternRepo;
         _propertyRepo = propertyRepo;
     }
@@ -48,9 +51,16 @@ public class DebugTestDataGenerator
             return sections;
         }
 
+        var semester = _semesterRepo.GetById(semesterId);
+        if (semester is null)
+        {
+            App.Logger.LogWarning($"Semester {semesterId} not found", "GenerateSections");
+            return sections;
+        }
+
         var instructors = _instructorRepo.GetAll();
         var rooms = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll();
+        var legalStartTimes = _legalStartTimeRepo.GetAll(semester.AcademicYearId);
         var blockPatterns = _blockPatternRepo.GetAll();
         var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
         var campuses = _propertyRepo.GetAll(SectionPropertyTypes.Campus);

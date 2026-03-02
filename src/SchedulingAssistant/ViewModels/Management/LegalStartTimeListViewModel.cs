@@ -13,6 +13,8 @@ public record NullableBlockLengthOption(double? Value, string Label);
 public partial class LegalStartTimeListViewModel : ViewModelBase
 {
     private readonly LegalStartTimeRepository _repo;
+    private readonly SemesterContext _semesterContext;
+    private string? _currentAcademicYearId;
 
     [ObservableProperty] private ObservableCollection<LegalStartTime> _entries = new();
     [ObservableProperty] private LegalStartTime? _selectedEntry;
@@ -67,15 +69,29 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
         }
     }
 
-    public LegalStartTimeListViewModel(LegalStartTimeRepository repo)
+    public LegalStartTimeListViewModel(LegalStartTimeRepository repo, SemesterContext semesterContext)
     {
         _repo = repo;
+        _semesterContext = semesterContext;
+        _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Load();
+    }
+
+    private void OnSemesterContextChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
+        {
+            Load();
+        }
     }
 
     private void Load()
     {
-        Entries = new ObservableCollection<LegalStartTime>(_repo.GetAll());
+        var ayId = _semesterContext.SelectedSemesterDisplay?.Semester.AcademicYearId;
+        if (string.IsNullOrEmpty(ayId)) return;
+
+        _currentAcademicYearId = ayId;
+        Entries = new ObservableCollection<LegalStartTime>(_repo.GetAll(ayId));
         RebuildPreferredOptions();
         _includeSaturday = AppSettings.Load().IncludeSaturday;
         OnPropertyChanged(nameof(IncludeSaturday));
@@ -104,27 +120,28 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
     [RelayCommand]
     private void Add()
     {
+        if (string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var entry = new LegalStartTime();
         EditVm = new LegalStartTimeEditViewModel(entry, isNew: true,
-            onSave: e => { _repo.Insert(e); Load(); EditVm = null; },
+            onSave: e => { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; },
             onCancel: () => EditVm = null);
     }
 
     [RelayCommand]
     private void Edit()
     {
-        if (SelectedEntry is null) return;
+        if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var copy = new LegalStartTime { BlockLength = SelectedEntry.BlockLength, StartTimes = new List<int>(SelectedEntry.StartTimes) };
         EditVm = new LegalStartTimeEditViewModel(copy, isNew: false,
-            onSave: e => { _repo.Update(e); Load(); EditVm = null; },
+            onSave: e => { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; },
             onCancel: () => EditVm = null);
     }
 
     [RelayCommand]
     private void Delete()
     {
-        if (SelectedEntry is null) return;
-        _repo.Delete(SelectedEntry.BlockLength);
+        if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
+        _repo.Delete(_currentAcademicYearId, SelectedEntry.BlockLength);
         Load();
     }
 }

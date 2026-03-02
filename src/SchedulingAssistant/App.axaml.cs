@@ -115,6 +115,9 @@ public partial class App : Application
         services.AddTransient<SectionPropertiesViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
 
+        // Data export utilities
+        services.AddTransient<LegalStartTimesDataExporter>();
+
 #if DEBUG
         services.AddTransient<DebugTestDataGenerator>();
         services.AddTransient<DebugTestDataViewModel>();

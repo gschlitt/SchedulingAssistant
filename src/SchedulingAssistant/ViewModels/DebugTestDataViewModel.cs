@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 
@@ -15,15 +16,24 @@ public partial class DebugTestDataViewModel : ViewModelBase
     private readonly SectionListViewModel _sectionListVm;
     private readonly MainWindowViewModel _mainWindowVm;
     private readonly DebugTestDataGenerator _generator;
+    private readonly AcademicYearRepository _ayRepo;
+    private readonly LegalStartTimeRepository _startTimeRepo;
+    private readonly LegalStartTimesDataExporter _exporter;
 
     public DebugTestDataViewModel(
         SectionListViewModel sectionListVm,
         MainWindowViewModel mainWindowVm,
-        DebugTestDataGenerator generator)
+        DebugTestDataGenerator generator,
+        AcademicYearRepository ayRepo,
+        LegalStartTimeRepository startTimeRepo,
+        LegalStartTimesDataExporter exporter)
     {
         _sectionListVm = sectionListVm;
         _mainWindowVm = mainWindowVm;
         _generator = generator;
+        _ayRepo = ayRepo;
+        _startTimeRepo = startTimeRepo;
+        _exporter = exporter;
     }
 
     [RelayCommand]
@@ -49,6 +59,38 @@ public partial class DebugTestDataViewModel : ViewModelBase
         {
             StatusMessage = $"Error: {ex.Message}";
             App.Logger.LogError(ex, "DebugTestDataViewModel.Generate");
+        }
+        finally
+        {
+            IsGenerating = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ExportStartTimes()
+    {
+        try
+        {
+            IsGenerating = true;
+            StatusMessage = "Exporting legal start times...";
+
+            // Export to embedded resource location
+            var exportPath = LegalStartTimesDataStore.GetEmbeddedDataPath();
+            var directory = Path.GetDirectoryName(exportPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            _exporter.ExportAndSaveAll(exportPath);
+
+            StatusMessage = $"✓ Exported to: {exportPath}\n\nUsers can now import this configuration when opening a new database.";
+            App.Logger.LogInfo($"Exported legal start times to {exportPath}", "ExportStartTimes");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error exporting: {ex.Message}";
+            App.Logger.LogError(ex, "DebugTestDataViewModel.ExportStartTimes");
         }
         finally
         {

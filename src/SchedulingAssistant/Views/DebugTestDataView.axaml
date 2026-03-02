@@ -19,6 +19,11 @@
                     IsEnabled="{Binding !IsGenerating}"
                     MinWidth="120"
                     Padding="16,8" />
+            <Button Content="Export Start Times"
+                    Command="{Binding ExportStartTimesCommand}"
+                    IsEnabled="{Binding !IsGenerating}"
+                    MinWidth="120"
+                    Padding="16,8" />
             <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
                     MinWidth="120"
@@ -31,7 +36,7 @@
                    Foreground="#333333" />
 
         <TextBlock IsVisible="{Binding IsGenerating}"
-                   Text="Generating..."
+                   Text="Processing..."
                    TextAlignment="Center"
                    FontSize="12"
                    Foreground="#666666" />

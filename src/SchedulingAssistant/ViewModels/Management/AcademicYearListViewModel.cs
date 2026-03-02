@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
+using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
@@ -13,6 +15,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
     private readonly SemesterRepository _semRepo;
     private readonly SectionRepository _sectionRepo;
     private readonly SemesterContext _semesterContext;
+    private readonly LegalStartTimeRepository _legalStartTimeRepo;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
@@ -25,16 +28,31 @@ public partial class AcademicYearListViewModel : ViewModelBase
     /// </summary>
     public Func<string, int, Task<bool>>? ConfirmDelete { get; set; }
 
+    /// <summary>
+    /// Set by the view. Called when adding a new academic year to ask if the user
+    /// wants to copy the start-time/block-length setup from the previous year.
+    /// Receives the previous year's name and ID; should return the ID to copy from, or null to skip.
+    /// </summary>
+    public Func<string, string, Task<string?>>? ConfirmCopyStartTimes { get; set; }
+
+    /// <summary>
+    /// Set by the view. Called when creating the first academic year if persisted data exists.
+    /// Receives the persisted data summary; should return true to import, false to skip.
+    /// </summary>
+    public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
+
     public AcademicYearListViewModel(
         AcademicYearRepository ayRepo,
         SemesterRepository semRepo,
         SectionRepository sectionRepo,
-        SemesterContext semesterContext)
+        SemesterContext semesterContext,
+        LegalStartTimeRepository legalStartTimeRepo)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
         _sectionRepo = sectionRepo;
         _semesterContext = semesterContext;
+        _legalStartTimeRepo = legalStartTimeRepo;
         Load();
     }
 
@@ -62,16 +80,51 @@ public partial class AcademicYearListViewModel : ViewModelBase
     {
         var ay = new AcademicYear();
         EditVm = new AcademicYearEditViewModel(ay,
-            onSave: saved =>
+            onSave: null,
+            onCancel: () => EditVm = null,
+            nameExists: name => _ayRepo.ExistsByName(name),
+            onSaveAsync: async saved =>
             {
                 _ayRepo.Insert(saved);
                 CreateDefaultSemesters(saved.Id);
+
+                var allAYs = _ayRepo.GetAll().OrderBy(a => a.Name).ToList();
+                var savedIndex = allAYs.FindIndex(a => a.Id == saved.Id);
+
+                if (savedIndex == 0)
+                {
+                    // This is the first academic year — check if persisted data exists
+                    var persistedSummary = LegalStartTimesDataStore.GetPersistedDataSummary();
+                    if (!string.IsNullOrEmpty(persistedSummary) && ConfirmImportPersistedData is not null)
+                    {
+                        var shouldImport = await ConfirmImportPersistedData(persistedSummary);
+                        if (shouldImport)
+                        {
+                            var dbContext = App.Services.GetRequiredService<DatabaseContext>();
+                            SeedData.ImportPersistedStartTimes(dbContext.Connection, saved.Id);
+                        }
+                    }
+                }
+                else if (savedIndex > 0)
+                {
+                    // Not the first year — ask to copy from previous
+                    var prevAY = allAYs[savedIndex - 1];
+                    string? fromAyId = null;
+                    if (ConfirmCopyStartTimes is not null)
+                    {
+                        fromAyId = await ConfirmCopyStartTimes(prevAY.Name, prevAY.Id);
+                    }
+
+                    if (fromAyId is not null)
+                    {
+                        _legalStartTimeRepo.CopyFromPreviousYear(saved.Id, fromAyId);
+                    }
+                }
+
                 _semesterContext.Reload(_ayRepo, _semRepo);
                 Load();
                 EditVm = null;
-            },
-            onCancel: () => EditVm = null,
-            nameExists: name => _ayRepo.ExistsByName(name));
+            });
     }
 
     [RelayCommand]

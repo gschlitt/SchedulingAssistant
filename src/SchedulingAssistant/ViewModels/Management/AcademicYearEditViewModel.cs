@@ -13,7 +13,8 @@ public partial class AcademicYearEditViewModel : ViewModelBase
     private string _name = string.Empty;
 
     private readonly AcademicYear _academicYear;
-    private readonly Action<AcademicYear> _onSave;
+    private readonly Func<AcademicYear, Task>? _onSaveAsync;
+    private readonly Action<AcademicYear>? _onSave;
     private readonly Action _onCancel;
     private readonly Func<string, bool> _nameExists;
 
@@ -46,23 +47,32 @@ public partial class AcademicYearEditViewModel : ViewModelBase
 
     public AcademicYearEditViewModel(
         AcademicYear academicYear,
-        Action<AcademicYear> onSave,
-        Action onCancel,
-        Func<string, bool> nameExists)
+        Action<AcademicYear>? onSave = null,
+        Action? onCancel = null,
+        Func<string, bool>? nameExists = null,
+        Func<AcademicYear, Task>? onSaveAsync = null)
     {
         _academicYear = academicYear;
         _onSave = onSave;
-        _onCancel = onCancel;
-        _nameExists = nameExists;
+        _onSaveAsync = onSaveAsync;
+        _onCancel = onCancel ?? (() => { });
+        _nameExists = nameExists ?? (_ => false);
 
         Name = academicYear.Name;
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
-    private void Save()
+    private async Task Save()
     {
         _academicYear.Name = Name.Trim();
-        _onSave(_academicYear);
+        if (_onSaveAsync is not null)
+        {
+            await _onSaveAsync(_academicYear);
+        }
+        else if (_onSave is not null)
+        {
+            _onSave(_academicYear);
+        }
     }
 
     [RelayCommand]

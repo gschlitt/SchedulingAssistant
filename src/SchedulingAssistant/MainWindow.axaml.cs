@@ -62,7 +62,6 @@ public partial class MainWindow : Window
         base.OnOpened(e);
         try
         {
-            // Show splash screen for 2 seconds
             var splash = new SplashScreen();
             splash.Show();
 
@@ -144,8 +143,8 @@ public partial class MainWindow : Window
             settings.Save();
             settings.AddRecentDatabase(newDatabasePath);
 
-            // Reinitialize DI and set new data context
-            // DatabaseContext will create the file if it doesn't exist
+            // Reinitialize DI and set new data context.
+            // DatabaseContext will create the file if it doesn't exist.
             var vm = App.InitializeServices(newDatabasePath);
             DataContext = vm;
 

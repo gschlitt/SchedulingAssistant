@@ -1,11 +1,69 @@
+
+Section editor needs a subject combobox prior to course selector
+
 Would like business objects to have friendly references to the other business objects, in the db. 
 
-New section should go after currently selected section, if any, or at bottom of list.
+Glow on section edits.
 
-A section code chooser: user selects prefix "AB, CH..." and app sets up ABN where N is the next available section number, user
-has option to provide their own.
+
+
+Note first of all (line 230 in ScheduleGridViewModel) this hardcodes begin and end times. We should be able to modify this. 
+
+This raises right away the issue of what happens if begin/end/start times/blocklengths change. This could raise problems with copying semesters and revisiting old semesters. 
+Solution? Store begin/end/start times/blocklengths at the academic year level. (We assume they will never change mid-year). When a new year is created, prompt user for a copy of previous year
+or edit a new setup. Work with those for the academic year, and always load the correct batch when opening a year.
+
+When copying a semester from one academic year to a different academic year: check if the setup has changed. If so, scan the semester being copied, and see if any sections 
+depart from the new scenario. Flag these to the user, and ask for preference: don't copy those sections at all? Or drop the times on those sections? 
+
+
+
+
+
+
+
+
 
 Sorting on sections
 
-Bug:grid should always begin at 830. Right now if there's a single section iwht some time, it begins at that ime.
+Should have a departmental name dialog, fix departmental mention under subject.
 
+Window zoom?
+
+Section editor not sizing horizontally, should size to contents
+
+
+
+
+
+Increase font size on banners
+
+Fix the settings under settings
+
+Printing
+
+Right click to add/edit sections?
+
+Menu items in toolbar should flow together when window is made smaller (wpf tool...?)
+
+Banner on sections header to show number of sections
+
+Copy semesters. Delete semesters.
+
+Backup! (to csv and alternate db?)
+
+logic for revions of course properties and deletion of course properties
+logic for revisions and deletions of block lengths.
+
+Handle non-active courses and non-active instructors.
+
+Workload view
+
+What sort of data structure for alternate workload and other committments? How does thisg get persisted?
+
+Scheduling saturday should be in the database, not preferences to different people see the same thing.
+
+
+Longer term: webhosting, error logging to website, multiuser. Multiple windows?
+
+Upload to Banner?

@@ -1,35 +1,43 @@
 using Microsoft.Data.Sqlite;
-using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Data;
 
 public static class SeedData
 {
-    private static readonly LegalStartTime[] Defaults =
-    [
-        new() { BlockLength = 1.5, StartTimes = [510, 600, 690, 780, 870, 960, 1050, 1080] },
-        new() { BlockLength = 2.0, StartTimes = [510, 570, 630, 780, 900, 1050, 1080, 1170, 1200] },
-        new() { BlockLength = 3.0, StartTimes = [510, 690, 870, 960, 1050, 1080, 1110, 1140] },
-        new() { BlockLength = 4.0, StartTimes = [510, 780, 1050, 1080] },
-    ];
+    /// <summary>
+    /// Called by DatabaseContext after schema initialization. New databases are left empty —
+    /// users create their first academic year explicitly, at which point they are offered
+    /// the persisted configuration if it exists.
+    /// </summary>
+    public static void EnsureSeeded(SqliteConnection conn) { }
 
-    public static void EnsureSeeded(SqliteConnection conn)
+    /// <summary>
+    /// Import persisted start times data for a specific academic year.
+    /// Used when a user creates a new academic year and chooses to import from persisted config.
+    /// </summary>
+    public static void ImportPersistedStartTimes(SqliteConnection conn, string academicYearId)
     {
-        using var countCmd = conn.CreateCommand();
-        countCmd.CommandText = "SELECT COUNT(*) FROM LegalStartTimes";
-        var count = (long)countCmd.ExecuteScalar()!;
-        if (count > 0) return;
+        var persistedData = LegalStartTimesDataStore.LoadPersistedData();
+        if (persistedData?.AcademicYears.Count == 0) return;
+        if (persistedData == null) return;
 
         using var insertCmd = conn.CreateCommand();
         insertCmd.CommandText =
-            "INSERT OR IGNORE INTO LegalStartTimes (block_length, start_times) VALUES ($bl, $st)";
+            "INSERT OR IGNORE INTO LegalStartTimes (academic_year_id, block_length, start_times) VALUES ($ay, $bl, $st)";
+        var ayParam = insertCmd.Parameters.Add("$ay", SqliteType.Text);
         var blParam = insertCmd.Parameters.Add("$bl", SqliteType.Real);
         var stParam = insertCmd.Parameters.Add("$st", SqliteType.Text);
 
-        foreach (var entry in Defaults)
+        // Use the first academic year's configuration from the persisted data
+        var firstAyExport = persistedData.AcademicYears.FirstOrDefault();
+        if (firstAyExport == null) return;
+
+        foreach (var blockLength in firstAyExport.BlockLengths)
         {
-            blParam.Value = entry.BlockLength;
-            stParam.Value = JsonHelpers.Serialize(entry.StartTimes);
+            ayParam.Value = academicYearId;
+            blParam.Value = blockLength.BlockLengthHours;
+            stParam.Value = JsonHelpers.Serialize(blockLength.StartTimesMinutes);
             insertCmd.ExecuteNonQuery();
         }
     }
