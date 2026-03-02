@@ -173,13 +173,20 @@
                 <!-- Right column: Schedule Grid (permanent, detachable) -->
                 <controls:DetachablePanel Grid.Column="2"
                                           x:Name="ScheduleGridPanel"
-                                          Header="Schedule View"
+                                          Header="Schedule"
                                           DetachRequested="OnScheduleGridDetach">
                     <controls:DetachablePanel.HeaderContext>
                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
 
+                            <!-- Academic Unit (only shown when available) -->
+                            <TextBlock Text="{Binding ScheduleGridVm.AcademicUnitName}"
+                                       FontSize="{StaticResource FontSizeLarge}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
                             <!-- Semester -->
-                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3" />
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+                                    IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding ScheduleGridVm.SemesterLine}"
                                        FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center" />

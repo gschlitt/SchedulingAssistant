@@ -5,6 +5,7 @@ using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 using System.ComponentModel;
+using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.GridView;
 
@@ -17,6 +18,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SubjectRepository _subjectRepo;
     private readonly SectionPropertyRepository _propertyRepo;
     private readonly SemesterContext _semesterContext;
+    private readonly AcademicUnitService _academicUnitService;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
     [ObservableProperty] private string? _selectedSectionId;
@@ -31,6 +33,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>e.g. "12 sections · 28 meetings shown"</summary>
     [ObservableProperty] private string _statsLine = string.Empty;
 
+    /// <summary>Academic Unit name, e.g. "College of Arts & Sciences"</summary>
+    [ObservableProperty] private string _academicUnitName = string.Empty;
+
     /// <summary>Filter state. Exposed so the view can bind to it.</summary>
     public GridFilterViewModel Filter { get; } = new();
 
@@ -41,7 +46,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         RoomRepository roomRepo,
         SubjectRepository subjectRepo,
         SectionPropertyRepository propertyRepo,
-        SemesterContext semesterContext)
+        SemesterContext semesterContext,
+        AcademicUnitService academicUnitService)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -50,10 +56,19 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _subjectRepo = subjectRepo;
         _propertyRepo = propertyRepo;
         _semesterContext = semesterContext;
+        _academicUnitService = academicUnitService;
+
+        LoadAcademicUnitName();
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Filter.FilterChanged += Reload;
         Reload();
+    }
+
+    private void LoadAcademicUnitName()
+    {
+        var unit = _academicUnitService.GetUnit();
+        AcademicUnitName = unit?.Name ?? string.Empty;
     }
 
     private void OnSemesterContextChanged(object? sender, PropertyChangedEventArgs e)

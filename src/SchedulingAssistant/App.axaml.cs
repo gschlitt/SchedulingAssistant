@@ -104,7 +104,8 @@ public partial class App : Application
             sp.GetRequiredService<RoomRepository>(),
             sp.GetRequiredService<SubjectRepository>(),
             sp.GetRequiredService<SectionPropertyRepository>(),
-            sp.GetRequiredService<SemesterContext>()));
+            sp.GetRequiredService<SemesterContext>(),
+            sp.GetRequiredService<AcademicUnitService>()));
         services.AddSingleton<SectionListViewModel>();
         services.AddTransient<InstructorListViewModel>();
         services.AddTransient<RoomListViewModel>();
