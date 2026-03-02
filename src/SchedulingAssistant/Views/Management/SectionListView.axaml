@@ -40,34 +40,42 @@
                     <Button Content="Cancel" Command="{Binding CancelCommand}" FontSize="10" Padding="6,2" />
                 </StackPanel>
 
-                <!-- Course + Abbreviation (new only) + Section Code + Section Type side by side -->
-                <Grid ColumnDefinitions="110,Auto,80,90" Margin="0,0,0,0">
+                <!-- Subject + Course Number + Campus + Section Code + Section Type side by side -->
+                <Grid ColumnDefinitions="100,80,Auto,80,90" Margin="0,0,0,0">
+                    <!-- Subject dropdown -->
                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                        <TextBlock Text="Course" FontSize="10" Foreground="{StaticResource TextLabel}" />
-                        <ComboBox ItemsSource="{Binding Courses}"
-                                  SelectedValueBinding="{Binding Id}"
-                                  SelectedValue="{Binding SelectedCourseId}"
+                        <TextBlock Text="Subject" FontSize="10" Foreground="{StaticResource TextLabel}" />
+                        <ComboBox ItemsSource="{Binding Subjects}"
+                                  SelectedItem="{Binding SelectedSubject}"
+                                  DisplayMemberBinding="{Binding CalendarAbbreviation}"
                                   FontSize="11"
-                                  HorizontalAlignment="Stretch">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type models:Course}">
-                                    <TextBlock Text="{Binding CalendarCode}" FontSize="11" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                                  HorizontalAlignment="Stretch" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="0,0,4,0"
-                                IsVisible="{Binding IsNew}"
+
+                    <!-- Course Number dropdown (filtered by subject) -->
+                    <StackPanel Grid.Column="1" Margin="0,0,4,0">
+                        <TextBlock Text="Course #" FontSize="10" Foreground="{StaticResource TextLabel}" />
+                        <ComboBox ItemsSource="{Binding CourseNumbers}"
+                                  SelectedItem="{Binding SelectedCourseNumber}"
+                                  FontSize="11"
+                                  HorizontalAlignment="Stretch"
+                                  IsEnabled="{Binding HasAvailableCourseNumbers}" />
+                    </StackPanel>
+
+                    <!-- Campus dropdown (available for both new and edit) -->
+                    <StackPanel Grid.Column="2" Margin="0,0,4,0"
                                 IsEnabled="{Binding IsSectionCodeEnabled}">
-                        <TextBlock Text="Abbrev" FontSize="10" Foreground="{StaticResource TextLabel}" />
-                        <ComboBox ItemsSource="{Binding AbbreviationOptions}"
+                        <TextBlock Text="Campus" FontSize="10" Foreground="{StaticResource TextLabel}" />
+                        <ComboBox ItemsSource="{Binding CampusOptions}"
                                   SelectedValueBinding="{Binding Value}"
-                                  SelectedValue="{Binding SelectedAbbreviation}"
+                                  SelectedValue="{Binding SelectedCampus}"
                                   DisplayMemberBinding="{Binding Label}"
                                   FontSize="11" MinWidth="70"
                                   HorizontalAlignment="Stretch" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="0,0,4,0">
+
+                    <!-- Section Code -->
+                    <StackPanel Grid.Column="3" Margin="0,0,4,0">
                         <TextBlock Text="Section Code" FontSize="10" Foreground="{StaticResource TextLabel}" />
                         <TextBox x:Name="SectionCodeBox"
                                  Text="{Binding SectionCode}"
@@ -77,7 +85,9 @@
                                    IsVisible="{Binding SectionCodeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                    FontSize="9" Foreground="{StaticResource TextValidationError}" TextWrapping="Wrap" Margin="0,1,0,0" />
                     </StackPanel>
-                    <StackPanel Grid.Column="3" IsEnabled="{Binding AreOtherFieldsEnabled}">
+
+                    <!-- Section Type -->
+                    <StackPanel Grid.Column="4" IsEnabled="{Binding AreOtherFieldsEnabled}">
                         <TextBlock Text="Section Type" FontSize="10" Foreground="{StaticResource TextLabel}" />
                         <ComboBox ItemsSource="{Binding SectionTypes}"
                                   SelectedValueBinding="{Binding Id}"
@@ -395,19 +405,6 @@
                         </Panel>
                     </StackPanel>
 
-                </Grid>
-
-                <!-- Campus (left half) -->
-                <Grid ColumnDefinitions="*,4,*" Margin="0,4,0,0">
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Campus" FontSize="10" Foreground="{StaticResource TextLabel}" Margin="0,0,0,1" />
-                        <ComboBox ItemsSource="{Binding Campuses}"
-                                  SelectedValueBinding="{Binding Id}"
-                                  SelectedValue="{Binding SelectedCampusId}"
-                                  DisplayMemberBinding="{Binding Name}"
-                                  FontSize="11"
-                                  HorizontalAlignment="Stretch" />
-                    </StackPanel>
                 </Grid>
 
                 <!-- Notes (at bottom) -->

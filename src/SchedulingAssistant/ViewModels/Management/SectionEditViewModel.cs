@@ -19,14 +19,31 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<SectionMeetingViewModel> _meetings = new();
     [ObservableProperty] private ObservableCollection<Course> _courses;
 
-    // Campus abbreviation auto-suggest (new sections only)
-    [ObservableProperty] private ObservableCollection<CampusAbbreviationOption> _abbreviationOptions = new();
-    [ObservableProperty] private string? _selectedAbbreviation;
+    // Subject and filtered course numbers
+    [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
+    [NotifyPropertyChangedFor(nameof(HasAvailableCourseNumbers))]
+    private Subject? _selectedSubject;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
+    [NotifyPropertyChangedFor(nameof(HasAvailableCourseNumbers))]
+    private ObservableCollection<string> _courseNumbers = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
+    private string? _selectedCourseNumber;
+
+    // Campus abbreviation auto-suggest (new sections only; renamed from Abbreviation)
+    [ObservableProperty] private ObservableCollection<CampusAbbreviationOption> _campusOptions = new();
+    [ObservableProperty] private string? _selectedCampus;
 
     // ── Step-gate state ──────────────────────────────────────────────────────
 
     /// <summary>True once a course is selected; enables the Section Code field.</summary>
     public bool IsSectionCodeEnabled => !string.IsNullOrEmpty(SelectedCourseId);
+
+    /// <summary>True when a subject is selected and course numbers are available to choose from.</summary>
+    public bool HasAvailableCourseNumbers => SelectedSubject is not null && CourseNumbers.Count > 0;
 
     /// <summary>
     /// True when course is selected, section code is non-empty, and the code has been
@@ -121,6 +138,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly IReadOnlyList<Room> _rooms;
     private readonly bool _includeSaturday;
     private readonly double? _defaultBlockLength;
+    private readonly IReadOnlyList<Subject> _allSubjects;
 
     // ── Block-pattern shortcuts ───────────────────────────────────────────────
 
@@ -181,12 +199,52 @@ public partial class SectionEditViewModel : ViewModelBase
     partial void OnSelectedCourseIdChanged(string? value)
     {
         SectionCodeError = null;
-        SelectedAbbreviation = "";
+        SelectedCampus = "";
         OnPropertyChanged(nameof(IsSectionCodeEnabled));
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
     }
 
-    partial void OnSelectedAbbreviationChanged(string? value)
+    partial void OnSelectedSubjectChanged(Subject? value)
+    {
+        // Update course numbers when subject changes
+        SelectedCourseNumber = null;
+        if (value is not null)
+        {
+            var courseNumbers = Courses
+                .Where(c => c.SubjectId == value.Id)
+                .Select(c => c.CalendarCode.Substring(value.CalendarAbbreviation.Length))
+                .OrderBy(n => n)
+                .Distinct()
+                .ToList();
+            CourseNumbers = new ObservableCollection<string>(courseNumbers);
+        }
+        else
+        {
+            CourseNumbers = new ObservableCollection<string>();
+        }
+        OnPropertyChanged(nameof(IsSectionCodeEnabled));
+    }
+
+    partial void OnSelectedCourseNumberChanged(string? value)
+    {
+        // Update SelectedCourseId based on selected subject and course number
+        if (!string.IsNullOrEmpty(value) && SelectedSubject is not null)
+        {
+            var calendarCode = $"{SelectedSubject.CalendarAbbreviation}{value}";
+            var course = Courses.FirstOrDefault(c =>
+                c.CalendarCode.Equals(calendarCode, StringComparison.OrdinalIgnoreCase));
+            if (course is not null)
+            {
+                SelectedCourseId = course.Id;
+            }
+        }
+        else
+        {
+            SelectedCourseId = null;
+        }
+    }
+
+    partial void OnSelectedCampusChanged(string? value)
     {
         if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(SelectedCourseId))
             return;
@@ -262,6 +320,7 @@ public partial class SectionEditViewModel : ViewModelBase
         Section section,
         bool isNew,
         IReadOnlyList<Course> courses,
+        IReadOnlyList<Subject> subjects,
         IReadOnlyList<Instructor> instructors,
         IReadOnlyList<Room> rooms,
         IReadOnlyList<LegalStartTime> legalStartTimes,
@@ -301,6 +360,32 @@ public partial class SectionEditViewModel : ViewModelBase
                 _abbreviationToCampusId[c.SectionCodeAbbreviation] = c.Id;
 
         Courses = new ObservableCollection<Course>(courses);
+        _allSubjects = subjects;
+        Subjects = new ObservableCollection<Subject>(subjects);
+
+        // Initialize subject and course number (for both editing and copying)
+        if (!string.IsNullOrEmpty(section.CourseId))
+        {
+            // Editing or copying: extract from existing course
+            var existingCourse = courses.FirstOrDefault(c => c.Id == section.CourseId);
+            if (existingCourse is not null)
+            {
+                var subject = subjects.FirstOrDefault(s => s.Id == existingCourse.SubjectId);
+                if (subject is not null)
+                {
+                    SelectedSubject = subject;
+                    // Extract course number from calendar code
+                    var courseNumber = existingCourse.CalendarCode.Substring(subject.CalendarAbbreviation.Length);
+                    // OnSelectedSubjectChanged will populate CourseNumbers, so we can now set the selection
+                    SelectedCourseNumber = courseNumber;
+                }
+            }
+        }
+        else if (subjects.Count > 0)
+        {
+            // New section: pre-select first subject to populate course numbers
+            SelectedSubject = subjects[0];
+        }
 
         SelectedCourseId = section.CourseId;
         SectionCode      = section.SectionCode;
@@ -316,15 +401,24 @@ public partial class SectionEditViewModel : ViewModelBase
             _validatedSectionCode = section.SectionCode;
         }
 
-        // Campus abbreviation options (new sections only)
-        if (isNew)
+        // Campus options (available for both new and edit sections)
+        var campusList = new List<CampusAbbreviationOption> { new("", "(none)") };
+        foreach (var c in campuses)
+            if (!string.IsNullOrEmpty(c.SectionCodeAbbreviation))
+                campusList.Add(new(c.SectionCodeAbbreviation, $"{c.SectionCodeAbbreviation} — {c.Name}"));
+        CampusOptions = new ObservableCollection<CampusAbbreviationOption>(campusList);
+
+        // For new sections with no campus (true new), default to no selection.
+        // For copies or edit sections, look up the abbreviation from the selected campus ID.
+        if (isNew && string.IsNullOrEmpty(section.CampusId))
         {
-            var abbrevList = new List<CampusAbbreviationOption> { new("", "(none)") };
-            foreach (var c in campuses)
-                if (!string.IsNullOrEmpty(c.SectionCodeAbbreviation))
-                    abbrevList.Add(new(c.SectionCodeAbbreviation, $"{c.SectionCodeAbbreviation} — {c.Name}"));
-            AbbreviationOptions = new ObservableCollection<CampusAbbreviationOption>(abbrevList);
-            SelectedAbbreviation = "";
+            SelectedCampus = "";
+        }
+        else if (!string.IsNullOrEmpty(section.CampusId))
+        {
+            var selectedCampusInfo = campuses.FirstOrDefault(c => c.Id == section.CampusId);
+            if (selectedCampusInfo is not null && !string.IsNullOrEmpty(selectedCampusInfo.SectionCodeAbbreviation))
+                SelectedCampus = selectedCampusInfo.SectionCodeAbbreviation;
         }
 
         // Instructor multi-select with workload
@@ -338,7 +432,6 @@ public partial class SectionEditViewModel : ViewModelBase
 
         // Build single-select lists with a leading "(none)" sentinel
         SectionTypes = BuildSentinelList(sectionTypes);
-        Campuses     = BuildSentinelList(campuses);
 
         SelectedSectionTypeId = section.SectionTypeId ?? "";
         SelectedCampusId      = section.CampusId      ?? "";

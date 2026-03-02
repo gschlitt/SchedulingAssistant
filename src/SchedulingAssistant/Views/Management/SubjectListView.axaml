@@ -16,14 +16,15 @@
                     <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
 
-                        <TextBlock Text="Name" />
+                        <TextBlock Text="Name (e.g. Mathematics)" />
                         <TextBox Text="{Binding Name}" />
+
+                        <TextBlock Text="Calendar Abbreviation (e.g. MATH)" />
+                        <TextBox Text="{Binding CalendarAbbreviation}" />
+
                         <TextBlock Text="{Binding ValidationError}"
                                    Foreground="{StaticResource TextError}" FontSize="12"
                                    IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-
-                        <TextBlock Text="Department" />
-                        <TextBox Text="{Binding Department}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Content="Save" Command="{Binding SaveCommand}" />
@@ -43,7 +44,7 @@
                   CanUserSortColumns="True">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                <DataGridTextColumn Header="Department" Binding="{Binding Department}" Width="*" />
+                <DataGridTextColumn Header="Calendar Abbreviation" Binding="{Binding CalendarAbbreviation}" Width="150" />
             </DataGrid.Columns>
         </DataGrid>
 

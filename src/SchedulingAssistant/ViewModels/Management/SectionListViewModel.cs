@@ -15,6 +15,7 @@ public partial class SectionListViewModel : ViewModelBase
 {
     private readonly SectionRepository _sectionRepo;
     private readonly CourseRepository _courseRepo;
+    private readonly SubjectRepository _subjectRepo;
     private readonly InstructorRepository _instructorRepo;
     private readonly RoomRepository _roomRepo;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
@@ -130,6 +131,7 @@ public partial class SectionListViewModel : ViewModelBase
     public SectionListViewModel(
         SectionRepository sectionRepo,
         CourseRepository courseRepo,
+        SubjectRepository subjectRepo,
         InstructorRepository instructorRepo,
         RoomRepository roomRepo,
         LegalStartTimeRepository legalStartTimeRepo,
@@ -141,6 +143,7 @@ public partial class SectionListViewModel : ViewModelBase
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
+        _subjectRepo = subjectRepo;
         _instructorRepo = instructorRepo;
         _roomRepo = roomRepo;
         _legalStartTimeRepo = legalStartTimeRepo;
@@ -304,9 +307,10 @@ public partial class SectionListViewModel : ViewModelBase
         SectionItems.Insert(insertIndex, placeholder);
 
         var semesterId = _semesterContext.SelectedSemesterDisplay!.Semester.Id;
+        var subjects = _subjectRepo.GetAll();
         var editVm = new SectionEditViewModel(
             section, isNew: true,
-            courses, instructors, rooms, legalStartTimes, includeSaturday,
+            courses, subjects, instructors, rooms, legalStartTimes, includeSaturday,
             sectionTypes, meetingTypes, campuses,
             allTags, allResources, allReserves,
             isSectionCodeDuplicate: (courseId, code) =>
@@ -394,12 +398,13 @@ public partial class SectionListViewModel : ViewModelBase
         var allReserves   = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
 
         var semesterId = _semesterContext.SelectedSemesterDisplay!.Semester.Id;
+        var subjects = _subjectRepo.GetAll();
         var editVm = new SectionEditViewModel(
             section, isNew,
-            courses, instructors, rooms, legalStartTimes, includeSaturday,
+            courses, subjects, instructors, rooms, legalStartTimes, includeSaturday,
             sectionTypes, meetingTypes, campuses,
             allTags, allResources, allReserves,
-            isSectionCodeDuplicate: (courseId, code) =>
+            (courseId, code) =>
                 _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, isNew ? null : section.Id),
             onSave: s =>
             {
@@ -449,6 +454,7 @@ public partial class SectionListViewModel : ViewModelBase
             SemesterId = semester.Id,
             CourseId   = source.CourseId,
             SectionCode = newCode ?? string.Empty,
+            CampusId   = source.CampusId,  // Copy campus from source section
         };
 
         // Insert the new section immediately after the selected one in the list.
@@ -499,9 +505,10 @@ public partial class SectionListViewModel : ViewModelBase
         SectionItems.Insert(insertIndex, placeholder);
 
         var semesterId = _semesterContext.SelectedSemesterDisplay!.Semester.Id;
+        var subjects = _subjectRepo.GetAll();
         var editVm = new SectionEditViewModel(
             section, isNew: true,
-            courses, instructors, rooms, legalStartTimes, includeSaturday,
+            courses, subjects, instructors, rooms, legalStartTimes, includeSaturday,
             sectionTypes, meetingTypes, campuses,
             allTags, allResources, allReserves,
             isSectionCodeDuplicate: (courseId, code) =>
@@ -539,14 +546,14 @@ public partial class SectionListViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CollapseAll()
+    public void CollapseAll()
     {
         foreach (var item in SectionItems)
             item.IsCollapsed = true;
     }
 
     [RelayCommand]
-    private void ExpandAll()
+    public void ExpandAll()
     {
         foreach (var item in SectionItems)
             item.IsCollapsed = false;

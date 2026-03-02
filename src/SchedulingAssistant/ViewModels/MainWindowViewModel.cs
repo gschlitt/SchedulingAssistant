@@ -117,9 +117,6 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NavigateToSubjects() => OpenFlyout<SubjectListViewModel>("Subjects");
-
-    [RelayCommand]
     private void NavigateToCourses() => OpenFlyout<CourseListViewModel>("Courses");
 
     [RelayCommand]

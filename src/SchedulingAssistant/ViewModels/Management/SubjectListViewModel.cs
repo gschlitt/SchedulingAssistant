@@ -36,7 +36,8 @@ public partial class SubjectListViewModel : ViewModelBase
         EditVm = new SubjectEditViewModel(subject, isNew: true,
             onSave: s => { _repo.Insert(s); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
-            nameExists: name => _repo.ExistsByName(name));
+            nameExists: name => _repo.ExistsByName(name),
+            abbreviationExists: abbr => _repo.ExistsByAbbreviation(abbr));
     }
 
     [RelayCommand]
@@ -47,12 +48,13 @@ public partial class SubjectListViewModel : ViewModelBase
         {
             Id = SelectedSubject.Id,
             Name = SelectedSubject.Name,
-            Department = SelectedSubject.Department
+            CalendarAbbreviation = SelectedSubject.CalendarAbbreviation
         };
         EditVm = new SubjectEditViewModel(clone, isNew: false,
             onSave: s => { _repo.Update(s); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
-            nameExists: name => _repo.ExistsByName(name, excludeId: clone.Id));
+            nameExists: name => _repo.ExistsByName(name, excludeId: clone.Id),
+            abbreviationExists: abbr => _repo.ExistsByAbbreviation(abbr, excludeId: clone.Id));
     }
 
     [RelayCommand]

@@ -61,7 +61,6 @@
                                VerticalAlignment="Center"
                                Margin="4,0,8,0" />
                     <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6,8,6" />
-                    <Button Content="Subjects" Command="{Binding NavigateToSubjectsCommand}" Classes="nav" />
                     <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" />
                     <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" />
                     <Button Content="Rooms" Command="{Binding NavigateToRoomsCommand}" Classes="nav" />

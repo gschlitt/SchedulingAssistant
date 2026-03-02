@@ -13,6 +13,7 @@ public partial class CourseListViewModel : ViewModelBase
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
+    [ObservableProperty] private SubjectEditViewModel? _subjectEditVm;
     [ObservableProperty] private ObservableCollection<Course> _courses = new();
     [ObservableProperty] private Course? _selectedCourse;
     [ObservableProperty] private CourseEditViewModel? _editVm;
@@ -28,30 +29,28 @@ public partial class CourseListViewModel : ViewModelBase
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
         if (Subjects.Count > 0)
             SelectedSubject = Subjects[0];
+
+        LoadCourses();
     }
 
-    partial void OnSelectedSubjectChanged(Subject? value) => LoadCourses();
+    public bool HasSubjects => Subjects.Count > 0;
 
     private void LoadCourses()
     {
-        if (SelectedSubject is null)
-        {
-            Courses = new ObservableCollection<Course>();
-            return;
-        }
-        Courses = new ObservableCollection<Course>(_courseRepo.GetBySubject(SelectedSubject.Id));
+        // Load all courses (not filtered by subject anymore)
+        Courses = new ObservableCollection<Course>(_courseRepo.GetAll());
         SelectedCourse = null;
     }
 
     [RelayCommand]
     private void Add()
     {
-        if (SelectedSubject is null) return;
-        var course = new Course { SubjectId = SelectedSubject.Id };
+        var course = new Course();
         EditVm = new CourseEditViewModel(course, isNew: true,
             onSave: c => { _courseRepo.Insert(c); LoadCourses(); EditVm = null; },
             onCancel: () => EditVm = null,
-            codeExists: code => _courseRepo.ExistsByCalendarCode(code));
+            codeExists: code => _courseRepo.ExistsByCalendarCode(code),
+            subjects: Subjects);
     }
 
     [RelayCommand]
@@ -70,7 +69,8 @@ public partial class CourseListViewModel : ViewModelBase
         EditVm = new CourseEditViewModel(clone, isNew: false,
             onSave: c => { _courseRepo.Update(c); LoadCourses(); EditVm = null; },
             onCancel: () => EditVm = null,
-            codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id));
+            codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id),
+            subjects: Subjects);
     }
 
     [RelayCommand]
@@ -86,6 +86,62 @@ public partial class CourseListViewModel : ViewModelBase
         }
 
         _courseRepo.Delete(SelectedCourse.Id);
+        LoadCourses();
+    }
+
+    // ── Subject management ──────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void AddSubject()
+    {
+        var subject = new Subject();
+        SubjectEditVm = new SubjectEditViewModel(subject, isNew: true,
+            onSave: s => { _subjectRepo.Insert(s); LoadSubjects(); SubjectEditVm = null; },
+            onCancel: () => SubjectEditVm = null,
+            nameExists: name => _subjectRepo.ExistsByName(name),
+            abbreviationExists: abbr => _subjectRepo.ExistsByAbbreviation(abbr));
+    }
+
+    [RelayCommand]
+    private void EditSubject()
+    {
+        if (SelectedSubject is null) return;
+        var clone = new Subject
+        {
+            Id = SelectedSubject.Id,
+            Name = SelectedSubject.Name,
+            CalendarAbbreviation = SelectedSubject.CalendarAbbreviation
+        };
+        SubjectEditVm = new SubjectEditViewModel(clone, isNew: false,
+            onSave: s => { _subjectRepo.Update(s); LoadSubjects(); SubjectEditVm = null; },
+            onCancel: () => SubjectEditVm = null,
+            nameExists: name => _subjectRepo.ExistsByName(name, excludeId: clone.Id),
+            abbreviationExists: abbr => _subjectRepo.ExistsByAbbreviation(abbr, excludeId: clone.Id));
+    }
+
+    [RelayCommand]
+    private async Task DeleteSubject()
+    {
+        if (SelectedSubject is null) return;
+
+        if (_subjectRepo.HasCourses(SelectedSubject.Id))
+        {
+            if (ShowError is not null)
+                await ShowError($"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.");
+            return;
+        }
+
+        _subjectRepo.Delete(SelectedSubject.Id);
+        LoadSubjects();
+    }
+
+    private void LoadSubjects()
+    {
+        Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
+        if (Subjects.Count > 0)
+            SelectedSubject = Subjects[0];
+        else
+            SelectedSubject = null;
         LoadCourses();
     }
 }

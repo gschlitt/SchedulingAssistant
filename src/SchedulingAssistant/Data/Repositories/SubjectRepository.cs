@@ -55,6 +55,21 @@ public class SubjectRepository(DatabaseContext db)
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
+    /// <summary>
+    /// Returns true if a subject with this calendar abbreviation already exists (case-insensitive).
+    /// Pass excludeId to ignore the subject currently being edited.
+    /// </summary>
+    public bool ExistsByAbbreviation(string abbreviation, string? excludeId = null)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = excludeId is null
+            ? "SELECT COUNT(*) FROM Subjects WHERE LOWER(data ->> 'calendarAbbreviation') = LOWER($abbr)"
+            : "SELECT COUNT(*) FROM Subjects WHERE LOWER(data ->> 'calendarAbbreviation') = LOWER($abbr) AND id != $excludeId";
+        cmd.Parameters.AddWithValue("$abbr", abbreviation);
+        if (excludeId is not null) cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+    }
+
     public void Insert(Subject subject)
     {
         using var cmd = db.Connection.CreateCommand();
