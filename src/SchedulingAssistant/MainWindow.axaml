@@ -4,6 +4,7 @@
         xmlns:views="using:SchedulingAssistant.Views.Management"
         xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
         xmlns:controls="using:SchedulingAssistant.Controls"
+        xmlns:panelViews="using:SchedulingAssistant.Views"
         x:Class="SchedulingAssistant.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="False"
@@ -99,7 +100,7 @@
         <Panel Grid.Row="1">
 
             <!-- Layer 0: permanent three-panel grid -->
-            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="220,4,*">
+            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="360,4,*">
 
                 <!-- Left column: Section Editor (top) + Workload (bottom) -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
@@ -107,7 +108,7 @@
                     <!-- Section Editor slot (detachable) -->
                     <controls:DetachablePanel Grid.Row="0"
                                               x:Name="SectionEditorPanel"
-                                              Header="Sections"
+                                              Header="Section View"
                                               DetachRequested="OnSectionEditorDetach">
                         <controls:DetachablePanel.HeaderExtra>
                             <StackPanel Orientation="Horizontal" Spacing="3"
@@ -152,15 +153,13 @@
                     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="4"
                                   HorizontalAlignment="Stretch" Background="{StaticResource GridSplitterColor}" />
 
-                    <!-- Workload slot (detachable, placeholder) -->
+                    <!-- Workload slot (detachable) -->
                     <controls:DetachablePanel Grid.Row="2"
                                               x:Name="WorkloadPanel"
-                                              Header="Workload"
+                                              Header="Workload View"
                                               DetachRequested="OnWorkloadDetach">
                         <controls:DetachablePanel.PanelContent>
-                            <TextBlock Text="Workload View (coming soon)"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextMuted}" FontSize="12" />
+                            <panelViews:WorkloadPanelView DataContext="{Binding WorkloadPanelVm}" />
                         </controls:DetachablePanel.PanelContent>
                     </controls:DetachablePanel>
 
@@ -173,7 +172,7 @@
                 <!-- Right column: Schedule Grid (permanent, detachable) -->
                 <controls:DetachablePanel Grid.Column="2"
                                           x:Name="ScheduleGridPanel"
-                                          Header="Schedule"
+                                          Header="Schedule View"
                                           DetachRequested="OnScheduleGridDetach">
                     <controls:DetachablePanel.HeaderContext>
                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">

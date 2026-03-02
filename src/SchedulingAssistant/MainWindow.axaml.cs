@@ -288,6 +288,7 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             vm.SectionListVm.PropertyChanged += OnSectionListVmPropertyChanged;
+            vm.PropertyChanged += OnMainWindowVmPropertyChanged;
             UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
 
 #if DEBUG
@@ -305,14 +306,21 @@ public partial class MainWindow : Window
             UpdateLeftColumnWidth(Vm.SectionListVm.IsEditing);
     }
 
+    private void OnMainWindowVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // When flyout closes (FlyoutPage becomes null), refresh workload to catch any release changes
+        if (e.PropertyName == nameof(MainWindowViewModel.FlyoutPage) && Vm.FlyoutPage is null)
+            Vm.WorkloadPanelVm.Reload();
+    }
+
     private void UpdateLeftColumnWidth(bool isEditing)
     {
         var grid = this.FindControl<Grid>("ThreePanelGrid");
         if (grid is null) return;
-        // Collapsed: 220 px (summary cards); Expanded: 500 px (editor form)
+        // Collapsed: 370 px (summary cards); Expanded: 650 px (editor form)
         grid.ColumnDefinitions[0].Width = isEditing
-            ? new GridLength(500, GridUnitType.Pixel)
-            : new GridLength(220, GridUnitType.Pixel);
+            ? new GridLength(650, GridUnitType.Pixel)
+            : new GridLength(370, GridUnitType.Pixel);
     }
 
     // ── Flyout backdrop ─────────────────────────────────────────────────────
@@ -336,13 +344,7 @@ public partial class MainWindow : Window
     {
         var slot = (DetachablePanel)sender!;
         DetachSlot(slot, ref _workloadWindow,
-            () => new TextBlock
-            {
-                Text = "Workload View (coming soon)",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Brushes.Gray
-            },
+            () => new WorkloadPanelView { DataContext = Vm.WorkloadPanelVm },
             () => { slot.IsVisible = true; _workloadWindow = null; });
     }
 
