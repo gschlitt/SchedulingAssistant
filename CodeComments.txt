@@ -1,5 +1,5 @@
 
-
+turning off saturday should not affect sections which do have it, only the visibility of saturday.
 
 Would like business objects to have friendly references to the other business objects, in the db. 
 

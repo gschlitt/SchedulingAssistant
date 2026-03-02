@@ -22,6 +22,7 @@ public partial class GridFilterViewModel : ViewModelBase
     public ObservableCollection<FilterItemViewModel> SectionTypes { get; } = new();
     public ObservableCollection<FilterItemViewModel> Tags         { get; } = new();
     public ObservableCollection<FilterItemViewModel> MeetingTypes { get; } = new();
+    public ObservableCollection<FilterItemViewModel> Levels       { get; } = new();
 
     // ── Derived selected-ID sets (computed on demand) ─────────────────────────
 
@@ -32,6 +33,7 @@ public partial class GridFilterViewModel : ViewModelBase
     public HashSet<string> SelectedSectionTypeIds => SelectedIds(SectionTypes);
     public HashSet<string> SelectedTagIds         => SelectedIds(Tags);
     public HashSet<string> SelectedMeetingTypeIds => SelectedIds(MeetingTypes);
+    public HashSet<string> SelectedLevelIds       => SelectedIds(Levels);
 
     private static HashSet<string> SelectedIds(IEnumerable<FilterItemViewModel> items)
         => items.Where(i => i.IsSelected).Select(i => i.Id).ToHashSet();
@@ -61,7 +63,8 @@ public partial class GridFilterViewModel : ViewModelBase
         IReadOnlyDictionary<string, SectionPropertyValue> campusLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> sectionTypeLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> tagLookup,
-        IReadOnlyDictionary<string, SectionPropertyValue> meetingTypeLookup)
+        IReadOnlyDictionary<string, SectionPropertyValue> meetingTypeLookup,
+        IReadOnlyDictionary<string, string> levelLookup)
     {
         var sectionList = sections.ToList();
 
@@ -80,6 +83,16 @@ public partial class GridFilterViewModel : ViewModelBase
         var usedTagIds         = sectionList.SelectMany(s => s.TagIds).ToHashSet();
         var usedMeetingTypeIds = sectionList.SelectMany(s => s.Schedule.Select(m => m.MeetingTypeId))
                                             .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
+        var usedLevelIds       = new HashSet<string>();
+        foreach (var section in sectionList)
+        {
+            if (section.CourseId != null && courseLookup.TryGetValue(section.CourseId, out var course))
+            {
+                var level = course.Level;
+                if (!string.IsNullOrEmpty(level))
+                    usedLevelIds.Add(level);
+            }
+        }
 
         RebuildList(Instructors,  usedInstructorIds,
             id => instructorLookup.TryGetValue(id, out var v) ? $"{v.LastName}, {v.FirstName}" : null);
@@ -97,6 +110,8 @@ public partial class GridFilterViewModel : ViewModelBase
             id => tagLookup.TryGetValue(id, out var v) ? v.Name : null);
         RebuildList(MeetingTypes, usedMeetingTypeIds,
             id => meetingTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
+        RebuildList(Levels,       usedLevelIds,
+            id => levelLookup.TryGetValue(id, out var v) ? v : id);
 
         RefreshDerived();
     }
@@ -173,6 +188,7 @@ public partial class GridFilterViewModel : ViewModelBase
         AppendSummaryPart(parts, "Type",          SectionTypes);
         AppendSummaryPart(parts, "Tags",          Tags);
         AppendSummaryPart(parts, "Meeting Type",  MeetingTypes);
+        AppendSummaryPart(parts, "Level",         Levels);
 
         IsActive = parts.Count > 0;
         ActiveSummary = parts.Count > 0
@@ -199,5 +215,6 @@ public partial class GridFilterViewModel : ViewModelBase
         yield return SectionTypes;
         yield return Tags;
         yield return MeetingTypes;
+        yield return Levels;
     }
 }

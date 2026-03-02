@@ -44,6 +44,7 @@ public partial class GridFilterView : UserControl
             SubscribeCollection(_vm.SectionTypes);
             SubscribeCollection(_vm.Tags);
             SubscribeCollection(_vm.MeetingTypes);
+            SubscribeCollection(_vm.Levels);
         }
 
         UpdateAllHeaders();
@@ -89,6 +90,7 @@ public partial class GridFilterView : UserControl
         SetHeader(SectionTypeToggle, SectionTypePanel, "Section Type", _vm.SectionTypes);
         SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags);
         SetHeader(MeetingTypeToggle, MeetingTypePanel, "Meeting Type", _vm.MeetingTypes);
+        SetHeader(LevelToggle,       LevelPanel,       "Level",        _vm.Levels);
     }
 
     private static void SetHeader(

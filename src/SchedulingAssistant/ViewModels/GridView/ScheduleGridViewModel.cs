@@ -152,6 +152,16 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var meetingTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
 
+        var levelLookup = new Dictionary<string, string>
+        {
+            { "0XX", "0XX" },
+            { "1XX", "1XX" },
+            { "2XX", "2XX" },
+            { "3XX", "3XX" },
+            { "4XX", "4XX" },
+            { "5+XX", "5+XX" }
+        };
+
         // ── Rebuild filter option lists (preserves selections) ─────────────────
         Filter.PopulateOptions(
             sections,
@@ -162,7 +172,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             campusLookup,
             sectionTypeLookup,
             tagLookup,
-            meetingTypeLookup);
+            meetingTypeLookup,
+            levelLookup);
 
         // ── Snapshot active filter sets (HashSet lookups are O(1)) ─────────────
         var selInstructors  = Filter.SelectedInstructorIds;
@@ -172,6 +183,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var selSectionTypes = Filter.SelectedSectionTypeIds;
         var selTags         = Filter.SelectedTagIds;
         var selMeetingTypes = Filter.SelectedMeetingTypeIds;
+        var selLevels       = Filter.SelectedLevelIds;
 
         bool filterInstructor  = selInstructors.Count  > 0;
         bool filterRoom        = selRooms.Count        > 0;
@@ -180,6 +192,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         bool filterSectionType = selSectionTypes.Count > 0;
         bool filterTag         = selTags.Count         > 0;
         bool filterMeetingType = selMeetingTypes.Count > 0;
+        bool filterLevel       = selLevels.Count       > 0;
 
         var includeSaturday = AppSettings.Load().IncludeSaturday;
 
@@ -206,6 +219,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (string.IsNullOrEmpty(section.CourseId) || !courseLookup.TryGetValue(section.CourseId, out var c))
                     continue;
                 if (!selSubjects.Contains(c.SubjectId))
+                    continue;
+            }
+
+            if (filterLevel)
+            {
+                if (string.IsNullOrEmpty(section.CourseId) || !courseLookup.TryGetValue(section.CourseId, out var c))
+                    continue;
+                if (!selLevels.Contains(c.Level))
                     continue;
             }
 

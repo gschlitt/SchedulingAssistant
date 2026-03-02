@@ -282,6 +282,36 @@
                         </Popup>
                     </Panel>
 
+                    <!-- Level -->
+                    <Panel x:Name="LevelPanel" IsVisible="True">
+                        <ToggleButton x:Name="LevelToggle"
+                                      Classes="FilterDim"
+                                      VerticalAlignment="Center" />
+                        <Popup x:Name="LevelPopup"
+                               PlacementTarget="{Binding #LevelToggle}"
+                               Placement="Bottom"
+                               IsOpen="{Binding #LevelToggle.IsChecked, Mode=TwoWay}"
+                               IsLightDismissEnabled="True">
+                            <Border Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="2" MaxHeight="220" MinWidth="120">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ListBox Classes="FilterList"
+                                             ItemsSource="{Binding Levels}"
+                                             SelectionMode="Multiple">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding IsSelected}"
+                                                          Content="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Panel>
+
                 </StackPanel>
             </ScrollViewer>
 
