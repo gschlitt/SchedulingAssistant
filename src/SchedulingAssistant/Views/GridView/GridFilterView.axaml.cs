@@ -48,6 +48,61 @@ public partial class GridFilterView : UserControl
         }
 
         UpdateAllHeaders();
+        WireUpOverlayListBoxes();
+    }
+
+    private void WireUpOverlayListBoxes()
+    {
+        if (this.FindControl<ListBox>("InstructorOverlayListBox") is { } instrLb)
+            instrLb.SelectionChanged += OnInstructorOverlayChanged;
+        if (this.FindControl<ListBox>("RoomOverlayListBox") is { } roomLb)
+            roomLb.SelectionChanged += OnRoomOverlayChanged;
+        if (this.FindControl<ListBox>("TagOverlayListBox") is { } tagLb)
+            tagLb.SelectionChanged += OnTagOverlayChanged;
+    }
+
+    private void OnInstructorOverlayChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count == 0) return;
+
+        var selectedId = (e.AddedItems[0] is FilterItemViewModel item) ? item.Id : null;
+
+        // Clear selection BEFORE executing the command to prevent Avalonia's selection
+        // model from crashing when the Instructors collection is rebuilt (list.Clear()).
+        if (sender is ListBox lb)
+            lb.SelectedItem = null;
+        InstructorOverlayToggle.IsChecked = false;
+
+        if (_vm?.SetInstructorOverlayCommand.CanExecute(selectedId) == true)
+            _vm.SetInstructorOverlayCommand.Execute(selectedId);
+    }
+
+    private void OnRoomOverlayChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count == 0) return;
+
+        var selectedId = (e.AddedItems[0] is FilterItemViewModel item) ? item.Id : null;
+
+        if (sender is ListBox lb)
+            lb.SelectedItem = null;
+        RoomOverlayToggle.IsChecked = false;
+
+        if (_vm?.SetRoomOverlayCommand.CanExecute(selectedId) == true)
+            _vm.SetRoomOverlayCommand.Execute(selectedId);
+    }
+
+    private void OnTagOverlayChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count == 0) return;
+
+        var selectedId = (e.AddedItems[0] is FilterItemViewModel item) ? item.Id : null;
+
+        if (sender is ListBox lb)
+            lb.SelectedItem = null;
+        TagOverlayToggle.IsChecked = false;
+
+        if (_vm?.SetTagOverlayCommand.CanExecute(selectedId) == true)
+            _vm.SetTagOverlayCommand.Execute(selectedId);
     }
 
     private void SubscribeCollection(System.Collections.ObjectModel.ObservableCollection<FilterItemViewModel> col)
@@ -77,7 +132,9 @@ public partial class GridFilterView : UserControl
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Nothing extra needed here; item-level changes cover header updates.
+        if (e.PropertyName == nameof(GridFilterViewModel.OverlayType) ||
+            e.PropertyName == nameof(GridFilterViewModel.SelectedOverlayId))
+            UpdateOverlayHeaders();
     }
 
     private void UpdateAllHeaders()
@@ -91,6 +148,48 @@ public partial class GridFilterView : UserControl
         SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags);
         SetHeader(MeetingTypeToggle, MeetingTypePanel, "Meeting Type", _vm.MeetingTypes);
         SetHeader(LevelToggle,       LevelPanel,       "Level",        _vm.Levels);
+        UpdateOverlayHeaders();
+    }
+
+    private void UpdateOverlayHeaders()
+    {
+        if (_vm is null) return;
+        SetOverlayHeader(InstructorOverlayToggle, InstructorOverlayPanel, "Overlay Instructor", "Instructor", _vm.Instructors, _vm);
+        SetOverlayHeader(RoomOverlayToggle,       RoomOverlayPanel,       "Overlay Room",       "Room",       _vm.Rooms,       _vm);
+        SetOverlayHeader(TagOverlayToggle,        TagOverlayPanel,        "Overlay Tag",        "Tag",        _vm.Tags,        _vm);
+    }
+
+    private void SetOverlayHeader(
+        ToggleButton toggle,
+        Panel panel,
+        string inactiveLabel,
+        string overlayTypeName,
+        IEnumerable<FilterItemViewModel> items,
+        GridFilterViewModel vm)
+    {
+        var list = items.ToList();
+        if (list.Count == 0)
+        {
+            panel.IsVisible = false;
+            return;
+        }
+
+        panel.IsVisible = true;
+        bool isActive = vm.OverlayType == overlayTypeName && vm.HasOverlay;
+
+        if (isActive)
+        {
+            var name = list.FirstOrDefault(i => i.Id == vm.SelectedOverlayId)?.Name ?? vm.SelectedOverlayId;
+            toggle.Content    = $"Overlay: {name} ▾";
+            toggle.Foreground = ActiveHeaderBrush;
+            toggle.FontWeight = FontWeight.SemiBold;
+        }
+        else
+        {
+            toggle.Content    = $"{inactiveLabel} ▾";
+            toggle.Foreground = InactiveHeaderBrush;
+            toggle.FontWeight = FontWeight.Normal;
+        }
     }
 
     private static void SetHeader(

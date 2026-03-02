@@ -67,6 +67,9 @@ public partial class SectionListViewModel : ViewModelBase
     /// <summary>Set by the view code-behind to display error messages.</summary>
     public Func<string, Task>? ShowError { get; set; }
 
+    /// <summary>Fired when sections are loaded/reloaded (after successful Load()).</summary>
+    public event Action? SectionsChanged;
+
     [RelayCommand]
     public void DismissError() => LastErrorMessage = null;
 
@@ -190,6 +193,7 @@ public partial class SectionListViewModel : ViewModelBase
         {
             LoadCore(selectSectionId);
             LastErrorMessage = null;
+            SectionsChanged?.Invoke();
         }
         catch (Exception ex)
         {

@@ -5,8 +5,9 @@ namespace SchedulingAssistant.ViewModels.GridView;
 /// Label = "HIST101 A" (course code + section code, or just section code)
 /// Initials = instructor initials (may be empty)
 /// SectionId = the section's database ID (used for selection/highlighting)
+/// IsOverlay = true if this entry is from an overlay (shown with red border)
 /// </summary>
-public record TileEntry(string Label, string Initials, string SectionId);
+public record TileEntry(string Label, string Initials, string SectionId, bool IsOverlay = false);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

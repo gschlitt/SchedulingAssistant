@@ -26,7 +26,8 @@
                                       VerticalAlignment="Center"
                                       Margin="0,0,4,0" />
                     <!-- Panel title -->
-                    <TextBlock Text="{Binding #Root.Header}"
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="{Binding #Root.Header}"
                                FontWeight="SemiBold"
                                FontSize="{StaticResource FontSizeLarge}"
                                VerticalAlignment="Center"

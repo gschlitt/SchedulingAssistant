@@ -9,6 +9,7 @@ using Avalonia.Media;
 using SchedulingAssistant.Controls;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
+using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.GridView;
@@ -17,6 +18,7 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.IO;
+using System.Linq;
 
 namespace SchedulingAssistant;
 
@@ -288,6 +290,9 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             vm.SectionListVm.PropertyChanged += OnSectionListVmPropertyChanged;
+            vm.ScheduleGridVm.PropertyChanged += OnScheduleGridVmPropertyChanged;
+            vm.PropertyChanged += OnMainWindowVmPropertyChanged;
+            vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
             UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
 
 #if DEBUG
@@ -303,16 +308,70 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(SectionListViewModel.IsEditing))
             UpdateLeftColumnWidth(Vm.SectionListVm.IsEditing);
+        else if (e.PropertyName == nameof(SectionListViewModel.SelectedItem))
+            Vm.WorkloadPanelVm.SelectedSectionId = Vm.SectionListVm.SelectedItem?.Section.Id;
+    }
+
+    private void OnScheduleGridVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // When a tile is clicked in the Schedule Grid, sync the selection back to the Section List and Workload View
+        if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
+        {
+            var sectionId = Vm.ScheduleGridVm.SelectedSectionId;
+
+            // Update Workload View selection
+            Vm.WorkloadPanelVm.SelectedSectionId = sectionId;
+
+            if (string.IsNullOrEmpty(sectionId))
+            {
+                // Clear selection in Section List if grid cleared
+                if (Vm.SectionListVm.SelectedItem is not null)
+                    Vm.SectionListVm.SelectedItem = null;
+                return;
+            }
+
+            // Only update if the currently selected item doesn't match
+            if (Vm.SectionListVm.SelectedItem?.Section.Id != sectionId)
+            {
+                var sectionItem = Vm.SectionListVm.SectionItems.FirstOrDefault(s => s.Section.Id == sectionId);
+                if (sectionItem is not null)
+                    Vm.SectionListVm.SelectedItem = sectionItem;
+            }
+        }
+    }
+
+    private void OnMainWindowVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // When flyout closes (FlyoutPage becomes null), refresh workload to catch any release changes
+        if (e.PropertyName == nameof(MainWindowViewModel.FlyoutPage) && Vm.FlyoutPage is null)
+            Vm.WorkloadPanelVm.Reload();
+    }
+
+    private void OnWorkloadItemClicked(WorkloadItemViewModel item)
+    {
+        // Only handle section items; releases don't have a direct display in Section View
+        if (item.Kind != WorkloadItemKind.Section)
+            return;
+
+        // Find the corresponding section in the section list and select it
+        var sectionId = item.Id;
+        var sectionItem = Vm.SectionListVm.SectionItems.FirstOrDefault(s => s.Section.Id == sectionId);
+
+        if (sectionItem is not null)
+        {
+            Vm.SectionListVm.SelectedItem = sectionItem;
+            // SelectedItem change will automatically sync to ScheduleGridViewModel.SelectedSectionId
+        }
     }
 
     private void UpdateLeftColumnWidth(bool isEditing)
     {
         var grid = this.FindControl<Grid>("ThreePanelGrid");
         if (grid is null) return;
-        // Collapsed: 220 px (summary cards); Expanded: 500 px (editor form)
+        // Collapsed: 370 px (summary cards); Expanded: 650 px (editor form)
         grid.ColumnDefinitions[0].Width = isEditing
-            ? new GridLength(500, GridUnitType.Pixel)
-            : new GridLength(220, GridUnitType.Pixel);
+            ? new GridLength(650, GridUnitType.Pixel)
+            : new GridLength(370, GridUnitType.Pixel);
     }
 
     // ── Flyout backdrop ─────────────────────────────────────────────────────
@@ -336,13 +395,7 @@ public partial class MainWindow : Window
     {
         var slot = (DetachablePanel)sender!;
         DetachSlot(slot, ref _workloadWindow,
-            () => new TextBlock
-            {
-                Text = "Workload View (coming soon)",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Brushes.Gray
-            },
+            () => new WorkloadPanelView { DataContext = Vm.WorkloadPanelVm },
             () => { slot.IsVisible = true; _workloadWindow = null; });
     }
 

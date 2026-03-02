@@ -18,7 +18,9 @@
             <x:Double x:Key="FontSizeLarge">16</x:Double>
             <x:Double x:Key="FontSizeXLarge">18</x:Double>
 
+            <!-- Converters -->
             <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
+            <conv:IsSelectedConverter x:Key="IsSelectedConverter" />
         </ResourceDictionary>
     </Application.Resources>
 

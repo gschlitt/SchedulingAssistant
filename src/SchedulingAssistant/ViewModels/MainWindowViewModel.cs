@@ -28,6 +28,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public ScheduleGridViewModel ScheduleGridVm => _scheduleGridVm;
 
     /// <summary>
+    /// The permanent bottom-left workload panel. Held for app lifetime.
+    /// </summary>
+    public WorkloadPanelViewModel WorkloadPanelVm { get; }
+
+    /// <summary>
     /// The management ViewModel currently shown in the flyout overlay.
     /// Null when the flyout is hidden.
     /// </summary>
@@ -91,12 +96,14 @@ public partial class MainWindowViewModel : ViewModelBase
         IServiceProvider services,
         SemesterContext semesterContext,
         SectionListViewModel sectionListVm,
-        ScheduleGridViewModel scheduleGridVm)
+        ScheduleGridViewModel scheduleGridVm,
+        WorkloadPanelViewModel workloadPanelVm)
     {
         _services = services;
         SemesterContext = semesterContext;
         SectionListVm = sectionListVm;
         _scheduleGridVm = scheduleGridVm;
+        WorkloadPanelVm = workloadPanelVm;
     }
 
     [RelayCommand]

@@ -4,6 +4,7 @@
         xmlns:views="using:SchedulingAssistant.Views.Management"
         xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
         xmlns:controls="using:SchedulingAssistant.Controls"
+        xmlns:panelViews="using:SchedulingAssistant.Views"
         x:Class="SchedulingAssistant.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="False"
@@ -18,16 +19,29 @@
                 BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1">
             <DockPanel>
 
-                <!-- Semester picker, right-aligned -->
+                <!-- Academic Year and Semester pickers, right-aligned -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
                             VerticalAlignment="Center" Margin="8,0">
                     <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+
+                    <!-- Academic Year selector -->
+                    <TextBlock Text="Academic Year:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
+                               VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding SemesterContext.AcademicYears}"
+                              SelectedItem="{Binding SemesterContext.SelectedAcademicYear}"
+                              DisplayMemberBinding="{Binding Name}"
+                              MinWidth="120"
+                              VerticalAlignment="Center" />
+
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+
+                    <!-- Semester selector (filtered by selected academic year) -->
                     <TextBlock Text="Semester:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
                                VerticalAlignment="Center" />
-                    <ComboBox ItemsSource="{Binding SemesterContext.SemesterDisplays}"
+                    <ComboBox ItemsSource="{Binding SemesterContext.FilteredSemesters}"
                               SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}"
                               DisplayMemberBinding="{Binding DisplayName}"
-                              MinWidth="220"
+                              MinWidth="120"
                               VerticalAlignment="Center" />
                 </StackPanel>
 
@@ -99,7 +113,7 @@
         <Panel Grid.Row="1">
 
             <!-- Layer 0: permanent three-panel grid -->
-            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="220,4,*">
+            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="360,4,*">
 
                 <!-- Left column: Section Editor (top) + Workload (bottom) -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
@@ -107,7 +121,7 @@
                     <!-- Section Editor slot (detachable) -->
                     <controls:DetachablePanel Grid.Row="0"
                                               x:Name="SectionEditorPanel"
-                                              Header="Sections"
+                                              Header="Section View"
                                               DetachRequested="OnSectionEditorDetach">
                         <controls:DetachablePanel.HeaderExtra>
                             <StackPanel Orientation="Horizontal" Spacing="3"
@@ -152,15 +166,13 @@
                     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="4"
                                   HorizontalAlignment="Stretch" Background="{StaticResource GridSplitterColor}" />
 
-                    <!-- Workload slot (detachable, placeholder) -->
+                    <!-- Workload slot (detachable) -->
                     <controls:DetachablePanel Grid.Row="2"
                                               x:Name="WorkloadPanel"
-                                              Header="Workload"
+                                              Header="Workload View"
                                               DetachRequested="OnWorkloadDetach">
                         <controls:DetachablePanel.PanelContent>
-                            <TextBlock Text="Workload View (coming soon)"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextMuted}" FontSize="12" />
+                            <panelViews:WorkloadPanelView DataContext="{Binding WorkloadPanelVm}" />
                         </controls:DetachablePanel.PanelContent>
                     </controls:DetachablePanel>
 
@@ -173,7 +185,7 @@
                 <!-- Right column: Schedule Grid (permanent, detachable) -->
                 <controls:DetachablePanel Grid.Column="2"
                                           x:Name="ScheduleGridPanel"
-                                          Header="Schedule"
+                                          Header="Schedule View"
                                           DetachRequested="OnScheduleGridDetach">
                     <controls:DetachablePanel.HeaderContext>
                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -191,13 +203,24 @@
                                        FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center" />
 
-                            <!-- Subject filter (only shown when active) -->
-                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+							<!-- Subject filter (only shown when active) -->
+
+							<Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
                                     IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding ScheduleGridVm.SubjectFilterSummary}"
                                        FontSize="{StaticResource FontSizeLarge}"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding ScheduleGridVm.SubjectFilterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <!-- Overlay (only shown when active) -->
+                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
+                                    IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding ScheduleGridVm.Filter.OverlaySummary}"
+                                       FontSize="{StaticResource FontSizeLarge}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource FilterActiveHeader}"
+                                       FontWeight="SemiBold"
+                                       IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
                             <!-- Stats (always shown) -->
                             <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"

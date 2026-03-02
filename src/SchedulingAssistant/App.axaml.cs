@@ -108,6 +108,14 @@ public partial class App : Application
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>()));
         services.AddSingleton<SectionListViewModel>();
+        services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
+            sp.GetRequiredService<InstructorRepository>(),
+            sp.GetRequiredService<SectionRepository>(),
+            sp.GetRequiredService<CourseRepository>(),
+            sp.GetRequiredService<ReleaseRepository>(),
+            sp.GetRequiredService<SemesterRepository>(),
+            sp.GetRequiredService<SemesterContext>(),
+            sp.GetRequiredService<SectionListViewModel>()));
         services.AddTransient<InstructorListViewModel>(sp => new InstructorListViewModel(
             sp.GetRequiredService<InstructorRepository>(),
             sp.GetRequiredService<SectionPropertyRepository>(),
