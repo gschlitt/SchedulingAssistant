@@ -6,7 +6,7 @@
              x:DataType="vm:ScheduleGridViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
 
         <!-- Row 0: Filter bar - always visible -->
         <local:GridFilterView Grid.Row="0" DataContext="{Binding Filter}" />
@@ -31,12 +31,48 @@
             </DockPanel>
         </Border>
 
-        <!-- Row 2: Grid canvas -->
+        <!-- Row 2: Grid canvas with zoom transform -->
         <ScrollViewer Grid.Row="2"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto">
-            <Canvas x:Name="GridCanvas" />
+            <Border x:Name="ZoomContainer">
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0" />
+                </Border.RenderTransform>
+                <Canvas x:Name="GridCanvas" />
+            </Border>
         </ScrollViewer>
+
+        <!-- Row 3: Zoom footer -->
+        <Border Grid.Row="3"
+                Background="{StaticResource ChromeBackground}"
+                BorderBrush="{StaticResource ChromeBorder}"
+                BorderThickness="0,1,0,0"
+                Padding="8,4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right"
+                           x:Name="ZoomPercentLabel"
+                           FontSize="10"
+                           Foreground="Black"
+                           VerticalAlignment="Center"
+                           Margin="8,0,0,0"
+                           Width="40"
+                           TextAlignment="Right" />
+                <Slider DockPanel.Dock="Right"
+                        x:Name="ZoomSlider"
+                        Minimum="0.5"
+                        Maximum="2.5"
+                        TickFrequency="0.1"
+                        TickPlacement="None"
+                        Width="120"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center" />
+                <TextBlock Text="Zoom:"
+                           FontSize="10"
+                           Foreground="Black"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
 
     </Grid>
 

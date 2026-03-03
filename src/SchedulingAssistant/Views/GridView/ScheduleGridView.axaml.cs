@@ -40,12 +40,50 @@ public partial class ScheduleGridView : UserControl
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
+    private Border? _zoomContainer;
+    private double _zoomLevel = 1.0;
 
     public ScheduleGridView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         SizeChanged += (_, _) => Render();
+
+        // Wire up zoom slider to ScaleTransform on the zoom container
+        var slider = this.FindControl<Slider>("ZoomSlider");
+        _zoomContainer = this.FindControl<Border>("ZoomContainer");
+
+        if (slider is not null)
+        {
+            slider.Value = _zoomLevel;
+            slider.PropertyChanged += (_, e) =>
+            {
+                if (e.Property.Name == nameof(Slider.Value))
+                {
+                    _zoomLevel = slider.Value;
+                    UpdateZoomTransform();
+                    UpdateZoomLabel();
+                }
+            };
+        }
+
+        UpdateZoomLabel();
+    }
+
+    private void UpdateZoomTransform()
+    {
+        if (_zoomContainer?.RenderTransform is ScaleTransform scale)
+        {
+            scale.ScaleX = _zoomLevel;
+            scale.ScaleY = _zoomLevel;
+        }
+    }
+
+    private void UpdateZoomLabel()
+    {
+        var label = this.FindControl<TextBlock>("ZoomPercentLabel");
+        if (label is not null)
+            label.Text = $"{(int)(_zoomLevel * 100)}%";
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
