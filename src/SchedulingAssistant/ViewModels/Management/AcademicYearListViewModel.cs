@@ -19,7 +19,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
-    [ObservableProperty] private ObservableCollection<Semester> _semesters = new();
     [ObservableProperty] private AcademicYearEditViewModel? _editVm;
 
     /// <summary>
@@ -41,6 +40,11 @@ public partial class AcademicYearListViewModel : ViewModelBase
     /// </summary>
     public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
 
+    /// <summary>
+    /// Set by the view. Called when user wants to navigate to Copy Semester.
+    /// </summary>
+    public Action? OnNavigateToCopySemester { get; set; }
+
     public AcademicYearListViewModel(
         AcademicYearRepository ayRepo,
         SemesterRepository semRepo,
@@ -56,23 +60,16 @@ public partial class AcademicYearListViewModel : ViewModelBase
         Load();
     }
 
-    partial void OnSelectedAcademicYearChanged(AcademicYear? value) => LoadSemesters();
-
     private void Load()
     {
         AcademicYears = new ObservableCollection<AcademicYear>(_ayRepo.GetAll());
         SelectedAcademicYear = AcademicYears.FirstOrDefault();
     }
 
-    private void LoadSemesters()
+    [RelayCommand]
+    private void CopySemester()
     {
-        if (SelectedAcademicYear is null)
-        {
-            Semesters = new ObservableCollection<Semester>();
-            return;
-        }
-        Semesters = new ObservableCollection<Semester>(
-            _semRepo.GetByAcademicYear(SelectedAcademicYear.Id));
+        OnNavigateToCopySemester?.Invoke();
     }
 
     [RelayCommand]

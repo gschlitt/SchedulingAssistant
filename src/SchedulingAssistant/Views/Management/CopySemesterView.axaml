@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.CopySemesterView"
+             x:DataType="vm:CopySemesterViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="0,0,0,0">
+
+        <TextBlock Grid.Row="0" Text="Copy Semester" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <!-- Two-column layout: From and To -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,16,*" Margin="0,0,0,0">
+
+            <!-- From column -->
+            <DockPanel Grid.Column="0" Margin="0,0,0,0">
+                <TextBlock DockPanel.Dock="Top" Text="From" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+
+                <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+                    <TextBlock Text="Academic Year" FontSize="12" />
+                    <ComboBox ItemsSource="{Binding AcademicYears}"
+                              SelectedItem="{Binding FromAcademicYear}"
+                              Margin="0,0,0,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top" Spacing="8">
+                    <TextBlock Text="Semester" FontSize="12" />
+                    <ComboBox ItemsSource="{Binding FromSemesters}"
+                              SelectedItem="{Binding FromSemester}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </DockPanel>
+
+            <!-- To column -->
+            <DockPanel Grid.Column="2" Margin="0,0,0,0">
+                <TextBlock DockPanel.Dock="Top" Text="To" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+
+                <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+                    <TextBlock Text="Academic Year" FontSize="12" />
+                    <ComboBox ItemsSource="{Binding AcademicYears}"
+                              SelectedItem="{Binding ToAcademicYear}"
+                              Margin="0,0,0,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top" Spacing="8">
+                    <TextBlock Text="Semester" FontSize="12" />
+                    <ComboBox ItemsSource="{Binding ToSemesters}"
+                              SelectedItem="{Binding ToSemester}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </DockPanel>
+
+        </Grid>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Copy" Command="{Binding CopyCommand}"
+                    IsEnabled="{Binding IsCopyEnabled}" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

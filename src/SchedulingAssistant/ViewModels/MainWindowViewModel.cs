@@ -136,6 +136,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToAcademicYears() => OpenFlyout<AcademicYearListViewModel>("Academic Years");
 
     [RelayCommand]
+    private void NavigateToCopySemester() => OpenFlyout<CopySemesterViewModel>("Copy Semester");
+
+    [RelayCommand]
     private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Scheduling");
 
     [RelayCommand]

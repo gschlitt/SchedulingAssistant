@@ -31,42 +31,26 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- Main content: AY list + semesters -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,*" Margin="0,0,0,0"
-              IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-
-            <!-- Academic Years list -->
-            <DockPanel Grid.Column="0" Margin="0,0,8,0">
-                <TextBlock DockPanel.Dock="Top" Text="Academic Years" FontWeight="SemiBold" Margin="0,0,0,8" />
-                <DataGrid ItemsSource="{Binding AcademicYears}"
-                          SelectedItem="{Binding SelectedAcademicYear}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserSortColumns="True">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                    </DataGrid.Columns>
-                </DataGrid>
-            </DockPanel>
-
-            <!-- Semesters for the selected AY (read-only display) -->
-            <DockPanel Grid.Column="1" Margin="8,0,0,0">
-                <TextBlock DockPanel.Dock="Top" Text="Semesters" FontWeight="SemiBold" Margin="0,0,0,8" />
-                <DataGrid ItemsSource="{Binding Semesters}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                    </DataGrid.Columns>
-                </DataGrid>
-            </DockPanel>
-        </Grid>
+        <!-- Main content: AY list only -->
+        <DockPanel Grid.Row="1" Margin="0,0,0,0"
+                   IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <DataGrid ItemsSource="{Binding AcademicYears}"
+                      SelectedItem="{Binding SelectedAcademicYear}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
             <Button Content="Add" Command="{Binding AddCommand}" />
             <Button Content="Delete" Command="{Binding DeleteCommand}"
                     IsEnabled="{Binding SelectedAcademicYear, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Copy Semester" Command="{Binding CopySemesterCommand}" />
         </StackPanel>
 
     </Grid>
