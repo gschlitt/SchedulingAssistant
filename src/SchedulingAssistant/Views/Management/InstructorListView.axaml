@@ -84,7 +84,9 @@
                           BorderBrush="#CCCCCC">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Last" Binding="{Binding LastName}" Width="*" FontSize="10" />
-                        <DataGridTextColumn Header="Init" Binding="{Binding Initials}" Width="50" FontSize="10" />
+                        <DataGridTextColumn Header="Init" Binding="{Binding Initials}" Width="40" FontSize="10" />
+                        <DataGridTextColumn Header="Type" Binding="{Binding StaffTypeName}" Width="*" FontSize="10" />
+                        <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="46" IsReadOnly="True" />
                     </DataGrid.Columns>
                 </DataGrid>
 

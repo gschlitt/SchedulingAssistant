@@ -58,7 +58,15 @@ public partial class InstructorListViewModel : ViewModelBase
 
     private void Load()
     {
+        var staffTypes = _propertyRepo.GetAll(SectionPropertyTypes.StaffType)
+            .ToDictionary(s => s.Id, s => s.Name);
+
         var all = _repo.GetAll();
+        foreach (var instructor in all)
+            instructor.StaffTypeName = instructor.StaffTypeId is not null
+                ? staffTypes.GetValueOrDefault(instructor.StaffTypeId)
+                : null;
+
         var filtered = ShowOnlyActive ? all.Where(i => i.IsActive).ToList() : all;
         Instructors = new ObservableCollection<Instructor>(filtered);
     }

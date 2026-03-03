@@ -50,9 +50,10 @@ public class RoomRepository(DatabaseContext db)
         cmd.ExecuteNonQuery();
     }
 
-    public void Delete(string id)
+    public void Delete(string id, SqliteTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Rooms WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", id);
         cmd.ExecuteNonQuery();

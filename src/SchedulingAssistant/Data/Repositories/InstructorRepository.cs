@@ -72,9 +72,10 @@ public class InstructorRepository(DatabaseContext db)
         cmd.ExecuteNonQuery();
     }
 
-    public void Update(Instructor instructor)
+    public void Update(Instructor instructor, SqliteTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "UPDATE Instructors SET data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", instructor.Id);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(instructor));

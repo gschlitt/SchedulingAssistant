@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SchedulingAssistant.Models;
 
 public class Instructor
@@ -10,4 +12,8 @@ public class Instructor
     public string Notes { get; set; } = string.Empty;
     public string? StaffTypeId { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Display-only. Resolved at load time from StaffTypeId; not persisted.</summary>
+    [JsonIgnore]
+    public string? StaffTypeName { get; set; }
 }

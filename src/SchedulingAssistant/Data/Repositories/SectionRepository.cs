@@ -5,6 +5,13 @@ namespace SchedulingAssistant.Data.Repositories;
 
 public class SectionRepository(DatabaseContext db)
 {
+    public List<Section> GetAll()
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT id, semester_id, course_id, data FROM Sections";
+        return ReadSections(cmd);
+    }
+
     public List<Section> GetAll(string semesterId)
     {
         using var cmd = db.Connection.CreateCommand();
@@ -36,9 +43,10 @@ public class SectionRepository(DatabaseContext db)
         cmd.ExecuteNonQuery();
     }
 
-    public void Update(Section section)
+    public void Update(Section section, SqliteTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
         cmd.CommandText =
             "UPDATE Sections SET semester_id = $sid, course_id = $cid, room_id = NULL, data = $data WHERE id = $id";

@@ -187,6 +187,8 @@ public partial class SectionListViewModel : ViewModelBase
     /// is supplied the item with that section ID is selected after the list is rebuilt,
     /// so the user can immediately see where the saved section landed.
     /// </summary>
+    public void Reload() => Load();
+
     private void Load(string? selectSectionId = null)
     {
         try

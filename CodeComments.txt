@@ -4,6 +4,10 @@ multiple instructors should shown on week view
 Booking cards need to show all info
 Multiple semesters!
 
+When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is lost
+
+Meeting type should display on summary cards.
+
 Would like business objects to have friendly references to the other business objects, in the db. 
 
 Glow on section edits.
