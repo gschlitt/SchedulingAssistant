@@ -5,6 +5,7 @@ using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.ViewModels;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -40,10 +41,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
     /// </summary>
     public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
 
-    /// <summary>
-    /// Set by the view. Called when user wants to navigate to Copy Semester.
-    /// </summary>
-    public Action? OnNavigateToCopySemester { get; set; }
 
     public AcademicYearListViewModel(
         AcademicYearRepository ayRepo,
@@ -69,7 +66,8 @@ public partial class AcademicYearListViewModel : ViewModelBase
     [RelayCommand]
     private void CopySemester()
     {
-        OnNavigateToCopySemester?.Invoke();
+        var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
+        mainVm.NavigateToCopySemesterCommand.Execute(null);
     }
 
     [RelayCommand]

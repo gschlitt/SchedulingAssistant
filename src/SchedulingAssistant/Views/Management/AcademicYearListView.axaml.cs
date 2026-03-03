@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Interactivity;
-using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.Threading.Tasks;
@@ -23,13 +22,6 @@ public partial class AcademicYearListView : UserControl
             vm.ConfirmDelete = ShowDeleteConfirmAsync;
             vm.ConfirmCopyStartTimes = ShowCopyStartTimesConfirmAsync;
             vm.ConfirmImportPersistedData = ShowImportPersistedDataAsync;
-
-            // Wire up navigation to Copy Semester - use VisualRoot to get the main window
-            var root = VisualRoot as Window;
-            if (root?.DataContext is MainWindowViewModel mainVm)
-            {
-                vm.OnNavigateToCopySemester = () => mainVm.NavigateToCopySemesterCommand.Execute(null);
-            }
         }
     }
 

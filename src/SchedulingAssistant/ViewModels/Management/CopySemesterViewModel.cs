@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.ViewModels;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -22,10 +24,6 @@ public partial class CopySemesterViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isCopyEnabled;
 
-    /// <summary>
-    /// Set by the view. Called when user wants to navigate back to Academic Years.
-    /// </summary>
-    public Action? OnNavigateBackToAcademicYears { get; set; }
 
     public CopySemesterViewModel(
         AcademicYearRepository ayRepo,
@@ -103,12 +101,18 @@ public partial class CopySemesterViewModel : ViewModelBase
     {
         // Placeholder for copy logic
         // TODO: Implement the section copy logic
-        OnNavigateBackToAcademicYears?.Invoke();
+        NavigateBackToAcademicYears();
     }
 
     [RelayCommand]
     private void Cancel()
     {
-        OnNavigateBackToAcademicYears?.Invoke();
+        NavigateBackToAcademicYears();
+    }
+
+    private void NavigateBackToAcademicYears()
+    {
+        var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
+        mainVm.NavigateToAcademicYearsCommand.Execute(null);
     }
 }
