@@ -24,6 +24,34 @@ public partial class CopySemesterViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isCopyEnabled;
 
+    // Copy options — top two are mutually exclusive
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AreSubOptionsEnabled))]
+    [NotifyPropertyChangedFor(nameof(AreMeetingSubOptionsEnabled))]
+    private bool _copyDesignationsOnly = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AreSubOptionsEnabled))]
+    [NotifyPropertyChangedFor(nameof(AreMeetingSubOptionsEnabled))]
+    private bool _copyAndMore = false;
+
+    public bool AreSubOptionsEnabled => CopyAndMore;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AreMeetingSubOptionsEnabled))]
+    private bool _includeAllMeetingTimes;
+
+    public bool AreMeetingSubOptionsEnabled => CopyAndMore && IncludeAllMeetingTimes;
+
+    [ObservableProperty] private bool _includeSectionType;
+    [ObservableProperty] private bool _includeAllTags;
+    [ObservableProperty] private bool _includeAllStaff;
+    [ObservableProperty] private bool _includeRoomAssignments;
+    [ObservableProperty] private bool _includeMeetingTypeAssignments;
+    [ObservableProperty] private bool _includeAllReserves;
+
+    partial void OnCopyDesignationsOnlyChanged(bool value) { if (value) CopyAndMore = false; }
+    partial void OnCopyAndMoreChanged(bool value) { if (value) CopyDesignationsOnly = false; }
 
     public CopySemesterViewModel(
         AcademicYearRepository ayRepo,
