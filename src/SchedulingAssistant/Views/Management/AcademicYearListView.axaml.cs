@@ -24,9 +24,9 @@ public partial class AcademicYearListView : UserControl
             vm.ConfirmCopyStartTimes = ShowCopyStartTimesConfirmAsync;
             vm.ConfirmImportPersistedData = ShowImportPersistedDataAsync;
 
-            // Wire up navigation to Copy Semester
-            var mainWindow = TopLevel.GetTopLevel(this) as Window;
-            if (mainWindow?.DataContext is MainWindowViewModel mainVm)
+            // Wire up navigation to Copy Semester - use VisualRoot to get the main window
+            var root = VisualRoot as Window;
+            if (root?.DataContext is MainWindowViewModel mainVm)
             {
                 vm.OnNavigateToCopySemester = () => mainVm.NavigateToCopySemesterCommand.Execute(null);
             }

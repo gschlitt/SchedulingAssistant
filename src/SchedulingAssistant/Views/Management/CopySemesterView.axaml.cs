@@ -18,8 +18,8 @@ public partial class CopySemesterView : UserControl
         if (DataContext is CopySemesterViewModel vm)
         {
             // Wire up navigation back to Academic Years
-            var mainWindow = TopLevel.GetTopLevel(this) as Window;
-            if (mainWindow?.DataContext is MainWindowViewModel mainVm)
+            var root = VisualRoot as Window;
+            if (root?.DataContext is MainWindowViewModel mainVm)
             {
                 vm.OnNavigateBackToAcademicYears = () => mainVm.NavigateToAcademicYearsCommand.Execute(null);
             }
