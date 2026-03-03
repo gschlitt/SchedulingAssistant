@@ -17,10 +17,14 @@ public partial class AcademicYearListViewModel : ViewModelBase
     private readonly SectionRepository _sectionRepo;
     private readonly SemesterContext _semesterContext;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
+    private readonly DatabaseContext _db;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
     [ObservableProperty] private AcademicYearEditViewModel? _editVm;
+
+    /// <summary>Set by the view. Called with an error message when an action fails.</summary>
+    public Func<string, Task>? ShowError { get; set; }
 
     /// <summary>
     /// Set by the view. Called before deletion with (ayName, sectionCount).
@@ -47,13 +51,15 @@ public partial class AcademicYearListViewModel : ViewModelBase
         SemesterRepository semRepo,
         SectionRepository sectionRepo,
         SemesterContext semesterContext,
-        LegalStartTimeRepository legalStartTimeRepo)
+        LegalStartTimeRepository legalStartTimeRepo,
+        DatabaseContext db)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
         _sectionRepo = sectionRepo;
         _semesterContext = semesterContext;
         _legalStartTimeRepo = legalStartTimeRepo;
+        _db = db;
         Load();
     }
 
@@ -80,45 +86,54 @@ public partial class AcademicYearListViewModel : ViewModelBase
             nameExists: name => _ayRepo.ExistsByName(name),
             onSaveAsync: async saved =>
             {
-                _ayRepo.Insert(saved);
-                CreateDefaultSemesters(saved.Id);
-
-                var allAYs = _ayRepo.GetAll().OrderBy(a => a.Name).ToList();
-                var savedIndex = allAYs.FindIndex(a => a.Id == saved.Id);
-
-                if (savedIndex == 0)
+                try
                 {
-                    // This is the first academic year — check if persisted data exists
-                    var persistedSummary = LegalStartTimesDataStore.GetPersistedDataSummary();
-                    if (!string.IsNullOrEmpty(persistedSummary) && ConfirmImportPersistedData is not null)
+                    _ayRepo.Insert(saved);
+                    CreateDefaultSemesters(saved.Id);
+
+                    var allAYs = _ayRepo.GetAll().OrderBy(a => a.Name).ToList();
+                    var savedIndex = allAYs.FindIndex(a => a.Id == saved.Id);
+
+                    if (savedIndex == 0)
                     {
-                        var shouldImport = await ConfirmImportPersistedData(persistedSummary);
-                        if (shouldImport)
+                        // This is the first academic year — check if persisted data exists
+                        var persistedSummary = LegalStartTimesDataStore.GetPersistedDataSummary();
+                        if (!string.IsNullOrEmpty(persistedSummary) && ConfirmImportPersistedData is not null)
                         {
-                            var dbContext = App.Services.GetRequiredService<DatabaseContext>();
-                            SeedData.ImportPersistedStartTimes(dbContext.Connection, saved.Id);
+                            var shouldImport = await ConfirmImportPersistedData(persistedSummary);
+                            if (shouldImport)
+                            {
+                                var dbContext = App.Services.GetRequiredService<DatabaseContext>();
+                                SeedData.ImportPersistedStartTimes(dbContext.Connection, saved.Id);
+                            }
                         }
                     }
+                    else if (savedIndex > 0)
+                    {
+                        // Not the first year — ask to copy from previous
+                        var prevAY = allAYs[savedIndex - 1];
+                        string? fromAyId = null;
+                        if (ConfirmCopyStartTimes is not null)
+                        {
+                            fromAyId = await ConfirmCopyStartTimes(prevAY.Name, prevAY.Id);
+                        }
+
+                        if (fromAyId is not null)
+                        {
+                            _legalStartTimeRepo.CopyFromPreviousYear(saved.Id, fromAyId);
+                        }
+                    }
+
+                    _semesterContext.Reload(_ayRepo, _semRepo);
+                    Load();
+                    EditVm = null;
                 }
-                else if (savedIndex > 0)
+                catch (Exception ex)
                 {
-                    // Not the first year — ask to copy from previous
-                    var prevAY = allAYs[savedIndex - 1];
-                    string? fromAyId = null;
-                    if (ConfirmCopyStartTimes is not null)
-                    {
-                        fromAyId = await ConfirmCopyStartTimes(prevAY.Name, prevAY.Id);
-                    }
-
-                    if (fromAyId is not null)
-                    {
-                        _legalStartTimeRepo.CopyFromPreviousYear(saved.Id, fromAyId);
-                    }
+                    App.Logger.LogError(ex, "AcademicYearListViewModel.Add");
+                    if (ShowError is not null)
+                        await ShowError("The save could not be completed. Please try again.");
                 }
-
-                _semesterContext.Reload(_ayRepo, _semRepo);
-                Load();
-                EditVm = null;
             });
     }
 
@@ -135,10 +150,19 @@ public partial class AcademicYearListViewModel : ViewModelBase
             if (!confirmed) return;
         }
 
-        _semRepo.DeleteByAcademicYear(SelectedAcademicYear.Id);
-        _ayRepo.Delete(SelectedAcademicYear.Id);
-        _semesterContext.Reload(_ayRepo, _semRepo);
-        Load();
+        try
+        {
+            _semRepo.DeleteByAcademicYear(SelectedAcademicYear.Id);
+            _ayRepo.Delete(SelectedAcademicYear.Id);
+            _semesterContext.Reload(_ayRepo, _semRepo);
+            Load();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "AcademicYearListViewModel.Delete");
+            if (ShowError is not null)
+                await ShowError("The delete could not be completed. Please try again.");
+        }
     }
 
     private void CreateDefaultSemesters(string academicYearId)

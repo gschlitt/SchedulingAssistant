@@ -16,10 +16,10 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
     public bool IsNew { get; }
 
     private readonly LegalStartTime _entry;
-    private readonly Action<LegalStartTime> _onSave;
+    private readonly Func<LegalStartTime, Task> _onSave;
     private readonly Action _onCancel;
 
-    public LegalStartTimeEditViewModel(LegalStartTime entry, bool isNew, Action<LegalStartTime> onSave, Action onCancel)
+    public LegalStartTimeEditViewModel(LegalStartTime entry, bool isNew, Func<LegalStartTime, Task> onSave, Action onCancel)
     {
         _entry = entry;
         IsNew = isNew;
@@ -80,11 +80,11 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Save()
+    private async Task Save()
     {
         _entry.BlockLength = BlockLength;
         _entry.StartTimes = StartTimeRows.Select(r => r.Minutes).ToList();
-        _onSave(_entry);
+        await _onSave(_entry);
     }
 
     [RelayCommand]

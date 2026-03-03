@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class InstructorListViewModel : ViewModelBase
+public partial class InstructorListViewModel : ViewModelBase, IDisposable
 {
     private readonly InstructorRepository _repo;
     private readonly SectionPropertyRepository _propertyRepo;
@@ -48,15 +48,20 @@ public partial class InstructorListViewModel : ViewModelBase
         ShowOnlyActive = AppSettings.Load().ShowOnlyActiveInstructors;
         Load();
 
-        // Subscribe to semester changes to reload workload
-        _semesterContext.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
-                RefreshWorkload();
-        };
-
-        // Subscribe to release changes to refresh workload display
+        _semesterContext.PropertyChanged += OnSemesterContextPropertyChanged;
         _releaseVm.ReleasesChanged += RefreshWorkload;
+    }
+
+    private void OnSemesterContextPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
+            RefreshWorkload();
+    }
+
+    public void Dispose()
+    {
+        _semesterContext.PropertyChanged -= OnSemesterContextPropertyChanged;
+        ReleaseVm.ReleasesChanged -= RefreshWorkload;
     }
 
     private void Load()
@@ -138,7 +143,11 @@ public partial class InstructorListViewModel : ViewModelBase
         var instructor = new Instructor();
         EditVm = new InstructorEditViewModel(instructor, isNew: true,
             staffTypes: GetStaffTypes(),
-            onSave: i => { _repo.Insert(i); Load(); EditVm = null; },
+            onSave: i =>
+            {
+                try { _repo.Insert(i); Load(); EditVm = null; }
+                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Add"); ShowError?.Invoke("The save could not be completed. Please try again."); }
+            },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials));
     }
@@ -161,7 +170,11 @@ public partial class InstructorListViewModel : ViewModelBase
         };
         EditVm = new InstructorEditViewModel(copy, isNew: false,
             staffTypes: GetStaffTypes(),
-            onSave: i => { _repo.Update(i); Load(); EditVm = null; },
+            onSave: i =>
+            {
+                try { _repo.Update(i); Load(); EditVm = null; }
+                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Edit"); ShowError?.Invoke("The save could not be completed. Please try again."); }
+            },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials, excludeId: copy.Id));
     }
@@ -184,8 +197,17 @@ public partial class InstructorListViewModel : ViewModelBase
 
         if (confirmed)
         {
-            _repo.Delete(SelectedInstructor.Id);
-            Load();
+            try
+            {
+                _repo.Delete(SelectedInstructor.Id);
+                Load();
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogError(ex, "InstructorListViewModel.Delete");
+                if (ShowError is not null)
+                    await ShowError("The delete could not be completed. Please try again.");
+            }
         }
     }
 }

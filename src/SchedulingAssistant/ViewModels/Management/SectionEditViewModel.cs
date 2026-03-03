@@ -132,7 +132,7 @@ public partial class SectionEditViewModel : ViewModelBase
     public bool IsNew { get; }
 
     private readonly Section _section;
-    private readonly Action<Section> _onSave;
+    private readonly Func<Section, Task> _onSave;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<SectionPropertyValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _rooms;
@@ -332,7 +332,7 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SectionPropertyValue> allResources,
         IReadOnlyList<SectionPropertyValue> allReserves,
         Func<string, string, bool> isSectionCodeDuplicate,
-        Action<Section> onSave,
+        Func<Section, Task> onSave,
         BlockPatternRepository blockPatternRepository,
         double? defaultBlockLength = null)
     {
@@ -578,7 +578,7 @@ public partial class SectionEditViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Save()
+    private async Task Save()
     {
         var trimmedCode = SectionCode.Trim();
 
@@ -628,7 +628,7 @@ public partial class SectionEditViewModel : ViewModelBase
             .Select(r => new SectionReserve { ReserveId = r.Value.Id, Code = r.ParsedCode!.Value })
             .ToList();
 
-        _onSave(_section);
+        await _onSave(_section);
         RequestClose?.Invoke();
     }
 

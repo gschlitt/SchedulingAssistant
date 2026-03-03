@@ -1,3 +1,4 @@
+What happens if we modify legal start times while a semester is in use?
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view

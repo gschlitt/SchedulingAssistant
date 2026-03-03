@@ -22,6 +22,7 @@ public partial class AcademicYearListView : UserControl
             vm.ConfirmDelete = ShowDeleteConfirmAsync;
             vm.ConfirmCopyStartTimes = ShowCopyStartTimesConfirmAsync;
             vm.ConfirmImportPersistedData = ShowImportPersistedDataAsync;
+            vm.ShowError = ShowErrorAsync;
         }
     }
 
@@ -208,5 +209,38 @@ public partial class AcademicYearListView : UserControl
 
         await msg.ShowDialog(owner);
         return result;
+    }
+
+    private async Task ShowErrorAsync(string message)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+
+        var msg = new Window
+        {
+            Title = "Error",
+            Width = 420,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ShowInTaskbar = false
+        };
+
+        var body = new TextBlock
+        {
+            Text = message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13
+        };
+
+        var okBtn = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Right };
+        okBtn.Click += (_, _) => msg.Close();
+
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 16 };
+        panel.Children.Add(body);
+        panel.Children.Add(okBtn);
+        msg.Content = panel;
+
+        await msg.ShowDialog(owner);
     }
 }

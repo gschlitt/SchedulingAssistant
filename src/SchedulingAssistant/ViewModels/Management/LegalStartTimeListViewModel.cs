@@ -10,7 +10,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// <summary>Represents one item in the "Preferred block length" ComboBox.</summary>
 public record NullableBlockLengthOption(double? Value, string Label);
 
-public partial class LegalStartTimeListViewModel : ViewModelBase
+public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
 {
     private readonly LegalStartTimeRepository _repo;
     private readonly SemesterContext _semesterContext;
@@ -19,6 +19,9 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<LegalStartTime> _entries = new();
     [ObservableProperty] private LegalStartTime? _selectedEntry;
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
+
+    /// <summary>Set by the view. Called with an error message when an action fails.</summary>
+    public Func<string, Task>? ShowError { get; set; }
 
     // ── Include Saturday setting ──────────────────────────────────────────────
 
@@ -123,7 +126,11 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
         if (string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var entry = new LegalStartTime();
         EditVm = new LegalStartTimeEditViewModel(entry, isNew: true,
-            onSave: e => { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; },
+            onSave: async e =>
+            {
+                try { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+            },
             onCancel: () => EditVm = null);
     }
 
@@ -133,15 +140,33 @@ public partial class LegalStartTimeListViewModel : ViewModelBase
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var copy = new LegalStartTime { BlockLength = SelectedEntry.BlockLength, StartTimes = new List<int>(SelectedEntry.StartTimes) };
         EditVm = new LegalStartTimeEditViewModel(copy, isNew: false,
-            onSave: e => { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; },
+            onSave: async e =>
+            {
+                try { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+            },
             onCancel: () => EditVm = null);
     }
 
     [RelayCommand]
-    private void Delete()
+    private async Task Delete()
     {
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
-        _repo.Delete(_currentAcademicYearId, SelectedEntry.BlockLength);
-        Load();
+        try
+        {
+            _repo.Delete(_currentAcademicYearId, SelectedEntry.BlockLength);
+            Load();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "LegalStartTimeListViewModel.Delete");
+            if (ShowError is not null)
+                await ShowError("The delete could not be completed. Please try again.");
+        }
+    }
+
+    public void Dispose()
+    {
+        _semesterContext.PropertyChanged -= OnSemesterContextChanged;
     }
 }

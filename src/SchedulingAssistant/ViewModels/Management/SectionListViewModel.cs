@@ -321,12 +321,21 @@ public partial class SectionListViewModel : ViewModelBase
             allTags, allResources, allReserves,
             isSectionCodeDuplicate: (courseId, code) =>
                 _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null),
-            onSave: s =>
+            onSave: async s =>
             {
-                _sectionRepo.Insert(s);
-                CollapseEditor();
-                Load(selectSectionId: s.Id);
-                _scheduleGridVm.Reload();
+                try
+                {
+                    _sectionRepo.Insert(s);
+                    CollapseEditor();
+                    Load(selectSectionId: s.Id);
+                    _scheduleGridVm.Reload();
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.LogError(ex, "SectionListViewModel.Add");
+                    if (ShowError is not null)
+                        await ShowError("The save could not be completed. Please try again.");
+                }
             },
             _blockPatternRepo,
             defaultBlockLength: settings.PreferredBlockLength);
@@ -412,12 +421,21 @@ public partial class SectionListViewModel : ViewModelBase
             allTags, allResources, allReserves,
             (courseId, code) =>
                 _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, isNew ? null : section.Id),
-            onSave: s =>
+            onSave: async s =>
             {
-                if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
-                CollapseEditor();
-                Load(selectSectionId: s.Id);
-                _scheduleGridVm.Reload();
+                try
+                {
+                    if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
+                    CollapseEditor();
+                    Load(selectSectionId: s.Id);
+                    _scheduleGridVm.Reload();
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.LogError(ex, "SectionListViewModel.Edit");
+                    if (ShowError is not null)
+                        await ShowError("The save could not be completed. Please try again.");
+                }
             },
             _blockPatternRepo,
             defaultBlockLength: settings.PreferredBlockLength);
@@ -519,12 +537,21 @@ public partial class SectionListViewModel : ViewModelBase
             allTags, allResources, allReserves,
             isSectionCodeDuplicate: (courseId, code) =>
                 _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null),
-            onSave: s =>
+            onSave: async s =>
             {
-                _sectionRepo.Insert(s);
-                CollapseEditor();
-                Load(selectSectionId: s.Id);
-                _scheduleGridVm.Reload();
+                try
+                {
+                    _sectionRepo.Insert(s);
+                    CollapseEditor();
+                    Load(selectSectionId: s.Id);
+                    _scheduleGridVm.Reload();
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.LogError(ex, "SectionListViewModel.Add");
+                    if (ShowError is not null)
+                        await ShowError("The save could not be completed. Please try again.");
+                }
             },
             _blockPatternRepo,
             defaultBlockLength: settings.PreferredBlockLength);
@@ -541,14 +568,23 @@ public partial class SectionListViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Delete()
+    private async Task Delete()
     {
         if (SelectedSection is null) return;
         if (ExpandedItem?.Section.Id == SelectedSection.Id)
             CollapseEditor();
-        _sectionRepo.Delete(SelectedSection.Id);
-        Load();
-        _scheduleGridVm.Reload();
+        try
+        {
+            _sectionRepo.Delete(SelectedSection.Id);
+            Load();
+            _scheduleGridVm.Reload();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SectionListViewModel.Delete");
+            if (ShowError is not null)
+                await ShowError("The delete could not be completed. Please try again.");
+        }
     }
 
     [RelayCommand]

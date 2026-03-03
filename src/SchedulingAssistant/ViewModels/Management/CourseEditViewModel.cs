@@ -31,7 +31,7 @@ public partial class CourseEditViewModel : ViewModelBase
         : $"{SelectedSubject.CalendarAbbreviation}{CourseNumber}";
 
     private readonly Course _course;
-    private readonly Action<Course> _onSave;
+    private readonly Func<Course, Task> _onSave;
     private readonly Action _onCancel;
     private readonly Func<string, bool> _codeExists;
 
@@ -57,7 +57,7 @@ public partial class CourseEditViewModel : ViewModelBase
     public CourseEditViewModel(
         Course course,
         bool isNew,
-        Action<Course> onSave,
+        Func<Course, Task> onSave,
         Action onCancel,
         Func<string, bool> codeExists,
         ObservableCollection<Subject> subjects)
@@ -88,13 +88,13 @@ public partial class CourseEditViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
-    private void Save()
+    private async Task Save()
     {
         _course.SubjectId = SelectedSubject!.Id;
         _course.CalendarCode = ComputedCalendarCode;
         _course.Title = CourseTitle.Trim();
         _course.IsActive = IsActive;
-        _onSave(_course);
+        await _onSave(_course);
     }
 
     [RelayCommand]

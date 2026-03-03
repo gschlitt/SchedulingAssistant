@@ -20,7 +20,7 @@ public partial class SubjectEditViewModel : ViewModelBase
     public bool IsNew { get; }
 
     private readonly Subject _subject;
-    private readonly Action<Subject> _onSave;
+    private readonly Func<Subject, Task> _onSave;
     private readonly Action _onCancel;
     private readonly Func<string, bool> _nameExists;
     private readonly Func<string, bool> _abbreviationExists;
@@ -45,7 +45,7 @@ public partial class SubjectEditViewModel : ViewModelBase
     public SubjectEditViewModel(
         Subject subject,
         bool isNew,
-        Action<Subject> onSave,
+        Func<Subject, Task> onSave,
         Action onCancel,
         Func<string, bool> nameExists,
         Func<string, bool> abbreviationExists)
@@ -62,11 +62,11 @@ public partial class SubjectEditViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
-    private void Save()
+    private async Task Save()
     {
         _subject.Name = Name.Trim();
         _subject.CalendarAbbreviation = CalendarAbbreviation.Trim();
-        _onSave(_subject);
+        await _onSave(_subject);
     }
 
     [RelayCommand]

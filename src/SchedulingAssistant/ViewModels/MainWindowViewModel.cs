@@ -106,6 +106,11 @@ public partial class MainWindowViewModel : ViewModelBase
         WorkloadPanelVm = workloadPanelVm;
     }
 
+    partial void OnFlyoutPageChanged(object? oldValue, object? newValue)
+    {
+        (oldValue as IDisposable)?.Dispose();
+    }
+
     [RelayCommand]
     private void CloseFlyout() => FlyoutPage = null;
 

@@ -34,7 +34,11 @@ public partial class SubjectListViewModel : ViewModelBase
     {
         var subject = new Subject();
         EditVm = new SubjectEditViewModel(subject, isNew: true,
-            onSave: s => { _repo.Insert(s); Load(); EditVm = null; },
+            onSave: async s =>
+            {
+                try { _repo.Insert(s); Load(); EditVm = null; }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+            },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name),
             abbreviationExists: abbr => _repo.ExistsByAbbreviation(abbr));
@@ -51,7 +55,11 @@ public partial class SubjectListViewModel : ViewModelBase
             CalendarAbbreviation = SelectedSubject.CalendarAbbreviation
         };
         EditVm = new SubjectEditViewModel(clone, isNew: false,
-            onSave: s => { _repo.Update(s); Load(); EditVm = null; },
+            onSave: async s =>
+            {
+                try { _repo.Update(s); Load(); EditVm = null; }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+            },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name, excludeId: clone.Id),
             abbreviationExists: abbr => _repo.ExistsByAbbreviation(abbr, excludeId: clone.Id));
