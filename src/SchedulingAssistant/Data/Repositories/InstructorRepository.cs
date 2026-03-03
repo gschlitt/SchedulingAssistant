@@ -32,16 +32,16 @@ public class InstructorRepository(DatabaseContext db)
         return instructor;
     }
 
-    /// <summary>Returns true if any sections reference this instructor (searches JSON instructorIds array).</summary>
+    /// <summary>Returns true if any sections reference this instructor (searches JSON instructorAssignments array).</summary>
     public bool HasSections(string instructorId)
     {
         using var cmd = db.Connection.CreateCommand();
-        // instructorIds is stored as a JSON array in the data column; use EXISTS + json_each to search it
+        // instructorAssignments is a JSON array of objects; each object has an instructorId property
         cmd.CommandText = """
             SELECT COUNT(*) FROM Sections
             WHERE EXISTS (
-                SELECT 1 FROM json_each(data ->> 'instructorIds')
-                WHERE value = $id
+                SELECT 1 FROM json_each(data, '$.instructorAssignments')
+                WHERE json_extract(value, '$.instructorId') = $id
             )
             """;
         cmd.Parameters.AddWithValue("$id", instructorId);

@@ -26,6 +26,9 @@ public partial class InstructorListViewModel : ViewModelBase
     /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
     public Func<string, Task>? ShowError { get; set; }
 
+    /// <summary>Set by the view. Called to show a confirmation dialog. Returns true if user confirmed.</summary>
+    public Func<string, Task<bool>>? ShowConfirmation { get; set; }
+
     public InstructorListViewModel(
         InstructorRepository repo,
         SectionPropertyRepository propertyRepo,
@@ -171,11 +174,18 @@ public partial class InstructorListViewModel : ViewModelBase
         if (_repo.HasSections(SelectedInstructor.Id))
         {
             if (ShowError is not null)
-                await ShowError($"Cannot delete {SelectedInstructor.Initials} ({SelectedInstructor.FirstName} {SelectedInstructor.LastName}) — they are assigned to sections in one or more semesters.");
+                await ShowError("The selected instructor has assigned workload and cannot be deleted. Consider inactivating the instructor instead");
             return;
         }
 
-        _repo.Delete(SelectedInstructor.Id);
-        Load();
+        var confirmed = ShowConfirmation is not null
+            ? await ShowConfirmation($"Delete {SelectedInstructor.FirstName} {SelectedInstructor.LastName}?")
+            : true;
+
+        if (confirmed)
+        {
+            _repo.Delete(SelectedInstructor.Id);
+            Load();
+        }
     }
 }

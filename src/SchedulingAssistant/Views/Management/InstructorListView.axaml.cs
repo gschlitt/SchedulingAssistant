@@ -17,7 +17,10 @@ public partial class InstructorListView : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (DataContext is InstructorListViewModel vm)
+        {
             vm.ShowError = ShowErrorAsync;
+            vm.ShowConfirmation = ShowConfirmationAsync;
+        }
     }
 
     private async Task ShowErrorAsync(string message)
@@ -51,5 +54,51 @@ public partial class InstructorListView : UserControl
         msg.Content = panel;
 
         await msg.ShowDialog(owner);
+    }
+
+    private async Task<bool> ShowConfirmationAsync(string message)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return false;
+
+        bool confirmed = false;
+        var dlg = new Window
+        {
+            Title = "Confirm",
+            Width = 420,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ShowInTaskbar = false
+        };
+
+        var body = new TextBlock
+        {
+            Text = message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13
+        };
+
+        var yesBtn = new Button { Content = "Delete", HorizontalAlignment = HorizontalAlignment.Right };
+        yesBtn.Click += (_, _) =>
+        {
+            confirmed = true;
+            dlg.Close();
+        };
+
+        var noBtn = new Button { Content = "Cancel", HorizontalAlignment = HorizontalAlignment.Right };
+        noBtn.Click += (_, _) => dlg.Close();
+
+        var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+        btnPanel.Children.Add(noBtn);
+        btnPanel.Children.Add(yesBtn);
+
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 16 };
+        panel.Children.Add(body);
+        panel.Children.Add(btnPanel);
+        dlg.Content = panel;
+
+        await dlg.ShowDialog(owner);
+        return confirmed;
     }
 }
