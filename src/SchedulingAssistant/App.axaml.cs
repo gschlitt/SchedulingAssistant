@@ -97,7 +97,9 @@ public partial class App : Application
         services.AddTransient<ReleaseRepository>();
 
         // ViewModels
+        services.AddSingleton<SectionChangeNotifier>();
         services.AddSingleton<MainWindowViewModel>();
+        services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<ScheduleGridViewModel>(sp => new ScheduleGridViewModel(
             sp.GetRequiredService<SectionRepository>(),
             sp.GetRequiredService<CourseRepository>(),
@@ -106,8 +108,8 @@ public partial class App : Application
             sp.GetRequiredService<SubjectRepository>(),
             sp.GetRequiredService<SectionPropertyRepository>(),
             sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<AcademicUnitService>()));
-        services.AddSingleton<SectionListViewModel>();
+            sp.GetRequiredService<AcademicUnitService>(),
+            sp.GetRequiredService<SectionChangeNotifier>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<InstructorRepository>(),
             sp.GetRequiredService<SectionRepository>(),

@@ -1,5 +1,7 @@
 What happens if we modify legal start times while a semester is in use?
 
+Fix the section code assigner to allow for the lab format A#2 etc. User picks campus and type.
+
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view
 Booking cards need to show all info

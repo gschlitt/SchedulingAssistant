@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SchedulingAssistant.ViewModels.GridView;
@@ -10,6 +12,7 @@ namespace SchedulingAssistant.Views.GridView;
 
 public partial class ScheduleGridView : UserControl
 {
+    private record TileClickContext(string SectionId, int Day, int StartMinutes);
     // Layout constants
     private const double TimeGutterWidth  = 52;
     private const double DayHeaderHeight  = 28;
@@ -41,6 +44,7 @@ public partial class ScheduleGridView : UserControl
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
     private Border? _zoomContainer;
+    private Popup? _tileContextPopup;
     private double _zoomLevel = 1.0;
 
     public ScheduleGridView()
@@ -52,6 +56,7 @@ public partial class ScheduleGridView : UserControl
         // Wire up zoom slider to ScaleTransform on the zoom container
         var slider = this.FindControl<Slider>("ZoomSlider");
         _zoomContainer = this.FindControl<Border>("ZoomContainer");
+        _tileContextPopup = this.FindControl<Popup>("TileContextPopup");
 
         if (slider is not null)
         {
@@ -370,12 +375,14 @@ public partial class ScheduleGridView : UserControl
                         : $"{entry.Label}  {entry.Initials}";
 
                     var entryId = entry.SectionId;
+                    var clickCtx = new TileClickContext(entryId, d + 1, tile.StartMinutes);
                     var entryRow = new Border
                     {
                         Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
                         CornerRadius = new CornerRadius(2),
                         Padding      = new Thickness(1, 0),
                         Cursor       = entryCursor,
+                        Tag          = clickCtx,
                         Child        = new TextBlock
                         {
                             Text = labelText,
@@ -387,8 +394,17 @@ public partial class ScheduleGridView : UserControl
                             TextTrimming = TextTrimming.CharacterEllipsis,
                         },
                     };
-                    entryRow.PointerPressed += (_, e) =>
+                    entryRow.PointerPressed += (sender, e) =>
                     {
+                        if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
+                        {
+                            var ctx = (TileClickContext)((Border)sender!).Tag!;
+                            _vm?.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
+                            if (_tileContextPopup is not null)
+                                _tileContextPopup.IsOpen = true;
+                            e.Handled = true;
+                            return;
+                        }
                         if (e.ClickCount >= 2)
                             _vm?.EditRequested?.Invoke(entryId);
                         else

@@ -6,6 +6,38 @@
              x:DataType="vm:ScheduleGridViewModel"
              x:CompileBindings="False">
 
+    <UserControl.Styles>
+        <Style Selector="Button.CtxMenuItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.CtxMenuItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="CheckBox.CtxCheck">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="ListBox.CtxList">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2" />
+        </Style>
+        <Style Selector="ListBox.CtxList ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 
         <!-- Row 0: Filter bar - always visible -->
@@ -73,6 +105,125 @@
                            VerticalAlignment="Center" />
             </DockPanel>
         </Border>
+
+        <!-- Tile right-click context menu popup -->
+        <Popup x:Name="TileContextPopup"
+               Placement="Pointer"
+               IsLightDismissEnabled="True"
+               Grid.RowSpan="4">
+            <Border Background="White"
+                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    BoxShadow="0 2 8 0 #33000000">
+                <StackPanel Orientation="Horizontal">
+
+                    <!-- Primary: 3 menu items -->
+                    <StackPanel MinWidth="210">
+                        <Button Classes="CtxMenuItem"
+                                Command="{Binding ContextMenu.ShowInstructorsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Assign Instructor to Section" VerticalAlignment="Center" />
+                                <TextBlock Text="▶" FontSize="9" VerticalAlignment="Center"
+                                           Foreground="Gray" Margin="0,1,0,0" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="CtxMenuItem"
+                                Command="{Binding ContextMenu.ShowRoomCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Assign Room to Section Booking" VerticalAlignment="Center" />
+                                <TextBlock Text="▶" FontSize="9" VerticalAlignment="Center"
+                                           Foreground="Gray" Margin="0,1,0,0" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="CtxMenuItem"
+                                Command="{Binding ContextMenu.ShowTagsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Assign Tag to Section" VerticalAlignment="Center" />
+                                <TextBlock Text="▶" FontSize="9" VerticalAlignment="Center"
+                                           Foreground="Gray" Margin="0,1,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Sub-panel: appears when a menu item is chosen -->
+                    <Border IsVisible="{Binding ContextMenu.HasSubPanel}"
+                            BorderBrush="{StaticResource FilterExpanderBorder}"
+                            BorderThickness="1,0,0,0"
+                            MinWidth="180" MaxWidth="260">
+                        <DockPanel>
+
+                            <!-- OK / Cancel -->
+                            <StackPanel DockPanel.Dock="Bottom"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        Spacing="4"
+                                        Margin="6,4">
+                                <Button Content="OK"
+                                        Command="{Binding ContextMenu.ConfirmCommand}"
+                                        Padding="12,3" FontSize="11"
+                                        MinHeight="0" MinWidth="0" />
+                                <Button Content="Cancel"
+                                        Command="{Binding ContextMenu.CancelCommand}"
+                                        Padding="12,3" FontSize="11"
+                                        MinHeight="0" MinWidth="0" />
+                            </StackPanel>
+
+                            <!-- Lists -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="220">
+                                <Panel>
+
+                                    <!-- Instructors -->
+                                    <ListBox Classes="CtxList"
+                                             IsVisible="{Binding ContextMenu.IsInstructorPanelVisible}"
+                                             ItemsSource="{Binding ContextMenu.Instructors}"
+                                             SelectionMode="Multiple">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Classes="CtxCheck"
+                                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                          Content="{Binding Label}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Room (single select) -->
+                                    <ListBox Classes="CtxList"
+                                             IsVisible="{Binding ContextMenu.IsRoomPanelVisible}"
+                                             ItemsSource="{Binding ContextMenu.Rooms}"
+                                             SelectedItem="{Binding ContextMenu.SelectedRoom, Mode=TwoWay}"
+                                             SelectionMode="Single">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Label}"
+                                                           FontSize="11"
+                                                           Padding="4,2" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Tags -->
+                                    <ListBox Classes="CtxList"
+                                             IsVisible="{Binding ContextMenu.IsTagPanelVisible}"
+                                             ItemsSource="{Binding ContextMenu.Tags}"
+                                             SelectionMode="Multiple">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Classes="CtxCheck"
+                                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                          Content="{Binding Label}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                </Panel>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+
+                </StackPanel>
+            </Border>
+        </Popup>
 
     </Grid>
 

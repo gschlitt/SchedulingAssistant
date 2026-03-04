@@ -19,6 +19,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SectionPropertyRepository _propertyRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
+    private readonly SectionChangeNotifier _changeNotifier;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
     [ObservableProperty] private string? _selectedSectionId;
@@ -39,6 +40,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>Filter state. Exposed so the view can bind to it.</summary>
     public GridFilterViewModel Filter { get; } = new();
 
+    /// <summary>State for the right-click context menu on section tiles.</summary>
+    public SectionContextMenuViewModel ContextMenu { get; }
+
     public ScheduleGridViewModel(
         SectionRepository sectionRepo,
         CourseRepository courseRepo,
@@ -47,7 +51,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SubjectRepository subjectRepo,
         SectionPropertyRepository propertyRepo,
         SemesterContext semesterContext,
-        AcademicUnitService academicUnitService)
+        AcademicUnitService academicUnitService,
+        SectionChangeNotifier changeNotifier)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -57,6 +62,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _propertyRepo = propertyRepo;
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
+        _changeNotifier = changeNotifier;
+
+        ContextMenu = new SectionContextMenuViewModel(sectionRepo, NotifySectionChanged);
 
         LoadAcademicUnitName();
 
@@ -93,6 +101,32 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Set by SectionListViewModel to open the section editor.
     /// </summary>
     public Action<string>? EditRequested { get; set; }
+
+    /// <summary>
+    /// Loads context menu data for the right-clicked tile entry.
+    /// Called from the view's PointerPressed handler before opening the popup.
+    /// </summary>
+    public void PrepareContextMenu(string sectionId, int day, int startMinutes)
+    {
+        var section = _sectionRepo.GetById(sectionId);
+        if (section is null) return;
+
+        var instructors = _instructorRepo.GetAll();
+        var rooms       = _roomRepo.GetAll();
+        var tags        = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
+
+        ContextMenu.Load(section, day, startMinutes, instructors, rooms, tags);
+    }
+
+    /// <summary>
+    /// Callback invoked after context menu saves changes.
+    /// Refreshes the schedule grid and notifies other views (via SectionChangeNotifier) that sections changed.
+    /// </summary>
+    private void NotifySectionChanged()
+    {
+        Reload();
+        _changeNotifier.NotifySectionChanged();
+    }
 
     [RelayCommand]
     public void DismissError() => LastErrorMessage = null;

@@ -142,7 +142,8 @@ public partial class SectionListViewModel : ViewModelBase
         BlockPatternRepository blockPatternRepo,
         SemesterContext semesterContext,
         ScheduleGridViewModel scheduleGridVm,
-        SectionPropertyRepository propertyRepo)
+        SectionPropertyRepository propertyRepo,
+        SectionChangeNotifier changeNotifier)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -159,6 +160,7 @@ public partial class SectionListViewModel : ViewModelBase
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         _scheduleGridVm.PropertyChanged += OnGridVmPropertyChanged;
         _scheduleGridVm.EditRequested = EditSectionById;
+        changeNotifier.SectionChanged += Reload;
 
         Load();
     }
