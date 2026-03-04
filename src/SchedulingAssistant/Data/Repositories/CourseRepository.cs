@@ -65,9 +65,12 @@ public class CourseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "INSERT INTO Courses (id, subject_id, data) VALUES ($id, $sid, $data)";
+            "INSERT INTO Courses (id, subject_id, calendar_code, title, data) " +
+            "VALUES ($id, $sid, $calendarCode, $title, $data)";
         cmd.Parameters.AddWithValue("$id", course.Id);
         cmd.Parameters.AddWithValue("$sid", course.SubjectId);
+        cmd.Parameters.AddWithValue("$calendarCode", (object?)course.CalendarCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$title",        (object?)course.Title        ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(course));
         cmd.ExecuteNonQuery();
     }
@@ -76,9 +79,11 @@ public class CourseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "UPDATE Courses SET subject_id = $sid, data = $data WHERE id = $id";
+            "UPDATE Courses SET subject_id = $sid, calendar_code = $calendarCode, title = $title, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", course.Id);
         cmd.Parameters.AddWithValue("$sid", course.SubjectId);
+        cmd.Parameters.AddWithValue("$calendarCode", (object?)course.CalendarCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$title",        (object?)course.Title        ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(course));
         cmd.ExecuteNonQuery();
     }

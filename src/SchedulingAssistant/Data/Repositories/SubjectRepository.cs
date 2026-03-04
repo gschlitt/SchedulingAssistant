@@ -73,8 +73,11 @@ public class SubjectRepository(DatabaseContext db)
     public void Insert(Subject subject)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO Subjects (id, data) VALUES ($id, $data)";
+        cmd.CommandText =
+            "INSERT INTO Subjects (id, name, abbreviation, data) VALUES ($id, $name, $abbreviation, $data)";
         cmd.Parameters.AddWithValue("$id", subject.Id);
+        cmd.Parameters.AddWithValue("$name",         (object?)subject.Name                  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$abbreviation", (object?)subject.CalendarAbbreviation  ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(subject));
         cmd.ExecuteNonQuery();
     }
@@ -82,8 +85,11 @@ public class SubjectRepository(DatabaseContext db)
     public void Update(Subject subject)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "UPDATE Subjects SET data = $data WHERE id = $id";
+        cmd.CommandText =
+            "UPDATE Subjects SET name = $name, abbreviation = $abbreviation, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", subject.Id);
+        cmd.Parameters.AddWithValue("$name",         (object?)subject.Name                 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$abbreviation", (object?)subject.CalendarAbbreviation ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(subject));
         cmd.ExecuteNonQuery();
     }

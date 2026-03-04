@@ -35,11 +35,17 @@ public class SectionRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
-        cmd.CommandText =
-            "INSERT INTO Sections (id, semester_id, course_id, room_id, data) VALUES ($id, $sid, $cid, NULL, $data)";
+        // course_code is denormalised from Courses via subquery for easy DB browsing
+        cmd.CommandText = """
+            INSERT INTO Sections (id, semester_id, course_id, room_id, section_code, course_code, data)
+            VALUES ($id, $sid, $cid, NULL, $sectionCode,
+                    (SELECT json_extract(data, '$.calendarCode') FROM Courses WHERE id = $cid),
+                    $data)
+            """;
         cmd.Parameters.AddWithValue("$id", section.Id);
         cmd.Parameters.AddWithValue("$sid", section.SemesterId);
         cmd.Parameters.AddWithValue("$cid", (object?)section.CourseId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$sectionCode", (object?)section.SectionCode ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(section));
         cmd.ExecuteNonQuery();
     }
@@ -49,11 +55,21 @@ public class SectionRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
-        cmd.CommandText =
-            "UPDATE Sections SET semester_id = $sid, course_id = $cid, room_id = NULL, data = $data WHERE id = $id";
+        // course_code is denormalised from Courses via subquery for easy DB browsing
+        cmd.CommandText = """
+            UPDATE Sections
+            SET semester_id  = $sid,
+                course_id    = $cid,
+                room_id      = NULL,
+                section_code = $sectionCode,
+                course_code  = (SELECT json_extract(data, '$.calendarCode') FROM Courses WHERE id = $cid),
+                data         = $data
+            WHERE id = $id
+            """;
         cmd.Parameters.AddWithValue("$id", section.Id);
         cmd.Parameters.AddWithValue("$sid", section.SemesterId);
         cmd.Parameters.AddWithValue("$cid", (object?)section.CourseId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$sectionCode", (object?)section.SectionCode ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(section));
         cmd.ExecuteNonQuery();
     }

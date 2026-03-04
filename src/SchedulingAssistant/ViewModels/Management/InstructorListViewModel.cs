@@ -187,7 +187,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         if (_repo.HasSections(SelectedInstructor.Id))
         {
             if (ShowError is not null)
-                await ShowError("The selected instructor has assigned workload and cannot be deleted. Consider inactivating the instructor instead");
+                await ShowError("The selected instructor has assigned workload and cannot be deleted. Consider deactivating the instructor instead");
             return;
         }
 

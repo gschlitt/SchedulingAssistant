@@ -26,9 +26,10 @@ public class SectionPropertyRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "INSERT INTO SectionPropertyValues (id, type, data) VALUES ($id, $type, $data)";
+            "INSERT INTO SectionPropertyValues (id, type, name, data) VALUES ($id, $type, $name, $data)";
         cmd.Parameters.AddWithValue("$id", value.Id);
         cmd.Parameters.AddWithValue("$type", type);
+        cmd.Parameters.AddWithValue("$name", (object?)value.Name ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(value));
         cmd.ExecuteNonQuery();
     }
@@ -37,8 +38,9 @@ public class SectionPropertyRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "UPDATE SectionPropertyValues SET data = $data WHERE id = $id";
+            "UPDATE SectionPropertyValues SET name = $name, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", value.Id);
+        cmd.Parameters.AddWithValue("$name", (object?)value.Name ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(value));
         cmd.ExecuteNonQuery();
     }

@@ -49,8 +49,9 @@ public class AcademicUnitRepository(DatabaseContext db)
     public void Insert(AcademicUnit unit)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO AcademicUnits (id, data) VALUES ($id, $data)";
+        cmd.CommandText = "INSERT INTO AcademicUnits (id, name, data) VALUES ($id, $name, $data)";
         cmd.Parameters.AddWithValue("$id", unit.Id);
+        cmd.Parameters.AddWithValue("$name", (object?)unit.Name ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
         cmd.ExecuteNonQuery();
     }
@@ -58,8 +59,9 @@ public class AcademicUnitRepository(DatabaseContext db)
     public void Update(AcademicUnit unit)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "UPDATE AcademicUnits SET data = $data WHERE id = $id";
+        cmd.CommandText = "UPDATE AcademicUnits SET name = $name, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", unit.Id);
+        cmd.Parameters.AddWithValue("$name", (object?)unit.Name ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
         cmd.ExecuteNonQuery();
     }

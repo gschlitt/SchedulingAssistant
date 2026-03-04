@@ -66,8 +66,13 @@ public class InstructorRepository(DatabaseContext db)
     public void Insert(Instructor instructor)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO Instructors (id, data) VALUES ($id, $data)";
+        cmd.CommandText =
+            "INSERT INTO Instructors (id, last_name, first_name, initials, data) " +
+            "VALUES ($id, $lastName, $firstName, $initials, $data)";
         cmd.Parameters.AddWithValue("$id", instructor.Id);
+        cmd.Parameters.AddWithValue("$lastName",  (object?)instructor.LastName  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$firstName", (object?)instructor.FirstName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$initials",  (object?)instructor.Initials  ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(instructor));
         cmd.ExecuteNonQuery();
     }
@@ -76,8 +81,13 @@ public class InstructorRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
-        cmd.CommandText = "UPDATE Instructors SET data = $data WHERE id = $id";
+        cmd.CommandText =
+            "UPDATE Instructors SET last_name = $lastName, first_name = $firstName, " +
+            "initials = $initials, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", instructor.Id);
+        cmd.Parameters.AddWithValue("$lastName",  (object?)instructor.LastName  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$firstName", (object?)instructor.FirstName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$initials",  (object?)instructor.Initials  ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(instructor));
         cmd.ExecuteNonQuery();
     }

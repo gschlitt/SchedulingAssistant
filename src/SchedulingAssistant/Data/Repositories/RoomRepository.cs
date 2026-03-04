@@ -35,8 +35,11 @@ public class RoomRepository(DatabaseContext db)
     public void Insert(Room room)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO Rooms (id, data) VALUES ($id, $data)";
+        cmd.CommandText =
+            "INSERT INTO Rooms (id, building, room_number, data) VALUES ($id, $building, $roomNumber, $data)";
         cmd.Parameters.AddWithValue("$id", room.Id);
+        cmd.Parameters.AddWithValue("$building",   (object?)room.Building    ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$roomNumber", (object?)room.RoomNumber  ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(room));
         cmd.ExecuteNonQuery();
     }
@@ -44,8 +47,11 @@ public class RoomRepository(DatabaseContext db)
     public void Update(Room room)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "UPDATE Rooms SET data = $data WHERE id = $id";
+        cmd.CommandText =
+            "UPDATE Rooms SET building = $building, room_number = $roomNumber, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", room.Id);
+        cmd.Parameters.AddWithValue("$building",   (object?)room.Building   ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$roomNumber", (object?)room.RoomNumber ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(room));
         cmd.ExecuteNonQuery();
     }
