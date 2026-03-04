@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scheduling Assistant — User Manual</title>
+  <style>
+    :root {
+      --blue: #AECBF0;
+      --blue-dark: #7AAAD4;
+      --blue-deep: #2563A8;
+      --accent: #1d4ed8;
+      --text: #1a1a2e;
+      --muted: #555;
+      --bg: #f8f9fb;
+      --card: #ffffff;
+      --border: #dde3ec;
+      --red: #b91c1c;
+      --green: #166534;
+      --tip-bg: #eff6ff;
+      --tip-border: #93c5fd;
+      --warn-bg: #fffbeb;
+      --warn-border: #fcd34d;
+      --sidebar-w: 260px;
+      --header-h: 56px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    /* ── Top header ── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: var(--header-h);
+      background: var(--blue);
+      border-bottom: 2px solid var(--blue-dark);
+      display: flex; align-items: center; padding: 0 24px; gap: 12px;
+    }
+    #topbar h1 { font-size: 20px; font-weight: 700; color: #1a2f50; }
+    #topbar .subtitle { font-size: 13px; color: #3a5070; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      position: fixed; top: var(--header-h); left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px 0;
+      z-index: 100;
+    }
+    #sidebar .nav-section { padding: 6px 16px 4px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+    #sidebar a {
+      display: block; padding: 5px 20px; font-size: 13.5px; color: var(--text);
+      text-decoration: none; border-left: 3px solid transparent;
+      transition: background .12s, border-color .12s;
+    }
+    #sidebar a:hover { background: var(--tip-bg); }
+    #sidebar a.active { border-left-color: var(--accent); color: var(--accent); background: var(--tip-bg); font-weight: 600; }
+
+    /* ── Main content ── */
+    #content {
+      margin-left: var(--sidebar-w);
+      margin-top: var(--header-h);
+      padding: 40px 56px 80px;
+      max-width: 960px;
+    }
+
+    h2 {
+      font-size: 26px; font-weight: 700; color: #1a2f50;
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 8px; margin: 52px 0 18px;
+    }
+    h2:first-of-type { margin-top: 0; }
+    h3 { font-size: 18px; font-weight: 700; color: var(--blue-deep); margin: 28px 0 10px; }
+    h4 { font-size: 14px; font-weight: 700; color: var(--text); margin: 18px 0 6px; }
+
+    p { margin-bottom: 12px; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; }
+    li { margin-bottom: 5px; }
+
+    /* ── Callout boxes ── */
+    .tip {
+      background: var(--tip-bg); border-left: 4px solid var(--tip-border);
+      border-radius: 0 6px 6px 0; padding: 12px 16px; margin: 16px 0;
+    }
+    .tip strong { color: var(--accent); }
+    .warn {
+      background: var(--warn-bg); border-left: 4px solid var(--warn-border);
+      border-radius: 0 6px 6px 0; padding: 12px 16px; margin: 16px 0;
+    }
+    .warn strong { color: #92400e; }
+
+    /* ── UI labels ── */
+    kbd {
+      background: #e8edf5; border: 1px solid #b0bcd0; border-radius: 4px;
+      padding: 1px 6px; font-family: inherit; font-size: 13px; color: #2a3a50;
+    }
+    .btn {
+      display: inline-block; background: var(--blue); border: 1px solid var(--blue-dark);
+      border-radius: 4px; padding: 1px 8px; font-size: 13px; color: #1a2f50;
+      font-weight: 600; white-space: nowrap;
+    }
+    .field { font-style: italic; color: #2a3a50; }
+    .menu { font-weight: 600; color: #2a3a50; }
+
+    /* ── Step sequences ── */
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li {
+      counter-increment: step;
+      padding: 10px 10px 10px 48px;
+      position: relative;
+      border-left: 2px solid var(--blue);
+      margin-bottom: 2px;
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute; left: -14px; top: 10px;
+      background: var(--blue-dark); color: #fff;
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
+
+    /* ── Layout diagram ── */
+    .layout-diagram {
+      display: grid;
+      grid-template-columns: 180px 4px 1fr;
+      grid-template-rows: auto auto auto auto;
+      gap: 0; border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; font-size: 13px; margin: 18px 0;
+    }
+    .ld-menubar {
+      grid-column: 1 / -1;
+      background: var(--blue); border-bottom: 1px solid var(--blue-dark);
+      padding: 6px 12px; font-weight: 700; color: #1a2f50;
+    }
+    .ld-left {
+      background: #eef3fa; padding: 10px; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .ld-splitter { background: var(--blue-dark); }
+    .ld-right { background: #f6f9fd; padding: 10px; }
+    .ld-panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 6px 8px; margin-bottom: 4px;
+    }
+    .ld-panel-title { font-weight: 700; font-size: 12px; color: var(--blue-deep); }
+    .ld-panel-desc { font-size: 11px; color: var(--muted); }
+
+    /* ── Filter pills ── */
+    .filter-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .pill {
+      background: var(--blue); border: 1px solid var(--blue-dark);
+      border-radius: 20px; padding: 3px 12px; font-size: 13px; color: #1a2f50;
+    }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+    th { background: var(--blue); padding: 8px 12px; text-align: left; font-weight: 700;
+      border: 1px solid var(--blue-dark); }
+    td { padding: 7px 12px; border: 1px solid var(--border); vertical-align: top; }
+    tr:nth-child(even) td { background: #f3f6fb; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    @media (max-width: 800px) {
+      #sidebar { display: none; }
+      #content { margin-left: 0; padding: 24px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top header -->
+<div id="topbar">
+  <h1>Scheduling Assistant</h1>
+  <span class="subtitle">User Manual</span>
+</div>
+
+<!-- Sidebar navigation -->
+<nav id="sidebar">
+  <div class="nav-section">Getting Started</div>
+  <a href="#setup">First-time Setup</a>
+  <a href="#layout">Understanding the Layout</a>
+
+  <div class="nav-section">Building Your Data</div>
+  <a href="#academic-years">Academic Years &amp; Semesters</a>
+  <a href="#courses">Subjects &amp; Courses</a>
+  <a href="#instructors">Instructors</a>
+  <a href="#rooms">Rooms</a>
+  <a href="#section-properties">Section Properties</a>
+  <a href="#scheduling-settings">Scheduling Settings</a>
+
+  <div class="nav-section">Working with Sections</div>
+  <a href="#add-section">Adding a Section</a>
+  <a href="#edit-section">Editing a Section</a>
+  <a href="#schedule-meeting">Scheduling Meeting Times</a>
+  <a href="#copy-delete">Copying &amp; Deleting</a>
+  <a href="#sorting">Sorting Sections</a>
+
+  <div class="nav-section">Viewing the Schedule</div>
+  <a href="#schedule-grid">The Schedule Grid</a>
+  <a href="#filters">Using Filters</a>
+  <a href="#overlays">Overlays</a>
+  <a href="#quick-assign">Quick Assignment (Right-click)</a>
+
+  <div class="nav-section">Other Views</div>
+  <a href="#workload">Workload View</a>
+  <a href="#copy-semester">Copying a Semester</a>
+  <a href="#empty-semester">Emptying a Semester</a>
+
+  <div class="nav-section">Reference</div>
+  <a href="#tips">Tips &amp; Shortcuts</a>
+</nav>
+
+<!-- Main content -->
+<main id="content">
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="setup">First-time Setup</h2>
+
+<p>When you open Scheduling Assistant for the first time, you will be asked to set up a database. This is the file where all your data — courses, instructors, sections — is stored. It lives on your computer as a single file you can back up like any other document.</p>
+
+<h3>Creating a new database</h3>
+<ol class="steps">
+  <li>After the splash screen, a <strong>Database Location</strong> dialog appears. Click <span class="btn">Create new database…</span>.</li>
+  <li>Type a name for your database in the <span class="field">Database name</span> field (for example, <em>MyUniversity</em>).</li>
+  <li>Click <span class="btn">Browse…</span> next to <span class="field">Save in folder</span> and choose where the file should live. A Documents or shared drive folder works well.</li>
+  <li>The full file path is shown as a preview. When it looks right, click <span class="btn">OK</span>.</li>
+</ol>
+
+<div class="tip"><strong>Tip:</strong> Choose a folder you back up regularly. The entire database is a single <code>.db</code> file — copying it is all you need to back up your work.</div>
+
+<h3>Opening an existing database</h3>
+<p>If your administrator has set up a database file already, click <span class="btn">Open existing database…</span> instead, click <span class="btn">Browse…</span>, and locate the <code>.db</code> file.</p>
+
+<h3>Switching databases later</h3>
+<p>Use the <span class="menu">Files</span> menu at the top left of the main window. You can open a different database, create a new one, or pick from the list of recently opened databases.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="layout">Understanding the Layout</h2>
+
+<p>Once a database is open, the main window is divided into three panels plus a menu bar across the top.</p>
+
+<div class="layout-diagram">
+  <div class="ld-menubar">Menu bar — Files &nbsp;|&nbsp; Courses &nbsp;|&nbsp; Instructors &nbsp;|&nbsp; Section Properties &nbsp;|&nbsp; Academic Years &nbsp;|&nbsp; Settings &nbsp;&nbsp;&nbsp;&nbsp; ▸ Academic Year ▾ &nbsp; Semester ▾</div>
+  <div class="ld-left">
+    <div class="ld-panel"><div class="ld-panel-title">Section View</div><div class="ld-panel-desc">List of all sections for the selected semester. Add, edit, copy, delete here.</div></div>
+    <div style="height:6px; background:#ccc; margin:2px 0;"></div>
+    <div class="ld-panel"><div class="ld-panel-title">Workload View</div><div class="ld-panel-desc">Each instructor's teaching load for the semester and academic year.</div></div>
+  </div>
+  <div class="ld-splitter"></div>
+  <div class="ld-right">
+    <div class="ld-panel"><div class="ld-panel-title">Schedule Grid</div><div class="ld-panel-desc">Visual weekly calendar. Mon–Fri (or Sat). Sections appear as blocks. Filter and zoom controls at top and bottom.</div></div>
+  </div>
+</div>
+
+<table>
+  <thead><tr><th>Panel</th><th>What it's for</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Section View</strong> (left, top)</td><td>Your master list of sections for the current semester. All editing happens here.</td></tr>
+    <tr><td><strong>Workload View</strong> (left, bottom)</td><td>A quick at-a-glance summary of how many sections each instructor is carrying.</td></tr>
+    <tr><td><strong>Schedule Grid</strong> (right)</td><td>The visual calendar grid. Sections appear as coloured tiles. Read-only except for quick right-click assignments.</td></tr>
+  </tbody>
+</table>
+
+<p>Any of the three panels can be <strong>detached</strong> into its own floating window — useful on a dual monitor setup. Click the <span class="btn">Detach</span> button in the panel header to do this.</p>
+
+<p>The <strong>Academic Year</strong> and <strong>Semester</strong> dropdowns in the top-right corner control which semester all three panels are showing. Change these at any time.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="academic-years">Academic Years &amp; Semesters</h2>
+
+<p>Scheduling Assistant organises your data by <strong>academic year</strong> and <strong>semester</strong>. Create these first, before adding sections.</p>
+
+<h3>Adding an academic year</h3>
+<ol class="steps">
+  <li>Click <span class="btn">Academic Years</span> in the menu bar. A panel drops down from the top.</li>
+  <li>Click <span class="btn">Add</span>.</li>
+  <li>Type the name of the year — for example <em>2025-2026</em> — and click <span class="btn">Save</span>.</li>
+</ol>
+
+<h3>Adding a semester</h3>
+<ol class="steps">
+  <li>Click <span class="btn">Academic Years</span>, then click <span class="btn">Semesters</span> in the sidebar (or navigate to the Semesters management screen).</li>
+  <li>Click <span class="btn">Add</span>.</li>
+  <li>Type a name such as <em>Fall 2025</em> or <em>Spring 2026</em>, and choose which academic year it belongs to.</li>
+  <li>Click <span class="btn">Save</span>.</li>
+</ol>
+
+<h3>Selecting the active semester</h3>
+<p>Use the two dropdowns in the top-right corner of the window. First choose an <strong>Academic Year</strong>; the <strong>Semester</strong> dropdown will update to show only that year's semesters. All three panels immediately reflect your selection.</p>
+
+<div class="tip"><strong>Tip:</strong> You can have many semesters defined at once and switch between them freely — each is a completely separate schedule.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="courses">Subjects &amp; Courses</h2>
+
+<p>A <strong>subject</strong> is the broad area of study (e.g. Mathematics, History). A <strong>course</strong> belongs to a subject and carries a number (e.g. HIST 101 — Introduction to History). Sections are always attached to a course.</p>
+
+<h3>Adding a subject</h3>
+<ol class="steps">
+  <li>Click <span class="btn">Courses</span> in the menu bar.</li>
+  <li>In the <strong>Subjects</strong> section, click <span class="btn">Add Subject</span>.</li>
+  <li>Enter the full name (e.g. <em>History</em>) and the calendar abbreviation used on timetables (e.g. <em>HIST</em>).</li>
+  <li>Click <span class="btn">Save</span>.</li>
+</ol>
+
+<h3>Adding a course</h3>
+<ol class="steps">
+  <li>Click <span class="btn">Courses</span> in the menu bar.</li>
+  <li>Select the subject this course belongs to in the Subjects list above.</li>
+  <li>In the <strong>Courses</strong> section, click <span class="btn">Add Course</span>.</li>
+  <li>Choose the <span class="field">Subject</span> from the dropdown, enter a <span class="field">Course Number</span> (three digits, e.g. <em>101</em>), and a <span class="field">Title</span>.</li>
+  <li>The <strong>Calendar Code</strong> is computed automatically (e.g. HIST 101).</li>
+  <li>Check <span class="field">Active</span> if this course is currently offered, then click <span class="btn">Save</span>.</li>
+</ol>
+
+<div class="tip"><strong>Tip:</strong> Inactive courses still appear in dropdowns so that historical sections remain complete, but you can hide them from new sections by marking them inactive.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="instructors">Instructors</h2>
+
+<p>Instructors are the faculty members who teach sections. Adding them here makes them available for assignment when you build sections.</p>
+
+<h3>Adding an instructor</h3>
+<ol class="steps">
+  <li>Click <span class="btn">Instructors</span> in the menu bar.</li>
+  <li>Click <span class="btn">Add</span>.</li>
+  <li>Fill in <span class="field">First Name</span>, <span class="field">Last Name</span>, and <span class="field">Initials</span> (the initials appear on tiles in the Schedule Grid).</li>
+  <li>Optionally choose a <span class="field">Staff Type</span> (e.g. Full-time, Adjunct) if you have those configured.</li>
+  <li>Optionally add <span class="field">Email</span> and <span class="field">Notes</span>.</li>
+  <li>Leave <span class="field">Active</span> checked for current instructors. Click <span class="btn">Save</span>.</li>
+</ol>
+
+<h3>Instructor workload</h3>
+<p>The middle column of the Instructor panel shows the selected instructor's current workload for the active semester: which sections they are assigned to, any non-instructional releases (committee work, research release, etc.), and a total.</p>
+
+<h4>Adding a non-instructional release</h4>
+<ol class="steps">
+  <li>Select the instructor in the list.</li>
+  <li>In the <strong>Non-instructional Workload</strong> column on the right, click <span class="btn">Add</span>.</li>
+  <li>Enter a <span class="field">Title</span> (e.g. <em>Department Chair Release</em>) and a <span class="field">Workload</span> value.</li>
+  <li>Click <span class="btn">Save</span>.</li>
+</ol>
+
+<div class="tip"><strong>Tip:</strong> Workload values throughout the app use a decimal format (e.g. 1.0 for a normal section, 0.5 for a half-credit release). What these numbers mean is up to your institution.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="rooms">Rooms</h2>
+
+<p>Rooms are the physical spaces where sections meet. Adding them here makes them available when you schedule meeting times for a section.</p>
+
+<h3>Adding a room</h3>
+<ol class="steps">
+  <li>Click <span class="btn">Rooms</span> in the menu bar (you will find it under the Courses flyout).</li>
+  <li>Click <span class="btn">Add</span>.</li>
+  <li>Enter <span class="field">Building</span>, <span class="field">Room Number</span>, and optionally <span class="field">Capacity</span> and <span class="field">Features</span> (e.g. <em>Lab, Projector</em>).</li>
+  <li>Click <span class="btn">Save</span>.</li>
+</ol>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="section-properties">Section Properties</h2>
+
+<p>Section properties are the categories of extra information you can attach to a section. You configure the <em>available options</em> here; you assign them to individual sections in the Section Editor.</p>
+
+<p>Click <span class="btn">Section Properties</span> in the menu bar, then choose a category from the left sidebar:</p>
+
+<table>
+  <thead><tr><th>Category</th><th>What it's for</th><th>Examples</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Section Types</strong></td><td>The mode of delivery or format</td><td>Lecture, Lab, Seminar, Online</td></tr>
+    <tr><td><strong>Meeting Types</strong></td><td>The nature of individual meetings within a section</td><td>Lecture, Lab session, Tutorial</td></tr>
+    <tr><td><strong>Campuses</strong></td><td>Physical or virtual campus locations</td><td>Main Campus, North Campus, Online</td></tr>
+    <tr><td><strong>Tags</strong></td><td>Freeform labels for filtering and grouping</td><td>Writing-intensive, Capstone, First-year</td></tr>
+    <tr><td><strong>Resources</strong></td><td>Equipment or services a section requires</td><td>Video conferencing, Lab equipment</td></tr>
+    <tr><td><strong>Reserves</strong></td><td>Registration holds or priority enrolment pools</td><td>First-year reserve, Nursing cohort</td></tr>
+  </tbody>
+</table>
+
+<p>For each category, you can <span class="btn">Add</span>, <span class="btn">Edit</span>, and <span class="btn">Delete</span> items using the buttons below the list.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="scheduling-settings">Scheduling Settings</h2>
+
+<p>Before you begin adding sections, it's worth setting up the legal meeting times your institution uses. This controls what start times appear in the section editor's dropdowns.</p>
+
+<h3>Setting up legal start times</h3>
+<ol class="steps">
+  <li>Click <span class="menu">Settings</span> → <span class="menu">Scheduling</span> in the menu bar.</li>
+  <li>The list shows block lengths (e.g. 1.0 hour, 1.5 hours) and the valid start times for each.</li>
+  <li>To add a new block length, click <span class="btn">Add</span>. Enter the duration in hours and then add each valid start time (type a time like <em>8:30</em> or <em>1430</em> and click <span class="btn">Add</span> for each).</li>
+  <li>Click <span class="btn">Save</span> when done.</li>
+</ol>
+
+<h3>Block patterns</h3>
+<p>Block patterns are shortcut presets for common day combinations (e.g. "Mon/Wed/Fri" or "Tue/Thu"). You can define up to five. When editing a section's schedule, clicking a pattern button automatically sets the days for each meeting in one click.</p>
+
+<ol class="steps">
+  <li>Click <span class="menu">Settings</span> → <span class="menu">Block Patterns</span>.</li>
+  <li>Click <span class="btn">Edit</span> on one of the five slots.</li>
+  <li>Give it a <span class="field">Name</span> (e.g. <em>MWF</em>) and check the relevant <span class="field">Days</span>.</li>
+  <li>Click <span class="btn">Save</span>.</li>
+</ol>
+
+<h3>Other preferences</h3>
+<ul>
+  <li><strong>Preferred block length</strong> — sets the default block length that appears when you add a new meeting time in the section editor.</li>
+  <li><strong>Include Saturday</strong> — check this if your institution schedules Saturday meetings. Saturday will appear in day dropdowns. Changes take effect when you next open the section editor.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="add-section">Adding a Section</h2>
+
+<p>A section is a specific offering of a course in a given semester — for example, HIST 101, Section A, taught by Prof. Smith on Monday and Wednesday mornings.</p>
+
+<div class="warn"><strong>Before you begin:</strong> Make sure you have at least one subject, one course, and an active semester selected in the top-right dropdowns. The section editor will not function without these.</div>
+
+<ol class="steps">
+  <li>In the <strong>Section View</strong> panel (left), click the <span class="btn">Add</span> button in the header.</li>
+  <li>A blank edit form appears at the top of the section list with a blue left border.</li>
+  <li><strong>Select a Subject</strong> from the first dropdown. The Course dropdown activates.</li>
+  <li><strong>Select a Course</strong> from the second dropdown. The Section Code box activates.</li>
+  <li><strong>Type a Section Code</strong> (e.g. <em>A</em> or <em>01</em>). This must be unique for this course in this semester.</li>
+  <li>Click somewhere else (or press Tab) to validate the code. If another section already uses that code, an error appears — change the code and try again.</li>
+  <li>Once validated, all remaining fields unlock. Continue filling in the section (see <a href="#edit-section">Editing a Section</a> below for field details).</li>
+  <li>Click <span class="btn">Save</span> when finished.</li>
+</ol>
+
+<div class="tip"><strong>Why the two-step unlock?</strong> The course and section code together uniquely identify the section. The app enforces that this combination is set and valid before letting you fill in any other details, so you never accidentally save a section without an identity.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="edit-section">Editing a Section</h2>
+
+<p>To edit an existing section, click the expand arrow (<strong>▶</strong>) next to it in the Section View list, or click the <span class="btn">Edit</span> button in the panel header while the section is selected. The inline form expands below the section's summary line.</p>
+
+<h3>Section editor fields</h3>
+
+<table>
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Subject</strong></td><td>The broad subject area (e.g. HIST). Required.</td></tr>
+    <tr><td><strong>Course</strong></td><td>The specific course number within the subject. Required.</td></tr>
+    <tr><td><strong>Campus</strong></td><td>The campus where this section is offered.</td></tr>
+    <tr><td><strong>Section Code</strong></td><td>Identifies this offering (e.g. A, B, 01). Must be unique per course per semester. Required.</td></tr>
+    <tr><td><strong>Section Type</strong></td><td>The delivery format (e.g. Lecture, Lab). Optional.</td></tr>
+    <tr><td><strong>Schedule</strong></td><td>One or more meeting times — see <a href="#schedule-meeting">Scheduling Meeting Times</a>.</td></tr>
+    <tr><td><strong>Instructor(s)</strong></td><td>One or more instructors, each with a workload value.</td></tr>
+    <tr><td><strong>Tags</strong></td><td>Labels for filtering and reporting (e.g. Writing-intensive).</td></tr>
+    <tr><td><strong>Reserve Codes</strong></td><td>Enrolment holds, each with an optional reserve code number.</td></tr>
+    <tr><td><strong>Resources</strong></td><td>Equipment or services required.</td></tr>
+    <tr><td><strong>Notes</strong></td><td>Free text. Visible in section summary but not on the grid.</td></tr>
+  </tbody>
+</table>
+
+<h3>Assigning instructors</h3>
+<ol class="steps">
+  <li>Click the <strong>Instructor(s)</strong> toggle button. A popup opens showing all instructors.</li>
+  <li>Check the box beside each instructor you want to assign.</li>
+  <li>A workload field appears next to each selected instructor. Enter a value (default is 1). Leave it blank to accept the default.</li>
+  <li>Click elsewhere to close the popup. The toggle button updates to show the assigned initials.</li>
+</ol>
+
+<h3>Assigning tags, reserves, and resources</h3>
+<p>These all work the same way as instructor assignment: click the toggle button to open a popup with checkboxes, make your selections, and click elsewhere to close.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="schedule-meeting">Scheduling Meeting Times</h2>
+
+<p>A section can have one or more meeting times — for example, a lecture on Monday and Wednesday plus a lab on Friday.</p>
+
+<h3>Adding a meeting time</h3>
+<ol class="steps">
+  <li>In the section editor, find the <strong>Schedule</strong> area. Click <span class="btn">+ meeting</span> to add a row.</li>
+  <li>Choose the <span class="field">Day</span>, the <span class="field">Block Length</span> (duration in hours), and the <span class="field">Start</span> time from the dropdowns. Only legal start times for the chosen block length are shown.</li>
+  <li>Optionally choose a <span class="field">Meeting Type</span> and a <span class="field">Room</span>.</li>
+  <li>To add another meeting, click <span class="btn">+ meeting</span> again and fill in the new row.</li>
+  <li>To remove a meeting, click the <span class="btn">✕</span> button on that row.</li>
+</ol>
+
+<h3>Using block patterns</h3>
+<p>If you defined block patterns in Settings, buttons for each pattern appear near the <strong>+ meeting</strong> button. Clicking a pattern (e.g. <em>MWF</em>) adds a meeting row for each day in that pattern in one click, saving you from adding them one by one.</p>
+
+<div class="tip"><strong>Tip:</strong> Co-scheduled sections (same start time and duration on the same day) share a single tile on the Schedule Grid, stacked with a thin rule between them. This is normal and intentional.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="copy-delete">Copying &amp; Deleting Sections</h2>
+
+<h3>Copying a section</h3>
+<p>Copying is useful when you need to create a second section of the same course with a similar setup.</p>
+
+<ol class="steps">
+  <li>Select the section in the Section View list.</li>
+  <li>Click the <span class="btn">Copy</span> button in the panel header.</li>
+  <li>A new section is added immediately below the original, pre-filled with the same course. The section code is auto-incremented if possible (e.g. A → B, AB1 → AB2).</li>
+  <li>If the incremented code is already taken, a notice appears and the code is left blank — you will need to enter one manually before saving.</li>
+  <li>The new section opens for editing. Adjust any fields as needed and click <span class="btn">Save</span>.</li>
+</ol>
+
+<h3>Deleting a section</h3>
+<ol class="steps">
+  <li>Select the section in the Section View list.</li>
+  <li>Click the <span class="btn">Delete</span> button in the panel header.</li>
+  <li>Confirm the deletion. This cannot be undone.</li>
+</ol>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="sorting">Sorting Sections</h2>
+
+<p>The Section View list can be sorted three ways. Right-click on the <strong>Section View</strong> panel header (the blue strip at the top of the left panel) to see the sort options:</p>
+
+<ul>
+  <li><strong>Subject/Course Code</strong> (default) — alphabetical by course code.</li>
+  <li><strong>Instructor</strong> — alphabetical by lead instructor's first name. Unassigned sections sort to the end.</li>
+  <li><strong>Section Type</strong> — alphabetical by section type. Unassigned sections sort to the end.</li>
+</ul>
+
+<p>The active sort is shown with a <strong>✓</strong> in the menu and also displayed in small text beside the panel header. Your preference is saved and remembered.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="schedule-grid">The Schedule Grid</h2>
+
+<p>The Schedule Grid (right panel) is the visual heart of the application. It shows a weekly calendar with Monday through Friday as columns and time of day (08:30 to 22:00) on the vertical axis. Each section with scheduled meeting times appears as a tile on the grid.</p>
+
+<h3>Reading the tiles</h3>
+<p>Each tile shows the course code, section code, and instructor initials on a single line — for example: <strong>HIST101 A  JRS</strong>. When two sections share the exact same time slot, they are stacked vertically within the tile, separated by a thin horizontal rule.</p>
+
+<p>When sections overlap (different start or end times), they appear side by side within the day column, each sized proportionally to its duration.</p>
+
+<h3>Zooming</h3>
+<p>At the bottom of the grid is a <strong>zoom slider</strong>. Drag it left to see more of the week at once, or right to zoom in for a more detailed view. The current zoom level is shown as a percentage.</p>
+
+<h3>Cross-panel selection</h3>
+<p>Clicking a tile in the Schedule Grid selects the corresponding section in the Section View list and highlights the instructor in the Workload View — and vice versa. All three panels stay in sync.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="filters">Using Filters</h2>
+
+<p>Filters let you focus the Schedule Grid on just the sections you care about. The filter bar runs along the top of the grid panel.</p>
+
+<h3>The eight filter dimensions</h3>
+
+<div class="filter-pills">
+  <span class="pill">Instructors</span>
+  <span class="pill">Rooms</span>
+  <span class="pill">Subject</span>
+  <span class="pill">Campus</span>
+  <span class="pill">Section Type</span>
+  <span class="pill">Tags</span>
+  <span class="pill">Meeting Type</span>
+  <span class="pill">Level</span>
+</div>
+
+<p>Click any button in the filter bar to open a popup for that dimension. Check one or more items to restrict the grid to matching sections. The logic works like this:</p>
+
+<ul>
+  <li><strong>Within a dimension</strong> (e.g. multiple instructors selected): sections matching <em>any</em> of them are shown (OR logic).</li>
+  <li><strong>Across dimensions</strong> (e.g. a subject filter AND an instructor filter both active): only sections matching <em>both</em> are shown (AND logic).</li>
+</ul>
+
+<p>When any filter is active, an amber badge appears on the filter bar to remind you the view is restricted. Click <span class="btn">Clear All</span> at the right end of the filter bar to remove all filters at once.</p>
+
+<h4>Special sentinels</h4>
+<p>In the <strong>Instructors</strong> filter you will see a special item called <em>Not staffed</em> at the top of the list. Select it to show only sections that have no instructor assigned. Similarly, <em>Unroomed</em> in the <strong>Rooms</strong> filter shows sections with no room assigned. These sentinel items are mutually exclusive with named items — you can't combine "Not staffed" with specific instructor names.</p>
+
+<div class="tip"><strong>Example:</strong> To see all lectures on campus taught by a specific instructor, open the <strong>Instructors</strong> filter and check that instructor, then open the <strong>Section Type</strong> filter and check "Lecture", then open the <strong>Campus</strong> filter and check the relevant campus. Only sections matching all three conditions will appear.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="overlays">Overlays</h2>
+
+<p>Overlays are different from filters. Instead of hiding sections, an overlay <em>highlights</em> matching sections in red — on top of whatever the normal filtered view shows. This makes it easy to spot one instructor's or room's sections in the context of the full schedule.</p>
+
+<p>Overlay buttons appear to the right of the main filter buttons in the filter bar, after a separator:</p>
+
+<ul>
+  <li><strong>Instructor overlay</strong> — highlight all sections for a chosen instructor.</li>
+  <li><strong>Room overlay</strong> — highlight all sections meeting in a chosen room.</li>
+  <li><strong>Tag overlay</strong> — highlight all sections with a chosen tag.</li>
+</ul>
+
+<h3>Activating an overlay</h3>
+<ol class="steps">
+  <li>Click the overlay button (Instructor, Room, or Tag). A popup opens.</li>
+  <li>Click the item you want to highlight. It is marked with a checkmark.</li>
+  <li>The overlay activates — matching tiles turn red on the grid. A note in the panel header shows the overlay is active.</li>
+  <li>Click the same item again (or click elsewhere) to deactivate the overlay.</li>
+</ol>
+
+<div class="tip"><strong>Overlay vs Filter:</strong> Use a <em>filter</em> when you want to hide everything else and focus. Use an <em>overlay</em> when you want to see one instructor's or room's load in the context of the whole schedule — for example, to spot potential overloads or room conflicts visually.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="quick-assign">Quick Assignment (Right-click on Grid)</h2>
+
+<p>You can assign instructors, rooms, and tags directly from the Schedule Grid without opening the full section editor. This is handy for quick updates when you're reviewing the grid.</p>
+
+<ol class="steps">
+  <li>Right-click any section tile on the grid. A small context menu appears with three options: <em>Assign Instructor</em>, <em>Assign Room</em>, <em>Assign Tag</em>.</li>
+  <li>Click the type of assignment you want to make.</li>
+  <li>A panel opens on the right side of the menu:
+    <ul>
+      <li><strong>Instructors</strong> — checkboxes; you can assign multiple.</li>
+      <li><strong>Room</strong> — radio-button list; select one room for the specific meeting you clicked.</li>
+      <li><strong>Tags</strong> — checkboxes; you can assign multiple.</li>
+    </ul>
+  </li>
+  <li>Make your selections and click <span class="btn">OK</span>. The grid and section list both update immediately.</li>
+</ol>
+
+<div class="tip"><strong>Note:</strong> When assigning a room from the grid, the assignment applies to the specific meeting time (day and start time) you right-clicked, not to all meetings in the section.</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="workload">Workload View</h2>
+
+<p>The Workload View (bottom-left panel) gives you a compact overview of every instructor's load for the current semester and the full academic year.</p>
+
+<table>
+  <thead><tr><th>Column</th><th>What it shows</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Instructor</strong></td><td>Full name</td></tr>
+    <tr><td><strong>Init.</strong></td><td>Initials (as shown on grid tiles)</td></tr>
+    <tr><td><strong>Sections &amp; Releases</strong></td><td>Chips for each assigned section (light blue) and each non-instructional release (light purple)</td></tr>
+    <tr><td><strong>Sem.</strong></td><td>Total workload for the current semester</td></tr>
+    <tr><td><strong>AY</strong></td><td>Total workload across the entire academic year</td></tr>
+  </tbody>
+</table>
+
+<p>Clicking a section chip in the Workload View selects that section in the Section List and on the Schedule Grid.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="copy-semester">Copying a Semester</h2>
+
+<p>The Copy Semester feature lets you duplicate all sections from one semester into another — useful for rolling over a schedule to the next year.</p>
+
+<ol class="steps">
+  <li>Click <span class="btn">Academic Years</span> in the menu bar.</li>
+  <li>Click <span class="btn">Copy Semester</span>. The copy dialog opens.</li>
+  <li>Under <strong>From</strong>, choose the academic year and semester you want to copy.</li>
+  <li>Under <strong>To</strong>, choose the destination academic year and semester.</li>
+  <li>Use the checkboxes to control what gets copied:
+    <ul>
+      <li><em>Copy section designations only</em> — copies course + section code only (the bare minimum).</li>
+      <li><em>Copy section designations and:</em> — copies designations plus anything you check: section types, tags, instructors, meeting times (with optional room and meeting-type sub-options), reserves.</li>
+    </ul>
+  </li>
+  <li>Click <span class="btn">Copy</span>.</li>
+</ol>
+
+<h3>Incompatible schedules</h3>
+<p>If you are copying meeting times to a different academic year that has different legal start times configured, the app checks each section. Any section whose meeting times don't fit the destination year's schedule is listed in a warning screen. You can:</p>
+<ul>
+  <li>Click <span class="btn">Abort</span> to cancel the copy entirely.</li>
+  <li>Click <span class="btn">Continue</span> to proceed — flagged sections are copied without their meeting times. You can optionally export a CSV report of the flagged sections.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="empty-semester">Emptying a Semester</h2>
+
+<p>The Empty Semester feature deletes all sections from a chosen semester. Use this if you need to start a semester from scratch.</p>
+
+<div class="warn"><strong>Warning:</strong> Emptying a semester permanently deletes all sections in it. This cannot be undone. Consider copying the semester first if you want a backup.</div>
+
+<ol class="steps">
+  <li>Click <span class="btn">Academic Years</span> in the menu bar.</li>
+  <li>Click <span class="btn">Empty Semester</span>.</li>
+  <li>Choose the academic year and then the semester you want to empty. The number of sections that will be deleted is shown.</li>
+  <li>Click <span class="btn">Empty Semester</span> to confirm.</li>
+</ol>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="tips">Tips &amp; Shortcuts</h2>
+
+<table>
+  <thead><tr><th>Situation</th><th>What to do</th></tr></thead>
+  <tbody>
+    <tr><td>Section editor fields are greyed out</td><td>You need to select a course and enter+validate a section code first. Click elsewhere after typing the code to trigger validation.</td></tr>
+    <tr><td>Section code error after typing</td><td>Another section of the same course already uses that code in this semester. Change the code.</td></tr>
+    <tr><td>Can't add a course</td><td>Create a subject first. The Add Course button is disabled if no subject exists.</td></tr>
+    <tr><td>Start time not in the dropdown</td><td>Go to Settings → Scheduling and add the start time for the relevant block length.</td></tr>
+    <tr><td>Want to see one room's schedule</td><td>Use the Room overlay (not the Room filter) to highlight that room's sections while keeping everything else visible.</td></tr>
+    <tr><td>Grid feels crowded</td><td>Use the filter bar to narrow down which sections are shown, or zoom in with the slider at the bottom.</td></tr>
+    <tr><td>Panels are too small</td><td>Drag the vertical splitter between the left and right panels. Or detach a panel into its own window.</td></tr>
+    <tr><td>Need a clean semester for next year</td><td>Use Copy Semester to copy the structure, then adjust or delete individual sections in the new semester.</td></tr>
+    <tr><td>Want to back up your data</td><td>Copy the <code>.db</code> file from wherever you stored it. All data is in that one file.</td></tr>
+  </tbody>
+</table>
+
+<hr />
+<p style="color: var(--muted); font-size: 13px; text-align: center;">Scheduling Assistant — User Manual &nbsp;·&nbsp; Generated March 2026</p>
+
+</main>
+
+<!-- Simple scroll-spy for sidebar active state -->
+<script>
+  const links = document.querySelectorAll('#sidebar a');
+  const sections = [...links].map(l => document.querySelector(l.getAttribute('href'))).filter(Boolean);
+
+  function onScroll() {
+    let current = sections[0];
+    for (const s of sections) {
+      if (s.getBoundingClientRect().top <= 80) current = s;
+    }
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + current.id));
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+
+</body>
+</html>
