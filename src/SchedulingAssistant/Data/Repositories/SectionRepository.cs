@@ -30,9 +30,10 @@ public class SectionRepository(DatabaseContext db)
         return ReadSections(cmd).FirstOrDefault();
     }
 
-    public void Insert(Section section)
+    public void Insert(Section section, SqliteTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
         cmd.CommandText =
             "INSERT INTO Sections (id, semester_id, course_id, room_id, data) VALUES ($id, $sid, $cid, NULL, $data)";

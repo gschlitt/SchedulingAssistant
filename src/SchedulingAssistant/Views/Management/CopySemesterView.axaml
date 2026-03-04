@@ -5,12 +5,13 @@
              x:DataType="vm:CopySemesterViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,0">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,0">
 
         <TextBlock Grid.Row="0" Text="Copy Semester" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
 
         <!-- Two-column layout: From and To -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,16,*" Margin="0,0,0,16">
+        <Grid Grid.Row="1" ColumnDefinitions="*,16,*" Margin="0,0,0,16"
+              IsVisible="{Binding IsReady}">
 
             <!-- From column -->
             <DockPanel Grid.Column="0" Margin="0,0,0,0">
@@ -75,7 +76,8 @@
         </Grid>
 
         <!-- Copy options -->
-        <StackPanel Grid.Row="2" Spacing="3" Margin="0,0,0,12">
+        <StackPanel Grid.Row="2" Spacing="3" Margin="0,0,0,12"
+                    IsVisible="{Binding IsReady}">
             <CheckBox Content="Copy section designations only"
                       IsChecked="{Binding CopyDesignationsOnly}" />
             <CheckBox Content="Copy section designations and:"
@@ -107,11 +109,48 @@
             </StackPanel>
         </StackPanel>
 
+        <!-- Flagged sections warning panel -->
+        <StackPanel Grid.Row="3" Spacing="8" Margin="0,0,0,12"
+                    IsVisible="{Binding IsFlaggedWarning}">
+            <TextBlock Text="The following sections have meeting times incompatible with the destination academic year's start time configuration. Their schedules will be removed during copy."
+                       TextWrapping="Wrap" FontSize="12" Foreground="#C44" />
+
+            <ItemsControl ItemsSource="{Binding FlaggedDescriptions}" Margin="8,0,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontSize="11" Margin="0,1" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <CheckBox Content="Write flagged sections report (.csv)"
+                      IsChecked="{Binding WriteCsvReport}"
+                      FontSize="11" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <!-- Status message -->
+        <TextBlock Grid.Row="4" Text="{Binding StatusMessage}"
+                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8" />
+
         <!-- Buttons -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,0,0,0">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8" Margin="0,0,0,0">
+            <!-- Ready state buttons -->
             <Button Content="Copy" Command="{Binding CopyCommand}"
-                    IsEnabled="{Binding IsCopyEnabled}" />
-            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                    IsEnabled="{Binding IsCopyEnabled}"
+                    IsVisible="{Binding IsReady}" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}"
+                    IsVisible="{Binding IsReady}" />
+
+            <!-- Flagged warning state buttons -->
+            <Button Content="Abort" Command="{Binding AbortCopyCommand}"
+                    IsVisible="{Binding IsFlaggedWarning}" />
+            <Button Content="Continue" Command="{Binding ContinueCopyCommand}"
+                    IsVisible="{Binding IsFlaggedWarning}" />
+
+            <!-- Complete state button -->
+            <Button Content="Done" Command="{Binding DoneCommand}"
+                    IsVisible="{Binding IsComplete}" />
         </StackPanel>
 
     </Grid>

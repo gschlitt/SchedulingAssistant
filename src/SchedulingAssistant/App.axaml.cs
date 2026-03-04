@@ -135,6 +135,9 @@ public partial class App : Application
         services.AddTransient<BlockPatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();
 
+        // Services
+        services.AddTransient<ScheduleValidationService>();
+
         // Data export utilities
         services.AddTransient<LegalStartTimesDataExporter>();
 
