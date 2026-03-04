@@ -113,6 +113,28 @@ public class SectionRepository(DatabaseContext db)
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Returns the total number of sections in the given semester.
+    /// </summary>
+    public int CountBySemesterId(string semesterId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM Sections WHERE semester_id = $sid";
+        cmd.Parameters.AddWithValue("$sid", semesterId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// Deletes all sections from the given semester.
+    /// </summary>
+    public void DeleteBySemesterId(string semesterId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "DELETE FROM Sections WHERE semester_id = $sid";
+        cmd.Parameters.AddWithValue("$sid", semesterId);
+        cmd.ExecuteNonQuery();
+    }
+
     private static List<Section> ReadSections(SqliteCommand cmd)
     {
         using var reader = cmd.ExecuteReader();

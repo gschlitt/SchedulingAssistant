@@ -77,6 +77,13 @@ public partial class AcademicYearListViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void EmptySemester()
+    {
+        var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
+        mainVm.NavigateToEmptySemesterCommand.Execute(null);
+    }
+
+    [RelayCommand]
     private void Add()
     {
         var ay = new AcademicYear();

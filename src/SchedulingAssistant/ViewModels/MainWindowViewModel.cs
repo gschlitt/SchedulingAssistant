@@ -144,6 +144,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToCopySemester() => OpenFlyout<CopySemesterViewModel>("Copy Semester");
 
     [RelayCommand]
+    private void NavigateToEmptySemester() => OpenFlyout<EmptySemesterViewModel>("Empty Semester");
+
+    [RelayCommand]
     private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Scheduling");
 
     [RelayCommand]

@@ -127,6 +127,7 @@ public partial class App : Application
         services.AddTransient<SemesterListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();
         services.AddTransient<CopySemesterViewModel>();
+        services.AddTransient<EmptySemesterViewModel>();
         services.AddTransient<LegalStartTimeListViewModel>();
         services.AddTransient<SubjectListViewModel>();
         services.AddTransient<CourseListViewModel>();

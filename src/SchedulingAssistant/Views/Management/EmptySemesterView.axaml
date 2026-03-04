@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.EmptySemesterView"
+             x:DataType="vm:EmptySemesterViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,0">
+
+        <TextBlock Grid.Row="0" Text="Empty Semester" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
+
+        <!-- Academic Year selector -->
+        <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,0,12">
+            <TextBlock Text="Academic Year" FontSize="12" />
+            <ComboBox ItemsSource="{Binding AcademicYears}"
+                      SelectedItem="{Binding SelectedAcademicYear}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Semester selector -->
+        <StackPanel Grid.Row="2" Spacing="8" Margin="0,0,0,12">
+            <TextBlock Text="Semester" FontSize="12" />
+            <ComboBox ItemsSource="{Binding Semesters}"
+                      SelectedItem="{Binding SelectedSemester}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Section count -->
+        <TextBlock Grid.Row="3" Text="{Binding SectionCount, StringFormat='This semester contains {0} section(s).'}"
+                   FontSize="12" Margin="0,0,0,8"
+                   IsVisible="{Binding SelectedSemester, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+        <!-- Status/advisory message -->
+        <TextBlock Grid.Row="4" Text="{Binding StatusMessage}"
+                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   TextWrapping="Wrap" FontSize="12" Foreground="#C44"
+                   Margin="0,0,0,12" />
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8">
+            <Button Content="Empty Semester"
+                    Command="{Binding EmptyCommand}"
+                    IsEnabled="{Binding CanEmpty}" />
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

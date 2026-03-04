@@ -51,6 +51,7 @@
             <Button Content="Delete" Command="{Binding DeleteCommand}"
                     IsEnabled="{Binding SelectedAcademicYear, Converter={x:Static ObjectConverters.IsNotNull}}" />
             <Button Content="Copy Semester" Command="{Binding CopySemesterCommand}" />
+            <Button Content="Empty Semester" Command="{Binding EmptySemesterCommand}" />
         </StackPanel>
 
     </Grid>
