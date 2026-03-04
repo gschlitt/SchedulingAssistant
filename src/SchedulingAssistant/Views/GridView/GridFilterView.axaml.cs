@@ -168,7 +168,10 @@ public partial class GridFilterView : UserControl
         GridFilterViewModel vm)
     {
         var list = items.ToList();
-        if (list.Count == 0)
+        // Only show overlay panel when there are actual named items (sentinels don't count)
+        int namedCount = list.Count(i => i.Id != GridFilterViewModel.NotStaffedId
+                                      && i.Id != GridFilterViewModel.UnroomedId);
+        if (namedCount == 0)
         {
             panel.IsVisible = false;
             return;
@@ -198,15 +201,8 @@ public partial class GridFilterView : UserControl
         string dimensionName,
         IEnumerable<FilterItemViewModel> items)
     {
-        var list = items.ToList();
-        if (list.Count == 0)
-        {
-            // No options available — hide the button+popup panel entirely
-            panel.IsVisible = false;
-            return;
-        }
-
         panel.IsVisible = true;
+        var list = items.ToList();
         int selected = list.Count(i => i.IsSelected);
         toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▾" : $"{dimensionName} ▾";
         toggle.Foreground = selected > 0 ? ActiveHeaderBrush : InactiveHeaderBrush;

@@ -13,10 +13,41 @@ namespace SchedulingAssistant.ViewModels.GridView;
 /// </summary>
 public partial class GridFilterViewModel : ViewModelBase
 {
+    // ── Sentinel IDs for "no value assigned" filter options ───────────────────
+    //
+    // "Not staffed" and "Unroomed" are special items that appear at the top of the
+    // Instructor and Room filter listboxes respectively. Selecting one means "show
+    // only sections/meetings that have NO value assigned for this dimension."
+    //
+    // They are implemented as regular FilterItemViewModels with sentinel ID strings
+    // so they flow through the standard IsSelected/FilterChanged machinery. The
+    // ScheduleGridViewModel strips these IDs from the selected-ID sets before
+    // applying predicates, converting them to separate boolean flags instead.
+    //
+    // Mutual exclusion: selecting a sentinel disables all named items in that
+    // dimension, and selecting any named item disables the sentinel. This prevents
+    // logically contradictory combinations (e.g. "Not staffed" AND "Smith, J.").
+    // Enforcement is in RefreshInstructorMutualExclusion / RefreshRoomMutualExclusion.
+
+    public const string NotStaffedId = "__not_staffed__";
+    public const string UnroomedId   = "__unroomed__";
+
+    // Live references to the current sentinel items, held so their IsSelected state
+    // can be preserved across PopulateOptions() rebuilds and so mutual-exclusion
+    // logic can address them directly without searching the collection each time.
+    private FilterItemViewModel? _notStaffedItem;
+    private FilterItemViewModel? _unroomedItem;
+
     // ── Option lists (one per filter dimension) ──────────────────────────────
 
-    public ObservableCollection<FilterItemViewModel> Instructors  { get; } = new();
-    public ObservableCollection<FilterItemViewModel> Rooms        { get; } = new();
+    // Instructors and Rooms always contain their sentinel at index 0, followed by
+    // named items. NamedInstructors / NamedRooms are mirror collections of the
+    // same objects but without the sentinel; they are kept in sync by PopulateOptions()
+    // and are used by the overlay listboxes, where the sentinel has no meaning.
+    public ObservableCollection<FilterItemViewModel> Instructors      { get; } = new();
+    public ObservableCollection<FilterItemViewModel> Rooms            { get; } = new();
+    public ObservableCollection<FilterItemViewModel> NamedInstructors { get; } = new();
+    public ObservableCollection<FilterItemViewModel> NamedRooms       { get; } = new();
     public ObservableCollection<FilterItemViewModel> Subjects     { get; } = new();
     public ObservableCollection<FilterItemViewModel> Campuses     { get; } = new();
     public ObservableCollection<FilterItemViewModel> SectionTypes { get; } = new();
@@ -220,10 +251,18 @@ public partial class GridFilterViewModel : ViewModelBase
 
         RebuildList(Instructors,  usedInstructorIds,
             id => instructorLookup.TryGetValue(id, out var v) ? $"{v.LastName}, {v.FirstName}" : null);
+        InsertSentinelItem(Instructors, ref _notStaffedItem, NotStaffedId, "Not staffed");
+
         RebuildList(Rooms,        usedRoomIds,
             id => roomLookup.TryGetValue(id, out var v)
                   ? (string.IsNullOrWhiteSpace(v.Building) ? v.RoomNumber : $"{v.Building} {v.RoomNumber}")
                   : null);
+        InsertSentinelItem(Rooms, ref _unroomedItem, UnroomedId, "Unroomed");
+
+        // Keep named-only mirrors in sync (same objects, no sentinel)
+        SyncCollection(NamedInstructors, Instructors.Skip(1));
+        SyncCollection(NamedRooms,       Rooms.Skip(1));
+
         RebuildList(Subjects,     usedSubjectIds,
             id => subjectLookup.TryGetValue(id, out var v) ? v.Name : null);
         RebuildList(Campuses,     usedCampusIds,
@@ -237,6 +276,8 @@ public partial class GridFilterViewModel : ViewModelBase
         RebuildList(Levels,       usedLevelIds,
             id => levelLookup.TryGetValue(id, out var v) ? v : id);
 
+        RefreshInstructorMutualExclusion();
+        RefreshRoomMutualExclusion();
         RefreshDerived();
         RefreshOverlaySummary();
         RefreshOverlayActiveStates();  // Restore IsOverlayActive flags after collection rebuild
@@ -271,6 +312,46 @@ public partial class GridFilterViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Inserts a sentinel item (e.g. "Not staffed") at index 0 of <paramref name="list"/>.
+    /// Called immediately after RebuildList() for the Instructor and Room dimensions.
+    ///
+    /// Why called after, not before: RebuildList() clears the list and rebuilds it from
+    /// scratch. If the sentinel were already in the list, RebuildList() would unsubscribe
+    /// and remove it along with the named items. Inserting afterwards also guarantees
+    /// index 0 is always the sentinel regardless of alphabetical ordering of named items.
+    ///
+    /// Selection state is preserved by reading it from the previous sentinel object
+    /// (stored in <paramref name="sentinelField"/>) before RebuildList() discarded it.
+    /// </summary>
+    private void InsertSentinelItem(
+        ObservableCollection<FilterItemViewModel> list,
+        ref FilterItemViewModel? sentinelField,
+        string sentinelId,
+        string sentinelName)
+    {
+        bool wasSelected = sentinelField?.IsSelected ?? false;
+        var sentinel = new FilterItemViewModel(sentinelId, sentinelName) { IsSelected = wasSelected };
+        sentinel.PropertyChanged += OnItemPropertyChanged;
+        list.Insert(0, sentinel);
+        sentinelField = sentinel;
+    }
+
+    /// <summary>
+    /// Replaces <paramref name="target"/> with the items in <paramref name="source"/>.
+    /// Used to keep NamedInstructors / NamedRooms in sync with Instructors.Skip(1) /
+    /// Rooms.Skip(1) after each PopulateOptions() rebuild. The items are the same
+    /// object references, so IsOverlayActive and IsEnabled changes propagate automatically.
+    /// </summary>
+    private static void SyncCollection(
+        ObservableCollection<FilterItemViewModel> target,
+        IEnumerable<FilterItemViewModel> source)
+    {
+        target.Clear();
+        foreach (var item in source)
+            target.Add(item);
+    }
+
     // ── Clear ──────────────────────────────────────────────────────────────────
 
     [RelayCommand]
@@ -303,8 +384,59 @@ public partial class GridFilterViewModel : ViewModelBase
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(FilterItemViewModel.IsSelected)) return;
+        // Re-evaluate mutual exclusion for both sentinel dimensions on every selection
+        // change. The cost is a short loop over instructor/room items; acceptable given
+        // typical list sizes and the correctness guarantee it provides.
+        RefreshInstructorMutualExclusion();
+        RefreshRoomMutualExclusion();
         RefreshDerived();
         FilterChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Enforces mutual exclusion between "Not staffed" and named instructor items:
+    /// - If "Not staffed" is selected, all named instructors are disabled (greyed out,
+    ///   non-clickable). This prevents combining the sentinel with a specific instructor,
+    ///   which would be logically contradictory.
+    /// - If any named instructor is selected, "Not staffed" is disabled.
+    /// - When nothing is selected, everything is re-enabled.
+    ///
+    /// Only IsEnabled is mutated here — IsSelected is never forced. The UI CheckBox
+    /// binds to both IsSelected (two-way) and IsEnabled, so disabling an item
+    /// prevents the user from interacting with it but does not silently uncheck it.
+    /// </summary>
+    private void RefreshInstructorMutualExclusion()
+    {
+        if (_notStaffedItem == null) return;
+        if (_notStaffedItem.IsSelected)
+        {
+            foreach (var item in Instructors.Skip(1))
+                item.IsEnabled = false;
+            return;
+        }
+        bool anyNamedSelected = Instructors.Skip(1).Any(i => i.IsSelected);
+        _notStaffedItem.IsEnabled = !anyNamedSelected;
+        foreach (var item in Instructors.Skip(1))
+            item.IsEnabled = true;
+    }
+
+    /// <summary>
+    /// Enforces mutual exclusion between "Unroomed" and named room items.
+    /// Same logic as RefreshInstructorMutualExclusion — see that method for details.
+    /// </summary>
+    private void RefreshRoomMutualExclusion()
+    {
+        if (_unroomedItem == null) return;
+        if (_unroomedItem.IsSelected)
+        {
+            foreach (var item in Rooms.Skip(1))
+                item.IsEnabled = false;
+            return;
+        }
+        bool anyNamedSelected = Rooms.Skip(1).Any(i => i.IsSelected);
+        _unroomedItem.IsEnabled = !anyNamedSelected;
+        foreach (var item in Rooms.Skip(1))
+            item.IsEnabled = true;
     }
 
     private void RefreshDerived()

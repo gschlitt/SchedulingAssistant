@@ -6,6 +6,7 @@
         xmlns:controls="using:SchedulingAssistant.Controls"
         xmlns:panelViews="using:SchedulingAssistant.Views"
         x:Class="SchedulingAssistant.MainWindow"
+        x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="False"
         Title="Scheduling Assistant"
@@ -60,7 +61,7 @@
                                 <MenuItem.ItemTemplate>
                                     <DataTemplate>
                                         <MenuItem Header="{Binding DisplayName}"
-                                                  Command="{Binding DataContext.OpenRecentDatabaseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  Command="{Binding DataContext.OpenRecentDatabaseCommand, ElementName=RootWindow}"
                                                   CommandParameter="{Binding Path}" />
                                     </DataTemplate>
                                 </MenuItem.ItemTemplate>

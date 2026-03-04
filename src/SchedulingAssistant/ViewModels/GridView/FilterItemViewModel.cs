@@ -12,6 +12,14 @@ public partial class FilterItemViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isOverlayActive;
+    /// <summary>
+    /// Controls whether this item's checkbox is interactive. Used for mutual exclusion
+    /// between sentinel items ("Not staffed", "Unroomed") and named items in the same
+    /// filter dimension: selecting the sentinel disables all named items and vice versa.
+    /// Managed by GridFilterViewModel.RefreshInstructorMutualExclusion /
+    /// RefreshRoomMutualExclusion. Defaults to true (all items enabled).
+    /// </summary>
+    [ObservableProperty] private bool _isEnabled = true;
 
     public FilterItemViewModel(string id, string name)
     {

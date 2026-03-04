@@ -185,8 +185,16 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var selMeetingTypes = Filter.SelectedMeetingTypeIds;
         var selLevels       = Filter.SelectedLevelIds;
 
-        bool filterInstructor  = selInstructors.Count  > 0;
-        bool filterRoom        = selRooms.Count        > 0;
+        // The Instructor and Room filter lists each contain a sentinel item at index 0
+        // ("Not staffed" / "Unroomed") that represents sections/meetings with no value
+        // assigned for that dimension. Strip these from the ID sets now so the remaining
+        // sets contain only real entity IDs. The boolean flags carry the sentinel intent
+        // into the filter predicates below, where they are ORed with the named-item check.
+        bool notStaffedSelected = selInstructors.Remove(GridFilterViewModel.NotStaffedId);
+        bool unroomedSelected   = selRooms.Remove(GridFilterViewModel.UnroomedId);
+
+        bool filterInstructor  = selInstructors.Count > 0 || notStaffedSelected;
+        bool filterRoom        = selRooms.Count       > 0 || unroomedSelected;
         bool filterSubject     = selSubjects.Count     > 0;
         bool filterCampus      = selCampuses.Count     > 0;
         bool filterSectionType = selSectionTypes.Count > 0;
@@ -234,8 +242,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
         foreach (var section in sections)
         {
             // ── Section-level filter ───────────────────────────────────────────
-            if (filterInstructor && !section.InstructorIds.Any(id => selInstructors.Contains(id)))
-                continue;
+            if (filterInstructor)
+            {
+                // OR within the instructor dimension:
+                //   "Not staffed" sentinel → section must have no instructor assignments
+                //   Named instructors      → section must be assigned to at least one
+                // The two are mutually exclusive in the UI, but the OR handles both
+                // in case state is restored from a saved filter.
+                bool passes = (notStaffedSelected && !section.InstructorIds.Any())
+                           || (selInstructors.Count > 0 && section.InstructorIds.Any(selInstructors.Contains));
+                if (!passes) continue;
+            }
 
             if (filterSubject)
             {
@@ -279,8 +296,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
             // ── Meeting-level filter ──────────────────────────────────────────
             foreach (var slot in section.Schedule)
             {
-                if (filterRoom && !selRooms.Contains(slot.RoomId ?? string.Empty))
-                    continue;
+                if (filterRoom)
+                {
+                    // OR within the room dimension: "Unroomed" sentinel → meeting has
+                    // no room assigned; named rooms → meeting is in one of those rooms.
+                    bool passes = (unroomedSelected && string.IsNullOrEmpty(slot.RoomId))
+                               || (selRooms.Count > 0 && selRooms.Contains(slot.RoomId ?? string.Empty));
+                    if (!passes) continue;
+                }
                 if (filterMeetingType && !selMeetingTypes.Contains(slot.MeetingTypeId ?? string.Empty))
                     continue;
 
