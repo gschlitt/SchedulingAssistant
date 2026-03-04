@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SchedulingAssistant.Controls;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
@@ -295,6 +296,10 @@ public partial class MainWindow : Window
             vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
             UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
 
+            var sectionEditorPanel = this.FindControl<DetachablePanel>("SectionEditorPanel");
+            if (sectionEditorPanel is not null)
+                sectionEditorPanel.HeaderRightClicked += OnSectionViewHeaderRightClicked;
+
 #if DEBUG
             // Show debug menu in DEBUG mode
             var debugMenu = this.FindControl<Menu>("DebugMenu");
@@ -362,6 +367,35 @@ public partial class MainWindow : Window
             Vm.SectionListVm.SelectedItem = sectionItem;
             // SelectedItem change will automatically sync to ScheduleGridViewModel.SelectedSectionId
         }
+    }
+
+    private void OnSectionViewHeaderRightClicked(object? sender, PointerPressedEventArgs e)
+    {
+        var vm = Vm.SectionListVm;
+        var cur = vm.CurrentSortMode;
+        string Mark(SectionSortMode m) => cur == m ? "✓  " : "    ";
+
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem
+        {
+            Header  = Mark(SectionSortMode.SubjectCourseCode) + "Sort by Subject / Course Code",
+            Command = vm.SortBySubjectCourseCodeCommand,
+        });
+        menu.Items.Add(new MenuItem
+        {
+            Header  = Mark(SectionSortMode.Instructor) + "Sort by Instructor",
+            Command = vm.SortByInstructorCommand,
+        });
+        menu.Items.Add(new MenuItem
+        {
+            Header  = Mark(SectionSortMode.SectionType) + "Sort by Section Type",
+            Command = vm.SortBySectionTypeCommand,
+        });
+
+        var sectionEditorPanel = this.FindControl<DetachablePanel>("SectionEditorPanel");
+        if (sectionEditorPanel is not null)
+            menu.Open(sectionEditorPanel);
+        e.Handled = true;
     }
 
     private void UpdateLeftColumnWidth(bool isEditing)

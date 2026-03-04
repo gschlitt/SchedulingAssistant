@@ -154,9 +154,9 @@ public partial class GridFilterView : UserControl
     private void UpdateOverlayHeaders()
     {
         if (_vm is null) return;
-        SetOverlayHeader(InstructorOverlayToggle, InstructorOverlayPanel, "Overlay Instructor", "Instructor", _vm.Instructors, _vm);
-        SetOverlayHeader(RoomOverlayToggle,       RoomOverlayPanel,       "Overlay Room",       "Room",       _vm.Rooms,       _vm);
-        SetOverlayHeader(TagOverlayToggle,        TagOverlayPanel,        "Overlay Tag",        "Tag",        _vm.Tags,        _vm);
+        SetOverlayHeader(InstructorOverlayToggle, InstructorOverlayPanel, "Instructor", "Instructor", _vm.Instructors, _vm);
+        SetOverlayHeader(RoomOverlayToggle,       RoomOverlayPanel,       "Room",       "Room",       _vm.Rooms,       _vm);
+        SetOverlayHeader(TagOverlayToggle,        TagOverlayPanel,        "Tag",        "Tag",        _vm.Tags,        _vm);
     }
 
     private void SetOverlayHeader(

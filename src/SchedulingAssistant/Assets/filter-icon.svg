@@ -1,0 +1,17 @@
+<?xml version="1.0" standalone="no"?>
+<!-- Generator: Mayura Draw 4.5 -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN"
+  "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd" [
+	<!ENTITY st0 "stroke:#000000;stroke-width:0.5;fill:#000000">
+]>
+<svg xmlns="http://www.w3.org/2000/svg"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+xml:space="preserve" width="143" height="146" viewBox="0 0 143 146">
+<desc>filter.md</desc>
+<path style="&st0;"
+d="M9.972 9.975
+l123.138 0
+-61.06 94.643
+z"/>
+<rect style="&st0;" transform="matrix(1 0 0 -1 -208 609)" x="268.855" y="472.834" width="21.371" height="47.83"/>
+</svg>

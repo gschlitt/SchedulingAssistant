@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Services;
 
@@ -18,6 +19,7 @@ public class AppSettings
     public bool IncludeSaturday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;
     public bool ShowOnlyActiveInstructors { get; set; } = true;
+    public SectionSortMode SectionSortMode { get; set; } = SectionSortMode.SubjectCourseCode;
 
     /// <summary>Recently opened database paths (most recent first). Max 10 entries.</summary>
     public List<string> RecentDatabases { get; set; } = new();

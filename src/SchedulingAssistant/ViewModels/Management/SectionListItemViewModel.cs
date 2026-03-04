@@ -24,6 +24,9 @@ public partial class SectionListItemViewModel : ObservableObject
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private bool _isCollapsed;
 
+    public string SortKeyInstructor { get; }
+    public string SortKeySectionType { get; }
+
     private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     public SectionListItemViewModel(
@@ -38,6 +41,22 @@ public partial class SectionListItemViewModel : ObservableObject
         Dictionary<string, SectionPropertyValue> reserveLookup)
     {
         Section = section;
+
+        // Compute sort keys for instructor and section type
+        var instructorNames = section.InstructorAssignments
+            .Where(a => instructorLookup.TryGetValue(a.InstructorId, out _))
+            .Select(a => instructorLookup[a.InstructorId])
+            .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+            .Select(i => $"{i.FirstName} {i.LastName}")
+            .ToList();
+        SortKeyInstructor = instructorNames.Count > 0
+            ? string.Join(" ", instructorNames).ToLowerInvariant()
+            : "\uffff";
+
+        SortKeySectionType = section.SectionTypeId is not null && sectionTypeLookup.TryGetValue(section.SectionTypeId, out var st)
+            ? st.Name.ToLowerInvariant()
+            : "\uffff";
 
         var calendarCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
             ? course.CalendarCode

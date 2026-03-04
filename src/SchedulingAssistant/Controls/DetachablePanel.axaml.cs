@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using System;
 
@@ -53,9 +54,21 @@ public partial class DetachablePanel : UserControl
     /// </summary>
     public event EventHandler? DetachRequested;
 
+    /// <summary>
+    /// Raised when the user right-clicks on the header.
+    /// The sender is this DetachablePanel instance.
+    /// </summary>
+    public event EventHandler<PointerPressedEventArgs>? HeaderRightClicked;
+
     public DetachablePanel()
     {
         InitializeComponent();
+        var headerBorder = this.FindControl<Border>("HeaderBorder")!;
+        headerBorder.PointerPressed += (_, e) =>
+        {
+            if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
+                HeaderRightClicked?.Invoke(this, e);
+        };
     }
 
     private void OnDetachClicked(object? sender, RoutedEventArgs e)

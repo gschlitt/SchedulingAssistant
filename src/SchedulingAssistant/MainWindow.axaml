@@ -11,7 +11,7 @@
         x:CompileBindings="False"
         Title="Scheduling Assistant"
         Width="1400" Height="800"
-        MinWidth="900" MinHeight="600">
+        MinHeight="600">
 
     <Grid RowDefinitions="Auto,*">
 
@@ -20,9 +20,9 @@
                 BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1">
             <DockPanel>
 
-                <!-- Academic Year and Semester pickers, right-aligned -->
+                <!-- Academic Year and Semester pickers, right-aligned — always visible -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Center" Margin="8,0">
+                            VerticalAlignment="Top" Margin="8,4">
                     <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
 
                     <!-- Academic Year selector -->
@@ -46,11 +46,10 @@
                               VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Nav buttons, left-aligned -->
-                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-
+                <!-- Nav buttons — wrap when space is tight -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- Files menu (far left) -->
-                    <Menu Background="Transparent" VerticalAlignment="Center">
+                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,4">
                         <MenuItem Header="Files" Classes="nav" Padding="14,8">
                             <MenuItem Header="Open…" Command="{Binding OpenDatabaseCommand}" />
                             <MenuItem Header="New…" Command="{Binding NewDatabaseCommand}" />
@@ -69,25 +68,27 @@
                         </MenuItem>
                     </Menu>
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6,8,6" />
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,10,8,10" />
 
                     <TextBlock Text="{Binding DatabaseName}"
                                FontWeight="SemiBold" FontSize="13"
                                VerticalAlignment="Center"
-                               Margin="4,0,8,0" />
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6,8,6" />
-                    <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" />
-                    <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" />
-                    <Button Content="Section Properties" Command="{Binding NavigateToSectionPropertiesCommand}" Classes="nav" />
+                               Margin="4,4,8,4" />
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="8,6" />
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,10,8,10" />
 
-                    <Button Content="Academic Years" Command="{Binding NavigateToAcademicYearsCommand}" Classes="nav" />
+                    <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" Margin="0,4,4,4" />
+                    <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" Margin="0,4,4,4" />
+                    <Button Content="Section Properties" Command="{Binding NavigateToSectionPropertiesCommand}" Classes="nav" Margin="0,4,4,4" />
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="8,6" />
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,10" />
+
+                    <Button Content="Academic Years" Command="{Binding NavigateToAcademicYearsCommand}" Classes="nav" Margin="4,4,4,4" />
+
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,10" />
 
                     <!-- Settings dropdown menu -->
-                    <Menu Background="Transparent" VerticalAlignment="Center">
+                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,4">
                         <MenuItem Header="Settings" Classes="nav" Padding="14,8">
                             <MenuItem Header="Scheduling"
                                       Command="{Binding NavigateToBlockLengthsCommand}" />
@@ -99,13 +100,13 @@
                     </Menu>
 
                     <!-- Debug menu (added in code-behind in DEBUG mode) -->
-                    <Menu x:Name="DebugMenu" Background="Transparent" VerticalAlignment="Center" IsVisible="False">
+                    <Menu x:Name="DebugMenu" Background="Transparent" VerticalAlignment="Center" IsVisible="False" Margin="0,4">
                         <MenuItem Header="Debug" Classes="nav" Padding="14,8">
                             <MenuItem Header="Debug View…"
                                       Command="{Binding OpenDebugCommand}" />
                         </MenuItem>
                     </Menu>
-                </StackPanel>
+                </WrapPanel>
 
             </DockPanel>
         </Border>
@@ -124,6 +125,13 @@
                                               x:Name="SectionEditorPanel"
                                               Header="Section View"
                                               DetachRequested="OnSectionEditorDetach">
+                        <controls:DetachablePanel.HeaderContext>
+                            <TextBlock Text="{Binding SectionListVm.SortModeLabel}"
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextFaint}"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,0,0" />
+                        </controls:DetachablePanel.HeaderContext>
                         <controls:DetachablePanel.HeaderExtra>
                             <StackPanel Orientation="Horizontal" Spacing="3"
                                         DataContext="{Binding SectionListVm}">
