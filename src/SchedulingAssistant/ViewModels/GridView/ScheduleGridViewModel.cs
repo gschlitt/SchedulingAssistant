@@ -248,11 +248,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
         };
 
         // ── Identify overlay-matched sections BEFORE filtering ────────────────
-        // This allows us to mark ANY meeting from overlay sections as IsOverlay=true,
-        // even if it also passes the regular filters (preventing duplicates while
-        // preserving red styling for all overlay-related meetings).
+        // For Instructors and Tags (section-level attributes), precompute which sections match.
+        // For Rooms (meeting-level attribute), we'll compute per-meeting in the loop below.
         var overlayMatchedSectionIds = new HashSet<string>();
-        if (Filter.HasOverlay)
+        if (Filter.HasOverlay && Filter.OverlayType != "Room")
         {
             var overlayId = Filter.SelectedOverlayId ?? string.Empty;
             foreach (var section in sections)
@@ -260,8 +259,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 bool matchesOverlay = false;
                 if (Filter.OverlayType == "Instructor")
                     matchesOverlay = section.InstructorIds.Contains(overlayId);
-                else if (Filter.OverlayType == "Room")
-                    matchesOverlay = section.Schedule.Any(m => m.RoomId == overlayId);
                 else if (Filter.OverlayType == "Tag")
                     matchesOverlay = section.TagIds.Contains(overlayId);
 
@@ -324,8 +321,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 ? $"{calCode} {section.SectionCode}"
                 : section.SectionCode;
 
-            // Check if this section is part of the overlay (mark red even if it passes filter)
-            bool isOverlay = overlayMatchedSectionIds.Contains(section.Id);
+            // Check if this section is part of a section-level overlay (instructor or tag)
+            bool sectionIsOverlay = overlayMatchedSectionIds.Contains(section.Id);
 
             // ── Meeting-level filter ──────────────────────────────────────────
             foreach (var slot in section.Schedule)
@@ -341,15 +338,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (filterMeetingType && !selMeetingTypes.Contains(slot.MeetingTypeId ?? string.Empty))
                     continue;
 
+                // Determine if this meeting is part of the overlay
+                bool isOverlay = sectionIsOverlay;
+                if (!isOverlay && Filter.HasOverlay && Filter.OverlayType == "Room")
+                {
+                    var overlayId = Filter.SelectedOverlayId ?? string.Empty;
+                    isOverlay = slot.RoomId == overlayId;
+                }
+
                 allMeetings.Add((slot.Day, slot.StartMinutes, slot.EndMinutes, label, initials, section.Id, isOverlay));
             }
         }
 
         // ── Add overlay-only sections (those not already shown by filters) ─────
-        // Only add overlay sections that didn't pass the regular filter checks,
-        // since filtered sections already have their meetings added above with
-        // isOverlay flag set correctly.
-        if (Filter.HasOverlay)
+        // For section-level overlays (Instructor, Tag): add all meetings from overlay-matched
+        // sections that weren't already added by regular filters.
+        // For room overlays: add only the meetings in that room that weren't already added.
+        if (Filter.HasOverlay && Filter.OverlayType != "Room")
         {
             foreach (var overlayId in overlayMatchedSectionIds)
             {
@@ -373,6 +378,45 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 // Add ALL meetings for this overlay-only section
                 foreach (var slot in section.Schedule)
                 {
+                    allMeetings.Add((
+                        slot.Day,
+                        slot.StartMinutes,
+                        slot.EndMinutes,
+                        label,
+                        initials,
+                        section.Id,
+                        true  // Mark as overlay
+                    ));
+                }
+            }
+        }
+        else if (Filter.HasOverlay && Filter.OverlayType == "Room")
+        {
+            // For room overlays: find all meetings in the overlay room that weren't already added
+            var overlayRoomId = Filter.SelectedOverlayId ?? string.Empty;
+
+            foreach (var section in sections)
+            {
+                var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
+                    ? course.CalendarCode : null;
+                var initials = string.Join(" ", section.InstructorIds
+                    .Where(id => instructorLookup.TryGetValue(id, out _))
+                    .Select(id => instructorLookup[id].Initials));
+                var label = calCode is not null
+                    ? $"{calCode} {section.SectionCode}"
+                    : section.SectionCode;
+
+                foreach (var slot in section.Schedule)
+                {
+                    // Only add meetings that have the overlay room assigned
+                    if (slot.RoomId != overlayRoomId)
+                        continue;
+
+                    // Skip if this meeting was already added by the filter loop
+                    var key = (section.Id, slot.Day, slot.StartMinutes, slot.EndMinutes);
+                    if (allMeetings.Any(m => m.SectionId == key.Item1 && m.Day == key.Item2 && m.Start == key.Item3 && m.End == key.Item4))
+                        continue;
+
                     allMeetings.Add((
                         slot.Day,
                         slot.StartMinutes,
