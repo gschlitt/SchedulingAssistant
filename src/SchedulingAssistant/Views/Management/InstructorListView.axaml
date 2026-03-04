@@ -83,6 +83,7 @@
                           BorderThickness="1"
                           BorderBrush="#CCCCCC">
                     <DataGrid.Columns>
+                        <DataGridTextColumn Header="First" Binding="{Binding FirstName}" Width="*" FontSize="10" />
                         <DataGridTextColumn Header="Last" Binding="{Binding LastName}" Width="*" FontSize="10" />
                         <DataGridTextColumn Header="Init" Binding="{Binding Initials}" Width="40" FontSize="10" />
                         <DataGridTextColumn Header="Type" Binding="{Binding StaffTypeName}" Width="*" FontSize="10" />

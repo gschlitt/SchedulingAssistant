@@ -62,7 +62,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
         foreach (var inst in instructors.Where(i => i.IsActive))
             Instructors.Add(new ContextMenuItemVm(
                 inst.Id,
-                $"{inst.LastName}, {inst.FirstName}",
+                $"{inst.FirstName} {inst.LastName}",
                 assignedIds.Contains(inst.Id)));
 
         // Rooms — single-select; None at top

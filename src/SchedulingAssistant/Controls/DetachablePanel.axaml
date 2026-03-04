@@ -6,36 +6,40 @@
     <Border BorderBrush="{StaticResource ChromeBorder}" BorderThickness="1">
         <Grid RowDefinitions="Auto,*">
 
-            <!-- Panel header bar -->
+            <!-- Panel header bar (two rows: title + extra controls) -->
             <Border Grid.Row="0" Background="{StaticResource ChromeBackground}"
                     BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1"
                     Padding="8,4">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right"
-                            Content="⧉"
-                            ToolTip.Tip="Pop out into window"
-                            Click="OnDetachClicked"
-                            Padding="4,2"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            FontSize="13"
-                            Cursor="Hand" />
-                    <!-- Extra controls injected by the host (e.g. Add/Edit/Delete for Sections) — right-aligned -->
-                    <ContentPresenter DockPanel.Dock="Right"
+                <Grid RowDefinitions="Auto,Auto">
+                    <!-- Row 0: Title row with detach button -->
+                    <DockPanel Grid.Row="0">
+                        <Button DockPanel.Dock="Right"
+                                Content="⧉"
+                                ToolTip.Tip="Pop out into window"
+                                Click="OnDetachClicked"
+                                Padding="4,2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                FontSize="13"
+                                Cursor="Hand" />
+                        <!-- Panel title -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="{Binding #Root.Header}"
+                                   FontWeight="SemiBold"
+                                   FontSize="{StaticResource FontSizeLarge}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0" />
+                        <!-- Context info (semester, stats, filter) — left-justified after title -->
+                        <ContentPresenter Content="{Binding #Root.HeaderContext}"
+                                          VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <!-- Row 1: Extra controls (buttons) -->
+                    <ContentPresenter Grid.Row="1"
                                       Content="{Binding #Root.HeaderExtra}"
-                                      VerticalAlignment="Center"
-                                      Margin="0,0,4,0" />
-                    <!-- Panel title -->
-                    <TextBlock DockPanel.Dock="Left"
-                               Text="{Binding #Root.Header}"
-                               FontWeight="SemiBold"
-                               FontSize="{StaticResource FontSizeLarge}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,12,0" />
-                    <!-- Context info (semester, stats, filter) — left-justified after title -->
-                    <ContentPresenter Content="{Binding #Root.HeaderContext}"
-                                      VerticalAlignment="Center" />
-                </DockPanel>
+                                      VerticalAlignment="Top"
+                                      Margin="0,4,0,0" />
+                </Grid>
             </Border>
 
             <!-- Panel content -->

@@ -66,7 +66,7 @@ public partial class SectionListItemViewModel : ObservableObject
             .Select(a =>
             {
                 if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
-                var name = $"{instr.LastName}, {instr.FirstName}";
+                var name = $"{instr.FirstName} {instr.LastName}";
                 return a.Workload.HasValue ? $"{name} [{a.Workload.Value:0.#}]" : name;
             })
             .Where(n => n is not null)

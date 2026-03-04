@@ -131,7 +131,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
                 var name = string.IsNullOrEmpty(instructor.FirstName)
                     ? instructor.LastName
-                    : $"{instructor.LastName}, {instructor.FirstName}";
+                    : $"{instructor.FirstName} {instructor.LastName}";
 
                 rows.Add(new WorkloadRowViewModel
                 {

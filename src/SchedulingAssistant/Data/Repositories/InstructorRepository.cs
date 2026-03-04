@@ -8,7 +8,7 @@ public class InstructorRepository(DatabaseContext db)
     public List<Instructor> GetAll()
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT id, data FROM Instructors ORDER BY data ->> 'lastName', data ->> 'firstName'";
+        cmd.CommandText = "SELECT id, data FROM Instructors ORDER BY first_name, last_name";
         using var reader = cmd.ExecuteReader();
         var results = new List<Instructor>();
         while (reader.Read())

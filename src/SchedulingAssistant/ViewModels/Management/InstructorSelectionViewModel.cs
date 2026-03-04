@@ -16,7 +16,7 @@ public partial class InstructorSelectionViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private string _workloadText = "1";
 
-    public string DisplayName => $"{Value.LastName}, {Value.FirstName}";
+    public string DisplayName => $"{Value.FirstName} {Value.LastName}";
 
     /// <summary>Parsed workload value, or null if the text is invalid/empty.</summary>
     public decimal? ParsedWorkload =>

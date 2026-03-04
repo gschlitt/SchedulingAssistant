@@ -1,3 +1,9 @@
+"Hybrid Course Scheduling" (odd, even weeks, more infrequent)
+
+Print to PDF
+
+Workload reports, .csv
+
 What happens if we modify legal start times while a semester is in use?
 
 Fix the section code assigner to allow for the lab format A#2 etc. User picks campus and type.
@@ -13,7 +19,7 @@ Meeting type should display on summary cards.
 
 Would like business objects to have friendly references to the other business objects, in the db. 
 
-Glow on section edits.
+Commitments. Should show when instructor overlaid.
 
 
 

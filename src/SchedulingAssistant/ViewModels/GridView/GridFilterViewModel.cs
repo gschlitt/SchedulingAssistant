@@ -250,7 +250,7 @@ public partial class GridFilterViewModel : ViewModelBase
         }
 
         RebuildList(Instructors,  usedInstructorIds,
-            id => instructorLookup.TryGetValue(id, out var v) ? $"{v.LastName}, {v.FirstName}" : null);
+            id => instructorLookup.TryGetValue(id, out var v) ? $"{v.FirstName} {v.LastName}" : null);
         InsertSentinelItem(Instructors, ref _notStaffedItem, NotStaffedId, "Not staffed");
 
         RebuildList(Rooms,        usedRoomIds,
