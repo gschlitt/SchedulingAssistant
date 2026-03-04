@@ -110,6 +110,7 @@
         <Popup x:Name="TileContextPopup"
                Placement="Pointer"
                IsLightDismissEnabled="True"
+               IsOpen="{Binding ContextMenu.IsOpen, Mode=TwoWay}"
                Grid.RowSpan="4">
             <Border Background="White"
                     BorderBrush="{StaticResource FilterExpanderBorder}"

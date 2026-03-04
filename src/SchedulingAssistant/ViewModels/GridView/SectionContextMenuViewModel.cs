@@ -17,6 +17,8 @@ public partial class SectionContextMenuViewModel : ObservableObject
     private int _meetingDay;
     private int _meetingStart;
 
+    [ObservableProperty] private bool _isOpen;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSubPanel))]
     [NotifyPropertyChangedFor(nameof(IsInstructorPanelVisible))]
@@ -135,9 +137,9 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
         _sectionRepo.Update(_section);
         _onSaved();
-        ActiveSubPanel = TileSubPanel.None;
+        IsOpen = false;
     }
 
     [RelayCommand]
-    private void Cancel() => ActiveSubPanel = TileSubPanel.None;
+    private void Cancel() => IsOpen = false;
 }

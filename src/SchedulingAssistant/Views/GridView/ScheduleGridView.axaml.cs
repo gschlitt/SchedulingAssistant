@@ -400,8 +400,8 @@ public partial class ScheduleGridView : UserControl
                         {
                             var ctx = (TileClickContext)((Border)sender!).Tag!;
                             _vm?.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
-                            if (_tileContextPopup is not null)
-                                _tileContextPopup.IsOpen = true;
+                            if (_vm is not null)
+                                _vm.ContextMenu.IsOpen = true;
                             e.Handled = true;
                             return;
                         }
