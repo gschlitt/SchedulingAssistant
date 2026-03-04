@@ -18,8 +18,8 @@ public partial class ScheduleGridView : UserControl
     private const double DayHeaderHeight  = 28;
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double TilePadding      = 3;
-    private const double DayColumnMinWidth = 120;
     private const double MinTileWidth     = 115;  // Minimum horizontal space per tile to accommodate multiple instructor initials
+    private const double DayColumnMinSpacing = 15; // Minimum spacing for visual separation between days
 
     // Resources resolved from App.axaml at first render (after resources are loaded).
     private static IBrush Res(string key) =>
@@ -125,24 +125,34 @@ public partial class ScheduleGridView : UserControl
         double availWidth = Math.Max(_canvas.Bounds.Width, Bounds.Width);
         int dayCount = data.DayColumns.Count;
 
-        // Calculate minimum width for each day independently based on its maximum overlap count
+        // Track max content width per day (will be filled during measurement phase)
+        var dayContentWidths = new double[dayCount];
+
+        // Calculate width for each day independently based on its measured content
         var dayColWidths = new double[dayCount];
         double totalMinWidth = TimeGutterWidth;
 
         for (int d = 0; d < dayCount; d++)
         {
-            double minWidth = DayColumnMinWidth;
             var dayCol = data.DayColumns[d];
+            double dayWidth = DayColumnMinSpacing;
 
             if (dayCol.Tiles.Count > 0)
             {
+                // Use the measured content width plus padding and border
+                double contentWidth = dayContentWidths[d] + 8; // padding (2*1 on sides) + border (2*1) + extra buffer
+
+                // For overlapping tiles, we need to account for multiple tiles side-by-side
                 int maxOverlapCount = dayCol.Tiles.Max(t => t.OverlapCount);
-                double requiredWidth = maxOverlapCount * MinTileWidth + TilePadding;
-                minWidth = Math.Max(minWidth, requiredWidth);
+                double overlapWidth = maxOverlapCount > 1
+                    ? maxOverlapCount * contentWidth + TilePadding * maxOverlapCount
+                    : contentWidth + TilePadding;
+
+                dayWidth = Math.Max(dayWidth, overlapWidth);
             }
 
-            dayColWidths[d] = minWidth;
-            totalMinWidth += minWidth;
+            dayColWidths[d] = dayWidth;
+            totalMinWidth += dayWidth;
         }
 
         // Adjust widths if extra space is available
@@ -169,7 +179,7 @@ public partial class ScheduleGridView : UserControl
             dayXOffsets[d + 1] = dayXOffsets[d] + dayColWidths[d];
         }
 
-        // ── Phase 1 & 2: Measure tile content heights and build height map ───
+        // ── Phase 1 & 2: Measure tile content heights and widths, build maps ───
         var tileHeightMap = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
         var selectedId = _vm?.SelectedSectionId;
         var entryCursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
@@ -223,9 +233,13 @@ public partial class ScheduleGridView : UserControl
                     stack.Children.Add(entryRow);
                 }
 
-                // Measure content height
+                // Measure content (no width constraint to get natural width)
                 stack.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 double actualH = stack.DesiredSize.Height;
+                double contentW = stack.DesiredSize.Width;
+
+                // Track the widest content in this day
+                dayContentWidths[d] = Math.Max(dayContentWidths[d], contentW);
 
                 var key = (tile.StartMinutes, tile.EndMinutes);
                 tileHeightMap[key] = (timeBasedH, actualH);
