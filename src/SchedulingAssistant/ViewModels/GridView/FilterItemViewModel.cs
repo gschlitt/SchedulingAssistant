@@ -9,6 +9,7 @@ public partial class FilterItemViewModel : ViewModelBase
 {
     public string Id { get; }
     public string Name { get; }
+    public bool IsSentinel { get; init; }
 
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isOverlayActive;

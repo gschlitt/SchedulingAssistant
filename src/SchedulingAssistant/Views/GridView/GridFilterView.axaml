@@ -93,9 +93,12 @@
                                              SelectionMode="Multiple">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          IsEnabled="{Binding IsEnabled}"
-                                                          Content="{Binding Name}" />
+                                                <Panel>
+                                                    <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
+                                                    <CheckBox IsChecked="{Binding IsSelected}"
+                                                              IsEnabled="{Binding IsEnabled}"
+                                                              Content="{Binding Name}" />
+                                                </Panel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
@@ -124,9 +127,12 @@
                                              SelectionMode="Multiple">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          IsEnabled="{Binding IsEnabled}"
-                                                          Content="{Binding Name}" />
+                                                <Panel>
+                                                    <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
+                                                    <CheckBox IsChecked="{Binding IsSelected}"
+                                                              IsEnabled="{Binding IsEnabled}"
+                                                              Content="{Binding Name}" />
+                                                </Panel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>

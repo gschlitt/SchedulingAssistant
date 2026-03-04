@@ -331,7 +331,7 @@ public partial class GridFilterViewModel : ViewModelBase
         string sentinelName)
     {
         bool wasSelected = sentinelField?.IsSelected ?? false;
-        var sentinel = new FilterItemViewModel(sentinelId, sentinelName) { IsSelected = wasSelected };
+        var sentinel = new FilterItemViewModel(sentinelId, sentinelName) { IsSelected = wasSelected, IsSentinel = true };
         sentinel.PropertyChanged += OnItemPropertyChanged;
         list.Insert(0, sentinel);
         sentinelField = sentinel;
