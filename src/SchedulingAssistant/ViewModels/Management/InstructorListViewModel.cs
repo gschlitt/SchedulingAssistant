@@ -87,8 +87,16 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         settings.Save();
     }
 
+    // Avalonia evaluates bindings even on hidden elements, so binding directly to
+    // SelectedInstructor.FirstName logs a null-traversal error when no instructor is selected.
+    // These properties return empty string instead of null, avoiding the spurious binding error.
+    public string SelectedFirstName => SelectedInstructor?.FirstName ?? string.Empty;
+    public string SelectedLastName => SelectedInstructor?.LastName ?? string.Empty;
+
     partial void OnSelectedInstructorChanged(Instructor? value)
     {
+        OnPropertyChanged(nameof(SelectedFirstName));
+        OnPropertyChanged(nameof(SelectedLastName));
         RefreshWorkload();
     }
 
