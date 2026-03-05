@@ -28,6 +28,12 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private CommitmentsManagementViewModel _commitmentsVm;
     [ObservableProperty] private WorkloadHistoryViewModel _workloadHistoryVm;
 
+    private void OnWorkloadVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(InstructorWorkloadViewModel.TotalWorkload))
+            OnPropertyChanged(nameof(WorkloadUnitsDisplay));
+    }
+
     /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
     public Func<string, Task>? ShowError { get; set; }
 
@@ -64,6 +70,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
         _semesterContext.PropertyChanged += OnSemesterContextPropertyChanged;
         _releaseVm.ReleasesChanged += RefreshWorkload;
+        _workloadVm.PropertyChanged += OnWorkloadVmPropertyChanged;
     }
 
     private void OnSemesterContextPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -76,6 +83,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     {
         _semesterContext.PropertyChanged -= OnSemesterContextPropertyChanged;
         ReleaseVm.ReleasesChanged -= RefreshWorkload;
+        _workloadVm.PropertyChanged -= OnWorkloadVmPropertyChanged;
     }
 
     private void Load()
@@ -106,6 +114,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     // These properties return empty string instead of null, avoiding the spurious binding error.
     public string SelectedFirstName => SelectedInstructor?.FirstName ?? string.Empty;
     public string SelectedLastName => SelectedInstructor?.LastName ?? string.Empty;
+
+    public string WorkloadUnitsDisplay => $"Workload units {WorkloadVm.TotalWorkload:0.##}";
 
     partial void OnSelectedInstructorChanged(Instructor? value)
     {

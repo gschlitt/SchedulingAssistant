@@ -1,6 +1,6 @@
 "Hybrid Course Scheduling" (odd, even weeks, more infrequent)
 
-Print to PDF
+
 
 Workload reports, .csv
 
@@ -11,15 +11,13 @@ Fix the section code assigner to allow for the lab format A#2 etc. User picks ca
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view
 
-Booking cards need to show all info, and be revised visually.
-Meeting type should display on summary cards.
+
 
 Multiple semesters!
 
 When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is lost
 
 
-Instructor workload history
 
 Course history
 
@@ -27,7 +25,7 @@ Course history
 Work on colors a bit. Keep red for overlay, need something different in menu to mark filters.
 
 
-Should have a departmental name dialog, fix departmental mention under subject.
+
 
 
 
@@ -37,7 +35,6 @@ Section editor not sizing horizontally, should size to contents
 
 Increase font size on banners
 
-Fix the settings under settings
 
 
 
@@ -48,7 +45,7 @@ Banner on sections header to show number of sections
 
 Backup! (to csv and alternate db?)
 
-logic for revions of course properties and deletion of course properties
+
 logic for revisions and deletions of block lengths.
 
 Handle non-active courses and non-active instructors.

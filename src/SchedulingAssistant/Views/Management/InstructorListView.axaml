@@ -106,10 +106,12 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Semester Activity label -->
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Semester Activity" FontSize="14" FontWeight="SemiBold"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8,0,4"
-                       IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <!-- Semester Activity label with workload units -->
+            <Grid Grid.Row="2" Grid.Column="0" ColumnDefinitions="*,Auto" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8,0,4"
+                  IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock Grid.Column="0" Text="Semester Activity" FontSize="14" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="1" Text="{Binding WorkloadUnitsDisplay}" FontSize="14" FontWeight="SemiBold" Margin="12,0,0,0" />
+            </Grid>
 
             <!-- Three workload panels side by side (below instructor list) -->
             <Grid Grid.Row="3" Grid.Column="0" ColumnDefinitions="*,1,*,1,*" IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
