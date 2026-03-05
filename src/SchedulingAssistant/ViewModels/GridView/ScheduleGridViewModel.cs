@@ -73,7 +73,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Filter.FilterChanged += Reload;
+
+        // Subscribe to the shared change notifier so the grid reloads whenever any
+        // code fires NotifySectionChanged() — including the context menu (via
+        // NotifySectionChanged below), external section edits, and commitment CRUD
+        // (via CommitmentsManagementViewModel). All callers go through the same
+        // notifier, so there is one single place that drives grid refresh.
         _changeNotifier.SectionChanged += Reload;
+
         Reload();
     }
 
@@ -123,9 +130,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Callback invoked after context menu saves changes.
-    /// Fires SectionChangeNotifier, which triggers Reload() on this VM (via subscription)
-    /// and notifies other views (e.g. SectionListViewModel) to refresh as well.
+    /// Callback passed to SectionContextMenuViewModel; called after the context menu
+    /// saves a change to a section. Fires the shared SectionChangeNotifier, which:
+    ///   1. Triggers Reload() on THIS view model (via the subscription in the constructor)
+    ///   2. Triggers Reload() on SectionListViewModel (which also subscribes)
+    /// Do NOT call Reload() directly here — that would cause a double reload because
+    /// the subscription above already handles it.
     /// </summary>
     private void NotifySectionChanged()
     {
@@ -271,8 +281,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
             }
         }
 
-        // ── Collect filtered meetings ─────────────────────────────────────────
-        // All time blocks (section meetings + instructor commitments) to be placed on the grid.
+        // ── Collect all time blocks for the grid ─────────────────────────────
+        // allBlocks accumulates everything that will be drawn:
+        //   Pass 1 (below): section meetings that pass the active filters
+        //   Pass 2 (below): overlay-matched sections not already in Pass 1
+        //   Pass 3 (below): instructor commitments when an instructor overlay is active
+        // After collection, a dedup step removes any block that appears more than once,
+        // then blocks are split by day and handed to ComputeTiles() for layout.
         var allBlocks = new List<GridBlock>();
 
         foreach (var section in sections)
@@ -422,9 +437,19 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // ── Instructor-overlay commitments ────────────────────────────────────
         // When an instructor overlay is active, load that instructor's time commitments
-        // for the current semester and add them to the block list. They render as red
-        // overlay cards (IsOverlay = true on CommitmentBlock) and participate in the
-        // same overlap/column-split layout as section meetings.
+        // for the selected semester and inject them into the block list. Commitments are
+        // entirely independent of sections — they can appear on any day at any time
+        // regardless of what sections the instructor teaches. They enter the layout engine
+        // as CommitmentBlocks, which means they participate in the same overlap/column-
+        // split logic as section meetings. If a commitment happens to share the exact same
+        // time span as a section meeting, they are merged into one tile (stacked rows).
+        //
+        // Commitments are only shown under instructor overlays, not room or tag overlays,
+        // because commitments belong to an instructor, not a room or a tag.
+        //
+        // CommitmentBlock.IsOverlay is hardcoded true, so they always render red.
+        // No dedup guard is needed here — commitments are fetched once, directly from the
+        // DB for this instructor+semester, so duplicates cannot arise.
         if (Filter.HasOverlay
             && Filter.OverlayType == "Instructor"
             && !string.IsNullOrEmpty(Filter.SelectedOverlayId))
@@ -435,8 +460,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         // ── Defensive deduplication ────────────────────────────────────────────
-        // Dedup by (entity-id, Day, StartMinutes, EndMinutes) to prevent any block
-        // from appearing twice. Section meetings use SectionId; commitments use CommitmentId.
+        // A section meeting can appear in allBlocks at most twice: once from the filtered
+        // pass (Pass 1) and once from the overlay-only pass (Pass 2). Dedup keeps the
+        // first occurrence, which preserves the correct IsOverlay flag (Pass 1 sets it
+        // based on the section's overlay status; Pass 2 always sets it true).
+        // Commitment blocks are fetched once from the DB so they cannot be duplicated,
+        // but they pass through the same dedup path for safety.
+        // Key = (entity-id, Day, StartMinutes, EndMinutes). Using the entity ID means a
+        // section that teaches the same time slot on two different days does NOT dedup
+        // across days (Day is part of the key).
         static string BlockId(GridBlock b) => b switch
         {
             SectionMeetingBlock s => s.SectionId,
@@ -486,7 +518,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
             ? string.Join(" · ", selectedSubjectNames)
             : string.Empty;
 
-        // Commitments are not counted as sections or meetings in the summary line.
+        // Stats line counts sections and meetings, not commitments. A "section" is a
+        // distinct SectionId; a "meeting" is one SectionMeetingBlock (one time slot for
+        // one section on one day). Commitment blocks are excluded from both counts because
+        // they are not sections — showing "3 sections · 8 meetings" is meaningful; mixing
+        // in commitment tiles would make the number misleading.
         var sectionBlocks = allBlocks.OfType<SectionMeetingBlock>().ToList();
         int sectionCount  = sectionBlocks.Select(b => b.SectionId).Distinct().Count();
         int meetingCount  = sectionBlocks.Count;
@@ -496,9 +532,21 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Converts a GridBlock to the TileEntry consumed by the renderer.
-    /// Section meetings carry their label, initials, and section ID.
-    /// Commitment blocks carry only their name; SectionId is empty and IsCommitment is true.
+    /// Converts a GridBlock to the TileEntry record consumed by the renderer.
+    ///
+    /// For SectionMeetingBlocks: the label, initials, section ID, and overlay flag
+    /// are all passed through. The renderer uses SectionId for selection highlighting
+    /// and IsOverlay for red styling.
+    ///
+    /// For CommitmentBlocks: the commitment name becomes the label; initials and
+    /// SectionId are set to empty string (commitments are not selectable and have no
+    /// instructor initials displayed). IsOverlay is hardcoded true (CommitmentBlock
+    /// itself hardcodes it, so this just passes it through) and IsCommitment is true,
+    /// which tells the renderer to suppress click interactions (no selection, no
+    /// right-click context menu, no hand cursor).
+    ///
+    /// If a new GridBlock subtype is added in future, add a case here. The exhaustive
+    /// switch will throw at runtime if a new subtype is forgotten.
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {

@@ -8,18 +8,36 @@ using System.Collections.ObjectModel;
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// Manages CRUD for instructor commitments (non-teaching time blocks) for a specific instructor in a specific semester.
+/// Manages the CRUD list of InstructorCommitment records for one instructor in one semester.
+/// This VM is embedded inside InstructorListViewModel and is re-contextualized (via SetContext)
+/// whenever the user selects a different instructor or the semester changes.
+///
+/// "Commitments" are non-teaching time obligations — committee meetings, office hours,
+/// department duties, etc. They are stored in the InstructorCommitments table and displayed
+/// on the Schedule Grid when an instructor overlay is active (as red overlay cards).
+///
+/// After any successful write (insert, update, delete), _changeNotifier.NotifySectionChanged()
+/// is called. This fires a shared event that ScheduleGridViewModel subscribes to, causing the
+/// grid to reload and immediately reflect the change.
 /// </summary>
 public partial class CommitmentsManagementViewModel : ViewModelBase
 {
     private readonly InstructorCommitmentRepository _commitmentRepo;
+
+    // SectionChangeNotifier is the shared singleton that bridges changes in this flyout
+    // to the Schedule Grid. Despite its name ("Section"), it is used for any data change
+    // that should cause the grid to refresh — including commitment CRUD.
     private readonly SectionChangeNotifier _changeNotifier;
+
     private string _instructorId = string.Empty;
     private string _semesterId = string.Empty;
 
     [ObservableProperty] private ObservableCollection<InstructorCommitment> _commitments = new();
     [ObservableProperty] private InstructorCommitment? _selectedCommitment;
+
+    /// <summary>Non-null while an Add or Edit form is open inline. Null when no form is active.</summary>
     [ObservableProperty] private CommitmentEditViewModel? _editVm;
+
     [ObservableProperty] private string? _lastErrorMessage;
 
     public CommitmentsManagementViewModel(InstructorCommitmentRepository commitmentRepo, SectionChangeNotifier changeNotifier)
@@ -28,6 +46,11 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
         _changeNotifier = changeNotifier;
     }
 
+    /// <summary>
+    /// Called by InstructorListViewModel whenever the selected instructor or semester changes.
+    /// Reloads the commitment list without firing the grid-refresh notifier (since no data
+    /// has actually changed — the user just switched context).
+    /// </summary>
     public void SetContext(string instructorId, string semesterId)
     {
         _instructorId = instructorId;
@@ -35,6 +58,11 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
         Load(fireEvent: false);
     }
 
+    /// <summary>
+    /// Reloads the commitment list from the database for the current instructor+semester.
+    /// The fireEvent parameter is unused at the moment but kept for symmetry with patterns
+    /// elsewhere in the codebase that may want a conditional notification in future.
+    /// </summary>
     private void Load(bool fireEvent = true)
     {
         try
@@ -62,6 +90,8 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
     [RelayCommand]
     private void Add()
     {
+        // Seed a new commitment with sensible defaults: Monday at 8:00–8:30 AM.
+        // The inline editor lets the user change all fields before saving.
         var commitment = new InstructorCommitment
         {
             Id = Guid.NewGuid().ToString(),
@@ -88,6 +118,8 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
                     _commitmentRepo.Insert(c);
                     Load();
                     EditVm = null;
+                    // Notify the Schedule Grid to reload so the new commitment card
+                    // appears immediately if this instructor's overlay is active.
                     _changeNotifier.NotifySectionChanged();
                 }
                 catch (Exception ex)
@@ -102,6 +134,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
     {
         if (SelectedCommitment is null) return;
 
+        // Re-fetch from DB to get the latest state before opening the editor.
         var dbCommitment = _commitmentRepo.GetById(SelectedCommitment.Id);
         if (dbCommitment is null) return;
 
@@ -121,6 +154,8 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
                     _commitmentRepo.Update(c);
                     Load();
                     EditVm = null;
+                    // Notify the Schedule Grid to reload so the updated commitment card
+                    // (new time, new name, etc.) is reflected immediately.
                     _changeNotifier.NotifySectionChanged();
                 }
                 catch (Exception ex)
@@ -139,6 +174,8 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
         {
             _commitmentRepo.Delete(SelectedCommitment.Id);
             Load();
+            // Notify the Schedule Grid to reload so the deleted commitment card
+            // disappears immediately if this instructor's overlay is active.
             _changeNotifier.NotifySectionChanged();
         }
         catch (Exception ex)

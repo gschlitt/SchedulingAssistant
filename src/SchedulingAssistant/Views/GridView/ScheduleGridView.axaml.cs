@@ -395,6 +395,7 @@ public partial class ScheduleGridView : UserControl
                         Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
                         CornerRadius = new CornerRadius(2),
                         Padding      = new Thickness(1, 0),
+                        // Commitment tiles are display-only — no hand cursor.
                         Cursor       = entry.IsCommitment ? null : entryCursor,
                         Tag          = clickCtx,
                         Child        = new TextBlock
@@ -410,7 +411,10 @@ public partial class ScheduleGridView : UserControl
                     };
                     entryRow.PointerPressed += (sender, e) =>
                     {
-                        // Commitment tiles are display-only; clicks are intentionally ignored.
+                        // Commitment tiles are display-only. They have no SectionId, so
+                        // left-clicking them would select nothing, and right-clicking would
+                        // open the context menu with an empty ID. Guard here instead of
+                        // letting those calls fall through with bad data.
                         if (entry.IsCommitment) { e.Handled = true; return; }
 
                         if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)

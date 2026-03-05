@@ -249,8 +249,13 @@ public partial class GridFilterViewModel : ViewModelBase
             }
         }
 
-        // All instructors always appear in the overlay list, not just those assigned to
-        // sections this semester — an instructor with no sections may still have commitments.
+        // Instructors: use the FULL instructor lookup (all active instructors), not just
+        // those assigned to sections in this semester. This ensures the overlay listbox
+        // always shows every instructor so their commitments can be overlaid even when
+        // they have no sections scheduled yet. The filter checkboxes also show all
+        // instructors — selecting one with no sections simply shows an empty grid, which
+        // is harmless. The instructorLookup is already filtered by ShowOnlyActiveInstructors
+        // (set in AppSettings), so inactive instructors are excluded regardless.
         RebuildList(Instructors,  instructorLookup.Keys.ToHashSet(),
             id => instructorLookup.TryGetValue(id, out var v) ? $"{v.FirstName} {v.LastName}" : null);
         InsertSentinelItem(Instructors, ref _notStaffedItem, NotStaffedId, "Not staffed");
