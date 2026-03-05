@@ -486,11 +486,11 @@
                                         <!-- Heading -->
                                         <TextBlock Grid.Column="1" Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" Margin="2,0,8,0" />
                                         <!-- Instructor -->
-                                        <TextBlock Grid.Column="2" Text="{Binding InstructorHeaderLine}" FontSize="11"
+                                        <TextBlock Grid.Column="2" Text="{Binding InstructorHeaderLine}" FontSize="12"
                                                    IsVisible="{Binding InstructorHeaderLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    TextTrimming="CharacterEllipsis" />
                                         <!-- Section Type -->
-                                        <TextBlock Grid.Column="3" Text="{Binding SectionTypeName}" FontSize="11"
+                                        <TextBlock Grid.Column="3" Text="{Binding SectionTypeName}" FontSize="12"
                                                    IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    Margin="8,0,8,0" />
                                         <!-- Right: property indicators (when collapsed) -->
@@ -510,11 +510,11 @@
                                                Spacing="0" Margin="2,2,6,4">
                                         <!-- Headers -->
                                         <Grid ColumnDefinitions="45,45,45,65,*" Margin="0,0,0,2">
-                                            <TextBlock Grid.Column="0" Text="Day" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
-                                            <TextBlock Grid.Column="1" Text="Start" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
-                                            <TextBlock Grid.Column="2" Text="End" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
-                                            <TextBlock Grid.Column="3" Text="Room" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
-                                            <TextBlock Grid.Column="4" Text="Type" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,0,0" />
+                                            <TextBlock Grid.Column="0" Text="Day" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="1" Text="Start" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="2" Text="End" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="3" Text="Room" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="4" Text="Type" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,0,0" />
                                         </Grid>
 
                                         <!-- Meetings -->
@@ -522,11 +522,11 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
                                                     <Grid ColumnDefinitions="45,45,45,65,*" Margin="0,1,0,0">
-                                                        <TextBlock Grid.Column="0" Text="{Binding Day}" FontSize="10" Margin="2,1,2,1" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding StartTime}" FontSize="10" Margin="2,1,2,1" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding EndTime}" FontSize="10" Margin="2,1,2,1" />
-                                                        <TextBlock Grid.Column="3" Text="{Binding Room}" FontSize="10" Margin="2,1,2,1" />
-                                                        <TextBlock Grid.Column="4" Text="{Binding MeetingType}" FontSize="10" Margin="2,1,0,1" />
+                                                        <TextBlock Grid.Column="0" Text="{Binding Day}" FontSize="11" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding StartTime}" FontSize="11" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding EndTime}" FontSize="11" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding Room}" FontSize="11" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="4" Text="{Binding MeetingType}" FontSize="11" Margin="2,1,0,1" />
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -538,23 +538,23 @@
                                         <!-- Tags -->
                                         <StackPanel Orientation="Horizontal" Spacing="4"
                                                    IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                            <TextBlock Text="🏷️" FontSize="11" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding TagLine}" FontSize="10" VerticalAlignment="Center" />
+                                            <TextBlock Text="🏷️" FontSize="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding TagLine}" FontSize="11" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <!-- Reserves -->
                                         <StackPanel Orientation="Horizontal" Spacing="4"
                                                    IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                            <TextBlock Text="📋" FontSize="11" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding ReserveLine}" FontSize="10" VerticalAlignment="Center" />
+                                            <TextBlock Text="📋" FontSize="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ReserveLine}" FontSize="11" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <!-- Resources -->
                                         <StackPanel Orientation="Horizontal" Spacing="4"
                                                    IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                            <TextBlock Text="📦" FontSize="11" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding ResourceLine}" FontSize="10" VerticalAlignment="Center" />
+                                            <TextBlock Text="📦" FontSize="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ResourceLine}" FontSize="11" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <!-- Notes -->
-                                        <TextBlock Text="{Binding NoteLine}" FontSize="10"
+                                        <TextBlock Text="{Binding NoteLine}" FontSize="11"
                                                    IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,2,0,0" />
                                     </StackPanel>
