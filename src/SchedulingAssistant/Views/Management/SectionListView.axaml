@@ -486,11 +486,11 @@
                                         <!-- Heading -->
                                         <TextBlock Grid.Column="1" Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" Margin="2,0,8,0" />
                                         <!-- Instructor -->
-                                        <TextBlock Grid.Column="2" Text="{Binding InstructorHeaderLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                        <TextBlock Grid.Column="2" Text="{Binding InstructorHeaderLine}" FontSize="11"
                                                    IsVisible="{Binding InstructorHeaderLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    TextTrimming="CharacterEllipsis" />
                                         <!-- Section Type -->
-                                        <TextBlock Grid.Column="3" Text="{Binding SectionTypeName}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                        <TextBlock Grid.Column="3" Text="{Binding SectionTypeName}" FontSize="11"
                                                    IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    Margin="8,0,8,0" />
                                         <!-- Right: property indicators (when collapsed) -->
@@ -539,22 +539,22 @@
                                         <StackPanel Orientation="Horizontal" Spacing="4"
                                                    IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                             <TextBlock Text="🏷️" FontSize="11" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding TagLine}" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding TagLine}" FontSize="10" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <!-- Reserves -->
                                         <StackPanel Orientation="Horizontal" Spacing="4"
                                                    IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                             <TextBlock Text="📋" FontSize="11" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding ReserveLine}" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ReserveLine}" FontSize="10" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <!-- Resources -->
                                         <StackPanel Orientation="Horizontal" Spacing="4"
                                                    IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                             <TextBlock Text="📦" FontSize="11" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding ResourceLine}" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ResourceLine}" FontSize="10" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <!-- Notes -->
-                                        <TextBlock Text="{Binding NoteLine}" FontSize="10" Foreground="{StaticResource TextSecondary}"
+                                        <TextBlock Text="{Binding NoteLine}" FontSize="10"
                                                    IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,2,0,0" />
                                     </StackPanel>
