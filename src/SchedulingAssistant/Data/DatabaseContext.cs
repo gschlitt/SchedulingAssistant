@@ -118,6 +118,15 @@ public class DatabaseContext : IDisposable
                 instructor_id TEXT NOT NULL,
                 data          TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS InstructorCommitments (
+                id              TEXT PRIMARY KEY,
+                instructor_id   TEXT NOT NULL,
+                semester_id     TEXT NOT NULL,
+                instructor_name TEXT,
+                semester_name   TEXT,
+                data            TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }
@@ -159,6 +168,21 @@ public class DatabaseContext : IDisposable
             """;
         cmd.ExecuteNonQuery();
 
+        // InstructorCommitments table (if missing)
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS InstructorCommitments (
+                id TEXT PRIMARY KEY,
+                instructor_id TEXT NOT NULL,
+                semester_id TEXT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
+            """;
+        cmd.ExecuteNonQuery();
+
+        // Purge invalid commitment records (missing instructor_id or semester_id)
+        cmd.CommandText = "DELETE FROM InstructorCommitments WHERE instructor_id IS NULL OR instructor_id = '' OR semester_id IS NULL OR semester_id = ''";
+        cmd.ExecuteNonQuery();
+
         // Add academic_year_id column to LegalStartTimes if it doesn't exist
         // (for databases upgraded from the old schema)
         cmd.CommandText = "PRAGMA table_info(LegalStartTimes)";
@@ -188,6 +212,8 @@ public class DatabaseContext : IDisposable
         AddColumnIfMissing(Connection, "Sections",            "course_code",   "TEXT");
         AddColumnIfMissing(Connection, "SectionPropertyValues", "name",        "TEXT");
         AddColumnIfMissing(Connection, "AcademicUnits",       "name",          "TEXT");
+        AddColumnIfMissing(Connection, "InstructorCommitments", "instructor_name", "TEXT");
+        AddColumnIfMissing(Connection, "InstructorCommitments", "semester_name",   "TEXT");
 
         BackfillReadableColumns(Connection);
     }
@@ -248,6 +274,14 @@ public class DatabaseContext : IDisposable
             "UPDATE SectionPropertyValues SET name = json_extract(data, '$.name') WHERE name IS NULL",
 
             "UPDATE AcademicUnits SET name = json_extract(data, '$.name') WHERE name IS NULL",
+
+            "UPDATE InstructorCommitments SET instructor_name = " +
+                "(SELECT first_name || ' ' || last_name FROM Instructors i WHERE i.id = InstructorCommitments.instructor_id) " +
+            "WHERE instructor_name IS NULL",
+
+            "UPDATE InstructorCommitments SET semester_name = " +
+                "(SELECT ay.name || ' — ' || s.name FROM Semesters s JOIN AcademicYears ay ON ay.id = s.academic_year_id WHERE s.id = InstructorCommitments.semester_id) " +
+            "WHERE semester_name IS NULL",
         };
 
         foreach (var sql in statements)

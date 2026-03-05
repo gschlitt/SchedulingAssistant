@@ -249,7 +249,9 @@ public partial class GridFilterViewModel : ViewModelBase
             }
         }
 
-        RebuildList(Instructors,  usedInstructorIds,
+        // All instructors always appear in the overlay list, not just those assigned to
+        // sections this semester — an instructor with no sections may still have commitments.
+        RebuildList(Instructors,  instructorLookup.Keys.ToHashSet(),
             id => instructorLookup.TryGetValue(id, out var v) ? $"{v.FirstName} {v.LastName}" : null);
         InsertSentinelItem(Instructors, ref _notStaffedItem, NotStaffedId, "Not staffed");
 

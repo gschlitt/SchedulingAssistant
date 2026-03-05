@@ -20,6 +20,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
     private readonly SectionChangeNotifier _changeNotifier;
+    private readonly InstructorCommitmentRepository _commitmentRepo;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
     [ObservableProperty] private string? _selectedSectionId;
@@ -52,7 +53,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SectionPropertyRepository propertyRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
-        SectionChangeNotifier changeNotifier)
+        SectionChangeNotifier changeNotifier,
+        InstructorCommitmentRepository commitmentRepo)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -63,6 +65,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
         _changeNotifier = changeNotifier;
+        _commitmentRepo = commitmentRepo;
 
         ContextMenu = new SectionContextMenuViewModel(sectionRepo, NotifySectionChanged);
 
@@ -70,6 +73,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Filter.FilterChanged += Reload;
+        _changeNotifier.SectionChanged += Reload;
         Reload();
     }
 
@@ -120,11 +124,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>
     /// Callback invoked after context menu saves changes.
-    /// Refreshes the schedule grid and notifies other views (via SectionChangeNotifier) that sections changed.
+    /// Fires SectionChangeNotifier, which triggers Reload() on this VM (via subscription)
+    /// and notifies other views (e.g. SectionListViewModel) to refresh as well.
     /// </summary>
     private void NotifySectionChanged()
     {
-        Reload();
         _changeNotifier.NotifySectionChanged();
     }
 
@@ -268,7 +272,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         // ── Collect filtered meetings ─────────────────────────────────────────
-        var allMeetings = new List<(int Day, int Start, int End, string Label, string Initials, string SectionId, bool IsOverlay)>();
+        // All time blocks (section meetings + instructor commitments) to be placed on the grid.
+        var allBlocks = new List<GridBlock>();
 
         foreach (var section in sections)
         {
@@ -346,7 +351,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     isOverlay = slot.RoomId == overlayId;
                 }
 
-                allMeetings.Add((slot.Day, slot.StartMinutes, slot.EndMinutes, label, initials, section.Id, isOverlay));
+                allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, isOverlay, label, initials, section.Id));
             }
         }
 
@@ -359,7 +364,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             foreach (var overlayId in overlayMatchedSectionIds)
             {
                 // Skip if this section already got added by the filter loop
-                if (allMeetings.Any(m => m.SectionId == overlayId))
+                if (allBlocks.OfType<SectionMeetingBlock>().Any(b => b.SectionId == overlayId))
                     continue;
 
                 var section = sections.FirstOrDefault(s => s.Id == overlayId);
@@ -378,15 +383,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 // Add ALL meetings for this overlay-only section
                 foreach (var slot in section.Schedule)
                 {
-                    allMeetings.Add((
-                        slot.Day,
-                        slot.StartMinutes,
-                        slot.EndMinutes,
-                        label,
-                        initials,
-                        section.Id,
-                        true  // Mark as overlay
-                    ));
+                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id));
                 }
             }
         }
@@ -413,39 +410,51 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         continue;
 
                     // Skip if this meeting was already added by the filter loop
-                    var key = (section.Id, slot.Day, slot.StartMinutes, slot.EndMinutes);
-                    if (allMeetings.Any(m => m.SectionId == key.Item1 && m.Day == key.Item2 && m.Start == key.Item3 && m.End == key.Item4))
+                    if (allBlocks.OfType<SectionMeetingBlock>().Any(b =>
+                            b.SectionId == section.Id && b.Day == slot.Day &&
+                            b.StartMinutes == slot.StartMinutes && b.EndMinutes == slot.EndMinutes))
                         continue;
 
-                    allMeetings.Add((
-                        slot.Day,
-                        slot.StartMinutes,
-                        slot.EndMinutes,
-                        label,
-                        initials,
-                        section.Id,
-                        true  // Mark as overlay
-                    ));
+                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id));
                 }
             }
         }
 
-        // ── Defensive deduplication ────────────────────────────────────────────
-        // Dedup by (SectionId, Day, StartMinutes, EndMinutes) to prevent any
-        // meeting from appearing twice. Preserves the first occurrence's IsOverlay flag.
-        var seenMeetings = new HashSet<(string, int, int, int)>();
-        var dedupedMeetings = new List<(int Day, int Start, int End, string Label, string Initials, string SectionId, bool IsOverlay)>();
-
-        foreach (var meeting in allMeetings)
+        // ── Instructor-overlay commitments ────────────────────────────────────
+        // When an instructor overlay is active, load that instructor's time commitments
+        // for the current semester and add them to the block list. They render as red
+        // overlay cards (IsOverlay = true on CommitmentBlock) and participate in the
+        // same overlap/column-split layout as section meetings.
+        if (Filter.HasOverlay
+            && Filter.OverlayType == "Instructor"
+            && !string.IsNullOrEmpty(Filter.SelectedOverlayId))
         {
-            var key = (meeting.SectionId, meeting.Day, meeting.Start, meeting.End);
-            if (seenMeetings.Add(key))
-            {
-                dedupedMeetings.Add(meeting);
-            }
+            var commitments = _commitmentRepo.GetByInstructor(semester.Id, Filter.SelectedOverlayId);
+            foreach (var c in commitments)
+                allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id));
         }
 
-        allMeetings = dedupedMeetings;
+        // ── Defensive deduplication ────────────────────────────────────────────
+        // Dedup by (entity-id, Day, StartMinutes, EndMinutes) to prevent any block
+        // from appearing twice. Section meetings use SectionId; commitments use CommitmentId.
+        static string BlockId(GridBlock b) => b switch
+        {
+            SectionMeetingBlock s => s.SectionId,
+            CommitmentBlock c     => c.CommitmentId,
+            _ => throw new InvalidOperationException($"Unknown GridBlock type: {b.GetType().Name}")
+        };
+
+        var seenBlocks    = new HashSet<(string, int, int, int)>();
+        var dedupedBlocks = new List<GridBlock>();
+
+        foreach (var block in allBlocks)
+        {
+            var key = (BlockId(block), block.Day, block.StartMinutes, block.EndMinutes);
+            if (seenBlocks.Add(key))
+                dedupedBlocks.Add(block);
+        }
+
+        allBlocks = dedupedBlocks;
 
         // ── Time range: always 08:30–22:00 ────────────────────────────────────
         const int firstRow = 8 * 60 + 30;
@@ -455,13 +464,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var dayColumns = new List<GridDayColumn>();
         foreach (var dayNum in dayNumbers)
         {
-            var dayMeetings = allMeetings
-                .Where(m => m.Day == dayNum)
-                .OrderBy(m => m.Start).ThenBy(m => m.End)
-                .Select(m => (m.Day, m.Start, m.End, m.Label, m.Initials, m.SectionId, m.IsOverlay))
+            var dayBlocks = allBlocks
+                .Where(b => b.Day == dayNum)
+                .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
                 .ToList();
 
-            var tiles = ComputeTiles(dayMeetings);
+            var tiles = ComputeTiles(dayBlocks);
             dayColumns.Add(new GridDayColumn(dayNames[dayNum], tiles));
         }
 
@@ -478,39 +486,52 @@ public partial class ScheduleGridViewModel : ViewModelBase
             ? string.Join(" · ", selectedSubjectNames)
             : string.Empty;
 
-        int sectionCount = allMeetings.Select(m => m.SectionId).Distinct().Count();
-        int meetingCount = allMeetings.Count;
+        // Commitments are not counted as sections or meetings in the summary line.
+        var sectionBlocks = allBlocks.OfType<SectionMeetingBlock>().ToList();
+        int sectionCount  = sectionBlocks.Select(b => b.SectionId).Distinct().Count();
+        int meetingCount  = sectionBlocks.Count;
         StatsLine = sectionCount == 0
             ? "No sections shown"
             : $"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · {meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")} shown";
     }
 
     /// <summary>
-    /// Builds positioned tiles for one day's meetings.
-    /// Meetings with identical start+end are merged into a single tile (stacked entries).
-    /// Overlapping meetings (different time spans) are placed side-by-side.
+    /// Converts a GridBlock to the TileEntry consumed by the renderer.
+    /// Section meetings carry their label, initials, and section ID.
+    /// Commitment blocks carry only their name; SectionId is empty and IsCommitment is true.
     /// </summary>
-    private static List<GridTile> ComputeTiles(
-        List<(int Day, int Start, int End, string Label, string Initials, string SectionId, bool IsOverlay)> meetings)
+    private static TileEntry ToEntry(GridBlock block) => block switch
+    {
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false),
+        CommitmentBlock c     => new TileEntry(c.Name, string.Empty, string.Empty, true, true),
+        _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
+    };
+
+    /// <summary>
+    /// Builds positioned tiles for one day's blocks.
+    /// Blocks with identical start+end are merged into a single tile (stacked entries).
+    /// Overlapping blocks (different time spans) are placed side-by-side.
+    /// </summary>
+    private static List<GridTile> ComputeTiles(List<GridBlock> blocks)
     {
         var tiles = new List<GridTile>();
-        if (meetings.Count == 0) return tiles;
+        if (blocks.Count == 0) return tiles;
 
-        // Step 1: merge meetings with identical start+end into combined tile entries.
+        // Step 1: merge blocks with identical start+end into combined tile entries.
         var merged = new List<(int Start, int End, List<TileEntry> Entries)>();
         var mergeIndex = new Dictionary<(int, int), int>();
 
-        foreach (var m in meetings)
+        foreach (var block in blocks)
         {
-            var key = (m.Start, m.End);
+            var key = (block.StartMinutes, block.EndMinutes);
             if (mergeIndex.TryGetValue(key, out int idx))
             {
-                merged[idx].Entries.Add(new TileEntry(m.Label, m.Initials, m.SectionId, m.IsOverlay));
+                merged[idx].Entries.Add(ToEntry(block));
             }
             else
             {
                 mergeIndex[key] = merged.Count;
-                merged.Add((m.Start, m.End, [new TileEntry(m.Label, m.Initials, m.SectionId, m.IsOverlay)]));
+                merged.Add((block.StartMinutes, block.EndMinutes, [ToEntry(block)]));
             }
         }
 

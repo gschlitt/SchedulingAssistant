@@ -14,6 +14,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     private readonly SectionRepository _sectionRepo;
     private readonly CourseRepository _courseRepo;
     private readonly ReleaseRepository _releaseRepo;
+    private readonly InstructorCommitmentRepository _commitmentRepo;
     private readonly SemesterContext _semesterContext;
 
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
@@ -22,6 +23,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _showOnlyActive = true;
     [ObservableProperty] private InstructorWorkloadViewModel _workloadVm = new();
     [ObservableProperty] private ReleaseManagementViewModel _releaseVm;
+    [ObservableProperty] private CommitmentsManagementViewModel _commitmentsVm;
 
     /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
     public Func<string, Task>? ShowError { get; set; }
@@ -35,15 +37,19 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         SectionRepository sectionRepo,
         CourseRepository courseRepo,
         ReleaseRepository releaseRepo,
-        SemesterContext semesterContext)
+        InstructorCommitmentRepository commitmentRepo,
+        SemesterContext semesterContext,
+        SectionChangeNotifier changeNotifier)
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _releaseRepo = releaseRepo;
+        _commitmentRepo = commitmentRepo;
         _semesterContext = semesterContext;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo);
+        _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
 
         ShowOnlyActive = AppSettings.Load().ShowOnlyActiveInstructors;
         Load();
@@ -106,6 +112,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         {
             WorkloadVm.Clear();
             ReleaseVm.SetContext(string.Empty, string.Empty);
+            CommitmentsVm.SetContext(string.Empty, string.Empty);
             return;
         }
 
@@ -140,6 +147,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
         WorkloadVm.LoadWorkload(assignedSections, releaseWorkloads);
         ReleaseVm.SetContext(instructorId, semesterId);
+        CommitmentsVm.SetContext(instructorId, semesterId);
     }
 
     private IReadOnlyList<SectionPropertyValue> GetStaffTypes() =>

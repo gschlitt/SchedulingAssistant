@@ -10,17 +10,17 @@ Fix the section code assigner to allow for the lab format A#2 etc. User picks ca
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view
-Booking cards need to show all info
+Booking cards need to show all info, and be revised visually.
+Meeting type should display on summary cards.
+
 Multiple semesters!
 
 When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is lost
 
-Meeting type should display on summary cards.
 
-Would like business objects to have friendly references to the other business objects, in the db. 
+Instructor workload history
 
-Commitments. Should show when instructor overlaid.
-
+Course history
 
 
 Note first of all (line 230 in ScheduleGridViewModel) this hardcodes begin and end times. We should be able to modify this. 
@@ -40,11 +40,11 @@ depart from the new scenario. Flag these to the user, and ask for preference: do
 
 
 
-Sorting on sections
+
 
 Should have a departmental name dialog, fix departmental mention under subject.
 
-Window zoom?
+
 
 Section editor not sizing horizontally, should size to contents
 
@@ -58,13 +58,13 @@ Fix the settings under settings
 
 Printing
 
-Right click to add/edit sections?
 
-Menu items in toolbar should flow together when window is made smaller (wpf tool...?)
+
+
 
 Banner on sections header to show number of sections
 
-Copy semesters. Delete semesters.
+
 
 Backup! (to csv and alternate db?)
 
@@ -73,9 +73,9 @@ logic for revisions and deletions of block lengths.
 
 Handle non-active courses and non-active instructors.
 
-Workload view
 
-What sort of data structure for alternate workload and other committments? How does thisg get persisted?
+
+
 
 Scheduling saturday should be in the database, not preferences to different people see the same thing.
 

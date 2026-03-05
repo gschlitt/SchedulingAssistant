@@ -395,7 +395,7 @@ public partial class ScheduleGridView : UserControl
                         Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
                         CornerRadius = new CornerRadius(2),
                         Padding      = new Thickness(1, 0),
-                        Cursor       = entryCursor,
+                        Cursor       = entry.IsCommitment ? null : entryCursor,
                         Tag          = clickCtx,
                         Child        = new TextBlock
                         {
@@ -410,6 +410,9 @@ public partial class ScheduleGridView : UserControl
                     };
                     entryRow.PointerPressed += (sender, e) =>
                     {
+                        // Commitment tiles are display-only; clicks are intentionally ignored.
+                        if (entry.IsCommitment) { e.Handled = true; return; }
+
                         if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
                         {
                             var ctx = (TileClickContext)((Border)sender!).Tag!;

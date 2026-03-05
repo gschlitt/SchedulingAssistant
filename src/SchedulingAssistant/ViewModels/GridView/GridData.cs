@@ -1,13 +1,43 @@
 namespace SchedulingAssistant.ViewModels.GridView;
 
 /// <summary>
-/// One section entry within a tile.
-/// Label = "HIST101 A" (course code + section code, or just section code)
-/// Initials = instructor initials (may be empty)
-/// SectionId = the section's database ID (used for selection/highlighting)
-/// IsOverlay = true if this entry is from an overlay (shown with red border)
+/// Abstract base for any time-positioned block that can be placed on the schedule grid.
+/// Both section meetings and instructor commitments derive from this type.
+/// The layout engine (ComputeTiles) operates entirely on GridBlocks — no subtype
+/// branching occurs during overlap detection or column assignment.
 /// </summary>
-public record TileEntry(string Label, string Initials, string SectionId, bool IsOverlay = false);
+public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay);
+
+/// <summary>A scheduled meeting for a section, with optional overlay highlighting.</summary>
+public record SectionMeetingBlock(
+    int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
+    string Label, string Initials, string SectionId
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay);
+
+/// <summary>
+/// An instructor commitment (non-teaching obligation).
+/// Always rendered as an overlay tile (red border, red text, Name as label).
+/// Has no associated section; participates in the same overlap layout as section meetings.
+/// </summary>
+public record CommitmentBlock(
+    int Day, int StartMinutes, int EndMinutes,
+    string Name, string CommitmentId
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true);
+
+/// <summary>
+/// One entry within a tile.
+/// Label    = display text (e.g. "HIST101 A" for sections, commitment name for commitments)
+/// Initials = instructor initials — empty for commitments
+/// SectionId = the section's database ID (used for selection/highlighting) — empty for commitments
+/// IsOverlay = true if rendered with red border/text
+/// IsCommitment = true for commitment entries (display-only; not selectable)
+/// </summary>
+public record TileEntry(
+    string Label,
+    string Initials,
+    string SectionId,
+    bool IsOverlay = false,
+    bool IsCommitment = false);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

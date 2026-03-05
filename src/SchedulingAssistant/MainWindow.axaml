@@ -126,11 +126,14 @@
                                               Header="Section View"
                                               DetachRequested="OnSectionEditorDetach">
                         <controls:DetachablePanel.HeaderContext>
-                            <TextBlock Text="{Binding SectionListVm.SortModeLabel}"
-                                       FontSize="10"
+                          <StackPanel Orientation="Horizontal">
+                          <TextBlock Text="Sorted by:" /> 
+                          <TextBlock Text="{Binding SectionListVm.SortModeLabel}"
+                                       FontSize="12"
                                        Foreground="{StaticResource TextFaint}"
                                        VerticalAlignment="Center"
                                        Margin="4,0,0,0" />
+                          </StackPanel>
                         </controls:DetachablePanel.HeaderContext>
                         <controls:DetachablePanel.HeaderExtra>
                             <StackPanel Orientation="Horizontal" Spacing="3"
