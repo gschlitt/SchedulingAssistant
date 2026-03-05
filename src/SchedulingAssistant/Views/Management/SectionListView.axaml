@@ -507,9 +507,9 @@
 
                                     <!-- Row 2: Meetings (when not collapsed) -->
                                     <StackPanel IsVisible="{Binding !IsCollapsed}"
-                                               Spacing="1" Margin="2,0,6,4">
+                                               Spacing="0" Margin="2,2,6,4">
                                         <!-- Headers -->
-                                        <Grid ColumnDefinitions="45,45,45,65,*">
+                                        <Grid ColumnDefinitions="45,45,45,65,*" Margin="0,0,0,2">
                                             <TextBlock Grid.Column="0" Text="Day" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
                                             <TextBlock Grid.Column="1" Text="Start" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
                                             <TextBlock Grid.Column="2" Text="End" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
@@ -521,8 +521,7 @@
                                         <ItemsControl ItemsSource="{Binding MeetingDetails}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
-                                                    <Grid ColumnDefinitions="45,45,45,65,*" Background="{StaticResource FilterExpanderContent}"
-                                                          Margin="0,0,0,0">
+                                                    <Grid ColumnDefinitions="45,45,45,65,*" Margin="0,1,0,0">
                                                         <TextBlock Grid.Column="0" Text="{Binding Day}" FontSize="10" Margin="2,1,2,1" />
                                                         <TextBlock Grid.Column="1" Text="{Binding StartTime}" FontSize="10" Margin="2,1,2,1" />
                                                         <TextBlock Grid.Column="2" Text="{Binding EndTime}" FontSize="10" Margin="2,1,2,1" />
