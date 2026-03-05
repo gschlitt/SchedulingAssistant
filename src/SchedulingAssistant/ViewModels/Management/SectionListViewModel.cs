@@ -292,6 +292,7 @@ public partial class SectionListViewModel : ViewModelBase
         var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
         var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
+        var meetingTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
 
         // Snapshot collapsed state so it survives the rebuild
         var collapsedIds = SectionItems
@@ -307,7 +308,7 @@ public partial class SectionListViewModel : ViewModelBase
             var vm = new SectionListItemViewModel(
                 s, courseLookup, instructorLookup, roomLookup,
                 sectionTypeLookup, campusLookup,
-                tagLookup, resourceLookup, reserveLookup);
+                tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
             if (collapsedIds.Contains(s.Id))
                 vm.IsCollapsed = true;
             return vm;
@@ -372,10 +373,11 @@ public partial class SectionListViewModel : ViewModelBase
         var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
         var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
+        var meetingTypeLookup = meetingTypes.ToDictionary(v => v.Id);
 
         var placeholder = new SectionListItemViewModel(
             section, courseLookup, instructorLookup, roomLookup,
-            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup);
+            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
 
         // Clamp index in case the list changed between capture and insertion
         if (insertIndex > SectionItems.Count) insertIndex = SectionItems.Count;
@@ -588,10 +590,11 @@ public partial class SectionListViewModel : ViewModelBase
         var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
         var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
+        var meetingTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
 
         var placeholder = new SectionListItemViewModel(
             section, courseLookup, instructorLookup, roomLookup,
-            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup);
+            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
 
         // Insert immediately after the source item
         int insertIndex = SectionItems.IndexOf(afterItem) + 1;

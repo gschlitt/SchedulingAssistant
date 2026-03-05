@@ -14,8 +14,13 @@ public partial class SectionListItemViewModel : ObservableObject
     public string Heading { get; }
     public IReadOnlyList<string> ScheduleLines { get; }
 
+    // New: meeting details with meeting type for expanded display
+    public IReadOnlyList<MeetingDisplayInfo> MeetingDetails { get; }
+
     // Right-side summary properties (displayed in order top-to-bottom)
     public string? InstructorLine { get; }
+    public string? InstructorHeaderLine { get; }
+    public string? SectionTypeName { get; }
     public string? TagLine { get; }
     public string? ReserveLine { get; }
     public string? ResourceLine { get; }
@@ -38,7 +43,8 @@ public partial class SectionListItemViewModel : ObservableObject
         Dictionary<string, SectionPropertyValue> campusLookup,
         Dictionary<string, SectionPropertyValue> tagLookup,
         Dictionary<string, SectionPropertyValue> resourceLookup,
-        Dictionary<string, SectionPropertyValue> reserveLookup)
+        Dictionary<string, SectionPropertyValue> reserveLookup,
+        Dictionary<string, SectionPropertyValue> meetingTypeLookup)
     {
         Section = section;
 
@@ -80,6 +86,31 @@ public partial class SectionListItemViewModel : ObservableObject
             })
             .ToList();
 
+        // Build meeting details with meeting type
+        MeetingDetails = section.Schedule
+            .OrderBy(s => s.Day).ThenBy(s => s.StartMinutes)
+            .Select(s =>
+            {
+                var day = s.Day >= 1 && s.Day <= 6 ? DayNames[s.Day] : $"Day {s.Day}";
+                var start = FormatMinutes(s.StartMinutes);
+                var end = FormatMinutes(s.EndMinutes);
+                var room = s.RoomId is not null && roomLookup.TryGetValue(s.RoomId, out var r)
+                    ? $"{r.Building} {r.RoomNumber}"
+                    : string.Empty;
+                var meetingType = s.MeetingTypeId is not null && meetingTypeLookup.TryGetValue(s.MeetingTypeId, out var mt)
+                    ? mt.Name
+                    : string.Empty;
+                return new MeetingDisplayInfo
+                {
+                    Day = day,
+                    StartTime = start,
+                    EndTime = end,
+                    Room = room,
+                    MeetingType = meetingType
+                };
+            })
+            .ToList();
+
         // Build individual summary properties for the right-side stack
         var instructorParts = section.InstructorAssignments
             .Select(a =>
@@ -91,6 +122,24 @@ public partial class SectionListItemViewModel : ObservableObject
             .Where(n => n is not null)
             .ToList();
         InstructorLine = instructorParts.Count > 0 ? string.Join("; ", instructorParts) : null;
+
+        // Header line format: "Name (workload)" without brackets, stacked vertically
+        var instructorHeaderParts = section.InstructorAssignments
+            .OrderBy(a => instructorLookup.TryGetValue(a.InstructorId, out var i) ? $"{i.FirstName} {i.LastName}" : "")
+            .Select(a =>
+            {
+                if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
+                var name = $"{instr.FirstName} {instr.LastName}";
+                return a.Workload.HasValue ? $"{name} ({a.Workload.Value:0.#})" : name;
+            })
+            .Where(n => n is not null)
+            .ToList();
+        InstructorHeaderLine = instructorHeaderParts.Count > 0 ? string.Join(", ", instructorHeaderParts) : null;
+
+        // Section type name
+        SectionTypeName = section.SectionTypeId is not null && sectionTypeLookup.TryGetValue(section.SectionTypeId, out var sectionType)
+            ? sectionType.Name
+            : null;
 
         var tagNames = section.TagIds
             .Select(id => tagLookup.TryGetValue(id, out var t) ? t.Name : null)
@@ -119,4 +168,14 @@ public partial class SectionListItemViewModel : ObservableObject
 
     private static string FormatMinutes(int minutes) =>
         $"{minutes / 60:D2}{minutes % 60:D2}";
+}
+
+/// <summary>Display info for a single meeting within a section.</summary>
+public class MeetingDisplayInfo
+{
+    public string Day { get; set; } = "";
+    public string StartTime { get; set; } = "";
+    public string EndTime { get; set; } = "";
+    public string Room { get; set; } = "";
+    public string MeetingType { get; set; } = "";
 }

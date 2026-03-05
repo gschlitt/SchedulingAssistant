@@ -467,54 +467,99 @@
                             <StackPanel>
 
                                 <!-- Summary row (always visible) -->
-                                <Grid ColumnDefinitions="Auto,*" Margin="2,4,6,4">
-                                    <!-- Collapse/expand toggle -->
-                                    <Button Grid.Column="0"
-                                            Command="{Binding ToggleCollapsedCommand}"
-                                            Background="Transparent" BorderThickness="0"
-                                            Padding="2,0" MinWidth="0" MinHeight="0"
-                                            VerticalAlignment="Top" Margin="0,1,2,0"
-                                            Cursor="Hand">
-                                        <Panel>
-                                            <TextBlock Text="▶" FontSize="8" Foreground="{StaticResource TextLabel}"
-                                                       IsVisible="{Binding IsCollapsed}" />
-                                            <TextBlock Text="▼" FontSize="8" Foreground="{StaticResource TextLabel}"
-                                                       IsVisible="{Binding !IsCollapsed}" />
-                                        </Panel>
-                                    </Button>
-                                    <StackPanel Grid.Column="1" Spacing="1">
-                                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" />
-                                        <Grid ColumnDefinitions="Auto,8,*"
-                                              IsVisible="{Binding !IsCollapsed}">
-                                            <!-- Left: schedule lines -->
-                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding ScheduleLines}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource TextFaint}" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <!-- Right: property stack -->
-                                            <StackPanel Grid.Column="2" Spacing="0">
-                                                <TextBlock Text="{Binding InstructorLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
-                                                           IsVisible="{Binding InstructorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding TagLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
-                                                           IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding ReserveLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
-                                                           IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding ResourceLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
-                                                           IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding NoteLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
-                                                           IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                            </StackPanel>
+                                <StackPanel Spacing="1">
+                                    <!-- Row 1: Toggle + Heading + Instructor + Section Type + Property indicators -->
+                                    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="2,3,6,2" VerticalAlignment="Center">
+                                        <!-- Collapse/expand toggle -->
+                                        <Button Grid.Column="0"
+                                                Command="{Binding ToggleCollapsedCommand}"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="2,0" MinWidth="0" MinHeight="0"
+                                                Cursor="Hand" VerticalAlignment="Center">
+                                            <Panel>
+                                                <TextBlock Text="▶" FontSize="8" Foreground="{StaticResource TextLabel}"
+                                                           IsVisible="{Binding IsCollapsed}" />
+                                                <TextBlock Text="▼" FontSize="8" Foreground="{StaticResource TextLabel}"
+                                                           IsVisible="{Binding !IsCollapsed}" />
+                                            </Panel>
+                                        </Button>
+                                        <!-- Heading -->
+                                        <TextBlock Grid.Column="1" Text="{Binding Heading}" FontWeight="SemiBold" FontSize="12" Margin="2,0,8,0" />
+                                        <!-- Instructor -->
+                                        <TextBlock Grid.Column="2" Text="{Binding InstructorHeaderLine}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                   IsVisible="{Binding InstructorHeaderLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <!-- Section Type -->
+                                        <TextBlock Grid.Column="3" Text="{Binding SectionTypeName}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                   IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   Margin="8,0,8,0" />
+                                        <!-- Right: property indicators (when collapsed) -->
+                                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="3"
+                                                   IsVisible="{Binding IsCollapsed}">
+                                            <TextBlock Text="🏷️" FontSize="9"
+                                                       IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock Text="📋" FontSize="9"
+                                                       IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock Text="📦" FontSize="9"
+                                                       IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Row 2: Meetings (when not collapsed) -->
+                                    <StackPanel IsVisible="{Binding !IsCollapsed}"
+                                               Spacing="1" Margin="2,0,6,4">
+                                        <!-- Headers -->
+                                        <Grid ColumnDefinitions="45,45,45,65,*">
+                                            <TextBlock Grid.Column="0" Text="Day" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="1" Text="Start" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="2" Text="End" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="3" Text="Room" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,2,0" />
+                                            <TextBlock Grid.Column="4" Text="Type" FontSize="8" Foreground="{StaticResource TextMuted}" Margin="2,0,0,0" />
                                         </Grid>
+
+                                        <!-- Meetings -->
+                                        <ItemsControl ItemsSource="{Binding MeetingDetails}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
+                                                    <Grid ColumnDefinitions="45,45,45,65,*" Background="{StaticResource FilterExpanderContent}"
+                                                          Margin="0,0,0,0">
+                                                        <TextBlock Grid.Column="0" Text="{Binding Day}" FontSize="10" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding StartTime}" FontSize="10" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding EndTime}" FontSize="10" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding Room}" FontSize="10" Margin="2,1,2,1" />
+                                                        <TextBlock Grid.Column="4" Text="{Binding MeetingType}" FontSize="10" Margin="2,1,0,1" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </StackPanel>
-                                </Grid>
+
+                                    <!-- Row 3: Properties (tags, reserves, resources) when not collapsed -->
+                                    <StackPanel IsVisible="{Binding !IsCollapsed}" Spacing="2" Margin="2,0,6,4">
+                                        <!-- Tags -->
+                                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                                   IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="🏷️" FontSize="11" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding TagLine}" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <!-- Reserves -->
+                                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                                   IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="📋" FontSize="11" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ReserveLine}" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <!-- Resources -->
+                                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                                   IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="📦" FontSize="11" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ResourceLine}" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <!-- Notes -->
+                                        <TextBlock Text="{Binding NoteLine}" FontSize="10" Foreground="{StaticResource TextSecondary}"
+                                                   IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
 
                                 <!-- Inline edit form — shown when this item IsExpanded -->
                                 <Border IsVisible="{Binding IsExpanded}"
