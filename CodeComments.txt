@@ -10,6 +10,7 @@ Fix the section code assigner to allow for the lab format A#2 etc. User picks ca
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view
+
 Booking cards need to show all info, and be revised visually.
 Meeting type should display on summary cards.
 
@@ -23,23 +24,7 @@ Instructor workload history
 Course history
 
 
-Note first of all (line 230 in ScheduleGridViewModel) this hardcodes begin and end times. We should be able to modify this. 
-
-This raises right away the issue of what happens if begin/end/start times/blocklengths change. This could raise problems with copying semesters and revisiting old semesters. 
-Solution? Store begin/end/start times/blocklengths at the academic year level. (We assume they will never change mid-year). When a new year is created, prompt user for a copy of previous year
-or edit a new setup. Work with those for the academic year, and always load the correct batch when opening a year.
-
-When copying a semester from one academic year to a different academic year: check if the setup has changed. If so, scan the semester being copied, and see if any sections 
-depart from the new scenario. Flag these to the user, and ask for preference: don't copy those sections at all? Or drop the times on those sections? 
-
-
-
-
-
-
-
-
-
+Work on colors a bit. Keep red for overlay, need something different in menu to mark filters.
 
 
 Should have a departmental name dialog, fix departmental mention under subject.
@@ -50,20 +35,15 @@ Section editor not sizing horizontally, should size to contents
 
 
 
-
-
 Increase font size on banners
 
 Fix the settings under settings
-
-Printing
 
 
 
 
 
 Banner on sections header to show number of sections
-
 
 
 Backup! (to csv and alternate db?)

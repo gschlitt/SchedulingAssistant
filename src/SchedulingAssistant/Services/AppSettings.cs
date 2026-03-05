@@ -21,6 +21,9 @@ public class AppSettings
     public bool ShowOnlyActiveInstructors { get; set; } = true;
     public SectionSortMode SectionSortMode { get; set; } = SectionSortMode.SubjectCourseCode;
 
+    /// <summary>Last path used for PNG schedule export.</summary>
+    public string? LastExportPath { get; set; }
+
     /// <summary>Recently opened database paths (most recent first). Max 10 entries.</summary>
     public List<string> RecentDatabases { get; set; } = new();
 

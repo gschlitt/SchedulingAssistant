@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using SchedulingAssistant.ViewModels.GridView;
 using System.ComponentModel;
 
@@ -470,6 +471,20 @@ public partial class ScheduleGridView : UserControl
         Canvas.SetLeft(tb, 20);
         Canvas.SetTop(tb, 20);
         _canvas.Children.Add(tb);
+    }
+
+    public void ExportToPng(string outputPath)
+    {
+        _canvas ??= this.FindControl<Canvas>("GridCanvas");
+        if (_canvas is null || double.IsNaN(_canvas.Width) || _canvas.Width <= 0) return;
+
+        const double scale = 2.0;
+        var pixelSize = new PixelSize((int)(_canvas.Width * scale), (int)(_canvas.Height * scale));
+        var dpi = new Vector(96 * scale, 96 * scale);
+
+        using var bitmap = new RenderTargetBitmap(pixelSize, dpi);
+        bitmap.Render(_canvas);
+        bitmap.Save(outputPath);
     }
 
     private static double TimeToY(int minutes, int firstRowMinutes) =>

@@ -99,6 +99,16 @@
                         </MenuItem>
                     </Menu>
 
+                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,10" />
+
+                    <!-- Export menu -->
+                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,4">
+                        <MenuItem Header="Export" Classes="nav" Padding="14,8">
+                            <MenuItem Header="Export Schedule PNG…"
+                                      Command="{Binding NavigateToExportCommand}" />
+                        </MenuItem>
+                    </Menu>
+
                     <!-- Debug menu (added in code-behind in DEBUG mode) -->
                     <Menu x:Name="DebugMenu" Background="Transparent" VerticalAlignment="Center" IsVisible="False" Margin="0,4">
                         <MenuItem Header="Debug" Classes="nav" Padding="14,8">
@@ -256,7 +266,7 @@
                         </StackPanel>
                     </controls:DetachablePanel.HeaderContext>
                     <controls:DetachablePanel.PanelContent>
-                        <gridViews:ScheduleGridView DataContext="{Binding ScheduleGridVm}" />
+                        <gridViews:ScheduleGridView x:Name="ScheduleGridViewControl" DataContext="{Binding ScheduleGridVm}" />
                     </controls:DetachablePanel.PanelContent>
                 </controls:DetachablePanel>
 

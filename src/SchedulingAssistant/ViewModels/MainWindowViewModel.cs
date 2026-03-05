@@ -158,6 +158,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToAcademicUnits() => OpenFlyout<AcademicUnitListViewModel>("Academic Units");
 
+    [RelayCommand]
+    private void NavigateToExport() => OpenFlyout<ExportViewModel>("Export");
+
 #if DEBUG
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");

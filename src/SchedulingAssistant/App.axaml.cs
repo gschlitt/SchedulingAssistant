@@ -127,6 +127,8 @@ public partial class App : Application
             sp.GetRequiredService<CourseRepository>(),
             sp.GetRequiredService<ReleaseRepository>(),
             sp.GetRequiredService<InstructorCommitmentRepository>(),
+            sp.GetRequiredService<SemesterRepository>(),
+            sp.GetRequiredService<AcademicYearRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<SectionChangeNotifier>()));
         services.AddTransient<RoomListViewModel>();
@@ -141,6 +143,7 @@ public partial class App : Application
         services.AddTransient<SectionPropertiesViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();
+        services.AddTransient<ExportViewModel>();
 
         // Services
         services.AddTransient<ScheduleValidationService>();

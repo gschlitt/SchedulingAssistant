@@ -29,6 +29,8 @@ public partial class MainWindow : Window
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
 
+    public ScheduleGridView? ScheduleGridViewInstance { get; private set; }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -295,6 +297,8 @@ public partial class MainWindow : Window
             vm.PropertyChanged += OnMainWindowVmPropertyChanged;
             vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
             UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
+
+            ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
 
             var sectionEditorPanel = this.FindControl<DetachablePanel>("SectionEditorPanel");
             if (sectionEditorPanel is not null)
