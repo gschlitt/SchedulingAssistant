@@ -1,20 +1,21 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
-             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
-             x:Class="SchedulingAssistant.Views.GridView.GridFilterView"
-             x:DataType="vm:GridFilterViewModel"
-             x:CompileBindings="False"
-             x:Name="FilterRoot">
+<UserControl
+    x:Class="SchedulingAssistant.Views.GridView.GridFilterView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
+    x:Name="FilterRoot"
+    x:CompileBindings="False"
+    x:DataType="vm:GridFilterViewModel">
 
     <UserControl.Styles>
-        <!-- Compact checkbox style inside popups -->
+        <!--  Compact checkbox style inside popups  -->
         <Style Selector="CheckBox">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Padding" Value="4,2" />
             <Setter Property="MinHeight" Value="0" />
         </Style>
-        <!-- Filter dimension toggle buttons: look like a label, highlight when active -->
+        <!--  Filter dimension toggle buttons: look like a label, highlight when active  -->
         <Style Selector="ToggleButton.FilterDim">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -30,7 +31,23 @@
         <Style Selector="ToggleButton.FilterDim:checked">
             <Setter Property="Background" Value="{StaticResource FilterExpanderBorder}" />
         </Style>
-        <!-- ListBox inside popup: no selection highlight — checkboxes handle state -->
+        <Style Selector="ToggleButton.OverlayDim">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeLarge}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ToggleButton.OverlayDim:pointerover">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.OverlayDim:checked">
+            <Setter Property="Background" Value="{StaticResource FilterExpanderBorder}" />
+        </Style>
+
+        <!--  ListBox inside popup: no selection highlight — checkboxes handle state  -->
         <Style Selector="ListBox.FilterList">
             <Setter Property="Background" Value="{StaticResource FilterExpanderContent}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -50,398 +67,528 @@
         </Style>
     </UserControl.Styles>
 
-    <Border Background="{StaticResource FilterBarBackground}"
-            BorderBrush="{StaticResource ChromeBorder}"
-            BorderThickness="0,0,0,1"
-            Padding="4,1">
+    <Border
+        Padding="4,1"
+        Background="{StaticResource FilterBarBackground}"
+        BorderBrush="{StaticResource ChromeBorder}"
+        BorderThickness="0,0,0,1">
 
         <DockPanel>
 
-            <!-- Right side: Clear All button -->
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                        Spacing="4" VerticalAlignment="Center" Margin="6,0,0,0">
-                <Button Content="Clear All"
-                        Command="{Binding ClearAllCommand}"
-                        IsEnabled="{Binding IsActive}"
-                        FontSize="{StaticResource FontSizeLarge}"
-                        Padding="6,2"
-                        MinHeight="0" MinWidth="0"
-                        VerticalAlignment="Center" />
+            <!--  Right side: Clear All button  -->
+            <StackPanel
+                Margin="6,0,0,0"
+                VerticalAlignment="Center"
+                DockPanel.Dock="Right"
+                Orientation="Horizontal"
+                Spacing="4">
+                <Button
+                    MinWidth="0"
+                    MinHeight="0"
+                    Padding="6,2"
+                    VerticalAlignment="Center"
+                    Background="{StaticResource ButtonBackground}"
+                    Command="{Binding ClearAllCommand}"
+                    Content="Clear All"
+                    FontSize="{StaticResource FontSizeLarge}"
+                    IsEnabled="{Binding IsActive}" />
             </StackPanel>
 
-<!-- Left side: horizontal row of filter dimension buttons + popups -->
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Disabled">
-                <StackPanel Orientation="Horizontal" Spacing="1" VerticalAlignment="Center">
-                    
-                  <StackPanel Orientation="Horizontal">
-                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="2,0,6,0">
-                      <svg:Svg Path="/Assets/filter-icon.svg" Width="16" Height="16" VerticalAlignment="Center" />
+            <!--  Left side: horizontal row of filter dimension buttons + popups and overlay buttons and popups  -->
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="1">
+
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel
+                            Margin="2,0,6,0"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="6">
+                            <svg:Svg
+                                Width="16"
+                                Height="16"
+                                VerticalAlignment="Center"
+                                Path="/Assets/filter-icon.svg" />
+                        </StackPanel>
+                        <!--  Instructor  -->
+                        <Panel x:Name="InstructorPanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="InstructorToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="InstructorPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #InstructorToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #InstructorToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Instructors}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Panel>
+                                                        <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
+                                                        <CheckBox
+                                                            Content="{Binding Name}"
+                                                            IsChecked="{Binding IsSelected}"
+                                                            IsEnabled="{Binding IsEnabled}" />
+                                                    </Panel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Room  -->
+                        <Panel x:Name="RoomPanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="RoomToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="RoomPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #RoomToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #RoomToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Rooms}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Panel>
+                                                        <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
+                                                        <CheckBox
+                                                            Content="{Binding Name}"
+                                                            IsChecked="{Binding IsSelected}"
+                                                            IsEnabled="{Binding IsEnabled}" />
+                                                    </Panel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Subject  -->
+                        <Panel x:Name="SubjectPanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="SubjectToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="SubjectPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #SubjectToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #SubjectToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Subjects}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Campus  -->
+                        <Panel x:Name="CampusPanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="CampusToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="CampusPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #CampusToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #CampusToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Campuses}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Section Type  -->
+                        <Panel x:Name="SectionTypePanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="SectionTypeToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="SectionTypePopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #SectionTypeToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #SectionTypeToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding SectionTypes}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Tags  -->
+                        <Panel x:Name="TagsPanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="TagsToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="TagsPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #TagsToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #TagsToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Tags}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Meeting Type  -->
+                        <Panel x:Name="MeetingTypePanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="MeetingTypeToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="MeetingTypePopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #MeetingTypeToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #MeetingTypeToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding MeetingTypes}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
+                        <!--  Level  -->
+                        <Panel x:Name="LevelPanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="LevelToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="LevelPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #LevelToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #LevelToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Levels}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
-                  <!-- Instructor -->
-                    <Panel x:Name="InstructorPanel" IsVisible="True">
-                        <ToggleButton x:Name="InstructorToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="InstructorPopup"
-                               PlacementTarget="{Binding #InstructorToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #InstructorToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding Instructors}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <Panel>
-                                                    <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
-                                                    <CheckBox IsChecked="{Binding IsSelected}"
-                                                              IsEnabled="{Binding IsEnabled}"
-                                                              Content="{Binding Name}" />
-                                                </Panel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
 
-                    <!-- Room -->
-                    <Panel x:Name="RoomPanel" IsVisible="True">
-                        <ToggleButton x:Name="RoomToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="RoomPopup"
-                               PlacementTarget="{Binding #RoomToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #RoomToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding Rooms}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <Panel>
-                                                    <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
-                                                    <CheckBox IsChecked="{Binding IsSelected}"
-                                                              IsEnabled="{Binding IsEnabled}"
-                                                              Content="{Binding Name}" />
-                                                </Panel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
 
-                    <!-- Subject -->
-                    <Panel x:Name="SubjectPanel" IsVisible="True">
-                        <ToggleButton x:Name="SubjectToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="SubjectPopup"
-                               PlacementTarget="{Binding #SubjectToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #SubjectToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding Subjects}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
+                    <!--  Separator between filter and overlay panels  -->
+                    <Border
+                        Width="3"
+                        Margin="4,4"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <!-- Campus -->
-                    <Panel x:Name="CampusPanel" IsVisible="True">
-                        <ToggleButton x:Name="CampusToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="CampusPopup"
-                               PlacementTarget="{Binding #CampusToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #CampusToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
+                    <!--  Overlay panels  -->
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel
+                            Margin="2,0,6,0"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="6">
+                            <svg:Svg
+                                Width="16"
+                                Height="16"
+                                VerticalAlignment="Center"
+                                Path="/Assets/overlay-icon.svg" />
+                        </StackPanel>
+                        <!--  Overlay: Instructor  -->
+                        <Panel x:Name="InstructorOverlayPanel" IsVisible="False">
+                            <ToggleButton
+                                x:Name="InstructorOverlayToggle"
+                                VerticalAlignment="Center"
+                                Classes="OverlayDim" />
+                            <Popup
+                                x:Name="InstructorOverlayPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #InstructorOverlayToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #InstructorOverlayToggle}">
+                                <Border
+                                    MinWidth="140"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
                                     BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding Campuses}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            x:Name="InstructorOverlayListBox"
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding NamedInstructors}"
+                                            SelectionMode="Single">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel
+                                                        Margin="2,0"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4">
+                                                        <TextBlock
+                                                            Width="10"
+                                                            VerticalAlignment="Center"
+                                                            FontSize="10"
+                                                            Foreground="{StaticResource FilterActiveHeader}"
+                                                            IsVisible="{Binding IsOverlayActive}"
+                                                            Text="✓" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="11"
+                                                            Text="{Binding Name}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
 
-                    <!-- Section Type -->
-                    <Panel x:Name="SectionTypePanel" IsVisible="True">
-                        <ToggleButton x:Name="SectionTypeToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="SectionTypePopup"
-                               PlacementTarget="{Binding #SectionTypeToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #SectionTypeToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
+                        <!--  Overlay: Room  -->
+                        <Panel x:Name="RoomOverlayPanel" IsVisible="False">
+                            <ToggleButton
+                                x:Name="RoomOverlayToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="RoomOverlayPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #RoomOverlayToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #RoomOverlayToggle}">
+                                <Border
+                                    MinWidth="140"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
                                     BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding SectionTypes}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            x:Name="RoomOverlayListBox"
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding NamedRooms}"
+                                            SelectionMode="Single">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel
+                                                        Margin="2,0"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4">
+                                                        <TextBlock
+                                                            Width="10"
+                                                            VerticalAlignment="Center"
+                                                            FontSize="10"
+                                                            Foreground="{StaticResource FilterActiveHeader}"
+                                                            IsVisible="{Binding IsOverlayActive}"
+                                                            Text="✓" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="11"
+                                                            Text="{Binding Name}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
 
-                    <!-- Tags -->
-                    <Panel x:Name="TagsPanel" IsVisible="True">
-                        <ToggleButton x:Name="TagsToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="TagsPopup"
-                               PlacementTarget="{Binding #TagsToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #TagsToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
+                        <!--  Overlay: Tag  -->
+                        <Panel x:Name="TagOverlayPanel" IsVisible="False">
+                            <ToggleButton
+                                x:Name="TagOverlayToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="TagOverlayPopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #TagOverlayToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #TagOverlayToggle}">
+                                <Border
+                                    MinWidth="140"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
                                     BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding Tags}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
-
-                    <!-- Meeting Type -->
-                    <Panel x:Name="MeetingTypePanel" IsVisible="True">
-                        <ToggleButton x:Name="MeetingTypeToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="MeetingTypePopup"
-                               PlacementTarget="{Binding #MeetingTypeToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #MeetingTypeToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding MeetingTypes}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
-
-                    <!-- Level -->
-                    <Panel x:Name="LevelPanel" IsVisible="True">
-                        <ToggleButton x:Name="LevelToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="LevelPopup"
-                               PlacementTarget="{Binding #LevelToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #LevelToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="120">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox Classes="FilterList"
-                                             ItemsSource="{Binding Levels}"
-                                             SelectionMode="Multiple">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}"
-                                                          Content="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
-                  </StackPanel>
-                  <!-- Separator between filter and overlay panels -->
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,4" />
-                  <StackPanel Orientation="Horizontal">
-                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="2,0,6,0">
-                      <svg:Svg Path="/Assets/overlay-icon.svg" Width="16" Height="16" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <!-- Overlay: Instructor -->
-                    <Panel x:Name="InstructorOverlayPanel" IsVisible="False">
-                        <ToggleButton x:Name="InstructorOverlayToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="InstructorOverlayPopup"
-                               PlacementTarget="{Binding #InstructorOverlayToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #InstructorOverlayToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="140">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox x:Name="InstructorOverlayListBox"
-                                             Classes="FilterList"
-                                             ItemsSource="{Binding NamedInstructors}"
-                                             SelectionMode="Single">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="4" Margin="2,0">
-                                                    <TextBlock Text="✓" FontSize="10" Width="10"
-                                                               IsVisible="{Binding IsOverlayActive}"
-                                                               Foreground="{StaticResource FilterActiveHeader}"
-                                                               VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding Name}" FontSize="11"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
-
-                    <!-- Overlay: Room -->
-                    <Panel x:Name="RoomOverlayPanel" IsVisible="False">
-                        <ToggleButton x:Name="RoomOverlayToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="RoomOverlayPopup"
-                               PlacementTarget="{Binding #RoomOverlayToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #RoomOverlayToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="140">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox x:Name="RoomOverlayListBox"
-                                             Classes="FilterList"
-                                             ItemsSource="{Binding NamedRooms}"
-                                             SelectionMode="Single">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="4" Margin="2,0">
-                                                    <TextBlock Text="✓" FontSize="10" Width="10"
-                                                               IsVisible="{Binding IsOverlayActive}"
-                                                               Foreground="{StaticResource FilterActiveHeader}"
-                                                               VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding Name}" FontSize="11"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
-
-                    <!-- Overlay: Tag -->
-                    <Panel x:Name="TagOverlayPanel" IsVisible="False">
-                        <ToggleButton x:Name="TagOverlayToggle"
-                                      Classes="FilterDim"
-                                      VerticalAlignment="Center" />
-                        <Popup x:Name="TagOverlayPopup"
-                               PlacementTarget="{Binding #TagOverlayToggle}"
-                               Placement="Bottom"
-                               IsOpen="{Binding #TagOverlayToggle.IsChecked, Mode=TwoWay}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FilterExpanderContent}"
-                                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="2" MaxHeight="220" MinWidth="140">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ListBox x:Name="TagOverlayListBox"
-                                             Classes="FilterList"
-                                             ItemsSource="{Binding Tags}"
-                                             SelectionMode="Single">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="4" Margin="2,0">
-                                                    <TextBlock Text="✓" FontSize="10" Width="10"
-                                                               IsVisible="{Binding IsOverlayActive}"
-                                                               Foreground="{StaticResource FilterActiveHeader}"
-                                                               VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding Name}" FontSize="11"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Panel>
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            x:Name="TagOverlayListBox"
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Tags}"
+                                            SelectionMode="Single">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel
+                                                        Margin="2,0"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4">
+                                                        <TextBlock
+                                                            Width="10"
+                                                            VerticalAlignment="Center"
+                                                            FontSize="10"
+                                                            Foreground="{StaticResource FilterActiveHeader}"
+                                                            IsVisible="{Binding IsOverlayActive}"
+                                                            Text="✓" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="11"
+                                                            Text="{Binding Name}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
 
                 </StackPanel>

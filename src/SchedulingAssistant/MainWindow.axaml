@@ -1,119 +1,200 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:SchedulingAssistant.ViewModels"
-        xmlns:views="using:SchedulingAssistant.Views.Management"
-        xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
-        xmlns:controls="using:SchedulingAssistant.Controls"
-        xmlns:panelViews="using:SchedulingAssistant.Views"
-        x:Class="SchedulingAssistant.MainWindow"
-        x:Name="RootWindow"
-        x:DataType="vm:MainWindowViewModel"
-        x:CompileBindings="False"
-        Title="Scheduling Assistant"
-        Width="1400" Height="800"
-        MinHeight="600">
+<Window
+    x:Class="SchedulingAssistant.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:SchedulingAssistant.Controls"
+    xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
+    xmlns:panelViews="using:SchedulingAssistant.Views"
+    xmlns:views="using:SchedulingAssistant.Views.Management"
+    xmlns:vm="using:SchedulingAssistant.ViewModels"
+    x:Name="RootWindow"
+    Title="Scheduling Assistant"
+    Width="1400"
+    Height="800"
+    MinHeight="600"
+    x:CompileBindings="False"
+    x:DataType="vm:MainWindowViewModel">
 
     <Grid RowDefinitions="Auto,*">
 
-        <!-- Top menu bar -->
-        <Border Grid.Row="0" Background="{StaticResource ChromeBackground}" Padding="12,0"
-                BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1">
+        <!--  Top menu bar  -->
+        <Border
+            Grid.Row="0"
+            Padding="12,0"
+            Background="{StaticResource ChromeBackground}"
+            BorderBrush="{StaticResource ChromeBorder}"
+            BorderThickness="0,0,0,1">
             <DockPanel>
 
-                <!-- Academic Year and Semester pickers, right-aligned — always visible -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Top" Margin="8,4">
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+                <!--  Academic Year and Semester pickers, right-aligned — always visible  -->
+                <StackPanel
+                    Margin="8,4"
+                    VerticalAlignment="Top"
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Border
+                        Width="1"
+                        Margin="0,6"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <!-- Academic Year selector -->
-                    <TextBlock Text="Academic Year:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
-                               VerticalAlignment="Center" />
-                    <ComboBox ItemsSource="{Binding SemesterContext.AcademicYears}"
-                              SelectedItem="{Binding SemesterContext.SelectedAcademicYear}"
-                              DisplayMemberBinding="{Binding Name}"
-                              MinWidth="120"
-                              VerticalAlignment="Center" />
+                    <!--  Academic Year selector  -->
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{StaticResource TextSemesterLabel}"
+                        Text="Academic Year:" />
+                    <ComboBox
+                        MinWidth="120"
+                        VerticalAlignment="Center"
+                        DisplayMemberBinding="{Binding Name}"
+                        ItemsSource="{Binding SemesterContext.AcademicYears}"
+                        SelectedItem="{Binding SemesterContext.SelectedAcademicYear}" />
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,6" />
+                    <Border
+                        Width="1"
+                        Margin="0,6"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <!-- Semester selector (filtered by selected academic year) -->
-                    <TextBlock Text="Semester:" Foreground="{StaticResource TextSemesterLabel}" FontSize="12"
-                               VerticalAlignment="Center" />
-                    <ComboBox ItemsSource="{Binding SemesterContext.FilteredSemesters}"
-                              SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}"
-                              DisplayMemberBinding="{Binding DisplayName}"
-                              MinWidth="120"
-                              VerticalAlignment="Center" />
+                    <!--  Semester selector (filtered by selected academic year)  -->
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{StaticResource TextSemesterLabel}"
+                        Text="Semester:" />
+                    <ComboBox
+                        MinWidth="120"
+                        VerticalAlignment="Center"
+                        DisplayMemberBinding="{Binding DisplayName}"
+                        ItemsSource="{Binding SemesterContext.FilteredSemesters}"
+                        SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}" />
                 </StackPanel>
 
-                <!-- Nav buttons — wrap when space is tight -->
-                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Files menu (far left) -->
-                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,4">
-                        <MenuItem Header="Files" Classes="nav" Padding="14,8">
-                            <MenuItem Header="Open…" Command="{Binding OpenDatabaseCommand}" />
-                            <MenuItem Header="New…" Command="{Binding NewDatabaseCommand}" />
+                <!--  Nav buttons — wrap when space is tight  -->
+                <WrapPanel VerticalAlignment="Center" Orientation="Horizontal">
+                    <!--  Files menu (far left)  -->
+                    <Menu
+                        Margin="0,4"
+                        VerticalAlignment="Center"
+                        Background="Transparent">
+                        <MenuItem
+                            Padding="14,8"
+                            Classes="nav"
+                            Header="Files">
+                            <MenuItem Command="{Binding OpenDatabaseCommand}" Header="Open…" />
+                            <MenuItem Command="{Binding NewDatabaseCommand}" Header="New…" />
                             <Separator IsVisible="{Binding RecentDatabases.Count}" />
-                            <MenuItem Header="Recent Files"
-                                      IsVisible="{Binding RecentDatabases.Count}"
-                                      ItemsSource="{Binding RecentDatabases}">
+                            <MenuItem
+                                Header="Recent Files"
+                                IsVisible="{Binding RecentDatabases.Count}"
+                                ItemsSource="{Binding RecentDatabases}">
                                 <MenuItem.ItemTemplate>
                                     <DataTemplate>
-                                        <MenuItem Header="{Binding DisplayName}"
-                                                  Command="{Binding DataContext.OpenRecentDatabaseCommand, ElementName=RootWindow}"
-                                                  CommandParameter="{Binding Path}" />
+                                        <MenuItem
+                                            Command="{Binding DataContext.OpenRecentDatabaseCommand, ElementName=RootWindow}"
+                                            CommandParameter="{Binding Path}"
+                                            Header="{Binding DisplayName}" />
                                     </DataTemplate>
                                 </MenuItem.ItemTemplate>
                             </MenuItem>
                         </MenuItem>
                     </Menu>
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,10,8,10" />
+                    <Border
+                        Width="1"
+                        Margin="0,10,8,10"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <TextBlock Text="{Binding DatabaseName}"
-                               FontWeight="SemiBold" FontSize="13"
-                               VerticalAlignment="Center"
-                               Margin="4,4,8,4" />
+                    <TextBlock
+                        Margin="4,4,8,4"
+                        VerticalAlignment="Center"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Text="{Binding DatabaseName}" />
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,10,8,10" />
+                    <Border
+                        Width="1"
+                        Margin="0,10,8,10"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <Button Content="Courses" Command="{Binding NavigateToCoursesCommand}" Classes="nav" Margin="0,4,4,4" />
-                    <Button Content="Instructors" Command="{Binding NavigateToInstructorsCommand}" Classes="nav" Margin="0,4,4,4" />
-                    <Button Content="Section Properties" Command="{Binding NavigateToSectionPropertiesCommand}" Classes="nav" Margin="0,4,4,4" />
+                    <Button
+                        Margin="0,4,4,4"
+                        Classes="nav"
+                        Command="{Binding NavigateToCoursesCommand}"
+                        Content="Courses" />
+                    <Button
+                        Margin="0,4,4,4"
+                        Classes="nav"
+                        Command="{Binding NavigateToInstructorsCommand}"
+                        Content="Instructors" />
+                    <Button
+                        Margin="0,4,4,4"
+                        Classes="nav"
+                        Command="{Binding NavigateToSectionPropertiesCommand}"
+                        Content="Section Properties" />
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,10" />
+                    <Border
+                        Width="1"
+                        Margin="4,10"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <Button Content="Academic Years" Command="{Binding NavigateToAcademicYearsCommand}" Classes="nav" Margin="4,4,4,4" />
+                    <Button
+                        Margin="4,4,4,4"
+                        Classes="nav"
+                        Command="{Binding NavigateToAcademicYearsCommand}"
+                        Content="Academic Years" />
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,10" />
+                    <Border
+                        Width="1"
+                        Margin="4,10"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <!-- Settings dropdown menu -->
-                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,4">
-                        <MenuItem Header="Settings" Classes="nav" Padding="14,8">
-                            <MenuItem Header="Scheduling"
-                                      Command="{Binding NavigateToBlockLengthsCommand}" />
-                            <MenuItem Header="Block Patterns"
-                                      Command="{Binding NavigateToBlockPatternsCommand}" />
-                            <MenuItem Header="Academic Units"
-                                      Command="{Binding NavigateToAcademicUnitsCommand}" />
+                    <!--  Settings dropdown menu  -->
+                    <Menu
+                        Margin="0,4"
+                        VerticalAlignment="Center"
+                        Background="Transparent">
+                        <MenuItem
+                            Padding="14,8"
+                            Classes="nav"
+                            Header="Settings">
+                            <MenuItem Command="{Binding NavigateToBlockLengthsCommand}" Header="Scheduling" />
+                            <MenuItem Command="{Binding NavigateToBlockPatternsCommand}" Header="Block Patterns" />
+                            <MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />
                         </MenuItem>
                     </Menu>
 
-                    <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="4,10" />
+                    <Border
+                        Width="1"
+                        Margin="4,10"
+                        Background="{StaticResource SeparatorLine}" />
 
-                    <!-- Export menu -->
-                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,4">
-                        <MenuItem Header="Export" Classes="nav" Padding="14,8">
-                            <MenuItem Header="Export Schedule PNG…"
-                                      Command="{Binding NavigateToExportCommand}" />
+                    <!--  Export menu  -->
+                    <Menu
+                        Margin="0,4"
+                        VerticalAlignment="Center"
+                        Background="Transparent">
+                        <MenuItem
+                            Padding="14,8"
+                            Classes="nav"
+                            Header="Export">
+                            <MenuItem Command="{Binding NavigateToExportCommand}" Header="Export Schedule PNG…" />
+                            <MenuItem Command="{Binding NavigateToWorkloadReportCommand}" Header="Workload Report…" />
                         </MenuItem>
                     </Menu>
 
-                    <!-- Debug menu (added in code-behind in DEBUG mode) -->
-                    <Menu x:Name="DebugMenu" Background="Transparent" VerticalAlignment="Center" IsVisible="False" Margin="0,4">
-                        <MenuItem Header="Debug" Classes="nav" Padding="14,8">
-                            <MenuItem Header="Debug View…"
-                                      Command="{Binding OpenDebugCommand}" />
+                    <!--  Debug menu (added in code-behind in DEBUG mode)  -->
+                    <Menu
+                        x:Name="DebugMenu"
+                        Margin="0,4"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        IsVisible="False">
+                        <MenuItem
+                            Padding="14,8"
+                            Classes="nav"
+                            Header="Debug">
+                            <MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View…" />
                         </MenuItem>
                     </Menu>
                 </WrapPanel>
@@ -121,63 +202,98 @@
             </DockPanel>
         </Border>
 
-        <!-- Main body: layered panel (permanent grid beneath, flyout overlay above) -->
+        <!--  Main body: layered panel (permanent grid beneath, flyout overlay above)  -->
         <Panel Grid.Row="1">
 
-            <!-- Layer 0: permanent three-panel grid -->
+            <!--  Layer 0: permanent three-panel grid  -->
             <Grid x:Name="ThreePanelGrid" ColumnDefinitions="360,4,*">
 
-                <!-- Left column: Section Editor (top) + Workload (bottom) -->
+                <!--  Left column: Section Editor (top) + Workload (bottom)  -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
 
-                    <!-- Section Editor slot (detachable) -->
-                    <controls:DetachablePanel Grid.Row="0"
-                                              x:Name="SectionEditorPanel"
-                                              Header="Section View"
-                                              DetachRequested="OnSectionEditorDetach">
+                    <!--  Section Editor slot (detachable)  -->
+                    <controls:DetachablePanel
+                        x:Name="SectionEditorPanel"
+                        Grid.Row="0"
+                        DetachRequested="OnSectionEditorDetach"
+                        Header="Section View">
                         <controls:DetachablePanel.HeaderContext>
-                          <StackPanel Orientation="Horizontal">
-                          <TextBlock Text="Sorted by:" /> 
-                          <TextBlock Text="{Binding SectionListVm.SortModeLabel}"
-                                       FontSize="12"
-                                       Foreground="{StaticResource TextFaint}"
-                                       VerticalAlignment="Center"
-                                       Margin="4,0,0,0" />
-                          </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <ToolTip.Tip>
+                                    Right-click to set sorting mode
+                                </ToolTip.Tip>
+                                <TextBlock
+                                    FontSize="{StaticResource FontSizeNormal}"
+                                    Foreground="{StaticResource TextPrimary}"
+                                    Text="Sorted by:" />
+                                <TextBlock
+                                    Margin="4,0,0,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="{StaticResource FontSizeNormal}"
+                                    Foreground="{StaticResource TextPrimary}"
+                                    Text="{Binding SectionListVm.SortModeLabel}" />
+                            </StackPanel>
                         </controls:DetachablePanel.HeaderContext>
                         <controls:DetachablePanel.HeaderExtra>
-                            <StackPanel Orientation="Horizontal" Spacing="3"
-                                        DataContext="{Binding SectionListVm}">
-                                <Button Content="▼" ToolTip.Tip="Expand all cards"
-                                        Command="{Binding ExpandAllCommand}"
-                                        FontSize="9" Padding="4,1"
-                                        MinHeight="0" MinWidth="0"
-                                        Background="Transparent" BorderThickness="0" />
-                                <Button Content="▶" ToolTip.Tip="Collapse all cards"
-                                        Command="{Binding CollapseAllCommand}"
-                                        FontSize="9" Padding="4,1"
-                                        MinHeight="0" MinWidth="0"
-                                        Background="Transparent" BorderThickness="0" />
-                                <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="2,2" />
-                                <Button Content="Add"
-                                        Command="{Binding AddCommand}"
-                                        FontSize="10" Padding="5,1"
-                                        MinHeight="0" MinWidth="0" />
-                                <Button Content="Edit"
-                                        Command="{Binding EditCommand}"
-                                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                        FontSize="10" Padding="5,1"
-                                        MinHeight="0" MinWidth="0" />
-                                <Button Content="Copy"
-                                        Command="{Binding CopyCommand}"
-                                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                        FontSize="10" Padding="5,1"
-                                        MinHeight="0" MinWidth="0" />
-                                <Button Content="Delete"
-                                        Command="{Binding DeleteCommand}"
-                                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                        FontSize="10" Padding="5,1"
-                                        MinHeight="0" MinWidth="0" />
+                            <StackPanel
+                                DataContext="{Binding SectionListVm}"
+                                Orientation="Horizontal"
+                                Spacing="3">
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="4,1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding ExpandAllCommand}"
+                                    Content="▼"
+                                    FontSize="9"
+                                    ToolTip.Tip="Expand all cards" />
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="4,1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding CollapseAllCommand}"
+                                    Content="▶"
+                                    FontSize="9"
+                                    ToolTip.Tip="Collapse all cards" />
+                                <Border
+                                    Width="1"
+                                    Margin="2,2"
+                                    Background="{StaticResource SeparatorLine}" />
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="5,1"
+                                    Command="{Binding AddCommand}"
+                                    Content="Add"
+                                    FontSize="10" />
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="5,1"
+                                    Command="{Binding EditCommand}"
+                                    Content="Edit"
+                                    FontSize="10"
+                                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="5,1"
+                                    Command="{Binding CopyCommand}"
+                                    Content="Copy"
+                                    FontSize="10"
+                                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="5,1"
+                                    Command="{Binding DeleteCommand}"
+                                    Content="Delete"
+                                    FontSize="10"
+                                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             </StackPanel>
                         </controls:DetachablePanel.HeaderExtra>
                         <controls:DetachablePanel.PanelContent>
@@ -185,14 +301,19 @@
                         </controls:DetachablePanel.PanelContent>
                     </controls:DetachablePanel>
 
-                    <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="4"
-                                  HorizontalAlignment="Stretch" Background="{StaticResource GridSplitterColor}" />
+                    <GridSplitter
+                        Grid.Row="1"
+                        Height="4"
+                        HorizontalAlignment="Stretch"
+                        Background="{StaticResource GridSplitterColor}"
+                        ResizeDirection="Rows" />
 
-                    <!-- Workload slot (detachable) -->
-                    <controls:DetachablePanel Grid.Row="2"
-                                              x:Name="WorkloadPanel"
-                                              Header="Workload View"
-                                              DetachRequested="OnWorkloadDetach">
+                    <!--  Workload slot (detachable)  -->
+                    <controls:DetachablePanel
+                        x:Name="WorkloadPanel"
+                        Grid.Row="2"
+                        DetachRequested="OnWorkloadDetach"
+                        Header="Workload View">
                         <controls:DetachablePanel.PanelContent>
                             <panelViews:WorkloadPanelView DataContext="{Binding WorkloadPanelVm}" />
                         </controls:DetachablePanel.PanelContent>
@@ -200,68 +321,96 @@
 
                 </Grid>
 
-                <!-- Column splitter -->
-                <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="4"
-                              VerticalAlignment="Stretch" Background="{StaticResource GridSplitterColor}" />
+                <!--  Column splitter  -->
+                <GridSplitter
+                    Grid.Column="1"
+                    Width="4"
+                    VerticalAlignment="Stretch"
+                    Background="{StaticResource GridSplitterColor}"
+                    ResizeDirection="Columns" />
 
-                <!-- Right column: Schedule Grid (permanent, detachable) -->
-                <controls:DetachablePanel Grid.Column="2"
-                                          x:Name="ScheduleGridPanel"
-                                          Header="Schedule View"
-                                          DetachRequested="OnScheduleGridDetach">
+                <!--  Right column: Schedule Grid (permanent, detachable)  -->
+                <controls:DetachablePanel
+                    x:Name="ScheduleGridPanel"
+                    Grid.Column="2"
+                    DetachRequested="OnScheduleGridDetach"
+                    Header="Schedule View">
                     <controls:DetachablePanel.HeaderContext>
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <StackPanel
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="6">
 
-                            <!-- Academic Unit (only shown when available) -->
-                            <TextBlock Text="{Binding ScheduleGridVm.AcademicUnitName}"
-                                       FontSize="{StaticResource FontSizeLarge}"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <!--  Academic Unit (only shown when available)  -->
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource FontSizeLarge}"
+                                IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                Text="{Binding ScheduleGridVm.AcademicUnitName}" />
 
-                            <!-- Semester -->
-                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
-                                    IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding ScheduleGridVm.SemesterLine}"
-                                       FontSize="{StaticResource FontSizeLarge}"
-                                       VerticalAlignment="Center" />
+                            <!--  Semester  -->
+                            <Border
+                                Width="1"
+                                Margin="0,3"
+                                Background="{StaticResource SeparatorLine}"
+                                IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource FontSizeLarge}"
+                                Text="{Binding ScheduleGridVm.SemesterLine}" />
 
-                          <!-- Stats (always shown) -->
-                          <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
-                                  IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                          <TextBlock Text="{Binding ScheduleGridVm.StatsLine}"
-                                     FontSize="{StaticResource FontSizeLarge}"
-                                     VerticalAlignment="Center"
-                                     IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <!--  Stats (always shown)  -->
+                            <Border
+                                Width="1"
+                                Margin="0,3"
+                                Background="{StaticResource SeparatorLine}"
+                                IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource FontSizeLarge}"
+                                IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                Text="{Binding ScheduleGridVm.StatsLine}" />
 
-                            <!-- Overlay (only shown when active) -->
-                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
-                                    IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding ScheduleGridVm.Filter.OverlaySummary}"
-                                       FontSize="{StaticResource FontSizeLarge}"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource FilterActiveHeader}"
-                                       FontWeight="SemiBold"
-                                       IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <!--  Filtered by (only shown when filter active)  -->
+                            <Border
+                                Width="1"
+                                Margin="0,3"
+                                Background="{StaticResource SeparatorLine}"
+                                IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource FontSizeLarge}"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource FilterBadgeText}"
+                                IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
+                                Text="Filtered by:" />
+                            <TextBlock
+                                MaxWidth="400"
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource FontSizeLarge}"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource FilterBadgeText}"
+                                IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
+                                Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
+                                TextTrimming="CharacterEllipsis" />
 
-                            
+                            <!--  Overlay (only shown when active)  -->
+                            <Border
+                                Width="1"
+                                Margin="0,3"
+                                Background="{StaticResource SeparatorLine}"
+                                IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource FontSizeLarge}"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource OverlayBadgeText}"
+                                IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                Text="{Binding ScheduleGridVm.Filter.OverlaySummary}" />
 
-                            <!-- Filtered by (only shown when filter active) -->
-                            <Border Width="1" Background="{StaticResource SeparatorLine}" Margin="0,3"
-                                    IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
-                            <TextBlock Text="Filtered by:"
-                                       FontSize="{StaticResource FontSizeLarge}"
-                                       FontWeight="Bold"
-                                       Foreground="{StaticResource FilterBadgeText}"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
-                            <TextBlock Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
-                                       FontSize="{StaticResource FontSizeLarge}"
-                                       FontWeight="Bold"
-                                       Foreground="{StaticResource FilterBadgeText}"
-                                       VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="400"
-                                       IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
+
+
+
 
                         </StackPanel>
                     </controls:DetachablePanel.HeaderContext>
@@ -272,45 +421,50 @@
 
             </Grid>
 
-            <!-- Layer 1: management flyout overlay -->
+            <!--  Layer 1: management flyout overlay  -->
             <Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
 
-                <!-- Dim backdrop — clicking it closes the flyout -->
-                <Border Background="{StaticResource FlyoutScrim}"
-                        PointerPressed="OnFlyoutBackdropPressed" />
+                <!--  Dim backdrop — clicking it closes the flyout  -->
+                <Border Background="{StaticResource FlyoutScrim}" PointerPressed="OnFlyoutBackdropPressed" />
 
-                <!-- Flyout panel (drops from top) -->
-                <Border VerticalAlignment="Top"
-                        HorizontalAlignment="Stretch"
-                        MaxHeight="650"
-                        Background="{StaticResource FlyoutBackground}"
-                        BoxShadow="0 4 20 2 #50000000"
-                        CornerRadius="0,0,6,6"
-                        Margin="8,0,8,0">
+                <!--  Flyout panel (drops from top)  -->
+                <Border
+                    MaxHeight="650"
+                    Margin="8,0,8,0"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource FlyoutBackground}"
+                    BoxShadow="0 4 20 2 #50000000"
+                    CornerRadius="0,0,6,6">
                     <Grid RowDefinitions="Auto,*">
 
-                        <!-- Flyout header -->
-                        <Border Grid.Row="0" Background="{StaticResource FlyoutHeaderBackground}"
-                                BorderBrush="{StaticResource FlyoutHeaderBorder}" BorderThickness="0,0,0,1"
-                                Padding="16,10">
+                        <!--  Flyout header  -->
+                        <Border
+                            Grid.Row="0"
+                            Padding="16,10"
+                            Background="{StaticResource FlyoutHeaderBackground}"
+                            BorderBrush="{StaticResource FlyoutHeaderBorder}"
+                            BorderThickness="0,0,0,1">
                             <DockPanel>
-                                <Button DockPanel.Dock="Right"
-                                        Content="✕"
-                                        Command="{Binding CloseFlyoutCommand}"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Padding="8,4"
-                                        FontSize="14" />
-                                <TextBlock Text="{Binding FlyoutTitle}"
-                                           FontWeight="SemiBold"
-                                           FontSize="15"
-                                           VerticalAlignment="Center" />
+                                <Button
+                                    Padding="8,4"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding CloseFlyoutCommand}"
+                                    Content="✕"
+                                    DockPanel.Dock="Right"
+                                    FontSize="14" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding FlyoutTitle}" />
                             </DockPanel>
                         </Border>
 
-                        <!-- Flyout content (scrollable) -->
+                        <!--  Flyout content (scrollable)  -->
                         <ScrollViewer Grid.Row="1">
-                            <ContentControl Content="{Binding FlyoutPage}" Margin="16" />
+                            <ContentControl Margin="16" Content="{Binding FlyoutPage}" />
                         </ScrollViewer>
 
                     </Grid>

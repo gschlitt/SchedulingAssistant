@@ -1,9 +1,10 @@
-<Application xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="using:SchedulingAssistant"
-             xmlns:conv="using:SchedulingAssistant.Converters"
-             x:Class="SchedulingAssistant.App"
-             RequestedThemeVariant="Light">
+<Application
+    x:Class="SchedulingAssistant.App"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:SchedulingAssistant.Converters"
+    xmlns:local="using:SchedulingAssistant"
+    RequestedThemeVariant="Light">
 
     <Application.Resources>
         <ResourceDictionary>
@@ -11,20 +12,21 @@
                 <ResourceInclude Source="avares://SchedulingAssistant/AppColors.axaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Font sizes -->
+            <!--  Font sizes  -->
             <x:Double x:Key="FontSizeSmall">10</x:Double>
             <x:Double x:Key="FontSizeNormal">12</x:Double>
             <x:Double x:Key="FontSizeMedium">13</x:Double>
             <x:Double x:Key="FontSizeLarge">16</x:Double>
             <x:Double x:Key="FontSizeXLarge">18</x:Double>
 
-            <!-- Converters -->
+            <!--  Converters  -->
             <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
         </ResourceDictionary>
     </Application.Resources>
 
     <Application.Styles>
-        <SimpleTheme />
+        <!--<SimpleTheme />-->
+        <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
         <Style Selector="Button">
             <Setter Property="Background" Value="{StaticResource ButtonBackground}" />
@@ -51,11 +53,11 @@
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
 
-        <!-- Settings menu: strip chrome from the Menu container itself -->
+        <!--  Settings menu: strip chrome from the Menu container itself  -->
         <Style Selector="Menu">
             <Setter Property="Background" Value="Transparent" />
         </Style>
-        <!-- Top-level MenuItem styled like a nav button -->
+        <!--  Top-level MenuItem styled like a nav button  -->
         <Style Selector="MenuItem.nav">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />

@@ -24,6 +24,9 @@ public class AppSettings
     /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 
+    /// <summary>Last path used for workload report CSV export.</summary>
+    public string? LastWorkloadReportPath { get; set; }
+
     /// <summary>Recently opened database paths (most recent first). Max 10 entries.</summary>
     public List<string> RecentDatabases { get; set; } = new();
 

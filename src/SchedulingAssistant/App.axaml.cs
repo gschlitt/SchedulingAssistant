@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using HotAvalonia;
 using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
@@ -23,6 +24,7 @@ public partial class App : Application
 
     public override void Initialize()
     {
+        this.UseHotReload();
         AvaloniaXamlLoader.Load(this);
     }
 
@@ -144,6 +146,7 @@ public partial class App : Application
         services.AddTransient<BlockPatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();
         services.AddTransient<ExportViewModel>();
+        services.AddTransient<WorkloadReportViewModel>();
 
         // Services
         services.AddTransient<ScheduleValidationService>();

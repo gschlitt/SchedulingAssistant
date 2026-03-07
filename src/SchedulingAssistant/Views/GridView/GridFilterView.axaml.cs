@@ -16,8 +16,11 @@ public partial class GridFilterView : UserControl
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
             ? b : Brushes.Transparent;
 
-    private static IBrush ActiveHeaderBrush   => Res("FilterActiveHeader");
-    private static IBrush InactiveHeaderBrush => Res("FilterInactiveHeader");
+    private static IBrush ActiveFilterHeaderBrush   => Res("FilterActiveHeader");
+    private static IBrush InactiveFilterHeaderBrush => Res("FilterInactiveHeader");
+
+    private static IBrush ActiveOverlayHeaderBrush => Res("OverlayActiveHeader");
+    private static IBrush InactiveOverlayHeaderBrush => Res("OverlayInactiveHeader");
 
     public GridFilterView()
     {
@@ -184,17 +187,18 @@ public partial class GridFilterView : UserControl
         {
             var name = list.FirstOrDefault(i => i.Id == vm.SelectedOverlayId)?.Name ?? vm.SelectedOverlayId;
             toggle.Content    = $"Overlay: {name} ▾";
-            toggle.Foreground = ActiveHeaderBrush;
+            toggle.Foreground = ActiveOverlayHeaderBrush;
             toggle.FontWeight = FontWeight.SemiBold;
         }
         else
         {
             toggle.Content    = $"{inactiveLabel} ▾";
-            toggle.Foreground = InactiveHeaderBrush;
+            toggle.Foreground = InactiveOverlayHeaderBrush;
             toggle.FontWeight = FontWeight.Normal;
         }
     }
 
+    //the filter headers, specifically
     private static void SetHeader(
         ToggleButton toggle,
         Panel panel,
@@ -205,7 +209,7 @@ public partial class GridFilterView : UserControl
         var list = items.ToList();
         int selected = list.Count(i => i.IsSelected);
         toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▾" : $"{dimensionName} ▾";
-        toggle.Foreground = selected > 0 ? ActiveHeaderBrush : InactiveHeaderBrush;
+        toggle.Foreground = selected > 0 ? ActiveFilterHeaderBrush : InactiveFilterHeaderBrush;
         toggle.FontWeight = selected > 0 ? FontWeight.SemiBold : FontWeight.Normal;
     }
 }

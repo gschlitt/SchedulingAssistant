@@ -11,7 +11,7 @@
 
     <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
         <TextBlock Text="TermPoint 2"
-                   FontSize="18"
+                   FontSize="36"
                    FontWeight="Bold"
                    Foreground="{StaticResource TextDefault}"
                    HorizontalAlignment="Center"

@@ -1,8 +1,36 @@
+Bugs:
+
+Create a new section, seems to be a ghost section above it, this is probably the newly created section rather than the cloned one being
+edited. This should not show while editing is in process.
+
+A user could enter an early start time before 0830 in the start-time/blocklength selector. 
+
+Instructional workload box in instructo flyout not registering workload credit properly.
+
+In instructor workload history all semesters should be under the same academic year pulldown.
+
+With less than full window, a horizontal scroll bar in the filter bar look ugly, creating problems. Expand filter bar
+height to accomodate?
+
+Deleting an academic year doesn't give you the choice! Should be forbidden probably without emptying semesters?
+
+Fontsize seems hardcoded in a number of places, should be able to adjust from app.axaml
+
+Detaching SectionView obscures controls at top
+
+
+All Filter and Overlay menus should display all the choices available, not just those reflecting current sections.
+
+
 "Hybrid Course Scheduling" (odd, even weeks, more infrequent)
 
 
+Too much repetition! ShowErrorAsync occurs multiple times in different code behinds. 
+As does confirmation dialogs. Make one, and put it in a service.
 
-Workload reports, .csv
+
+
+
 
 What happens if we modify legal start times while a semester is in use?
 
@@ -11,33 +39,24 @@ Fix the section code assigner to allow for the lab format A#2 etc. User picks ca
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view
 
+Show notes in closed card?
+
+User can add fields to the right?
 
 
-Multiple semesters!
+
+Multiple semesters! With up to 3 semester open at a time, each day splits into 3 columns (color framing) in which
+the usual strategy for staging sections happens.
 
 When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is lost
 
-
+Zoom to cursor? Via scroll wheel?
 
 Course history
 
+Vertical text if meeting cards too narrow?
 
 Work on colors a bit. Keep red for overlay, need something different in menu to mark filters.
-
-
-
-
-
-
-Section editor not sizing horizontally, should size to contents
-
-
-
-Increase font size on banners
-
-
-
-
 
 
 Banner on sections header to show number of sections
@@ -45,7 +64,7 @@ Banner on sections header to show number of sections
 
 Backup! (to csv and alternate db?)
 
-
+workload view disappears when detached and the "shutdown"
 logic for revisions and deletions of block lengths.
 
 Handle non-active courses and non-active instructors.
@@ -54,8 +73,8 @@ Handle non-active courses and non-active instructors.
 
 
 
-Scheduling saturday should be in the database, not preferences to different people see the same thing.
 
+Migration is a biggy!
 
 Longer term: webhosting, error logging to website, multiuser. Multiple windows?
 

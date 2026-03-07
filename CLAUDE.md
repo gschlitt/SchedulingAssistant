@@ -1,3 +1,21 @@
+# Coding Practice
+
+
+Code should clean. Prefer building reusable code, even if it takes more time, rather than repeating yourself.
+
+Commenting should be on the liberal side, if anything. This code base may be passed on to other developers who may not be directly familiar with C# or Avalonia (but who are experts in their own 
+coding domains)
+
+Methods should be commented, explain the 
+purpose, its parameters, return values, and any exceptions it might throw.
+
+Uses /// for single-line XML documentation comments that a documentation generator can process.
+
+Any fonts sizes, weights, and colors used should not be hardcoded, but refer back to appcolors.axaml or app.axaml
+
+Strongly prefer MVVM style with minimal code-behinds. ViewModels should be about business logic and know and say nothing about the view.
+
+
 # SchedulingAssistant — Project Decisions
 
 ## What This App Is
@@ -12,7 +30,8 @@ A scheduling **visualization and information management tool** for university ad
 - **Database**: SQLite (single local file on the user's drive)
 - **Schema philosophy**: Treat SQLite as a document store to avoid schema migrations during development
 - **Column pattern**: Tables use a stable set of columns for keys/partitioning, with a `data JSON` column for the entity's fields
-  - Example: `key TEXT, semester TEXT, data JSON`
+  - Example: `key TEXT, semester TEXT, data JSON` The tables should be human-readable, include columns which identity the record in business terms, even if the app does not read these columns
+             Example `key TEXT, semestername TEXT, academicyear name TEXT, data JSON` where semestername and academicyearname might be "Fall 2024-2025" and "2024-2025"
 - **Library**: `Microsoft.Data.Sqlite`
 
 ## Data Entities

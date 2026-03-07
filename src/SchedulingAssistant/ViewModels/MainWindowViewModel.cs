@@ -161,6 +161,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToExport() => OpenFlyout<ExportViewModel>("Export");
 
+    [RelayCommand]
+    private void NavigateToWorkloadReport() => OpenFlyout<WorkloadReportViewModel>("Workload Report");
+
 #if DEBUG
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
