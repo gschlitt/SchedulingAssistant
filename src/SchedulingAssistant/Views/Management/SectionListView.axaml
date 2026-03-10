@@ -474,8 +474,8 @@
                         <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,1">
                             <StackPanel>
 
-                                <!-- Summary row (always visible) -->
-                                <StackPanel Spacing="1">
+                                <!-- Summary row (hidden while section is being created) -->
+                                <StackPanel Spacing="1" IsVisible="{Binding !IsBeingCreated}">
                                     <!-- Row 1: Toggle + Heading + Instructor + Section Type + Property indicators -->
                                     <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="2,3,6,2" VerticalAlignment="Center">
                                         <!-- Collapse/expand toggle -->

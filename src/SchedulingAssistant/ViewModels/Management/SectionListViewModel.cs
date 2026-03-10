@@ -379,6 +379,9 @@ public partial class SectionListViewModel : ViewModelBase
             section, courseLookup, instructorLookup, roomLookup,
             sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
 
+        // Mark as a temporary placeholder so its summary row is hidden until saved
+        placeholder.IsBeingCreated = true;
+
         // Clamp index in case the list changed between capture and insertion
         if (insertIndex > SectionItems.Count) insertIndex = SectionItems.Count;
         SectionItems.Insert(insertIndex, placeholder);
@@ -603,6 +606,9 @@ public partial class SectionListViewModel : ViewModelBase
         var placeholder = new SectionListItemViewModel(
             section, courseLookup, instructorLookup, roomLookup,
             sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
+
+        // Mark as a temporary placeholder so its summary row is hidden until saved
+        placeholder.IsBeingCreated = true;
 
         // Insert immediately after the source item
         int insertIndex = SectionItems.IndexOf(afterItem) + 1;

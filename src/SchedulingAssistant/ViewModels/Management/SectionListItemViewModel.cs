@@ -29,6 +29,9 @@ public partial class SectionListItemViewModel : ObservableObject
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private bool _isCollapsed;
 
+    /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
+    [ObservableProperty] private bool _isBeingCreated;
+
     public string SortKeyInstructor { get; }
     public string SortKeySectionType { get; }
 
