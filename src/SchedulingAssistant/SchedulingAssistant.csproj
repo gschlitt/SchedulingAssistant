@@ -32,4 +32,10 @@
     <None Remove="Assets\filter-icon.svg" />
     <None Remove="Assets\overlay-icon.svg" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\Management\ConfirmDialog.axaml.cs">
+      <DependentUpon>ConfirmDialog.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

@@ -25,10 +25,17 @@ All Filter and Overlay menus should display all the choices available, not just 
 "Hybrid Course Scheduling" (odd, even weeks, more infrequent)
 
 
-Too much repetition! ShowErrorAsync occurs multiple times in different code behinds. 
+Too much repetition! ShowErrorAsync occurs multiple times in different code behinds. All kinds of other dialogs in codebehinds. Make a general one.
 As does confirmation dialogs. Make one, and put it in a service.
 
+Create generic DialogService that handles all dialogs (errors, confirmations, pickers) so your ViewModels never reference UI directly.
 
+
+Why private void UpdateColumnWidth() in SectionListView code behind? Can't the .axaml take care of that?
+
+In DatabaseLocationDialog, why all the codebehind? Isn't that ViewMOdel?
+
+Likewise GridFilterView codebehind that seems more like logic than visual
 
 
 

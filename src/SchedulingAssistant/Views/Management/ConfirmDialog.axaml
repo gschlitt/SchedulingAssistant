@@ -1,0 +1,38 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Class="SchedulingAssistant.Views.Management.ConfirmDialog"
+    Title="Confirm"
+    d:DesignHeight="150"
+    d:DesignWidth="350"
+    MinHeight="120"
+    Width="350"
+    SizeToContent="Height"
+    CanResize="False"
+    ShowInTaskbar="False"
+    SystemDecorations="BorderOnly"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d">
+
+    <Border BorderBrush="#999999" BorderThickness="1">
+    <StackPanel Orientation="Vertical" Margin="24" Spacing="16">
+
+        <TextBlock
+            x:Name="MessageText"
+            FontSize="13"
+            TextWrapping="Wrap" />
+
+        <StackPanel
+            HorizontalAlignment="Right"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Click="Cancel_Click" Content="Cancel" />
+            <Button x:Name="ConfirmButton" Click="Confirm_Click" Content="Delete" />
+        </StackPanel>
+
+    </StackPanel>
+    </Border>
+
+</Window>

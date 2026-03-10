@@ -1,3 +1,4 @@
+
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using SchedulingAssistant.ViewModels;

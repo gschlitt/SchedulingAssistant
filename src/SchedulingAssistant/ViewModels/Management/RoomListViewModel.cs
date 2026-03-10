@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -13,6 +14,7 @@ public partial class RoomListViewModel : ViewModelBase
     private readonly SectionRepository _sectionRepo;
     private readonly SectionListViewModel _sectionListVm;
     private readonly DatabaseContext _db;
+    private readonly IDialogService _dialog;
 
     public string DisplayName => "Rooms";
 
@@ -20,19 +22,18 @@ public partial class RoomListViewModel : ViewModelBase
     [ObservableProperty] private Room? _selectedRoom;
     [ObservableProperty] private RoomEditViewModel? _editVm;
 
-    public Func<string, Task<bool>>? ConfirmDelete { get; set; }
-    public Func<string, Task>? ShowError { get; set; }
-
     public RoomListViewModel(
         RoomRepository repo,
         SectionRepository sectionRepo,
         SectionListViewModel sectionListVm,
-        DatabaseContext db)
+        DatabaseContext db,
+        IDialogService dialog)
     {
         _repo = repo;
         _sectionRepo = sectionRepo;
         _sectionListVm = sectionListVm;
         _db = db;
+        _dialog = dialog;
         Load();
     }
 
@@ -66,11 +67,9 @@ public partial class RoomListViewModel : ViewModelBase
         var id = SelectedRoom.Id;
         var displayName = $"{SelectedRoom.Building} {SelectedRoom.RoomNumber}".Trim();
 
-        if (ConfirmDelete is not null)
-        {
-            var confirmed = await ConfirmDelete(displayName);
-            if (!confirmed) return;
-        }
+        if (!await _dialog.Confirm(
+            $"Delete room \"{displayName}\"?\n\nThis will also remove it from all sections in all semesters that reference it."))
+            return;
 
         using var tx = _db.Connection.BeginTransaction();
         try
@@ -94,8 +93,7 @@ public partial class RoomListViewModel : ViewModelBase
         catch (Exception)
         {
             tx.Rollback();
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. No changes were made. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. No changes were made. Please try again.");
         }
     }
 }

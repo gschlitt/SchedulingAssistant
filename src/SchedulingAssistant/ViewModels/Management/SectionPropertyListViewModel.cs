@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -14,6 +15,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     private readonly InstructorRepository _instructorRepo;
     private readonly DatabaseContext _db;
     private readonly SectionListViewModel _sectionListVm;
+    private readonly IDialogService _dialog;
     private readonly string _type;
 
     public string DisplayName { get; }
@@ -28,11 +30,6 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     [ObservableProperty] private SectionPropertyValue? _selectedItem;
     [ObservableProperty] private SectionPropertyEditViewModel? _editVm;
 
-    public Func<string, Task>? ShowError { get; set; }
-
-    /// <summary>Set by the View. Args: (propertyName, propertyType). Returns true if user confirms delete.</summary>
-    public Func<string, string, Task<bool>>? ConfirmDelete { get; set; }
-
     public SectionPropertyListViewModel(
         string propertyType,
         string displayName,
@@ -41,6 +38,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         InstructorRepository instructorRepo,
         DatabaseContext db,
         SectionListViewModel sectionListVm,
+        IDialogService dialog,
         bool showAbbreviation = false)
     {
         _type = propertyType;
@@ -50,6 +48,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         _instructorRepo = instructorRepo;
         _db = db;
         _sectionListVm = sectionListVm;
+        _dialog = dialog;
         ShowAbbreviation = showAbbreviation;
         Load();
     }
@@ -89,19 +88,19 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     private async Task Delete()
     {
         if (SelectedItem is null) return;
-        var id   = SelectedItem.Id;
+        var id = SelectedItem.Id;
         var name = SelectedItem.Name;
 
-        if (ConfirmDelete is not null)
-        {
-            var confirmed = await ConfirmDelete(name, _type);
-            if (!confirmed) return;
-        }
+        var affected = _type == SectionPropertyTypes.StaffType
+            ? "all instructors that reference it"
+            : "all sections in all semesters that reference it";
+
+        if (!await _dialog.Confirm($"Delete \"{name}\"?\n\nThis will also remove it from {affected}."))
+            return;
 
         using var tx = _db.Connection.BeginTransaction();
         try
         {
-            // Scrub all sections across all semesters
             var sections = _sectionRepo.GetAll();
             foreach (var section in sections)
             {
@@ -136,7 +135,6 @@ public partial class SectionPropertyListViewModel : ViewModelBase
                 if (changed) _sectionRepo.Update(section, tx);
             }
 
-            // Scrub instructors for staffType
             if (_type == SectionPropertyTypes.StaffType)
             {
                 var instructors = _instructorRepo.GetAll();
@@ -155,8 +153,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         catch (Exception)
         {
             tx.Rollback();
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. No changes were made. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. No changes were made. Please try again.");
         }
     }
 }

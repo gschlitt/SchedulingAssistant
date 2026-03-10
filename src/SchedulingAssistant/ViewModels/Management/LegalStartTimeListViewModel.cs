@@ -14,14 +14,12 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
 {
     private readonly LegalStartTimeRepository _repo;
     private readonly SemesterContext _semesterContext;
+    private readonly IDialogService _dialog;
     private string? _currentAcademicYearId;
 
     [ObservableProperty] private ObservableCollection<LegalStartTime> _entries = new();
     [ObservableProperty] private LegalStartTime? _selectedEntry;
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
-
-    /// <summary>Set by the view. Called with an error message when an action fails.</summary>
-    public Func<string, Task>? ShowError { get; set; }
 
     // ── Include Saturday setting ──────────────────────────────────────────────
 
@@ -72,10 +70,11 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public LegalStartTimeListViewModel(LegalStartTimeRepository repo, SemesterContext semesterContext)
+    public LegalStartTimeListViewModel(LegalStartTimeRepository repo, SemesterContext semesterContext, IDialogService dialog)
     {
         _repo = repo;
         _semesterContext = semesterContext;
+        _dialog = dialog;
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Load();
     }
@@ -83,9 +82,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     private void OnSemesterContextChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
-        {
             Load();
-        }
     }
 
     private void Load()
@@ -112,7 +109,6 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         foreach (var entry in Entries)
             PreferredBlockLengthOptions.Add(new NullableBlockLengthOption(entry.BlockLength, $"{entry.BlockLength:0.#} hrs"));
 
-        // Restore selection — match by value, fall back to "(none)"
         _selectedPreferredOption = saved.HasValue
             ? PreferredBlockLengthOptions.FirstOrDefault(o => o.Value.HasValue && Math.Abs(o.Value.Value - saved.Value) < 0.01)
               ?? none
@@ -129,7 +125,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             onSave: async e =>
             {
                 try { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null);
     }
@@ -143,7 +139,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             onSave: async e =>
             {
                 try { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null);
     }
@@ -160,8 +156,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "LegalStartTimeListViewModel.Delete");
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. Please try again.");
         }
     }
 

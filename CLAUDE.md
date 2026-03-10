@@ -1,19 +1,18 @@
 # Coding Practice
 
+Use MVVM style. Strongly prefer minimal codebehinds, but you can use these if the visual content is dynamic and unknown at compile-time.  
 
-Code should clean. Prefer building reusable code, even if it takes more time, rather than repeating yourself.
+Code should clean. Prefer building reusable code, even if it takes more time, rather than repeating code. So if a class or method is added, inspect the existing code with an
+eye towards reusability and generality. If you see this, flag it in the plan.
 
 Commenting should be on the liberal side, if anything. This code base may be passed on to other developers who may not be directly familiar with C# or Avalonia (but who are experts in their own 
 coding domains)
 
-Methods should be commented, explain the 
-purpose, its parameters, return values, and any exceptions it might throw.
+Methods should be commented, explain the purpose, its parameters, return values, and any exceptions it might throw.
 
 Uses /// for single-line XML documentation comments that a documentation generator can process.
 
 Any fonts sizes, weights, and colors used should not be hardcoded, but refer back to appcolors.axaml or app.axaml
-
-Strongly prefer MVVM style with minimal code-behinds. ViewModels should be about business logic and know and say nothing about the view.
 
 
 # SchedulingAssistant — Project Decisions

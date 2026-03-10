@@ -2,11 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.ComponentModel;
-using System.Threading.Tasks;
 
 namespace SchedulingAssistant.Views.Management;
 
@@ -45,14 +43,7 @@ public partial class SectionListView : UserControl
         _vm = DataContext as SectionListViewModel;
 
         if (_vm is not null)
-        {
-            // Wire the ShowError delegate so the VM can show modal notices (e.g. copy
-            // conflicts) without taking a hard dependency on Avalonia Window APIs.
-            _vm.ShowError = ShowErrorAsync;
-
-            // Subscribe to list changes to update column width
             _vm.PropertyChanged += OnViewModelPropertyChanged;
-        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -98,40 +89,6 @@ public partial class SectionListView : UserControl
         {
             threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
         }
-    }
-
-    // Displays a simple modal notice window. Used by SectionListViewModel.ShowError.
-    private async Task ShowErrorAsync(string message)
-    {
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        if (owner is null) return;
-
-        var msg = new Window
-        {
-            Title = "Notice",
-            Width = 460,
-            SizeToContent = SizeToContent.Height,
-            CanResize = false,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ShowInTaskbar = false
-        };
-
-        var body = new TextBlock
-        {
-            Text = message,
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            FontSize = 13
-        };
-
-        var okBtn = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Right };
-        okBtn.Click += (_, _) => msg.Close();
-
-        var panel = new StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 16 };
-        panel.Children.Add(body);
-        panel.Children.Add(okBtn);
-        msg.Content = panel;
-
-        await msg.ShowDialog(owner);
     }
 
     private void OnListBoxDoubleTapped(object? sender, TappedEventArgs e)

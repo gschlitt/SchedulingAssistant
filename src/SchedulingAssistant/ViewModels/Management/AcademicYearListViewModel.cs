@@ -18,33 +18,24 @@ public partial class AcademicYearListViewModel : ViewModelBase
     private readonly SemesterContext _semesterContext;
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
     private readonly DatabaseContext _db;
+    private readonly IDialogService _dialog;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
     [ObservableProperty] private AcademicYearEditViewModel? _editVm;
 
-    /// <summary>Set by the view. Called with an error message when an action fails.</summary>
-    public Func<string, Task>? ShowError { get; set; }
-
-    /// <summary>
-    /// Set by the view. Called before deletion with (ayName, sectionCount).
-    /// Should return true if the user confirms, false to cancel.
-    /// </summary>
-    public Func<string, int, Task<bool>>? ConfirmDelete { get; set; }
-
     /// <summary>
     /// Set by the view. Called when adding a new academic year to ask if the user
     /// wants to copy the start-time/block-length setup from the previous year.
-    /// Receives the previous year's name and ID; should return the ID to copy from, or null to skip.
+    /// Returns the source AY ID to copy from, or null to skip.
     /// </summary>
     public Func<string, string, Task<string?>>? ConfirmCopyStartTimes { get; set; }
 
     /// <summary>
     /// Set by the view. Called when creating the first academic year if persisted data exists.
-    /// Receives the persisted data summary; should return true to import, false to skip.
+    /// Returns true to import, false to skip.
     /// </summary>
     public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
-
 
     public AcademicYearListViewModel(
         AcademicYearRepository ayRepo,
@@ -52,7 +43,8 @@ public partial class AcademicYearListViewModel : ViewModelBase
         SectionRepository sectionRepo,
         SemesterContext semesterContext,
         LegalStartTimeRepository legalStartTimeRepo,
-        DatabaseContext db)
+        DatabaseContext db,
+        IDialogService dialog)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
@@ -60,6 +52,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
         _semesterContext = semesterContext;
         _legalStartTimeRepo = legalStartTimeRepo;
         _db = db;
+        _dialog = dialog;
         Load();
     }
 
@@ -103,7 +96,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
 
                     if (savedIndex == 0)
                     {
-                        // This is the first academic year — check if persisted data exists
                         var persistedSummary = LegalStartTimesDataStore.GetPersistedDataSummary();
                         if (!string.IsNullOrEmpty(persistedSummary) && ConfirmImportPersistedData is not null)
                         {
@@ -117,18 +109,13 @@ public partial class AcademicYearListViewModel : ViewModelBase
                     }
                     else if (savedIndex > 0)
                     {
-                        // Not the first year — ask to copy from previous
                         var prevAY = allAYs[savedIndex - 1];
                         string? fromAyId = null;
                         if (ConfirmCopyStartTimes is not null)
-                        {
                             fromAyId = await ConfirmCopyStartTimes(prevAY.Name, prevAY.Id);
-                        }
 
                         if (fromAyId is not null)
-                        {
                             _legalStartTimeRepo.CopyFromPreviousYear(saved.Id, fromAyId);
-                        }
                     }
 
                     _semesterContext.Reload(_ayRepo, _semRepo);
@@ -138,8 +125,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "AcademicYearListViewModel.Add");
-                    if (ShowError is not null)
-                        await ShowError("The save could not be completed. Please try again.");
+                    await _dialog.ShowError("The save could not be completed. Please try again.");
                 }
             });
     }
@@ -150,12 +136,11 @@ public partial class AcademicYearListViewModel : ViewModelBase
         if (SelectedAcademicYear is null) return;
 
         var sectionCount = _sectionRepo.CountByAcademicYear(SelectedAcademicYear.Id);
+        var bodyText = sectionCount > 0
+            ? $"Delete academic year \"{SelectedAcademicYear.Name}\"?\n\nWarning: this academic year has {sectionCount} section{(sectionCount == 1 ? "" : "s")} across its semesters. They will all be permanently deleted."
+            : $"Delete academic year \"{SelectedAcademicYear.Name}\" and all its semesters?";
 
-        if (ConfirmDelete is not null)
-        {
-            var confirmed = await ConfirmDelete(SelectedAcademicYear.Name, sectionCount);
-            if (!confirmed) return;
-        }
+        if (!await _dialog.Confirm(bodyText)) return;
 
         try
         {
@@ -167,8 +152,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "AcademicYearListViewModel.Delete");
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. Please try again.");
         }
     }
 

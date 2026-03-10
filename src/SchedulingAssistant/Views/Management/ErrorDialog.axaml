@@ -1,0 +1,32 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Class="SchedulingAssistant.Views.Management.ErrorDialog"
+    Title="Error"
+    d:DesignHeight="120"
+    d:DesignWidth="420"
+    MinHeight="100"
+    Width="420"
+    SizeToContent="Height"
+    CanResize="False"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d">
+
+    <StackPanel Orientation="Vertical" Margin="24" Spacing="16">
+
+        <TextBlock
+            x:Name="MessageText"
+            FontSize="13"
+            TextWrapping="Wrap" />
+
+        <Button
+            HorizontalAlignment="Right"
+            Click="OK_Click"
+            Content="OK" />
+
+    </StackPanel>
+
+</Window>

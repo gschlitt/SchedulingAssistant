@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -10,6 +11,7 @@ public partial class CourseListViewModel : ViewModelBase
 {
     private readonly CourseRepository _courseRepo;
     private readonly SubjectRepository _subjectRepo;
+    private readonly IDialogService _dialog;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
@@ -18,13 +20,11 @@ public partial class CourseListViewModel : ViewModelBase
     [ObservableProperty] private Course? _selectedCourse;
     [ObservableProperty] private CourseEditViewModel? _editVm;
 
-    /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
-    public Func<string, Task>? ShowError { get; set; }
-
-    public CourseListViewModel(CourseRepository courseRepo, SubjectRepository subjectRepo)
+    public CourseListViewModel(CourseRepository courseRepo, SubjectRepository subjectRepo, IDialogService dialog)
     {
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
+        _dialog = dialog;
 
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
         if (Subjects.Count > 0)
@@ -37,7 +37,6 @@ public partial class CourseListViewModel : ViewModelBase
 
     private void LoadCourses()
     {
-        // Load all courses (not filtered by subject anymore)
         Courses = new ObservableCollection<Course>(_courseRepo.GetAll());
         SelectedCourse = null;
     }
@@ -50,7 +49,7 @@ public partial class CourseListViewModel : ViewModelBase
             onSave: async c =>
             {
                 try { _courseRepo.Insert(c); LoadCourses(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Add"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code),
@@ -74,7 +73,7 @@ public partial class CourseListViewModel : ViewModelBase
             onSave: async c =>
             {
                 try { _courseRepo.Update(c); LoadCourses(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id),
@@ -88,8 +87,7 @@ public partial class CourseListViewModel : ViewModelBase
 
         if (_courseRepo.HasSections(SelectedCourse.Id))
         {
-            if (ShowError is not null)
-                await ShowError($"Cannot delete \"{SelectedCourse.CalendarCode}\" — it has sections scheduled in one or more semesters.");
+            await _dialog.ShowError($"Cannot delete \"{SelectedCourse.CalendarCode}\" — it has sections scheduled in one or more semesters.");
             return;
         }
 
@@ -101,8 +99,7 @@ public partial class CourseListViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "CourseListViewModel.Delete");
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. Please try again.");
         }
     }
 
@@ -116,7 +113,7 @@ public partial class CourseListViewModel : ViewModelBase
             onSave: async s =>
             {
                 try { _subjectRepo.Insert(s); LoadSubjects(); SubjectEditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.AddSubject"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.AddSubject"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => SubjectEditVm = null,
             nameExists: name => _subjectRepo.ExistsByName(name),
@@ -137,7 +134,7 @@ public partial class CourseListViewModel : ViewModelBase
             onSave: async s =>
             {
                 try { _subjectRepo.Update(s); LoadSubjects(); SubjectEditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.EditSubject"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.EditSubject"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => SubjectEditVm = null,
             nameExists: name => _subjectRepo.ExistsByName(name, excludeId: clone.Id),
@@ -151,8 +148,7 @@ public partial class CourseListViewModel : ViewModelBase
 
         if (_subjectRepo.HasCourses(SelectedSubject.Id))
         {
-            if (ShowError is not null)
-                await ShowError($"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.");
+            await _dialog.ShowError($"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.");
             return;
         }
 
@@ -164,8 +160,7 @@ public partial class CourseListViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "CourseListViewModel.DeleteSubject");
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. Please try again.");
         }
     }
 

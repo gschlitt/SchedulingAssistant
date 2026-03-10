@@ -452,20 +452,22 @@
                                     BorderThickness="0"
                                     Command="{Binding CloseFlyoutCommand}"
                                     Content="✕"
-                                    DockPanel.Dock="Right"
-                                    FontSize="14" />
+                                    DockPanel.Dock="Right" />
                                 <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontSize="15"
+                                    VerticalAlignment="Top"
+                                    FontSize="{StaticResource FontSizeLarge}"
                                     FontWeight="SemiBold"
                                     Text="{Binding FlyoutTitle}" />
                             </DockPanel>
                         </Border>
 
-                        <!--  Flyout content (scrollable)  -->
-                        <ScrollViewer Grid.Row="1">
-                            <ContentControl Margin="16" Content="{Binding FlyoutPage}" />
-                        </ScrollViewer>
+                        <!--  Flyout content  -->
+
+                        <ContentControl
+                            Grid.Row="1"
+                            Margin="0,15"
+                            Content="{Binding FlyoutPage}" />
+
 
                     </Grid>
                 </Border>

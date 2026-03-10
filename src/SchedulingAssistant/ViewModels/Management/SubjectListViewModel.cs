@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -9,17 +10,16 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class SubjectListViewModel : ViewModelBase
 {
     private readonly SubjectRepository _repo;
+    private readonly IDialogService _dialog;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
     [ObservableProperty] private SubjectEditViewModel? _editVm;
 
-    /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
-    public Func<string, Task>? ShowError { get; set; }
-
-    public SubjectListViewModel(SubjectRepository repo)
+    public SubjectListViewModel(SubjectRepository repo, IDialogService dialog)
     {
         _repo = repo;
+        _dialog = dialog;
         Load();
     }
 
@@ -37,7 +37,7 @@ public partial class SubjectListViewModel : ViewModelBase
             onSave: async s =>
             {
                 try { _repo.Insert(s); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name),
@@ -58,7 +58,7 @@ public partial class SubjectListViewModel : ViewModelBase
             onSave: async s =>
             {
                 try { _repo.Update(s); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); if (ShowError is not null) await ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name, excludeId: clone.Id),
@@ -72,8 +72,7 @@ public partial class SubjectListViewModel : ViewModelBase
 
         if (_repo.HasCourses(SelectedSubject.Id))
         {
-            if (ShowError is not null)
-                await ShowError($"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.");
+            await _dialog.ShowError($"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.");
             return;
         }
 

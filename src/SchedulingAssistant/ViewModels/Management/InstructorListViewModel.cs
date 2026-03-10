@@ -1,3 +1,4 @@
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
@@ -18,6 +19,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     private readonly SemesterRepository _semesterRepo;
     private readonly AcademicYearRepository _academicYearRepo;
     private readonly SemesterContext _semesterContext;
+    private readonly IDialogService _dialog;
 
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
     [ObservableProperty] private Instructor? _selectedInstructor;
@@ -34,12 +36,6 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(WorkloadUnitsDisplay));
     }
 
-    /// <summary>Set by the view. Called with an error message when an action is blocked.</summary>
-    public Func<string, Task>? ShowError { get; set; }
-
-    /// <summary>Set by the view. Called to show a confirmation dialog. Returns true if user confirmed.</summary>
-    public Func<string, Task<bool>>? ShowConfirmation { get; set; }
-
     public InstructorListViewModel(
         InstructorRepository repo,
         SectionPropertyRepository propertyRepo,
@@ -50,7 +46,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         SemesterRepository semesterRepo,
         AcademicYearRepository academicYearRepo,
         SemesterContext semesterContext,
-        SectionChangeNotifier changeNotifier)
+        SectionChangeNotifier changeNotifier,
+        IDialogService dialog)
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
@@ -61,10 +58,10 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _semesterRepo = semesterRepo;
         _academicYearRepo = academicYearRepo;
         _semesterContext = semesterContext;
+        _dialog = dialog;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo);
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);
-
         ShowOnlyActive = AppSettings.Load().ShowOnlyActiveInstructors;
         Load();
 
@@ -138,7 +135,6 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         var semesterId = _semesterContext.SelectedSemesterDisplay.Semester.Id;
         var instructorId = SelectedInstructor.Id;
 
-        // Load assigned sections
         var allSections = _sectionRepo.GetAll(semesterId);
         var assignedSections = new List<AssignedSectionWorkload>();
 
@@ -158,7 +154,6 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // Load releases
         var dbReleases = _releaseRepo.GetByInstructor(semesterId, instructorId);
         var releaseWorkloads = dbReleases
             .Select(r => new ReleaseWorkload { Id = r.Id, Title = r.Title, WorkloadValue = r.WorkloadValue })
@@ -182,7 +177,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             onSave: i =>
             {
                 try { _repo.Insert(i); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Add"); ShowError?.Invoke("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Add"); _ = _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials));
@@ -209,7 +204,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             onSave: i =>
             {
                 try { _repo.Update(i); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Edit"); ShowError?.Invoke("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Edit"); _ = _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials, excludeId: copy.Id));
@@ -222,28 +217,22 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
         if (_repo.HasSections(SelectedInstructor.Id))
         {
-            if (ShowError is not null)
-                await ShowError("The selected instructor has assigned workload and cannot be deleted. Consider deactivating the instructor instead");
+            await _dialog.ShowError("The selected instructor has assigned workload and cannot be deleted. Consider deactivating the instructor instead.");
             return;
         }
 
-        var confirmed = ShowConfirmation is not null
-            ? await ShowConfirmation($"Delete {SelectedInstructor.FirstName} {SelectedInstructor.LastName}?")
-            : true;
+        if (!await _dialog.Confirm($"Delete {SelectedInstructor.FirstName} {SelectedInstructor.LastName}?"))
+            return;
 
-        if (confirmed)
+        try
         {
-            try
-            {
-                _repo.Delete(SelectedInstructor.Id);
-                Load();
-            }
-            catch (Exception ex)
-            {
-                App.Logger.LogError(ex, "InstructorListViewModel.Delete");
-                if (ShowError is not null)
-                    await ShowError("The delete could not be completed. Please try again.");
-            }
+            _repo.Delete(SelectedInstructor.Id);
+            Load();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "InstructorListViewModel.Delete");
+            await _dialog.ShowError("The delete could not be completed. Please try again.");
         }
     }
 }

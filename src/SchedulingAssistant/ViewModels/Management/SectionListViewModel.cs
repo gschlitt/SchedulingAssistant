@@ -32,6 +32,7 @@ public partial class SectionListViewModel : ViewModelBase
     [ObservableProperty] private string? _lastErrorMessage;
     [ObservableProperty] private string _sortModeLabel = "";
 
+    private readonly IDialogService _dialog;
     private SectionSortMode _sortMode;
 
     /// <summary>
@@ -69,9 +70,6 @@ public partial class SectionListViewModel : ViewModelBase
     }
 
     public Section? SelectedSection => SelectedItem?.Section;
-
-    /// <summary>Set by the view code-behind to display error messages.</summary>
-    public Func<string, Task>? ShowError { get; set; }
 
     /// <summary>Fired when sections are loaded/reloaded (after successful Load()).</summary>
     public event Action? SectionsChanged;
@@ -149,7 +147,8 @@ public partial class SectionListViewModel : ViewModelBase
         SemesterContext semesterContext,
         ScheduleGridViewModel scheduleGridVm,
         SectionPropertyRepository propertyRepo,
-        SectionChangeNotifier changeNotifier)
+        SectionChangeNotifier changeNotifier,
+        IDialogService dialog)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -162,6 +161,7 @@ public partial class SectionListViewModel : ViewModelBase
         _semesterContext = semesterContext;
         _scheduleGridVm = scheduleGridVm;
         _propertyRepo = propertyRepo;
+        _dialog = dialog;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         _scheduleGridVm.PropertyChanged += OnGridVmPropertyChanged;
@@ -404,8 +404,7 @@ public partial class SectionListViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SectionListViewModel.Add");
-                    if (ShowError is not null)
-                        await ShowError("The save could not be completed. Please try again.");
+                    await _dialog.ShowError("The save could not be completed. Please try again.");
                 }
             },
             _blockPatternRepo,
@@ -504,8 +503,7 @@ public partial class SectionListViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SectionListViewModel.Edit");
-                    if (ShowError is not null)
-                        await ShowError("The save could not be completed. Please try again.");
+                    await _dialog.ShowError("The save could not be completed. Please try again.");
                 }
             },
             _blockPatternRepo,
@@ -538,9 +536,9 @@ public partial class SectionListViewModel : ViewModelBase
                 if (!_sectionRepo.ExistsBySectionCode(semester.Id, source.CourseId, candidate, excludeId: null))
                     newCode = candidate;
                 else
-                    await (ShowError?.Invoke(
+                    await _dialog.ShowError(
                         $"Could not auto-assign a section code: \"{candidate}\" already exists for this course. " +
-                        "The section code has been left blank — please enter one before saving.") ?? Task.CompletedTask);
+                        "The section code has been left blank — please enter one before saving.");
             }
         }
 
@@ -621,8 +619,7 @@ public partial class SectionListViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SectionListViewModel.Add");
-                    if (ShowError is not null)
-                        await ShowError("The save could not be completed. Please try again.");
+                    await _dialog.ShowError("The save could not be completed. Please try again.");
                 }
             },
             _blockPatternRepo,
@@ -654,8 +651,7 @@ public partial class SectionListViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "SectionListViewModel.Delete");
-            if (ShowError is not null)
-                await ShowError("The delete could not be completed. Please try again.");
+            await _dialog.ShowError("The delete could not be completed. Please try again.");
         }
     }
 

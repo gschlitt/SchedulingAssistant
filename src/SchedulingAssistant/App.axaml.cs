@@ -81,7 +81,9 @@ public partial class App : Application
 
         // Services
         services.AddSingleton<SemesterContext>();
-        services.AddTransient<AcademicUnitService>();
+        services.AddTransient<AcademicUnitService>();// Services
+        services.AddTransient<ScheduleValidationService>();
+        services.AddTransient<IDialogService, DialogService>();
 
         // Data layer — DatabaseContext receives the resolved path directly.
         services.AddSingleton<DatabaseContext>(_ => new DatabaseContext(dbPath));
@@ -122,17 +124,20 @@ public partial class App : Application
             sp.GetRequiredService<SemesterRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<SectionListViewModel>()));
-        services.AddTransient<InstructorListViewModel>(sp => new InstructorListViewModel(
-            sp.GetRequiredService<InstructorRepository>(),
-            sp.GetRequiredService<SectionPropertyRepository>(),
-            sp.GetRequiredService<SectionRepository>(),
-            sp.GetRequiredService<CourseRepository>(),
-            sp.GetRequiredService<ReleaseRepository>(),
-            sp.GetRequiredService<InstructorCommitmentRepository>(),
-            sp.GetRequiredService<SemesterRepository>(),
-            sp.GetRequiredService<AcademicYearRepository>(),
-            sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<SectionChangeNotifier>()));
+        services.AddTransient<InstructorListViewModel>(sp =>
+            new InstructorListViewModel(
+                sp.GetRequiredService<InstructorRepository>(),
+                sp.GetRequiredService<SectionPropertyRepository>(),
+                sp.GetRequiredService<SectionRepository>(),
+                sp.GetRequiredService<CourseRepository>(),
+                sp.GetRequiredService<ReleaseRepository>(),
+                sp.GetRequiredService<InstructorCommitmentRepository>(),
+                sp.GetRequiredService<SemesterRepository>(),
+                sp.GetRequiredService<AcademicYearRepository>(),
+                sp.GetRequiredService<SemesterContext>(),
+                sp.GetRequiredService<SectionChangeNotifier>(),
+                sp.GetRequiredService<IDialogService>()));
+            
         services.AddTransient<RoomListViewModel>();
         services.AddTransient<SemesterListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();
@@ -148,8 +153,10 @@ public partial class App : Application
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
 
-        // Services
-        services.AddTransient<ScheduleValidationService>();
+        
+
+        //Dialogs
+        
 
         // Data export utilities
         services.AddTransient<LegalStartTimesDataExporter>();
