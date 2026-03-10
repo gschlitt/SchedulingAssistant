@@ -295,10 +295,6 @@ public partial class MainWindow : Window
 
             ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
 
-            var sectionEditorPanel = this.FindControl<DetachablePanel>("SectionEditorPanel");
-            if (sectionEditorPanel is not null)
-                sectionEditorPanel.HeaderRightClicked += OnSectionViewHeaderRightClicked;
-
 #if DEBUG
             // Show debug menu in DEBUG mode
             var debugMenu = this.FindControl<Menu>("DebugMenu");
@@ -368,8 +364,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnSectionViewHeaderRightClicked(object? sender, PointerPressedEventArgs e)
+    private void OnSectionViewHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (!e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
+            return;
+
         var vm = Vm.SectionListVm;
         var cur = vm.CurrentSortMode;
         string Mark(SectionSortMode m) => cur == m ? "✓  " : "    ";
@@ -391,9 +390,8 @@ public partial class MainWindow : Window
             Command = vm.SortBySectionTypeCommand,
         });
 
-        var sectionEditorPanel = this.FindControl<DetachablePanel>("SectionEditorPanel");
-        if (sectionEditorPanel is not null)
-            menu.Open(sectionEditorPanel);
+        if (sender is Control ctrl)
+            menu.Open(ctrl);
         e.Handled = true;
     }
 

@@ -26,13 +26,6 @@ public partial class DetachablePanel : UserControl
     public static readonly StyledProperty<object?> HeaderContextProperty =
         AvaloniaProperty.Register<DetachablePanel, object?>(nameof(HeaderContext));
 
-    /// <summary>
-    /// Controls whether the pop-out detach button is shown in the header.
-    /// Set to <c>false</c> on panels that should not be detachable.
-    /// Defaults to <c>true</c>.
-    /// </summary>
-    public static readonly StyledProperty<bool> ShowDetachButtonProperty =
-        AvaloniaProperty.Register<DetachablePanel, bool>(nameof(ShowDetachButton), defaultValue: true);
 
     public string Header
     {
@@ -56,13 +49,6 @@ public partial class DetachablePanel : UserControl
     {
         get => GetValue(HeaderContextProperty);
         set => SetValue(HeaderContextProperty, value);
-    }
-
-    /// <inheritdoc cref="ShowDetachButtonProperty"/>
-    public bool ShowDetachButton
-    {
-        get => GetValue(ShowDetachButtonProperty);
-        set => SetValue(ShowDetachButtonProperty, value);
     }
 
     /// <summary>

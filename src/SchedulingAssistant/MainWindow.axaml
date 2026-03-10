@@ -220,95 +220,124 @@
                 <!--  Left column: Section Editor (top) + Workload (bottom)  -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
 
-                    <!--  Section Editor slot (not detachable — header controls cannot survive visual tree moves)  -->
-                    <controls:DetachablePanel
-                        x:Name="SectionEditorPanel"
+                    <!--  Section View (fixed panel — not detachable)  -->
+                    <Border
                         Grid.Row="0"
-                        ShowDetachButton="False"
-                        Header="Section View">
-                        <controls:DetachablePanel.HeaderContext>
-                            <StackPanel Orientation="Horizontal">
-                                <ToolTip.Tip>
-                                    Right-click to set sorting mode
-                                </ToolTip.Tip>
-                                <TextBlock
-                                    FontSize="{StaticResource FontSizeNormal}"
-                                    Foreground="{StaticResource TextPrimary}"
-                                    Text="Sorted by:" />
-                                <TextBlock
-                                    Margin="4,0,0,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="{StaticResource FontSizeNormal}"
-                                    Foreground="{StaticResource TextPrimary}"
-                                    Text="{Binding SectionListVm.SortModeLabel}" />
-                            </StackPanel>
-                        </controls:DetachablePanel.HeaderContext>
-                        <controls:DetachablePanel.HeaderExtra>
-                            <StackPanel
-                                DataContext="{Binding SectionListVm}"
-                                Orientation="Horizontal"
-                                Spacing="3">
-                                <Button
-                                    MinWidth="0"
-                                    MinHeight="0"
-                                    Padding="4,1"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Command="{Binding ExpandAllCommand}"
-                                    Content="▼"
-                                    FontSize="9"
-                                    ToolTip.Tip="Expand all cards" />
-                                <Button
-                                    MinWidth="0"
-                                    MinHeight="0"
-                                    Padding="4,1"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Command="{Binding CollapseAllCommand}"
-                                    Content="▶"
-                                    FontSize="9"
-                                    ToolTip.Tip="Collapse all cards" />
-                                <Border
-                                    Width="1"
-                                    Margin="2,2"
-                                    Background="{StaticResource SeparatorLine}" />
-                                <Button
-                                    MinWidth="0"
-                                    MinHeight="0"
-                                    Padding="5,1"
-                                    Command="{Binding AddCommand}"
-                                    Content="Add"
-                                    FontSize="10" />
-                                <Button
-                                    MinWidth="0"
-                                    MinHeight="0"
-                                    Padding="5,1"
-                                    Command="{Binding EditCommand}"
-                                    Content="Edit"
-                                    FontSize="10"
-                                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <Button
-                                    MinWidth="0"
-                                    MinHeight="0"
-                                    Padding="5,1"
-                                    Command="{Binding CopyCommand}"
-                                    Content="Copy"
-                                    FontSize="10"
-                                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <Button
-                                    MinWidth="0"
-                                    MinHeight="0"
-                                    Padding="5,1"
-                                    Command="{Binding DeleteCommand}"
-                                    Content="Delete"
-                                    FontSize="10"
-                                    IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                            </StackPanel>
-                        </controls:DetachablePanel.HeaderExtra>
-                        <controls:DetachablePanel.PanelContent>
-                            <views:SectionListView DataContext="{Binding SectionListVm}" />
-                        </controls:DetachablePanel.PanelContent>
-                    </controls:DetachablePanel>
+                        BorderBrush="{StaticResource ChromeBorder}"
+                        BorderThickness="1">
+                        <Grid RowDefinitions="Auto,*">
+
+                            <!--  Header  -->
+                            <Border
+                                Grid.Row="0"
+                                Background="{StaticResource ChromeBackground}"
+                                BorderBrush="{StaticResource ChromeBorder}"
+                                BorderThickness="0,0,0,1"
+                                Padding="8,4"
+                                PointerPressed="OnSectionViewHeaderPointerPressed">
+                                <Grid RowDefinitions="Auto,Auto">
+
+                                    <!--  Title + sort-mode context (right-click to change sort)  -->
+                                    <DockPanel Grid.Row="0">
+                                        <TextBlock
+                                            DockPanel.Dock="Left"
+                                            Margin="0,0,12,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="{StaticResource FontSizeLarge}"
+                                            FontWeight="SemiBold"
+                                            Text="Section View" />
+                                        <StackPanel
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal">
+                                            <ToolTip.Tip>Right-click to set sorting mode</ToolTip.Tip>
+                                            <TextBlock
+                                                FontSize="{StaticResource FontSizeNormal}"
+                                                Foreground="{StaticResource TextPrimary}"
+                                                Text="Sorted by:" />
+                                            <TextBlock
+                                                Margin="4,0,0,0"
+                                                VerticalAlignment="Center"
+                                                FontSize="{StaticResource FontSizeNormal}"
+                                                Foreground="{StaticResource TextPrimary}"
+                                                Text="{Binding SectionListVm.SortModeLabel}" />
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <!--  Action buttons  -->
+                                    <StackPanel
+                                        Grid.Row="1"
+                                        Margin="0,4,0,0"
+                                        DataContext="{Binding SectionListVm}"
+                                        Orientation="Horizontal"
+                                        Spacing="3"
+                                        VerticalAlignment="Top">
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="4,1"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Command="{Binding ExpandAllCommand}"
+                                            Content="▼"
+                                            FontSize="9"
+                                            ToolTip.Tip="Expand all cards" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="4,1"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Command="{Binding CollapseAllCommand}"
+                                            Content="▶"
+                                            FontSize="9"
+                                            ToolTip.Tip="Collapse all cards" />
+                                        <Border
+                                            Width="1"
+                                            Margin="2,2"
+                                            Background="{StaticResource SeparatorLine}" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding AddCommand}"
+                                            Content="Add"
+                                            FontSize="10" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding EditCommand}"
+                                            Content="Edit"
+                                            FontSize="10"
+                                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding CopyCommand}"
+                                            Content="Copy"
+                                            FontSize="10"
+                                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding DeleteCommand}"
+                                            Content="Delete"
+                                            FontSize="10"
+                                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    </StackPanel>
+
+                                </Grid>
+                            </Border>
+
+                            <!--  Content  -->
+                            <views:SectionListView
+                                Grid.Row="1"
+                                DataContext="{Binding SectionListVm}" />
+
+                        </Grid>
+                    </Border>
 
                     <GridSplitter
                         Grid.Row="1"
