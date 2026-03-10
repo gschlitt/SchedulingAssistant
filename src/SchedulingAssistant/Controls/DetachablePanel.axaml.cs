@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using CommunityToolkit.Mvvm.Input;
 using System;
+using System.Windows.Input;
 
 namespace SchedulingAssistant.Controls;
 
@@ -55,20 +57,28 @@ public partial class DetachablePanel : UserControl
     public event EventHandler? DetachRequested;
 
     /// <summary>
-    /// Raised when the user right-clicks on the header.
+    /// Raised when the user right-clicks on the header bar.
     /// The sender is this DetachablePanel instance.
+    /// Consumers (e.g. MainWindow) subscribe to this to open context menus.
     /// </summary>
     public event EventHandler<PointerPressedEventArgs>? HeaderRightClicked;
+
+    /// <summary>
+    /// Internal command bound to RightClickCommandBehavior on HeaderBorder in the AXAML.
+    /// When the header receives a right-click, the behavior invokes this command, which
+    /// fires the public HeaderRightClicked event. This avoids a FindControl call in the
+    /// constructor and keeps the pointer-event wiring declarative in AXAML.
+    /// The command receives the PointerPressedEventArgs so callers can inspect position.
+    /// </summary>
+    public ICommand InternalHeaderRightClickCommand { get; }
 
     public DetachablePanel()
     {
         InitializeComponent();
-        var headerBorder = this.FindControl<Border>("HeaderBorder")!;
-        headerBorder.PointerPressed += (_, e) =>
-        {
-            if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
-                HeaderRightClicked?.Invoke(this, e);
-        };
+
+        // Wire the internal command that bridges the AXAML behavior to the public event.
+        InternalHeaderRightClickCommand =
+            new RelayCommand<PointerPressedEventArgs>(e => HeaderRightClicked?.Invoke(this, e!));
     }
 
     private void OnDetachClicked(object? sender, RoutedEventArgs e)

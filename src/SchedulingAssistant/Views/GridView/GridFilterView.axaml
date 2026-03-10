@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
     xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     x:Name="FilterRoot"
     x:CompileBindings="False"
     x:DataType="vm:GridFilterViewModel">
@@ -455,11 +456,16 @@
                                     BorderThickness="1"
                                     CornerRadius="3">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <!--  SelectionCommandBehavior replaces OnInstructorOverlayChanged code-behind handler:
+                                              it extracts the selected item's Id, clears the selection, closes the toggle,
+                                              and executes SetInstructorOverlayCommand — all without code-behind.  -->
                                         <ListBox
                                             x:Name="InstructorOverlayListBox"
                                             Classes="FilterList"
                                             ItemsSource="{Binding NamedInstructors}"
-                                            SelectionMode="Single">
+                                            SelectionMode="Single"
+                                            b:SelectionCommandBehavior.Command="{Binding SetInstructorOverlayCommand}"
+                                            b:SelectionCommandBehavior.DismissToggle="{Binding #InstructorOverlayToggle}">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel
@@ -507,11 +513,14 @@
                                     BorderThickness="1"
                                     CornerRadius="3">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <!--  SelectionCommandBehavior replaces OnRoomOverlayChanged code-behind handler.  -->
                                         <ListBox
                                             x:Name="RoomOverlayListBox"
                                             Classes="FilterList"
                                             ItemsSource="{Binding NamedRooms}"
-                                            SelectionMode="Single">
+                                            SelectionMode="Single"
+                                            b:SelectionCommandBehavior.Command="{Binding SetRoomOverlayCommand}"
+                                            b:SelectionCommandBehavior.DismissToggle="{Binding #RoomOverlayToggle}">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel
@@ -559,11 +568,14 @@
                                     BorderThickness="1"
                                     CornerRadius="3">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <!--  SelectionCommandBehavior replaces OnTagOverlayChanged code-behind handler.  -->
                                         <ListBox
                                             x:Name="TagOverlayListBox"
                                             Classes="FilterList"
                                             ItemsSource="{Binding Tags}"
-                                            SelectionMode="Single">
+                                            SelectionMode="Single"
+                                            b:SelectionCommandBehavior.Command="{Binding SetTagOverlayCommand}"
+                                            b:SelectionCommandBehavior.DismissToggle="{Binding #TagOverlayToggle}">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel

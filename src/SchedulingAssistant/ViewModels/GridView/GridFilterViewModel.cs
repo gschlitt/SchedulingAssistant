@@ -85,6 +85,14 @@ public partial class GridFilterViewModel : ViewModelBase
     /// <summary>Fired whenever any filter selection changes. Wired to ScheduleGridViewModel.Reload.</summary>
     public event Action? FilterChanged;
 
+    /// <summary>
+    /// Fired whenever the filter header display state changes — i.e. when any item's
+    /// IsSelected toggles, when overlay state changes, or when PopulateOptions rebuilds
+    /// the option lists. The view subscribes to this to update header labels and colours
+    /// without needing to watch all individual collection items itself.
+    /// </summary>
+    public event Action? HeadersChanged;
+
     // ── Overlay commands ──────────────────────────────────────────────────────
 
     [RelayCommand]
@@ -106,6 +114,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshOverlayActiveStates();
         RefreshDerived();
         FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
     }
 
     [RelayCommand]
@@ -126,6 +135,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshOverlayActiveStates();
         RefreshDerived();
         FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
     }
 
     [RelayCommand]
@@ -146,6 +156,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshOverlayActiveStates();
         RefreshDerived();
         FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
     }
 
     [RelayCommand]
@@ -156,6 +167,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshOverlayActiveStates();
         RefreshDerived();
         FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
     }
 
     private void ClearOverlayCore()
@@ -288,6 +300,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshDerived();
         RefreshOverlaySummary();
         RefreshOverlayActiveStates();  // Restore IsOverlayActive flags after collection rebuild
+        HeadersChanged?.Invoke();      // Notify view to redraw all filter and overlay headers
     }
 
     /// <summary>
@@ -384,6 +397,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshOverlaySummary();
         RefreshOverlayActiveStates();
         FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
     }
 
     // ── Change tracking ───────────────────────────────────────────────────────
@@ -398,6 +412,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshRoomMutualExclusion();
         RefreshDerived();
         FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
     }
 
     /// <summary>

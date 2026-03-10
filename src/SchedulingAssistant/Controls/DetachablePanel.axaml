@@ -1,16 +1,20 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="using:SchedulingAssistant.Behaviors"
              x:Class="SchedulingAssistant.Controls.DetachablePanel"
              x:Name="Root">
 
     <Border BorderBrush="{StaticResource ChromeBorder}" BorderThickness="1">
         <Grid RowDefinitions="Auto,*">
 
-            <!-- Panel header bar (two rows: title + extra controls) -->
+            <!-- Panel header bar (two rows: title + extra controls).
+                 RightClickCommandBehavior fires InternalHeaderRightClickCommand on right-click,
+                 which in turn raises the public HeaderRightClicked event for consumers. -->
             <Border Grid.Row="0" x:Name="HeaderBorder"
                     Background="{StaticResource ChromeBackground}"
                     BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1"
-                    Padding="8,4">
+                    Padding="8,4"
+                    b:RightClickCommandBehavior.Command="{Binding #Root.InternalHeaderRightClickCommand}">
                 <Grid RowDefinitions="Auto,Auto">
                     <!-- Row 0: Title row with detach button -->
                     <DockPanel Grid.Row="0">

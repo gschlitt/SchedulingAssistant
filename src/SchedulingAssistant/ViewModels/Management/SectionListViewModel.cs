@@ -428,6 +428,16 @@ public partial class SectionListViewModel : ViewModelBase
         OpenEdit(CloneSection(SelectedItem.Section), isNew: false, listItem: SelectedItem);
     }
 
+    /// <summary>
+    /// Relay command wired by LostFocusForwardBehavior in the AXAML. When the Section Code
+    /// TextBox (which lives inside a DataTemplate) loses focus, the behavior invokes this
+    /// command, which delegates to the active editor's CommitSectionCode(). This validates
+    /// the section code for uniqueness and records the validated snapshot that unlocks the
+    /// rest of the form (see SectionEditViewModel and the step-gate pattern in CLAUDE.md).
+    /// </summary>
+    [RelayCommand]
+    private void CommitEditSectionCode() => EditVm?.CommitSectionCode();
+
     /// <summary>Called from the view when a list item is double-tapped.</summary>
     public void EditItem(SectionListItemViewModel item)
     {

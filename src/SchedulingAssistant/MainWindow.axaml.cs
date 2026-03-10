@@ -35,15 +35,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        // Escape-to-close-flyout is handled declaratively by DismissBehaviors.EscapeCommand
+        // on the Window element in AXAML. The KeyDown handler below is retained only for
+        // the DEBUG-only error simulation hotkeys.
+#if DEBUG
         KeyDown += (_, e) =>
         {
-            if (e.Key == Key.Escape && DataContext is MainWindowViewModel vm && vm.FlyoutPage is not null)
-            {
-                vm.FlyoutPage = null;
-                e.Handled = true;
-            }
-
-#if DEBUG
             // DEV-ONLY hotkeys for testing error banners. Remove before shipping.
             // Ctrl+Shift+E → simulate schedule grid error
             // Ctrl+Shift+W → simulate section list error
@@ -61,8 +58,8 @@ public partial class MainWindow : Window
                     e.Handled = true;
                 }
             }
-#endif
         };
+#endif
     }
 
     protected override async void OnOpened(EventArgs e)
@@ -284,7 +281,7 @@ public partial class MainWindow : Window
 
     private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;
 
-    // ── Left-column auto-sizing ──────────────────────────────────────────────
+    // ── Data-context wiring ──────────────────────────────────────────────────
 
     protected override void OnDataContextChanged(EventArgs e)
     {
@@ -296,7 +293,6 @@ public partial class MainWindow : Window
             vm.ScheduleGridVm.PropertyChanged += OnScheduleGridVmPropertyChanged;
             vm.PropertyChanged += OnMainWindowVmPropertyChanged;
             vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
-            UpdateLeftColumnWidth(vm.SectionListVm.IsEditing);
 
             ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
 
@@ -315,9 +311,9 @@ public partial class MainWindow : Window
 
     private void OnSectionListVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SectionListViewModel.IsEditing))
-            UpdateLeftColumnWidth(Vm.SectionListVm.IsEditing);
-        else if (e.PropertyName == nameof(SectionListViewModel.SelectedItem))
+        // IsEditing: column width toggle is now handled declaratively by
+        // ConditionalColumnWidthBehavior on ThreePanelGrid in AXAML.
+        if (e.PropertyName == nameof(SectionListViewModel.SelectedItem))
             Vm.WorkloadPanelVm.SelectedSectionId = Vm.SectionListVm.SelectedItem?.Section.Id;
     }
 
@@ -400,23 +396,6 @@ public partial class MainWindow : Window
         if (sectionEditorPanel is not null)
             menu.Open(sectionEditorPanel);
         e.Handled = true;
-    }
-
-    private void UpdateLeftColumnWidth(bool isEditing)
-    {
-        var grid = this.FindControl<Grid>("ThreePanelGrid");
-        if (grid is null) return;
-        // Collapsed: 370 px (summary cards); Expanded: 650 px (editor form)
-        grid.ColumnDefinitions[0].Width = isEditing
-            ? new GridLength(650, GridUnitType.Pixel)
-            : new GridLength(370, GridUnitType.Pixel);
-    }
-
-    // ── Flyout backdrop ─────────────────────────────────────────────────────
-
-    private void OnFlyoutBackdropPressed(object? sender, PointerPressedEventArgs e)
-    {
-        Vm.FlyoutPage = null;
     }
 
     // ── Detach handlers ─────────────────────────────────────────────────────

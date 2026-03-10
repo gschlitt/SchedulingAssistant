@@ -2,9 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
              xmlns:models="using:SchedulingAssistant.Models"
+             xmlns:b="using:SchedulingAssistant.Behaviors"
              x:Class="SchedulingAssistant.Views.Management.SectionListView"
              x:DataType="vm:SectionListViewModel"
-             x:CompileBindings="False">
+             x:CompileBindings="False"
+             b:LostFocusForwardBehavior.TargetName="SectionCodeBox"
+             b:LostFocusForwardBehavior.Command="{Binding CommitEditSectionCodeCommand}">
 
     <UserControl.Styles>
         <!-- Compact popup trigger button: looks like a bordered label, toggles popup open/closed -->
@@ -449,12 +452,17 @@
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel HorizontalAlignment="Stretch">
 
+            <!--  DoubleTapCommandBehavior replaces the OnListBoxDoubleTapped code-behind handler.
+                  Double-tapping an item sets it as SelectedItem (Avalonia's single-select model
+                  does this on pointer-down) and then invokes EditCommand, which opens the inline
+                  editor for the currently selected item.  -->
             <ListBox ItemsSource="{Binding SectionItems}"
                      SelectedItem="{Binding SelectedItem}"
                      x:Name="SectionListBox"
                      SelectionMode="Single"
                      Background="Transparent"
-                     BorderThickness="0">
+                     BorderThickness="0"
+                     b:DoubleTapCommandBehavior.Command="{Binding EditCommand}">
                 <ListBox.ItemContainerTheme>
                     <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                         <Setter Property="Padding" Value="0" />

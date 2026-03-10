@@ -18,25 +18,15 @@ Fontsize seems hardcoded in a number of places, should be able to adjust from ap
 
 Detaching SectionView obscures controls at top
 
-
 All Filter and Overlay menus should display all the choices available, not just those reflecting current sections.
 
 
+
+
+
+Agenda.
+
 "Hybrid Course Scheduling" (odd, even weeks, more infrequent)
-
-
-Too much repetition! ShowErrorAsync occurs multiple times in different code behinds. All kinds of other dialogs in codebehinds. Make a general one.
-As does confirmation dialogs. Make one, and put it in a service.
-
-Create generic DialogService that handles all dialogs (errors, confirmations, pickers) so your ViewModels never reference UI directly.
-
-
-Why private void UpdateColumnWidth() in SectionListView code behind? Can't the .axaml take care of that?
-
-In DatabaseLocationDialog, why all the codebehind? Isn't that ViewMOdel?
-
-Likewise GridFilterView codebehind that seems more like logic than visual
-
 
 
 What happens if we modify legal start times while a semester is in use?
@@ -49,8 +39,6 @@ multiple instructors should shown on week view
 Show notes in closed card?
 
 User can add fields to the right?
-
-
 
 Multiple semesters! With up to 3 semester open at a time, each day splits into 3 columns (color framing) in which
 the usual strategy for staging sections happens.

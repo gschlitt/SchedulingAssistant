@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using SchedulingAssistant.ViewModels.GridView;
-using System.Collections.Specialized;
 using System.ComponentModel;
 
 namespace SchedulingAssistant.Views.GridView;
@@ -16,10 +15,9 @@ public partial class GridFilterView : UserControl
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
             ? b : Brushes.Transparent;
 
-    private static IBrush ActiveFilterHeaderBrush   => Res("FilterActiveHeader");
-    private static IBrush InactiveFilterHeaderBrush => Res("FilterInactiveHeader");
-
-    private static IBrush ActiveOverlayHeaderBrush => Res("OverlayActiveHeader");
+    private static IBrush ActiveFilterHeaderBrush    => Res("FilterActiveHeader");
+    private static IBrush InactiveFilterHeaderBrush  => Res("FilterInactiveHeader");
+    private static IBrush ActiveOverlayHeaderBrush   => Res("OverlayActiveHeader");
     private static IBrush InactiveOverlayHeaderBrush => Res("OverlayInactiveHeader");
 
     public GridFilterView()
@@ -30,107 +28,30 @@ public partial class GridFilterView : UserControl
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
+        // Unsubscribe from the previous VM's events to prevent memory leaks.
         if (_vm is not null)
+        {
+            _vm.HeadersChanged -= UpdateAllHeaders;
             _vm.PropertyChanged -= OnVmPropertyChanged;
+        }
 
         _vm = DataContext as GridFilterViewModel;
 
         if (_vm is not null)
         {
-            _vm.PropertyChanged += OnVmPropertyChanged;
+            // HeadersChanged fires whenever any filter item's IsSelected toggles, any
+            // overlay state changes, or PopulateOptions rebuilds the option lists. A
+            // single subscription here replaces the previous 8 SubscribeCollection calls
+            // plus the OnCollectionChanged / OnItemChanged per-item subscription pattern.
+            _vm.HeadersChanged += UpdateAllHeaders;
 
-            // Subscribe to collection changes for each dimension to update headers live.
-            SubscribeCollection(_vm.Instructors);
-            SubscribeCollection(_vm.Rooms);
-            SubscribeCollection(_vm.Subjects);
-            SubscribeCollection(_vm.Campuses);
-            SubscribeCollection(_vm.SectionTypes);
-            SubscribeCollection(_vm.Tags);
-            SubscribeCollection(_vm.MeetingTypes);
-            SubscribeCollection(_vm.Levels);
+            // Also watch specific VM properties for finer overlay updates. HeadersChanged
+            // already covers these, but the PropertyChanged subscription is retained for
+            // any future code that changes overlay state outside of the commands.
+            _vm.PropertyChanged += OnVmPropertyChanged;
         }
 
         UpdateAllHeaders();
-        WireUpOverlayListBoxes();
-    }
-
-    private void WireUpOverlayListBoxes()
-    {
-        if (this.FindControl<ListBox>("InstructorOverlayListBox") is { } instrLb)
-            instrLb.SelectionChanged += OnInstructorOverlayChanged;
-        if (this.FindControl<ListBox>("RoomOverlayListBox") is { } roomLb)
-            roomLb.SelectionChanged += OnRoomOverlayChanged;
-        if (this.FindControl<ListBox>("TagOverlayListBox") is { } tagLb)
-            tagLb.SelectionChanged += OnTagOverlayChanged;
-    }
-
-    private void OnInstructorOverlayChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (e.AddedItems.Count == 0) return;
-
-        var selectedId = (e.AddedItems[0] is FilterItemViewModel item) ? item.Id : null;
-
-        // Clear selection BEFORE executing the command to prevent Avalonia's selection
-        // model from crashing when the Instructors collection is rebuilt (list.Clear()).
-        if (sender is ListBox lb)
-            lb.SelectedItem = null;
-        InstructorOverlayToggle.IsChecked = false;
-
-        if (_vm?.SetInstructorOverlayCommand.CanExecute(selectedId) == true)
-            _vm.SetInstructorOverlayCommand.Execute(selectedId);
-    }
-
-    private void OnRoomOverlayChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (e.AddedItems.Count == 0) return;
-
-        var selectedId = (e.AddedItems[0] is FilterItemViewModel item) ? item.Id : null;
-
-        if (sender is ListBox lb)
-            lb.SelectedItem = null;
-        RoomOverlayToggle.IsChecked = false;
-
-        if (_vm?.SetRoomOverlayCommand.CanExecute(selectedId) == true)
-            _vm.SetRoomOverlayCommand.Execute(selectedId);
-    }
-
-    private void OnTagOverlayChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (e.AddedItems.Count == 0) return;
-
-        var selectedId = (e.AddedItems[0] is FilterItemViewModel item) ? item.Id : null;
-
-        if (sender is ListBox lb)
-            lb.SelectedItem = null;
-        TagOverlayToggle.IsChecked = false;
-
-        if (_vm?.SetTagOverlayCommand.CanExecute(selectedId) == true)
-            _vm.SetTagOverlayCommand.Execute(selectedId);
-    }
-
-    private void SubscribeCollection(System.Collections.ObjectModel.ObservableCollection<FilterItemViewModel> col)
-    {
-        col.CollectionChanged += OnCollectionChanged;
-        foreach (var item in col)
-            item.PropertyChanged += OnItemChanged;
-    }
-
-    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.NewItems is not null)
-            foreach (FilterItemViewModel item in e.NewItems)
-                item.PropertyChanged += OnItemChanged;
-        if (e.OldItems is not null)
-            foreach (FilterItemViewModel item in e.OldItems)
-                item.PropertyChanged -= OnItemChanged;
-
-        UpdateAllHeaders();
-    }
-
-    private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(FilterItemViewModel.IsSelected))
-            UpdateAllHeaders();
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -139,6 +60,11 @@ public partial class GridFilterView : UserControl
             e.PropertyName == nameof(GridFilterViewModel.SelectedOverlayId))
             UpdateOverlayHeaders();
     }
+
+    // ── Header update logic ──────────────────────────────────────────────────
+    // These methods are purely view logic — they set Content, Foreground, and
+    // FontWeight on named ToggleButtons based on the current VM filter state.
+    // They belong here (not in the VM) because they reference named AXAML controls.
 
     private void UpdateAllHeaders()
     {
@@ -162,6 +88,38 @@ public partial class GridFilterView : UserControl
         SetOverlayHeader(TagOverlayToggle,        TagOverlayPanel,        "Tag",        "Tag",        _vm.Tags,        _vm);
     }
 
+    /// <summary>
+    /// Updates a filter dimension's header ToggleButton to show how many items are
+    /// selected, with active colouring when any are.
+    /// </summary>
+    /// <param name="toggle">The ToggleButton whose label, colour, and weight to update.</param>
+    /// <param name="panel">The Panel containing the toggle (controls IsVisible).</param>
+    /// <param name="dimensionName">Human-readable label for this filter dimension.</param>
+    /// <param name="items">The filter items for this dimension.</param>
+    private static void SetHeader(
+        ToggleButton toggle,
+        Panel panel,
+        string dimensionName,
+        IEnumerable<FilterItemViewModel> items)
+    {
+        panel.IsVisible = true;
+        var list = items.ToList();
+        int selected = list.Count(i => i.IsSelected);
+        toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▾" : $"{dimensionName} ▾";
+        toggle.Foreground = selected > 0 ? ActiveFilterHeaderBrush : InactiveFilterHeaderBrush;
+        toggle.FontWeight = selected > 0 ? FontWeight.SemiBold : FontWeight.Normal;
+    }
+
+    /// <summary>
+    /// Updates an overlay dimension's header ToggleButton. Shows the currently active
+    /// overlay name when one is selected; hides the panel when no named items exist.
+    /// </summary>
+    /// <param name="toggle">The ToggleButton to update.</param>
+    /// <param name="panel">The Panel containing the toggle (controls IsVisible).</param>
+    /// <param name="inactiveLabel">Label displayed when no overlay is active.</param>
+    /// <param name="overlayTypeName">The overlay type string stored in the VM (e.g. "Instructor").</param>
+    /// <param name="items">Items in this overlay dimension.</param>
+    /// <param name="vm">The filter VM (provides overlay state).</param>
     private void SetOverlayHeader(
         ToggleButton toggle,
         Panel panel,
@@ -171,7 +129,8 @@ public partial class GridFilterView : UserControl
         GridFilterViewModel vm)
     {
         var list = items.ToList();
-        // Only show overlay panel when there are actual named items (sentinels don't count)
+
+        // Only show the overlay panel when there are actual named items (sentinels don't count).
         int namedCount = list.Count(i => i.Id != GridFilterViewModel.NotStaffedId
                                       && i.Id != GridFilterViewModel.UnroomedId);
         if (namedCount == 0)
@@ -196,20 +155,5 @@ public partial class GridFilterView : UserControl
             toggle.Foreground = InactiveOverlayHeaderBrush;
             toggle.FontWeight = FontWeight.Normal;
         }
-    }
-
-    //the filter headers, specifically
-    private static void SetHeader(
-        ToggleButton toggle,
-        Panel panel,
-        string dimensionName,
-        IEnumerable<FilterItemViewModel> items)
-    {
-        panel.IsVisible = true;
-        var list = items.ToList();
-        int selected = list.Count(i => i.IsSelected);
-        toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▾" : $"{dimensionName} ▾";
-        toggle.Foreground = selected > 0 ? ActiveFilterHeaderBrush : InactiveFilterHeaderBrush;
-        toggle.FontWeight = selected > 0 ? FontWeight.SemiBold : FontWeight.Normal;
     }
 }

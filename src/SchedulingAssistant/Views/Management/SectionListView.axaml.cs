@@ -1,7 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.ComponentModel;
@@ -17,29 +15,20 @@ public partial class SectionListView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
 
-        var listBox = this.FindControl<ListBox>("SectionListBox")!;
-        listBox.DoubleTapped += OnListBoxDoubleTapped;
-
-        // The Section Code TextBox lives inside a DataTemplate, so we can't attach to it
-        // directly. Instead we listen for the routed LostFocus event bubbling up from any
-        // child named "SectionCodeBox" and forward it to the VM's CommitSectionCode().
-        // CommitSectionCode validates uniqueness and, if clean, records the validated
-        // course+code snapshot that unlocks the rest of the form (see SectionEditViewModel).
-        AddHandler(LostFocusEvent, OnAnyLostFocus, RoutingStrategies.Bubble);
-
-        // Measure content width after layout completes
+        // Measure content width after the control is first attached to the visual tree,
+        // so the left panel column is sized to fit the section cards at startup.
         AttachedToVisualTree += (_, _) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
+
+        // Note: DoubleTapped (open inline editor) and LostFocus forwarding (commit section
+        // code) are handled declaratively via DoubleTapCommandBehavior and
+        // LostFocusForwardBehavior attached to the AXAML elements. No code-behind needed.
     }
 
-    // Triggered whenever any child TextBox loses focus; we filter on the control name.
-    private void OnAnyLostFocus(object? sender, RoutedEventArgs e)
+    private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (e.Source is TextBox { Name: "SectionCodeBox" })
-            _vm?.EditVm?.CommitSectionCode();
-    }
+        if (_vm is not null)
+            _vm.PropertyChanged -= OnViewModelPropertyChanged;
 
-    private void OnDataContextChanged(object? sender, System.EventArgs e)
-    {
         _vm = DataContext as SectionListViewModel;
 
         if (_vm is not null)
@@ -48,52 +37,45 @@ public partial class SectionListView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Re-measure the content width when the section list changes, in case new cards
+        // are wider than the current column. Deferred to the next layout pass.
         if (e.PropertyName == nameof(SectionListViewModel.SectionItems))
-        {
-            // Defer measurement until after layout is updated
             Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
-        }
     }
 
+    /// <summary>
+    /// Measures the desired (unconstrained) width of the section list's content stack,
+    /// then widens ThreePanelGrid's left column if the content would be clipped.
+    /// Only runs when the editor is not open (ConditionalColumnWidthBehavior owns the
+    /// column width while editing). A 20px hysteresis threshold avoids constant small
+    /// adjustments as items load.
+    /// </summary>
     private void UpdateColumnWidth()
     {
-        // Measure the content's desired width
         var scrollViewer = this.FindControl<ScrollViewer>("ListScrollViewer");
         var stackPanel = scrollViewer?.Content as StackPanel;
 
         if (stackPanel is null) return;
 
-        // Force layout pass to get accurate measurements
-        stackPanel.Measure(new Avalonia.Size(double.PositiveInfinity, double.PositiveInfinity));
+        // Force an unconstrained layout pass to get the content's natural desired width.
+        stackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var desiredWidth = stackPanel.DesiredSize.Width;
 
-        // Add padding for margins and scrollbar space (safety margin)
+        // Add a safety margin for margins and the scrollbar track.
         var requiredWidth = Math.Ceiling(desiredWidth) + 12;
 
-        // Find the MainWindow and ThreePanelGrid
         var mainWindow = TopLevel.GetTopLevel(this) as MainWindow;
         if (mainWindow is null) return;
 
         var threePanelGrid = mainWindow.FindControl<Grid>("ThreePanelGrid");
         if (threePanelGrid is null) return;
 
-        // Only update if not editing (when editing, it's already 500px)
-        var isEditing = _vm?.IsEditing ?? false;
-        if (isEditing) return;
+        // Do not adjust while the editor is open; ConditionalColumnWidthBehavior
+        // owns the column width in that state.
+        if (_vm?.IsEditing ?? false) return;
 
         var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
-
-        // Only update if the required width is significantly larger than current
-        // (use a threshold of 20px to avoid constant small adjustments)
         if (requiredWidth > currentWidth + 20)
-        {
             threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
-        }
-    }
-
-    private void OnListBoxDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (_vm is not null && _vm.SelectedItem is { } item)
-            _vm.EditItem(item);
     }
 }

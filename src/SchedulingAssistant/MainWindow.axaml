@@ -7,13 +7,15 @@
     xmlns:panelViews="using:SchedulingAssistant.Views"
     xmlns:views="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     x:Name="RootWindow"
     Title="Scheduling Assistant"
     Width="1400"
     Height="800"
     MinHeight="600"
     x:CompileBindings="False"
-    x:DataType="vm:MainWindowViewModel">
+    x:DataType="vm:MainWindowViewModel"
+    b:DismissBehaviors.EscapeCommand="{Binding CloseFlyoutCommand}">
 
     <Grid RowDefinitions="Auto,*">
 
@@ -205,8 +207,15 @@
         <!--  Main body: layered panel (permanent grid beneath, flyout overlay above)  -->
         <Panel Grid.Row="1">
 
-            <!--  Layer 0: permanent three-panel grid  -->
-            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="360,4,*">
+            <!--  Layer 0: permanent three-panel grid.
+                  ConditionalColumnWidthBehavior toggles column 0 between 370px (collapsed)
+                  and 650px (editor open) by watching SectionListVm.IsEditing. This replaces
+                  the UpdateLeftColumnWidth code-behind method and its PropertyChanged subscription. -->
+            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="370,4,*"
+                  b:ConditionalColumnWidthBehavior.ColumnIndex="0"
+                  b:ConditionalColumnWidthBehavior.Condition="{Binding SectionListVm.IsEditing}"
+                  b:ConditionalColumnWidthBehavior.TrueWidth="650"
+                  b:ConditionalColumnWidthBehavior.FalseWidth="370">
 
                 <!--  Left column: Section Editor (top) + Workload (bottom)  -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
@@ -424,8 +433,10 @@
             <!--  Layer 1: management flyout overlay  -->
             <Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
 
-                <!--  Dim backdrop — clicking it closes the flyout  -->
-                <Border Background="{StaticResource FlyoutScrim}" PointerPressed="OnFlyoutBackdropPressed" />
+                <!--  Dim backdrop — clicking it closes the flyout.
+                      DismissBehaviors.ClickCommand replaces the OnFlyoutBackdropPressed code-behind handler. -->
+                <Border Background="{StaticResource FlyoutScrim}"
+                        b:DismissBehaviors.ClickCommand="{Binding CloseFlyoutCommand}" />
 
                 <!--  Flyout panel (drops from top)  -->
                 <Border
