@@ -69,8 +69,7 @@
     </UserControl.Styles>
 
     <Border
-        MinHeight="50"
-        Padding="4,4"
+        Padding="4,2"
         Background="{StaticResource FilterBarBackground}"
         BorderBrush="{StaticResource ChromeBorder}"
         BorderThickness="0,0,0,1">
@@ -96,15 +95,10 @@
                     IsEnabled="{Binding IsActive}" />
             </StackPanel>
 
-            <!--  Left side: horizontal row of filter dimension buttons + popups and overlay buttons and popups  -->
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Stretch">
-                <StackPanel
-                    VerticalAlignment="Top"
-                    Orientation="Horizontal"
-                    Spacing="1">
+            <!--  Left side: filter and overlay dimension buttons; wraps to a second line when the window is narrow  -->
+            <WrapPanel>
 
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel
+                    <StackPanel
                             Margin="2,0,6,0"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
@@ -414,8 +408,6 @@
                                 </Border>
                             </Popup>
                         </Panel>
-                    </StackPanel>
-
 
                     <!--  Separator between filter and overlay panels  -->
                     <Border
@@ -424,8 +416,7 @@
                         Background="{StaticResource SeparatorLine}" />
 
                     <!--  Overlay panels  -->
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel
+                    <StackPanel
                             Margin="2,0,6,0"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
@@ -602,10 +593,7 @@
                                 </Border>
                             </Popup>
                         </Panel>
-                    </StackPanel>
-
-                </StackPanel>
-            </ScrollViewer>
+            </WrapPanel>
 
         </DockPanel>
     </Border>
