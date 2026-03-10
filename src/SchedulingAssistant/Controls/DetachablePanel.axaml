@@ -22,6 +22,7 @@
                                 Content="⧉"
                                 ToolTip.Tip="Pop out into window"
                                 Click="OnDetachClicked"
+                                IsVisible="{Binding #Root.ShowDetachButton}"
                                 Padding="4,2"
                                 Background="Transparent"
                                 BorderThickness="0"

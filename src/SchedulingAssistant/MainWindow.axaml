@@ -220,11 +220,11 @@
                 <!--  Left column: Section Editor (top) + Workload (bottom)  -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
 
-                    <!--  Section Editor slot (detachable)  -->
+                    <!--  Section Editor slot (not detachable — header controls cannot survive visual tree moves)  -->
                     <controls:DetachablePanel
                         x:Name="SectionEditorPanel"
                         Grid.Row="0"
-                        DetachRequested="OnSectionEditorDetach"
+                        ShowDetachButton="False"
                         Header="Section View">
                         <controls:DetachablePanel.HeaderContext>
                             <StackPanel Orientation="Horizontal">

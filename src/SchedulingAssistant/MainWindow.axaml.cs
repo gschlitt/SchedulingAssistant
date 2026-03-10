@@ -25,7 +25,6 @@ namespace SchedulingAssistant;
 
 public partial class MainWindow : Window
 {
-    private DetachedPanelWindow? _sectionEditorWindow;
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
 
@@ -399,14 +398,6 @@ public partial class MainWindow : Window
     }
 
     // ── Detach handlers ─────────────────────────────────────────────────────
-
-    private void OnSectionEditorDetach(object? sender, EventArgs e)
-    {
-        var slot = (DetachablePanel)sender!;
-        DetachSlot(slot, ref _sectionEditorWindow,
-            () => new SectionListView { DataContext = Vm.SectionListVm },
-            () => { slot.IsVisible = true; _sectionEditorWindow = null; });
-    }
 
     private void OnWorkloadDetach(object? sender, EventArgs e)
     {
