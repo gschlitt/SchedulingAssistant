@@ -69,7 +69,8 @@
     </UserControl.Styles>
 
     <Border
-        Padding="4,1"
+        MinHeight="50"
+        Padding="4,4"
         Background="{StaticResource FilterBarBackground}"
         BorderBrush="{StaticResource ChromeBorder}"
         BorderThickness="0,0,0,1">
@@ -96,9 +97,9 @@
             </StackPanel>
 
             <!--  Left side: horizontal row of filter dimension buttons + popups and overlay buttons and popups  -->
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Stretch">
                 <StackPanel
-                    VerticalAlignment="Center"
+                    VerticalAlignment="Top"
                     Orientation="Horizontal"
                     Spacing="1">
 
