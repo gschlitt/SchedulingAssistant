@@ -86,10 +86,10 @@ public static class LegalStartTimesDataStore
     public static string? GetPersistedDataSummary()
     {
         var data = LoadPersistedData();
-        if (data?.AcademicYears.Count == 0) return null;
+        if (data is null || data.AcademicYears.Count == 0) return null;
 
         var sb = new System.Text.StringBuilder();
-        foreach (var ay in data!.AcademicYears)
+        foreach (var ay in data.AcademicYears)
         {
             sb.AppendLine(ay.AcademicYearName);
             foreach (var bl in ay.BlockLengths)

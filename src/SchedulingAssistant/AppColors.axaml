@@ -63,6 +63,19 @@
     <SolidColorBrush x:Key="FlyoutHeaderBorder" Color="#DDDDDD" />
     <SolidColorBrush x:Key="FlyoutShadow" Color="#50000000" />
 
+    <!--  ── Semester banners (Section List group headers) ───────────────  -->
+    <!--  Colors assigned by semester name for visual consistency regardless of selection order.  -->
+    <SolidColorBrush x:Key="FallBackground"        Color="#C65D1E" />
+    <SolidColorBrush x:Key="FallBorder"            Color="#C65D1E" />
+    <SolidColorBrush x:Key="WinterBackground"      Color="#8f8e8c" />
+    <SolidColorBrush x:Key="WinterBorder"          Color="#8f8e8c" />
+    <SolidColorBrush x:Key="EarlySummerBackground" Color="#7ED957" />
+    <SolidColorBrush x:Key="EarlySummerBorder"     Color="#7ED957" />
+    <SolidColorBrush x:Key="SummerBackground"      Color="#4FB6F7" />
+    <SolidColorBrush x:Key="SummerBorder"          Color="#4FB6F7" />
+    <SolidColorBrush x:Key="LateSummerBackground"  Color="#F2C94C" />
+    <SolidColorBrush x:Key="LateSummerBorder"      Color="#F2C94C" />
+
     <!--  ── General UI structure ─────────────────────────────────────────  -->
     <SolidColorBrush x:Key="SeparatorLine" Color="#7AAAD4" />
     <SolidColorBrush x:Key="GridSplitterColor" Color="#DDDDDD" />

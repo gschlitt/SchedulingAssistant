@@ -19,8 +19,29 @@ public partial class ScheduleGridView : UserControl
     private const double DayHeaderHeight  = 28;
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double TilePadding      = 3;
-    private const double MinTileWidth     = 115;  // Minimum horizontal space per tile to accommodate multiple instructor initials
-    private const double DayColumnMinSpacing = 15; // Minimum spacing for visual separation between days
+    private const double MinTileWidth        = 115; // Minimum horizontal space per tile to accommodate multiple instructor initials
+    private const double DayColumnMinSpacing = 15;  // Minimum spacing for visual separation between days
+
+    /// <summary>
+    /// Padding added to each side of a day header's text when computing the minimum
+    /// width of a day column. The column will be at least (headerTextWidth + 2 × this)
+    /// wide, even if the day has no sections. Adjust this value to control how much
+    /// breathing room empty or lightly-loaded day columns receive.
+    /// </summary>
+    private const double DayHeaderSidePadding = 15; // 15px left + 15px right = 30px total
+
+    /// <summary>
+    /// Total horizontal pixels consumed by the tile render layers between the day-column
+    /// edge and the TextBlock that displays the label. Breakdown:
+    ///   2 × TilePadding (slot-allocation gap)         =  6 px
+    ///   2 × tile BorderThickness (max 3 px, multi-sem) =  6 px
+    ///   2 × tile Padding left/right (3 px each)        =  6 px
+    ///   2 × entryRow Padding left/right (1 px each)    =  2 px
+    ///   Safety margin for off-tree font measurement     =  8 px
+    ///                                              Total = 28 px
+    /// Used in Phase 2 to turn a raw Bold text width into a required column width.
+    /// </summary>
+    private const double TileTextOverhead = 28;
 
     // Resources resolved from App.axaml at first render (after resources are loaded).
     private static IBrush Res(string key) =>
@@ -122,83 +143,32 @@ public partial class ScheduleGridView : UserControl
         var data = _vm?.GridData ?? GridData.Empty;
         if (data.DayColumns.Count == 0) { ShowEmpty(); return; }
 
-        // Available width for day columns
-        double availWidth = Math.Max(_canvas.Bounds.Width, Bounds.Width);
-        int dayCount = data.DayColumns.Count;
+        int dayCount    = data.DayColumns.Count;
+        int semCount    = data.SemesterCount;
+        int logicalDayCount = dayCount / semCount;
 
-        // Track max content width per day (will be filled during measurement phase)
+        // Tracks the widest unconstrained tile label per flat column; populated in Phase 1.
         var dayContentWidths = new double[dayCount];
 
-        // Calculate width for each day independently based on its measured content
-        var dayColWidths = new double[dayCount];
-        double totalMinWidth = TimeGutterWidth;
-
-        for (int d = 0; d < dayCount; d++)
-        {
-            var dayCol = data.DayColumns[d];
-            double dayWidth = DayColumnMinSpacing;
-
-            if (dayCol.Tiles.Count > 0)
-            {
-                // Use the measured content width plus padding and border
-                double contentWidth = dayContentWidths[d] + 8; // padding (2*1 on sides) + border (2*1) + extra buffer
-
-                // For overlapping tiles, we need to account for multiple tiles side-by-side
-                int maxOverlapCount = dayCol.Tiles.Max(t => t.OverlapCount);
-                double overlapWidth = maxOverlapCount > 1
-                    ? maxOverlapCount * contentWidth + TilePadding * maxOverlapCount
-                    : contentWidth + TilePadding;
-
-                dayWidth = Math.Max(dayWidth, overlapWidth);
-            }
-
-            dayColWidths[d] = dayWidth;
-            totalMinWidth += dayWidth;
-        }
-
-        // Adjust widths if extra space is available
-        double totalWidth = totalMinWidth;
-        if (totalMinWidth <= availWidth)
-        {
-            // Extra space available: distribute it evenly across all days
-            double extraSpace = availWidth - totalMinWidth;
-            double extraPerDay = extraSpace / dayCount;
-
-            for (int d = 0; d < dayCount; d++)
-            {
-                dayColWidths[d] += extraPerDay;
-            }
-
-            totalWidth = availWidth;
-        }
-
-        // Pre-calculate cumulative X-offsets for each day
-        var dayXOffsets = new double[dayCount + 1];
-        dayXOffsets[0] = TimeGutterWidth;
-        for (int d = 0; d < dayCount; d++)
-        {
-            dayXOffsets[d + 1] = dayXOffsets[d] + dayColWidths[d];
-        }
-
-        // ── Phase 1 & 2: Measure tile content heights and widths, build maps ───
+        // ── Phase 1: Measure tile content (heights and natural label widths) ──
         var tileHeightMap = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
-        var selectedId = _vm?.SelectedSectionId;
-        var entryCursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
+        var selectedId    = _vm?.SelectedSectionId;
+        var entryCursor   = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
 
-        // Collect all tiles for offset calculation
+        // Collect all tiles; used later for gridline expansion calculation.
         var allTiles = new List<(int day, GridTile tile, double timeBasedHeight)>();
 
         for (int d = 0; d < dayCount; d++)
         {
             foreach (var tile in data.DayColumns[d].Tiles)
             {
-                // Calculate time-based height
+                // Time-proportional height before any content expansion
                 double timeBasedH = TimeToY(tile.EndMinutes, data.FirstRowMinutes)
                                   - TimeToY(tile.StartMinutes, data.FirstRowMinutes)
                                   - TilePadding * 2;
                 timeBasedH = Math.Max(timeBasedH, 18);
 
-                // Build the StackPanel to measure content
+                // Build a StackPanel matching the render layout, then measure natural size.
                 var stack = new StackPanel { Spacing = 0 };
                 for (int ei = 0; ei < tile.Entries.Count; ei++)
                 {
@@ -208,9 +178,9 @@ public partial class ScheduleGridView : UserControl
                     if (ei > 0)
                         stack.Children.Add(new Border
                         {
-                            Height = 1,
+                            Height     = 1,
                             Background = TileBorder,
-                            Margin = new Thickness(0, 2, 0, 2),
+                            Margin     = new Thickness(0, 2, 0, 2),
                         });
 
                     var labelText = string.IsNullOrEmpty(entry.Initials)
@@ -219,60 +189,128 @@ public partial class ScheduleGridView : UserControl
 
                     var entryRow = new Border
                     {
-                        Background  = entrySelected ? TileFillSelected : Brushes.Transparent,
+                        Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
                         CornerRadius = new CornerRadius(2),
-                        Padding     = new Thickness(1, 0),
-                        Child       = new TextBlock
+                        Padding      = new Thickness(1, 0),
+                        Child        = new TextBlock
                         {
-                            Text = labelText,
-                            FontSize = 11,
-                            FontWeight = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground = entrySelected ? TileBorderSelected : Brushes.Black,
+                            Text         = labelText,
+                            FontSize     = 11,
+                            FontWeight   = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
+                            Foreground   = entrySelected ? TileBorderSelected : Brushes.Black,
                             TextTrimming = TextTrimming.CharacterEllipsis,
                         },
                     };
                     stack.Children.Add(entryRow);
                 }
 
-                // Measure content (no width constraint to get natural width)
+                // Measure the StackPanel for HEIGHT only (drives gridline expansion logic).
                 stack.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 double actualH = stack.DesiredSize.Height;
-                double contentW = stack.DesiredSize.Width;
 
-                // Track the widest content in this day
-                dayContentWidths[d] = Math.Max(dayContentWidths[d], contentW);
+                // Track the widest label text in this column using a direct Bold measurement.
+                // We use Bold (the heavier weight applied when a section is selected) because
+                // it is always >= SemiBold width, guaranteeing the column fits the label in
+                // both selected (Bold) and unselected (SemiBold) rendering states.
+                // Measuring via MeasureTextWidth rather than StackPanel.DesiredSize avoids
+                // subtle width under-reporting that can occur for detached (off-tree) controls.
+                foreach (var e in tile.Entries)
+                {
+                    string lbl = string.IsNullOrEmpty(e.Initials)
+                        ? e.Label
+                        : $"{e.Label}  {e.Initials}";
+                    dayContentWidths[d] = Math.Max(dayContentWidths[d],
+                        MeasureTextWidth(lbl, 11, FontWeight.Bold));
+                }
 
+                // In multi-semester mode multiple columns share time spans; the tallest
+                // measured height governs gridline expansion for that slot.
                 var key = (tile.StartMinutes, tile.EndMinutes);
-                tileHeightMap[key] = (timeBasedH, actualH);
+                if (!tileHeightMap.TryGetValue(key, out var existing) || actualH > existing.actualHeight)
+                    tileHeightMap[key] = (timeBasedH, actualH);
                 allTiles.Add((d, tile, timeBasedH));
             }
         }
 
+        // ── Phase 2: Compute content-driven column widths ────────────────────
+        // Each logical day is sized to its widest tile label across all of its
+        // semester sub-columns. All sub-columns within a logical day get the same
+        // width so that day-header centering is preserved. The minimum width for a
+        // logical day is the pixel width of its header text (e.g. "Wednesday").
+        var dayColWidths = new double[dayCount];
+        double headerFontSize = FontSizeFromResource("FontSizeXLarge");
+
+        for (int ld = 0; ld < logicalDayCount; ld++)
+        {
+            // Floor: the header text must fit inside the combined day-group width,
+            // with DayHeaderSidePadding on each side for visual breathing room.
+            string dayName         = data.DayColumns[ld * semCount].Header;
+            double headerTextWidth = MeasureTextWidth(dayName, headerFontSize, FontWeight.SemiBold)
+                                     + DayHeaderSidePadding * 2;
+            double minSubColWidth  = headerTextWidth / semCount;
+
+            // Find the widest tile content across every semester sub-column for this day.
+            double maxSubColContentWidth = 0;
+            for (int s = 0; s < semCount; s++)
+            {
+                int    flatCol = ld * semCount + s;
+                var    dayCol  = data.DayColumns[flatCol];
+                if (dayCol.Tiles.Count == 0) continue;
+
+                // dayContentWidths holds the raw Bold text width (no wrapper overhead).
+                // required = N × (textWidth + TileTextOverhead) + TilePadding, where N is
+                // the maximum number of side-by-side overlapping tiles in this column.
+                // This formula works for all N: for N=1 it gives textWidth + 31 px of column,
+                // leaving ≥ 11 px of actual TextBlock breathing room after all render layers.
+                int    maxOverlap = dayCol.Tiles.Max(t => t.OverlapCount);
+                double required   = maxOverlap * (dayContentWidths[flatCol] + TileTextOverhead)
+                                    + TilePadding;
+
+                maxSubColContentWidth = Math.Max(maxSubColContentWidth, required);
+            }
+
+            double subColWidth = Math.Max(minSubColWidth, maxSubColContentWidth);
+
+            // Assign identical width to every sub-column of this logical day.
+            for (int s = 0; s < semCount; s++)
+                dayColWidths[ld * semCount + s] = subColWidth;
+        }
+
+        // Canvas width is purely content-driven; it may be narrower than the panel,
+        // which reduces horizontal scrolling on days that have little or no content.
+        double totalWidth = TimeGutterWidth + dayColWidths.Sum();
+
+        // Pre-calculate cumulative X-offsets for each flat column.
+        var dayXOffsets = new double[dayCount + 1];
+        dayXOffsets[0] = TimeGutterWidth;
+        for (int d = 0; d < dayCount; d++)
+            dayXOffsets[d + 1] = dayXOffsets[d] + dayColWidths[d];
+
         // ── Phase 3: Calculate cumulative gridline offsets ───────────────────
-        var gridlineYOffsets = new Dictionary<int, double>();
-        double cumulativeOffset = 0;
+        var    gridlineYOffsets  = new Dictionary<int, double>();
+        double cumulativeOffset  = 0;
 
         for (int mins = data.FirstRowMinutes; mins <= data.LastRowMinutes; mins += 30)
         {
             gridlineYOffsets[mins] = cumulativeOffset;
 
-            // For this half-hour slot, find the maximum expansion needed
+            // For this half-hour slot, find the maximum expansion needed.
             double expansionThisSlot = 0;
 
             foreach (var (_, tile, timeBasedH) in allTiles)
             {
-                // Check if this tile spans this half-hour
+                // Check if this tile spans this half-hour slot.
                 if (tile.StartMinutes <= mins && mins < tile.EndMinutes)
                 {
                     var (_, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
 
                     if (actualH > timeBasedH)
                     {
-                        // This tile expands. Calculate proportional expansion for this slot.
-                        int tileSpanMinutes = tile.EndMinutes - tile.StartMinutes;
+                        // Distribute this tile's expansion proportionally across its slots.
+                        int    tileSpanMinutes  = tile.EndMinutes - tile.StartMinutes;
                         double expansionFraction = 1.0 / (tileSpanMinutes / 30.0);
-                        double tileExpansion = actualH - timeBasedH;
-                        double slotExpansion = tileExpansion * expansionFraction;
+                        double tileExpansion     = actualH - timeBasedH;
+                        double slotExpansion     = tileExpansion * expansionFraction;
 
                         expansionThisSlot = Math.Max(expansionThisSlot, slotExpansion);
                     }
@@ -297,25 +335,28 @@ public partial class ScheduleGridView : UserControl
         AddRect(_canvas, TimeGutterWidth, 0, totalWidth - TimeGutterWidth, DayHeaderHeight,
             HeaderFill, HeaderBorder, borderThickness: new Thickness(0, 0, 0, 1));
 
-        for (int d = 0; d < dayCount; d++)
+        // Draw one day header per logical day, spanning all its semester sub-columns.
+        // Then draw any semester sub-column borders in the time body below the header.
+        for (int dayIdx = 0; dayIdx < logicalDayCount; dayIdx++)
         {
-            double dayX = dayXOffsets[d];
-            double dayColWidth = dayColWidths[d];
+            int firstCol     = dayIdx * semCount;
+            double dayGroupX = dayXOffsets[firstCol];
+            double dayGroupW = dayXOffsets[firstCol + semCount] - dayGroupX;
 
-            // Vertical separator between day columns
-            if (d > 0)
-                AddLine(_canvas, dayX, 0, dayX, totalHeight, HeaderBorder, 1);
+            // Vertical separator between day groups
+            if (dayIdx > 0)
+                AddLine(_canvas, dayGroupX, 0, dayGroupX, totalHeight, HeaderBorder, 1);
 
+            // Day name label centered over the full day group width
             var tb = new TextBlock
             {
-                Text = data.DayColumns[d].Header,
+                Text = data.DayColumns[firstCol].Header,
                 FontWeight = FontWeight.SemiBold,
                 FontSize = FontSizeFromResource("FontSizeXLarge"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Width = dayColWidth,
+                Width = dayGroupW,
                 TextAlignment = TextAlignment.Center,
             };
-            Canvas.SetLeft(tb, dayX);
+            Canvas.SetLeft(tb, dayGroupX);
             Canvas.SetTop(tb, (DayHeaderHeight - 14) / 2);
             _canvas.Children.Add(tb);
         }
@@ -390,7 +431,10 @@ public partial class ScheduleGridView : UserControl
                         : $"{entry.Label}  {entry.Initials}";
 
                     var entryId = entry.SectionId;
-                    var clickCtx = new TileClickContext(entryId, d + 1, tile.StartMinutes);
+                    // In multi-semester mode columns are interleaved: [Mon/Sem1, Mon/Sem2, Tue/Sem1, ...].
+                    // The day number is the day-group index + 1, not the raw column index + 1.
+                    int clickDay = (d / semCount) + 1;
+                    var clickCtx = new TileClickContext(entryId, clickDay, tile.StartMinutes);
                     var entryRow = new Border
                     {
                         Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
@@ -437,18 +481,60 @@ public partial class ScheduleGridView : UserControl
                 }
 
                 bool tileHasOverlay = tile.Entries.Any(e => e.IsOverlay);
-                var border = new Border
+                bool isMultiSemester = data.IsMultiSemester;
+
+                // In multi-semester mode, resolve the semester color for this tile
+                IBrush? semesterBrush = null;
+                if (isMultiSemester && !string.IsNullOrEmpty(tile.SemesterName))
                 {
-                    Width           = tileW - TilePadding,
-                    Height          = adjustedTileH,
-                    Background      = TileFill,
-                    BorderBrush     = tileHasOverlay ? OverlayFrameBorder : TileBorder,
-                    BorderThickness = tileHasOverlay ? new Thickness(2) : new Thickness(1),
-                    CornerRadius    = new CornerRadius(3),
-                    Padding         = new Thickness(3, 2),
-                    ClipToBounds    = false,
-                    Child           = stack,
-                };
+                    semesterBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(tile.SemesterName);
+                }
+
+                Border border;
+                if (tileHasOverlay && isMultiSemester && semesterBrush is not null)
+                {
+                    // Dual-border approach for overlay tiles in multi-semester mode:
+                    // Outer border (red) for overlay status, inner border (semester color) for semester identification
+                    var innerBorder = new Border
+                    {
+                        Background      = TileFill,
+                        BorderBrush     = semesterBrush,
+                        BorderThickness = new Thickness(3),
+                        CornerRadius    = new CornerRadius(3),
+                        Padding         = new Thickness(3, 2),
+                        Child           = stack,
+                    };
+
+                    border = new Border
+                    {
+                        Width           = tileW - TilePadding,
+                        Height          = adjustedTileH,
+                        Background      = TileFill,
+                        BorderBrush     = OverlayFrameBorder,
+                        BorderThickness = new Thickness(3),
+                        CornerRadius    = new CornerRadius(3),
+                        ClipToBounds    = false,
+                        Child           = innerBorder,
+                    };
+                }
+                else
+                {
+                    // Standard tile: use semester color in multi-semester mode, else gray border
+                    border = new Border
+                    {
+                        Width           = tileW - TilePadding,
+                        Height          = adjustedTileH,
+                        Background      = TileFill,
+                        BorderBrush     = tileHasOverlay ? OverlayFrameBorder
+                                        : semesterBrush ?? TileBorder,
+                        BorderThickness = tileHasOverlay ? new Thickness(2)
+                                        : semesterBrush is not null ? new Thickness(3) : new Thickness(1),
+                        CornerRadius    = new CornerRadius(3),
+                        Padding         = new Thickness(3, 2),
+                        ClipToBounds    = false,
+                        Child           = stack,
+                    };
+                }
 
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, adjustedTileY);
@@ -489,6 +575,21 @@ public partial class ScheduleGridView : UserControl
 
     private static double TimeToY(int minutes, int firstRowMinutes) =>
         (minutes - firstRowMinutes) / 30.0 * HalfHourHeight;
+
+    /// <summary>
+    /// Measures the natural (unconstrained) pixel width of a text string
+    /// rendered with the given font parameters.
+    /// </summary>
+    /// <param name="text">The string to measure.</param>
+    /// <param name="fontSize">Font size in logical pixels.</param>
+    /// <param name="weight">Font weight.</param>
+    /// <returns>The desired width of the TextBlock in logical pixels.</returns>
+    private static double MeasureTextWidth(string text, double fontSize, FontWeight weight)
+    {
+        var tb = new TextBlock { Text = text, FontSize = fontSize, FontWeight = weight };
+        tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        return tb.DesiredSize.Width;
+    }
 
     private static void AddRect(Canvas canvas, double x, double y,
         double w, double h, IBrush fill, IBrush? stroke,

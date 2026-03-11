@@ -30,10 +30,34 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private CommitmentsManagementViewModel _commitmentsVm;
     [ObservableProperty] private WorkloadHistoryViewModel _workloadHistoryVm;
 
+    /// <summary>
+    /// All semesters in the currently selected academic year, available in the flyout's
+    /// local semester picker. This list is independent of the global semester selection.
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<SemesterDisplay> _flyoutSemesters = new();
+
+    /// <summary>
+    /// The semester currently chosen in the flyout's local picker.
+    /// Drives all workload, release, and commitment data shown in the flyout,
+    /// independently of the global multi-semester selection.
+    /// </summary>
+    [ObservableProperty] private SemesterDisplay? _flyoutSelectedSemester;
+
     private void OnWorkloadVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(InstructorWorkloadViewModel.TotalWorkload))
             OnPropertyChanged(nameof(WorkloadUnitsDisplay));
+    }
+
+    /// <summary>
+    /// Called when the user picks a different semester in the flyout's local semester chooser.
+    /// Refreshes all workload, release, and commitment data for the newly selected semester,
+    /// and updates the semester activity label.
+    /// </summary>
+    partial void OnFlyoutSelectedSemesterChanged(SemesterDisplay? value)
+    {
+        OnPropertyChanged(nameof(SemesterActivityLabel));
+        RefreshWorkload();
     }
 
     public InstructorListViewModel(
@@ -63,6 +87,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);
         ShowOnlyActive = AppSettings.Load().ShowOnlyActiveInstructors;
+        RebuildFlyoutSemesters();
         Load();
 
         _semesterContext.PropertyChanged += OnSemesterContextPropertyChanged;
@@ -72,8 +97,12 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
     private void OnSemesterContextPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
-            RefreshWorkload();
+        if (e.PropertyName == nameof(SemesterContext.FilteredSemesters))
+        {
+            // The academic year changed globally — rebuild the flyout's semester list and
+            // reset the local selection so it doesn't point to a semester from the old year.
+            RebuildFlyoutSemesters(resetSelection: true);
+        }
     }
 
     public void Dispose()
@@ -114,16 +143,63 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
     public string WorkloadUnitsDisplay => $"Workload units {WorkloadVm.TotalWorkload:0.##}";
 
+    /// <summary>
+    /// Formats the semester activity label to include the currently selected semester name.
+    /// Example: "Fall 2025 Semester Activity"
+    /// </summary>
+    public string SemesterActivityLabel => $"{FlyoutSelectedSemester?.Semester.Name ?? ""} Semester Activity";
+
     partial void OnSelectedInstructorChanged(Instructor? value)
     {
         OnPropertyChanged(nameof(SelectedFirstName));
         OnPropertyChanged(nameof(SelectedLastName));
+        // Reset the flyout's local semester to the current global default when a new
+        // instructor is selected, then refresh.  SetFlyoutSemesterToDefault may trigger
+        // RefreshWorkload via OnFlyoutSelectedSemesterChanged if the semester changes;
+        // we call RefreshWorkload unconditionally so it also fires when the semester is
+        // the same but the instructor changed.
+        SetFlyoutSemesterToDefault();
         RefreshWorkload();
+    }
+
+    /// <summary>
+    /// Rebuilds <see cref="FlyoutSemesters"/> from the semesters in the currently selected
+    /// academic year.  If the existing <see cref="FlyoutSelectedSemester"/> is no longer
+    /// in the list (e.g. after an academic-year change), or <paramref name="resetSelection"/>
+    /// is true, the selection is reset to the global default via <see cref="SetFlyoutSemesterToDefault"/>.
+    /// </summary>
+    /// <param name="resetSelection">
+    /// When true, resets the selected semester even if the current selection is still valid.
+    /// Pass true when the academic year has changed.
+    /// </param>
+    private void RebuildFlyoutSemesters(bool resetSelection = false)
+    {
+        var semesters = _semesterContext.FilteredSemesters.ToList();
+        FlyoutSemesters = new ObservableCollection<SemesterDisplay>(semesters);
+
+        bool selectionStillValid = !resetSelection
+            && FlyoutSelectedSemester != null
+            && semesters.Any(s => s.Semester.Id == FlyoutSelectedSemester.Semester.Id);
+
+        if (!selectionStillValid)
+            SetFlyoutSemesterToDefault();
+    }
+
+    /// <summary>
+    /// Sets <see cref="FlyoutSelectedSemester"/> to the globally-selected primary semester
+    /// (which is the first selected semester in both single- and multi-semester modes),
+    /// falling back to the first item in <see cref="FlyoutSemesters"/> if no match is found.
+    /// </summary>
+    private void SetFlyoutSemesterToDefault()
+    {
+        var defaultId = _semesterContext.SelectedSemesterDisplay?.Semester.Id;
+        FlyoutSelectedSemester = FlyoutSemesters.FirstOrDefault(s => s.Semester.Id == defaultId)
+            ?? FlyoutSemesters.FirstOrDefault();
     }
 
     private void RefreshWorkload()
     {
-        if (SelectedInstructor is null || _semesterContext.SelectedSemesterDisplay is null)
+        if (SelectedInstructor is null || FlyoutSelectedSemester is null)
         {
             WorkloadVm.Clear();
             ReleaseVm.SetContext(string.Empty, string.Empty);
@@ -132,7 +208,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var semesterId = _semesterContext.SelectedSemesterDisplay.Semester.Id;
+        var semesterId = FlyoutSelectedSemester.Semester.Id;
         var instructorId = SelectedInstructor.Id;
 
         var allSections = _sectionRepo.GetAll(semesterId);

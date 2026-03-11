@@ -122,10 +122,11 @@
                                         Foreground="{StaticResource TextMuted}"
                                         Text="{Binding Initials}" />
 
-                                    <!--  Work item chips (horizontal, wrapping)  -->
+                                    <!--  Single-semester mode: flat chips (horizontal, wrapping)  -->
                                     <ItemsControl
                                         Grid.Column="2"
                                         Margin="2,0"
+                                        IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
                                         ItemsSource="{Binding Items}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -146,13 +147,69 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <!--  Semester total  -->
+                                    <!--  Multi-semester mode: grouped by semester with colored frames  -->
+                                    <ItemsControl
+                                        Grid.Column="2"
+                                        Grid.ColumnSpan="2"
+                                        Margin="2,0"
+                                        IsVisible="{Binding IsMultiSemesterMode}"
+                                        ItemsSource="{Binding SemesterGroups}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <!--  Colored frame around this semester's chips  -->
+                                                <Border
+                                                    Margin="0,2"
+                                                    Padding="3,2"
+                                                    CornerRadius="2"
+                                                    BorderBrush="{Binding SemesterColorBrush}"
+                                                    BorderThickness="2">
+                                                    <!--  Inner grid: chips fill *, semester total right-aligned 58px  -->
+                                                    <Grid ColumnDefinitions="*,58">
+                                                        <!--  Chips WrapPanel in col 0  -->
+                                                        <ItemsControl
+                                                            Grid.Column="0"
+                                                            Margin="2,0"
+                                                            ItemsSource="{Binding Items}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel Orientation="Horizontal" />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button
+                                                                        Margin="2,1"
+                                                                        Classes="chip"
+                                                                        Classes.release="{Binding IsRelease}"
+                                                                        Classes.selected="{Binding IsSelected}"
+                                                                        Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Content="{Binding Label}" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <!--  Per-semester total in col 1 (aligns with outer "Sem." header)  -->
+                                                        <TextBlock
+                                                            Grid.Column="1"
+                                                            Margin="4,2"
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            FontSize="10"
+                                                            Text="{Binding SemesterTotal, StringFormat={}{0:0.##}}" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!--  Semester total (single-semester mode only)  -->
                                     <TextBlock
                                         Grid.Column="3"
                                         Margin="4,2"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Top"
                                         FontSize="10"
+                                        IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
                                         Text="{Binding SemesterTotal, StringFormat={}{0:0.##}}" />
 
                                     <!--  Academic year total  -->

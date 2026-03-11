@@ -64,22 +64,18 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         LastErrorMessage = null;
         try
         {
-            if (_semesterContext.SelectedSemesterDisplay is null)
+            var selectedSemesters = _semesterContext.SelectedSemesters.ToList();
+            if (selectedSemesters.Count == 0)
             {
                 Rows = new ObservableCollection<WorkloadRowViewModel>();
                 return;
             }
 
-            var selectedSemester = _semesterContext.SelectedSemesterDisplay.Semester;
-            var semesterId = selectedSemester.Id;
-            var academicYearId = selectedSemester.AcademicYearId;
+            var isMultiSemester = _semesterContext.IsMultiSemesterMode;
+            var academicYearId = selectedSemesters[0].Semester.AcademicYearId;
 
             // Active instructors (repo returns them sorted by lastName, firstName)
             var instructors = _instructorRepo.GetAll().Where(i => i.IsActive).ToList();
-
-            // All sections and releases for the selected semester
-            var sections = _sectionRepo.GetAll(semesterId);
-            var releases = _releaseRepo.GetBySemester(semesterId);
 
             // Course code cache to avoid repeated DB hits
             var courseCache = new Dictionary<string, string>();
@@ -96,50 +92,65 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
             // Build one row per active instructor
             var rows = new List<WorkloadRowViewModel>();
-            foreach (var instructor in instructors)
+
+            if (!isMultiSemester)
             {
-                var items = new List<WorkloadItemViewModel>();
+                // Single-semester mode: existing behavior
+                var semesterDisplay = selectedSemesters[0];
+                var sections = _sectionRepo.GetAll(semesterDisplay.Semester.Id);
+                var releases = _releaseRepo.GetBySemester(semesterDisplay.Semester.Id);
 
-                // Sections first
-                foreach (var section in sections)
+                foreach (var instructor in instructors)
                 {
-                    var assignment = section.InstructorAssignments
-                        .FirstOrDefault(a => a.InstructorId == instructor.Id);
-                    if (assignment is null) continue;
+                    var items = BuildItemsForInstructor(instructor, sections, releases, GetCourseCode);
+                    var name = FormatInstructorName(instructor);
 
-                    var workload = assignment.Workload ?? 1m;
-                    items.Add(new WorkloadItemViewModel
+                    rows.Add(new WorkloadRowViewModel
                     {
-                        Kind = WorkloadItemKind.Section,
-                        Id = section.Id,
-                        Label = $"{GetCourseCode(section.CourseId)} {section.SectionCode} [{workload:0.##}]",
-                        WorkloadValue = workload,
+                        InstructorId = instructor.Id,
+                        FullName = name,
+                        Initials = instructor.Initials,
+                        IsMultiSemesterMode = false,
+                        Items = new ObservableCollection<WorkloadItemViewModel>(items),
+                        SemesterGroups = Array.Empty<WorkloadSemesterGroupViewModel>(),
                     });
                 }
-
-                // Releases after sections
-                foreach (var release in releases.Where(r => r.InstructorId == instructor.Id))
+            }
+            else
+            {
+                // Multi-semester mode: build groups per semester per instructor
+                foreach (var instructor in instructors)
                 {
-                    items.Add(new WorkloadItemViewModel
+                    var groups = new List<WorkloadSemesterGroupViewModel>();
+
+                    // One group per selected semester (always, even if empty)
+                    foreach (var semesterDisplay in selectedSemesters)
                     {
-                        Kind = WorkloadItemKind.Release,
-                        Id = release.Id,
-                        Label = $"{release.Title} [{release.WorkloadValue:0.##}]",
-                        WorkloadValue = release.WorkloadValue,
+                        var sections = _sectionRepo.GetAll(semesterDisplay.Semester.Id);
+                        var releases = _releaseRepo.GetBySemester(semesterDisplay.Semester.Id);
+                        var items = BuildItemsForInstructor(instructor, sections, releases, GetCourseCode);
+
+                        groups.Add(new WorkloadSemesterGroupViewModel
+                        {
+                            SemesterId = semesterDisplay.Semester.Id,
+                            SemesterName = semesterDisplay.Semester.Name,
+                            Items = new ObservableCollection<WorkloadItemViewModel>(items),
+                            SemesterColorBrush = WorkloadSemesterGroupViewModel.ResolveBrush(semesterDisplay.Semester.Name),
+                        });
+                    }
+
+                    var name = FormatInstructorName(instructor);
+
+                    rows.Add(new WorkloadRowViewModel
+                    {
+                        InstructorId = instructor.Id,
+                        FullName = name,
+                        Initials = instructor.Initials,
+                        IsMultiSemesterMode = true,
+                        Items = new ObservableCollection<WorkloadItemViewModel>(),  // Empty in multi-semester mode
+                        SemesterGroups = groups,
                     });
                 }
-
-                var name = string.IsNullOrEmpty(instructor.FirstName)
-                    ? instructor.LastName
-                    : $"{instructor.FirstName} {instructor.LastName}";
-
-                rows.Add(new WorkloadRowViewModel
-                {
-                    InstructorId = instructor.Id,
-                    FullName = name,
-                    Initials = instructor.Initials,
-                    Items = new ObservableCollection<WorkloadItemViewModel>(items),
-                });
             }
 
             // Academic year totals: sum workload across all semesters in the AY
@@ -173,13 +184,76 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Builds the workload items (sections and releases) for a single instructor in a given set of sections and releases.
+    /// </summary>
+    private static List<WorkloadItemViewModel> BuildItemsForInstructor(
+        Models.Instructor instructor,
+        IEnumerable<Models.Section> sections,
+        IEnumerable<Models.Release> releases,
+        Func<string?, string> getCourseCode)
+    {
+        var items = new List<WorkloadItemViewModel>();
+
+        // Sections first
+        foreach (var section in sections)
+        {
+            var assignment = section.InstructorAssignments
+                .FirstOrDefault(a => a.InstructorId == instructor.Id);
+            if (assignment is null) continue;
+
+            var workload = assignment.Workload ?? 1m;
+            items.Add(new WorkloadItemViewModel
+            {
+                Kind = WorkloadItemKind.Section,
+                Id = section.Id,
+                Label = $"{getCourseCode(section.CourseId)} {section.SectionCode} [{workload:0.##}]",
+                WorkloadValue = workload,
+            });
+        }
+
+        // Releases after sections
+        foreach (var release in releases.Where(r => r.InstructorId == instructor.Id))
+        {
+            items.Add(new WorkloadItemViewModel
+            {
+                Kind = WorkloadItemKind.Release,
+                Id = release.Id,
+                Label = $"{release.Title} [{release.WorkloadValue:0.##}]",
+                WorkloadValue = release.WorkloadValue,
+            });
+        }
+
+        return items;
+    }
+
+    /// <summary>Formats an instructor's first and last name, handling empty first names.</summary>
+    private static string FormatInstructorName(Models.Instructor instructor)
+    {
+        return string.IsNullOrEmpty(instructor.FirstName)
+            ? instructor.LastName
+            : $"{instructor.FirstName} {instructor.LastName}";
+    }
+
     [RelayCommand]
     private void HandleItemClick(WorkloadItemViewModel item) => ItemClicked?.Invoke(item);
 
+    /// <summary>
+    /// Updates the IsSelected flag on all workload items (both in single-semester Items and in multi-semester SemesterGroups).
+    /// Called whenever SelectedSectionId changes, to highlight the selected section or release across the view.
+    /// </summary>
     private void UpdateItemSelection()
     {
         foreach (var row in Rows)
+        {
+            // Single-semester mode: items in row.Items
             foreach (var item in row.Items)
                 item.IsSelected = item.Id == SelectedSectionId;
+
+            // Multi-semester mode: items in each group
+            foreach (var group in row.SemesterGroups)
+                foreach (var item in group.Items)
+                    item.IsSelected = item.Id == SelectedSectionId;
+        }
     }
 }

@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
@@ -8,6 +10,11 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.GridView;
+
+/// <summary>
+/// Represents one colored segment in the semester line display, e.g. "Fall" with orange background.
+/// </summary>
+public record SemesterLineSegment(string DisplayText, IBrush? Background, IBrush? Border);
 
 public partial class ScheduleGridViewModel : ViewModelBase
 {
@@ -28,6 +35,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>Display name of the selected semester, e.g. "2025-2026 — Fall"</summary>
     [ObservableProperty] private string _semesterLine = string.Empty;
+
+    /// <summary>Colored semester segments for the semester line (each semester with its background color).</summary>
+    [ObservableProperty] private List<SemesterLineSegment> _semesterLineSegments = [];
 
     /// <summary>Selected subject filter names, e.g. "History · Mathematics". Empty when no subject filter active.</summary>
     [ObservableProperty] private string _subjectFilterSummary = string.Empty;
@@ -177,9 +187,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     private void ReloadCore()
     {
-        var semesterDisplay = _semesterContext.SelectedSemesterDisplay;
-        var semester = semesterDisplay?.Semester;
-        if (semester is null)
+        // Support multi-semester: load from all currently selected semesters.
+        // All selected semesters belong to the same academic year (enforced by the UI),
+        // so lookup tables (courses, rooms, etc.) need to be built only once.
+        var semesters = _semesterContext.SelectedSemesters.ToList();
+        if (semesters.Count == 0)
         {
             GridData = GridData.Empty;
             SemesterLine = string.Empty;
@@ -189,7 +201,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         // ── Build lookup tables ────────────────────────────────────────────────
-        var sections         = _sectionRepo.GetAll(semester.Id);
+        var sections = semesters
+            .SelectMany(sd => _sectionRepo.GetAll(sd.Semester.Id))
+            .ToList();
         var courseLookup     = _courseRepo.GetAll().ToDictionary(c => c.Id);
         var instructorLookup = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var roomLookup       = _roomRepo.GetAll().ToDictionary(r => r.Id);
@@ -209,6 +223,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
             { "4XX", "4XX" },
             { "5+XX", "5+XX" }
         };
+
+        // ── Build semester ID → name lookup for block creation ────────────────
+        // Used when creating GridBlocks to capture the semester name so the renderer
+        // can determine the semester color without additional lookups.
+        var semesterIdToName = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Name);
 
         // ── Rebuild filter option lists (preserves selections) ─────────────────
         Filter.PopulateOptions(
@@ -366,7 +385,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     isOverlay = slot.RoomId == overlayId;
                 }
 
-                allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, isOverlay, label, initials, section.Id));
+                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
+                allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, isOverlay, label, initials, section.Id, section.SemesterId, semesterName));
             }
         }
 
@@ -396,9 +416,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     : section.SectionCode;
 
                 // Add ALL meetings for this overlay-only section
+                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
                 foreach (var slot in section.Schedule)
                 {
-                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id));
+                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId, semesterName));
                 }
             }
         }
@@ -418,6 +439,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     ? $"{calCode} {section.SectionCode}"
                     : section.SectionCode;
 
+                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
                 foreach (var slot in section.Schedule)
                 {
                     // Only add meetings that have the overlay room assigned
@@ -430,7 +452,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                             b.StartMinutes == slot.StartMinutes && b.EndMinutes == slot.EndMinutes))
                         continue;
 
-                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id));
+                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId, semesterName));
                 }
             }
         }
@@ -454,9 +476,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
             && Filter.OverlayType == "Instructor"
             && !string.IsNullOrEmpty(Filter.SelectedOverlayId))
         {
-            var commitments = _commitmentRepo.GetByInstructor(semester.Id, Filter.SelectedOverlayId);
-            foreach (var c in commitments)
-                allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id));
+            // Load commitments for all selected semesters (same instructor, each semester)
+            foreach (var sd in semesters)
+            {
+                var commitments = _commitmentRepo.GetByInstructor(sd.Semester.Id, Filter.SelectedOverlayId);
+                foreach (var c in commitments)
+                    allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id, sd.Semester.Name));
+            }
         }
 
         // ── Defensive deduplication ────────────────────────────────────────────
@@ -466,9 +492,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // based on the section's overlay status; Pass 2 always sets it true).
         // Commitment blocks are fetched once from the DB so they cannot be duplicated,
         // but they pass through the same dedup path for safety.
-        // Key = (entity-id, Day, StartMinutes, EndMinutes). Using the entity ID means a
-        // section that teaches the same time slot on two different days does NOT dedup
-        // across days (Day is part of the key).
+        // Key = (entity-id, SemesterId, Day, StartMinutes, EndMinutes). SemesterId is
+        // included so that the same section ID appearing in two semesters (e.g. copied
+        // sections that share an ID — should not happen, but defensive) is not collapsed.
         static string BlockId(GridBlock b) => b switch
         {
             SectionMeetingBlock s => s.SectionId,
@@ -476,12 +502,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
             _ => throw new InvalidOperationException($"Unknown GridBlock type: {b.GetType().Name}")
         };
 
-        var seenBlocks    = new HashSet<(string, int, int, int)>();
+        var seenBlocks    = new HashSet<(string, string, int, int, int)>();
         var dedupedBlocks = new List<GridBlock>();
 
         foreach (var block in allBlocks)
         {
-            var key = (BlockId(block), block.Day, block.StartMinutes, block.EndMinutes);
+            var key = (BlockId(block), block.SemesterId, block.Day, block.StartMinutes, block.EndMinutes);
             if (seenBlocks.Add(key))
                 dedupedBlocks.Add(block);
         }
@@ -492,23 +518,48 @@ public partial class ScheduleGridViewModel : ViewModelBase
         const int firstRow = 8 * 60 + 30;
         const int lastRow  = 22 * 60;
 
-        // ── Build per-day tile lists ───────────────────────────────────────────
+        // ── Build per-day, per-semester tile columns ────────────────────────────
+        // In single-semester mode this produces one column per day (identical to before).
+        // In multi-semester mode it produces N columns per day — one per semester — ordered
+        // as: [Mon/Sem1, Mon/Sem2, Tue/Sem1, Tue/Sem2, ...]. The renderer uses SemesterCount
+        // to know how many consecutive columns belong to the same day group.
+        bool isMultiSemester = semesters.Count > 1;
         var dayColumns = new List<GridDayColumn>();
+
         foreach (var dayNum in dayNumbers)
         {
-            var dayBlocks = allBlocks
-                .Where(b => b.Day == dayNum)
-                .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
-                .ToList();
+            foreach (var sd in semesters)
+            {
+                // In multi-semester mode, each sub-column contains only that semester's blocks.
+                // In single-semester mode, SemesterId filtering is omitted for robustness
+                // (blocks should all share the one semester ID, but don't depend on it).
+                var dayBlocks = isMultiSemester
+                    ? allBlocks
+                        .Where(b => b.Day == dayNum && b.SemesterId == sd.Semester.Id)
+                        .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
+                        .ToList()
+                    : allBlocks
+                        .Where(b => b.Day == dayNum)
+                        .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
+                        .ToList();
 
-            var tiles = ComputeTiles(dayBlocks);
-            dayColumns.Add(new GridDayColumn(dayNames[dayNum], tiles));
+                var tiles  = ComputeTiles(dayBlocks, sd.Semester.Name);
+                dayColumns.Add(new GridDayColumn(dayNames[dayNum], tiles));
+            }
         }
 
-        GridData = new GridData(firstRow, lastRow, dayColumns);
+        GridData = new GridData(firstRow, lastRow, dayColumns, semesters.Count);
 
         // ── Update title bar summary properties ───────────────────────────────
-        SemesterLine = _semesterContext.SelectedSemesterDisplay?.DisplayName ?? string.Empty;
+        // In single-semester mode use the existing "Year — Semester" DisplayName;
+        // in multi-semester mode build "Year — Sem1, Sem2, ..." from the shared AY name.
+        SemesterLine = semesters.Count == 1
+            ? semesters[0].DisplayName
+            : $"{_semesterContext.SelectedAcademicYear?.Name} — " +
+              string.Join(", ", semesters.Select(s => s.Semester.Name));
+
+        // Build colored semester segments for display in the header
+        BuildSemesterLineSegments(semesters);
 
         var selectedSubjectNames = Filter.Subjects
             .Where(s => s.IsSelected)
@@ -529,6 +580,31 @@ public partial class ScheduleGridViewModel : ViewModelBase
         StatsLine = sectionCount == 0
             ? "No sections shown"
             : $"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · {meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")} shown";
+    }
+
+    /// <summary>
+    /// Resolves the semester border brush from AppColors using the semester name.
+    /// Uses the same color-key mapping as SemesterBannerViewModel so that semester colors
+    /// throughout the app are visually consistent.
+    /// Returns null if the resource cannot be found (renderer will use default styling).
+    /// Used by ScheduleGridView to color meeting card borders in multi-semester mode.
+    /// </summary>
+    public static Avalonia.Media.IBrush? ResolveSemesterBorderBrush(string semesterName)
+    {
+        var firstWord = semesterName.Split(' ')[0];
+        string key = firstWord switch
+        {
+            "Fall"   => "FallBorder",
+            "Winter" => "WinterBorder",
+            "Early"  => "EarlySummerBorder",
+            "Summer" => "SummerBorder",
+            "Late"   => "LateSummerBorder",
+            _        => "FallBorder"
+        };
+
+        object? resource = null;
+        Avalonia.Application.Current?.Resources.TryGetResource(key, null, out resource);
+        return resource as Avalonia.Media.IBrush;
     }
 
     /// <summary>
@@ -560,7 +636,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Blocks with identical start+end are merged into a single tile (stacked entries).
     /// Overlapping blocks (different time spans) are placed side-by-side.
     /// </summary>
-    private static List<GridTile> ComputeTiles(List<GridBlock> blocks)
+    /// <summary>
+    /// Computes the tile layout for a single day's blocks (already filtered by day and semester).
+    /// All blocks in this call belong to the same semester, so semesterName is provided
+    /// and propagated to each resulting GridTile for use by the renderer.
+    /// </summary>
+    private static List<GridTile> ComputeTiles(List<GridBlock> blocks, string semesterName = "")
     {
         var tiles = new List<GridTile>();
         if (blocks.Count == 0) return tiles;
@@ -626,7 +707,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (col == -1) { col = colEnds.Count; colEnds.Add(0); }
                 colEnds[col] = m.End;
 
-                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count));
+                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count, semesterName));
             }
 
             // Fix OverlapCount to actual column count used
@@ -634,11 +715,76 @@ public partial class ScheduleGridViewModel : ViewModelBase
             for (int t = tiles.Count - cluster.Count; t < tiles.Count; t++)
             {
                 var old = tiles[t];
-                tiles[t] = old with { OverlapCount = actualCols };
+                tiles[t] = old with { OverlapCount = actualCols, SemesterName = semesterName };
             }
         }
 
         return tiles;
+    }
+
+    /// <summary>
+    /// Builds colored semester line segments for display in the header.
+    /// In single-semester mode, shows just the semester name. In multi-semester mode,
+    /// shows the academic year followed by colored segment buttons for each semester.
+    /// </summary>
+    private void BuildSemesterLineSegments(List<SemesterDisplay> semesters)
+    {
+        var segments = new List<SemesterLineSegment>();
+
+        if (semesters.Count == 0)
+        {
+            SemesterLineSegments = segments;
+            return;
+        }
+
+        if (semesters.Count == 1)
+        {
+            // Single semester: show just the semester name without color background
+            // (colors are only needed to distinguish between multiple semesters)
+            var sem = semesters[0];
+            segments.Add(new SemesterLineSegment(sem.Semester.Name, null, null));
+        }
+        else
+        {
+            // Multi-semester: show academic year (plain text), then colored segments for each semester
+            var ayName = _semesterContext.SelectedAcademicYear?.Name ?? "";
+            if (!string.IsNullOrEmpty(ayName))
+            {
+                segments.Add(new SemesterLineSegment($"{ayName} —", null, null));
+            }
+
+            foreach (var sem in semesters)
+            {
+                var (bg, bd) = GetSemesterBrushes(sem.Semester.Name);
+                segments.Add(new SemesterLineSegment(sem.Semester.Name, bg, bd));
+            }
+        }
+
+        SemesterLineSegments = segments;
+    }
+
+    /// <summary>
+    /// Gets the background and border brushes for a semester from AppColors.
+    /// </summary>
+    private static (IBrush? bg, IBrush? bd) GetSemesterBrushes(string semesterName)
+    {
+        var firstWord = semesterName.Split(' ')[0];
+        var (bgKey, bdKey) = firstWord switch
+        {
+            "Fall" => ("FallBackground", "FallBorder"),
+            "Winter" => ("WinterBackground", "WinterBorder"),
+            "Early" => ("EarlySummerBackground", "EarlySummerBorder"),
+            "Summer" => ("SummerBackground", "SummerBorder"),
+            "Late" => ("LateSummerBackground", "LateSummerBorder"),
+            _ => ("FallBackground", "FallBorder")
+        };
+
+        var bg = Application.Current?.Resources.TryGetResource(bgKey, null, out var bgObj) ?? false
+            ? bgObj as IBrush : null;
+        var bd = Application.Current?.Resources.TryGetResource(bdKey, null, out var bdObj) ?? false
+            ? bdObj as IBrush : null;
+
+        return (bg, bd);
     }
 
 }
