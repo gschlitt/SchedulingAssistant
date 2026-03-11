@@ -159,6 +159,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToAcademicUnits() => OpenFlyout<AcademicUnitListViewModel>("Academic Units");
 
     [RelayCommand]
+    private void NavigateToSectionPrefixes() => OpenFlyout<SectionPrefixListViewModel>("Section Prefixes");
+
+    [RelayCommand]
     private void NavigateToExport() => OpenFlyout<ExportViewModel>("Export");
 
     [RelayCommand]

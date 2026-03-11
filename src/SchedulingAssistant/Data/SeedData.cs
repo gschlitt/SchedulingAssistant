@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Data;
@@ -7,7 +8,7 @@ public static class SeedData
 {
     /// <summary>
     /// Called by DatabaseContext after schema initialization.
-    /// Ensures there is exactly one Academic Unit in the database.
+    /// Ensures baseline records exist (Academic Unit, default Section Prefixes).
     /// </summary>
     public static void EnsureSeeded(SqliteConnection conn)
     {
@@ -25,6 +26,80 @@ public static class SeedData
             cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
             cmd.ExecuteNonQuery();
         }
+
+        EnsureDefaultSectionPrefixes(conn);
+    }
+
+    /// <summary>
+    /// Seeds the default section prefixes when the SectionPrefixes table is empty.
+    /// Creates the associated campuses (Abbotsford, Chilliwack) in SectionPropertyValues
+    /// if they do not already exist, then inserts the four default prefix records:
+    /// AB → Abbotsford, A# → Abbotsford, CH → Chilliwack, C# → Chilliwack.
+    /// Uses INSERT OR IGNORE so it is safe to call even if rows already exist.
+    /// </summary>
+    /// <param name="conn">Open SQLite connection.</param>
+    private static void EnsureDefaultSectionPrefixes(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM SectionPrefixes";
+        if (Convert.ToInt32(cmd.ExecuteScalar()) > 0)
+            return; // already seeded
+
+        var abbotsfordId = FindOrCreateCampus(conn, "Abbotsford");
+        var chilliwackId = FindOrCreateCampus(conn, "Chilliwack");
+
+        (string PrefixText, string CampusId)[] defaults =
+        [
+            ("AB", abbotsfordId),
+            ("A#", abbotsfordId),
+            ("CH", chilliwackId),
+            ("C#", chilliwackId),
+        ];
+
+        cmd.CommandText =
+            "INSERT OR IGNORE INTO SectionPrefixes (id, prefix, data) VALUES ($id, $prefix, $data)";
+        var idParam     = cmd.Parameters.Add("$id",     SqliteType.Text);
+        var prefixParam = cmd.Parameters.Add("$prefix", SqliteType.Text);
+        var dataParam   = cmd.Parameters.Add("$data",   SqliteType.Text);
+
+        foreach (var (prefixText, campusId) in defaults)
+        {
+            var sp = new SectionPrefix { Prefix = prefixText, CampusId = campusId };
+            idParam.Value     = sp.Id;
+            prefixParam.Value = sp.Prefix;
+            dataParam.Value   = JsonHelpers.Serialize(sp);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Finds a campus in SectionPropertyValues by name (case-insensitive) and returns its ID.
+    /// If no matching campus exists, a new one is inserted and its new ID is returned.
+    /// </summary>
+    /// <param name="conn">Open SQLite connection.</param>
+    /// <param name="name">Campus name to find or create (e.g. "Abbotsford").</param>
+    /// <returns>The ID of the existing or newly created campus record.</returns>
+    private static string FindOrCreateCampus(SqliteConnection conn, string name)
+    {
+        using var findCmd = conn.CreateCommand();
+        findCmd.CommandText =
+            "SELECT id FROM SectionPropertyValues " +
+            "WHERE type = 'campus' AND LOWER(json_extract(data, '$.name')) = LOWER($name)";
+        findCmd.Parameters.AddWithValue("$name", name);
+        var existing = findCmd.ExecuteScalar() as string;
+        if (existing is not null)
+            return existing;
+
+        var campus = new SectionPropertyValue { Name = name };
+        using var insertCmd = conn.CreateCommand();
+        insertCmd.CommandText =
+            "INSERT INTO SectionPropertyValues (id, type, name, data) " +
+            "VALUES ($id, 'campus', $name, $data)";
+        insertCmd.Parameters.AddWithValue("$id",   campus.Id);
+        insertCmd.Parameters.AddWithValue("$name", campus.Name);
+        insertCmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(campus));
+        insertCmd.ExecuteNonQuery();
+        return campus.Id;
     }
 
     /// <summary>
