@@ -64,17 +64,17 @@
     <SolidColorBrush x:Key="FlyoutShadow" Color="#50000000" />
 
     <!--  ── Semester banners (Section List group headers) ───────────────  -->
-    <!--  5 slots cycle by semester index; chosen to be distinct and readable  -->
-    <SolidColorBrush x:Key="SemesterBanner1Background" Color="#D4EDDA" />
-    <SolidColorBrush x:Key="SemesterBanner1Border"     Color="#9DC8A8" />
-    <SolidColorBrush x:Key="SemesterBanner2Background" Color="#E8D5F0" />
-    <SolidColorBrush x:Key="SemesterBanner2Border"     Color="#C09ED8" />
-    <SolidColorBrush x:Key="SemesterBanner3Background" Color="#FFE4CC" />
-    <SolidColorBrush x:Key="SemesterBanner3Border"     Color="#E0B888" />
-    <SolidColorBrush x:Key="SemesterBanner4Background" Color="#C8F0EC" />
-    <SolidColorBrush x:Key="SemesterBanner4Border"     Color="#88CCC4" />
-    <SolidColorBrush x:Key="SemesterBanner5Background" Color="#FDE8E8" />
-    <SolidColorBrush x:Key="SemesterBanner5Border"     Color="#E8A8A8" />
+    <!--  Colors assigned by semester name for visual consistency regardless of selection order.  -->
+    <SolidColorBrush x:Key="FallBackground"        Color="#C65D1E" />
+    <SolidColorBrush x:Key="FallBorder"            Color="#C65D1E" />
+    <SolidColorBrush x:Key="WinterBackground"      Color="#8f8e8c" />
+    <SolidColorBrush x:Key="WinterBorder"          Color="#8f8e8c" />
+    <SolidColorBrush x:Key="EarlySummerBackground" Color="#7ED957" />
+    <SolidColorBrush x:Key="EarlySummerBorder"     Color="#7ED957" />
+    <SolidColorBrush x:Key="SummerBackground"      Color="#4FB6F7" />
+    <SolidColorBrush x:Key="SummerBorder"          Color="#4FB6F7" />
+    <SolidColorBrush x:Key="LateSummerBackground"  Color="#F2C94C" />
+    <SolidColorBrush x:Key="LateSummerBorder"      Color="#F2C94C" />
 
     <!--  ── General UI structure ─────────────────────────────────────────  -->
     <SolidColorBrush x:Key="SeparatorLine" Color="#7AAAD4" />
