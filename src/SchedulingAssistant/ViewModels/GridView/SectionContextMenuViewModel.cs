@@ -115,7 +115,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
                     .Select(i => new InstructorAssignment
                     {
                         InstructorId = i.Id,
-                        Workload     = existingWorkloads.GetValueOrDefault(i.Id)
+                        Workload     = existingWorkloads.GetValueOrDefault(i.Id) ?? 1m
                     })
                     .ToList();
                 break;
