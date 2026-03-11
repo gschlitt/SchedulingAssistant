@@ -18,6 +18,22 @@ Printing to png seems to print in dark mode?
 All Filter and Overlay menus should display all the choices available, not just those reflecting current sections.
 
 
+Overlay color needs to work in conjunction with Multi-semester.
+
+Confirm section deletes!
+
+Outline sections that are selected via a filter .
+
+Colors:
+
+Overlay color: in menu bar around selected cards and the text within the card
+Filter selected color: in menu bar, and frames the sections in section view
+Selected color: now orange in Schedule View, blue in list, needs to be consistent.
+
+
+
+
+
 
 
 
@@ -25,6 +41,7 @@ Agenda.
 
 "Hybrid Course Scheduling" (odd, even weeks, more infrequent)
 
+Filter by course.
 
 What happens if we modify legal start times while a semester is in use?
 
