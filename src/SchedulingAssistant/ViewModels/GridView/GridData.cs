@@ -1,3 +1,5 @@
+using Avalonia.Media;
+
 namespace SchedulingAssistant.ViewModels.GridView;
 
 // ── Grid block hierarchy ──────────────────────────────────────────────────────
@@ -24,8 +26,11 @@ namespace SchedulingAssistant.ViewModels.GridView;
 /// <summary>
 /// Abstract base for any time-positioned block that can be placed on the schedule grid.
 /// Day uses 1=Monday … 6=Saturday. Times are minutes from midnight (e.g. 510 = 8:30 AM).
+/// SemesterId identifies which semester this block belongs to; used in multi-semester
+/// mode to route each block to the correct semester sub-column. Empty string is safe
+/// for single-semester mode.
 /// </summary>
-public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay);
+public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay, string SemesterId = "");
 
 /// <summary>
 /// A single scheduled meeting for a section (one slot in section.Schedule).
@@ -33,11 +38,12 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// Initials = space-joined instructor initials, e.g. "JRS MKL" (may be empty)
 /// SectionId = database ID of the section — used to highlight/select the tile
 /// IsOverlay = true when the section matches the active overlay (renders red)
+/// SemesterId = database ID of the semester this section belongs to
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
-    string Label, string Initials, string SectionId
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay);
+    string Label, string Initials, string SectionId, string SemesterId = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId);
 
 /// <summary>
 /// An instructor commitment (non-teaching obligation stored in InstructorCommitments table).
@@ -47,11 +53,12 @@ public record SectionMeetingBlock(
 /// CommitmentId = database ID from the InstructorCommitments table
 /// Name = the commitment title shown on the card (e.g. "Department Meeting")
 /// IsOverlay is hardcoded true — commitments are always overlay-styled.
+/// SemesterId = database ID of the semester this commitment belongs to
 /// </summary>
 public record CommitmentBlock(
     int Day, int StartMinutes, int EndMinutes,
-    string Name, string CommitmentId
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true);
+    string Name, string CommitmentId, string SemesterId = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId);
 
 /// <summary>
 /// One row within a rendered tile. A tile can have multiple entries when two or
@@ -86,8 +93,16 @@ public record GridTile(
     /// <summary>Total number of columns in the overlap cluster.</summary>
     int OverlapCount);
 
-/// <summary>One day column's worth of positioned tiles.</summary>
-public record GridDayColumn(string Header, IReadOnlyList<GridTile> Tiles);
+/// <summary>
+/// One day-semester column's worth of positioned tiles.
+/// In single-semester mode, Header is the day name and SemesterBorderBrush is null.
+/// In multi-semester mode, SemesterBorderBrush carries the semester's color so the
+/// renderer can draw a colored frame around this sub-column.
+/// </summary>
+public record GridDayColumn(
+    string Header,
+    IReadOnlyList<GridTile> Tiles,
+    IBrush? SemesterBorderBrush = null);
 
 /// <summary>All data needed by the view to render the schedule grid.</summary>
 public record GridData(
@@ -95,8 +110,19 @@ public record GridData(
     int FirstRowMinutes,
     /// <summary>End of the visible time range, snapped to the half-hour at or after the latest end.</summary>
     int LastRowMinutes,
-    IReadOnlyList<GridDayColumn> DayColumns)
+    IReadOnlyList<GridDayColumn> DayColumns,
+    /// <summary>
+    /// Number of semester sub-columns per day. 1 in single-semester mode; N in multi-semester mode.
+    /// Total column count = number of visible days × SemesterCount.
+    /// Columns are ordered: all semester sub-columns for Monday, then all for Tuesday, etc.
+    /// Within each day group, sub-columns appear in the same order as the selected semesters list.
+    /// </summary>
+    int SemesterCount = 1)
 {
     public static readonly GridData Empty = new(480, 22 * 60, []);
+
+    /// <summary>True when more than one semester's data is displayed side-by-side.</summary>
+    public bool IsMultiSemester => SemesterCount > 1;
+
     public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0);
 }

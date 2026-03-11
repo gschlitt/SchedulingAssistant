@@ -242,8 +242,12 @@ public partial class ScheduleGridView : UserControl
                 // Track the widest content in this day
                 dayContentWidths[d] = Math.Max(dayContentWidths[d], contentW);
 
+                // Store the max actual height for this time span across all columns.
+                // In multi-semester mode multiple columns may have tiles at the same time;
+                // the tallest one determines the gridline expansion for that slot.
                 var key = (tile.StartMinutes, tile.EndMinutes);
-                tileHeightMap[key] = (timeBasedH, actualH);
+                if (!tileHeightMap.TryGetValue(key, out var existing) || actualH > existing.actualHeight)
+                    tileHeightMap[key] = (timeBasedH, actualH);
                 allTiles.Add((d, tile, timeBasedH));
             }
         }
@@ -297,27 +301,56 @@ public partial class ScheduleGridView : UserControl
         AddRect(_canvas, TimeGutterWidth, 0, totalWidth - TimeGutterWidth, DayHeaderHeight,
             HeaderFill, HeaderBorder, borderThickness: new Thickness(0, 0, 0, 1));
 
-        for (int d = 0; d < dayCount; d++)
+        int semCount = data.SemesterCount;
+        int dayCountActual = dayCount / semCount;
+
+        // Draw one day header per logical day, spanning all its semester sub-columns.
+        // Then draw any semester sub-column borders in the time body below the header.
+        for (int dayIdx = 0; dayIdx < dayCountActual; dayIdx++)
         {
-            double dayX = dayXOffsets[d];
-            double dayColWidth = dayColWidths[d];
+            int firstCol     = dayIdx * semCount;
+            double dayGroupX = dayXOffsets[firstCol];
+            double dayGroupW = dayXOffsets[firstCol + semCount] - dayGroupX;
 
-            // Vertical separator between day columns
-            if (d > 0)
-                AddLine(_canvas, dayX, 0, dayX, totalHeight, HeaderBorder, 1);
+            // Vertical separator between day groups
+            if (dayIdx > 0)
+                AddLine(_canvas, dayGroupX, 0, dayGroupX, totalHeight, HeaderBorder, 1);
 
+            // Day name label centered over the full day group width
             var tb = new TextBlock
             {
-                Text = data.DayColumns[d].Header,
+                Text = data.DayColumns[firstCol].Header,
                 FontWeight = FontWeight.SemiBold,
                 FontSize = FontSizeFromResource("FontSizeXLarge"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Width = dayColWidth,
+                Width = dayGroupW,
                 TextAlignment = TextAlignment.Center,
             };
-            Canvas.SetLeft(tb, dayX);
+            Canvas.SetLeft(tb, dayGroupX);
             Canvas.SetTop(tb, (DayHeaderHeight - 14) / 2);
             _canvas.Children.Add(tb);
+
+            // In multi-semester mode, draw colored frames around each sub-column's time body
+            // and a thin separator between adjacent sub-columns within the day group.
+            if (semCount > 1)
+            {
+                for (int s = 0; s < semCount; s++)
+                {
+                    int colIdx    = firstCol + s;
+                    double colX   = dayXOffsets[colIdx];
+                    double colW   = dayColWidths[colIdx];
+
+                    // Thin separator between semester sub-columns within a day
+                    if (s > 0)
+                        AddLine(_canvas, colX, DayHeaderHeight, colX, totalHeight, HeaderBorder, 0.5);
+
+                    // Colored left+right border framing this semester's sub-column
+                    var semBrush = data.DayColumns[colIdx].SemesterBorderBrush;
+                    if (semBrush is not null)
+                        AddRect(_canvas, colX, DayHeaderHeight, colW, totalHeight - DayHeaderHeight,
+                            Brushes.Transparent, semBrush,
+                            borderThickness: new Thickness(2, 0, 2, 0));
+                }
+            }
         }
 
         // ── Time rows + horizontal rules (with adjusted Y-coordinates) ───────
@@ -390,7 +423,10 @@ public partial class ScheduleGridView : UserControl
                         : $"{entry.Label}  {entry.Initials}";
 
                     var entryId = entry.SectionId;
-                    var clickCtx = new TileClickContext(entryId, d + 1, tile.StartMinutes);
+                    // In multi-semester mode columns are interleaved: [Mon/Sem1, Mon/Sem2, Tue/Sem1, ...].
+                    // The day number is the day-group index + 1, not the raw column index + 1.
+                    int clickDay = (d / semCount) + 1;
+                    var clickCtx = new TileClickContext(entryId, clickDay, tile.StartMinutes);
                     var entryRow = new Border
                     {
                         Background   = entrySelected ? TileFillSelected : Brushes.Transparent,

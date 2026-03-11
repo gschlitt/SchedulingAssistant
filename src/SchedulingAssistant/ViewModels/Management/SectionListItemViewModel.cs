@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
@@ -35,6 +37,12 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     public string SortKeyInstructor { get; }
     public string SortKeySectionType { get; }
 
+    /// <summary>
+    /// Left-border brush for this section's semester, resolved from AppColors.
+    /// Used in multi-semester view to visually indicate semester membership.
+    /// </summary>
+    public IBrush? SemesterLeftBorderBrush { get; }
+
     private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     public SectionListItemViewModel(
@@ -47,9 +55,16 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, SectionPropertyValue> tagLookup,
         Dictionary<string, SectionPropertyValue> resourceLookup,
         Dictionary<string, SectionPropertyValue> reserveLookup,
-        Dictionary<string, SectionPropertyValue> meetingTypeLookup)
+        Dictionary<string, SectionPropertyValue> meetingTypeLookup,
+        string semesterName = "")
     {
         Section = section;
+
+        // Resolve semester color from AppColors by semester name
+        string borderKey = GetSemesterBorderKey(semesterName);
+        object? bd = null;
+        Application.Current?.Resources.TryGetResource(borderKey, null, out bd);
+        SemesterLeftBorderBrush = bd as IBrush;
 
         // Compute sort keys for instructor and section type
         var instructorNames = section.InstructorAssignments
@@ -168,6 +183,26 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     [RelayCommand]
     private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
+
+    /// <summary>
+    /// Maps a semester name to its corresponding AppColors border brush key.
+    /// </summary>
+    private static string GetSemesterBorderKey(string semesterName)
+    {
+        if (string.IsNullOrEmpty(semesterName))
+            return "FallBorder";
+
+        var firstWord = semesterName.Split(' ')[0];
+        return firstWord switch
+        {
+            "Fall" => "FallBorder",
+            "Winter" => "WinterBorder",
+            "Early" => "EarlySummerBorder",
+            "Summer" => "SummerBorder",
+            "Late" => "LateSummerBorder",
+            _ => "FallBorder"
+        };
+    }
 
     private static string FormatMinutes(int minutes) =>
         $"{minutes / 60:D2}{minutes % 60:D2}";

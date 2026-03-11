@@ -521,10 +521,14 @@
                         </Border>
                     </DataTemplate>
 
-                    <!--  Section card — existing template unchanged  -->
+                    <!--  Section card with multi-semester left border indicator  -->
                     <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
                         <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,1">
-                            <StackPanel>
+                            <!-- Multi-semester indicator: narrow left border in semester color -->
+                            <Border BorderBrush="{Binding SemesterLeftBorderBrush}"
+                                    BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
+                                    Padding="0">
+                                <StackPanel>
 
                                 <!-- Summary row (hidden while section is being created) -->
                                 <StackPanel Spacing="1" IsVisible="{Binding !IsBeingCreated}">
@@ -630,6 +634,7 @@
                                 </Border>
 
                             </StackPanel>
+                            </Border>
                         </Border>
                     </DataTemplate>
 

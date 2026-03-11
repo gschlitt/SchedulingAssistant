@@ -273,7 +273,8 @@ public partial class SectionListViewModel : ViewModelBase
                 var vm = new SectionListItemViewModel(
                     s, courseLookup, instructorLookup, roomLookup,
                     sectionTypeLookup, campusLookup,
-                    tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
+                    tagLookup, resourceLookup, reserveLookup, meetingTypeLookup,
+                    semDisplay.Semester.Name);
                 if (collapsedIds.Contains(s.Id))
                     vm.IsCollapsed = true;
                 return vm;
