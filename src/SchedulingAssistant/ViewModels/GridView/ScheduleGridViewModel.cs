@@ -224,6 +224,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
             { "5+XX", "5+XX" }
         };
 
+        // ── Build semester ID → name lookup for block creation ────────────────
+        // Used when creating GridBlocks to capture the semester name so the renderer
+        // can determine the semester color without additional lookups.
+        var semesterIdToName = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Name);
+
         // ── Rebuild filter option lists (preserves selections) ─────────────────
         Filter.PopulateOptions(
             sections,
@@ -380,7 +385,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     isOverlay = slot.RoomId == overlayId;
                 }
 
-                allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, isOverlay, label, initials, section.Id, section.SemesterId));
+                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
+                allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, isOverlay, label, initials, section.Id, section.SemesterId, semesterName));
             }
         }
 
@@ -410,9 +416,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     : section.SectionCode;
 
                 // Add ALL meetings for this overlay-only section
+                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
                 foreach (var slot in section.Schedule)
                 {
-                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId));
+                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId, semesterName));
                 }
             }
         }
@@ -432,6 +439,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     ? $"{calCode} {section.SectionCode}"
                     : section.SectionCode;
 
+                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
                 foreach (var slot in section.Schedule)
                 {
                     // Only add meetings that have the overlay room assigned
@@ -444,7 +452,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                             b.StartMinutes == slot.StartMinutes && b.EndMinutes == slot.EndMinutes))
                         continue;
 
-                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId));
+                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId, semesterName));
                 }
             }
         }
@@ -473,7 +481,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             {
                 var commitments = _commitmentRepo.GetByInstructor(sd.Semester.Id, Filter.SelectedOverlayId);
                 foreach (var c in commitments)
-                    allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id));
+                    allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id, sd.Semester.Name));
             }
         }
 
@@ -535,9 +543,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
                         .ToList();
 
-                var tiles  = ComputeTiles(dayBlocks);
-                var brush  = isMultiSemester ? ResolveSemesterBorderBrush(sd.Semester.Name) : null;
-                dayColumns.Add(new GridDayColumn(dayNames[dayNum], tiles, brush));
+                var tiles  = ComputeTiles(dayBlocks, sd.Semester.Name);
+                dayColumns.Add(new GridDayColumn(dayNames[dayNum], tiles));
             }
         }
 
@@ -577,11 +584,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>
     /// Resolves the semester border brush from AppColors using the semester name.
-    /// Uses the same color-key mapping as SemesterBannerViewModel so that the
-    /// schedule grid sub-column borders are visually consistent with the Section List banners.
-    /// Returns null if the resource cannot be found (renderer will omit the border).
+    /// Uses the same color-key mapping as SemesterBannerViewModel so that semester colors
+    /// throughout the app are visually consistent.
+    /// Returns null if the resource cannot be found (renderer will use default styling).
+    /// Used by ScheduleGridView to color meeting card borders in multi-semester mode.
     /// </summary>
-    private static Avalonia.Media.IBrush? ResolveSemesterBorderBrush(string semesterName)
+    public static Avalonia.Media.IBrush? ResolveSemesterBorderBrush(string semesterName)
     {
         var firstWord = semesterName.Split(' ')[0];
         string key = firstWord switch
@@ -628,7 +636,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Blocks with identical start+end are merged into a single tile (stacked entries).
     /// Overlapping blocks (different time spans) are placed side-by-side.
     /// </summary>
-    private static List<GridTile> ComputeTiles(List<GridBlock> blocks)
+    /// <summary>
+    /// Computes the tile layout for a single day's blocks (already filtered by day and semester).
+    /// All blocks in this call belong to the same semester, so semesterName is provided
+    /// and propagated to each resulting GridTile for use by the renderer.
+    /// </summary>
+    private static List<GridTile> ComputeTiles(List<GridBlock> blocks, string semesterName = "")
     {
         var tiles = new List<GridTile>();
         if (blocks.Count == 0) return tiles;
@@ -694,7 +707,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (col == -1) { col = colEnds.Count; colEnds.Add(0); }
                 colEnds[col] = m.End;
 
-                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count));
+                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count, semesterName));
             }
 
             // Fix OverlapCount to actual column count used
@@ -702,7 +715,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             for (int t = tiles.Count - cluster.Count; t < tiles.Count; t++)
             {
                 var old = tiles[t];
-                tiles[t] = old with { OverlapCount = actualCols };
+                tiles[t] = old with { OverlapCount = actualCols, SemesterName = semesterName };
             }
         }
 

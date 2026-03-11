@@ -328,29 +328,6 @@ public partial class ScheduleGridView : UserControl
             Canvas.SetLeft(tb, dayGroupX);
             Canvas.SetTop(tb, (DayHeaderHeight - 14) / 2);
             _canvas.Children.Add(tb);
-
-            // In multi-semester mode, draw colored frames around each sub-column's time body
-            // and a thin separator between adjacent sub-columns within the day group.
-            if (semCount > 1)
-            {
-                for (int s = 0; s < semCount; s++)
-                {
-                    int colIdx    = firstCol + s;
-                    double colX   = dayXOffsets[colIdx];
-                    double colW   = dayColWidths[colIdx];
-
-                    // Thin separator between semester sub-columns within a day
-                    if (s > 0)
-                        AddLine(_canvas, colX, DayHeaderHeight, colX, totalHeight, HeaderBorder, 0.5);
-
-                    // Colored left+right border framing this semester's sub-column
-                    var semBrush = data.DayColumns[colIdx].SemesterBorderBrush;
-                    if (semBrush is not null)
-                        AddRect(_canvas, colX, DayHeaderHeight, colW, totalHeight - DayHeaderHeight,
-                            Brushes.Transparent, semBrush,
-                            borderThickness: new Thickness(2, 0, 2, 0));
-                }
-            }
         }
 
         // ── Time rows + horizontal rules (with adjusted Y-coordinates) ───────
@@ -473,18 +450,60 @@ public partial class ScheduleGridView : UserControl
                 }
 
                 bool tileHasOverlay = tile.Entries.Any(e => e.IsOverlay);
-                var border = new Border
+                bool isMultiSemester = data.IsMultiSemester;
+
+                // In multi-semester mode, resolve the semester color for this tile
+                IBrush? semesterBrush = null;
+                if (isMultiSemester && !string.IsNullOrEmpty(tile.SemesterName))
                 {
-                    Width           = tileW - TilePadding,
-                    Height          = adjustedTileH,
-                    Background      = TileFill,
-                    BorderBrush     = tileHasOverlay ? OverlayFrameBorder : TileBorder,
-                    BorderThickness = tileHasOverlay ? new Thickness(2) : new Thickness(1),
-                    CornerRadius    = new CornerRadius(3),
-                    Padding         = new Thickness(3, 2),
-                    ClipToBounds    = false,
-                    Child           = stack,
-                };
+                    semesterBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(tile.SemesterName);
+                }
+
+                Border border;
+                if (tileHasOverlay && isMultiSemester && semesterBrush is not null)
+                {
+                    // Dual-border approach for overlay tiles in multi-semester mode:
+                    // Outer border (red) for overlay status, inner border (semester color) for semester identification
+                    var innerBorder = new Border
+                    {
+                        Background      = TileFill,
+                        BorderBrush     = semesterBrush,
+                        BorderThickness = new Thickness(2),
+                        CornerRadius    = new CornerRadius(3),
+                        Padding         = new Thickness(3, 2),
+                        Child           = stack,
+                    };
+
+                    border = new Border
+                    {
+                        Width           = tileW - TilePadding,
+                        Height          = adjustedTileH,
+                        Background      = TileFill,
+                        BorderBrush     = OverlayFrameBorder,
+                        BorderThickness = new Thickness(2),
+                        CornerRadius    = new CornerRadius(3),
+                        ClipToBounds    = false,
+                        Child           = innerBorder,
+                    };
+                }
+                else
+                {
+                    // Standard tile: use semester color in multi-semester mode, else gray border
+                    border = new Border
+                    {
+                        Width           = tileW - TilePadding,
+                        Height          = adjustedTileH,
+                        Background      = TileFill,
+                        BorderBrush     = tileHasOverlay ? OverlayFrameBorder
+                                        : semesterBrush ?? TileBorder,
+                        BorderThickness = tileHasOverlay ? new Thickness(2)
+                                        : semesterBrush is not null ? new Thickness(2) : new Thickness(1),
+                        CornerRadius    = new CornerRadius(3),
+                        Padding         = new Thickness(3, 2),
+                        ClipToBounds    = false,
+                        Child           = stack,
+                    };
+                }
 
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, adjustedTileY);

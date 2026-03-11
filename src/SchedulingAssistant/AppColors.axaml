@@ -73,8 +73,8 @@
     <!--  Colors are assigned by semester name, not position: Fall, Winter, Early Summer, Summer, Late Summer  -->
     <SolidColorBrush x:Key="FallBackground" Color="#C65D1E" />
     <SolidColorBrush x:Key="FallBorder" Color="#C65D1E" />
-    <SolidColorBrush x:Key="WinterBackground" Color="#D6E6F2" />
-    <SolidColorBrush x:Key="WinterBorder" Color="#D6E6F2" />
+    <SolidColorBrush x:Key="WinterBackground" Color="#8f8e8c" />
+    <SolidColorBrush x:Key="WinterBorder" Color="#8f8e8c" />
     <SolidColorBrush x:Key="EarlySummerBackground" Color="#7ED957" />
     <SolidColorBrush x:Key="EarlySummerBorder" Color="#7ED957" />
     <SolidColorBrush x:Key="SummerBackground" Color="#4FB6F7" />

@@ -29,8 +29,10 @@ namespace SchedulingAssistant.ViewModels.GridView;
 /// SemesterId identifies which semester this block belongs to; used in multi-semester
 /// mode to route each block to the correct semester sub-column. Empty string is safe
 /// for single-semester mode.
+/// SemesterName is the display name of the semester (e.g. "Fall 2025") used by the renderer
+/// to look up the appropriate semester color. Empty string if not in multi-semester mode.
 /// </summary>
-public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay, string SemesterId = "");
+public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay, string SemesterId = "", string SemesterName = "");
 
 /// <summary>
 /// A single scheduled meeting for a section (one slot in section.Schedule).
@@ -39,11 +41,12 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// SectionId = database ID of the section — used to highlight/select the tile
 /// IsOverlay = true when the section matches the active overlay (renders red)
 /// SemesterId = database ID of the semester this section belongs to
+/// SemesterName = display name of the semester (e.g. "Fall 2025") used for color lookup
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
-    string Label, string Initials, string SectionId, string SemesterId = ""
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId);
+    string Label, string Initials, string SectionId, string SemesterId = "", string SemesterName = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName);
 
 /// <summary>
 /// An instructor commitment (non-teaching obligation stored in InstructorCommitments table).
@@ -54,11 +57,12 @@ public record SectionMeetingBlock(
 /// Name = the commitment title shown on the card (e.g. "Department Meeting")
 /// IsOverlay is hardcoded true — commitments are always overlay-styled.
 /// SemesterId = database ID of the semester this commitment belongs to
+/// SemesterName = display name of the semester (e.g. "Fall 2025") used for color lookup
 /// </summary>
 public record CommitmentBlock(
     int Day, int StartMinutes, int EndMinutes,
-    string Name, string CommitmentId, string SemesterId = ""
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId);
+    string Name, string CommitmentId, string SemesterId = "", string SemesterName = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId, SemesterName);
 
 /// <summary>
 /// One row within a rendered tile. A tile can have multiple entries when two or
@@ -83,6 +87,9 @@ public record TileEntry(
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections
 /// (same start time and duration).
+/// SemesterName is the display name of the semester this tile belongs to (all entries
+/// in a tile come from the same semester since they were tiled from semester-filtered blocks).
+/// Empty string if single-semester mode.
 /// </summary>
 public record GridTile(
     IReadOnlyList<TileEntry> Entries,
@@ -91,18 +98,17 @@ public record GridTile(
     /// <summary>0-based column index within an overlap cluster.</summary>
     int OverlapIndex,
     /// <summary>Total number of columns in the overlap cluster.</summary>
-    int OverlapCount);
+    int OverlapCount,
+    string SemesterName = "");
 
 /// <summary>
 /// One day-semester column's worth of positioned tiles.
-/// In single-semester mode, Header is the day name and SemesterBorderBrush is null.
-/// In multi-semester mode, SemesterBorderBrush carries the semester's color so the
-/// renderer can draw a colored frame around this sub-column.
+/// In single-semester mode, Header is the day name.
+/// In multi-semester mode, tiles carry their SemesterName for color lookup by the renderer.
 /// </summary>
 public record GridDayColumn(
     string Header,
-    IReadOnlyList<GridTile> Tiles,
-    IBrush? SemesterBorderBrush = null);
+    IReadOnlyList<GridTile> Tiles);
 
 /// <summary>All data needed by the view to render the schedule grid.</summary>
 public record GridData(
