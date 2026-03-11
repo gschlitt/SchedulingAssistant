@@ -8,8 +8,8 @@ namespace SchedulingAssistant.Services;
 
 /// <summary>
 /// Pairs a Semester with a formatted display label.
-/// <see cref="DisplayName"/> uses the full "Year — Semester" form for legacy contexts.
-/// For the semester picker UI, prefer <see cref="SemesterCheckItem.DisplayName"/> (short form).
+/// DisplayName uses the full "Year — Semester" form for legacy contexts;
+/// for the semester picker UI prefer <see cref="SemesterCheckItem.DisplayName"/> (short form).
 /// </summary>
 public class SemesterDisplay
 {
@@ -18,10 +18,9 @@ public class SemesterDisplay
 }
 
 /// <summary>
-/// Wraps a <see cref="SemesterDisplay"/> for use in the semester picker popup.
-/// Each item independently tracks its selected state; toggling it notifies the parent
-/// <see cref="SemesterContext"/> via the internal <see cref="SelectionChanged"/> event
-/// so the context can rebuild <see cref="SemesterContext.SelectedSemesters"/>.
+/// Wraps a <see cref="SemesterDisplay"/> for the semester picker popup.
+/// Each item tracks its own selected state; toggling it notifies the parent
+/// <see cref="SemesterContext"/> via the internal <see cref="SelectionChanged"/> event.
 /// </summary>
 public class SemesterCheckItem : ObservableObject
 {
@@ -45,9 +44,9 @@ public class SemesterCheckItem : ObservableObject
     }
 
     /// <summary>
-    /// Sets <see cref="IsSelected"/> and notifies the UI without firing
-    /// <see cref="SelectionChanged"/>.  Used by <see cref="SemesterContext"/> when it needs
-    /// to force-restore a selection without triggering a re-entrant callback.
+    /// Sets IsSelected and updates the UI, but does NOT fire <see cref="SelectionChanged"/>.
+    /// Used by <see cref="SemesterContext"/> to forcibly re-select the last semester
+    /// without causing a re-entrant selection-changed callback.
     /// </summary>
     internal void SetSelectedSilent(bool value)
     {
@@ -57,15 +56,12 @@ public class SemesterCheckItem : ObservableObject
 
     /// <summary>
     /// Fired when <see cref="IsSelected"/> changes.
-    /// <see cref="SemesterContext"/> wires this on construction of each item.
+    /// Wired by <see cref="SemesterContext"/> to rebuild <see cref="SemesterContext.SelectedSemesters"/>.
     /// </summary>
     internal event Action<SemesterCheckItem>? SelectionChanged;
 
     /// <param name="semDisplay">The semester this item wraps.</param>
-    /// <param name="isSelected">
-    /// Initial selected state.  Set directly (bypassing the property setter)
-    /// so no <see cref="SelectionChanged"/> event fires during construction.
-    /// </param>
+    /// <param name="isSelected">Initial selected state; set directly to avoid firing the event.</param>
     public SemesterCheckItem(SemesterDisplay semDisplay, bool isSelected = false)
     {
         SemDisplay = semDisplay;
@@ -74,16 +70,13 @@ public class SemesterCheckItem : ObservableObject
 }
 
 /// <summary>
-/// Singleton service holding the globally-selected academic year and semester(s).
-/// Supports selecting multiple semesters within one academic year simultaneously.
-/// <para>
-/// ViewModels subscribe to:
+/// Singleton service that holds the globally-selected academic year and semester(s).
+/// Supports multi-semester selection: multiple semesters within one academic year can be
+/// active simultaneously. ViewModels subscribe to:
 /// <list type="bullet">
-///   <item><see cref="SelectedSemesterDisplay"/> — single-semester backward compatibility</item>
-///   <item><see cref="SelectedSemesters"/> — full multi-semester awareness</item>
+///   <item><see cref="SelectedSemesterDisplay"/> for single-semester backward compatibility</item>
+///   <item><see cref="SelectedSemesters"/> for full multi-semester awareness</item>
 /// </list>
-/// Both fire <c>PropertyChanged</c> whenever the selection changes.
-/// </para>
 /// </summary>
 public partial class SemesterContext : ObservableObject
 {
@@ -101,23 +94,20 @@ public partial class SemesterContext : ObservableObject
 
     /// <summary>
     /// Checkbox items for the semester picker popup — one per semester in the selected year.
-    /// Bind <c>ItemsSource</c> in the UI to this collection.
-    /// Each item exposes <see cref="SemesterCheckItem.IsSelected"/> for two-way binding.
+    /// Bind <c>ItemsSource</c> to this; each item exposes <c>IsSelected</c> two-way.
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<SemesterCheckItem> _filteredCheckItems = new();
 
     /// <summary>
     /// The semesters currently selected for display (one or more).
-    /// Derived from the checked items in <see cref="FilteredCheckItems"/>;
-    /// rebuilt whenever a check item toggles.
-    /// Fires <c>PropertyChanged</c> on every rebuild.
+    /// Derived from <see cref="FilteredCheckItems"/>; rebuilt whenever a check item toggles.
     /// </summary>
     public IReadOnlyList<SemesterDisplay> SelectedSemesters { get; private set; } = [];
 
     /// <summary>
-    /// Label for the semester picker button, e.g. "Fall 2025" or "Early Summer, Summer".
-    /// "(none)" when nothing is selected (should not normally occur).
+    /// Text for the semester picker button.
+    /// Shows a comma-separated list of semester names, e.g. "Fall 2025" or "Early Summer, Summer".
     /// </summary>
     public string SelectedSemestersLabel { get; private set; } = "(none)";
 
@@ -131,9 +121,8 @@ public partial class SemesterContext : ObservableObject
     // ── Backward-Compatible Single-Semester Surface ────────────────────────────
 
     /// <summary>
-    /// The primary (first) selected semester, or null if none selected.
-    /// ViewModels that only support a single semester (WorkloadPanel, CommitmentsManagement,
-    /// etc.) subscribe to this property and continue to work unchanged.
+    /// The primary (first) selected semester, or null if none are selected.
+    /// ViewModels that only support a single semester subscribe to this property.
     /// Fires <c>PropertyChanged</c> whenever <see cref="SelectedSemesters"/> changes.
     /// </summary>
     public SemesterDisplay? SelectedSemesterDisplay => SelectedSemesters.FirstOrDefault();
@@ -148,9 +137,8 @@ public partial class SemesterContext : ObservableObject
     private ObservableCollection<SemesterDisplay> _semesterDisplays = new();
 
     /// <summary>
-    /// Semesters in the selected year as plain <see cref="SemesterDisplay"/> objects (no
-    /// selection state).  Kept for backward compatibility; prefer
-    /// <see cref="FilteredCheckItems"/> in new code.
+    /// Semesters in the selected year as <see cref="SemesterDisplay"/> objects (no IsSelected state).
+    /// Kept for backward compatibility; prefer <see cref="FilteredCheckItems"/> in new code.
     /// </summary>
     public IReadOnlyList<SemesterDisplay> FilteredSemesters =>
         FilteredCheckItems.Select(ci => ci.SemDisplay).ToList();
@@ -171,7 +159,7 @@ public partial class SemesterContext : ObservableObject
     /// <summary>
     /// Reloads academic years and semesters from the database.
     /// Preserves the previously-selected academic year and semester(s) if they still exist.
-    /// Falls back to the first year / first semester when previous selections are gone.
+    /// Falls back to the first year / first semester when the previous selection is gone.
     /// </summary>
     /// <param name="ayRepo">Academic year repository.</param>
     /// <param name="semRepo">Semester repository.</param>
@@ -183,7 +171,8 @@ public partial class SemesterContext : ObservableObject
         var allYears     = ayRepo.GetAll().OrderBy(y => y.StartYear).ToList();
         var allSemesters = semRepo.GetAll();
 
-        _yearLookup      = allYears.ToDictionary(y => y.Id);
+        // Rebuild lookup tables
+        _yearLookup     = allYears.ToDictionary(y => y.Id);
         _semestersByYear = new Dictionary<string, List<SemesterDisplay>>();
 
         var allDisplays = new List<SemesterDisplay>();
@@ -211,8 +200,8 @@ public partial class SemesterContext : ObservableObject
 
         if (newSelectedYear != null)
         {
-            // Set the backing field directly to suppress the OnSelectedAcademicYearChanged
-            // partial void — we call RebuildCheckItems ourselves with restoration IDs.
+            // Assign directly to suppress the OnSelectedAcademicYearChanged partial;
+            // we call RebuildCheckItems ourselves with restoration IDs.
             _selectedAcademicYear = newSelectedYear;
             OnPropertyChanged(nameof(SelectedAcademicYear));
             RebuildCheckItems(previousSemesterIds);
@@ -228,23 +217,20 @@ public partial class SemesterContext : ObservableObject
     // ── Internal Mechanics ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// Called by the CommunityToolkit-generated setter when <see cref="SelectedAcademicYear"/>
-    /// changes interactively.  Rebuilds check items and auto-selects the first semester.
+    /// Called by the CommunityToolkit-generated setter when <see cref="SelectedAcademicYear"/> changes.
+    /// Rebuilds the semester check items and auto-selects the first semester in the new year.
     /// </summary>
     partial void OnSelectedAcademicYearChanged(AcademicYear? oldValue, AcademicYear? newValue)
     {
-        // Year changed interactively — drop previous semester selection, auto-select first
+        // Year changed interactively — drop old selection, auto-select first semester
         RebuildCheckItems(previousIds: null);
     }
 
     /// <summary>
     /// Rebuilds <see cref="FilteredCheckItems"/> for the current academic year.
-    /// Detaches old event handlers, creates new items, restores or auto-selects,
-    /// then calls <see cref="UpdateSelectedSemesters"/>.
     /// </summary>
     /// <param name="previousIds">
-    /// Semester IDs to restore as selected.
-    /// Pass <c>null</c> to auto-select only the first semester.
+    /// Semester IDs to restore as selected. Pass <c>null</c> to auto-select the first semester only.
     /// </param>
     private void RebuildCheckItems(IReadOnlySet<string>? previousIds)
     {
@@ -263,18 +249,18 @@ public partial class SemesterContext : ObservableObject
             ? list
             : new List<SemesterDisplay>();
 
-        // Build items, marking any previously-selected ones
+        // Build items, marking restorable ones as selected
         var newItems = filtered.Select(d =>
         {
             bool selected = previousIds != null && previousIds.Contains(d.Semester.Id);
             return new SemesterCheckItem(d, selected);
         }).ToList();
 
-        // If nothing was restored (or previousIds was null), auto-select the first semester
+        // If nothing was restored (or no previousIds), auto-select the first semester
         if (newItems.Count > 0 && !newItems.Any(ci => ci.IsSelected))
             newItems[0].SetSelectedSilent(true);
 
-        // Wire new event handlers before assigning the collection
+        // Wire new event handlers
         foreach (var ci in newItems)
             ci.SelectionChanged += OnCheckItemSelectionChanged;
 
@@ -283,19 +269,20 @@ public partial class SemesterContext : ObservableObject
     }
 
     /// <summary>
-    /// Called whenever a <see cref="SemesterCheckItem.IsSelected"/> changes.
-    /// Prevents the last selected semester from being deselected (at least one must remain),
-    /// then rebuilds <see cref="SelectedSemesters"/> and fires downstream notifications.
+    /// Called when any <see cref="SemesterCheckItem.IsSelected"/> changes.
+    /// Prevents the last selected semester from being deselected.
+    /// Then rebuilds <see cref="SelectedSemesters"/> and fires change notifications.
     /// </summary>
+    /// <param name="changed">The item whose selection state just changed.</param>
     private void OnCheckItemSelectionChanged(SemesterCheckItem changed)
     {
+        // Guard: at least one semester must remain selected
         if (!changed.IsSelected)
         {
-            // Count how many other items are still selected
             int otherSelected = FilteredCheckItems.Count(ci => ci != changed && ci.IsSelected);
             if (otherSelected == 0)
             {
-                // Cannot deselect the last semester — silently restore it
+                // Silently re-select; avoid re-entrant SelectionChanged
                 changed.SetSelectedSilent(true);
                 return;
             }
@@ -305,8 +292,8 @@ public partial class SemesterContext : ObservableObject
     }
 
     /// <summary>
-    /// Rebuilds <see cref="SelectedSemesters"/> from the checked items and fires all
-    /// downstream <c>PropertyChanged</c> notifications so subscribed ViewModels reload.
+    /// Rebuilds <see cref="SelectedSemesters"/> from the checked items and fires
+    /// all downstream PropertyChanged notifications so subscribed ViewModels reload.
     /// </summary>
     private void UpdateSelectedSemesters()
     {
@@ -323,7 +310,6 @@ public partial class SemesterContext : ObservableObject
         OnPropertyChanged(nameof(SelectedSemestersLabel));
         OnPropertyChanged(nameof(IsMultiSemesterMode));
         OnPropertyChanged(nameof(FilteredSemesters));
-
         // Notifies all single-semester ViewModels (WorkloadPanel, CommitmentsManagement, etc.)
         OnPropertyChanged(nameof(SelectedSemesterDisplay));
     }
