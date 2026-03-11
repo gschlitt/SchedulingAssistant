@@ -468,7 +468,7 @@ public partial class ScheduleGridView : UserControl
                     {
                         Background      = TileFill,
                         BorderBrush     = semesterBrush,
-                        BorderThickness = new Thickness(2),
+                        BorderThickness = new Thickness(3),
                         CornerRadius    = new CornerRadius(3),
                         Padding         = new Thickness(3, 2),
                         Child           = stack,
@@ -480,7 +480,7 @@ public partial class ScheduleGridView : UserControl
                         Height          = adjustedTileH,
                         Background      = TileFill,
                         BorderBrush     = OverlayFrameBorder,
-                        BorderThickness = new Thickness(2),
+                        BorderThickness = new Thickness(3),
                         CornerRadius    = new CornerRadius(3),
                         ClipToBounds    = false,
                         Child           = innerBorder,
@@ -497,7 +497,7 @@ public partial class ScheduleGridView : UserControl
                         BorderBrush     = tileHasOverlay ? OverlayFrameBorder
                                         : semesterBrush ?? TileBorder,
                         BorderThickness = tileHasOverlay ? new Thickness(2)
-                                        : semesterBrush is not null ? new Thickness(2) : new Thickness(1),
+                                        : semesterBrush is not null ? new Thickness(3) : new Thickness(1),
                         CornerRadius    = new CornerRadius(3),
                         Padding         = new Thickness(3, 2),
                         ClipToBounds    = false,
