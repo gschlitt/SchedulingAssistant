@@ -1,57 +1,91 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
-             x:Class="SchedulingAssistant.Views.Management.AcademicYearListView"
-             x:DataType="vm:AcademicYearListViewModel"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.AcademicYearListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:AcademicYearListViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="DataGrid DataGridRow:selected">
+            <Setter Property="Background" Value="#FFE0E0E0" />
+            <!--  shaded gray  -->
+        </Style>
+    </UserControl.Styles>
+
 
     <Grid RowDefinitions="Auto,*,Auto">
 
-        <TextBlock Grid.Row="0" Text="Academic Years" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,12"
+            FontSize="20"
+            FontWeight="SemiBold"
+            Text="Academic Years" />
 
-        <!-- Edit form -->
+        <!--  Edit form  -->
         <ContentControl Grid.Row="1" Content="{Binding EditVm}">
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="{x:Type vm:AcademicYearEditViewModel}">
-                    <StackPanel Spacing="12" MaxWidth="400" HorizontalAlignment="Left">
-                        <TextBlock Text="Add Academic Year" FontSize="16" FontWeight="SemiBold" />
+                    <StackPanel
+                        MaxWidth="400"
+                        HorizontalAlignment="Left"
+                        Spacing="12">
+                        <TextBlock
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Text="Add Academic Year" />
 
                         <TextBlock Text="Name (e.g. 2024-2025)" />
                         <TextBox Text="{Binding Name}" />
-                        <TextBlock Text="{Binding ValidationError}"
-                                   Foreground="{StaticResource TextError}" FontSize="12"
-                                   IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{StaticResource TextError}"
+                            IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Text="{Binding ValidationError}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Save" Command="{Binding SaveCommand}" />
-                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                            <Button Command="{Binding SaveCommand}" Content="Save" />
+                            <Button Command="{Binding CancelCommand}" Content="Cancel" />
                         </StackPanel>
                     </StackPanel>
                 </DataTemplate>
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- Main content: AY list only -->
-        <DockPanel Grid.Row="1" Margin="0,0,0,0"
-                   IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-            <DataGrid ItemsSource="{Binding AcademicYears}"
-                      SelectedItem="{Binding SelectedAcademicYear}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      CanUserSortColumns="True">
+        <!--  Main content: AY list only  -->
+        <DockPanel
+            Grid.Row="1"
+            Margin="0,0,0,0"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+            <DataGrid
+                AutoGenerateColumns="False"
+                CanUserSortColumns="True"
+                IsReadOnly="True"
+                ItemsSource="{Binding AcademicYears}"
+                SelectedItem="{Binding SelectedAcademicYear}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                    <DataGridTextColumn
+                        Width="*"
+                        Binding="{Binding Name}"
+                        Header="Name" />
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
-                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-            <Button Content="Add" Command="{Binding AddCommand}" />
-            <Button Content="Delete" Command="{Binding DeleteCommand}"
-                    IsEnabled="{Binding SelectedAcademicYear, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <Button Content="Copy Semester" Command="{Binding CopySemesterCommand}" />
-            <Button Content="Empty Semester" Command="{Binding EmptySemesterCommand}" />
+        <StackPanel
+            Grid.Row="2"
+            Margin="0,12,0,0"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Command="{Binding AddCommand}" Content="Add" />
+            <Button
+                Command="{Binding DeleteCommand}"
+                Content="Delete"
+                IsEnabled="{Binding SelectedAcademicYear, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Command="{Binding CopySemesterCommand}" Content="Copy Semester" />
+            <Button Command="{Binding EmptySemesterCommand}" Content="Empty Semester" />
         </StackPanel>
 
     </Grid>

@@ -309,7 +309,7 @@ public partial class MainWindow : Window
         // IsEditing: column width toggle is now handled declaratively by
         // ConditionalColumnWidthBehavior on ThreePanelGrid in AXAML.
         if (e.PropertyName == nameof(SectionListViewModel.SelectedItem))
-            Vm.WorkloadPanelVm.SelectedSectionId = Vm.SectionListVm.SelectedItem?.Section.Id;
+            Vm.WorkloadPanelVm.SelectedSectionId = (Vm.SectionListVm.SelectedItem as SectionListItemViewModel)?.Section.Id;
     }
 
     private void OnScheduleGridVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -331,9 +331,10 @@ public partial class MainWindow : Window
             }
 
             // Only update if the currently selected item doesn't match
-            if (Vm.SectionListVm.SelectedItem?.Section.Id != sectionId)
+            if ((Vm.SectionListVm.SelectedItem as SectionListItemViewModel)?.Section.Id != sectionId)
             {
-                var sectionItem = Vm.SectionListVm.SectionItems.FirstOrDefault(s => s.Section.Id == sectionId);
+                var sectionItem = Vm.SectionListVm.SectionItems.OfType<SectionListItemViewModel>()
+                    .FirstOrDefault(s => s.Section.Id == sectionId);
                 if (sectionItem is not null)
                     Vm.SectionListVm.SelectedItem = sectionItem;
             }
@@ -355,7 +356,8 @@ public partial class MainWindow : Window
 
         // Find the corresponding section in the section list and select it
         var sectionId = item.Id;
-        var sectionItem = Vm.SectionListVm.SectionItems.FirstOrDefault(s => s.Section.Id == sectionId);
+        var sectionItem = Vm.SectionListVm.SectionItems.OfType<SectionListItemViewModel>()
+            .FirstOrDefault(s => s.Section.Id == sectionId);
 
         if (sectionItem is not null)
         {

@@ -427,7 +427,7 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
         <!-- Error banner (only visible when LastErrorMessage is set) -->
         <Border Grid.Row="0"
@@ -448,7 +448,40 @@
             </DockPanel>
         </Border>
 
-    <ScrollViewer x:Name="ListScrollViewer" Grid.Row="1"
+        <!-- Add-to-semester prompt — shown in multi-semester mode when Add is clicked -->
+        <Border Grid.Row="1"
+                IsVisible="{Binding IsAddSemesterPromptVisible}"
+                Background="{StaticResource EditorBackground}"
+                BorderBrush="{StaticResource EditorBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="8,6">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Add section to which semester?"
+                           FontSize="11" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimary}" />
+                <ItemsControl ItemsSource="{Binding AddSemesterOptions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding SemesterName}"
+                                    Command="{Binding $parent[UserControl].DataContext.AddToSemesterCommand}"
+                                    CommandParameter="{Binding SemesterId}"
+                                    Background="{Binding BannerBackground}"
+                                    Margin="0,2,0,0"
+                                    Padding="8,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="Cancel"
+                        Command="{Binding CancelAddPromptCommand}"
+                        Padding="8,3"
+                        HorizontalAlignment="Left"
+                        Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
+    <ScrollViewer x:Name="ListScrollViewer" Grid.Row="2"
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel HorizontalAlignment="Stretch">
 
@@ -469,7 +502,26 @@
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     </ControlTheme>
                 </ListBox.ItemContainerTheme>
-                <ListBox.ItemTemplate>
+                <ListBox.DataTemplates>
+
+                    <!--  Semester group banner — shown at the top of each semester's section group.
+                          IsHitTestVisible="False" on the content prevents the click from registering
+                          as a meaningful "item selection", though the ListBoxItem container itself
+                          may still become highlighted; the ViewModel ignores banner selections.  -->
+                    <DataTemplate DataType="{x:Type vm:SemesterBannerViewModel}">
+                        <Border Background="{Binding BannerBackground}"
+                                BorderBrush="{Binding BannerBorder}"
+                                BorderThickness="0,0,0,2"
+                                Padding="10,5,10,5"
+                                IsHitTestVisible="False">
+                            <TextBlock Text="{Binding SemesterName}"
+                                       FontWeight="Bold"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextPrimary}" />
+                        </Border>
+                    </DataTemplate>
+
+                    <!--  Section card — existing template unchanged  -->
                     <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
                         <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,1">
                             <StackPanel>
@@ -580,7 +632,8 @@
                             </StackPanel>
                         </Border>
                     </DataTemplate>
-                </ListBox.ItemTemplate>
+
+                </ListBox.DataTemplates>
             </ListBox>
 
         </StackPanel>

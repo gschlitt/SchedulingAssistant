@@ -69,6 +69,19 @@
     <SolidColorBrush x:Key="SubduedBorder" Color="#BBBBBB" />
     <SolidColorBrush x:Key="ItemSeparator" Color="#DDDDDD" />
 
+    <!--  ── Semester banners (Section List multi-semester grouping) ──────  -->
+    <!--  Colors are assigned by semester name, not position: Fall, Winter, Early Summer, Summer, Late Summer  -->
+    <SolidColorBrush x:Key="FallBackground" Color="#C65D1E" />
+    <SolidColorBrush x:Key="FallBorder" Color="#C65D1E" />
+    <SolidColorBrush x:Key="WinterBackground" Color="#D6E6F2" />
+    <SolidColorBrush x:Key="WinterBorder" Color="#D6E6F2" />
+    <SolidColorBrush x:Key="EarlySummerBackground" Color="#7ED957" />
+    <SolidColorBrush x:Key="EarlySummerBorder" Color="#7ED957" />
+    <SolidColorBrush x:Key="SummerBackground" Color="#4FB6F7" />
+    <SolidColorBrush x:Key="SummerBorder" Color="#4FB6F7" />
+    <SolidColorBrush x:Key="LateSummerBackground" Color="#F2C94C" />
+    <SolidColorBrush x:Key="LateSummerBorder" Color="#F2C94C" />
+
     <!--  ── Text roles ───────────────────────────────────────────────────  -->
     <SolidColorBrush x:Key="TextPrimary" Color="Black" />
     <SolidColorBrush x:Key="TextSecondary" Color="#555555" />

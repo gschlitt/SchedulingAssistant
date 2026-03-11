@@ -8,7 +8,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// Display wrapper for a section row in the sections list panel.
 /// Holds formatted strings so the view needs no converter logic.
 /// </summary>
-public partial class SectionListItemViewModel : ObservableObject
+public partial class SectionListItemViewModel : ObservableObject, ISectionListEntry
 {
     public Section Section { get; }
     public string Heading { get; }

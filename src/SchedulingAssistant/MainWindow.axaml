@@ -58,18 +58,50 @@
                         Margin="0,6"
                         Background="{StaticResource SeparatorLine}" />
 
-                    <!--  Semester selector (filtered by selected academic year)  -->
+                    <!--  Semester multi-select picker  -->
+                    <!--  Replaces the single-select ComboBox with a button + popup approach
+                          so the user can check multiple semesters within the selected year.  -->
                     <TextBlock
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{StaticResource TextSemesterLabel}"
                         Text="Semester:" />
-                    <ComboBox
-                        MinWidth="120"
-                        VerticalAlignment="Center"
-                        DisplayMemberBinding="{Binding DisplayName}"
-                        ItemsSource="{Binding SemesterContext.FilteredSemesters}"
-                        SelectedItem="{Binding SemesterContext.SelectedSemesterDisplay}" />
+                    <Panel VerticalAlignment="Center">
+                        <!--  The button label shows the current selection, e.g. "Fall 2025"
+                              or "Early Summer, Summer". Clicking toggles the popup open/closed.  -->
+                        <Button x:Name="SemesterPickerButton"
+                                Content="{Binding SemesterContext.SelectedSemestersLabel}"
+                                Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
+                                MinWidth="120"
+                                Padding="8,4"
+                                VerticalAlignment="Center" />
+
+                        <!--  Popup with one CheckBox per semester in the selected year.
+                              LightDismissOverlayMode closes it when the user clicks elsewhere.
+                              Two-way binding on IsOpen lets the light-dismiss update the ViewModel.  -->
+                        <Popup IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
+                               PlacementMode="Bottom"
+                               PlacementTarget="{Binding ElementName=SemesterPickerButton}"
+                               IsLightDismissEnabled="True">
+                            <Border Background="{StaticResource FlyoutBackground}"
+                                    BorderBrush="{StaticResource ChromeBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    Padding="4,4"
+                                    MinWidth="150">
+                                <ItemsControl ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      Content="{Binding DisplayName}"
+                                                      Padding="4,3"
+                                                      FontSize="12" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Popup>
+                    </Panel>
                 </StackPanel>
 
                 <!--  Nav buttons — wrap when space is tight  -->
@@ -386,16 +418,35 @@
                                 IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                 Text="{Binding ScheduleGridVm.AcademicUnitName}" />
 
-                            <!--  Semester  -->
+                            <!--  Semester (with colored backgrounds per semester)  -->
                             <Border
                                 Width="1"
                                 Margin="0,3"
                                 Background="{StaticResource SeparatorLine}"
                                 IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock
+                            <ItemsControl
                                 VerticalAlignment="Center"
-                                FontSize="{StaticResource FontSizeLarge}"
-                                Text="{Binding ScheduleGridVm.SemesterLine}" />
+                                ItemsSource="{Binding ScheduleGridVm.SemesterLineSegments}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border
+                                            Padding="6,2"
+                                            Background="{Binding Background}"
+                                            BorderBrush="{Binding Border}"
+                                            BorderThickness="1"
+                                            CornerRadius="2">
+                                            <TextBlock
+                                                FontSize="{StaticResource FontSizeLarge}"
+                                                Text="{Binding DisplayText}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                             <!--  Stats (always shown)  -->
                             <Border

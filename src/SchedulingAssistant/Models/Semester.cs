@@ -11,5 +11,5 @@ public class Semester
     /// The fixed set of semester names auto-created for each Academic Year.
     /// </summary>
     public static readonly string[] DefaultNames =
-        ["Fall", "Winter", "Summer", "Early Summer", "Late Summer"];
+        ["Fall", "Winter", "Early Summer", "Summer", "Late Summer"];
 }

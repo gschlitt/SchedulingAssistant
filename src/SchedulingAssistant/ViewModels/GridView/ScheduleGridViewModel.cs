@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
@@ -8,6 +10,11 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.GridView;
+
+/// <summary>
+/// Represents one colored segment in the semester line display, e.g. "Fall" with orange background.
+/// </summary>
+public record SemesterLineSegment(string DisplayText, IBrush? Background, IBrush? Border);
 
 public partial class ScheduleGridViewModel : ViewModelBase
 {
@@ -28,6 +35,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>Display name of the selected semester, e.g. "2025-2026 — Fall"</summary>
     [ObservableProperty] private string _semesterLine = string.Empty;
+
+    /// <summary>Colored semester segments for the semester line (each semester with its background color).</summary>
+    [ObservableProperty] private List<SemesterLineSegment> _semesterLineSegments = [];
 
     /// <summary>Selected subject filter names, e.g. "History · Mathematics". Empty when no subject filter active.</summary>
     [ObservableProperty] private string _subjectFilterSummary = string.Empty;
@@ -177,9 +187,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     private void ReloadCore()
     {
-        var semesterDisplay = _semesterContext.SelectedSemesterDisplay;
-        var semester = semesterDisplay?.Semester;
-        if (semester is null)
+        // Support multi-semester: load from all currently selected semesters.
+        // All selected semesters belong to the same academic year (enforced by the UI),
+        // so lookup tables (courses, rooms, etc.) need to be built only once.
+        var semesters = _semesterContext.SelectedSemesters.ToList();
+        if (semesters.Count == 0)
         {
             GridData = GridData.Empty;
             SemesterLine = string.Empty;
@@ -189,7 +201,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         // ── Build lookup tables ────────────────────────────────────────────────
-        var sections         = _sectionRepo.GetAll(semester.Id);
+        var sections = semesters
+            .SelectMany(sd => _sectionRepo.GetAll(sd.Semester.Id))
+            .ToList();
         var courseLookup     = _courseRepo.GetAll().ToDictionary(c => c.Id);
         var instructorLookup = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var roomLookup       = _roomRepo.GetAll().ToDictionary(r => r.Id);
@@ -454,9 +468,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
             && Filter.OverlayType == "Instructor"
             && !string.IsNullOrEmpty(Filter.SelectedOverlayId))
         {
-            var commitments = _commitmentRepo.GetByInstructor(semester.Id, Filter.SelectedOverlayId);
-            foreach (var c in commitments)
-                allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id));
+            // Load commitments for all selected semesters (same instructor, each semester)
+            foreach (var sd in semesters)
+            {
+                var commitments = _commitmentRepo.GetByInstructor(sd.Semester.Id, Filter.SelectedOverlayId);
+                foreach (var c in commitments)
+                    allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id));
+            }
         }
 
         // ── Defensive deduplication ────────────────────────────────────────────
@@ -508,7 +526,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
         GridData = new GridData(firstRow, lastRow, dayColumns);
 
         // ── Update title bar summary properties ───────────────────────────────
-        SemesterLine = _semesterContext.SelectedSemesterDisplay?.DisplayName ?? string.Empty;
+        // In single-semester mode use the existing "Year — Semester" DisplayName;
+        // in multi-semester mode build "Year — Sem1, Sem2, ..." from the shared AY name.
+        SemesterLine = semesters.Count == 1
+            ? semesters[0].DisplayName
+            : $"{_semesterContext.SelectedAcademicYear?.Name} — " +
+              string.Join(", ", semesters.Select(s => s.Semester.Name));
+
+        // Build colored semester segments for display in the header
+        BuildSemesterLineSegments(semesters);
 
         var selectedSubjectNames = Filter.Subjects
             .Where(s => s.IsSelected)
@@ -639,6 +665,71 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         return tiles;
+    }
+
+    /// <summary>
+    /// Builds colored semester line segments for display in the header.
+    /// In single-semester mode, shows just the semester name. In multi-semester mode,
+    /// shows the academic year followed by colored segment buttons for each semester.
+    /// </summary>
+    private void BuildSemesterLineSegments(List<SemesterDisplay> semesters)
+    {
+        var segments = new List<SemesterLineSegment>();
+
+        if (semesters.Count == 0)
+        {
+            SemesterLineSegments = segments;
+            return;
+        }
+
+        if (semesters.Count == 1)
+        {
+            // Single semester: show just the semester name without color background
+            // (colors are only needed to distinguish between multiple semesters)
+            var sem = semesters[0];
+            segments.Add(new SemesterLineSegment(sem.Semester.Name, null, null));
+        }
+        else
+        {
+            // Multi-semester: show academic year (plain text), then colored segments for each semester
+            var ayName = _semesterContext.SelectedAcademicYear?.Name ?? "";
+            if (!string.IsNullOrEmpty(ayName))
+            {
+                segments.Add(new SemesterLineSegment($"{ayName} —", null, null));
+            }
+
+            foreach (var sem in semesters)
+            {
+                var (bg, bd) = GetSemesterBrushes(sem.Semester.Name);
+                segments.Add(new SemesterLineSegment(sem.Semester.Name, bg, bd));
+            }
+        }
+
+        SemesterLineSegments = segments;
+    }
+
+    /// <summary>
+    /// Gets the background and border brushes for a semester from AppColors.
+    /// </summary>
+    private static (IBrush? bg, IBrush? bd) GetSemesterBrushes(string semesterName)
+    {
+        var firstWord = semesterName.Split(' ')[0];
+        var (bgKey, bdKey) = firstWord switch
+        {
+            "Fall" => ("FallBackground", "FallBorder"),
+            "Winter" => ("WinterBackground", "WinterBorder"),
+            "Early" => ("EarlySummerBackground", "EarlySummerBorder"),
+            "Summer" => ("SummerBackground", "SummerBorder"),
+            "Late" => ("LateSummerBackground", "LateSummerBorder"),
+            _ => ("FallBackground", "FallBorder")
+        };
+
+        var bg = Application.Current?.Resources.TryGetResource(bgKey, null, out var bgObj) ?? false
+            ? bgObj as IBrush : null;
+        var bd = Application.Current?.Resources.TryGetResource(bdKey, null, out var bdObj) ?? false
+            ? bdObj as IBrush : null;
+
+        return (bg, bd);
     }
 
 }
