@@ -80,21 +80,26 @@ public partial class WorkloadHistoryViewModel : ViewModelBase
         if (!semesters.Any())
             return;
 
-        // Group by academic year
-        var grouped = new Dictionary<AcademicYear, List<Semester>>();
+        // Group by academic year ID, then resolve the AcademicYear objects
+        var groupedById = new Dictionary<string, List<Semester>>();
+        var academicYearLookup = new Dictionary<string, AcademicYear>();
+
         foreach (var semester in semesters)
         {
             var academicYear = _academicYearRepo.GetById(semester.AcademicYearId);
             if (academicYear == null) continue;
 
-            if (!grouped.ContainsKey(academicYear))
-                grouped[academicYear] = new();
-            grouped[academicYear].Add(semester);
+            if (!groupedById.ContainsKey(semester.AcademicYearId))
+                groupedById[semester.AcademicYearId] = new();
+            groupedById[semester.AcademicYearId].Add(semester);
+            academicYearLookup[semester.AcademicYearId] = academicYear;
         }
 
         // Build tree structure
-        foreach (var (academicYear, semestersInYear) in grouped.OrderByDescending(g => g.Key.Name))
+        foreach (var ayId in groupedById.Keys.OrderByDescending(id => academicYearLookup[id].Name))
         {
+            var academicYear = academicYearLookup[ayId];
+            var semestersInYear = groupedById[ayId];
             decimal yearTotal = 0m;
             var yearItem = new WorkloadHistoryItemViewModel
             {

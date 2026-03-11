@@ -596,13 +596,26 @@
             </Border>
         </Grid>
 
-        <!--  RIGHT COLUMN: Workload History (next to instructor list)  -->
+        <!--  RIGHT COLUMN: Workload History header  -->
+        <Border
+            Grid.Row="0"
+            Grid.Column="1"
+            Padding="8,12"
+            Background="White"
+            IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="18"
+                FontWeight="Bold"
+                Foreground="#666666"
+                Text="Workload History" />
+        </Border>
+
+        <!--  RIGHT COLUMN: Workload History content  -->
         <Border
             Grid.Row="1"
             Grid.Column="1"
             Background="White"
-            BorderBrush="#CCCCCC"
-            BorderThickness="1,0,0,0"
             IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
             <v:WorkloadHistoryView DataContext="{Binding WorkloadHistoryVm}" />
         </Border>
