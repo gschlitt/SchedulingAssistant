@@ -65,15 +65,15 @@
                                   IsEnabled="{Binding HasAvailableCourseNumbers}" />
                     </StackPanel>
 
-                    <!-- Campus dropdown (available for both new and edit) -->
+                    <!-- Section Prefix shortcut (optional; auto-fills the Section Code with the
+                         next available integer slot for the chosen prefix, and sets the campus) -->
                     <StackPanel Grid.Column="2" Margin="0,0,4,0"
                                 IsEnabled="{Binding IsSectionCodeEnabled}">
-                        <TextBlock Text="Campus" FontSize="10" Foreground="{StaticResource TextLabel}" />
-                        <ComboBox ItemsSource="{Binding CampusOptions}"
-                                  SelectedValueBinding="{Binding Value}"
-                                  SelectedValue="{Binding SelectedCampus}"
+                        <TextBlock Text="Prefix" FontSize="10" Foreground="{StaticResource TextLabel}" />
+                        <ComboBox ItemsSource="{Binding PrefixOptions}"
+                                  SelectedItem="{Binding SelectedPrefixOption}"
                                   DisplayMemberBinding="{Binding Label}"
-                                  FontSize="11" MinWidth="70"
+                                  FontSize="11" MinWidth="80"
                                   HorizontalAlignment="Stretch" />
                     </StackPanel>
 

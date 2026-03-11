@@ -9,7 +9,11 @@ using System.ComponentModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public record CampusAbbreviationOption(string Value, string Label);
+/// <summary>
+/// Wrapper used by the Section Prefix picker ComboBox in the section editor.
+/// The sentinel item (<see cref="Prefix"/> == null) represents "no prefix selected".
+/// </summary>
+public record SectionPrefixPickerItem(SectionPrefix? Prefix, string Label);
 
 public partial class SectionEditViewModel : ViewModelBase
 {
@@ -33,9 +37,9 @@ public partial class SectionEditViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
     private string? _selectedCourseNumber;
 
-    // Campus abbreviation auto-suggest (new sections only; renamed from Abbreviation)
-    [ObservableProperty] private ObservableCollection<CampusAbbreviationOption> _campusOptions = new();
-    [ObservableProperty] private string? _selectedCampus;
+    // Section Prefix picker — optional shortcut that auto-suggests the next available code
+    [ObservableProperty] private List<SectionPrefixPickerItem> _prefixOptions = new();
+    [ObservableProperty] private SectionPrefixPickerItem? _selectedPrefixOption;
 
     // ── Step-gate state ──────────────────────────────────────────────────────
 
@@ -71,7 +75,6 @@ public partial class SectionEditViewModel : ViewModelBase
 
     // Section-level single-select property collections (include a leading "(none)" sentinel)
     [ObservableProperty] private ObservableCollection<SectionPropertyValue> _sectionTypes = new();
-    [ObservableProperty] private ObservableCollection<SectionPropertyValue> _campuses = new();
 
     // Section-level single-select selections (empty string = null / none)
     [ObservableProperty] private string? _selectedSectionTypeId;
@@ -178,8 +181,8 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <summary>True when Pattern 5 is configured and can be applied.</summary>
     public bool HasPattern5 => _pattern5 is { Days.Count: > 0 };
 
-    /// <summary>Maps campus abbreviation (case-insensitive) → campus Id for auto-setting campus from section code.</summary>
-    private readonly Dictionary<string, string> _abbreviationToCampusId = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>All configured section prefixes, loaded once at construction for prefix matching.</summary>
+    private readonly IReadOnlyList<SectionPrefix> _prefixes;
 
     /// <summary>
     /// Set by the view to close the hosting window when Save or Cancel is invoked.
@@ -199,7 +202,7 @@ public partial class SectionEditViewModel : ViewModelBase
     partial void OnSelectedCourseIdChanged(string? value)
     {
         SectionCodeError = null;
-        SelectedCampus = "";
+        SelectedPrefixOption = null;
         OnPropertyChanged(nameof(IsSectionCodeEnabled));
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
     }
@@ -244,21 +247,21 @@ public partial class SectionEditViewModel : ViewModelBase
         }
     }
 
-    partial void OnSelectedCampusChanged(string? value)
+    partial void OnSelectedPrefixOptionChanged(SectionPrefixPickerItem? value)
     {
-        if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(SelectedCourseId))
+        // Guard: do nothing when cleared (e.g. on course change) or no course yet selected.
+        if (value?.Prefix is null || string.IsNullOrEmpty(SelectedCourseId))
             return;
 
-        for (int n = 1; n <= 999; n++)
-        {
-            var candidate = $"{value}{n}";
-            if (!_isSectionCodeDuplicate(SelectedCourseId, candidate))
-            {
-                SectionCode = candidate;
-                CommitSectionCode();
-                return;
-            }
-        }
+        // Find the first available code for this prefix in the current course+semester.
+        var next = SectionPrefixHelper.FindNextAvailableCode(
+            value.Prefix.Prefix,
+            code => _isSectionCodeDuplicate(SelectedCourseId, code));
+
+        if (next is null) return; // all 1-999 slots taken
+
+        SectionCode = next;
+        CommitSectionCode();
     }
 
     partial void OnSectionCodeChanged(string value)
@@ -293,29 +296,40 @@ public partial class SectionEditViewModel : ViewModelBase
             _validatedCourseId = SelectedCourseId;
             _validatedSectionCode = code;
 
-            // Auto-set campus if the code matches {abbreviation}{integer}
-            TrySetCampusFromCode(code);
+            // Auto-set (or clear) campus based on whether the code starts with a
+            // known section prefix.  This runs on both manual entry and picker-driven
+            // auto-fill so the campus is always consistent with the committed code.
+            var matched = SectionPrefixHelper.MatchPrefix(code, _prefixes);
+            SelectedCampusId = matched?.CampusId ?? "";
         }
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
     }
 
     /// <summary>
-    /// If <paramref name="code"/> is of the form {abbreviation}{integer} where the prefix
-    /// matches a campus abbreviation, auto-select that campus.
+    /// Constructs the inline section editor view-model.
     /// </summary>
-    private void TrySetCampusFromCode(string code)
-    {
-        // Strip trailing digits to get the prefix
-        int i = code.Length;
-        while (i > 0 && char.IsDigit(code[i - 1]))
-            i--;
-        if (i == 0 || i == code.Length) return; // all digits or no trailing digits
-
-        var prefix = code[..i];
-        if (_abbreviationToCampusId.TryGetValue(prefix, out var campusId))
-            SelectedCampusId = campusId;
-    }
-
+    /// <param name="section">The section being edited (or a blank one for Add).</param>
+    /// <param name="isNew">True when creating a new section; false when editing an existing one.</param>
+    /// <param name="courses">Active courses available for selection.</param>
+    /// <param name="subjects">All subjects, used to populate the Subject dropdown.</param>
+    /// <param name="instructors">All instructors for the multi-select panel.</param>
+    /// <param name="rooms">All rooms, passed to each meeting editor.</param>
+    /// <param name="legalStartTimes">Valid start times for the academic year.</param>
+    /// <param name="includeSaturday">Whether Saturday is shown as a meeting day.</param>
+    /// <param name="sectionTypes">All section-type property values.</param>
+    /// <param name="meetingTypes">All meeting-type property values.</param>
+    /// <param name="campuses">All campus property values (used to build prefix labels).</param>
+    /// <param name="allTags">All tag property values.</param>
+    /// <param name="allResources">All resource property values.</param>
+    /// <param name="allReserves">All reserve property values.</param>
+    /// <param name="isSectionCodeDuplicate">
+    /// Delegate that returns true when a given (courseId, code) pair already exists
+    /// in the target semester.  Scoped by the caller to the correct semester.
+    /// </param>
+    /// <param name="onSave">Async callback invoked when the user saves.</param>
+    /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
+    /// <param name="prefixRepository">Repository used to load section prefixes for code auto-suggest.</param>
+    /// <param name="defaultBlockLength">Optional preferred block length pre-filled on new meetings.</param>
     public SectionEditViewModel(
         Section section,
         bool isNew,
@@ -334,6 +348,7 @@ public partial class SectionEditViewModel : ViewModelBase
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
         BlockPatternRepository blockPatternRepository,
+        SectionPrefixRepository prefixRepository,
         double? defaultBlockLength = null)
     {
         _section = section;
@@ -354,10 +369,22 @@ public partial class SectionEditViewModel : ViewModelBase
         _pattern4 = allPatterns.Count > 3 ? allPatterns[3] : null;
         _pattern5 = allPatterns.Count > 4 ? allPatterns[4] : null;
 
-        // Build abbreviation → campus Id lookup (used by CommitSectionCode to auto-set campus)
-        foreach (var c in campuses)
-            if (!string.IsNullOrEmpty(c.SectionCodeAbbreviation))
-                _abbreviationToCampusId[c.SectionCodeAbbreviation] = c.Id;
+        // Load all configured section prefixes for use by the prefix picker and CommitSectionCode.
+        _prefixes = prefixRepository.GetAll();
+
+        // Build campus name lookup so prefix labels can show "AB — Abbotsford".
+        var campusNameById = campuses.ToDictionary(c => c.Id, c => c.Name);
+
+        // Build the prefix picker items: sentinel "(none)" first, then one per prefix.
+        var pickerItems = new List<SectionPrefixPickerItem> { new(null, "(none)") };
+        foreach (var p in _prefixes)
+        {
+            var label = p.CampusId is not null && campusNameById.TryGetValue(p.CampusId, out var campusName)
+                ? $"{p.Prefix} \u2014 {campusName}"   // "AB — Abbotsford"
+                : p.Prefix;
+            pickerItems.Add(new(p, label));
+        }
+        PrefixOptions = pickerItems;
 
         Courses = new ObservableCollection<Course>(courses);
         _allSubjects = subjects;
@@ -401,25 +428,10 @@ public partial class SectionEditViewModel : ViewModelBase
             _validatedSectionCode = section.SectionCode;
         }
 
-        // Campus options (available for both new and edit sections)
-        var campusList = new List<CampusAbbreviationOption> { new("", "(none)") };
-        foreach (var c in campuses)
-            if (!string.IsNullOrEmpty(c.SectionCodeAbbreviation))
-                campusList.Add(new(c.SectionCodeAbbreviation, $"{c.SectionCodeAbbreviation} — {c.Name}"));
-        CampusOptions = new ObservableCollection<CampusAbbreviationOption>(campusList);
-
-        // For new sections with no campus (true new), default to no selection.
-        // For copies or edit sections, look up the abbreviation from the selected campus ID.
-        if (isNew && string.IsNullOrEmpty(section.CampusId))
-        {
-            SelectedCampus = "";
-        }
-        else if (!string.IsNullOrEmpty(section.CampusId))
-        {
-            var selectedCampusInfo = campuses.FirstOrDefault(c => c.Id == section.CampusId);
-            if (selectedCampusInfo is not null && !string.IsNullOrEmpty(selectedCampusInfo.SectionCodeAbbreviation))
-                SelectedCampus = selectedCampusInfo.SectionCodeAbbreviation;
-        }
+        // The prefix picker always starts in the "(none)" state. It is a generation aid only —
+        // the authoritative campus is SelectedCampusId, which is set from section data on load
+        // and updated programmatically by CommitSectionCode via SectionPrefixHelper.MatchPrefix.
+        SelectedPrefixOption = null;
 
         // Instructor multi-select with workload
         InstructorSelections = new ObservableCollection<InstructorSelectionViewModel>(

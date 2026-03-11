@@ -6,7 +6,6 @@ using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -21,6 +20,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
     private readonly SemesterRepository _semesterRepo;
     private readonly BlockPatternRepository _blockPatternRepo;
+    private readonly SectionPrefixRepository _prefixRepo;
     private readonly SemesterContext _semesterContext;
     private readonly ScheduleGridViewModel _scheduleGridVm;
     private readonly SectionPropertyRepository _propertyRepo;
@@ -138,6 +138,7 @@ public partial class SectionListViewModel : ViewModelBase
         LegalStartTimeRepository legalStartTimeRepo,
         SemesterRepository semesterRepo,
         BlockPatternRepository blockPatternRepo,
+        SectionPrefixRepository prefixRepo,
         SemesterContext semesterContext,
         ScheduleGridViewModel scheduleGridVm,
         SectionPropertyRepository propertyRepo,
@@ -152,6 +153,7 @@ public partial class SectionListViewModel : ViewModelBase
         _legalStartTimeRepo = legalStartTimeRepo;
         _semesterRepo = semesterRepo;
         _blockPatternRepo = blockPatternRepo;
+        _prefixRepo = prefixRepo;
         _semesterContext = semesterContext;
         _scheduleGridVm = scheduleGridVm;
         _propertyRepo = propertyRepo;
@@ -569,6 +571,7 @@ public partial class SectionListViewModel : ViewModelBase
                 }
             },
             _blockPatternRepo,
+            _prefixRepo,
             defaultBlockLength: settings.PreferredBlockLength);
 
         editVm.RequestClose = () =>
@@ -674,6 +677,7 @@ public partial class SectionListViewModel : ViewModelBase
                 }
             },
             _blockPatternRepo,
+            _prefixRepo,
             defaultBlockLength: settings.PreferredBlockLength);
 
         editVm.RequestClose = CollapseEditor;
@@ -690,27 +694,30 @@ public partial class SectionListViewModel : ViewModelBase
         if (SelectedSectionItem is null) return;
         var source = SelectedSectionItem.Section;
 
-        // Copy always stays in the same semester as the source section
+        // Copy always stays in the same semester as the source section.
         var semesterId = source.SemesterId;
         if (string.IsNullOrEmpty(semesterId)) return;
 
-        // Derive a candidate section code by incrementing the trailing integer suffix
-        string? newCode = null;
+        // Derive the next available section code using the shared prefix helper.
+        // - If the source code starts with a known prefix, gap-fill that prefix's sequence.
+        // - Otherwise, increment the trailing integer by one (simple advance fallback).
+        // Campus is taken from the matched prefix's association (or null if no prefix matched).
+        string? newCode    = null;
+        string? newCampusId = null;
+
         if (!string.IsNullOrEmpty(source.CourseId))
         {
-            var match = Regex.Match(source.SectionCode, @"^(.*?)(\d+)$");
-            if (match.Success)
-            {
-                var prefix    = match.Groups[1].Value;
-                var number    = int.Parse(match.Groups[2].Value);
-                var candidate = $"{prefix}{number + 1}";
-                if (!_sectionRepo.ExistsBySectionCode(semesterId, source.CourseId, candidate, excludeId: null))
-                    newCode = candidate;
-                else
-                    await _dialog.ShowError(
-                        $"Could not auto-assign a section code: \"{candidate}\" already exists for this course. " +
-                        "The section code has been left blank — please enter one before saving.");
-            }
+            var prefixes = _prefixRepo.GetAll();
+            Func<string, bool> codeExists =
+                code => _sectionRepo.ExistsBySectionCode(semesterId, source.CourseId, code, excludeId: null);
+
+            (newCode, newCampusId) = SectionPrefixHelper.AdvanceSectionCode(
+                source.SectionCode, prefixes, codeExists);
+
+            if (newCode is null)
+                await _dialog.ShowError(
+                    "Could not auto-assign a section code: the next candidate is already taken. " +
+                    "The section code has been left blank — please enter one before saving.");
         }
 
         var newSection = new Section
@@ -718,7 +725,7 @@ public partial class SectionListViewModel : ViewModelBase
             SemesterId  = semesterId,
             CourseId    = source.CourseId,
             SectionCode = newCode ?? string.Empty,
-            CampusId    = source.CampusId,
+            CampusId    = newCampusId,
         };
 
         OpenCopy(newSection, afterItem: SelectedSectionItem);
@@ -791,6 +798,7 @@ public partial class SectionListViewModel : ViewModelBase
                 }
             },
             _blockPatternRepo,
+            _prefixRepo,
             defaultBlockLength: settings.PreferredBlockLength);
 
         editVm.RequestClose = () =>
