@@ -100,6 +100,7 @@ public partial class App : Application
         services.AddTransient<AcademicUnitRepository>();
         services.AddTransient<ReleaseRepository>();
         services.AddTransient<InstructorCommitmentRepository>();
+        services.AddTransient<SectionPrefixRepository>();
 
         // ViewModels
         services.AddSingleton<SectionChangeNotifier>();
@@ -152,6 +153,7 @@ public partial class App : Application
         services.AddTransient<AcademicUnitListViewModel>();
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
+        services.AddTransient<SectionPrefixListViewModel>();
 
         
 

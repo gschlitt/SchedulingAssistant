@@ -1,0 +1,113 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.SectionPrefixListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:SectionPrefixListViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!--  Help text  -->
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,12"
+            FontSize="12"
+            Foreground="{StaticResource TextSecondary}"
+            Text="Section Prefixes (the initial symbols of a typical section code e.g 'AB' or 'A#' in 'AB1' or 'A#1')"
+            TextWrapping="Wrap" />
+
+        <!--  Edit form (shown when EditVm is not null)  -->
+        <ContentControl
+            Grid.Row="1"
+            Grid.RowSpan="2"
+            Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:SectionPrefixEditViewModel}">
+                    <StackPanel
+                        MaxWidth="320"
+                        HorizontalAlignment="Left"
+                        Spacing="10">
+
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="{Binding Title}" />
+
+                        <TextBlock Text="Prefix" />
+                        <TextBox Text="{Binding Prefix}" />
+
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{StaticResource TextError}"
+                            IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Text="{Binding ValidationError}" />
+
+                        <TextBlock Text="Campus (optional)" />
+                        <ComboBox
+                            HorizontalAlignment="Stretch"
+                            ItemsSource="{Binding CampusOptions}"
+                            SelectedItem="{Binding SelectedCampus}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:CampusOption}">
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <StackPanel
+                            Margin="0,4,0,0"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <Button Command="{Binding SaveCommand}" Content="Save" />
+                            <Button Command="{Binding CancelCommand}" Content="Cancel" />
+                        </StackPanel>
+
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!--  List (shown when EditVm is null)  -->
+        <DataGrid
+            Grid.Row="1"
+            Grid.RowSpan="2"
+            AutoGenerateColumns="False"
+            CanUserSortColumns="True"
+            IsReadOnly="True"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            ItemsSource="{Binding Items}"
+            SelectedItem="{Binding SelectedItem}">
+            <DataGrid.Columns>
+                <DataGridTextColumn
+                    Width="120"
+                    Binding="{Binding Prefix.Prefix}"
+                    Header="Prefix" />
+                <DataGridTextColumn
+                    Width="*"
+                    Binding="{Binding CampusName}"
+                    Header="Campus" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!--  Toolbar  -->
+        <StackPanel
+            Grid.Row="3"
+            Margin="0,12,0,0"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Command="{Binding AddCommand}" Content="Add" />
+            <Button
+                Command="{Binding EditCommand}"
+                Content="Edit"
+                IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button
+                Command="{Binding DeleteCommand}"
+                Content="Delete"
+                IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

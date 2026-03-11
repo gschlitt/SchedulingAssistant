@@ -127,6 +127,12 @@ public class DatabaseContext : IDisposable
                 semester_name   TEXT,
                 data            TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS SectionPrefixes (
+                id     TEXT PRIMARY KEY,
+                prefix TEXT NOT NULL,
+                data   TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }
@@ -175,6 +181,16 @@ public class DatabaseContext : IDisposable
                 instructor_id TEXT NOT NULL,
                 semester_id TEXT NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}'
+            );
+            """;
+        cmd.ExecuteNonQuery();
+
+        // SectionPrefixes table (if missing)
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS SectionPrefixes (
+                id     TEXT PRIMARY KEY,
+                prefix TEXT NOT NULL,
+                data   TEXT NOT NULL DEFAULT '{}'
             );
             """;
         cmd.ExecuteNonQuery();

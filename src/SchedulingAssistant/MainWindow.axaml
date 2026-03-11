@@ -195,6 +195,7 @@
                             <MenuItem Command="{Binding NavigateToBlockLengthsCommand}" Header="Scheduling" />
                             <MenuItem Command="{Binding NavigateToBlockPatternsCommand}" Header="Block Patterns" />
                             <MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />
+                            <MenuItem Command="{Binding NavigateToSectionPrefixesCommand}" Header="Section Prefixes" />
                         </MenuItem>
                     </Menu>
 
