@@ -96,6 +96,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
 
                     if (savedIndex == 0)
                     {
+                        bool dataImported = false;
                         var persistedSummary = LegalStartTimesDataStore.GetPersistedDataSummary();
                         if (!string.IsNullOrEmpty(persistedSummary) && ConfirmImportPersistedData is not null)
                         {
@@ -104,8 +105,13 @@ public partial class AcademicYearListViewModel : ViewModelBase
                             {
                                 var dbContext = App.Services.GetRequiredService<DatabaseContext>();
                                 SeedData.ImportPersistedStartTimes(dbContext.Connection, saved.Id);
+                                dataImported = true;
                             }
                         }
+
+                        // If no persisted data was imported, seed institution defaults
+                        if (!dataImported)
+                            SeedData.SeedDefaultLegalStartTimes(_db.Connection, saved.Id);
                     }
                     else if (savedIndex > 0)
                     {
@@ -116,6 +122,9 @@ public partial class AcademicYearListViewModel : ViewModelBase
 
                         if (fromAyId is not null)
                             _legalStartTimeRepo.CopyFromPreviousYear(saved.Id, fromAyId);
+                        else
+                            // If user declines to copy from previous year, seed institution defaults
+                            SeedData.SeedDefaultLegalStartTimes(_db.Connection, saved.Id);
                     }
 
                     _semesterContext.Reload(_ayRepo, _semRepo);

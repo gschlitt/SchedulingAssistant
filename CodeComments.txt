@@ -1,7 +1,6 @@
 Bugs:
 
-Create a new section, seems to be a ghost section above it, this is probably the newly created section rather than the cloned one being
-edited. This should not show while editing is in process.
+Semester name background does not survive detach when in multi-semester mode.
 
 A user could enter an early start time before 0830 in the start-time/blocklength selector. 
 
@@ -9,14 +8,12 @@ Instructional workload box in instructo flyout not registering workload credit p
 
 In instructor workload history all semesters should be under the same academic year pulldown.
 
-With less than full window, a horizontal scroll bar in the filter bar look ugly, creating problems. Expand filter bar
-height to accomodate?
 
 Deleting an academic year doesn't give you the choice! Should be forbidden probably without emptying semesters?
 
 Fontsize seems hardcoded in a number of places, should be able to adjust from app.axaml
 
-Detaching SectionView obscures controls at top
+Printing to png seems to print in dark mode?
 
 All Filter and Overlay menus should display all the choices available, not just those reflecting current sections.
 
