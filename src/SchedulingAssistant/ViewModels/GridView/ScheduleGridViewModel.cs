@@ -185,343 +185,671 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Reloads the schedule grid from the currently selected semester(s) and filter state.
+    /// This is the orchestrator for the grid pipeline. It delegates each distinct step to
+    /// a focused helper method, making the overall flow easy to read and each step easy
+    /// to test or replace independently.
+    ///
+    /// Pipeline steps:
+    ///   1. Guard       — if no semesters are selected, clear the display and return early.
+    ///   2. BuildLookups — load all entity dictionaries (courses, instructors, rooms, etc.)
+    ///                     from the database into a single <see cref="GridLookups"/> record.
+    ///   3. PopulateFilterOptions — rebuild the filter drop-down lists from the new lookups
+    ///                     (preserves existing checkbox/selection state by ID).
+    ///   4. TakeFilterSnapshot — snapshot the current filter selections into a
+    ///                     <see cref="FilterSnapshot"/>; sentinel items are stripped here.
+    ///   5. ComputeOverlayMatchedSectionIds — pre-pass that identifies which sections
+    ///                     match the active section-level overlay (instructor or tag).
+    ///                     Room overlays are resolved per-meeting inside Pass 1 instead.
+    ///   6. BuildFilteredBlocks (Pass 1) — iterate sections and emit one
+    ///                     <see cref="SectionMeetingBlock"/> per meeting that passes all
+    ///                     active filter predicates.
+    ///   7. BuildOverlayBlocks (Pass 2) — add any overlay-matched meetings that were
+    ///                     excluded by the filters in Pass 1, so overlays always show up
+    ///                     regardless of other active filters.
+    ///   8. BuildCommitmentBlocks (Pass 3) — if an instructor overlay is active, inject
+    ///                     that instructor's time commitments as <see cref="CommitmentBlock"/>
+    ///                     objects.
+    ///   9. DeduplicateBlocks — remove any block that appears more than once (a meeting can
+    ///                     end up in both Pass 1 and Pass 2), keeping the first occurrence
+    ///                     to preserve the correct <c>IsOverlay</c> flag.
+    ///  10. UpdateDisplayProperties — assemble <see cref="GridData"/> from the processed
+    ///                     blocks and update all display-facing observable properties
+    ///                     (semester line, colored segments, subject filter summary, stats).
+    /// </summary>
     private void ReloadCore()
     {
-        // Support multi-semester: load from all currently selected semesters.
-        // All selected semesters belong to the same academic year (enforced by the UI),
-        // so lookup tables (courses, rooms, etc.) need to be built only once.
         var semesters = _semesterContext.SelectedSemesters.ToList();
-        if (semesters.Count == 0)
-        {
-            GridData = GridData.Empty;
-            SemesterLine = string.Empty;
-            SubjectFilterSummary = string.Empty;
-            StatsLine = string.Empty;
-            return;
-        }
+        if (semesters.Count == 0) { ClearDisplay(); return; }
 
-        // ── Build lookup tables ────────────────────────────────────────────────
+        var lookups = BuildLookups(semesters);
+        PopulateFilterOptions(lookups);
+        var snap = TakeFilterSnapshot();
+
+        var overlayMatchedIds = ComputeOverlayMatchedSectionIds(lookups.Sections, snap);
+        var filtered    = BuildFilteredBlocks(lookups.Sections, snap, lookups, overlayMatchedIds);
+        var overlayOnly = BuildOverlayBlocks(lookups.Sections, snap, lookups, filtered, overlayMatchedIds);
+
+        string? overlayInstructorId = snap.HasOverlay && snap.OverlayType == "Instructor"
+            ? snap.SelectedOverlayId : null;
+        var commitments = BuildCommitmentBlocks(semesters, overlayInstructorId);
+
+        var allBlocks = DeduplicateBlocks(filtered.Concat(overlayOnly).Concat(commitments));
+        UpdateDisplayProperties(semesters, allBlocks);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Pipeline step methods
+    //
+    // Steps that rely only on their parameters (no instance state) are marked
+    // "internal static" so unit tests can call them directly without instantiating
+    // a full ScheduleGridViewModel.
+    //
+    // Steps that read from repositories or write to observable properties are private
+    // instance methods.
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Resets all display-facing observable properties to their empty/default state.
+    /// Called by <see cref="ReloadCore"/> when no semesters are selected (e.g. the user
+    /// has not yet opened a database or all semester checkboxes are cleared). Ensures the
+    /// grid and header area show blank content rather than stale data from a prior load.
+    /// </summary>
+    private void ClearDisplay()
+    {
+        GridData             = GridData.Empty;
+        SemesterLine         = string.Empty;
+        SemesterLineSegments = [];
+        SubjectFilterSummary = string.Empty;
+        StatsLine            = string.Empty;
+    }
+
+    /// <summary>
+    /// Loads all entity lookup dictionaries from the database for the given semester(s)
+    /// and bundles them into a <see cref="GridLookups"/> record.
+    ///
+    /// All selected semesters must belong to the same academic year (enforced by the UI),
+    /// so course, instructor, room, and subject lookups are built once and shared.
+    /// Sections, however, are loaded per-semester and concatenated.
+    /// </summary>
+    /// <param name="semesters">
+    /// The selected semesters. Must contain at least one entry; caller is responsible
+    /// for the early-return guard.
+    /// </param>
+    /// <returns>
+    /// A <see cref="GridLookups"/> containing all sections for the semester(s) and
+    /// dictionaries for every supporting entity type.
+    /// </returns>
+    private GridLookups BuildLookups(IReadOnlyList<SemesterDisplay> semesters)
+    {
         var sections = semesters
             .SelectMany(sd => _sectionRepo.GetAll(sd.Semester.Id))
             .ToList();
-        var courseLookup     = _courseRepo.GetAll().ToDictionary(c => c.Id);
-        var instructorLookup = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var roomLookup       = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var subjectLookup    = _subjectRepo.GetAll().ToDictionary(s => s.Id);
 
-        var campusLookup      = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
-        var sectionTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
-        var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
-        var meetingTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
+        var courses     = _courseRepo.GetAll().ToDictionary(c => c.Id);
+        var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+        var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
+        var subjects    = _subjectRepo.GetAll().ToDictionary(s => s.Id);
 
-        var levelLookup = new Dictionary<string, string>
+        var campuses     = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
+        var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
+        var tags         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
+        var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
+
+        // The level "lookup" is a fixed dictionary of the six level strings mapped to
+        // themselves. This lets the level filter use the same dictionary-lookup pattern
+        // as all other filter dimensions rather than needing a special code path.
+        var levels = new Dictionary<string, string>
         {
-            { "0XX", "0XX" },
-            { "1XX", "1XX" },
-            { "2XX", "2XX" },
-            { "3XX", "3XX" },
-            { "4XX", "4XX" },
-            { "5+XX", "5+XX" }
+            { "0XX", "0XX" }, { "1XX", "1XX" }, { "2XX", "2XX" },
+            { "3XX", "3XX" }, { "4XX", "4XX" }, { "5+XX", "5+XX" }
         };
 
-        // ── Build semester ID → name lookup for block creation ────────────────
-        // Used when creating GridBlocks to capture the semester name so the renderer
-        // can determine the semester color without additional lookups.
+        // Maps semester DB ID → display name so GridBlocks carry the semester name
+        // without the renderer needing to perform extra lookups.
         var semesterIdToName = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Name);
 
-        // ── Rebuild filter option lists (preserves selections) ─────────────────
+        return new GridLookups(
+            sections, courses, instructors, rooms, subjects,
+            campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName);
+    }
+
+    /// <summary>
+    /// Rebuilds all filter drop-down option lists from the current lookup data.
+    /// Existing checkbox selections are preserved: <see cref="GridFilterViewModel.PopulateOptions"/>
+    /// matches by entity ID rather than by list position.
+    ///
+    /// This must be called after <see cref="BuildLookups"/> and before
+    /// <see cref="TakeFilterSnapshot"/> so that the filter state is up-to-date before
+    /// the snapshot is taken.
+    /// </summary>
+    /// <param name="lookups">Entity lookups built by <see cref="BuildLookups"/>.</param>
+    private void PopulateFilterOptions(GridLookups lookups)
+    {
         Filter.PopulateOptions(
-            sections,
-            instructorLookup,
-            roomLookup,
-            subjectLookup,
-            courseLookup,
-            campusLookup,
-            sectionTypeLookup,
-            tagLookup,
-            meetingTypeLookup,
-            levelLookup);
+            lookups.Sections,
+            lookups.Instructors,
+            lookups.Rooms,
+            lookups.Subjects,
+            lookups.Courses,
+            lookups.Campuses,
+            lookups.SectionTypes,
+            lookups.Tags,
+            lookups.MeetingTypes,
+            lookups.Levels);
+    }
 
-        // ── Snapshot active filter sets (HashSet lookups are O(1)) ─────────────
-        var selInstructors  = Filter.SelectedInstructorIds;
-        var selRooms        = Filter.SelectedRoomIds;
-        var selSubjects     = Filter.SelectedSubjectIds;
-        var selCampuses     = Filter.SelectedCampusIds;
-        var selSectionTypes = Filter.SelectedSectionTypeIds;
-        var selTags         = Filter.SelectedTagIds;
-        var selMeetingTypes = Filter.SelectedMeetingTypeIds;
-        var selLevels       = Filter.SelectedLevelIds;
+    /// <summary>
+    /// Captures the current filter state into an immutable <see cref="FilterSnapshot"/>.
+    /// The sentinel entries ("Not staffed" / "Unroomed") are stripped from the ID sets
+    /// during capture; their presence is recorded separately as boolean flags.
+    ///
+    /// The snapshot is passed to the static pipeline methods that perform the actual
+    /// filtering, keeping those methods free of any dependency on the live
+    /// <see cref="GridFilterViewModel"/> instance.
+    /// </summary>
+    /// <returns>
+    /// An immutable snapshot of the filter state at the moment of the call, with
+    /// sentinel IDs removed from the instructor and room sets.
+    /// </returns>
+    private FilterSnapshot TakeFilterSnapshot()
+    {
+        var instructorIds = Filter.SelectedInstructorIds;
+        var roomIds       = Filter.SelectedRoomIds;
 
-        // The Instructor and Room filter lists each contain a sentinel item at index 0
-        // ("Not staffed" / "Unroomed") that represents sections/meetings with no value
-        // assigned for that dimension. Strip these from the ID sets now so the remaining
-        // sets contain only real entity IDs. The boolean flags carry the sentinel intent
-        // into the filter predicates below, where they are ORed with the named-item check.
-        bool notStaffedSelected = selInstructors.Remove(GridFilterViewModel.NotStaffedId);
-        bool unroomedSelected   = selRooms.Remove(GridFilterViewModel.UnroomedId);
+        // Strip sentinels from the ID sets and record their presence as booleans.
+        // SelectedInstructorIds / SelectedRoomIds return newly-allocated HashSets on
+        // each call, so Remove() here does not mutate any live filter collection.
+        bool notStaffed = instructorIds.Remove(GridFilterViewModel.NotStaffedId);
+        bool unroomed   = roomIds.Remove(GridFilterViewModel.UnroomedId);
 
-        bool filterInstructor  = selInstructors.Count > 0 || notStaffedSelected;
-        bool filterRoom        = selRooms.Count       > 0 || unroomedSelected;
-        bool filterSubject     = selSubjects.Count     > 0;
-        bool filterCampus      = selCampuses.Count     > 0;
-        bool filterSectionType = selSectionTypes.Count > 0;
-        bool filterTag         = selTags.Count         > 0;
-        bool filterMeetingType = selMeetingTypes.Count > 0;
-        bool filterLevel       = selLevels.Count       > 0;
+        return new FilterSnapshot(
+            NamedInstructorIds: instructorIds,
+            NamedRoomIds:       roomIds,
+            SubjectIds:         Filter.SelectedSubjectIds,
+            CampusIds:          Filter.SelectedCampusIds,
+            SectionTypeIds:     Filter.SelectedSectionTypeIds,
+            TagIds:             Filter.SelectedTagIds,
+            MeetingTypeIds:     Filter.SelectedMeetingTypeIds,
+            LevelIds:           Filter.SelectedLevelIds,
+            NotStaffedSelected: notStaffed,
+            UnroomedSelected:   unroomed,
+            HasOverlay:         Filter.HasOverlay,
+            OverlayType:        Filter.OverlayType,
+            SelectedOverlayId:  Filter.SelectedOverlayId);
+    }
+
+    /// <summary>
+    /// Builds the display label and instructor initials string for a section tile.
+    ///
+    /// Label format: "[CalendarCode] [SectionCode]" when a matching course is found
+    /// (e.g. "HIST101 A"). Falls back to "[SectionCode]" alone if the section has no
+    /// course or the course ID cannot be resolved from the lookup.
+    ///
+    /// Initials format: space-joined initials of all assigned instructors in the order
+    /// they appear in <see cref="Section.InstructorIds"/> (e.g. "JRS MKL"). Returns
+    /// an empty string when no instructor assignments exist or none resolve in the lookup.
+    ///
+    /// This method exists to eliminate the repetition of the same three-line label-
+    /// building block that appeared in Pass 1 (filtered sections), Pass 2 instructor/tag
+    /// overlay, and Pass 2 room overlay in the original monolithic ReloadCore().
+    /// </summary>
+    /// <param name="section">The section whose display text should be built.</param>
+    /// <param name="courses">Course lookup keyed by course ID.</param>
+    /// <param name="instructors">Instructor lookup keyed by instructor ID.</param>
+    /// <returns>
+    /// A tuple <c>(Label, Initials)</c> where Label is the tile heading line and
+    /// Initials is the instructor text appended after it on the same line.
+    /// </returns>
+    internal static (string Label, string Initials) BuildSectionLabel(
+        Section section,
+        IReadOnlyDictionary<string, Course> courses,
+        IReadOnlyDictionary<string, Instructor> instructors)
+    {
+        var calCode = section.CourseId is not null && courses.TryGetValue(section.CourseId, out var course)
+            ? course.CalendarCode : null;
+
+        var initials = string.Join(" ", section.InstructorIds
+            .Where(id => instructors.ContainsKey(id))
+            .Select(id => instructors[id].Initials));
+
+        var label = calCode is not null
+            ? $"{calCode} {section.SectionCode}"
+            : section.SectionCode;
+
+        return (label, initials);
+    }
+
+    /// <summary>
+    /// Pre-pass: identifies which sections match the active section-level overlay
+    /// (instructor or tag). Room overlays are resolved per-meeting inside
+    /// <see cref="BuildFilteredBlocks"/> and are not handled here.
+    ///
+    /// The returned set is used in two ways:
+    /// <list type="number">
+    ///   <item>
+    ///     Inside <see cref="BuildFilteredBlocks"/>: each block for a section in this
+    ///     set is tagged <c>IsOverlay=true</c>.
+    ///   </item>
+    ///   <item>
+    ///     Inside <see cref="BuildOverlayBlocks"/>: sections in this set whose meetings
+    ///     were not already emitted by Pass 1 are added as overlay-only blocks.
+    ///   </item>
+    /// </list>
+    /// Returns an empty set when no section-level overlay is active (i.e. when
+    /// <see cref="FilterSnapshot.HasOverlay"/> is false or the overlay type is "Room").
+    /// </summary>
+    /// <param name="sections">All sections loaded for the selected semester(s).</param>
+    /// <param name="snap">Snapshot of the current filter and overlay state.</param>
+    /// <returns>
+    /// Set of section IDs that match the active instructor or tag overlay.
+    /// Empty when no section-level overlay is active.
+    /// </returns>
+    internal static HashSet<string> ComputeOverlayMatchedSectionIds(
+        IReadOnlyList<Section> sections,
+        FilterSnapshot snap)
+    {
+        var matched = new HashSet<string>();
+        if (!snap.HasOverlay || snap.OverlayType == "Room")
+            return matched;
+
+        var overlayId = snap.SelectedOverlayId ?? string.Empty;
+        foreach (var section in sections)
+        {
+            bool matches = snap.OverlayType switch
+            {
+                "Instructor" => section.InstructorIds.Contains(overlayId),
+                "Tag"        => section.TagIds.Contains(overlayId),
+                _            => false
+            };
+            if (matches)
+                matched.Add(section.Id);
+        }
+        return matched;
+    }
+
+    /// <summary>
+    /// Pass 1 of block collection: iterates all sections and emits one
+    /// <see cref="SectionMeetingBlock"/> for every meeting that passes all active
+    /// filter dimensions.
+    ///
+    /// Filtering is applied in two stages:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <b>Section-level</b> — instructor, subject, course level, campus,
+    ///     section-type, tags. If any section-level predicate fails, all of that
+    ///     section's meetings are skipped.
+    ///   </item>
+    ///   <item>
+    ///     <b>Meeting-level</b> — room and meeting-type. If a meeting-level predicate
+    ///     fails, only that one slot is skipped.
+    ///   </item>
+    /// </list>
+    ///
+    /// Overlay marking: blocks for sections in <paramref name="overlayMatchedIds"/> are
+    /// emitted with <c>IsOverlay=true</c>. For room overlays the meeting's
+    /// <c>RoomId</c> is compared against <see cref="FilterSnapshot.SelectedOverlayId"/>
+    /// directly, per-meeting.
+    /// </summary>
+    /// <param name="sections">All sections for the selected semester(s).</param>
+    /// <param name="snap">Snapshot of the current filter and overlay state.</param>
+    /// <param name="lookups">Entity lookup dictionaries (courses, instructors, etc.).</param>
+    /// <param name="overlayMatchedIds">
+    /// Pre-computed set of section IDs that match the section-level overlay, as returned
+    /// by <see cref="ComputeOverlayMatchedSectionIds"/>. Pass an empty set when no
+    /// section-level overlay is active.
+    /// </param>
+    /// <returns>
+    /// All <see cref="SectionMeetingBlock"/> objects for meetings that survived all
+    /// filter predicates. Not yet deduplicated.
+    /// </returns>
+    internal static List<GridBlock> BuildFilteredBlocks(
+        IReadOnlyList<Section> sections,
+        FilterSnapshot snap,
+        GridLookups lookups,
+        HashSet<string> overlayMatchedIds)
+    {
+        var blocks = new List<GridBlock>();
+
+        foreach (var section in sections)
+        {
+            // ── Section-level filters ──────────────────────────────────────────────
+
+            if (snap.FilterInstructor)
+            {
+                // OR within the instructor dimension:
+                //   "Not staffed" sentinel → section must have no instructor assignments.
+                //   Named instructors      → section must be assigned to at least one.
+                // The two are mutually exclusive in the UI, but the OR handles both for
+                // robustness (e.g. if filter state is restored from a saved preset).
+                bool passes = (snap.NotStaffedSelected && !section.InstructorIds.Any())
+                           || (snap.NamedInstructorIds.Count > 0
+                               && section.InstructorIds.Any(snap.NamedInstructorIds.Contains));
+                if (!passes) continue;
+            }
+
+            if (snap.FilterSubject)
+            {
+                if (section.CourseId is null || !lookups.Courses.TryGetValue(section.CourseId, out var c))
+                    continue;
+                if (!snap.SubjectIds.Contains(c.SubjectId))
+                    continue;
+            }
+
+            if (snap.FilterLevel)
+            {
+                if (section.CourseId is null || !lookups.Courses.TryGetValue(section.CourseId, out var c))
+                    continue;
+                if (!snap.LevelIds.Contains(c.Level))
+                    continue;
+            }
+
+            if (snap.FilterCampus && !snap.CampusIds.Contains(section.CampusId ?? string.Empty))
+                continue;
+
+            if (snap.FilterSectionType && !snap.SectionTypeIds.Contains(section.SectionTypeId ?? string.Empty))
+                continue;
+
+            // Tags use AND logic: the section must carry ALL selected tags to pass.
+            if (snap.FilterTag && !snap.TagIds.IsSubsetOf(section.TagIds))
+                continue;
+
+            // ── Build display label (DRY helper used by all three passes) ──────────
+            var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+            bool sectionIsOverlay = overlayMatchedIds.Contains(section.Id);
+
+            // ── Meeting-level filters and block emission ───────────────────────────
+            foreach (var slot in section.Schedule)
+            {
+                if (snap.FilterRoom)
+                {
+                    // OR within the room dimension: "Unroomed" sentinel → meeting has
+                    // no room assigned; named rooms → meeting is in one of those rooms.
+                    bool passes = (snap.UnroomedSelected && string.IsNullOrEmpty(slot.RoomId))
+                               || (snap.NamedRoomIds.Count > 0
+                                   && snap.NamedRoomIds.Contains(slot.RoomId ?? string.Empty));
+                    if (!passes) continue;
+                }
+
+                if (snap.FilterMeetingType && !snap.MeetingTypeIds.Contains(slot.MeetingTypeId ?? string.Empty))
+                    continue;
+
+                // For room overlays, IsOverlay is determined per-meeting; for section-level
+                // overlays it was already resolved above by checking overlayMatchedIds.
+                bool isOverlay = sectionIsOverlay;
+                if (!isOverlay && snap.HasOverlay && snap.OverlayType == "Room")
+                    isOverlay = slot.RoomId == snap.SelectedOverlayId;
+
+                var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
+                blocks.Add(new SectionMeetingBlock(
+                    slot.Day, slot.StartMinutes, slot.EndMinutes,
+                    isOverlay, label, initials, section.Id, section.SemesterId, semName));
+            }
+        }
+
+        return blocks;
+    }
+
+    /// <summary>
+    /// Pass 2 of block collection: injects overlay-matched meetings that were NOT
+    /// already emitted by Pass 1 (<see cref="BuildFilteredBlocks"/>).
+    ///
+    /// Without this pass, an overlay would only highlight sections that also pass all
+    /// active filters — sections hidden by a filter would not appear on the grid at all.
+    /// This pass ensures overlay matches are always visible regardless of other filters.
+    ///
+    /// Behaviour by overlay type:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <b>Instructor / Tag overlay</b> — adds all meetings for every section in
+    ///     <paramref name="overlayMatchedIds"/> that was not already added by Pass 1.
+    ///   </item>
+    ///   <item>
+    ///     <b>Room overlay</b> — adds only the specific meetings whose <c>RoomId</c>
+    ///     equals <see cref="FilterSnapshot.SelectedOverlayId"/> and that were not
+    ///     already added.
+    ///   </item>
+    /// </list>
+    ///
+    /// All blocks emitted here carry <c>IsOverlay=true</c>. Returns an empty list when
+    /// no overlay is active.
+    /// </summary>
+    /// <param name="sections">All sections for the selected semester(s).</param>
+    /// <param name="snap">Snapshot of the current filter and overlay state.</param>
+    /// <param name="lookups">Entity lookup dictionaries (courses, instructors, etc.).</param>
+    /// <param name="filteredBlocks">
+    /// The blocks already collected by Pass 1. Used to determine which meetings have
+    /// already been added so this pass does not produce duplicates.
+    /// </param>
+    /// <param name="overlayMatchedIds">
+    /// Pre-computed set of section IDs that match the section-level overlay.
+    /// Only used for Instructor and Tag overlay types.
+    /// </param>
+    /// <returns>
+    /// A list of <see cref="SectionMeetingBlock"/> objects that are in the overlay but
+    /// were absent from <paramref name="filteredBlocks"/>. Not yet deduplicated.
+    /// </returns>
+    internal static List<GridBlock> BuildOverlayBlocks(
+        IReadOnlyList<Section> sections,
+        FilterSnapshot snap,
+        GridLookups lookups,
+        IReadOnlyList<GridBlock> filteredBlocks,
+        HashSet<string> overlayMatchedIds)
+    {
+        var blocks = new List<GridBlock>();
+        if (!snap.HasOverlay) return blocks;
+
+        if (snap.OverlayType != "Room")
+        {
+            // Instructor or Tag overlay: add all meetings for matched sections whose
+            // section ID was not already written by Pass 1. Build a HashSet for O(1)
+            // lookups rather than iterating filteredBlocks O(n) per section.
+            var alreadyAddedSectionIds = filteredBlocks
+                .OfType<SectionMeetingBlock>()
+                .Select(b => b.SectionId)
+                .ToHashSet();
+
+            foreach (var sectionId in overlayMatchedIds)
+            {
+                if (alreadyAddedSectionIds.Contains(sectionId)) continue;
+
+                var section = sections.FirstOrDefault(s => s.Id == sectionId);
+                if (section is null) continue;
+
+                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
+
+                foreach (var slot in section.Schedule)
+                {
+                    blocks.Add(new SectionMeetingBlock(
+                        slot.Day, slot.StartMinutes, slot.EndMinutes,
+                        true, label, initials, section.Id, section.SemesterId, semName));
+                }
+            }
+        }
+        else
+        {
+            // Room overlay: add only the meetings in the overlay room that were not
+            // already added by Pass 1. Build a HashSet of (sectionId, day, start, end)
+            // tuples from Pass 1 for O(1) duplicate checking.
+            var overlayRoomId = snap.SelectedOverlayId ?? string.Empty;
+            var alreadyAdded = filteredBlocks
+                .OfType<SectionMeetingBlock>()
+                .Select(b => (b.SectionId, b.Day, b.StartMinutes, b.EndMinutes))
+                .ToHashSet();
+
+            foreach (var section in sections)
+            {
+                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
+
+                foreach (var slot in section.Schedule)
+                {
+                    if (slot.RoomId != overlayRoomId) continue;
+                    if (alreadyAdded.Contains((section.Id, slot.Day, slot.StartMinutes, slot.EndMinutes))) continue;
+
+                    blocks.Add(new SectionMeetingBlock(
+                        slot.Day, slot.StartMinutes, slot.EndMinutes,
+                        true, label, initials, section.Id, section.SemesterId, semName));
+                }
+            }
+        }
+
+        return blocks;
+    }
+
+    /// <summary>
+    /// Pass 3 of block collection: loads instructor commitments from the database and
+    /// converts them into <see cref="CommitmentBlock"/> objects.
+    ///
+    /// Commitments are independent of sections — an instructor's meetings and office-hours
+    /// obligations can appear side-by-side on the same grid regardless of what sections
+    /// that instructor teaches. They participate in the same overlap/column-split layout
+    /// engine as section meetings. If a commitment shares the exact same time span as a
+    /// section meeting on the same day, the two entries are stacked inside one tile.
+    ///
+    /// Commitments are only injected under an instructor overlay (not room or tag overlays)
+    /// because commitments belong to an instructor, not to a room or tag.
+    ///
+    /// <see cref="CommitmentBlock.IsOverlay"/> is hardcoded <c>true</c>, so commitments
+    /// always render with the overlay (red) style.
+    ///
+    /// No deduplication guard is needed: commitments are fetched once per semester for
+    /// this specific instructor, so the repository cannot return the same record twice.
+    /// </summary>
+    /// <param name="semesters">The selected semesters; each is queried independently.</param>
+    /// <param name="overlayInstructorId">
+    /// The instructor ID whose commitments should be loaded.
+    /// Pass <c>null</c> or an empty string when no instructor overlay is active; the
+    /// method returns an empty list immediately without touching the database.
+    /// </param>
+    /// <returns>
+    /// A list of <see cref="CommitmentBlock"/> objects for the overlay instructor across
+    /// all selected semesters. Empty when <paramref name="overlayInstructorId"/> is null.
+    /// </returns>
+    private List<GridBlock> BuildCommitmentBlocks(
+        IReadOnlyList<SemesterDisplay> semesters,
+        string? overlayInstructorId)
+    {
+        var blocks = new List<GridBlock>();
+        if (string.IsNullOrEmpty(overlayInstructorId)) return blocks;
+
+        foreach (var sd in semesters)
+        {
+            var commitments = _commitmentRepo.GetByInstructor(sd.Semester.Id, overlayInstructorId);
+            foreach (var c in commitments)
+                blocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id, sd.Semester.Name));
+        }
+        return blocks;
+    }
+
+    /// <summary>
+    /// Removes duplicate blocks from the combined block list, keeping the first occurrence.
+    ///
+    /// A block is a duplicate when another block with the same
+    /// (entity-id, semester-id, day, start-time, end-time) tuple has already been seen.
+    /// The entity ID is the <c>SectionId</c> for <see cref="SectionMeetingBlock"/> and
+    /// the <c>CommitmentId</c> for <see cref="CommitmentBlock"/>.
+    ///
+    /// Why duplicates can arise: the same section meeting can appear in both Pass 1
+    /// (filtered blocks) and Pass 2 (overlay-only blocks). Pass 1 sets <c>IsOverlay</c>
+    /// correctly based on the overlay match status; Pass 2 always sets it <c>true</c>.
+    /// Keeping the first occurrence (Pass 1) preserves the correct overlay flag.
+    ///
+    /// The <c>SemesterId</c> is included in the key to guard against the unlikely but
+    /// theoretically possible case where two semesters share a section ID.
+    ///
+    /// <see cref="CommitmentBlock"/> objects are fetched once per instructor per semester
+    /// by design, so they cannot be duplicated; they pass through unchanged.
+    /// </summary>
+    /// <param name="blocks">
+    /// The combined output of Pass 1, Pass 2, and Pass 3 (in that order). The ordering
+    /// matters: when duplicates exist, the first occurrence is kept.
+    /// </param>
+    /// <returns>
+    /// A new <see cref="List{T}"/> containing only the first occurrence of each
+    /// unique block.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if an unknown <see cref="GridBlock"/> subtype is encountered. This would
+    /// indicate that a new GridBlock subtype was added without updating this method.
+    /// </exception>
+    internal static List<GridBlock> DeduplicateBlocks(IEnumerable<GridBlock> blocks)
+    {
+        // Local helper extracts the entity ID regardless of GridBlock subtype.
+        // If a new subtype is added, the exhaustive switch will throw at runtime,
+        // which is preferable to silently dropping data.
+        static string EntityId(GridBlock b) => b switch
+        {
+            SectionMeetingBlock s => s.SectionId,
+            CommitmentBlock c     => c.CommitmentId,
+            _ => throw new InvalidOperationException($"Unknown GridBlock subtype: {b.GetType().Name}")
+        };
+
+        var seen   = new HashSet<(string, string, int, int, int)>();
+        var result = new List<GridBlock>();
+
+        foreach (var block in blocks)
+        {
+            var key = (EntityId(block), block.SemesterId, block.Day, block.StartMinutes, block.EndMinutes);
+            if (seen.Add(key))
+                result.Add(block);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Assembles the final <see cref="GridData"/> structure and updates all display-facing
+    /// observable properties from the processed block list. This is the last step of the
+    /// reload pipeline, called after deduplication.
+    ///
+    /// Responsibilities:
+    /// <list type="bullet">
+    ///   <item>
+    ///     Builds per-day (and per-semester sub-column in multi-semester mode) tile layouts
+    ///     by calling <see cref="ComputeTiles"/> for each day/semester combination.
+    ///   </item>
+    ///   <item>
+    ///     Assigns <see cref="GridData"/> so the view renders the updated grid.
+    ///   </item>
+    ///   <item>
+    ///     Updates <see cref="SemesterLine"/> and <see cref="SemesterLineSegments"/> for
+    ///     the header.
+    ///   </item>
+    ///   <item>
+    ///     Updates <see cref="SubjectFilterSummary"/> (e.g. "History · Mathematics" when
+    ///     subject filters are active).
+    ///   </item>
+    ///   <item>
+    ///     Updates <see cref="StatsLine"/> (e.g. "12 sections · 28 meetings shown").
+    ///     Only <see cref="SectionMeetingBlock"/> objects are counted; commitment blocks
+    ///     are excluded because including them would make the counts misleading.
+    ///   </item>
+    /// </list>
+    /// </summary>
+    /// <param name="semesters">The selected semesters; used for column headers and line building.</param>
+    /// <param name="allBlocks">The fully-processed, deduplicated block list from all three passes.</param>
+    private void UpdateDisplayProperties(
+        IReadOnlyList<SemesterDisplay> semesters,
+        IReadOnlyList<GridBlock> allBlocks)
+    {
+        // Fixed grid time range: 08:30 to 22:00.
+        const int firstRow = 8 * 60 + 30;
+        const int lastRow  = 22 * 60;
 
         var includeSaturday = AppSettings.Load().IncludeSaturday;
-
-        // ── Build day columns ─────────────────────────────────────────────────
         var dayNumbers = new List<int> { 1, 2, 3, 4, 5 };
         if (includeSaturday) dayNumbers.Add(6);
         var dayNames = new Dictionary<int, string>
         {
-            [1] = "Monday", [2] = "Tuesday", [3] = "Wednesday",
+            [1] = "Monday", [2] = "Tuesday",  [3] = "Wednesday",
             [4] = "Thursday", [5] = "Friday", [6] = "Saturday"
         };
 
-        // ── Identify overlay-matched sections BEFORE filtering ────────────────
-        // For Instructors and Tags (section-level attributes), precompute which sections match.
-        // For Rooms (meeting-level attribute), we'll compute per-meeting in the loop below.
-        var overlayMatchedSectionIds = new HashSet<string>();
-        if (Filter.HasOverlay && Filter.OverlayType != "Room")
-        {
-            var overlayId = Filter.SelectedOverlayId ?? string.Empty;
-            foreach (var section in sections)
-            {
-                bool matchesOverlay = false;
-                if (Filter.OverlayType == "Instructor")
-                    matchesOverlay = section.InstructorIds.Contains(overlayId);
-                else if (Filter.OverlayType == "Tag")
-                    matchesOverlay = section.TagIds.Contains(overlayId);
-
-                if (matchesOverlay)
-                    overlayMatchedSectionIds.Add(section.Id);
-            }
-        }
-
-        // ── Collect all time blocks for the grid ─────────────────────────────
-        // allBlocks accumulates everything that will be drawn:
-        //   Pass 1 (below): section meetings that pass the active filters
-        //   Pass 2 (below): overlay-matched sections not already in Pass 1
-        //   Pass 3 (below): instructor commitments when an instructor overlay is active
-        // After collection, a dedup step removes any block that appears more than once,
-        // then blocks are split by day and handed to ComputeTiles() for layout.
-        var allBlocks = new List<GridBlock>();
-
-        foreach (var section in sections)
-        {
-            // ── Section-level filter ───────────────────────────────────────────
-            if (filterInstructor)
-            {
-                // OR within the instructor dimension:
-                //   "Not staffed" sentinel → section must have no instructor assignments
-                //   Named instructors      → section must be assigned to at least one
-                // The two are mutually exclusive in the UI, but the OR handles both
-                // in case state is restored from a saved filter.
-                bool passes = (notStaffedSelected && !section.InstructorIds.Any())
-                           || (selInstructors.Count > 0 && section.InstructorIds.Any(selInstructors.Contains));
-                if (!passes) continue;
-            }
-
-            if (filterSubject)
-            {
-                if (string.IsNullOrEmpty(section.CourseId) || !courseLookup.TryGetValue(section.CourseId, out var c))
-                    continue;
-                if (!selSubjects.Contains(c.SubjectId))
-                    continue;
-            }
-
-            if (filterLevel)
-            {
-                if (string.IsNullOrEmpty(section.CourseId) || !courseLookup.TryGetValue(section.CourseId, out var c))
-                    continue;
-                if (!selLevels.Contains(c.Level))
-                    continue;
-            }
-
-            if (filterCampus && !selCampuses.Contains(section.CampusId ?? string.Empty))
-                continue;
-
-            if (filterSectionType && !selSectionTypes.Contains(section.SectionTypeId ?? string.Empty))
-                continue;
-
-            // Tags: AND — section must have ALL selected tags
-            if (filterTag && !selTags.IsSubsetOf(section.TagIds))
-                continue;
-
-            // ── Build display label ────────────────────────────────────────────
-            var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
-                ? course.CalendarCode : null;
-            var initials = string.Join(" ", section.InstructorIds
-                .Where(id => instructorLookup.TryGetValue(id, out _))
-                .Select(id => instructorLookup[id].Initials));
-            var label = calCode is not null
-                ? $"{calCode} {section.SectionCode}"
-                : section.SectionCode;
-
-            // Check if this section is part of a section-level overlay (instructor or tag)
-            bool sectionIsOverlay = overlayMatchedSectionIds.Contains(section.Id);
-
-            // ── Meeting-level filter ──────────────────────────────────────────
-            foreach (var slot in section.Schedule)
-            {
-                if (filterRoom)
-                {
-                    // OR within the room dimension: "Unroomed" sentinel → meeting has
-                    // no room assigned; named rooms → meeting is in one of those rooms.
-                    bool passes = (unroomedSelected && string.IsNullOrEmpty(slot.RoomId))
-                               || (selRooms.Count > 0 && selRooms.Contains(slot.RoomId ?? string.Empty));
-                    if (!passes) continue;
-                }
-                if (filterMeetingType && !selMeetingTypes.Contains(slot.MeetingTypeId ?? string.Empty))
-                    continue;
-
-                // Determine if this meeting is part of the overlay
-                bool isOverlay = sectionIsOverlay;
-                if (!isOverlay && Filter.HasOverlay && Filter.OverlayType == "Room")
-                {
-                    var overlayId = Filter.SelectedOverlayId ?? string.Empty;
-                    isOverlay = slot.RoomId == overlayId;
-                }
-
-                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
-                allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, isOverlay, label, initials, section.Id, section.SemesterId, semesterName));
-            }
-        }
-
-        // ── Add overlay-only sections (those not already shown by filters) ─────
-        // For section-level overlays (Instructor, Tag): add all meetings from overlay-matched
-        // sections that weren't already added by regular filters.
-        // For room overlays: add only the meetings in that room that weren't already added.
-        if (Filter.HasOverlay && Filter.OverlayType != "Room")
-        {
-            foreach (var overlayId in overlayMatchedSectionIds)
-            {
-                // Skip if this section already got added by the filter loop
-                if (allBlocks.OfType<SectionMeetingBlock>().Any(b => b.SectionId == overlayId))
-                    continue;
-
-                var section = sections.FirstOrDefault(s => s.Id == overlayId);
-                if (section is null) continue;
-
-                // Build display label for this overlay-only section
-                var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
-                    ? course.CalendarCode : null;
-                var initials = string.Join(" ", section.InstructorIds
-                    .Where(id => instructorLookup.TryGetValue(id, out _))
-                    .Select(id => instructorLookup[id].Initials));
-                var label = calCode is not null
-                    ? $"{calCode} {section.SectionCode}"
-                    : section.SectionCode;
-
-                // Add ALL meetings for this overlay-only section
-                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
-                foreach (var slot in section.Schedule)
-                {
-                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId, semesterName));
-                }
-            }
-        }
-        else if (Filter.HasOverlay && Filter.OverlayType == "Room")
-        {
-            // For room overlays: find all meetings in the overlay room that weren't already added
-            var overlayRoomId = Filter.SelectedOverlayId ?? string.Empty;
-
-            foreach (var section in sections)
-            {
-                var calCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
-                    ? course.CalendarCode : null;
-                var initials = string.Join(" ", section.InstructorIds
-                    .Where(id => instructorLookup.TryGetValue(id, out _))
-                    .Select(id => instructorLookup[id].Initials));
-                var label = calCode is not null
-                    ? $"{calCode} {section.SectionCode}"
-                    : section.SectionCode;
-
-                var semesterName = semesterIdToName.TryGetValue(section.SemesterId, out var name) ? name : string.Empty;
-                foreach (var slot in section.Schedule)
-                {
-                    // Only add meetings that have the overlay room assigned
-                    if (slot.RoomId != overlayRoomId)
-                        continue;
-
-                    // Skip if this meeting was already added by the filter loop
-                    if (allBlocks.OfType<SectionMeetingBlock>().Any(b =>
-                            b.SectionId == section.Id && b.Day == slot.Day &&
-                            b.StartMinutes == slot.StartMinutes && b.EndMinutes == slot.EndMinutes))
-                        continue;
-
-                    allBlocks.Add(new SectionMeetingBlock(slot.Day, slot.StartMinutes, slot.EndMinutes, true, label, initials, section.Id, section.SemesterId, semesterName));
-                }
-            }
-        }
-
-        // ── Instructor-overlay commitments ────────────────────────────────────
-        // When an instructor overlay is active, load that instructor's time commitments
-        // for the selected semester and inject them into the block list. Commitments are
-        // entirely independent of sections — they can appear on any day at any time
-        // regardless of what sections the instructor teaches. They enter the layout engine
-        // as CommitmentBlocks, which means they participate in the same overlap/column-
-        // split logic as section meetings. If a commitment happens to share the exact same
-        // time span as a section meeting, they are merged into one tile (stacked rows).
-        //
-        // Commitments are only shown under instructor overlays, not room or tag overlays,
-        // because commitments belong to an instructor, not a room or a tag.
-        //
-        // CommitmentBlock.IsOverlay is hardcoded true, so they always render red.
-        // No dedup guard is needed here — commitments are fetched once, directly from the
-        // DB for this instructor+semester, so duplicates cannot arise.
-        if (Filter.HasOverlay
-            && Filter.OverlayType == "Instructor"
-            && !string.IsNullOrEmpty(Filter.SelectedOverlayId))
-        {
-            // Load commitments for all selected semesters (same instructor, each semester)
-            foreach (var sd in semesters)
-            {
-                var commitments = _commitmentRepo.GetByInstructor(sd.Semester.Id, Filter.SelectedOverlayId);
-                foreach (var c in commitments)
-                    allBlocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id, sd.Semester.Name));
-            }
-        }
-
-        // ── Defensive deduplication ────────────────────────────────────────────
-        // A section meeting can appear in allBlocks at most twice: once from the filtered
-        // pass (Pass 1) and once from the overlay-only pass (Pass 2). Dedup keeps the
-        // first occurrence, which preserves the correct IsOverlay flag (Pass 1 sets it
-        // based on the section's overlay status; Pass 2 always sets it true).
-        // Commitment blocks are fetched once from the DB so they cannot be duplicated,
-        // but they pass through the same dedup path for safety.
-        // Key = (entity-id, SemesterId, Day, StartMinutes, EndMinutes). SemesterId is
-        // included so that the same section ID appearing in two semesters (e.g. copied
-        // sections that share an ID — should not happen, but defensive) is not collapsed.
-        static string BlockId(GridBlock b) => b switch
-        {
-            SectionMeetingBlock s => s.SectionId,
-            CommitmentBlock c     => c.CommitmentId,
-            _ => throw new InvalidOperationException($"Unknown GridBlock type: {b.GetType().Name}")
-        };
-
-        var seenBlocks    = new HashSet<(string, string, int, int, int)>();
-        var dedupedBlocks = new List<GridBlock>();
-
-        foreach (var block in allBlocks)
-        {
-            var key = (BlockId(block), block.SemesterId, block.Day, block.StartMinutes, block.EndMinutes);
-            if (seenBlocks.Add(key))
-                dedupedBlocks.Add(block);
-        }
-
-        allBlocks = dedupedBlocks;
-
-        // ── Time range: always 08:30–22:00 ────────────────────────────────────
-        const int firstRow = 8 * 60 + 30;
-        const int lastRow  = 22 * 60;
-
-        // ── Build per-day, per-semester tile columns ────────────────────────────
-        // In single-semester mode this produces one column per day (identical to before).
-        // In multi-semester mode it produces N columns per day — one per semester — ordered
-        // as: [Mon/Sem1, Mon/Sem2, Tue/Sem1, Tue/Sem2, ...]. The renderer uses SemesterCount
+        // In single-semester mode: one column per day.
+        // In multi-semester mode: N sub-columns per day (one per semester), ordered as
+        // [Mon/Sem1, Mon/Sem2, Tue/Sem1, Tue/Sem2, ...]. The renderer uses SemesterCount
         // to know how many consecutive columns belong to the same day group.
         bool isMultiSemester = semesters.Count > 1;
         var dayColumns = new List<GridDayColumn>();
@@ -532,7 +860,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             {
                 // In multi-semester mode, each sub-column contains only that semester's blocks.
                 // In single-semester mode, SemesterId filtering is omitted for robustness
-                // (blocks should all share the one semester ID, but don't depend on it).
+                // (all blocks should share the single semester ID, but we don't depend on it).
                 var dayBlocks = isMultiSemester
                     ? allBlocks
                         .Where(b => b.Day == dayNum && b.SemesterId == sd.Semester.Id)
@@ -543,24 +871,24 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
                         .ToList();
 
-                var tiles  = ComputeTiles(dayBlocks, sd.Semester.Name);
-                dayColumns.Add(new GridDayColumn(dayNames[dayNum], tiles));
+                dayColumns.Add(new GridDayColumn(dayNames[dayNum], ComputeTiles(dayBlocks, sd.Semester.Name)));
             }
         }
 
         GridData = new GridData(firstRow, lastRow, dayColumns, semesters.Count);
 
-        // ── Update title bar summary properties ───────────────────────────────
-        // In single-semester mode use the existing "Year — Semester" DisplayName;
-        // in multi-semester mode build "Year — Sem1, Sem2, ..." from the shared AY name.
+        // ── Semester line and colored segment chips ────────────────────────────
+        // Single-semester mode: "Year — Semester" (e.g. "2025-2026 — Fall")
+        // Multi-semester mode:  "Year — Sem1, Sem2" plus colored segment chips.
         SemesterLine = semesters.Count == 1
             ? semesters[0].DisplayName
             : $"{_semesterContext.SelectedAcademicYear?.Name} — " +
               string.Join(", ", semesters.Select(s => s.Semester.Name));
 
-        // Build colored semester segments for display in the header
         BuildSemesterLineSegments(semesters);
 
+        // ── Subject filter summary ─────────────────────────────────────────────
+        // Shows "History · Mathematics" (etc.) in the header when subject filters are active.
         var selectedSubjectNames = Filter.Subjects
             .Where(s => s.IsSelected)
             .Select(s => s.Name)
@@ -569,17 +897,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
             ? string.Join(" · ", selectedSubjectNames)
             : string.Empty;
 
-        // Stats line counts sections and meetings, not commitments. A "section" is a
-        // distinct SectionId; a "meeting" is one SectionMeetingBlock (one time slot for
-        // one section on one day). Commitment blocks are excluded from both counts because
-        // they are not sections — showing "3 sections · 8 meetings" is meaningful; mixing
-        // in commitment tiles would make the number misleading.
+        // ── Stats line ─────────────────────────────────────────────────────────
+        // Counts distinct section IDs (not commitment blocks) and total meeting slots.
         var sectionBlocks = allBlocks.OfType<SectionMeetingBlock>().ToList();
         int sectionCount  = sectionBlocks.Select(b => b.SectionId).Distinct().Count();
         int meetingCount  = sectionBlocks.Count;
         StatsLine = sectionCount == 0
             ? "No sections shown"
-            : $"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · {meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")} shown";
+            : $"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · " +
+              $"{meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")} shown";
     }
 
     /// <summary>
@@ -641,7 +967,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// All blocks in this call belong to the same semester, so semesterName is provided
     /// and propagated to each resulting GridTile for use by the renderer.
     /// </summary>
-    private static List<GridTile> ComputeTiles(List<GridBlock> blocks, string semesterName = "")
+    internal static List<GridTile> ComputeTiles(List<GridBlock> blocks, string semesterName = "")
     {
         var tiles = new List<GridTile>();
         if (blocks.Count == 0) return tiles;
@@ -727,7 +1053,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// In single-semester mode, shows just the semester name. In multi-semester mode,
     /// shows the academic year followed by colored segment buttons for each semester.
     /// </summary>
-    private void BuildSemesterLineSegments(List<SemesterDisplay> semesters)
+    private void BuildSemesterLineSegments(IReadOnlyList<SemesterDisplay> semesters)
     {
         var segments = new List<SemesterLineSegment>();
 
