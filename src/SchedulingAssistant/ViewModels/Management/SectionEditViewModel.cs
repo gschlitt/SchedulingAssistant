@@ -143,6 +143,15 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly double? _defaultBlockLength;
     private readonly IReadOnlyList<Subject> _allSubjects;
 
+    // ── Pattern coupling state ─────────────────────────────────────────────────
+    // After ApplyPattern creates meetings, the lead meeting's first change to each
+    // of these three fields is propagated once to all follower meetings, then decoupled.
+
+    private SectionMeetingViewModel? _couplingLeader;
+    private List<SectionMeetingViewModel> _couplingFollowers = new();
+    private HashSet<string> _couplingRemainingFields = new();
+    private PropertyChangedEventHandler? _couplingHandler;
+
     // ── Block-pattern shortcuts ───────────────────────────────────────────────
 
     private readonly BlockPattern? _pattern1;
@@ -542,6 +551,12 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void RemoveMeeting(SectionMeetingViewModel meeting)
     {
+        // Keep coupling state consistent when meetings are manually removed.
+        if (meeting == _couplingLeader)
+            TearDownPatternCoupling();     // Leader gone — coupling has no source; discard entirely.
+        else
+            _couplingFollowers.Remove(meeting); // Remove from propagation targets if it was a follower.
+
         Meetings.Remove(meeting);
     }
 
@@ -561,32 +576,100 @@ public partial class SectionEditViewModel : ViewModelBase
     private void ApplyPattern5() => ApplyPattern(_pattern5);
 
     /// <summary>
-    /// Replaces the current meeting list with one meeting per day in the pattern.
-    /// Block length and start time are inherited from the first existing meeting (if any),
-    /// otherwise block length falls back to <see cref="_defaultBlockLength"/> and start time
-    /// is left unset so the user can choose it.
+    /// Replaces the current meeting list with one blank meeting per day in the pattern.
+    /// The new meetings start with no block length, start time, or meeting type pre-filled.
+    /// After creation, the meetings are coupled: the first time the user sets
+    /// <c>SelectedBlockLength</c>, <c>SelectedStartTime</c>, or <c>SelectedMeetingTypeId</c>
+    /// on the lead (first) meeting, that value is propagated once to all other meetings.
+    /// After a field has propagated, it decouples permanently — subsequent changes to either
+    /// meeting do not affect the other.
     /// </summary>
     private void ApplyPattern(BlockPattern? pattern)
     {
         if (pattern is null || pattern.Days.Count == 0) return;
 
-        // Snapshot block length and start time from the first current meeting that has a block length set.
-        var first = Meetings.FirstOrDefault(m => m.SelectedBlockLength.HasValue);
-        double? blockLength = first?.SelectedBlockLength ?? _defaultBlockLength;
-        int? startTime = first?.SelectedStartTime;
-
+        TearDownPatternCoupling();
         Meetings.Clear();
+
+        var created = new List<SectionMeetingViewModel>();
         foreach (var day in pattern.Days.Order())
         {
+            // Pre-fill the preferred block length (if set in Settings) via the constructor's
+            // backing-field path, so no PropertyChanged fires and the SelectedBlockLength
+            // coupling slot is not consumed — the user can still change it on the leader
+            // and have it propagate to the other meetings.
             var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms,
-                defaultBlockLength: blockLength);
-            // Override the default day selection to the pattern day.
+                defaultBlockLength: _defaultBlockLength);
             meeting.SelectedDay = day;
-            // Restore the start time from the source meeting (overrides whatever the constructor picked).
-            if (startTime.HasValue && meeting.AvailableStartTimes.Contains(startTime.Value))
-                meeting.SelectedStartTime = startTime;
+            created.Add(meeting);
             Meetings.Add(meeting);
         }
+
+        if (created.Count > 1)
+            SetupPatternCoupling(created[0], created.Skip(1).ToList());
+    }
+
+    /// <summary>
+    /// Subscribes to PropertyChanged on <paramref name="leader"/> and, for each of the three
+    /// coupled fields, propagates the leader's new value to every follower the first time that
+    /// field changes. Once all three fields have fired, the subscription is removed.
+    /// </summary>
+    /// <param name="leader">The first meeting in the pattern group — the source of propagation.</param>
+    /// <param name="followers">All other meetings in the group — the propagation targets.</param>
+    private void SetupPatternCoupling(SectionMeetingViewModel leader, List<SectionMeetingViewModel> followers)
+    {
+        _couplingLeader = leader;
+        _couplingFollowers = followers;
+        _couplingRemainingFields = new HashSet<string>
+        {
+            nameof(SectionMeetingViewModel.SelectedBlockLength),
+            nameof(SectionMeetingViewModel.SelectedStartTime),
+            nameof(SectionMeetingViewModel.SelectedMeetingTypeId),
+        };
+
+        _couplingHandler = (_, e) =>
+        {
+            if (e.PropertyName is null || !_couplingRemainingFields.Contains(e.PropertyName)) return;
+
+            // Decouple this field and propagate its current value to all followers.
+            _couplingRemainingFields.Remove(e.PropertyName);
+            foreach (var follower in _couplingFollowers)
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(SectionMeetingViewModel.SelectedBlockLength):
+                        follower.SelectedBlockLength = leader.SelectedBlockLength;
+                        break;
+                    case nameof(SectionMeetingViewModel.SelectedStartTime):
+                        follower.SelectedStartTime = leader.SelectedStartTime;
+                        break;
+                    case nameof(SectionMeetingViewModel.SelectedMeetingTypeId):
+                        follower.SelectedMeetingTypeId = leader.SelectedMeetingTypeId;
+                        break;
+                }
+            }
+
+            // Once all three fields have propagated, tear down the coupling entirely.
+            if (_couplingRemainingFields.Count == 0)
+                TearDownPatternCoupling();
+        };
+
+        leader.PropertyChanged += _couplingHandler;
+    }
+
+    /// <summary>
+    /// Unsubscribes the coupling handler from the leader and resets all coupling state.
+    /// Safe to call even when no coupling is active.
+    /// </summary>
+    private void TearDownPatternCoupling()
+    {
+        if (_couplingLeader != null && _couplingHandler != null)
+            _couplingLeader.PropertyChanged -= _couplingHandler;
+
+        _couplingLeader = null;
+        _couplingFollowers = new();
+        _couplingRemainingFields = new();
+        _couplingHandler = null;
     }
 
     [RelayCommand]

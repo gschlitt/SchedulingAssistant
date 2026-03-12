@@ -68,7 +68,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
         else
         {
             _selectedDay = 1;
-            _selectedMeetingTypeId = "";
+            // null (not "") so that Avalonia's SelectedValue+SelectedValueBinding resolution
+            // during ComboBox initialization does not fire a spurious PropertyChanged — which
+            // would otherwise consume the pattern-coupling slot before the user picks anything.
+            _selectedMeetingTypeId = null;
             _selectedRoomId = "";
 
             // Apply preferred block length if set and available
@@ -85,7 +88,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
     partial void OnSelectedBlockLengthChanged(double? value)
     {
         RefreshStartTimes();
-        SelectedStartTime = AvailableStartTimes.FirstOrDefault();
+        // Clear start time if it is no longer valid for the new block length.
+        // Do not auto-select — the user picks the start time explicitly.
+        if (SelectedStartTime.HasValue && !AvailableStartTimes.Contains(SelectedStartTime.Value))
+            SelectedStartTime = null;
     }
 
     private void RefreshStartTimes()

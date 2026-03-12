@@ -6,7 +6,6 @@ A user could enter an early start time before 0830 in the start-time/blocklength
 
 Instructional workload box in instructo flyout not registering workload credit properly.
 
-In instructor workload history all semesters should be under the same academic year pulldown.
 
 
 Deleting an academic year doesn't give you the choice! Should be forbidden probably without emptying semesters?
@@ -16,7 +15,6 @@ Fontsize seems hardcoded in a number of places, should be able to adjust from ap
 Printing to png seems to print in dark mode?
 
 All Filter and Overlay menus should display all the choices available, not just those reflecting current sections.
-
 
 Overlay color needs to work in conjunction with Multi-semester.
 
@@ -48,7 +46,6 @@ What happens if we modify legal start times while a semester is in use?
 
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
-multiple instructors should shown on week view
 
 Show notes in closed card?
 
@@ -59,7 +56,7 @@ When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is 
 
 Zoom to cursor? Via scroll wheel?
 
-Course history
+
 
 
 
