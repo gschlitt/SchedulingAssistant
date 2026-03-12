@@ -45,7 +45,7 @@ Filter by course.
 
 What happens if we modify legal start times while a semester is in use?
 
-Fix the section code assigner to allow for the lab format A#2 etc. User picks campus and type.
+
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 multiple instructors should shown on week view
@@ -54,8 +54,6 @@ Show notes in closed card?
 
 User can add fields to the right?
 
-Multiple semesters! With up to 3 semester open at a time, each day splits into 3 columns (color framing) in which
-the usual strategy for staging sections happens.
 
 When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is lost
 
@@ -63,7 +61,7 @@ Zoom to cursor? Via scroll wheel?
 
 Course history
 
-Vertical text if meeting cards too narrow?
+
 
 Work on colors a bit. Keep red for overlay, need something different in menu to mark filters.
 

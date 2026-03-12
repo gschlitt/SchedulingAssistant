@@ -6,6 +6,30 @@
              x:CompileBindings="False">
 
     <StackPanel Spacing="16" Margin="20">
+
+        <!-- Exception behaviour toggle -->
+        <Border BorderBrush="{DynamicResource MenuBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="10,8">
+            <StackPanel Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <CheckBox Content="Raise exceptions immediately (don't just log)"
+                              IsChecked="{Binding ThrowOnError}"
+                              FontSize="12" />
+                    <Button Content="Test"
+                            Command="{Binding TestThrowCommand}"
+                            Padding="8,2"
+                            FontSize="11"
+                            ToolTip.Tip="Fires a test exception through the logger to verify the setting" />
+                </StackPanel>
+                <TextBlock Text="When checked, any call to LogError re-throws after writing, so exceptions surface in the debugger instead of being silently swallowed."
+                           TextWrapping="Wrap"
+                           FontSize="11"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+            </StackPanel>
+        </Border>
+
         <StackPanel Spacing="8">
             <TextBlock Text="Number of sections to generate:" FontSize="13" FontWeight="SemiBold" />
             <TextBox Text="{Binding SectionCount}"

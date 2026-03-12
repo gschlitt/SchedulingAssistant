@@ -13,6 +13,17 @@ public partial class DebugTestDataViewModel : ViewModelBase
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private bool _isGenerating;
 
+    /// <summary>
+    /// When true, exceptions passed to <see cref="IAppLogger.LogError"/> are re-thrown
+    /// after being written to the log file, so they surface immediately in the debugger
+    /// rather than being silently swallowed by catch blocks.
+    /// Mirrors <see cref="IAppLogger.ThrowOnError"/> on the singleton logger.
+    /// </summary>
+    [ObservableProperty]
+    private bool _throwOnError;
+
+    partial void OnThrowOnErrorChanged(bool value) => App.Logger.ThrowOnError = value;
+
     private readonly SectionListViewModel _sectionListVm;
     private readonly MainWindowViewModel _mainWindowVm;
     private readonly DebugTestDataGenerator _generator;
@@ -34,6 +45,30 @@ public partial class DebugTestDataViewModel : ViewModelBase
         _ayRepo = ayRepo;
         _startTimeRepo = startTimeRepo;
         _exporter = exporter;
+    }
+
+    /// <summary>
+    /// Fires a synthetic exception through <see cref="App.Logger"/> so you can verify
+    /// that <see cref="ThrowOnError"/> is working as expected. When the flag is off the
+    /// exception is silently logged; when on it propagates back up to the caller.
+    /// </summary>
+    [RelayCommand]
+    private void TestThrow()
+    {
+        try
+        {
+            throw new InvalidOperationException("Test exception — ThrowOnError verification.");
+        }
+        catch (Exception ex)
+        {
+            // If ThrowOnError is true this will re-throw, which propagates out of this
+            // method and will be caught by Avalonia's unhandled-exception handler or
+            // break into the debugger, depending on how the IDE is configured.
+            App.Logger.LogError(ex, "DebugTestDataViewModel.TestThrow");
+
+            // Only reached when ThrowOnError is false.
+            StatusMessage = "Test exception was logged (not re-thrown). Enable the checkbox to re-throw.";
+        }
     }
 
     [RelayCommand]

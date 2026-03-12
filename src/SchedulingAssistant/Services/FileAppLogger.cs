@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace SchedulingAssistant.Services;
 
@@ -9,11 +10,14 @@ namespace SchedulingAssistant.Services;
 /// Designed to be swapped out for a remote/database sink later by implementing
 /// IAppLogger differently and updating the DI registration in App.axaml.cs.
 ///
-/// All public methods are non-throwing — any I/O failure is silently ignored
-/// (or written to stderr as a last resort) so the logger never crashes the app.
+/// All public methods are non-throwing in production. When <see cref="ThrowOnError"/>
+/// is true, <see cref="LogError"/> re-throws the original exception after writing so
+/// it surfaces immediately in the debugger. This flag is intended for development only.
 /// </summary>
 public sealed class FileAppLogger : IAppLogger
 {
+    /// <inheritdoc/>
+    public bool ThrowOnError { get; set; }
     private static readonly string LogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "SchedulingAssistant", "Logs");
@@ -24,7 +28,14 @@ public sealed class FileAppLogger : IAppLogger
     private readonly object _lock = new();
 
     public void LogError(Exception ex, string? context = null)
-        => Write("ERROR", context, ex);
+    {
+        Write("ERROR", context, ex);
+
+        // In dev mode, re-throw so exceptions are never silently swallowed.
+        // ExceptionDispatchInfo preserves the original stack trace.
+        if (ThrowOnError)
+            ExceptionDispatchInfo.Capture(ex).Throw();
+    }
 
     public void LogWarning(string message, string? context = null)
         => Write("WARN", context ?? message, null);
