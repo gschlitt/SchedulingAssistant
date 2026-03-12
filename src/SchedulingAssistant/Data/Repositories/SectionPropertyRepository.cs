@@ -5,13 +5,21 @@ namespace SchedulingAssistant.Data.Repositories;
 
 public class SectionPropertyRepository(DatabaseContext db)
 {
+    /// <summary>
+    /// Returns all property values of the given type, ordered by <see cref="SectionPropertyValue.SortOrder"/>
+    /// ascending, then alphabetically by name as a tiebreaker.  Sorting is done in C# after
+    /// deserialization so that existing rows whose JSON predates the SortOrder field correctly
+    /// default to 0 rather than sorting unexpectedly.
+    /// </summary>
     public List<SectionPropertyValue> GetAll(string type)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText =
-            "SELECT id, data FROM SectionPropertyValues WHERE type = $type ORDER BY LOWER(data ->> 'name')";
+        cmd.CommandText = "SELECT id, data FROM SectionPropertyValues WHERE type = $type";
         cmd.Parameters.AddWithValue("$type", type);
-        return Read(cmd);
+        return Read(cmd)
+            .OrderBy(v => v.SortOrder)
+            .ThenBy(v => v.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public SectionPropertyValue? GetById(string id)

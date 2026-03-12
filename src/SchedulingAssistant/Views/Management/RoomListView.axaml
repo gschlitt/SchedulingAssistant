@@ -5,7 +5,7 @@
              x:DataType="vm:RoomListViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto" MaxWidth="560">
 
         <TextBlock Grid.Row="0" Text="Rooms" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
 
@@ -42,20 +42,38 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <DataGrid Grid.Row="1"
-                  ItemsSource="{Binding Rooms}"
-                  SelectedItem="{Binding SelectedRoom}"
-                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  CanUserSortColumns="True">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Building" Binding="{Binding Building}" Width="*" />
-                <DataGridTextColumn Header="Room #" Binding="{Binding RoomNumber}" Width="100" />
-                <DataGridTextColumn Header="Capacity" Binding="{Binding Capacity}" Width="100" />
-                <DataGridTextColumn Header="Features" Binding="{Binding Features}" Width="*" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- List + move buttons (shown when EditVm is null) -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto"
+              IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <DataGrid Grid.Column="0"
+                      ItemsSource="{Binding Rooms}"
+                      SelectedItem="{Binding SelectedRoom}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="False">
+                <DataGrid.Styles>
+                    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                        <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
+                        <Setter Property="Opacity" Value="1" />
+                    </Style>
+                </DataGrid.Styles>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Building"  Binding="{Binding Building}"   Width="*" />
+                    <DataGridTextColumn Header="Room #"    Binding="{Binding RoomNumber}"  Width="100" />
+                    <DataGridTextColumn Header="Capacity"  Binding="{Binding Capacity}"    Width="100" />
+                    <DataGridTextColumn Header="Features"  Binding="{Binding Features}"    Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Up/Down ordering buttons, aligned to top-right of the list -->
+            <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4"
+                        Margin="6,0,0,0" VerticalAlignment="Top">
+                <Button Content="↑" Command="{Binding MoveUpCommand}" />
+                <Button Content="↓" Command="{Binding MoveDownCommand}" />
+            </StackPanel>
+
+        </Grid>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">

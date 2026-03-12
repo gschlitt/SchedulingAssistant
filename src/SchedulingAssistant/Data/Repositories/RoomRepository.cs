@@ -5,10 +5,15 @@ namespace SchedulingAssistant.Data.Repositories;
 
 public class RoomRepository(DatabaseContext db)
 {
+    /// <summary>
+    /// Returns all rooms ordered by <see cref="Room.SortOrder"/> ascending, then by building
+    /// and room number as a tiebreaker.  Sorting is done in C# after deserialization so that
+    /// existing rows whose JSON predates the SortOrder field correctly default to 0.
+    /// </summary>
     public List<Room> GetAll()
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT id, data FROM Rooms ORDER BY data ->> 'building', data ->> 'roomNumber'";
+        cmd.CommandText = "SELECT id, data FROM Rooms";
         using var reader = cmd.ExecuteReader();
         var results = new List<Room>();
         while (reader.Read())
@@ -17,7 +22,11 @@ public class RoomRepository(DatabaseContext db)
             room.Id = reader.GetString(0);
             results.Add(room);
         }
-        return results;
+        return results
+            .OrderBy(r => r.SortOrder)
+            .ThenBy(r => r.Building,    StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.RoomNumber,  StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public Room? GetById(string id)

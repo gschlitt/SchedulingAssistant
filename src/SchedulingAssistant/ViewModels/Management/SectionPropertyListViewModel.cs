@@ -56,10 +56,68 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     public void Load() =>
         Items = new ObservableCollection<SectionPropertyValue>(_repo.GetAll(_type));
 
+    /// <summary>
+    /// Re-evaluates the Move Up/Down button states whenever the selection changes.
+    /// </summary>
+    partial void OnSelectedItemChanged(SectionPropertyValue? value)
+    {
+        MoveUpCommand.NotifyCanExecuteChanged();
+        MoveDownCommand.NotifyCanExecuteChanged();
+    }
+
+    // ── Ordering ──────────────────────────────────────────────────────────────
+
+    private bool CanMoveUp()   => SelectedItem != null && Items.IndexOf(SelectedItem) > 0;
+    private bool CanMoveDown() => SelectedItem != null && Items.IndexOf(SelectedItem) < Items.Count - 1;
+
+    /// <summary>
+    /// Moves the selected item one position earlier in the list and persists the new order.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMoveUp))]
+    private void MoveUp() => ApplyMove(Items.IndexOf(SelectedItem!), -1);
+
+    /// <summary>
+    /// Moves the selected item one position later in the list and persists the new order.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMoveDown))]
+    private void MoveDown() => ApplyMove(Items.IndexOf(SelectedItem!), +1);
+
+    /// <summary>
+    /// Reorders the item at <paramref name="index"/> by <paramref name="delta"/> positions
+    /// (+1 or -1), then re-packs all sort orders as 0, 1, 2, … and saves every changed item.
+    /// Reloads the list from DB so the UI reflects the stored order.
+    /// </summary>
+    /// <param name="index">Zero-based index of the item to move.</param>
+    /// <param name="delta">Direction: -1 to move up, +1 to move down.</param>
+    private void ApplyMove(int index, int delta)
+    {
+        var list = Items.ToList();
+        var item = list[index];
+        list.RemoveAt(index);
+        list.Insert(index + delta, item);
+
+        // Re-pack sort orders densely (0, 1, 2, …) to avoid gaps accumulating over time.
+        for (var i = 0; i < list.Count; i++)
+            list[i].SortOrder = i;
+
+        foreach (var v in list)
+            _repo.Update(v);
+
+        var selectedId = item.Id;
+        Load();
+        SelectedItem = Items.FirstOrDefault(v => v.Id == selectedId);
+    }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────────
+
     [RelayCommand]
     private void Add()
     {
-        var value = new SectionPropertyValue();
+        // New items land at the end of the list.
+        var value = new SectionPropertyValue
+        {
+            SortOrder = Items.Count > 0 ? Items.Max(i => i.SortOrder) + 1 : 0
+        };
         EditVm = new SectionPropertyEditViewModel(value, isNew: true,
             onSave: v => { _repo.Insert(_type, v); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
@@ -76,6 +134,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
             Id = SelectedItem.Id,
             Name = SelectedItem.Name,
             SectionCodeAbbreviation = SelectedItem.SectionCodeAbbreviation,
+            SortOrder = SelectedItem.SortOrder,
         };
         EditVm = new SectionPropertyEditViewModel(copy, isNew: false,
             onSave: v => { _repo.Update(v); Load(); EditVm = null; _sectionListVm.Reload(); },

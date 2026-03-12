@@ -40,10 +40,68 @@ public partial class RoomListViewModel : ViewModelBase
     private void Load() =>
         Rooms = new ObservableCollection<Room>(_repo.GetAll());
 
+    /// <summary>
+    /// Re-evaluates the Move Up/Down button states whenever the selection changes.
+    /// </summary>
+    partial void OnSelectedRoomChanged(Room? value)
+    {
+        MoveUpCommand.NotifyCanExecuteChanged();
+        MoveDownCommand.NotifyCanExecuteChanged();
+    }
+
+    // ── Ordering ──────────────────────────────────────────────────────────────
+
+    private bool CanMoveUp()   => SelectedRoom != null && Rooms.IndexOf(SelectedRoom) > 0;
+    private bool CanMoveDown() => SelectedRoom != null && Rooms.IndexOf(SelectedRoom) < Rooms.Count - 1;
+
+    /// <summary>
+    /// Moves the selected room one position earlier in the list and persists the new order.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMoveUp))]
+    private void MoveUp() => ApplyMove(Rooms.IndexOf(SelectedRoom!), -1);
+
+    /// <summary>
+    /// Moves the selected room one position later in the list and persists the new order.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMoveDown))]
+    private void MoveDown() => ApplyMove(Rooms.IndexOf(SelectedRoom!), +1);
+
+    /// <summary>
+    /// Reorders the room at <paramref name="index"/> by <paramref name="delta"/> positions
+    /// (+1 or -1), then re-packs all sort orders as 0, 1, 2, … and saves every changed room.
+    /// Reloads the list from DB so the UI reflects the stored order.
+    /// </summary>
+    /// <param name="index">Zero-based index of the room to move.</param>
+    /// <param name="delta">Direction: -1 to move up, +1 to move down.</param>
+    private void ApplyMove(int index, int delta)
+    {
+        var list = Rooms.ToList();
+        var room = list[index];
+        list.RemoveAt(index);
+        list.Insert(index + delta, room);
+
+        // Re-pack sort orders densely (0, 1, 2, …) to avoid gaps accumulating over time.
+        for (var i = 0; i < list.Count; i++)
+            list[i].SortOrder = i;
+
+        foreach (var r in list)
+            _repo.Update(r);
+
+        var selectedId = room.Id;
+        Load();
+        SelectedRoom = Rooms.FirstOrDefault(r => r.Id == selectedId);
+    }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────────
+
     [RelayCommand]
     private void Add()
     {
-        var room = new Room();
+        // New rooms land at the end of the list.
+        var room = new Room
+        {
+            SortOrder = Rooms.Count > 0 ? Rooms.Max(r => r.SortOrder) + 1 : 0
+        };
         EditVm = new RoomEditViewModel(room, isNew: true,
             onSave: r => { _repo.Insert(r); Load(); EditVm = null; },
             onCancel: () => EditVm = null);
@@ -54,7 +112,12 @@ public partial class RoomListViewModel : ViewModelBase
     {
         if (SelectedRoom is null) return;
         var s = SelectedRoom;
-        var copy = new Room { Id = s.Id, Building = s.Building, RoomNumber = s.RoomNumber, Capacity = s.Capacity, Features = s.Features, Notes = s.Notes };
+        var copy = new Room
+        {
+            Id = s.Id, Building = s.Building, RoomNumber = s.RoomNumber,
+            Capacity = s.Capacity, Features = s.Features, Notes = s.Notes,
+            SortOrder = s.SortOrder,
+        };
         EditVm = new RoomEditViewModel(copy, isNew: false,
             onSave: r => { _repo.Update(r); Load(); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null);

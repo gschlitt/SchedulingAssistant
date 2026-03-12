@@ -8,4 +8,10 @@ public class Room
     public int Capacity { get; set; }
     public string Features { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display order within the room list. Lower values appear first.
+    /// Defaults to 0 for all existing records; densely re-packed after each move operation.
+    /// </summary>
+    public int SortOrder { get; set; } = 0;
 }

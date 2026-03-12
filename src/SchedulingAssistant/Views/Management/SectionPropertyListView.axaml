@@ -5,7 +5,7 @@
              x:DataType="vm:SectionPropertyListViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto" MaxWidth="420">
 
         <TextBlock Grid.Row="0" Text="{Binding DisplayName}"
                    FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
@@ -36,22 +36,39 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- List (shown when EditVm is null) -->
-        <DataGrid Grid.Row="1"
-                  ItemsSource="{Binding Items}"
-                  SelectedItem="{Binding SelectedItem}"
-                  IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  CanUserSortColumns="True">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                <DataGridTextColumn Header="Abbreviation"
-                                    Binding="{Binding SectionCodeAbbreviation}"
-                                    Width="140"
-                                    IsVisible="{Binding $parent[UserControl].DataContext.ShowAbbreviation}" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- List + move buttons (shown when EditVm is null) -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto"
+              IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <DataGrid Grid.Column="0"
+                      ItemsSource="{Binding Items}"
+                      SelectedItem="{Binding SelectedItem}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="False">
+                <DataGrid.Styles>
+                    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                        <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
+                        <Setter Property="Opacity" Value="1" />
+                    </Style>
+                </DataGrid.Styles>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                    <DataGridTextColumn Header="Abbreviation"
+                                        Binding="{Binding SectionCodeAbbreviation}"
+                                        Width="140"
+                                        IsVisible="{Binding $parent[UserControl].DataContext.ShowAbbreviation}" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Up/Down ordering buttons, aligned to top-right of the list -->
+            <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4"
+                        Margin="6,0,0,0" VerticalAlignment="Top">
+                <Button Content="↑" Command="{Binding MoveUpCommand}" />
+                <Button Content="↓" Command="{Binding MoveDownCommand}" />
+            </StackPanel>
+
+        </Grid>
 
         <!-- Toolbar -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
