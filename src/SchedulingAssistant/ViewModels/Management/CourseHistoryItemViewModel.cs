@@ -26,4 +26,7 @@ public partial class CourseHistoryItemViewModel : ObservableObject
 
     /// <summary>True if this item represents a section (leaf node).</summary>
     public bool IsSection { get; set; }
+
+    /// <summary>Total section count for academic year items (displayed in header as "Year (N sections)").</summary>
+    public int SectionCount { get; set; }
 }

@@ -85,6 +85,8 @@ public partial class CourseHistoryViewModel : ViewModelBase
                 .OrderBy(s => s.SortOrder)
                 .ToList();
 
+            var sectionCountForYear = 0;
+
             foreach (var semester in semestersInYear)
             {
                 if (!sectionsBySemester.TryGetValue(semester.Id, out var sectionsInSemester))
@@ -120,10 +122,14 @@ public partial class CourseHistoryViewModel : ViewModelBase
                     };
 
                     semesterItem.Children.Add(sectionItem);
+                    sectionCountForYear++;
                 }
 
                 yearItem.Children.Add(semesterItem);
             }
+
+            // Set the section count for this academic year
+            yearItem.SectionCount = sectionCountForYear;
 
             Items.Add(yearItem);
         }

@@ -12,8 +12,15 @@
                 <ItemsControl ItemsSource="{Binding Items}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:CourseHistoryItemViewModel}">
-                            <Expander Header="{Binding Display}" FontSize="11" FontWeight="SemiBold"
+                            <Expander FontSize="11" FontWeight="SemiBold"
                                       IsExpanded="False" Padding="0,2">
+                                <Expander.Header>
+                                    <TextBlock>
+                                        <Run Text="{Binding Display}" />
+                                        <Run Text="{Binding SectionCount, StringFormat=' ({0} sections)'}"
+                                             Foreground="#666666" FontSize="10" FontWeight="Normal" />
+                                    </TextBlock>
+                                </Expander.Header>
                                 <!-- Semesters -->
                                 <ItemsControl ItemsSource="{Binding Children}" Margin="12,4,0,0">
                                     <ItemsControl.ItemTemplate>
