@@ -30,6 +30,18 @@ public class SectionRepository(DatabaseContext db)
         return ReadSections(cmd).FirstOrDefault();
     }
 
+    /// <summary>
+    /// Returns all sections for the given course across all semesters, ordered by section code.
+    /// </summary>
+    public List<Section> GetByCourseId(string courseId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT id, semester_id, course_id, data FROM Sections WHERE course_id = $cid ORDER BY data ->> 'sectionCode'";
+        cmd.Parameters.AddWithValue("$cid", courseId);
+        return ReadSections(cmd);
+    }
+
     public void Insert(Section section, SqliteTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();

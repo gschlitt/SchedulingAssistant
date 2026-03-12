@@ -19,12 +19,21 @@ public partial class CourseListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<Course> _courses = new();
     [ObservableProperty] private Course? _selectedCourse;
     [ObservableProperty] private CourseEditViewModel? _editVm;
+    [ObservableProperty] private CourseHistoryViewModel _courseHistoryVm;
 
-    public CourseListViewModel(CourseRepository courseRepo, SubjectRepository subjectRepo, IDialogService dialog)
+    public CourseListViewModel(
+        CourseRepository courseRepo,
+        SubjectRepository subjectRepo,
+        IDialogService dialog,
+        SectionRepository sectionRepo,
+        SemesterRepository semesterRepo,
+        AcademicYearRepository academicYearRepo,
+        InstructorRepository instructorRepo)
     {
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
         _dialog = dialog;
+        CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
         if (Subjects.Count > 0)
@@ -172,5 +181,16 @@ public partial class CourseListViewModel : ViewModelBase
         else
             SelectedSubject = null;
         LoadCourses();
+    }
+
+    /// <summary>
+    /// Handles course selection change: loads course history when a course is selected.
+    /// </summary>
+    partial void OnSelectedCourseChanged(Course? value)
+    {
+        if (value?.Id is not null)
+            CourseHistoryVm.LoadByCourse(value.Id);
+        else
+            CourseHistoryVm.Items.Clear();
     }
 }

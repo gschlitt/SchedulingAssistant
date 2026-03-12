@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.CourseHistoryView"
+             x:DataType="vm:CourseHistoryViewModel"
+             x:CompileBindings="False">
+
+    <ScrollViewer>
+        <Border Padding="8,4">
+            <StackPanel Spacing="4">
+                <!-- Academic Years as Expanders -->
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:CourseHistoryItemViewModel}">
+                            <Expander Header="{Binding Display}" FontSize="11" FontWeight="SemiBold"
+                                      IsExpanded="False" Padding="0,2">
+                                <!-- Semesters -->
+                                <ItemsControl ItemsSource="{Binding Children}" Margin="12,4,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:CourseHistoryItemViewModel}">
+                                            <StackPanel Spacing="2">
+                                                <!-- Semester -->
+                                                <TextBlock Text="{Binding Display}" FontSize="10" FontWeight="SemiBold" Foreground="#555555" Margin="0,2,0,0" />
+
+                                                <!-- Sections -->
+                                                <ItemsControl ItemsSource="{Binding Children}" Margin="12,0,0,0">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:CourseHistoryItemViewModel}">
+                                                            <TextBlock Text="{Binding Display}" FontSize="9"
+                                                                       Foreground="#777777" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+
+</UserControl>

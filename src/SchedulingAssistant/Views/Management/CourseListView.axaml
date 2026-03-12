@@ -2,6 +2,7 @@
     x:Class="SchedulingAssistant.Views.Management.CourseListView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:v="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
     x:DataType="vm:CourseListViewModel">
@@ -15,24 +16,22 @@
 
     <Border Padding="0,0,12,12">
         <Grid
-            Width="700"
+            ColumnDefinitions="400,1,*"
             Margin="10,0"
-            HorizontalAlignment="Left"
-            RowDefinitions="Auto,*">
-
+            HorizontalAlignment="Stretch">
 
             <!--  ═══════════════════════════════════════════════════════════  -->
-            <!--  COURSES SECTION  -->
+            <!--  LEFT COLUMN: COURSES AND SUBJECTS (SCROLLABLE)  -->
             <!--  ═══════════════════════════════════════════════════════════  -->
 
-            <StackPanel
-                Grid.Row="0"
-                Margin="10,0"
-                Spacing="12">
-                <TextBlock
-                    FontSize="20"
-                    FontWeight="SemiBold"
-                    Text="Courses" />
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel
+                    Margin="0,0,12,0"
+                    Spacing="12">
+                    <TextBlock
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Text="Courses" />
 
                 <!--  Advisory message when no subjects exist  -->
                 <TextBlock
@@ -139,15 +138,12 @@
                         Content="Delete Course"
                         IsEnabled="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </StackPanel>
-            </StackPanel>
 
+                <!--  ═══════════════════════════════════════════════════════════  -->
+                <!--  SUBJECTS SECTION  -->
+                <!--  ═══════════════════════════════════════════════════════════  -->
 
-
-            <!--  ═══════════════════════════════════════════════════════════  -->
-            <!--  SUBJECTS SECTION  -->
-            <!--  ═══════════════════════════════════════════════════════════  -->
-
-            <StackPanel Grid.Row="1" Margin="0,70">
+                <StackPanel Margin="0,20,0,0" Spacing="12">
                 <TextBlock
                     FontSize="20"
                     FontWeight="SemiBold"
@@ -223,8 +219,48 @@
                         Content="Delete Subject"
                         IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </StackPanel>
+                </StackPanel>
             </StackPanel>
+            </ScrollViewer>
 
+            <!--  ═══════════════════════════════════════════════════════════  -->
+            <!--  VERTICAL SEPARATOR  -->
+            <!--  ═══════════════════════════════════════════════════════════  -->
+
+            <Border
+                Grid.Column="1"
+                Background="#CCCCCC" />
+
+            <!--  ═══════════════════════════════════════════════════════════  -->
+            <!--  RIGHT COLUMN: COURSE HISTORY  -->
+            <!--  ═══════════════════════════════════════════════════════════  -->
+
+            <StackPanel
+                Grid.Column="2"
+                Margin="12,0,0,0"
+                Spacing="8">
+                <TextBlock
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Margin="0,0,0,4"
+                    Text="Course History" />
+
+                <TextBlock
+                    FontSize="12"
+                    Foreground="#888888"
+                    IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNull}}"
+                    Text="Select a course to view its history" />
+
+                <ContentControl
+                    Content="{Binding CourseHistoryVm}"
+                    IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="{x:Type vm:CourseHistoryViewModel}">
+                            <v:CourseHistoryView />
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+            </StackPanel>
 
         </Grid>
     </Border>

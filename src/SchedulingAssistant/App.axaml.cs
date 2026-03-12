@@ -9,6 +9,7 @@ using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
+using SchedulingAssistant.Views.Management;
 
 namespace SchedulingAssistant;
 
@@ -147,6 +148,7 @@ public partial class App : Application
         services.AddTransient<LegalStartTimeListViewModel>();
         services.AddTransient<SubjectListViewModel>();
         services.AddTransient<CourseListViewModel>();
+        services.AddTransient<CourseHistoryViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SectionPropertiesViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
@@ -155,7 +157,8 @@ public partial class App : Application
         services.AddTransient<WorkloadReportViewModel>();
         services.AddTransient<SectionPrefixListViewModel>();
 
-        
+        // Views
+        services.AddTransient<CourseHistoryView>();
 
         //Dialogs
         
