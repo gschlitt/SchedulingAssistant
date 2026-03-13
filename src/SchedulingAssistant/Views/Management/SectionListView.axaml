@@ -113,26 +113,24 @@
                                     Padding="5,4" Margin="0,0,0,4">
 
                                 <!--
-                                    Columns: Day=80, Length=80, Start=80, Freq=90, Custom(Auto)=shows only for Custom, MtgType=70, Room=80, ✕=24
-                                    The Custom column is Auto-width: when the TextBox is not visible (IsVisible=False),
-                                    Avalonia treats it as collapsed and the column contributes no width.
+                                    Columns: Day=80, Length=80, Start=80, Freq=90, MtgType=70, Room=80, ✕=24
+                                    Row 0: column headers. Row 1: controls. Row 2: custom-weeks input,
+                                    shown only when Frequency="Custom". Row 2 occupies only col 3 so the
+                                    Freq ComboBox (row 1, col 3) and the Weeks TextBox (row 2, col 3)
+                                    share the same column width automatically.
                                 -->
-                                <Grid ColumnDefinitions="80,80,80,90,Auto,70,80,24" RowDefinitions="Auto,Auto">
+                                <Grid ColumnDefinitions="80,80,80,90,70,80,24" RowDefinitions="Auto,Auto,Auto">
 
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Day"    FontSize="9" Foreground="{StaticResource TextMuted}" Margin="0,0,2,1" />
                                     <TextBlock Grid.Row="0" Grid.Column="1" Text="Length" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
                                     <TextBlock Grid.Row="0" Grid.Column="2" Text="Start"  FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
                                     <TextBlock Grid.Row="0" Grid.Column="3" Text="Freq"   FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
-                                    <!-- "Weeks" header only visible when Custom is selected -->
-                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Weeks"
-                                               IsVisible="{Binding IsCustomFrequency}"
-                                               FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
                                     <!-- "Mtg Type" stacked -->
-                                    <StackPanel Grid.Row="0" Grid.Column="5" Orientation="Vertical" Spacing="0" Margin="2,0,2,1">
+                                    <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Vertical" Spacing="0" Margin="2,0,2,1">
                                         <TextBlock Text="Mtg"  FontSize="9" Foreground="{StaticResource TextMuted}" LineHeight="10" />
                                         <TextBlock Text="Type" FontSize="9" Foreground="{StaticResource TextMuted}" LineHeight="10" />
                                     </StackPanel>
-                                    <TextBlock Grid.Row="0" Grid.Column="6" Text="Room"   FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="5" Text="Room"   FontSize="9" Foreground="{StaticResource TextMuted}" Margin="2,0,2,1" />
 
                                     <!-- Day -->
                                     <ComboBox Grid.Row="1" Grid.Column="0"
@@ -182,25 +180,26 @@
                                               Margin="2,0,2,0"
                                               HorizontalAlignment="Stretch" />
 
-                                    <!-- Custom weeks text field — only visible when "Custom" is selected -->
-                                    <StackPanel Grid.Row="1" Grid.Column="4"
+                                    <!-- Custom weeks input — sits directly below the Frequency ComboBox in the
+                                         same column (col 3), so both controls share the same width. Only
+                                         visible when Frequency="Custom". -->
+                                    <StackPanel Grid.Row="2" Grid.Column="3"
                                                 IsVisible="{Binding IsCustomFrequency}"
-                                                Margin="2,0,2,0">
+                                                Margin="2,2,2,0">
                                         <TextBox Text="{Binding CustomWeeksText}"
                                                  Watermark="e.g. 1,3,5"
-                                                 MinWidth="65"
+                                                 HorizontalAlignment="Stretch"
                                                  FontSize="11" Padding="3,1"
                                                  ToolTip.Tip="{Binding CustomWeeksError}" />
                                         <TextBlock Text="{Binding CustomWeeksError}"
                                                    IsVisible="{Binding CustomWeeksError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    FontSize="9"
                                                    Foreground="{StaticResource ErrorText}"
-                                                   TextWrapping="Wrap"
-                                                   MaxWidth="65" />
+                                                   TextWrapping="Wrap" />
                                     </StackPanel>
 
                                     <!-- Meeting Type -->
-                                    <ComboBox Grid.Row="1" Grid.Column="5"
+                                    <ComboBox Grid.Row="1" Grid.Column="4"
                                               ItemsSource="{Binding MeetingTypes}"
                                               SelectedValueBinding="{Binding Id}"
                                               SelectedValue="{Binding SelectedMeetingTypeId}"
@@ -210,7 +209,7 @@
                                               HorizontalAlignment="Stretch" />
 
                                     <!-- Room -->
-                                    <ComboBox Grid.Row="1" Grid.Column="6"
+                                    <ComboBox Grid.Row="1" Grid.Column="5"
                                               ItemsSource="{Binding Rooms}"
                                               SelectedValueBinding="{Binding Id}"
                                               SelectedValue="{Binding SelectedRoomId}"
@@ -232,7 +231,7 @@
                                     </ComboBox>
 
                                     <!-- Remove button -->
-                                    <Button Grid.Row="1" Grid.Column="7"
+                                    <Button Grid.Row="1" Grid.Column="6"
                                             Content="✕"
                                             Command="{Binding $parent[ItemsControl].DataContext.RemoveMeetingCommand}"
                                             CommandParameter="{Binding}"
