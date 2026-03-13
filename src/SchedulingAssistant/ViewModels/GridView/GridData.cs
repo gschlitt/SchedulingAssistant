@@ -36,16 +36,20 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 
 /// <summary>
 /// A single scheduled meeting for a section (one slot in section.Schedule).
-/// Label    = display text shown on the tile, e.g. "HIST101 A"
-/// Initials = space-joined instructor initials, e.g. "JRS MKL" (may be empty)
-/// SectionId = database ID of the section — used to highlight/select the tile
-/// IsOverlay = true when the section matches the active overlay (renders red)
-/// SemesterId = database ID of the semester this section belongs to
-/// SemesterName = display name of the semester (e.g. "Fall 2025") used for color lookup
+/// Label               = display text shown on the tile, e.g. "HIST101 A"
+/// Initials            = space-joined instructor initials, e.g. "JRS MKL" (may be empty)
+/// SectionId           = database ID of the section — used to highlight/select the tile
+/// IsOverlay           = true when the section matches the active overlay (renders red)
+/// SemesterId          = database ID of the semester this section belongs to
+/// SemesterName        = display name of the semester (e.g. "Fall 2025") used for color lookup
+/// FrequencyAnnotation = parenthesised frequency annotation for this specific meeting slot,
+///                       e.g. "(odd)", "(1,6,7)". Empty string for weekly meetings.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
-    string Label, string Initials, string SectionId, string SemesterId = "", string SemesterName = ""
+    string Label, string Initials, string SectionId,
+    string SemesterId = "", string SemesterName = "",
+    string FrequencyAnnotation = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName);
 
 /// <summary>
@@ -69,20 +73,23 @@ public record CommitmentBlock(
 /// more blocks share the exact same start and end time (co-scheduled); they are
 /// stacked vertically with a thin separator rule between them.
 ///
-/// Label      = text shown on the row (course+section code for sections; commitment name for commitments)
-/// Initials   = instructor initials appended after the label (empty for commitments)
-/// SectionId  = database section ID used for selection/highlighting (empty string for commitments)
-/// IsOverlay  = true → red text and red tile border (applies to both overlay sections and commitments)
-/// IsCommitment = true → this entry came from a CommitmentBlock. The renderer uses this
-///               to suppress click interactions (no selection, no context menu, no hand cursor).
-///               It does NOT affect visual styling — IsOverlay handles that.
+/// Label               = text shown on the row (course+section code for sections; commitment name for commitments)
+/// Initials            = instructor initials appended after the label (empty for commitments)
+/// SectionId           = database section ID used for selection/highlighting (empty string for commitments)
+/// IsOverlay           = true → red text and red tile border (applies to both overlay sections and commitments)
+/// IsCommitment        = true → this entry came from a CommitmentBlock. The renderer uses this
+///                       to suppress click interactions (no selection, no context menu, no hand cursor).
+///                       It does NOT affect visual styling — IsOverlay handles that.
+/// FrequencyAnnotation = parenthesised frequency annotation, e.g. "(odd)", "(1,6,7)".
+///                       Empty string for weekly meetings and all commitments.
 /// </summary>
 public record TileEntry(
     string Label,
     string Initials,
     string SectionId,
     bool IsOverlay = false,
-    bool IsCommitment = false);
+    bool IsCommitment = false,
+    string FrequencyAnnotation = "");
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

@@ -927,6 +927,7 @@ public partial class SectionListViewModel : ViewModelBase
             DurationMinutes = d.DurationMinutes,
             MeetingTypeId   = d.MeetingTypeId,
             RoomId          = d.RoomId,
+            Frequency       = d.Frequency,
         }).ToList(),
         SectionTypeId   = s.SectionTypeId,
         CampusId        = s.CampusId,

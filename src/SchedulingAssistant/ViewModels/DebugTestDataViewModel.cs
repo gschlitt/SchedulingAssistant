@@ -20,7 +20,7 @@ public partial class DebugTestDataViewModel : ViewModelBase
     /// Mirrors <see cref="IAppLogger.ThrowOnError"/> on the singleton logger.
     /// </summary>
     [ObservableProperty]
-    private bool _throwOnError;
+    private bool _throwOnError = true;
 
     partial void OnThrowOnErrorChanged(bool value) => App.Logger.ThrowOnError = value;
 
@@ -45,6 +45,9 @@ public partial class DebugTestDataViewModel : ViewModelBase
         _ayRepo = ayRepo;
         _startTimeRepo = startTimeRepo;
         _exporter = exporter;
+        // Sync the logger with the default field value — OnThrowOnErrorChanged
+        // does not fire for field initializers, so we push the default manually.
+        App.Logger.ThrowOnError = _throwOnError;
     }
 
     /// <summary>

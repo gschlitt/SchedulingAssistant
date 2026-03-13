@@ -584,7 +584,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 blocks.Add(new SectionMeetingBlock(
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
-                    isOverlay, label, initials, section.Id, section.SemesterId, semName));
+                    isOverlay, label, initials, section.Id, section.SemesterId, semName,
+                    SectionDaySchedule.FormatFrequency(slot.Frequency)));
             }
         }
 
@@ -664,7 +665,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 {
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
-                        true, label, initials, section.Id, section.SemesterId, semName));
+                        true, label, initials, section.Id, section.SemesterId, semName,
+                        SectionDaySchedule.FormatFrequency(slot.Frequency)));
                 }
             }
         }
@@ -691,7 +693,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
-                        true, label, initials, section.Id, section.SemesterId, semName));
+                        true, label, initials, section.Id, section.SemesterId, semName,
+                        SectionDaySchedule.FormatFrequency(slot.Frequency)));
                 }
             }
         }
@@ -952,7 +955,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation),
         CommitmentBlock c     => new TileEntry(c.Name, string.Empty, string.Empty, true, true),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };

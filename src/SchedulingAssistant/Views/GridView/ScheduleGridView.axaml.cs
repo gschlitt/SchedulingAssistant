@@ -183,9 +183,7 @@ public partial class ScheduleGridView : UserControl
                             Margin     = new Thickness(0, 2, 0, 2),
                         });
 
-                    var labelText = string.IsNullOrEmpty(entry.Initials)
-                        ? entry.Label
-                        : $"{entry.Label}  {entry.Initials}";
+                    var labelText = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation);
 
                     var entryRow = new Border
                     {
@@ -216,9 +214,7 @@ public partial class ScheduleGridView : UserControl
                 // subtle width under-reporting that can occur for detached (off-tree) controls.
                 foreach (var e in tile.Entries)
                 {
-                    string lbl = string.IsNullOrEmpty(e.Initials)
-                        ? e.Label
-                        : $"{e.Label}  {e.Initials}";
+                    string lbl = BuildTileLabel(e.Label, e.Initials, e.FrequencyAnnotation);
                     dayContentWidths[d] = Math.Max(dayContentWidths[d],
                         MeasureTextWidth(lbl, 11, FontWeight.Bold));
                 }
@@ -426,9 +422,7 @@ public partial class ScheduleGridView : UserControl
                             Margin = new Thickness(0, 2, 0, 2),
                         });
 
-                    var labelText = string.IsNullOrEmpty(entry.Initials)
-                        ? entry.Label
-                        : $"{entry.Label}  {entry.Initials}";
+                    var labelText = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation);
 
                     var entryId = entry.SectionId;
                     // In multi-semester mode columns are interleaved: [Mon/Sem1, Mon/Sem2, Tue/Sem1, ...].
@@ -584,6 +578,20 @@ public partial class ScheduleGridView : UserControl
     /// <param name="fontSize">Font size in logical pixels.</param>
     /// <param name="weight">Font weight.</param>
     /// <returns>The desired width of the TextBlock in logical pixels.</returns>
+    /// <summary>
+    /// Assembles the single-line display text for a tile entry.
+    /// Format: "MATH105 AB1  JS  (odd)" — label, then initials (if any), then frequency annotation (if any).
+    /// </summary>
+    /// <param name="label">Course+section code, e.g. "MATH105 AB1".</param>
+    /// <param name="initials">Instructor initials, e.g. "JS". May be empty.</param>
+    /// <param name="frequencyAnnotation">Parenthesised frequency, e.g. "(odd)". Empty for weekly meetings.</param>
+    /// <returns>The assembled one-line string.</returns>
+    private static string BuildTileLabel(string label, string initials, string frequencyAnnotation)
+    {
+        var text = string.IsNullOrEmpty(initials) ? label : $"{label}  {initials}";
+        return string.IsNullOrEmpty(frequencyAnnotation) ? text : $"{text}  {frequencyAnnotation}";
+    }
+
     private static double MeasureTextWidth(string text, double fontSize, FontWeight weight)
     {
         var tb = new TextBlock { Text = text, FontSize = fontSize, FontWeight = weight };

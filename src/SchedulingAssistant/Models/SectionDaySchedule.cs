@@ -18,4 +18,23 @@ public class SectionDaySchedule
 
     /// <summary>Optional room ID for this specific meeting.</summary>
     public string? RoomId { get; set; }
+
+    /// <summary>
+    /// Optional meeting frequency within the semester. Null or empty means the meeting
+    /// occurs every week (the default). Otherwise one of:
+    ///   "odd"  — meets on odd-numbered weeks (1, 3, 5, …)
+    ///   "even" — meets on even-numbered weeks (2, 4, 6, …)
+    ///   "1,6,7" — meets only on the listed week numbers (sorted, comma-separated integers)
+    /// </summary>
+    public string? Frequency { get; set; }
+
+    /// <summary>
+    /// Returns a parenthesised display annotation for the meeting frequency,
+    /// e.g. "(odd)", "(even)", "(1,6,7)". Returns an empty string when the meeting
+    /// occurs every week (Frequency is null or empty).
+    /// </summary>
+    /// <param name="frequency">The raw stored frequency string.</param>
+    /// <returns>Formatted annotation, or empty string for weekly meetings.</returns>
+    public static string FormatFrequency(string? frequency) =>
+        string.IsNullOrEmpty(frequency) ? string.Empty : $"({frequency})";
 }

@@ -4,9 +4,29 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-/// <summary>Represents a single scheduled meeting within a section — day, time, room, and meeting type.</summary>
+/// <summary>Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequency.</summary>
 public partial class SectionMeetingViewModel : ViewModelBase
 {
+    // ── Frequency options ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The four choices presented in the Frequency dropdown.
+    /// "Weekly" maps to a null stored value (no annotation).
+    /// "Odd weeks", "Even weeks", and "Custom" map to "odd", "even", and a
+    /// comma-separated week list respectively.
+    /// </summary>
+    public IReadOnlyList<string> FrequencyOptions { get; } =
+        ["Weekly", "Odd weeks", "Even weeks", "Custom"];
+
+    [ObservableProperty] private string _selectedFrequencyOption = "Weekly";
+    [ObservableProperty] private string _customWeeksText = string.Empty;
+    [ObservableProperty] private string? _customWeeksError;
+
+    /// <summary>True when the "Custom" frequency option is selected, causing the Weeks text field to appear.</summary>
+    public bool IsCustomFrequency => SelectedFrequencyOption == "Custom";
+
+    // ── Existing fields ───────────────────────────────────────────────────────
+
     [ObservableProperty] private int _selectedDay;
     [ObservableProperty] private double? _selectedBlockLength;
     [ObservableProperty] private int? _selectedStartTime;
@@ -21,6 +41,12 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
 
+    /// <param name="legalStartTimes">Academic-year legal start times used to populate the Start dropdown.</param>
+    /// <param name="includeSaturday">Whether Saturday should appear as a day option.</param>
+    /// <param name="meetingTypes">Available meeting type property values.</param>
+    /// <param name="rooms">Available rooms for selection.</param>
+    /// <param name="existing">If non-null, the form is populated from this existing schedule entry.</param>
+    /// <param name="defaultBlockLength">Pre-selected block length when adding a new meeting.</param>
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
@@ -64,6 +90,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
             _selectedStartTime = existing.StartMinutes;
             _selectedMeetingTypeId = existing.MeetingTypeId ?? "";
             _selectedRoomId = existing.RoomId ?? "";
+            LoadFrequency(existing.Frequency);
         }
         else
         {
@@ -73,6 +100,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
             // would otherwise consume the pattern-coupling slot before the user picks anything.
             _selectedMeetingTypeId = null;
             _selectedRoomId = "";
+            _selectedFrequencyOption = "Weekly";
 
             // Apply preferred block length if set and available
             if (defaultBlockLength.HasValue
@@ -85,6 +113,91 @@ public partial class SectionMeetingViewModel : ViewModelBase
         }
     }
 
+    // ── Frequency helpers ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Populates <see cref="SelectedFrequencyOption"/> and <see cref="CustomWeeksText"/>
+    /// from a stored frequency string. Called from the constructor when loading an existing meeting.
+    /// </summary>
+    /// <param name="frequency">The raw stored frequency value (null/"", "odd", "even", or "1,6,7" etc.).</param>
+    private void LoadFrequency(string? frequency)
+    {
+        if (string.IsNullOrEmpty(frequency))
+        {
+            _selectedFrequencyOption = "Weekly";
+        }
+        else if (frequency == "odd")
+        {
+            _selectedFrequencyOption = "Odd weeks";
+        }
+        else if (frequency == "even")
+        {
+            _selectedFrequencyOption = "Even weeks";
+        }
+        else
+        {
+            _selectedFrequencyOption = "Custom";
+            _customWeeksText = frequency;
+        }
+    }
+
+    /// <summary>
+    /// Converts the current frequency selection to the string stored on <see cref="SectionDaySchedule.Frequency"/>.
+    /// Returns null for "Weekly". Returns "odd" / "even" for those options.
+    /// For "Custom", parses, validates, sorts and returns the week list (e.g. "1,6,7"),
+    /// or null if the text is invalid.
+    /// </summary>
+    /// <returns>The stored frequency string, or null if weekly or custom input is invalid.</returns>
+    private string? BuildStoredFrequency()
+    {
+        return SelectedFrequencyOption switch
+        {
+            "Odd weeks"  => "odd",
+            "Even weeks" => "even",
+            "Custom"     => BuildCustomFrequency(),
+            _            => null, // "Weekly" or anything unexpected
+        };
+    }
+
+    /// <summary>
+    /// Parses, validates, deduplicates, and sorts <see cref="CustomWeeksText"/> into the
+    /// stored form (e.g. "1,6,7"). Returns null if the text is invalid.
+    /// </summary>
+    private string? BuildCustomFrequency()
+    {
+        if (CustomWeeksError is not null || string.IsNullOrWhiteSpace(CustomWeeksText))
+            return null;
+
+        var tokens = CustomWeeksText
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var weeks = new SortedSet<int>();
+        foreach (var token in tokens)
+        {
+            if (!int.TryParse(token, out var week)) return null;
+            weeks.Add(week);
+        }
+        return string.Join(",", weeks);
+    }
+
+    // ── Change notifications ──────────────────────────────────────────────────
+
+    partial void OnSelectedFrequencyOptionChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsCustomFrequency));
+        if (value != "Custom")
+        {
+            CustomWeeksText = string.Empty;
+            CustomWeeksError = null;
+        }
+        else
+        {
+            // Trigger validation in case text is already populated (e.g. toggled back to Custom)
+            ValidateCustomWeeks();
+        }
+    }
+
+    partial void OnCustomWeeksTextChanged(string value) => ValidateCustomWeeks();
+
     partial void OnSelectedBlockLengthChanged(double? value)
     {
         RefreshStartTimes();
@@ -93,6 +206,46 @@ public partial class SectionMeetingViewModel : ViewModelBase
         if (SelectedStartTime.HasValue && !AvailableStartTimes.Contains(SelectedStartTime.Value))
             SelectedStartTime = null;
     }
+
+    // ── Validation ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Validates <see cref="CustomWeeksText"/> against the allowed range 1..<see cref="Constants.NumWeeks"/>.
+    /// Sets <see cref="CustomWeeksError"/> to a user-facing message on failure, or null on success.
+    /// Does nothing when the Custom frequency option is not selected.
+    /// </summary>
+    private void ValidateCustomWeeks()
+    {
+        if (!IsCustomFrequency) { CustomWeeksError = null; return; }
+
+        if (string.IsNullOrWhiteSpace(CustomWeeksText))
+        {
+            CustomWeeksError = $"Enter week numbers, e.g. 1,3,5";
+            return;
+        }
+
+        var tokens = CustomWeeksText
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var seen = new HashSet<int>();
+
+        foreach (var token in tokens)
+        {
+            if (!int.TryParse(token, out var week) || week < 1 || week > Constants.NumWeeks)
+            {
+                CustomWeeksError = $"Each week must be 1–{Constants.NumWeeks}";
+                return;
+            }
+            if (!seen.Add(week))
+            {
+                CustomWeeksError = "Duplicate week numbers";
+                return;
+            }
+        }
+
+        CustomWeeksError = null;
+    }
+
+    // ── Start time helpers ────────────────────────────────────────────────────
 
     private void RefreshStartTimes()
     {
@@ -103,16 +256,24 @@ public partial class SectionMeetingViewModel : ViewModelBase
             : new ObservableCollection<int>(legal.StartTimes);
     }
 
+    // ── Model conversion ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Converts the form state back to a <see cref="SectionDaySchedule"/> model.
+    /// Returns null if the block length or start time have not been selected yet.
+    /// </summary>
+    /// <returns>A new <see cref="SectionDaySchedule"/>, or null if incomplete.</returns>
     public SectionDaySchedule? ToSchedule()
     {
         if (SelectedBlockLength is null || SelectedStartTime is null) return null;
         return new SectionDaySchedule
         {
-            Day = SelectedDay,
-            StartMinutes = SelectedStartTime.Value,
+            Day           = SelectedDay,
+            StartMinutes  = SelectedStartTime.Value,
             DurationMinutes = (int)(SelectedBlockLength.Value * 60),
             MeetingTypeId = string.IsNullOrEmpty(SelectedMeetingTypeId) ? null : SelectedMeetingTypeId,
-            RoomId = string.IsNullOrEmpty(SelectedRoomId) ? null : SelectedRoomId,
+            RoomId        = string.IsNullOrEmpty(SelectedRoomId)        ? null : SelectedRoomId,
+            Frequency     = BuildStoredFrequency(),
         };
     }
 }

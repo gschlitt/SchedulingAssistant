@@ -97,14 +97,16 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
                 var day   = s.Day >= 1 && s.Day <= 6 ? DayNames[s.Day] : $"Day {s.Day}";
                 var start = FormatMinutes(s.StartMinutes);
                 var end   = FormatMinutes(s.EndMinutes);
+                var freq  = SectionDaySchedule.FormatFrequency(s.Frequency);
+                var freqPart = freq.Length > 0 ? $" {freq}" : string.Empty;
                 var room  = s.RoomId is not null && roomLookup.TryGetValue(s.RoomId, out var r)
                     ? $"  {r.Building} {r.RoomNumber}".TrimEnd()
                     : string.Empty;
-                return $"{day}  {start}–{end}{room}";
+                return $"{day}  {start}–{end}{freqPart}{room}";
             })
             .ToList();
 
-        // Build meeting details with meeting type
+        // Build meeting details with meeting type and frequency
         MeetingDetails = section.Schedule
             .OrderBy(s => s.Day).ThenBy(s => s.StartMinutes)
             .Select(s =>
@@ -112,6 +114,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
                 var day = s.Day >= 1 && s.Day <= 6 ? DayNames[s.Day] : $"Day {s.Day}";
                 var start = FormatMinutes(s.StartMinutes);
                 var end = FormatMinutes(s.EndMinutes);
+                var freq = SectionDaySchedule.FormatFrequency(s.Frequency);
                 var room = s.RoomId is not null && roomLookup.TryGetValue(s.RoomId, out var r)
                     ? $"{r.Building} {r.RoomNumber}"
                     : string.Empty;
@@ -120,10 +123,11 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
                     : string.Empty;
                 return new MeetingDisplayInfo
                 {
-                    Day = day,
-                    StartTime = start,
-                    EndTime = end,
-                    Room = room,
+                    Day         = day,
+                    StartTime   = start,
+                    EndTime     = end,
+                    Frequency   = freq,
+                    Room        = room,
                     MeetingType = meetingType
                 };
             })
@@ -214,6 +218,10 @@ public class MeetingDisplayInfo
     public string Day { get; set; } = "";
     public string StartTime { get; set; } = "";
     public string EndTime { get; set; } = "";
+    /// <summary>
+    /// Formatted frequency annotation, e.g. "(odd)", "(1,6,7)". Empty string when weekly.
+    /// </summary>
+    public string Frequency { get; set; } = "";
     public string Room { get; set; } = "";
     public string MeetingType { get; set; } = "";
 }
