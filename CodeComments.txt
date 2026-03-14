@@ -6,7 +6,7 @@ A user could enter an early start time before 0830 in the start-time/blocklength
 
 Instructional workload box in instructo flyout not registering workload credit properly.
 
-
+Handling of inactive instructors and inactive courses. 
 
 Deleting an academic year doesn't give you the choice! Should be forbidden probably without emptying semesters?
 
@@ -37,13 +37,14 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 Agenda.
 
-"Hybrid Course Scheduling" (odd, even weeks, more infrequent)
+Remember most recently used semesters.
+
 
 Filter by course.
 
 What happens if we modify legal start times while a semester is in use?
 
-
+Sort Section View by tag?
 
 turning off saturday should not affect sections which do have it, only the visibility of saturday.
 
@@ -52,7 +53,6 @@ Show notes in closed card?
 User can add fields to the right?
 
 
-When auto-dupping (to pattern) a meeting, meeting type in the copied meeting is lost
 
 Zoom to cursor? Via scroll wheel?
 
