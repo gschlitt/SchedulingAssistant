@@ -31,6 +31,14 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private bool _isCollapsed;
 
+    /// <summary>
+    /// True when at least one meeting in this section has a non-default (non-weekly) frequency.
+    /// Drives visibility of the Freq column header in the expanded section card; the column itself
+    /// collapses automatically via SharedSizeGroup when no content is visible.
+    /// </summary>
+    public bool HasNonDefaultFrequency =>
+        MeetingDetails.Any(m => !string.IsNullOrEmpty(m.Frequency));
+
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
     [ObservableProperty] private bool _isBeingCreated;
 
