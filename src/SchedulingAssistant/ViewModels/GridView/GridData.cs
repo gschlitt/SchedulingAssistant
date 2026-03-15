@@ -110,12 +110,15 @@ public record GridTile(
 
 /// <summary>
 /// One day-semester column's worth of positioned tiles.
-/// In single-semester mode, Header is the day name.
-/// In multi-semester mode, tiles carry their SemesterName for color lookup by the renderer.
+/// In single-semester mode, Header is the day name and SemesterName is empty.
+/// In multi-semester mode, SemesterName identifies which semester this sub-column belongs to
+/// (e.g. "Fall 2025"). The renderer uses it to draw the colored semester indicator bar even
+/// when the column has no tiles.
 /// </summary>
 public record GridDayColumn(
     string Header,
-    IReadOnlyList<GridTile> Tiles);
+    IReadOnlyList<GridTile> Tiles,
+    string SemesterName = "");
 
 /// <summary>All data needed by the view to render the schedule grid.</summary>
 public record GridData(

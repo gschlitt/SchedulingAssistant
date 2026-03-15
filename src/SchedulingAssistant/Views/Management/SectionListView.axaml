@@ -796,7 +796,7 @@
 
                         <!--  Section card with multi-semester left border indicator  -->
                         <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
-                            <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,1">
+                            <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,2">
                                 <!--  Multi-semester indicator: narrow left border in semester color  -->
                                 <Border
                                     Padding="0"

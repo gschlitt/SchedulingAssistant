@@ -6,7 +6,8 @@
         Change values here to retheme the entire application.
         ══════════════════════════════════════════════════════════════════
     -->
-
+    <!--  Functional Colors  -->
+    <!--  Overlay Color, Section View Selected Colors, Filter Color  -->
     <!--  ── Primary chrome (menu bar, panel headers, grid day headers) ──  -->
     <SolidColorBrush x:Key="ChromeBackground" Color="#dde5f0" />
     <SolidColorBrush x:Key="ChromeBorder" Color="#7AAAD4" />
@@ -65,16 +66,16 @@
 
     <!--  ── Semester banners (Section List group headers) ───────────────  -->
     <!--  Colors assigned by semester name for visual consistency regardless of selection order.  -->
-    <SolidColorBrush x:Key="FallBackground"        Color="#C65D1E" />
-    <SolidColorBrush x:Key="FallBorder"            Color="#C65D1E" />
-    <SolidColorBrush x:Key="WinterBackground"      Color="#8f8e8c" />
-    <SolidColorBrush x:Key="WinterBorder"          Color="#8f8e8c" />
+    <SolidColorBrush x:Key="FallBackground" Color="#C65D1E" />
+    <SolidColorBrush x:Key="FallBorder" Color="#C65D1E" />
+    <SolidColorBrush x:Key="WinterBackground" Color="#8f8e8c" />
+    <SolidColorBrush x:Key="WinterBorder" Color="#8f8e8c" />
     <SolidColorBrush x:Key="EarlySummerBackground" Color="#7ED957" />
-    <SolidColorBrush x:Key="EarlySummerBorder"     Color="#7ED957" />
-    <SolidColorBrush x:Key="SummerBackground"      Color="#4FB6F7" />
-    <SolidColorBrush x:Key="SummerBorder"          Color="#4FB6F7" />
-    <SolidColorBrush x:Key="LateSummerBackground"  Color="#F2C94C" />
-    <SolidColorBrush x:Key="LateSummerBorder"      Color="#F2C94C" />
+    <SolidColorBrush x:Key="EarlySummerBorder" Color="#7ED957" />
+    <SolidColorBrush x:Key="SummerBackground" Color="#4FB6F7" />
+    <SolidColorBrush x:Key="SummerBorder" Color="#4FB6F7" />
+    <SolidColorBrush x:Key="LateSummerBackground" Color="#F2C94C" />
+    <SolidColorBrush x:Key="LateSummerBorder" Color="#F2C94C" />
 
     <!--  ── General UI structure ─────────────────────────────────────────  -->
     <SolidColorBrush x:Key="SeparatorLine" Color="#7AAAD4" />

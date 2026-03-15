@@ -19,12 +19,7 @@
         Margin="10,0,0,0"
         ColumnDefinitions="*,*"
         RowDefinitions="Auto,Auto,Auto,*">
-
-
-
         <!--  LEFT COLUMN: Instructor list and edit  -->
-
-
 
         <!--  HEADER: Instructor name  -->
         <Border
@@ -33,7 +28,7 @@
             Padding="8,12"
             Background="White"
             BorderBrush="#CCCCCC"
-            BorderThickness="0,0,0,1">
+            BorderThickness="0,0,0,0">
             <StackPanel
                 IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"
                 Orientation="Horizontal"
@@ -242,30 +237,30 @@
         </StackPanel>
 
         <!--  Semester picker + Semester Activity label with workload units  -->
-        <!--  The semester ComboBox is local to this flyout and operates independently   -->
-        <!--  of the global semester selection, allowing per-instructor semester browsing -->
+        <!--  The semester ComboBox is local to this flyout and operates independently  -->
+        <!--  of the global semester selection, allowing per-instructor semester browsing  -->
         <StackPanel
             Grid.Row="2"
             Grid.Column="0"
             Margin="0,8,0,4"
+            VerticalAlignment="Center"
             IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"
             Orientation="Horizontal"
-            Spacing="10"
-            VerticalAlignment="Center">
+            Spacing="10">
             <!--  Local semester chooser: all semesters in the current academic year  -->
             <ComboBox
                 Padding="6,2"
                 VerticalAlignment="Center"
-                FontSize="11"
                 DisplayMemberBinding="{Binding Semester.Name}"
+                FontSize="11"
                 ItemsSource="{Binding FlyoutSemesters}"
                 SelectedItem="{Binding FlyoutSelectedSemester}" />
             <!--  Vertical divider  -->
             <Border
                 Width="1"
                 Margin="4,2"
-                Background="#CCCCCC"
-                VerticalAlignment="Stretch" />
+                VerticalAlignment="Stretch"
+                Background="#CCCCCC" />
             <!--  Activity summary for the selected semester  -->
             <TextBlock
                 VerticalAlignment="Center"
