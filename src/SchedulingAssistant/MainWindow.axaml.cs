@@ -29,6 +29,13 @@ public partial class MainWindow : Window
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
 
+    /// <summary>
+    /// The VM from the previous DataContext, kept so we can unsubscribe its event
+    /// handlers before they are replaced. Without this, the old VM graph cannot be
+    /// collected after a database switch even though the ServiceProvider is disposed.
+    /// </summary>
+    private MainWindowViewModel? _prevVm;
+
     public ScheduleGridView? ScheduleGridViewInstance { get; private set; }
 
     public MainWindow()
@@ -142,6 +149,15 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Close any detached windows before switching. They hold DataContext
+            // references to the old VMs; if left open, interactions after the switch
+            // would hit a disposed DatabaseContext. Closing here also removes the last
+            // external references into the old VM graph, allowing the GC to collect it.
+            _workloadWindow?.Close();
+            _workloadWindow = null;
+            _scheduleGridWindow?.Close();
+            _scheduleGridWindow = null;
+
             // Update settings and record in recent list
             var settings = AppSettings.Load();
             settings.DatabasePath = newDatabasePath;
@@ -150,6 +166,7 @@ public partial class MainWindow : Window
 
             // Reinitialize DI and set new data context.
             // DatabaseContext will create the file if it doesn't exist.
+            // InitializeServices disposes the old ServiceProvider (and its SqliteConnection).
             var vm = App.InitializeServices(newDatabasePath);
             DataContext = vm;
 
@@ -287,8 +304,19 @@ public partial class MainWindow : Window
     {
         base.OnDataContextChanged(e);
 
+        // Unsubscribe handlers from the previous VM so the old object graph can be
+        // collected once the old ServiceProvider is disposed after a database switch.
+        if (_prevVm is not null)
+        {
+            _prevVm.PropertyChanged -= OnMainWindowVmPropertyChanged;
+            _prevVm.WorkloadPanelVm.ItemClicked -= OnWorkloadItemClicked;
+            _prevVm = null;
+        }
+
         if (DataContext is MainWindowViewModel vm)
         {
+            _prevVm = vm;
+
             // Wire the grid's double-click-to-edit callback at the view level.
             // This keeps SectionListViewModel and ScheduleGridViewModel decoupled —
             // neither holds a reference to the other.
