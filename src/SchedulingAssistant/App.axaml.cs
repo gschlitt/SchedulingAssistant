@@ -51,6 +51,11 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
         ConfigureServices(services, dbPath);
+
+        // Capture the old provider before overwriting so we can dispose it after the
+        // new one is fully initialized. Disposing the root ServiceProvider closes the
+        // old SqliteConnection and releases all other IDisposable singletons.
+        var oldServices = Services as IDisposable;
         Services = services.BuildServiceProvider();
 
         // Expose the singleton logger from DI so any code using App.Logger
@@ -83,6 +88,10 @@ public partial class App : Application
 
         var vm = Services.GetRequiredService<MainWindowViewModel>();
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath));
+
+        // Dispose the old provider now that the new one is fully operational.
+        oldServices?.Dispose();
+
         return vm;
     }
 
@@ -169,6 +178,7 @@ public partial class App : Application
         services.AddTransient<AcademicUnitListViewModel>();
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
+        services.AddTransient<WorkloadMailerViewModel>();
         services.AddTransient<SectionPrefixListViewModel>();
 
         // Views

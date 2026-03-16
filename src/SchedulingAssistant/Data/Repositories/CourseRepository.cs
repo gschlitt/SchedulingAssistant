@@ -75,9 +75,16 @@ public class CourseRepository(DatabaseContext db)
         cmd.ExecuteNonQuery();
     }
 
-    public void Update(Course course)
+    /// <summary>
+    /// Persists changes to an existing course. Optionally participates in a caller-supplied
+    /// transaction (used by tag-deletion cascade in SectionPropertyListViewModel).
+    /// </summary>
+    /// <param name="course">The course to update.</param>
+    /// <param name="tx">Optional transaction; if null, the command runs auto-committed.</param>
+    public void Update(Course course, Microsoft.Data.Sqlite.SqliteTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText =
             "UPDATE Courses SET subject_id = $sid, calendar_code = $calendarCode, title = $title, data = $data WHERE id = $id";
         cmd.Parameters.AddWithValue("$id", course.Id);

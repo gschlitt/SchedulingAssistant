@@ -22,6 +22,7 @@ public partial class CourseEditViewModel : ViewModelBase
     [ObservableProperty] private string _courseTitle = string.Empty;
     [ObservableProperty] private bool _isActive = true;
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
+    [ObservableProperty] private ObservableCollection<TagSelectionViewModel> _tagSelections = new();
 
     public string FormTitle => IsNew ? "Add Course" : "Edit Course";
     public bool IsNew { get; }
@@ -29,6 +30,15 @@ public partial class CourseEditViewModel : ViewModelBase
     public string ComputedCalendarCode => SelectedSubject is null
         ? string.Empty
         : $"{SelectedSubject.CalendarAbbreviation}{CourseNumber}";
+
+    /// <summary>
+    /// Comma-separated names of all currently selected tags; shows "(none)" when empty.
+    /// Recomputed automatically whenever any TagSelectionViewModel.IsSelected changes.
+    /// </summary>
+    public string TagSummary =>
+        TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Name) is var names && names.Any()
+            ? string.Join(", ", names)
+            : "(none)";
 
     private readonly Course _course;
     private readonly Func<Course, Task> _onSave;
@@ -54,13 +64,24 @@ public partial class CourseEditViewModel : ViewModelBase
 
     private bool CanSave() => SelectedSubject is not null && CourseNumber.Trim().Length > 0 && ValidationError is null;
 
+    /// <summary>
+    /// Initialises the course editor.
+    /// </summary>
+    /// <param name="course">The course object to edit (or a new blank course for adds).</param>
+    /// <param name="isNew">True when adding, false when editing.</param>
+    /// <param name="onSave">Callback invoked with the mutated course on successful save.</param>
+    /// <param name="onCancel">Callback invoked when the user clicks Cancel.</param>
+    /// <param name="codeExists">Delegate returning true if the given calendar code is already taken.</param>
+    /// <param name="subjects">All subjects to populate the subject dropdown.</param>
+    /// <param name="allTags">All available tag property values for the tag multi-select.</param>
     public CourseEditViewModel(
         Course course,
         bool isNew,
         Func<Course, Task> onSave,
         Action onCancel,
         Func<string, bool> codeExists,
-        ObservableCollection<Subject> subjects)
+        ObservableCollection<Subject> subjects,
+        IReadOnlyList<SectionPropertyValue> allTags)
     {
         _course = course;
         IsNew = isNew;
@@ -85,6 +106,23 @@ public partial class CourseEditViewModel : ViewModelBase
 
         CourseTitle = course.Title;
         IsActive = course.IsActive;
+
+        // Build tag multi-select: mark each tag selected if it's in course.TagIds.
+        TagSelections = new ObservableCollection<TagSelectionViewModel>(
+            allTags.Select(t => new TagSelectionViewModel(t, course.TagIds.Contains(t.Id))));
+
+        // Re-raise TagSummary whenever any checkbox changes.
+        WireTagSummary();
+    }
+
+    /// <summary>
+    /// Subscribes to each TagSelectionViewModel's PropertyChanged so that TagSummary
+    /// is re-raised whenever the user toggles a checkbox.
+    /// </summary>
+    private void WireTagSummary()
+    {
+        foreach (var tag in TagSelections)
+            tag.PropertyChanged += (_, _) => OnPropertyChanged(nameof(TagSummary));
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -94,6 +132,10 @@ public partial class CourseEditViewModel : ViewModelBase
         _course.CalendarCode = ComputedCalendarCode;
         _course.Title = CourseTitle.Trim();
         _course.IsActive = IsActive;
+        _course.TagIds = TagSelections
+            .Where(t => t.IsSelected)
+            .Select(t => t.Value.Id)
+            .ToList();
         await _onSave(_course);
     }
 

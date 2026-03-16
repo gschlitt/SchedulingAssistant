@@ -13,6 +13,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     private readonly SectionPropertyRepository _repo;
     private readonly SectionRepository _sectionRepo;
     private readonly InstructorRepository _instructorRepo;
+    private readonly CourseRepository _courseRepo;
     private readonly DatabaseContext _db;
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDialogService _dialog;
@@ -36,6 +37,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         SectionPropertyRepository repo,
         SectionRepository sectionRepo,
         InstructorRepository instructorRepo,
+        CourseRepository courseRepo,
         DatabaseContext db,
         SectionListViewModel sectionListVm,
         IDialogService dialog,
@@ -46,6 +48,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         _repo = repo;
         _sectionRepo = sectionRepo;
         _instructorRepo = instructorRepo;
+        _courseRepo = courseRepo;
         _db = db;
         _sectionListVm = sectionListVm;
         _dialog = dialog;
@@ -152,7 +155,9 @@ public partial class SectionPropertyListViewModel : ViewModelBase
 
         var affected = _type == SectionPropertyTypes.StaffType
             ? "all instructors that reference it"
-            : "all sections in all semesters that reference it";
+            : _type == SectionPropertyTypes.Tag
+                ? "all courses and sections in all semesters that reference it"
+                : "all sections in all semesters that reference it";
 
         if (!await _dialog.Confirm($"Delete \"{name}\"?\n\nThis will also remove it from {affected}."))
             return;
@@ -160,6 +165,17 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         using var tx = _db.Connection.BeginTransaction();
         try
         {
+            // For tags: also remove from all courses that reference this tag.
+            if (_type == SectionPropertyTypes.Tag)
+            {
+                var courses = _courseRepo.GetAll();
+                foreach (var course in courses)
+                {
+                    if (course.TagIds.Remove(id))
+                        _courseRepo.Update(course, tx);
+                }
+            }
+
             var sections = _sectionRepo.GetAll();
             foreach (var section in sections)
             {
