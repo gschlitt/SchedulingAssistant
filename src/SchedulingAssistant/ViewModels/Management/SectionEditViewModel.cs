@@ -514,6 +514,11 @@ public partial class SectionEditViewModel : ViewModelBase
             Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, meetingTypes, rooms, entry, defaultBlockLength));
 
         _isInitializing = false;
+
+        // For new sections that are pre-seeded with a course (i.e. Copy), apply course tags now.
+        // Plain Add has no course selected yet so this is a no-op; Edit is excluded by !IsNew.
+        if (IsNew)
+            ApplyCourseTagsToSelection(SelectedCourseId);
     }
 
     /// <summary>
