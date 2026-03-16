@@ -11,6 +11,7 @@ public partial class CourseListViewModel : ViewModelBase
 {
     private readonly CourseRepository _courseRepo;
     private readonly SubjectRepository _subjectRepo;
+    private readonly SectionPropertyRepository _propertyRepo;
     private readonly IDialogService _dialog;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
@@ -24,6 +25,7 @@ public partial class CourseListViewModel : ViewModelBase
     public CourseListViewModel(
         CourseRepository courseRepo,
         SubjectRepository subjectRepo,
+        SectionPropertyRepository propertyRepo,
         IDialogService dialog,
         SectionRepository sectionRepo,
         SemesterRepository semesterRepo,
@@ -32,6 +34,7 @@ public partial class CourseListViewModel : ViewModelBase
     {
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
+        _propertyRepo = propertyRepo;
         _dialog = dialog;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
@@ -44,17 +47,38 @@ public partial class CourseListViewModel : ViewModelBase
 
     public bool HasSubjects => Subjects.Count > 0;
 
+    /// <summary>
+    /// Loads all courses from the database and populates the <see cref="Course.TagSummary"/>
+    /// display property on each by resolving tag IDs to names.
+    /// </summary>
     private void LoadCourses()
     {
-        Courses = new ObservableCollection<Course>(_courseRepo.GetAll());
+        var tagById = _propertyRepo.GetAll(SectionPropertyTypes.Tag)
+                                   .ToDictionary(t => t.Id, t => t.Name);
+
+        var courses = _courseRepo.GetAll();
+        foreach (var course in courses)
+            course.TagSummary = string.Join(", ",
+                course.TagIds.Select(id => tagById.TryGetValue(id, out var name) ? name : null)
+                             .Where(n => n is not null));
+
+        Courses = new ObservableCollection<Course>(courses);
         SelectedCourse = null;
     }
+
+    /// <summary>
+    /// Loads the full list of available tags from the property repository.
+    /// Called by Add/Edit to pass current tags to the course editor.
+    /// </summary>
+    private List<SectionPropertyValue> LoadAllTags() =>
+        _propertyRepo.GetAll(SectionPropertyTypes.Tag);
 
     [RelayCommand]
     private void Add()
     {
         var course = new Course();
         EditVm = new CourseEditViewModel(course, isNew: true,
+            allTags: LoadAllTags(),
             onSave: async c =>
             {
                 try { _courseRepo.Insert(c); LoadCourses(); EditVm = null; }
@@ -75,10 +99,11 @@ public partial class CourseListViewModel : ViewModelBase
             SubjectId = SelectedCourse.SubjectId,
             CalendarCode = SelectedCourse.CalendarCode,
             Title = SelectedCourse.Title,
-            Tags = new List<string>(SelectedCourse.Tags),
+            TagIds = new List<string>(SelectedCourse.TagIds),
             IsActive = SelectedCourse.IsActive
         };
         EditVm = new CourseEditViewModel(clone, isNew: false,
+            allTags: LoadAllTags(),
             onSave: async c =>
             {
                 try { _courseRepo.Update(c); LoadCourses(); EditVm = null; }

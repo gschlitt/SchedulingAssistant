@@ -143,6 +143,13 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly double? _defaultBlockLength;
     private readonly IReadOnlyList<Subject> _allSubjects;
 
+    /// <summary>
+    /// True once the constructor has finished. Used to suppress course-tag merging
+    /// during construction for existing sections (where tags are already populated),
+    /// while still allowing it after construction when the user changes the course.
+    /// </summary>
+    private bool _isConstructed;
+
     // ── Pattern coupling state ─────────────────────────────────────────────────
     // After ApplyPattern creates meetings, the lead meeting's first change to each
     // of these three fields is propagated once to all follower meetings, then decoupled.
@@ -214,6 +221,12 @@ public partial class SectionEditViewModel : ViewModelBase
         SelectedPrefixOption = null;
         OnPropertyChanged(nameof(IsSectionCodeEnabled));
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+
+        // Post-construction course changes (including initial selection on a new section):
+        // merge the new course's tags into the tag selections without removing any
+        // tags the user may have already chosen.
+        if (_isConstructed && !string.IsNullOrEmpty(value))
+            MergeCourseTags(value);
     }
 
     partial void OnSelectedSubjectChanged(Subject? value)
@@ -481,6 +494,15 @@ public partial class SectionEditViewModel : ViewModelBase
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
             Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, meetingTypes, rooms, entry, defaultBlockLength));
+
+        // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
+        _isConstructed = true;
+
+        // For new sections (Add or Copy) that already have a course pre-set, immediately merge
+        // the course's tags. On Copy the section may already have tags; MergeCourseTags only
+        // adds missing ones.
+        if (isNew && !string.IsNullOrEmpty(SelectedCourseId))
+            MergeCourseTags(SelectedCourseId);
     }
 
     /// <summary>
@@ -673,6 +695,25 @@ public partial class SectionEditViewModel : ViewModelBase
         _couplingFollowers = new();
         _couplingRemainingFields = new();
         _couplingHandler = null;
+    }
+
+    /// <summary>
+    /// Merges the tags of the specified course into <see cref="TagSelections"/>.
+    /// Any tag already checked is left unchanged; unchecked tags that belong to the course
+    /// are checked on. Tags not on the course are never unchecked — this is a merge, not
+    /// a replace.
+    /// </summary>
+    /// <param name="courseId">The course whose tags should be merged in.</param>
+    private void MergeCourseTags(string courseId)
+    {
+        var course = Courses.FirstOrDefault(c => c.Id == courseId);
+        if (course is null || course.TagIds.Count == 0) return;
+
+        foreach (var tagSelection in TagSelections)
+        {
+            if (!tagSelection.IsSelected && course.TagIds.Contains(tagSelection.Value.Id))
+                tagSelection.IsSelected = true;
+        }
     }
 
     [RelayCommand]

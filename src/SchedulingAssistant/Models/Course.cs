@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SchedulingAssistant.Models;
 
 public class Course
@@ -6,8 +8,21 @@ public class Course
     public string SubjectId { get; set; } = string.Empty;
     public string CalendarCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public List<string> Tags { get; set; } = new();
+
+    /// <summary>
+    /// IDs of tags (from SectionPropertyValues of type "tag") associated with this course.
+    /// These are automatically applied to new sections created for this course.
+    /// </summary>
+    public List<string> TagIds { get; set; } = new();
+
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Human-readable tag names for display in lists. Populated by the ViewModel after loading;
+    /// not persisted to the database.
+    /// </summary>
+    [JsonIgnore]
+    public string TagSummary { get; set; } = string.Empty;
 
     /// <summary>
     /// Computes the course level from the calendar code.
