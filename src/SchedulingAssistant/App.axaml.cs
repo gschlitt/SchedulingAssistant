@@ -63,11 +63,17 @@ public partial class App : Application
         // Eagerly initialize the database (schema creation + seeding).
         Services.GetRequiredService<DatabaseContext>();
 
-        // Seed the global semester context from the database.
+        // Seed the global semester context from the database,
+        // restoring the last-used academic year and semester(s) from local settings.
+        var startupSettings = AppSettings.Load();
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
             Services.GetRequiredService<AcademicYearRepository>(),
-            Services.GetRequiredService<SemesterRepository>());
+            Services.GetRequiredService<SemesterRepository>(),
+            restoreAcademicYearId: startupSettings.LastSelectedAcademicYearId,
+            restoreSemesterIds:    startupSettings.LastSelectedSemesterIds.Count > 0
+                                       ? startupSettings.LastSelectedSemesterIds.ToHashSet()
+                                       : null);
 
         // Seed the section store so ViewModels can read from the cache on first load.
         var sectionStore = Services.GetRequiredService<SectionStore>();

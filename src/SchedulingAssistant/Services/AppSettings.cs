@@ -27,6 +27,18 @@ public class AppSettings
     /// <summary>Last path used for workload report CSV export.</summary>
     public string? LastWorkloadReportPath { get; set; }
 
+    /// <summary>
+    /// The academic year ID that was selected when the app was last closed.
+    /// Restored on startup so the user returns to where they left off.
+    /// </summary>
+    public string? LastSelectedAcademicYearId { get; set; }
+
+    /// <summary>
+    /// The semester IDs that were selected when the app was last closed.
+    /// Supports multi-semester view restoration. Restored on startup.
+    /// </summary>
+    public List<string> LastSelectedSemesterIds { get; set; } = new();
+
     /// <summary>Recently opened database paths (most recent first). Max 10 entries.</summary>
     public List<string> RecentDatabases { get; set; } = new();
 

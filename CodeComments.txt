@@ -37,6 +37,8 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 Agenda.
 
+Auto tags on courses.
+
 Should there be an inactivation on section properties etc so they could be retired rather than deleted.
 
 Ordering on Section Prefixes,

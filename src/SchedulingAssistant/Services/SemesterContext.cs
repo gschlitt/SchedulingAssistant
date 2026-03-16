@@ -163,10 +163,19 @@ public partial class SemesterContext : ObservableObject
     /// </summary>
     /// <param name="ayRepo">Academic year repository.</param>
     /// <param name="semRepo">Semester repository.</param>
-    public void Reload(AcademicYearRepository ayRepo, SemesterRepository semRepo)
+    /// <param name="restoreAcademicYearId">
+    /// When provided, overrides the in-memory selection for restoration (e.g. startup restore
+    /// from <see cref="AppSettings"/>). Pass <c>null</c> to preserve the current selection.
+    /// </param>
+    /// <param name="restoreSemesterIds">
+    /// When provided, overrides the in-memory semester selection for restoration. Paired with
+    /// <paramref name="restoreAcademicYearId"/>. Pass <c>null</c> to preserve current selection.
+    /// </param>
+    public void Reload(AcademicYearRepository ayRepo, SemesterRepository semRepo,
+        string? restoreAcademicYearId = null, IReadOnlySet<string>? restoreSemesterIds = null)
     {
-        var previousYearId      = SelectedAcademicYear?.Id;
-        var previousSemesterIds = SelectedSemesters.Select(s => s.Semester.Id).ToHashSet();
+        var previousYearId      = restoreAcademicYearId ?? SelectedAcademicYear?.Id;
+        var previousSemesterIds = restoreSemesterIds    ?? SelectedSemesters.Select(s => s.Semester.Id).ToHashSet();
 
         var allYears     = ayRepo.GetAll().OrderBy(y => y.StartYear).ToList();
         var allSemesters = semRepo.GetAll();
@@ -292,8 +301,9 @@ public partial class SemesterContext : ObservableObject
     }
 
     /// <summary>
-    /// Rebuilds <see cref="SelectedSemesters"/> from the checked items and fires
-    /// all downstream PropertyChanged notifications so subscribed ViewModels reload.
+    /// Rebuilds <see cref="SelectedSemesters"/> from the checked items, fires
+    /// all downstream PropertyChanged notifications so subscribed ViewModels reload,
+    /// and persists the new selection to <see cref="AppSettings"/> for startup restore.
     /// </summary>
     private void UpdateSelectedSemesters()
     {
@@ -312,5 +322,11 @@ public partial class SemesterContext : ObservableObject
         OnPropertyChanged(nameof(FilteredSemesters));
         // Notifies all single-semester ViewModels (WorkloadPanel, CommitmentsManagement, etc.)
         OnPropertyChanged(nameof(SelectedSemesterDisplay));
+
+        // Persist the selection so it can be restored on the next startup.
+        var s = AppSettings.Load();
+        s.LastSelectedAcademicYearId  = SelectedAcademicYear?.Id;
+        s.LastSelectedSemesterIds     = SelectedSemesters.Select(sd => sd.Semester.Id).ToList();
+        s.Save();
     }
 }
