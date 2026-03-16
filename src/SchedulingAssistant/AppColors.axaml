@@ -6,8 +6,9 @@
         Change values here to retheme the entire application.
         ══════════════════════════════════════════════════════════════════
     -->
-    <!--  Functional Colors  -->
+    <!--  Anything to do with overlays has this color, the header texts, the pulldown badges, the border of the cards in the view and the text of the meetings in the view  -->
     <Color x:Key="OverlayColor">#e01231</Color>
+    <!--  Anything to do with filters has this color, the header texts, the pulldown badges, and the border surrounding the selected sections in Section View  -->
     <Color x:Key="FilterColor">#408EC6</Color>
     <!--  Common selection color: used for selected section in both the Schedule Grid tile and the Section List card  -->
     <Color x:Key="SelectedSectionColor">#A8DCAB</Color>

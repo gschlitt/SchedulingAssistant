@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
@@ -420,14 +421,36 @@ public partial class MainWindow : Window
         });
         stack.Children.Add(auSeparator);
 
-        // Semester
-        var semesterTextBlock = new TextBlock
+        // Semester — ItemsControl of colored segment pills, matching the main-window AXAML layout.
+        // SemesterLineSegment is a record (immutable), so properties are read directly in the
+        // template factory; ItemsControl rebuilds from scratch whenever the binding fires.
+        var semFontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d);
+        var semItemsControl = new ItemsControl
         {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            ItemsPanel = new FuncTemplate<Panel?>(() => new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 4
+            }),
+            ItemTemplate = new FuncDataTemplate<SemesterLineSegment>((seg, _) =>
+                new Border
+                {
+                    Padding          = new Thickness(6, 2),
+                    Background       = seg.Background,
+                    BorderBrush      = seg.Border,
+                    BorderThickness  = new Thickness(1),
+                    CornerRadius     = new CornerRadius(2),
+                    Child = new TextBlock
+                    {
+                        FontSize = semFontSize,
+                        Text     = seg.DisplayText
+                    }
+                })
         };
-        semesterTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.SemesterLine") { Source = Vm });
-        stack.Children.Add(semesterTextBlock);
+        semItemsControl.Bind(ItemsControl.ItemsSourceProperty,
+            new Binding("ScheduleGridVm.SemesterLineSegments") { Source = Vm });
+        stack.Children.Add(semItemsControl);
 
         // Subject filter separator (only shown when subject filter is active)
         var subjectSeparator = new Border

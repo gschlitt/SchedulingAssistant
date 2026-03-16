@@ -1,10 +1,8 @@
 Bugs:
 
-Semester name background does not survive detach when in multi-semester mode.
 
-A user could enter an early start time before 0830 in the start-time/blocklength selector. 
 
-Instructional workload box in instructo flyout not registering workload credit properly.
+A user could enter an early start time before 0830 in the start-time/blocklength selector. What happens then?
 
 Handling of inactive instructors and inactive courses. 
 
@@ -14,13 +12,15 @@ Fontsize seems hardcoded in a number of places, should be able to adjust from ap
 
 Printing to png seems to print in dark mode?
 
-All Filter and Overlay menus should display all the choices available, not just those reflecting current sections.
-
-Overlay color needs to work in conjunction with Multi-semester.
+Overlay color needs to work in conjunction with Multi-semester. Color choices are the issue.
 
 Confirm section deletes!
 
 Outline sections that are selected via a filter .
+
+Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
+
+Width of courses menu should be dynamic.
 
 Colors:
 
@@ -37,8 +37,13 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 Agenda.
 
+Should there be an inactivation on section properties etc so they could be retired rather than deleted.
+
+Ordering on Section Prefixes,
+
 Remember most recently used semesters.
 
+Mailer?
 
 Filter by course.
 
@@ -52,19 +57,11 @@ Show notes in closed card?
 
 User can add fields to the right?
 
-
-
 Zoom to cursor? Via scroll wheel?
-
-
-
-
 
 Work on colors a bit. Keep red for overlay, need something different in menu to mark filters.
 
-
 Banner on sections header to show number of sections
-
 
 Backup! (to csv and alternate db?)
 
