@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
-using SchedulingAssistant.ViewModels.Management;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels;
@@ -15,7 +15,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     private readonly ReleaseRepository _releaseRepo;
     private readonly SemesterRepository _semesterRepo;
     private readonly SemesterContext _semesterContext;
-    private readonly SectionListViewModel _sectionListVm;
+    private readonly SectionStore _sectionStore;
 
     [ObservableProperty] private ObservableCollection<WorkloadRowViewModel> _rows = new();
     [ObservableProperty] private string? _lastErrorMessage;
@@ -33,7 +33,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         ReleaseRepository releaseRepo,
         SemesterRepository semesterRepo,
         SemesterContext semesterContext,
-        SectionListViewModel sectionListVm)
+        SectionStore sectionStore)
     {
         _instructorRepo = instructorRepo;
         _sectionRepo = sectionRepo;
@@ -41,17 +41,15 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         _releaseRepo = releaseRepo;
         _semesterRepo = semesterRepo;
         _semesterContext = semesterContext;
-        _sectionListVm = sectionListVm;
+        _sectionStore = sectionStore;
 
-        // Reload on semester change
-        _semesterContext.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
-                Load();
-        };
+        // Reload whenever sections change or the semester selection changes.
+        // SectionStore.SectionsChanged fires for both cases: SectionListViewModel
+        // calls sectionStore.Reload() after saves/deletes and on semester change.
+        _sectionStore.SectionsChanged += Load;
 
-        // Reload when sections change (saves, deletes, etc.)
-        _sectionListVm.SectionsChanged += Load;
+        // Keep SelectedSectionId in sync with the store's single source of truth.
+        _sectionStore.SelectionChanged += id => SelectedSectionId = id;
 
         Load();
     }
@@ -95,9 +93,11 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
             if (!isMultiSemester)
             {
-                // Single-semester mode: existing behavior
+                // Single-semester mode
                 var semesterDisplay = selectedSemesters[0];
-                var sections = _sectionRepo.GetAll(semesterDisplay.Semester.Id);
+                // Read from the shared cache — no DB query for sections here.
+                var sections = _sectionStore.SectionsBySemester.TryGetValue(semesterDisplay.Semester.Id, out var s)
+                    ? (IEnumerable<Section>)s : Array.Empty<Section>();
                 var releases = _releaseRepo.GetBySemester(semesterDisplay.Semester.Id);
 
                 foreach (var instructor in instructors)
@@ -126,7 +126,9 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                     // One group per selected semester (always, even if empty)
                     foreach (var semesterDisplay in selectedSemesters)
                     {
-                        var sections = _sectionRepo.GetAll(semesterDisplay.Semester.Id);
+                        // Read from the shared cache — no DB query for sections here.
+                        var sections = _sectionStore.SectionsBySemester.TryGetValue(semesterDisplay.Semester.Id, out var s)
+                            ? (IEnumerable<Section>)s : Array.Empty<Section>();
                         var releases = _releaseRepo.GetBySemester(semesterDisplay.Semester.Id);
                         var items = BuildItemsForInstructor(instructor, sections, releases, GetCourseCode);
 

@@ -7,6 +7,12 @@
         ══════════════════════════════════════════════════════════════════
     -->
     <!--  Functional Colors  -->
+    <Color x:Key="OverlayColor">#f0210a</Color>
+    <Color x:Key="FilterColor">#1616db</Color>
+
+
+
+
     <!--  Overlay Color, Section View Selected Colors, Filter Color  -->
     <!--  ── Primary chrome (menu bar, panel headers, grid day headers) ──  -->
     <SolidColorBrush x:Key="ChromeBackground" Color="#dde5f0" />
@@ -36,10 +42,13 @@
     <SolidColorBrush x:Key="FilterBarBackground" Color="#EEF4FC" />
     <SolidColorBrush x:Key="FilterExpanderBorder" Color="#C0D8F0" />
     <SolidColorBrush x:Key="FilterExpanderContent" Color="White" />
-    <SolidColorBrush x:Key="FilterActiveHeader" Color="#1847a3" />
+
+    <SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
     <SolidColorBrush x:Key="FilterInactiveHeader" Color="#333333" />
-    <SolidColorBrush x:Key="OverlayActiveHeader" Color="#d61a30" />
+
+    <SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
     <SolidColorBrush x:Key="OverlayInactiveHeader" Color="#333333" />
+
     <!--  ── "● Filtered" badge in panel header ──────────────────────────  -->
     <SolidColorBrush x:Key="FilterBadgeBackground" Color="#FFE0B2" />
     <SolidColorBrush x:Key="FilterBadgeBorder" Color="#E08000" />

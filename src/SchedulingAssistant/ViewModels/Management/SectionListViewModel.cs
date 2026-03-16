@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
-using SchedulingAssistant.ViewModels.GridView;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Threading.Tasks;
@@ -22,7 +21,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly BlockPatternRepository _blockPatternRepo;
     private readonly SectionPrefixRepository _prefixRepo;
     private readonly SemesterContext _semesterContext;
-    private readonly ScheduleGridViewModel _scheduleGridVm;
+    private readonly SectionStore _sectionStore;
     private readonly SectionPropertyRepository _propertyRepo;
 
     // ── Observable Properties ──────────────────────────────────────────────────
@@ -71,7 +70,6 @@ public partial class SectionListViewModel : ViewModelBase
     /// command runs.
     /// </summary>
     private int _lastSelectedIndex = -1;
-    private bool _suppressSelectionSync = false;
 
     // ── Computed Properties ────────────────────────────────────────────────────
 
@@ -104,7 +102,9 @@ public partial class SectionListViewModel : ViewModelBase
     /// <summary>
     /// Called when the list selection changes.
     /// Ignores banners (they are not real selections).
-    /// Updates <see cref="_lastSelectedIndex"/> and syncs the selected section to the grid.
+    /// Updates <see cref="_lastSelectedIndex"/> and pushes the selection to the
+    /// <see cref="SectionStore"/> so all other views stay in sync.
+    /// <see cref="SectionStore.SetSelection"/> is idempotent — no suppress flag needed.
     /// </summary>
     partial void OnSelectedItemChanged(ISectionListEntry? value)
     {
@@ -113,19 +113,8 @@ public partial class SectionListViewModel : ViewModelBase
         if (value is SectionListItemViewModel svm)
             _lastSelectedIndex = SectionItems.IndexOf(svm);
 
-        // Push selection to the grid (guard against echo-back)
-        if (!_suppressSelectionSync)
-        {
-            _suppressSelectionSync = true;
-            _scheduleGridVm.SelectedSectionId = (value as SectionListItemViewModel)?.Section.Id;
-            _suppressSelectionSync = false;
-        }
+        _sectionStore.SetSelection((value as SectionListItemViewModel)?.Section.Id);
     }
-
-    // ── Events ─────────────────────────────────────────────────────────────────
-
-    /// <summary>Fired when sections are loaded/reloaded (after successful Load()).</summary>
-    public event Action? SectionsChanged;
 
     // ── Constructor ────────────────────────────────────────────────────────────
 
@@ -140,9 +129,8 @@ public partial class SectionListViewModel : ViewModelBase
         BlockPatternRepository blockPatternRepo,
         SectionPrefixRepository prefixRepo,
         SemesterContext semesterContext,
-        ScheduleGridViewModel scheduleGridVm,
+        SectionStore sectionStore,
         SectionPropertyRepository propertyRepo,
-        SectionChangeNotifier changeNotifier,
         IDialogService dialog)
     {
         _sectionRepo = sectionRepo;
@@ -155,14 +143,18 @@ public partial class SectionListViewModel : ViewModelBase
         _blockPatternRepo = blockPatternRepo;
         _prefixRepo = prefixRepo;
         _semesterContext = semesterContext;
-        _scheduleGridVm = scheduleGridVm;
+        _sectionStore = sectionStore;
         _propertyRepo = propertyRepo;
         _dialog = dialog;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
-        _scheduleGridVm.PropertyChanged += OnGridVmPropertyChanged;
-        _scheduleGridVm.EditRequested = EditSectionById;
-        changeNotifier.SectionChanged += Reload;
+
+        // Reload the list whenever any external code updates the section cache
+        // (e.g. the schedule grid context menu, commitment CRUD, or semester changes).
+        _sectionStore.SectionsChanged += Reload;
+
+        // Sync SelectedItem whenever the selection is changed from another view.
+        _sectionStore.SelectionChanged += OnStoreSelectionChanged;
 
         _sortMode = AppSettings.Load().SectionSortMode;
         UpdateSortModeLabel();
@@ -179,23 +171,28 @@ public partial class SectionListViewModel : ViewModelBase
             // Fires whenever the selected semester set changes (add, remove, or replace).
             // IsMultiSemesterMode may have also changed; notify the view.
             OnPropertyChanged(nameof(IsMultiSemesterMode));
-            Load();
+
+            // Refresh the shared section cache for the new semester set.
+            // SectionsChanged fires after this, triggering Reload() on this VM,
+            // ScheduleGridViewModel, and WorkloadPanelViewModel.
+            var semesterIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
+            _sectionStore.Reload(_sectionRepo, semesterIds);
         }
     }
 
-    private void OnGridVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    /// <summary>
+    /// Called when the <see cref="SectionStore"/> selection changes from an external source
+    /// (e.g. a tile click in the Schedule Grid or a chip click in the Workload Panel).
+    /// Updates <see cref="SelectedItem"/> to match the new selection.
+    /// <see cref="OnSelectedItemChanged"/> will then call <see cref="SectionStore.SetSelection"/>
+    /// again, but the store's idempotency guard prevents a second event from firing.
+    /// </summary>
+    private void OnStoreSelectionChanged(string? sectionId)
     {
-        if (e.PropertyName != nameof(ScheduleGridViewModel.SelectedSectionId)) return;
-        if (_suppressSelectionSync) return;
-
-        var id = _scheduleGridVm.SelectedSectionId;
-        if (id == SelectedSectionItem?.Section.Id) return;
-
-        _suppressSelectionSync = true;
-        SelectedItem = id is null
+        if (SelectedSectionItem?.Section.Id == sectionId) return;
+        SelectedItem = sectionId is null
             ? null
-            : SectionItems.OfType<SectionListItemViewModel>().FirstOrDefault(i => i.Section.Id == id);
-        _suppressSelectionSync = false;
+            : SectionItems.OfType<SectionListItemViewModel>().FirstOrDefault(i => i.Section.Id == sectionId);
     }
 
     // ── Load / Reload ──────────────────────────────────────────────────────────
@@ -209,7 +206,6 @@ public partial class SectionListViewModel : ViewModelBase
         {
             LoadCore(selectSectionId);
             LastErrorMessage = null;
-            SectionsChanged?.Invoke();
         }
         catch (Exception ex)
         {
@@ -266,7 +262,10 @@ public partial class SectionListViewModel : ViewModelBase
             if (showBanners)
                 newItems.Add(new SemesterBannerViewModel(semDisplay, i));
 
-            var sections = _sectionRepo.GetAll(semDisplay.Semester.Id);
+            // Read from the shared cache — no DB query here.
+            var sections = _sectionStore.SectionsBySemester.TryGetValue(semDisplay.Semester.Id, out var cached)
+                ? cached
+                : Array.Empty<Section>();
             App.Logger.LogInfo(
                 $"LoadCore: {sections.Count} sections for semester {semDisplay.Semester.Id}", "LoadCore");
 
@@ -324,55 +323,54 @@ public partial class SectionListViewModel : ViewModelBase
     /// Each semester group is sorted independently; banners stay at the top of their group.
     /// Selection and expanded-editor state are preserved by ID.
     /// </summary>
+    /// <summary>
+    /// Re-sorts the existing list in-place, preserving semester group boundaries.
+    /// Each semester group is sorted independently; banners stay at the top of their group.
+    /// Selection and expanded-editor state are preserved by ID.
+    /// No suppress flag is needed: <see cref="SectionStore.SetSelection"/> is idempotent
+    /// and will not fire a second event when the same section is re-selected after sorting.
+    /// </summary>
     private void ApplySort()
     {
         var selectedId = SelectedSectionItem?.Section.Id;
         var expandedId = ExpandedItem?.Section.Id;
 
-        _suppressSelectionSync = true;
-        try
+        var sorted = new List<ISectionListEntry>();
+        var currentGroup = new List<SectionListItemViewModel>();
+        ISectionListEntry? pendingBanner = null;
+
+        void FlushGroup()
         {
-            var sorted = new List<ISectionListEntry>();
-            var currentGroup = new List<SectionListItemViewModel>();
-            ISectionListEntry? pendingBanner = null;
-
-            void FlushGroup()
-            {
-                if (pendingBanner != null)
-                    sorted.Add(pendingBanner);
-                sorted.AddRange(SortItems(currentGroup));
-                currentGroup.Clear();
-                pendingBanner = null;
-            }
-
-            foreach (var item in SectionItems)
-            {
-                if (item is SemesterBannerViewModel)
-                {
-                    FlushGroup();
-                    pendingBanner = item;
-                }
-                else if (item is SectionListItemViewModel svm)
-                {
-                    currentGroup.Add(svm);
-                }
-            }
-            FlushGroup(); // flush the last group (no banner follows it)
-
-            SectionItems = new ObservableCollection<ISectionListEntry>(sorted);
-
-            if (selectedId is not null)
-                SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
-                    .FirstOrDefault(i => i.Section.Id == selectedId);
-
-            if (expandedId is not null)
-                ExpandedItem = SectionItems.OfType<SectionListItemViewModel>()
-                    .FirstOrDefault(i => i.Section.Id == expandedId);
+            if (pendingBanner != null)
+                sorted.Add(pendingBanner);
+            sorted.AddRange(SortItems(currentGroup));
+            currentGroup.Clear();
+            pendingBanner = null;
         }
-        finally
+
+        foreach (var item in SectionItems)
         {
-            _suppressSelectionSync = false;
+            if (item is SemesterBannerViewModel)
+            {
+                FlushGroup();
+                pendingBanner = item;
+            }
+            else if (item is SectionListItemViewModel svm)
+            {
+                currentGroup.Add(svm);
+            }
         }
+        FlushGroup(); // flush the last group (no banner follows it)
+
+        SectionItems = new ObservableCollection<ISectionListEntry>(sorted);
+
+        if (selectedId is not null)
+            SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
+                .FirstOrDefault(i => i.Section.Id == selectedId);
+
+        if (expandedId is not null)
+            ExpandedItem = SectionItems.OfType<SectionListItemViewModel>()
+                .FirstOrDefault(i => i.Section.Id == expandedId);
     }
 
     [RelayCommand]
@@ -561,8 +559,9 @@ public partial class SectionListViewModel : ViewModelBase
                 {
                     _sectionRepo.Insert(s);
                     CollapseEditor();
-                    Load(selectSectionId: s.Id);
-                    _scheduleGridVm.Reload();
+                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
+                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
+                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
                 }
                 catch (Exception ex)
                 {
@@ -667,8 +666,9 @@ public partial class SectionListViewModel : ViewModelBase
                 {
                     if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
                     CollapseEditor();
-                    Load(selectSectionId: s.Id);
-                    _scheduleGridVm.Reload();
+                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
+                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
+                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
                 }
                 catch (Exception ex)
                 {
@@ -788,8 +788,9 @@ public partial class SectionListViewModel : ViewModelBase
                 {
                     _sectionRepo.Insert(s);
                     CollapseEditor();
-                    Load(selectSectionId: s.Id);
-                    _scheduleGridVm.Reload();
+                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
+                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
+                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
                 }
                 catch (Exception ex)
                 {
@@ -823,8 +824,9 @@ public partial class SectionListViewModel : ViewModelBase
         try
         {
             _sectionRepo.Delete(SelectedSection.Id);
-            Load();
-            _scheduleGridVm.Reload();
+            var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
+            _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
+            // Load() on this VM is also triggered by the SectionsChanged subscription
         }
         catch (Exception ex)
         {
@@ -893,11 +895,9 @@ public partial class SectionListViewModel : ViewModelBase
                 _sectionRepo.Insert(section);
             }
 
-            App.Logger.LogInfo("All sections inserted, calling Load()...", "GenerateRandomSections");
-            Load();
-
-            App.Logger.LogInfo("Load() complete, calling ScheduleGridVm.Reload()...", "GenerateRandomSections");
-            _scheduleGridVm.Reload();
+            App.Logger.LogInfo("All sections inserted, reloading store...", "GenerateRandomSections");
+            var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
+            _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload + this VM via SectionsChanged
 
             App.Logger.LogInfo($"Generated {sections.Count} test sections successfully", "GenerateRandomSections");
         }

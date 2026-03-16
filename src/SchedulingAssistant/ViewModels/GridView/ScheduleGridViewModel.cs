@@ -6,7 +6,6 @@ using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
-using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.GridView;
@@ -26,8 +25,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SectionPropertyRepository _propertyRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
+    private readonly SectionStore _sectionStore;
     private readonly SectionChangeNotifier _changeNotifier;
     private readonly InstructorCommitmentRepository _commitmentRepo;
+
+    /// <summary>
+    /// Tracks the set of semester IDs from the last reload so <see cref="ReloadCore"/>
+    /// can detect when the semester selection has changed and clear the filter state.
+    /// </summary>
+    private string _lastSemesterKey = string.Empty;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
     [ObservableProperty] private string? _selectedSectionId;
@@ -63,6 +69,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SectionPropertyRepository propertyRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
+        SectionStore sectionStore,
         SectionChangeNotifier changeNotifier,
         InstructorCommitmentRepository commitmentRepo)
     {
@@ -74,22 +81,31 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _propertyRepo = propertyRepo;
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
+        _sectionStore = sectionStore;
         _changeNotifier = changeNotifier;
         _commitmentRepo = commitmentRepo;
 
-        ContextMenu = new SectionContextMenuViewModel(sectionRepo, NotifySectionChanged);
+        // After a context-menu save, refresh the shared section cache so all views
+        // (including this one via SectionsChanged below) reload in one shot.
+        ContextMenu = new SectionContextMenuViewModel(sectionRepo, () =>
+        {
+            var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
+            _sectionStore.Reload(_sectionRepo, semIds);
+        });
 
         LoadAcademicUnitName();
 
-        _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Filter.FilterChanged += Reload;
 
-        // Subscribe to the shared change notifier so the grid reloads whenever any
-        // code fires NotifySectionChanged() — including the context menu (via
-        // NotifySectionChanged below), external section edits, and commitment CRUD
-        // (via CommitmentsManagementViewModel). All callers go through the same
-        // notifier, so there is one single place that drives grid refresh.
+        // Reload whenever sections change (inserts, updates, deletes from any source).
+        _sectionStore.SectionsChanged += Reload;
+
+        // SectionChangeNotifier is now used exclusively for commitment CRUD reloads.
+        // Commitment changes are not section-data changes and are not cached in SectionStore.
         _changeNotifier.SectionChanged += Reload;
+
+        // Keep SelectedSectionId in sync with the store's single source of truth.
+        _sectionStore.SelectionChanged += id => SelectedSectionId = id;
 
         Reload();
     }
@@ -100,22 +116,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         AcademicUnitName = unit?.Name ?? string.Empty;
     }
 
-    private void OnSemesterContextChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(SemesterContext.SelectedSemesterDisplay))
-        {
-            // Clear filter selections so each semester starts fresh.
-            // Unsubscribe temporarily so clearing doesn't trigger multiple Reloads.
-            Filter.FilterChanged -= Reload;
-            Filter.ClearAll();
-            Filter.FilterChanged += Reload;
-            Reload();
-        }
-    }
-
-    /// <summary>Called by the view when a tile is clicked; sets SelectedSectionId.</summary>
+    /// <summary>
+    /// Called by the view when a tile is clicked.
+    /// Pushes the selection to <see cref="SectionStore"/> so all views sync to the
+    /// same selection simultaneously via <see cref="SectionStore.SelectionChanged"/>.
+    /// </summary>
     [RelayCommand]
-    public void SelectSection(string sectionId) => SelectedSectionId = sectionId;
+    public void SelectSection(string sectionId) => _sectionStore.SetSelection(sectionId);
 
     /// <summary>
     /// Invoked by the view when an entry is double-clicked.
@@ -137,19 +144,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var tags        = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
 
         ContextMenu.Load(section, day, startMinutes, instructors, rooms, tags);
-    }
-
-    /// <summary>
-    /// Callback passed to SectionContextMenuViewModel; called after the context menu
-    /// saves a change to a section. Fires the shared SectionChangeNotifier, which:
-    ///   1. Triggers Reload() on THIS view model (via the subscription in the constructor)
-    ///   2. Triggers Reload() on SectionListViewModel (which also subscribes)
-    /// Do NOT call Reload() directly here — that would cause a double reload because
-    /// the subscription above already handles it.
-    /// </summary>
-    private void NotifySectionChanged()
-    {
-        _changeNotifier.NotifySectionChanged();
     }
 
     [RelayCommand]
@@ -223,6 +217,18 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var semesters = _semesterContext.SelectedSemesters.ToList();
         if (semesters.Count == 0) { ClearDisplay(); return; }
 
+        // Detect semester changes and clear filter state when they occur.
+        // Doing this here (rather than in a separate PropertyChanged subscription) ensures
+        // the correct order: filters are always cleared before the new data is processed.
+        var semesterKey = string.Join(",", semesters.Select(s => s.Semester.Id).OrderBy(x => x));
+        if (_lastSemesterKey != semesterKey)
+        {
+            Filter.FilterChanged -= Reload;
+            Filter.ClearAll();
+            Filter.FilterChanged += Reload;
+            _lastSemesterKey = semesterKey;
+        }
+
         var lookups = BuildLookups(semesters);
         PopulateFilterOptions(lookups);
         var snap = TakeFilterSnapshot();
@@ -283,8 +289,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </returns>
     private GridLookups BuildLookups(IReadOnlyList<SemesterDisplay> semesters)
     {
+        // Read sections from the shared cache — no DB query here.
         var sections = semesters
-            .SelectMany(sd => _sectionRepo.GetAll(sd.Semester.Id))
+            .SelectMany(sd => _sectionStore.SectionsBySemester.TryGetValue(sd.Semester.Id, out var cached)
+                ? cached
+                : Array.Empty<Section>())
             .ToList();
 
         var courses     = _courseRepo.GetAll().ToDictionary(c => c.Id);

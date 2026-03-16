@@ -69,6 +69,12 @@ public partial class App : Application
             Services.GetRequiredService<AcademicYearRepository>(),
             Services.GetRequiredService<SemesterRepository>());
 
+        // Seed the section store so ViewModels can read from the cache on first load.
+        var sectionStore = Services.GetRequiredService<SectionStore>();
+        sectionStore.Reload(
+            Services.GetRequiredService<SectionRepository>(),
+            semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
+
         var vm = Services.GetRequiredService<MainWindowViewModel>();
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath));
         return vm;
@@ -104,6 +110,7 @@ public partial class App : Application
         services.AddTransient<SectionPrefixRepository>();
 
         // ViewModels
+        services.AddSingleton<SectionStore>();
         services.AddSingleton<SectionChangeNotifier>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
@@ -116,6 +123,7 @@ public partial class App : Application
             sp.GetRequiredService<SectionPropertyRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>(),
+            sp.GetRequiredService<SectionStore>(),
             sp.GetRequiredService<SectionChangeNotifier>(),
             sp.GetRequiredService<InstructorCommitmentRepository>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
@@ -125,7 +133,7 @@ public partial class App : Application
             sp.GetRequiredService<ReleaseRepository>(),
             sp.GetRequiredService<SemesterRepository>(),
             sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<SectionListViewModel>()));
+            sp.GetRequiredService<SectionStore>()));
         services.AddTransient<InstructorListViewModel>(sp =>
             new InstructorListViewModel(
                 sp.GetRequiredService<InstructorRepository>(),
