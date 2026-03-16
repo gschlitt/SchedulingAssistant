@@ -8,19 +8,19 @@ public class DatabaseContext : IDisposable
 
     public DatabaseContext(string dbPath)
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
+        Connection = new SqliteConnection($"Data Source={dbPath}");
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-
-            Connection = new SqliteConnection($"Data Source={dbPath}");
             Connection.Open();
-
             InitializeSchema();
             Migrate();
             SeedData.EnsureSeeded(Connection);
         }
         catch (Exception ex)
         {
+            Connection.Dispose();
             throw new InvalidOperationException(
                 $"Failed to open or initialize the database at '{dbPath}'. " +
                 "The file may be locked by another process, corrupted, or the path may be invalid.",
@@ -139,61 +139,12 @@ public class DatabaseContext : IDisposable
 
     /// <summary>
     /// Handles schema migrations for existing databases.
+    /// All tables are created by <see cref="InitializeSchema"/>; this method only handles
+    /// column additions and data backfills for databases created before certain columns existed.
     /// </summary>
     private void Migrate()
     {
         using var cmd = Connection.CreateCommand();
-
-        // BlockPatterns table (if missing)
-        cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS BlockPatterns (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                data TEXT NOT NULL DEFAULT '{}'
-            );
-            """;
-        cmd.ExecuteNonQuery();
-
-        // AcademicUnits table (if missing)
-        cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS AcademicUnits (
-                id TEXT PRIMARY KEY,
-                data TEXT NOT NULL DEFAULT '{}'
-            );
-            """;
-        cmd.ExecuteNonQuery();
-
-        // Releases table (if missing)
-        cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS Releases (
-                id TEXT PRIMARY KEY,
-                semester_id TEXT NOT NULL,
-                instructor_id TEXT NOT NULL,
-                data TEXT NOT NULL DEFAULT '{}'
-            );
-            """;
-        cmd.ExecuteNonQuery();
-
-        // InstructorCommitments table (if missing)
-        cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS InstructorCommitments (
-                id TEXT PRIMARY KEY,
-                instructor_id TEXT NOT NULL,
-                semester_id TEXT NOT NULL,
-                data TEXT NOT NULL DEFAULT '{}'
-            );
-            """;
-        cmd.ExecuteNonQuery();
-
-        // SectionPrefixes table (if missing)
-        cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS SectionPrefixes (
-                id     TEXT PRIMARY KEY,
-                prefix TEXT NOT NULL,
-                data   TEXT NOT NULL DEFAULT '{}'
-            );
-            """;
-        cmd.ExecuteNonQuery();
 
         // Purge invalid commitment records (missing instructor_id or semester_id)
         cmd.CommandText = "DELETE FROM InstructorCommitments WHERE instructor_id IS NULL OR instructor_id = '' OR semester_id IS NULL OR semester_id = ''";

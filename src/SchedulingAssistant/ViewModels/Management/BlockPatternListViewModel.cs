@@ -27,7 +27,7 @@ public partial class BlockPatternListViewModel : ViewModelBase
     public BlockPatternListViewModel(BlockPatternRepository patternRepository)
     {
         _patternRepository = patternRepository;
-        var includeSaturday = AppSettings.Load().IncludeSaturday;
+        var includeSaturday = AppSettings.Current.IncludeSaturday;
 
         var allPatterns = _patternRepository.GetAll();
         var patterns = Enumerable.Range(0, MaxSlots)

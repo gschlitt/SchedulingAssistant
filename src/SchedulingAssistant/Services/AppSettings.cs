@@ -6,6 +6,9 @@ namespace SchedulingAssistant.Services;
 /// <summary>
 /// Persists app-level settings (e.g. database path) in a small JSON file
 /// in a stable AppData location the app can always find on startup.
+/// Use <see cref="Current"/> for all normal access — it loads once and caches the result
+/// in memory so subsequent reads cost nothing. Only call <see cref="Load"/> when a
+/// forced re-read from disk is explicitly required.
 /// </summary>
 public class AppSettings
 {
@@ -14,6 +17,19 @@ public class AppSettings
 
     private static readonly string SettingsPath =
         Path.Combine(SettingsDir, "settings.json");
+
+    /// <summary>
+    /// In-memory singleton. Populated on first access or by an explicit <see cref="Load"/> call.
+    /// Mutations made to the returned instance are reflected in all subsequent <see cref="Current"/>
+    /// accesses until the app restarts, so callers only need to call <see cref="Save"/> after mutating.
+    /// </summary>
+    private static AppSettings? _instance;
+
+    /// <summary>
+    /// Returns the cached <see cref="AppSettings"/> instance, loading from disk on first access.
+    /// This is the preferred accessor — it reads the file at most once per app session.
+    /// </summary>
+    public static AppSettings Current => _instance ??= Load();
 
     public string? DatabasePath { get; set; }
     public bool IncludeSaturday { get; set; } = false;
@@ -55,19 +71,33 @@ public class AppSettings
     public string WorkloadMailerBody { get; set; } =
         "Dear {FirstName},\n\nHere is your workload assignment for {Semester}.\n\n{Workload}\n\nPlease let us know if you have any questions.";
 
+    /// <summary>
+    /// Reads the settings JSON file from disk and caches the result in <see cref="Current"/>.
+    /// Prefer <see cref="Current"/> for routine reads; call this only when a forced re-read is needed.
+    /// Returns a default <see cref="AppSettings"/> if the file does not exist or cannot be parsed.
+    /// </summary>
     public static AppSettings Load()
     {
+        AppSettings result;
         if (!File.Exists(SettingsPath))
-            return new AppSettings();
-        try
         {
-            var json = File.ReadAllText(SettingsPath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            result = new AppSettings();
         }
-        catch
+        else
         {
-            return new AppSettings();
+            try
+            {
+                var json = File.ReadAllText(SettingsPath);
+                result = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            }
+            catch
+            {
+                result = new AppSettings();
+            }
         }
+
+        _instance = result;
+        return result;
     }
 
     public void Save()

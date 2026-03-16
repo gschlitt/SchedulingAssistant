@@ -78,7 +78,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public void LoadRecentDatabases()
     {
         RecentDatabases.Clear();
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         foreach (var path in settings.RecentDatabases)
         {
             if (File.Exists(path))
@@ -141,7 +141,13 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToAcademicYears() => OpenFlyout<AcademicYearListViewModel>("Academic Years");
 
     [RelayCommand]
-    private void NavigateToCopySemester() => OpenFlyout<CopySemesterViewModel>("Copy Semester");
+    private void NavigateToCopySemester()
+    {
+        var vm = _services.GetRequiredService<CopySemesterViewModel>();
+        vm.NavigateToAcademicYears = NavigateToAcademicYears;
+        FlyoutPage = vm;
+        FlyoutTitle = "Copy Semester";
+    }
 
     [RelayCommand]
     private void NavigateToEmptySemester() => OpenFlyout<EmptySemesterViewModel>("Empty Semester");

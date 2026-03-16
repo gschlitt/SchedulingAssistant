@@ -193,7 +193,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     /// </summary>
     private void LoadSetupData()
     {
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         SubjectTemplate = settings.WorkloadMailerSubject;
         BodyTemplate = settings.WorkloadMailerBody;
 
@@ -237,7 +237,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     [RelayCommand]
     private void SaveTemplate()
     {
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         settings.WorkloadMailerSubject = SubjectTemplate;
         settings.WorkloadMailerBody = BodyTemplate;
         settings.Save();
@@ -277,7 +277,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
             return;
 
         // Persist template for reuse
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         settings.WorkloadMailerSubject = SubjectTemplate;
         settings.WorkloadMailerBody = BodyTemplate;
         settings.Save();

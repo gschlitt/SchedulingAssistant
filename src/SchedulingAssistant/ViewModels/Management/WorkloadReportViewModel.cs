@@ -167,7 +167,7 @@ public partial class WorkloadReportViewModel : ViewModelBase
             }
 
             // File picker
-            var settings = AppSettings.Load();
+            var settings = AppSettings.Current;
 
             IStorageFolder? suggestedFolder = null;
             if (settings.LastWorkloadReportPath is not null)

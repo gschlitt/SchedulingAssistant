@@ -324,7 +324,7 @@ public partial class SemesterContext : ObservableObject
         OnPropertyChanged(nameof(SelectedSemesterDisplay));
 
         // Persist the selection so it can be restored on the next startup.
-        var s = AppSettings.Load();
+        var s = AppSettings.Current;
         s.LastSelectedAcademicYearId  = SelectedAcademicYear?.Id;
         s.LastSelectedSemesterIds     = SelectedSemesters.Select(sd => sd.Semester.Id).ToList();
         s.Save();

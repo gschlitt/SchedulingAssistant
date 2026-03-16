@@ -38,7 +38,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             _includeSaturday = value;
             OnPropertyChanged();
 
-            var settings = AppSettings.Load();
+            var settings = AppSettings.Current;
             settings.IncludeSaturday = value;
             settings.Save();
         }
@@ -64,7 +64,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             _selectedPreferredOption = value;
             OnPropertyChanged();
 
-            var settings = AppSettings.Load();
+            var settings = AppSettings.Current;
             settings.PreferredBlockLength = value?.Value;
             settings.Save();
         }
@@ -93,13 +93,13 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         _currentAcademicYearId = ayId;
         Entries = new ObservableCollection<LegalStartTime>(_repo.GetAll(ayId));
         RebuildPreferredOptions();
-        _includeSaturday = AppSettings.Load().IncludeSaturday;
+        _includeSaturday = AppSettings.Current.IncludeSaturday;
         OnPropertyChanged(nameof(IncludeSaturday));
     }
 
     private void RebuildPreferredOptions()
     {
-        var saved = AppSettings.Load().PreferredBlockLength;
+        var saved = AppSettings.Current.PreferredBlockLength;
 
         PreferredBlockLengthOptions.Clear();
 

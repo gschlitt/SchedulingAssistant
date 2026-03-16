@@ -224,7 +224,8 @@ public partial class SectionEditViewModel : ViewModelBase
         {
             var courseNumbers = Courses
                 .Where(c => c.SubjectId == value.Id)
-                .Select(c => c.CalendarCode.Substring(value.CalendarAbbreviation.Length))
+                .Where(c => c.CalendarCode.Length >= value.CalendarAbbreviation.Length)
+                .Select(c => c.CalendarCode[value.CalendarAbbreviation.Length..])
                 .OrderBy(n => n)
                 .Distinct()
                 .ToList();
@@ -411,7 +412,9 @@ public partial class SectionEditViewModel : ViewModelBase
                 {
                     SelectedSubject = subject;
                     // Extract course number from calendar code
-                    var courseNumber = existingCourse.CalendarCode.Substring(subject.CalendarAbbreviation.Length);
+                    var courseNumber = existingCourse.CalendarCode.Length >= subject.CalendarAbbreviation.Length
+                        ? existingCourse.CalendarCode[subject.CalendarAbbreviation.Length..]
+                        : string.Empty;
                     // OnSelectedSubjectChanged will populate CourseNumbers, so we can now set the selection
                     SelectedCourseNumber = courseNumber;
                 }

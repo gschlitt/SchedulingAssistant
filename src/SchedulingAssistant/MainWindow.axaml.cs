@@ -28,6 +28,7 @@ public partial class MainWindow : Window
 {
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
+    private MainWindowViewModel? _previousVm;
 
     public ScheduleGridView? ScheduleGridViewInstance { get; private set; }
 
@@ -88,7 +89,7 @@ public partial class MainWindow : Window
 
     private async Task RunStartupAsync()
     {
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         string? dbPath = null;
 
         if (!string.IsNullOrWhiteSpace(settings.DatabasePath) && File.Exists(settings.DatabasePath))
@@ -143,7 +144,7 @@ public partial class MainWindow : Window
         try
         {
             // Update settings and record in recent list
-            var settings = AppSettings.Load();
+            var settings = AppSettings.Current;
             settings.DatabasePath = newDatabasePath;
             settings.Save();
             settings.AddRecentDatabase(newDatabasePath);
@@ -289,6 +290,14 @@ public partial class MainWindow : Window
 
         if (DataContext is MainWindowViewModel vm)
         {
+            // Unsubscribe from the old VM to prevent memory leaks and stale event callbacks
+            // when the DataContext is replaced (e.g. on database switch).
+            if (_previousVm is not null)
+            {
+                _previousVm.PropertyChanged -= OnMainWindowVmPropertyChanged;
+                _previousVm.WorkloadPanelVm.ItemClicked -= OnWorkloadItemClicked;
+            }
+
             // Wire the grid's double-click-to-edit callback at the view level.
             // This keeps SectionListViewModel and ScheduleGridViewModel decoupled —
             // neither holds a reference to the other.
@@ -296,6 +305,8 @@ public partial class MainWindow : Window
 
             vm.PropertyChanged += OnMainWindowVmPropertyChanged;
             vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
+
+            _previousVm = vm;
 
             ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
 

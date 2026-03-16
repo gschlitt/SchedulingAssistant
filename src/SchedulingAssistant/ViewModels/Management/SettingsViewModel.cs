@@ -9,12 +9,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel()
     {
-        _includeSaturday = AppSettings.Load().IncludeSaturday;
+        _includeSaturday = AppSettings.Current.IncludeSaturday;
     }
 
     partial void OnIncludeSaturdayChanged(bool value)
     {
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         settings.IncludeSaturday = value;
         settings.Save();
     }

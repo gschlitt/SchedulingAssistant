@@ -65,7 +65,7 @@ public partial class App : Application
 
         // Seed the global semester context from the database,
         // restoring the last-used academic year and semester(s) from local settings.
-        var startupSettings = AppSettings.Load();
+        var startupSettings = AppSettings.Current;
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
             Services.GetRequiredService<AcademicYearRepository>(),
@@ -94,26 +94,29 @@ public partial class App : Application
 
         // Services
         services.AddSingleton<SemesterContext>();
-        services.AddTransient<AcademicUnitService>();// Services
-        services.AddTransient<ScheduleValidationService>();
+        // These services are stateless wrappers; singletons match their actual lifetime.
+        services.AddSingleton<AcademicUnitService>();
+        services.AddSingleton<ScheduleValidationService>();
         services.AddTransient<IDialogService, DialogService>();
 
         // Data layer — DatabaseContext receives the resolved path directly.
+        // Repositories are stateless wrappers around the singleton DatabaseContext,
+        // so they are registered as singletons to accurately reflect their actual lifetime.
         services.AddSingleton<DatabaseContext>(_ => new DatabaseContext(dbPath));
-        services.AddTransient<AcademicYearRepository>();
-        services.AddTransient<SemesterRepository>();
-        services.AddTransient<InstructorRepository>();
-        services.AddTransient<RoomRepository>();
-        services.AddTransient<LegalStartTimeRepository>();
-        services.AddTransient<BlockPatternRepository>();
-        services.AddTransient<SubjectRepository>();
-        services.AddTransient<CourseRepository>();
-        services.AddTransient<SectionRepository>();
-        services.AddTransient<SectionPropertyRepository>();
-        services.AddTransient<AcademicUnitRepository>();
-        services.AddTransient<ReleaseRepository>();
-        services.AddTransient<InstructorCommitmentRepository>();
-        services.AddTransient<SectionPrefixRepository>();
+        services.AddSingleton<AcademicYearRepository>();
+        services.AddSingleton<SemesterRepository>();
+        services.AddSingleton<InstructorRepository>();
+        services.AddSingleton<RoomRepository>();
+        services.AddSingleton<LegalStartTimeRepository>();
+        services.AddSingleton<BlockPatternRepository>();
+        services.AddSingleton<SubjectRepository>();
+        services.AddSingleton<CourseRepository>();
+        services.AddSingleton<SectionRepository>();
+        services.AddSingleton<SectionPropertyRepository>();
+        services.AddSingleton<AcademicUnitRepository>();
+        services.AddSingleton<ReleaseRepository>();
+        services.AddSingleton<InstructorCommitmentRepository>();
+        services.AddSingleton<SectionPrefixRepository>();
 
         // ViewModels
         services.AddSingleton<SectionStore>();

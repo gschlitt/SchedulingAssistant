@@ -159,7 +159,7 @@ public partial class SectionListViewModel : ViewModelBase
         // Highlight section cards that match the active Schedule Grid filter.
         _sectionStore.FilteredIdsChanged += ApplyFilterHighlights;
 
-        _sortMode = AppSettings.Load().SectionSortMode;
+        _sortMode = AppSettings.Current.SectionSortMode;
         UpdateSortModeLabel();
 
         Load();
@@ -405,7 +405,7 @@ public partial class SectionListViewModel : ViewModelBase
     {
         _sortMode = mode;
         UpdateSortModeLabel();
-        var s = AppSettings.Load(); s.SectionSortMode = mode; s.Save();
+        var s = AppSettings.Current; s.SectionSortMode = mode; s.Save();
         ApplySort();
     }
 
@@ -516,6 +516,137 @@ public partial class SectionListViewModel : ViewModelBase
             : SectionItems.Count;
     }
 
+    // ── Editor Context / Factory Helpers ──────────────────────────────────────
+
+    /// <summary>
+    /// All data required to open the inline section editor, loaded in one pass.
+    /// Shared by <see cref="OpenAdd"/>, <see cref="OpenEdit"/>, and <see cref="OpenCopy"/>
+    /// so that each method performs zero redundant DB queries.
+    /// </summary>
+    /// <param name="Courses">Active courses only — drives the editor's Course picker.</param>
+    /// <param name="AllCourses">All courses including inactive — used for placeholder display lookups
+    /// so an existing section whose course was later deactivated still renders correctly.</param>
+    private sealed record EditorContext(
+        List<Course>               Courses,
+        List<Course>               AllCourses,
+        List<Subject>              Subjects,
+        List<Instructor>           Instructors,
+        List<Room>                 Rooms,
+        List<LegalStartTime>       LegalStartTimes,
+        bool                       IncludeSaturday,
+        double?                    DefaultBlockLength,
+        List<SectionPropertyValue> SectionTypes,
+        List<SectionPropertyValue> MeetingTypes,
+        List<SectionPropertyValue> Campuses,
+        List<SectionPropertyValue> AllTags,
+        List<SectionPropertyValue> AllResources,
+        List<SectionPropertyValue> AllReserves);
+
+    /// <summary>
+    /// Loads all data needed to open the inline editor and returns it as an
+    /// <see cref="EditorContext"/>. Returns <c>null</c> when no academic year is selected,
+    /// which callers treat as a signal to abort silently.
+    /// </summary>
+    private EditorContext? BuildEditorContext()
+    {
+        var ayId = _semesterContext.SelectedAcademicYear?.Id;
+        if (string.IsNullOrEmpty(ayId)) return null;
+
+        var settings = AppSettings.Current;
+        return new EditorContext(
+            Courses:            _courseRepo.GetAllActive(),
+            AllCourses:         _courseRepo.GetAll(),
+            Subjects:           _subjectRepo.GetAll(),
+            Instructors:        _instructorRepo.GetAll(),
+            Rooms:              _roomRepo.GetAll(),
+            LegalStartTimes:    _legalStartTimeRepo.GetAll(ayId),
+            IncludeSaturday:    settings.IncludeSaturday,
+            DefaultBlockLength: settings.PreferredBlockLength,
+            SectionTypes:       _propertyRepo.GetAll(SectionPropertyTypes.SectionType),
+            MeetingTypes:       _propertyRepo.GetAll(SectionPropertyTypes.MeetingType),
+            Campuses:           _propertyRepo.GetAll(SectionPropertyTypes.Campus),
+            AllTags:            _propertyRepo.GetAll(SectionPropertyTypes.Tag),
+            AllResources:       _propertyRepo.GetAll(SectionPropertyTypes.Resource),
+            AllReserves:        _propertyRepo.GetAll(SectionPropertyTypes.Reserve));
+    }
+
+    /// <summary>
+    /// Creates the placeholder <see cref="SectionListItemViewModel"/> shown in the list while
+    /// a new section is being created (Add or Copy flow). Lookup dictionaries are derived from
+    /// the already-loaded <paramref name="ctx"/> lists — no additional DB queries are made.
+    /// The returned item has <c>IsBeingCreated = true</c>.
+    /// </summary>
+    /// <param name="section">The new section model that the placeholder represents.</param>
+    /// <param name="ctx">Editor context containing all needed list data.</param>
+    private static SectionListItemViewModel BuildPlaceholder(Section section, EditorContext ctx)
+    {
+        var placeholder = new SectionListItemViewModel(
+            section,
+            ctx.AllCourses.ToDictionary(c => c.Id),
+            ctx.Instructors.ToDictionary(i => i.Id),
+            ctx.Rooms.ToDictionary(r => r.Id),
+            ctx.SectionTypes.ToDictionary(v => v.Id),
+            ctx.Campuses.ToDictionary(v => v.Id),
+            ctx.AllTags.ToDictionary(v => v.Id),
+            ctx.AllResources.ToDictionary(v => v.Id),
+            ctx.AllReserves.ToDictionary(v => v.Id),
+            ctx.MeetingTypes.ToDictionary(v => v.Id));
+        placeholder.IsBeingCreated = true;
+        return placeholder;
+    }
+
+    /// <summary>
+    /// Constructs a fully configured <see cref="SectionEditViewModel"/> from the shared
+    /// <paramref name="ctx"/>. Encapsulates:
+    /// <list type="bullet">
+    ///   <item>The duplicate-check lambda with the correct <c>excludeId</c>
+    ///         (<c>null</c> for inserts, <c>section.Id</c> for updates).</item>
+    ///   <item>The save action (insert or update) with error handling and store/list reload.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="section">The section being created or edited.</param>
+    /// <param name="isNew">
+    ///   <c>true</c> for Add/Copy (calls <c>Insert</c>); <c>false</c> for Edit (calls <c>Update</c>).
+    /// </param>
+    /// <param name="ctx">Editor context loaded by <see cref="BuildEditorContext"/>.</param>
+    /// <param name="semesterId">Semester scoping section-code uniqueness enforcement.</param>
+    /// <param name="callerTag">Short label used in error log entries (e.g. "Add", "Edit", "Copy").</param>
+    /// <returns>A <see cref="SectionEditViewModel"/> ready to be assigned to <see cref="EditVm"/>.</returns>
+    private SectionEditViewModel CreateEditVm(
+        Section section, bool isNew, EditorContext ctx,
+        string semesterId, string callerTag)
+    {
+        return new SectionEditViewModel(
+            section, isNew,
+            ctx.Courses, ctx.Subjects, ctx.Instructors, ctx.Rooms,
+            ctx.LegalStartTimes, ctx.IncludeSaturday,
+            ctx.SectionTypes, ctx.MeetingTypes, ctx.Campuses,
+            ctx.AllTags, ctx.AllResources, ctx.AllReserves,
+            isSectionCodeDuplicate: (courseId, code) =>
+                _sectionRepo.ExistsBySectionCode(
+                    semesterId, courseId, code,
+                    excludeId: isNew ? null : section.Id),
+            onSave: async s =>
+            {
+                try
+                {
+                    if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
+                    CollapseEditor();
+                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
+                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
+                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.LogError(ex, $"SectionListViewModel.{callerTag}");
+                    await _dialog.ShowError("The save could not be completed. Please try again.");
+                }
+            },
+            _blockPatternRepo,
+            _prefixRepo,
+            defaultBlockLength: ctx.DefaultBlockLength);
+    }
+
     /// <summary>
     /// Opens the inline Add editor for a new section at the given list index.
     /// The section's SemesterId is already set; the academic year is derived from
@@ -525,73 +656,14 @@ public partial class SectionListViewModel : ViewModelBase
     {
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
-        // All selected semesters share the same academic year
-        var ayId = _semesterContext.SelectedAcademicYear?.Id;
-        if (string.IsNullOrEmpty(ayId)) return;
+        var ctx = BuildEditorContext();
+        if (ctx is null) return;
 
-        var courses         = _courseRepo.GetAllActive();
-        var instructors     = _instructorRepo.GetAll();
-        var rooms           = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll(ayId);
-        var settings        = AppSettings.Load();
-        var includeSaturday = settings.IncludeSaturday;
-
-        var sectionTypes  = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
-        var meetingTypes  = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
-        var campuses      = _propertyRepo.GetAll(SectionPropertyTypes.Campus);
-        var allTags       = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
-        var allResources  = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
-        var allReserves   = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
-
-        // Build lookups for the placeholder's display row
-        var courseLookup      = _courseRepo.GetAll().ToDictionary(c => c.Id);
-        var instructorLookup  = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var roomLookup        = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var sectionTypeLookup = sectionTypes.ToDictionary(v => v.Id);
-        var campusLookup      = campuses.ToDictionary(v => v.Id);
-        var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
-        var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
-        var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
-        var meetingTypeLookup = meetingTypes.ToDictionary(v => v.Id);
-
-        var placeholder = new SectionListItemViewModel(
-            section, courseLookup, instructorLookup, roomLookup,
-            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
-        placeholder.IsBeingCreated = true;
-
+        var placeholder = BuildPlaceholder(section, ctx);
         if (insertIndex > SectionItems.Count) insertIndex = SectionItems.Count;
         SectionItems.Insert(insertIndex, placeholder);
 
-        // Uniqueness is enforced within the section's own semester
-        var semesterId = section.SemesterId;
-        var subjects = _subjectRepo.GetAll();
-        var editVm = new SectionEditViewModel(
-            section, isNew: true,
-            courses, subjects, instructors, rooms, legalStartTimes, includeSaturday,
-            sectionTypes, meetingTypes, campuses,
-            allTags, allResources, allReserves,
-            isSectionCodeDuplicate: (courseId, code) =>
-                _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null),
-            onSave: async s =>
-            {
-                try
-                {
-                    _sectionRepo.Insert(s);
-                    CollapseEditor();
-                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
-                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
-                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
-                }
-                catch (Exception ex)
-                {
-                    App.Logger.LogError(ex, "SectionListViewModel.Add");
-                    await _dialog.ShowError("The save could not be completed. Please try again.");
-                }
-            },
-            _blockPatternRepo,
-            _prefixRepo,
-            defaultBlockLength: settings.PreferredBlockLength);
-
+        var editVm = CreateEditVm(section, isNew: true, ctx, section.SemesterId, callerTag: "Add");
         editVm.RequestClose = () =>
         {
             SectionItems.Remove(placeholder);
@@ -651,54 +723,10 @@ public partial class SectionListViewModel : ViewModelBase
     {
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
-        // All selected semesters share the same academic year
-        var ayId = _semesterContext.SelectedAcademicYear?.Id;
-        if (string.IsNullOrEmpty(ayId)) return;
+        var ctx = BuildEditorContext();
+        if (ctx is null) return;
 
-        var courses         = _courseRepo.GetAllActive();
-        var instructors     = _instructorRepo.GetAll();
-        var rooms           = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll(ayId);
-        var settings        = AppSettings.Load();
-        var includeSaturday = settings.IncludeSaturday;
-
-        var sectionTypes  = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
-        var meetingTypes  = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
-        var campuses      = _propertyRepo.GetAll(SectionPropertyTypes.Campus);
-        var allTags       = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
-        var allResources  = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
-        var allReserves   = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
-
-        // Uniqueness is scoped to the section's own semester
-        var semesterId = section.SemesterId;
-        var subjects = _subjectRepo.GetAll();
-        var editVm = new SectionEditViewModel(
-            section, isNew,
-            courses, subjects, instructors, rooms, legalStartTimes, includeSaturday,
-            sectionTypes, meetingTypes, campuses,
-            allTags, allResources, allReserves,
-            (courseId, code) =>
-                _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, isNew ? null : section.Id),
-            onSave: async s =>
-            {
-                try
-                {
-                    if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
-                    CollapseEditor();
-                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
-                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
-                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
-                }
-                catch (Exception ex)
-                {
-                    App.Logger.LogError(ex, "SectionListViewModel.Edit");
-                    await _dialog.ShowError("The save could not be completed. Please try again.");
-                }
-            },
-            _blockPatternRepo,
-            _prefixRepo,
-            defaultBlockLength: settings.PreferredBlockLength);
-
+        var editVm = CreateEditVm(section, isNew, ctx, section.SemesterId, callerTag: "Edit");
         editVm.RequestClose = CollapseEditor;
         ExpandedItem = listItem;
         if (listItem is not null) listItem.IsExpanded = true;
@@ -754,73 +782,15 @@ public partial class SectionListViewModel : ViewModelBase
     {
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
-        // All selected semesters share the same academic year
-        var ayId = _semesterContext.SelectedAcademicYear?.Id;
-        if (string.IsNullOrEmpty(ayId)) return;
+        var ctx = BuildEditorContext();
+        if (ctx is null) return;
 
-        var courses         = _courseRepo.GetAllActive();
-        var instructors     = _instructorRepo.GetAll();
-        var rooms           = _roomRepo.GetAll();
-        var legalStartTimes = _legalStartTimeRepo.GetAll(ayId);
-        var settings        = AppSettings.Load();
-        var includeSaturday = settings.IncludeSaturday;
-
-        var sectionTypes  = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
-        var meetingTypes  = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
-        var campuses      = _propertyRepo.GetAll(SectionPropertyTypes.Campus);
-        var allTags       = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
-        var allResources  = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
-        var allReserves   = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
-
-        var courseLookup      = _courseRepo.GetAll().ToDictionary(c => c.Id);
-        var instructorLookup  = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var roomLookup        = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var sectionTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
-        var campusLookup      = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
-        var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
-        var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
-        var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
-        var meetingTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
-
-        var placeholder = new SectionListItemViewModel(
-            section, courseLookup, instructorLookup, roomLookup,
-            sectionTypeLookup, campusLookup, tagLookup, resourceLookup, reserveLookup, meetingTypeLookup);
-        placeholder.IsBeingCreated = true;
-
+        var placeholder = BuildPlaceholder(section, ctx);
         // Insert immediately after the source item
         int insertIndex = SectionItems.IndexOf(afterItem) + 1;
         SectionItems.Insert(insertIndex, placeholder);
 
-        // Uniqueness scoped to the copy's semester (same as source)
-        var semesterId = section.SemesterId;
-        var subjects = _subjectRepo.GetAll();
-        var editVm = new SectionEditViewModel(
-            section, isNew: true,
-            courses, subjects, instructors, rooms, legalStartTimes, includeSaturday,
-            sectionTypes, meetingTypes, campuses,
-            allTags, allResources, allReserves,
-            isSectionCodeDuplicate: (courseId, code) =>
-                _sectionRepo.ExistsBySectionCode(semesterId, courseId, code, excludeId: null),
-            onSave: async s =>
-            {
-                try
-                {
-                    _sectionRepo.Insert(s);
-                    CollapseEditor();
-                    var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
-                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
-                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
-                }
-                catch (Exception ex)
-                {
-                    App.Logger.LogError(ex, "SectionListViewModel.Copy");
-                    await _dialog.ShowError("The save could not be completed. Please try again.");
-                }
-            },
-            _blockPatternRepo,
-            _prefixRepo,
-            defaultBlockLength: settings.PreferredBlockLength);
-
+        var editVm = CreateEditVm(section, isNew: true, ctx, section.SemesterId, callerTag: "Copy");
         editVm.RequestClose = () =>
         {
             SectionItems.Remove(placeholder);

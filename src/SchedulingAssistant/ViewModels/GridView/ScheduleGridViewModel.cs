@@ -857,7 +857,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         const int firstRow = 8 * 60 + 30;
         const int lastRow  = 22 * 60;
 
-        var includeSaturday = AppSettings.Load().IncludeSaturday;
+        var includeSaturday = AppSettings.Current.IncludeSaturday;
         var dayNumbers = new List<int> { 1, 2, 3, 4, 5 };
         if (includeSaturday) dayNumbers.Add(6);
         var dayNames = new Dictionary<int, string>

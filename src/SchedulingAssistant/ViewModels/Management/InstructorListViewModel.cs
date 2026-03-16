@@ -86,7 +86,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _releaseVm = new ReleaseManagementViewModel(releaseRepo);
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);
-        ShowOnlyActive = AppSettings.Load().ShowOnlyActiveInstructors;
+        ShowOnlyActive = AppSettings.Current.ShowOnlyActiveInstructors;
         RebuildFlyoutSemesters();
         Load();
 
@@ -130,7 +130,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     partial void OnShowOnlyActiveChanged(bool value)
     {
         Load();
-        var settings = AppSettings.Load();
+        var settings = AppSettings.Current;
         settings.ShowOnlyActiveInstructors = value;
         settings.Save();
     }

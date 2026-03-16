@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
@@ -338,7 +337,7 @@ public partial class CopySemesterViewModel : ViewModelBase
 
     private void WriteFlaggedCsv()
     {
-        var dbPath = AppSettings.Load().DatabasePath;
+        var dbPath = AppSettings.Current.DatabasePath;
         if (string.IsNullOrEmpty(dbPath)) return;
 
         var dir = Path.GetDirectoryName(dbPath);
@@ -424,9 +423,12 @@ public partial class CopySemesterViewModel : ViewModelBase
     [RelayCommand]
     private void Cancel() => NavigateBackToAcademicYears();
 
-    private void NavigateBackToAcademicYears()
-    {
-        var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
-        mainVm.NavigateToAcademicYearsCommand.Execute(null);
-    }
+    /// <summary>
+    /// Callback invoked when the user completes or cancels the copy flow.
+    /// Set by the caller (e.g. <see cref="MainWindowViewModel"/>) after construction
+    /// to avoid a direct dependency on the service container.
+    /// </summary>
+    public Action? NavigateToAcademicYears { get; set; }
+
+    private void NavigateBackToAcademicYears() => NavigateToAcademicYears?.Invoke();
 }

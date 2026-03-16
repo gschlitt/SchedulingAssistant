@@ -35,7 +35,7 @@ public partial class ExportViewModel : ViewModelBase
 
         try
         {
-            var settings = AppSettings.Load();
+            var settings = AppSettings.Current;
 
             IStorageFolder? suggestedFolder = null;
             if (settings.LastExportPath is not null)
