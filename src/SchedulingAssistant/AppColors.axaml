@@ -7,8 +7,10 @@
         ══════════════════════════════════════════════════════════════════
     -->
     <!--  Functional Colors  -->
-    <Color x:Key="OverlayColor">#f0210a</Color>
-    <Color x:Key="FilterColor">#1616db</Color>
+    <Color x:Key="OverlayColor">#e01231</Color>
+    <Color x:Key="FilterColor">#408EC6</Color>
+    <!--  Common selection color: used for selected section in both the Schedule Grid tile and the Section List card  -->
+    <Color x:Key="SelectedSectionColor">#A8DCAB</Color>
 
 
 
@@ -26,10 +28,10 @@
 
     <!--  ── Schedule grid tiles ─────────────────────────────────────────  -->
     <SolidColorBrush x:Key="TileFill" Color="#C8DFF8" />
-    <SolidColorBrush x:Key="TileFillSelected" Color="#FFD966" />
+    <SolidColorBrush x:Key="TileFillSelected" Color="{StaticResource SelectedSectionColor}" />
     <SolidColorBrush x:Key="TileBorder" Color="#7AAAD4" />
-    <SolidColorBrush x:Key="TileBorderSelected" Color="#B8860B" />
-    <SolidColorBrush x:Key="OverlayFrameBorder" Color="#E74C3C" />
+    <SolidColorBrush x:Key="TileBorderSelected" Color="Black" />
+    <SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
 
     <!--  ── Schedule grid canvas chrome ────────────────────────────────  -->
     <SolidColorBrush x:Key="GridRuleLine" Color="#E0E0E0" />
@@ -45,6 +47,8 @@
 
     <SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
     <SolidColorBrush x:Key="FilterInactiveHeader" Color="#333333" />
+    <!--  Border applied to section list cards that match the active grid filter  -->
+    <SolidColorBrush x:Key="FilterColorBrush" Color="{StaticResource FilterColor}" />
 
     <SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
     <SolidColorBrush x:Key="OverlayInactiveHeader" Color="#333333" />
@@ -52,11 +56,11 @@
     <!--  ── "● Filtered" badge in panel header ──────────────────────────  -->
     <SolidColorBrush x:Key="FilterBadgeBackground" Color="#FFE0B2" />
     <SolidColorBrush x:Key="FilterBadgeBorder" Color="#E08000" />
-    <SolidColorBrush x:Key="FilterBadgeText" Color="#1847a3" />
+    <SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
     <!--  Overlay badge in panel header  -->
     <SolidColorBrush x:Key="OverlayBadgeBackground" Color="#FFE0B2" />
     <SolidColorBrush x:Key="OverlayBadgeBorder" Color="#E08000" />
-    <SolidColorBrush x:Key="OverlayBadgeText" Color="#d61a30" />
+    <SolidColorBrush x:Key="OverlayBadgeText" Color="{StaticResource OverlayColor}" />
     <!--  ── Error / warning banners ─────────────────────────────────────  -->
     <SolidColorBrush x:Key="ErrorBannerBackground" Color="#FFF3CD" />
     <SolidColorBrush x:Key="ErrorBannerBorder" Color="#E6A817" />

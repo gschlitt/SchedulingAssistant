@@ -32,6 +32,13 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     [ObservableProperty] private bool _isCollapsed;
 
     /// <summary>
+    /// True when the Schedule Grid has an active filter and this section's ID is in the
+    /// passing set. Drives a 3 pt <c>FilterColor</c> border around the card in the section list.
+    /// Set externally by <see cref="SectionListViewModel.ApplyFilterHighlights"/>.
+    /// </summary>
+    [ObservableProperty] private bool _isFilterHighlighted;
+
+    /// <summary>
     /// True when at least one meeting in this section has a non-default (non-weekly) frequency.
     /// Drives visibility of the Freq column header in the expanded section card; the column itself
     /// collapses automatically via SharedSizeGroup when no content is visible.

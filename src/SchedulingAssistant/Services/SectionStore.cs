@@ -65,6 +65,25 @@ public class SectionStore
     /// </summary>
     public event Action<string?>? SelectionChanged;
 
+    /// <summary>
+    /// Fired whenever <see cref="FilteredSectionIds"/> is updated by
+    /// <see cref="SetFilteredSectionIds"/>.
+    /// </summary>
+    public event Action? FilteredIdsChanged;
+
+    // ── Filter highlight ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The set of section IDs that currently pass the active Schedule Grid filter, or
+    /// <c>null</c> when no regular (non-overlay) filter is active.
+    /// <list type="bullet">
+    ///   <item><c>null</c> — no filter is active; the section list shows no highlight borders.</item>
+    ///   <item>Non-null (possibly empty) — a filter is active; only IDs in the set are highlighted.</item>
+    /// </list>
+    /// Updated by <see cref="SetFilteredSectionIds"/> after every grid reload.
+    /// </summary>
+    public IReadOnlySet<string>? FilteredSectionIds { get; private set; }
+
     // ── Selection ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -96,6 +115,20 @@ public class SectionStore
         _sectionsBySemester = dict;
         Sections = dict.Values.SelectMany(v => v).ToList();
         SectionsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Sets <see cref="FilteredSectionIds"/> and fires <see cref="FilteredIdsChanged"/>.
+    /// Called by <see cref="ScheduleGridViewModel"/> after every filter rebuild.
+    /// </summary>
+    /// <param name="ids">
+    /// The section IDs that pass the current filter, or <c>null</c> when no regular filter
+    /// is active. Pass an empty set when a filter is active but nothing matches.
+    /// </param>
+    public void SetFilteredSectionIds(IReadOnlySet<string>? ids)
+    {
+        FilteredSectionIds = ids;
+        FilteredIdsChanged?.Invoke();
     }
 
     /// <summary>

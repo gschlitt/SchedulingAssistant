@@ -215,7 +215,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private void ReloadCore()
     {
         var semesters = _semesterContext.SelectedSemesters.ToList();
-        if (semesters.Count == 0) { ClearDisplay(); return; }
+        if (semesters.Count == 0) { _sectionStore.SetFilteredSectionIds(null); ClearDisplay(); return; }
 
         // Detect semester changes and clear filter state when they occur.
         // Doing this here (rather than in a separate PropertyChanged subscription) ensures
@@ -236,6 +236,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var overlayMatchedIds = ComputeOverlayMatchedSectionIds(lookups.Sections, snap);
         var filtered    = BuildFilteredBlocks(lookups.Sections, snap, lookups, overlayMatchedIds);
         var overlayOnly = BuildOverlayBlocks(lookups.Sections, snap, lookups, filtered, overlayMatchedIds);
+
+        // Push filtered section IDs to SectionStore so the section list can highlight matching cards.
+        // Only publish when a real (non-overlay) filter is active; null signals "no highlighting".
+        IReadOnlySet<string>? filteredIds = Filter.HasRegularFilter
+            ? filtered.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet()
+            : null;
+        _sectionStore.SetFilteredSectionIds(filteredIds);
 
         string? overlayInstructorId = snap.HasOverlay && snap.OverlayType == "Instructor"
             ? snap.SelectedOverlayId : null;

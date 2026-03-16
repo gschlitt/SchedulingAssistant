@@ -156,6 +156,9 @@ public partial class SectionListViewModel : ViewModelBase
         // Sync SelectedItem whenever the selection is changed from another view.
         _sectionStore.SelectionChanged += OnStoreSelectionChanged;
 
+        // Highlight section cards that match the active Schedule Grid filter.
+        _sectionStore.FilteredIdsChanged += ApplyFilterHighlights;
+
         _sortMode = AppSettings.Load().SectionSortMode;
         UpdateSortModeLabel();
 
@@ -289,9 +292,25 @@ public partial class SectionListViewModel : ViewModelBase
 
         App.Logger.LogInfo($"LoadCore: Built {SectionItems.Count} list entries total", "LoadCore");
 
+        // Apply any active grid filter highlights to the freshly built items.
+        ApplyFilterHighlights();
+
         if (selectSectionId is not null)
             SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
                 .FirstOrDefault(i => i.Section.Id == selectSectionId);
+    }
+
+    /// <summary>
+    /// Updates <see cref="SectionListItemViewModel.IsFilterHighlighted"/> on every section card
+    /// based on the current <see cref="SectionStore.FilteredSectionIds"/> set.
+    /// When the store holds <c>null</c> (no regular filter active) all highlights are cleared.
+    /// Called whenever the Schedule Grid filter changes and after the list is rebuilt.
+    /// </summary>
+    private void ApplyFilterHighlights()
+    {
+        var ids = _sectionStore.FilteredSectionIds;
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            item.IsFilterHighlighted = ids is not null && ids.Contains(item.Section.Id);
     }
 
     // ── Sorting ────────────────────────────────────────────────────────────────

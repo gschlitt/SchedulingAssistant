@@ -11,6 +11,14 @@
     x:DataType="vm:SectionListViewModel">
 
     <UserControl.Styles>
+        <!--  Section list: selected item uses the shared SelectedSectionColor so it matches the grid tile  -->
+        <Style Selector="ListBox.SectionList ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource TileFillSelected}" />
+        </Style>
+        <Style Selector="ListBox.SectionList ListBoxItem:pointerover:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource TileFillSelected}" />
+        </Style>
+
         <!--  Compact popup trigger button: looks like a bordered label, toggles popup open/closed  -->
         <Style Selector="ToggleButton.EditorPopupTrigger">
             <Setter Property="Background" Value="{StaticResource FilterExpanderContent}" />
@@ -759,6 +767,7 @@
                 -->
                 <ListBox
                     x:Name="SectionListBox"
+                    Classes="SectionList"
                     b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                     Background="Transparent"
                     BorderThickness="0"
@@ -796,7 +805,11 @@
 
                         <!--  Section card with multi-semester left border indicator  -->
                         <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
-                            <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,2">
+                            <!--  Filter highlight: 3 pt FilterColor border when section matches active grid filter  -->
+                            <Border
+                                BorderBrush="{StaticResource FilterColorBrush}"
+                                BorderThickness="{Binding IsFilterHighlighted, Converter={StaticResource FilterBorderThicknessConverter}}">
+                                <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,2">
                                 <!--  Multi-semester indicator: narrow left border in semester color  -->
                                 <Border
                                     Padding="0"
@@ -1057,6 +1070,7 @@
 
                                     </StackPanel>
                                 </Border>
+                            </Border>
                             </Border>
                         </DataTemplate>
 

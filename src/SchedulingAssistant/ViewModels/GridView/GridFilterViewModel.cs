@@ -74,6 +74,15 @@ public partial class GridFilterViewModel : ViewModelBase
     [ObservableProperty] private bool _isActive;
     [ObservableProperty] private string _activeSummary = string.Empty;
 
+    /// <summary>
+    /// True when one or more non-overlay filter dimensions are active (i.e. at least one
+    /// checkbox is checked in Instructors, Rooms, Subjects, etc.).  Distinct from
+    /// <see cref="IsActive"/>, which is also true when only an overlay is active.
+    /// Used by <see cref="ScheduleGridViewModel"/> to decide whether to push a
+    /// filtered-section-ID set to <see cref="SectionStore"/> for section-list highlighting.
+    /// </summary>
+    [ObservableProperty] private bool _hasRegularFilter;
+
     // ── Overlay state ─────────────────────────────────────────────────────────
 
     [ObservableProperty] private string? _overlayType = null;      // "Instructor", "Room", "Tag", or null
@@ -473,7 +482,8 @@ public partial class GridFilterViewModel : ViewModelBase
         AppendSummaryPart(parts, "Meeting Type",  MeetingTypes);
         AppendSummaryPart(parts, "Level",         Levels);
 
-        IsActive = parts.Count > 0 || HasOverlay;
+        HasRegularFilter = parts.Count > 0;
+        IsActive = HasRegularFilter || HasOverlay;
         ActiveSummary = parts.Count > 0
             ? string.Join("  ·  ", parts)
             : "No filters active";

@@ -22,6 +22,7 @@
             <!--  Converters  -->
             <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
             <conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
+            <conv:FilterBorderThicknessConverter x:Key="FilterBorderThicknessConverter" />
         </ResourceDictionary>
     </Application.Resources>
 
