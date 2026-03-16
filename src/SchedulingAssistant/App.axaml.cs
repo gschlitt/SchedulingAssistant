@@ -51,6 +51,13 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
         ConfigureServices(services, dbPath);
+
+        // Dispose the previous container before replacing it. This triggers Dispose() on every
+        // IDisposable singleton — most importantly DatabaseContext, which closes the SqliteConnection
+        // and releases the file lock on the old database. Safe on first call: Services is null!,
+        // and (null as IDisposable) is null, so ?.Dispose() is a no-op.
+        (Services as IDisposable)?.Dispose();
+
         Services = services.BuildServiceProvider();
 
         // Expose the singleton logger from DI so any code using App.Logger
