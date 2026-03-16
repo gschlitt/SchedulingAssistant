@@ -68,6 +68,13 @@ public partial class SectionEditViewModel : ViewModelBase
     private string? _validatedCourseId;
     private string? _validatedSectionCode;
 
+    /// <summary>
+    /// True during construction while initial property setters fire; suppresses course-tag
+    /// auto-apply so that editing an existing section does not re-add tags that were
+    /// intentionally removed.
+    /// </summary>
+    private bool _isInitializing;
+
     private readonly Func<string, string, bool> _isSectionCodeDuplicate;
 
     // Instructor multi-select
@@ -214,6 +221,31 @@ public partial class SectionEditViewModel : ViewModelBase
         SelectedPrefixOption = null;
         OnPropertyChanged(nameof(IsSectionCodeEnabled));
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+
+        // Auto-apply any tags from the newly selected course (merge — never deselects existing tags).
+        // Suppressed during construction so editing an existing section doesn't inadvertently re-add
+        // tags that were intentionally removed from the section in the past.
+        if (!_isInitializing)
+            ApplyCourseTagsToSelection(value);
+    }
+
+    /// <summary>
+    /// Marks any tags belonging to the specified course as selected in <see cref="TagSelections"/>.
+    /// Tags already selected are left unchanged. Tags not on the course are untouched (never cleared).
+    /// </summary>
+    /// <param name="courseId">The course whose tags should be applied; no-op when null or empty.</param>
+    private void ApplyCourseTagsToSelection(string? courseId)
+    {
+        if (string.IsNullOrEmpty(courseId)) return;
+
+        var course = Courses.FirstOrDefault(c => c.Id == courseId);
+        if (course is null || course.TagIds.Count == 0) return;
+
+        foreach (var tagVm in TagSelections)
+        {
+            if (!tagVm.IsSelected && course.TagIds.Contains(tagVm.Value.Id))
+                tagVm.IsSelected = true;
+        }
     }
 
     partial void OnSelectedSubjectChanged(Subject? value)
@@ -360,6 +392,8 @@ public partial class SectionEditViewModel : ViewModelBase
         SectionPrefixRepository prefixRepository,
         double? defaultBlockLength = null)
     {
+        _isInitializing = true;
+
         _section = section;
         IsNew = isNew;
         _onSave = onSave;
@@ -478,6 +512,8 @@ public partial class SectionEditViewModel : ViewModelBase
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
             Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, meetingTypes, rooms, entry, defaultBlockLength));
+
+        _isInitializing = false;
     }
 
     /// <summary>

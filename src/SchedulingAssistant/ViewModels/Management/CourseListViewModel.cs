@@ -11,6 +11,7 @@ public partial class CourseListViewModel : ViewModelBase
 {
     private readonly CourseRepository _courseRepo;
     private readonly SubjectRepository _subjectRepo;
+    private readonly SectionPropertyRepository _propRepo;
     private readonly IDialogService _dialog;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
@@ -24,6 +25,7 @@ public partial class CourseListViewModel : ViewModelBase
     public CourseListViewModel(
         CourseRepository courseRepo,
         SubjectRepository subjectRepo,
+        SectionPropertyRepository propRepo,
         IDialogService dialog,
         SectionRepository sectionRepo,
         SemesterRepository semesterRepo,
@@ -32,6 +34,7 @@ public partial class CourseListViewModel : ViewModelBase
     {
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
+        _propRepo = propRepo;
         _dialog = dialog;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
@@ -44,15 +47,34 @@ public partial class CourseListViewModel : ViewModelBase
 
     public bool HasSubjects => Subjects.Count > 0;
 
+    /// <summary>
+    /// Reloads the course list from the database and populates each course's
+    /// transient TagSummary display string from the current tag property values.
+    /// </summary>
     private void LoadCourses()
     {
-        Courses = new ObservableCollection<Course>(_courseRepo.GetAll());
+        var tagNamesById = _propRepo.GetAll(SectionPropertyTypes.Tag)
+            .ToDictionary(t => t.Id, t => t.Name);
+
+        var courses = _courseRepo.GetAll();
+        foreach (var c in courses)
+        {
+            c.TagSummary = c.TagIds.Count == 0
+                ? string.Empty
+                : string.Join(", ", c.TagIds
+                    .Select(id => tagNamesById.TryGetValue(id, out var n) ? n : null)
+                    .Where(n => n is not null)
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)!);
+        }
+
+        Courses = new ObservableCollection<Course>(courses);
         SelectedCourse = null;
     }
 
     [RelayCommand]
     private void Add()
     {
+        var allTags = _propRepo.GetAll(SectionPropertyTypes.Tag);
         var course = new Course();
         EditVm = new CourseEditViewModel(course, isNew: true,
             onSave: async c =>
@@ -62,20 +84,22 @@ public partial class CourseListViewModel : ViewModelBase
             },
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code),
-            subjects: Subjects);
+            subjects: Subjects,
+            allTags: allTags);
     }
 
     [RelayCommand]
     private void Edit()
     {
         if (SelectedCourse is null) return;
+        var allTags = _propRepo.GetAll(SectionPropertyTypes.Tag);
         var clone = new Course
         {
             Id = SelectedCourse.Id,
             SubjectId = SelectedCourse.SubjectId,
             CalendarCode = SelectedCourse.CalendarCode,
             Title = SelectedCourse.Title,
-            Tags = new List<string>(SelectedCourse.Tags),
+            TagIds = new List<string>(SelectedCourse.TagIds),
             IsActive = SelectedCourse.IsActive
         };
         EditVm = new CourseEditViewModel(clone, isNew: false,
@@ -86,7 +110,8 @@ public partial class CourseListViewModel : ViewModelBase
             },
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id),
-            subjects: Subjects);
+            subjects: Subjects,
+            allTags: allTags);
     }
 
     [RelayCommand]

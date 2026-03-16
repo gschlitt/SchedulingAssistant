@@ -6,8 +6,17 @@ public class Course
     public string SubjectId { get; set; } = string.Empty;
     public string CalendarCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public List<string> Tags { get; set; } = new();
+    /// <summary>IDs of tags (from SectionPropertyValues) attached to this course.</summary>
+    public List<string> TagIds { get; set; } = new();
+
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Transient display string (not persisted). Populated by CourseListViewModel after
+    /// loading so that DataGrid rows can show tag names without injecting a repository.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string TagSummary { get; set; } = string.Empty;
 
     /// <summary>
     /// Computes the course level from the calendar code.

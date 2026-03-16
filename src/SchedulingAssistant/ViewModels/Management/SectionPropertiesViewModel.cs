@@ -18,19 +18,20 @@ public partial class SectionPropertiesViewModel : ViewModelBase
         RoomRepository roomRepo,
         SectionRepository sectionRepo,
         InstructorRepository instructorRepo,
+        CourseRepository courseRepo,
         DatabaseContext db,
         SectionListViewModel sectionListVm,
         IDialogService dialog)
     {
         Categories = new ObservableCollection<ViewModelBase>
         {
-            new SectionPropertyListViewModel(SectionPropertyTypes.SectionType, "Section Type",  repo, sectionRepo, instructorRepo, db, sectionListVm, dialog),
-            new SectionPropertyListViewModel(SectionPropertyTypes.MeetingType, "Meeting Type",  repo, sectionRepo, instructorRepo, db, sectionListVm, dialog),
-            new SectionPropertyListViewModel(SectionPropertyTypes.StaffType,   "Staff Type",    repo, sectionRepo, instructorRepo, db, sectionListVm, dialog),
-            new SectionPropertyListViewModel(SectionPropertyTypes.Campus,      "Campus",        repo, sectionRepo, instructorRepo, db, sectionListVm, dialog, showAbbreviation: true),
-            new SectionPropertyListViewModel(SectionPropertyTypes.Tag,         "Tags",          repo, sectionRepo, instructorRepo, db, sectionListVm, dialog),
-            new SectionPropertyListViewModel(SectionPropertyTypes.Resource,    "Resources",     repo, sectionRepo, instructorRepo, db, sectionListVm, dialog),
-            new SectionPropertyListViewModel(SectionPropertyTypes.Reserve,     "Reserve Codes", repo, sectionRepo, instructorRepo, db, sectionListVm, dialog),
+            new SectionPropertyListViewModel(SectionPropertyTypes.SectionType, "Section Type",  repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog),
+            new SectionPropertyListViewModel(SectionPropertyTypes.MeetingType, "Meeting Type",  repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog),
+            new SectionPropertyListViewModel(SectionPropertyTypes.StaffType,   "Staff Type",    repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog),
+            new SectionPropertyListViewModel(SectionPropertyTypes.Campus,      "Campus",        repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog, showAbbreviation: true),
+            new SectionPropertyListViewModel(SectionPropertyTypes.Tag,         "Tags",          repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog),
+            new SectionPropertyListViewModel(SectionPropertyTypes.Resource,    "Resources",     repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog),
+            new SectionPropertyListViewModel(SectionPropertyTypes.Reserve,     "Reserve Codes", repo, sectionRepo, instructorRepo, courseRepo, db, sectionListVm, dialog),
             new RoomListViewModel(roomRepo, sectionRepo, sectionListVm, db, dialog),
         };
         SelectedCategory = Categories[0];
