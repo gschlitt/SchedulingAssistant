@@ -215,6 +215,8 @@
                             Header="Export">
                             <MenuItem Command="{Binding NavigateToExportCommand}" Header="Export Schedule PNG…" />
                             <MenuItem Command="{Binding NavigateToWorkloadReportCommand}" Header="Workload Report…" />
+                            <Separator />
+                            <MenuItem Command="{Binding NavigateToWorkloadMailerCommand}" Header="Workload Mailer…" />
                         </MenuItem>
                     </Menu>
 

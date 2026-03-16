@@ -203,6 +203,11 @@
                         Binding="{Binding StaffTypeName}"
                         FontSize="12"
                         Header="Type" />
+                    <DataGridTextColumn
+                        Width="*"
+                        Binding="{Binding Email}"
+                        FontSize="12"
+                        Header="Email" />
                     <DataGridCheckBoxColumn
                         Width="46"
                         Binding="{Binding IsActive}"

@@ -1,0 +1,213 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.WorkloadMailerView"
+             x:DataType="vm:WorkloadMailerViewModel"
+             x:CompileBindings="False">
+
+    <!--
+        The flyout contains two panels driven by a MailerStep state machine:
+          IsSetup   = true  →  Setup panel  (choose AY, semesters, instructors, edit template)
+          IsSending = true  →  Sending panel (preview and open each email one at a time)
+          IsDone    = true  →  Done message
+    -->
+
+    <Grid Width="760" Margin="16,0">
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             STEP 1 — Setup
+             ════════════════════════════════════════════════════════════════ -->
+        <Grid IsVisible="{Binding IsSetup}"
+              ColumnDefinitions="260,16,*"
+              RowDefinitions="Auto,8,*">
+
+            <!-- ── Left column: Semester + Instructor selectors ──────────── -->
+            <StackPanel Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Spacing="10">
+
+                <!-- Academic Year -->
+                <TextBlock Text="Academic Year" FontSize="11" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding AcademicYears}"
+                          SelectedItem="{Binding SelectedAcademicYear, Mode=TwoWay}"
+                          DisplayMemberBinding="{Binding Name}"
+                          HorizontalAlignment="Stretch"
+                          FontSize="11" />
+
+                <!-- Semesters -->
+                <TextBlock Text="Semesters" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
+                <Border Background="{StaticResource FilterBarBackground}"
+                        CornerRadius="3" Padding="6">
+                    <ItemsControl ItemsSource="{Binding SemesterItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          Content="{Binding DisplayName}"
+                                          FontSize="11"
+                                          Padding="2,2" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- Instructors -->
+                <DockPanel Margin="0,4,0,0">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="Instructors" FontSize="11" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4"
+                                HorizontalAlignment="Right">
+                        <Button Content="All" FontSize="10" Padding="5,1"
+                                Command="{Binding SelectAllInstructorsCommand}" />
+                        <Button Content="None" FontSize="10" Padding="5,1"
+                                Command="{Binding DeselectAllInstructorsCommand}" />
+                    </StackPanel>
+                </DockPanel>
+                <Border Background="{StaticResource FilterBarBackground}"
+                        CornerRadius="3" Padding="6" MaxHeight="240">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding InstructorItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              IsEnabled="{Binding HasEmail}"
+                                              FontSize="10"
+                                              Padding="2,1">
+                                        <CheckBox.Content>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontSize="10" />
+                                                <TextBlock Text="{Binding EmailDisplay}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource TextSecondary}" />
+                                            </StackPanel>
+                                        </CheckBox.Content>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+            </StackPanel>
+
+            <!-- ── Right column: Template editor ────────────────────────── -->
+            <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="3" Spacing="8">
+
+                <!-- Placeholder legend -->
+                <Border Background="{StaticResource FilterBarBackground}"
+                        CornerRadius="3" Padding="8,6">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Available placeholders:" FontSize="10" FontWeight="SemiBold" />
+                        <TextBlock FontSize="10" Foreground="{StaticResource TextSecondary}"
+                                   Text="{}{FirstName}  {LastName}  {AcademicYear}  {Semester}  {Workload}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Subject -->
+                <TextBlock Text="Email Subject" FontSize="11" FontWeight="SemiBold" />
+                <TextBox Text="{Binding SubjectTemplate, Mode=TwoWay}"
+                         FontSize="11"
+                         Watermark="e.g. Your Workload — {AcademicYear} {Semester}" />
+
+                <!-- Body -->
+                <TextBlock Text="Email Body" FontSize="11" FontWeight="SemiBold" />
+                <TextBox Text="{Binding BodyTemplate, Mode=TwoWay}"
+                         FontSize="11"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="320"
+                         FontFamily="Courier New, Consolas, monospace"
+                         VerticalContentAlignment="Top" />
+
+                <!-- Save template + Begin -->
+                <DockPanel Margin="0,4,0,0">
+                    <Button DockPanel.Dock="Left"
+                            Content="Save Template"
+                            Command="{Binding SaveTemplateCommand}"
+                            Padding="10,5"
+                            FontSize="11"
+                            Background="Transparent" />
+                    <Button DockPanel.Dock="Right"
+                            Content="Begin Sending →"
+                            Command="{Binding BeginSendingCommand}"
+                            HorizontalAlignment="Right"
+                            Padding="12,5"
+                            FontSize="11"
+                            FontWeight="SemiBold" />
+                </DockPanel>
+
+            </StackPanel>
+
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             STEP 2 — Sending
+             ════════════════════════════════════════════════════════════════ -->
+        <Grid IsVisible="{Binding IsSending}"
+              RowDefinitions="Auto,12,Auto,8,Auto,8,*,12,Auto">
+
+            <!-- Progress -->
+            <TextBlock Grid.Row="0"
+                       Text="{Binding ProgressText}"
+                       FontSize="12" FontWeight="SemiBold" />
+
+            <!-- Instructor name + email -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="{Binding CurrentInstructorName}"
+                           FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding CurrentEmail}"
+                           FontSize="12" Foreground="{StaticResource TextSecondary}" />
+            </StackPanel>
+
+            <!-- Subject (editable) -->
+            <TextBox Grid.Row="4"
+                     Text="{Binding RenderedSubject, Mode=TwoWay}"
+                     FontSize="11"
+                     Watermark="Subject" />
+
+            <!-- Body (editable) -->
+            <TextBox Grid.Row="6"
+                     Text="{Binding RenderedBody, Mode=TwoWay}"
+                     FontSize="11"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     Height="320"
+                     FontFamily="Courier New, Consolas, monospace"
+                     VerticalContentAlignment="Top" />
+
+            <!-- Action buttons -->
+            <StackPanel Grid.Row="8" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="← Back to Setup"
+                        Command="{Binding BackToSetupCommand}"
+                        Padding="10,5" FontSize="11"
+                        Background="Transparent" />
+                <Button Content="Skip"
+                        Command="{Binding SkipCommand}"
+                        Padding="10,5" FontSize="11" />
+                <Button Content="Open in Mail →"
+                        Command="{Binding OpenInMailCommand}"
+                        Padding="12,5" FontSize="11"
+                        FontWeight="SemiBold" />
+            </StackPanel>
+
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             STEP 3 — Done
+             ════════════════════════════════════════════════════════════════ -->
+        <StackPanel IsVisible="{Binding IsDone}"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Spacing="12">
+            <TextBlock Text="All done!" FontSize="16" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" />
+            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}"
+                       HorizontalAlignment="Center"
+                       Text="All emails have been opened in your mail client." />
+            <Button Content="Back to Setup"
+                    Command="{Binding BackToSetupCommand}"
+                    HorizontalAlignment="Center"
+                    Padding="12,5" FontSize="11" />
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

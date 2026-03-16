@@ -42,6 +42,19 @@ public class AppSettings
     /// <summary>Recently opened database paths (most recent first). Max 10 entries.</summary>
     public List<string> RecentDatabases { get; set; } = new();
 
+    /// <summary>
+    /// Email subject template for the Workload Mailer.
+    /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}.
+    /// </summary>
+    public string WorkloadMailerSubject { get; set; } = "Your Workload — {AcademicYear} {Semester}";
+
+    /// <summary>
+    /// Email body template for the Workload Mailer.
+    /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}, {Workload}.
+    /// </summary>
+    public string WorkloadMailerBody { get; set; } =
+        "Dear {FirstName},\n\nHere is your workload assignment for {Semester}.\n\n{Workload}\n\nPlease let us know if you have any questions.";
+
     public static AppSettings Load()
     {
         if (!File.Exists(SettingsPath))

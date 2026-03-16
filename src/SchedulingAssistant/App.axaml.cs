@@ -169,6 +169,7 @@ public partial class App : Application
         services.AddTransient<AcademicUnitListViewModel>();
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
+        services.AddTransient<WorkloadMailerViewModel>();
         services.AddTransient<SectionPrefixListViewModel>();
 
         // Views
