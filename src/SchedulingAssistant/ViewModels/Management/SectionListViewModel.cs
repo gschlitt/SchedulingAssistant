@@ -200,8 +200,34 @@ public partial class SectionListViewModel : ViewModelBase
 
     // ── Load / Reload ──────────────────────────────────────────────────────────
 
-    /// <summary>Reloads the section list from the database.</summary>
+    /// <summary>
+    /// Rebuilds the section list from the existing <see cref="SectionStore"/> in-memory
+    /// cache.  Use this after the store has already been refreshed (e.g. after a save or
+    /// delete that called <c>_sectionStore.Reload</c> internally).
+    /// <para>
+    /// Do <em>not</em> use this to pick up changes committed by an external writer process —
+    /// use <see cref="ReloadFromDatabase"/> instead, which re-queries the DB first.
+    /// </para>
+    /// </summary>
     public void Reload() => Load();
+
+    /// <summary>
+    /// Re-queries the database for the current semester set, updates the
+    /// <see cref="SectionStore"/> cache, then rebuilds the section list.
+    /// The <c>SectionsChanged</c> event cascades the refresh automatically to the
+    /// Schedule Grid and Workload Panel via their existing subscriptions.
+    /// <para>
+    /// This is the correct entry point for the Refresh button in the read-only banner,
+    /// where an external writer process may have committed changes since the cache was
+    /// last populated.
+    /// </para>
+    /// </summary>
+    public void ReloadFromDatabase()
+    {
+        var semesterIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
+        _sectionStore.Reload(_sectionRepo, semesterIds);
+        // Load() is triggered automatically via the _sectionStore.SectionsChanged subscription.
+    }
 
     private void Load(string? selectSectionId = null)
     {

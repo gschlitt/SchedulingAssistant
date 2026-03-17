@@ -253,6 +253,7 @@
             BorderThickness="0,0,0,1"
             Padding="12,4">
             <DockPanel>
+                <!--  "Switch to edit mode" — rightmost; only shown when lock is free  -->
                 <Button
                     DockPanel.Dock="Right"
                     Margin="8,0,0,0"
@@ -262,6 +263,15 @@
                     Command="{Binding AcquireWriteLockCommand}"
                     Content="Switch to edit mode"
                     ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+                <!--  Refresh — always visible in read-only mode; reloads section data from DB  -->
+                <Button
+                    DockPanel.Dock="Right"
+                    Margin="8,0,0,0"
+                    Padding="8,2"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Command="{Binding RefreshDataCommand}"
+                    Content="Refresh View"
+                    ToolTip.Tip="{Binding RefreshButtonTooltip}" />
                 <TextBlock
                     VerticalAlignment="Center"
                     FontSize="{StaticResource FontSizeNormal}"

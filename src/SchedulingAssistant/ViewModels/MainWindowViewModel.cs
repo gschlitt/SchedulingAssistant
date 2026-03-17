@@ -73,6 +73,13 @@ public partial class MainWindowViewModel : ViewModelBase
     // ── Write-lock properties ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Timestamp of the last manual data refresh performed while in read-only mode.
+    /// Shown in the banner tooltip rather than inline, to avoid being confused with
+    /// the lock heartbeat.  Null until the user clicks Refresh for the first time.
+    /// </summary>
+    private DateTime? _lastRefreshedAt;
+
+    /// <summary>
     /// True when this instance holds the write lock and the user may make edits.
     /// False in read-only mode. Bound by container <c>IsEnabled</c> in the view
     /// to gate all write-capable UI in a single binding per container.
@@ -87,7 +94,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// Human-readable description of the current lock state for the banner.
-    /// Shows who holds the lock and since when, or null when this instance is the writer.
+    /// Shows who holds the lock and since when.
+    /// Returns null when this instance is the writer (banner is hidden).
     /// </summary>
     public string? LockStatusMessage
     {
@@ -95,11 +103,19 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (_lockService.IsWriter) return null;
             var h = _lockService.CurrentHolder;
-            if (h is null) return "Read-only — database is locked by another instance.";
-            var localTime = h.Acquired.ToLocalTime().ToString("h:mm tt");
-            return $"Read-only — held by {h.Username} on {h.Machine} since {localTime}";
+            return h is null
+                ? "Read-only — database is locked by another instance."
+                : $"Read-only — held by {h.Username} on {h.Machine} since {h.Acquired.ToLocalTime():h:mm tt}";
         }
     }
+
+    /// <summary>
+    /// Tooltip text for the Refresh button in the read-only banner.
+    /// Shows when data was last refreshed, or a prompt to refresh if it hasn't been yet.
+    /// </summary>
+    public string RefreshButtonTooltip => _lastRefreshedAt is { } t
+        ? $"Last refreshed at {t:h:mm tt}. Click to reload again."
+        : "Reload sections from the database to see changes made by the writer.";
 
     /// <summary>
     /// True when a read-only instance has detected that the write lock is no longer
@@ -174,6 +190,23 @@ public partial class MainWindowViewModel : ViewModelBase
         if (path is null) return;
         _lockService.TryAcquire(path);
         OnLockStateChanged();
+    }
+
+    /// <summary>
+    /// Reloads all section data from the database while in read-only mode.
+    /// Triggers a full <see cref="SectionStore"/> reload, which cascades to the
+    /// schedule grid, section list, and workload panel via their <c>SectionsChanged</c>
+    /// subscriptions. Records the refresh time so the banner can show "Refreshed at X:XX".
+    /// </summary>
+    [RelayCommand]
+    private void RefreshData()
+    {
+        // ReloadFromDatabase re-queries the DB and updates the SectionStore cache.
+        // The SectionsChanged event then cascades automatically to the schedule grid
+        // and workload panel — no additional calls required here.
+        SectionListVm.ReloadFromDatabase();
+        _lastRefreshedAt = DateTime.Now;
+        OnPropertyChanged(nameof(RefreshButtonTooltip));
     }
 
     partial void OnFlyoutPageChanged(object? oldValue, object? newValue)
