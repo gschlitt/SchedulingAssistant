@@ -15,27 +15,35 @@ public partial class GridFilterViewModel : ViewModelBase
 {
     // ── Sentinel IDs for "no value assigned" filter options ───────────────────
     //
-    // "Not staffed" and "Unroomed" are special items that appear at the top of the
-    // Instructor and Room filter listboxes respectively. Selecting one means "show
-    // only sections/meetings that have NO value assigned for this dimension."
+    // The instructor filter has two sentinel items at the top of its listbox:
+    //   • "Show Unstaffed"      — shows ONLY sections with no instructor assignment.
+    //   • "Emphasize Unstaffed" — shows ALL sections, but staffed ones receive a
+    //                             strikethrough in the Schedule Grid to de-emphasise them.
     //
-    // They are implemented as regular FilterItemViewModels with sentinel ID strings
-    // so they flow through the standard IsSelected/FilterChanged machinery. The
-    // ScheduleGridViewModel strips these IDs from the selected-ID sets before
-    // applying predicates, converting them to separate boolean flags instead.
+    // The room filter has one sentinel:
+    //   • "Unroomed" — shows only meetings with no room assigned.
     //
-    // Mutual exclusion: selecting a sentinel disables all named items in that
-    // dimension, and selecting any named item disables the sentinel. This prevents
-    // logically contradictory combinations (e.g. "Not staffed" AND "Smith, J.").
+    // All sentinels are implemented as regular FilterItemViewModels with sentinel ID
+    // strings so they flow through the standard IsSelected/FilterChanged machinery.
+    // ScheduleGridViewModel strips these IDs from the selected-ID sets before applying
+    // predicates, converting them to separate boolean flags instead.
+    //
+    // Mutual exclusion rules for instructors:
+    //   - "Show Unstaffed" selected   → "Emphasize Unstaffed" and all named items disabled.
+    //   - "Emphasize Unstaffed" selected → "Show Unstaffed" and all named items disabled.
+    //   - Any named instructor selected  → both sentinels disabled.
+    //   - Nothing selected               → everything enabled.
     // Enforcement is in RefreshInstructorMutualExclusion / RefreshRoomMutualExclusion.
 
-    public const string NotStaffedId = "__not_staffed__";
-    public const string UnroomedId   = "__unroomed__";
+    public const string NotStaffedId         = "__not_staffed__";
+    public const string EmphasizeUnstaffedId = "__emphasize_unstaffed__";
+    public const string UnroomedId           = "__unroomed__";
 
     // Live references to the current sentinel items, held so their IsSelected state
     // can be preserved across PopulateOptions() rebuilds and so mutual-exclusion
     // logic can address them directly without searching the collection each time.
     private FilterItemViewModel? _notStaffedItem;
+    private FilterItemViewModel? _emphasizeUnstaffedItem;
     private FilterItemViewModel? _unroomedItem;
 
     // ── Option lists (one per filter dimension) ──────────────────────────────
@@ -279,7 +287,11 @@ public partial class GridFilterViewModel : ViewModelBase
         // (set in AppSettings), so inactive instructors are excluded regardless.
         RebuildList(Instructors,  instructorLookup.Keys.ToHashSet(),
             id => instructorLookup.TryGetValue(id, out var v) ? $"{v.FirstName} {v.LastName}" : null);
-        InsertSentinelItem(Instructors, ref _notStaffedItem, NotStaffedId, "Not staffed");
+        // Insert in reverse order: Emphasize Unstaffed goes in first (lands at [0]),
+        // then Unstaffed is inserted at [0], pushing Emphasize to [1].
+        // Final layout: [0]=Unstaffed, [1]=Unstaffed (Emphasize), [2..]=named instructors.
+        InsertSentinelItem(Instructors, ref _emphasizeUnstaffedItem, EmphasizeUnstaffedId, "Unstaffed (Emphasize)");
+        InsertSentinelItem(Instructors, ref _notStaffedItem,         NotStaffedId,         "Unstaffed");
 
         RebuildList(Rooms,        usedRoomIds,
             id => roomLookup.TryGetValue(id, out var v)
@@ -287,8 +299,10 @@ public partial class GridFilterViewModel : ViewModelBase
                   : null);
         InsertSentinelItem(Rooms, ref _unroomedItem, UnroomedId, "Unroomed");
 
-        // Keep named-only mirrors in sync (same objects, no sentinel)
-        SyncCollection(NamedInstructors, Instructors.Skip(1));
+        // Keep named-only mirrors in sync (same objects, no sentinels).
+        // Use IsSentinel rather than Skip() so the count of sentinels can change without
+        // breaking this line.
+        SyncCollection(NamedInstructors, Instructors.Where(i => !i.IsSentinel));
         SyncCollection(NamedRooms,       Rooms.Skip(1));
 
         RebuildList(Subjects,     usedSubjectIds,
@@ -425,30 +439,41 @@ public partial class GridFilterViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Enforces mutual exclusion between "Not staffed" and named instructor items:
-    /// - If "Not staffed" is selected, all named instructors are disabled (greyed out,
-    ///   non-clickable). This prevents combining the sentinel with a specific instructor,
-    ///   which would be logically contradictory.
-    /// - If any named instructor is selected, "Not staffed" is disabled.
-    /// - When nothing is selected, everything is re-enabled.
+    /// Enforces mutual exclusion among the three instructor-filter groups:
+    /// "Show Unstaffed", "Emphasize Unstaffed", and named instructor items.
     ///
-    /// Only IsEnabled is mutated here — IsSelected is never forced. The UI CheckBox
-    /// binds to both IsSelected (two-way) and IsEnabled, so disabling an item
-    /// prevents the user from interacting with it but does not silently uncheck it.
+    /// Rules:
+    ///   - Either sentinel selected  → the other sentinel and all named items are disabled.
+    ///   - Any named item selected   → both sentinels are disabled.
+    ///   - Nothing selected          → everything is enabled.
+    ///
+    /// Only IsEnabled is mutated — IsSelected is never forced. The UI CheckBox binds
+    /// to both IsSelected (two-way) and IsEnabled, so disabling prevents interaction
+    /// without silently unchecking.
     /// </summary>
     private void RefreshInstructorMutualExclusion()
     {
-        if (_notStaffedItem == null) return;
-        if (_notStaffedItem.IsSelected)
+        if (_notStaffedItem == null || _emphasizeUnstaffedItem == null) return;
+
+        var namedItems         = Instructors.Where(i => !i.IsSentinel).ToList();
+        bool showSelected      = _notStaffedItem.IsSelected;
+        bool emphasizeSelected = _emphasizeUnstaffedItem.IsSelected;
+        bool anyNamedSelected  = namedItems.Any(i => i.IsSelected);
+
+        if (showSelected || emphasizeSelected)
         {
-            foreach (var item in Instructors.Skip(1))
-                item.IsEnabled = false;
-            return;
+            // One sentinel is active: disable the other sentinel and all named items.
+            _notStaffedItem.IsEnabled         = !emphasizeSelected;
+            _emphasizeUnstaffedItem.IsEnabled  = !showSelected;
+            foreach (var item in namedItems) item.IsEnabled = false;
         }
-        bool anyNamedSelected = Instructors.Skip(1).Any(i => i.IsSelected);
-        _notStaffedItem.IsEnabled = !anyNamedSelected;
-        foreach (var item in Instructors.Skip(1))
-            item.IsEnabled = true;
+        else
+        {
+            // Neither sentinel active: disable both sentinels if a named item is selected.
+            _notStaffedItem.IsEnabled         = !anyNamedSelected;
+            _emphasizeUnstaffedItem.IsEnabled  = !anyNamedSelected;
+            foreach (var item in namedItems) item.IsEnabled = true;
+        }
     }
 
     /// <summary>

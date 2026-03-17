@@ -50,11 +50,12 @@ public partial class ScheduleGridView : UserControl
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
             ? d : 12;
 
-    private static IBrush TileFill           => Res("TileFill");
-    private static IBrush TileFillSelected   => Res("TileFillSelected");
-    private static IBrush TileBorder         => Res("TileBorder");
-    private static IBrush TileBorderSelected => Res("TileBorderSelected");
-    private static IBrush OverlayFrameBorder => Res("OverlayFrameBorder");
+    private static IBrush TileFill              => Res("TileFill");
+    private static IBrush TileFillSelected      => Res("TileFillSelected");
+    private static IBrush TileBorder            => Res("TileBorder");
+    private static IBrush TileBorderSelected    => Res("TileBorderSelected");
+    private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
+    private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
     private static IBrush RuleBrush          => Res("GridRuleLine");
     private static IBrush HourRuleBrush      => Res("GridHourRuleLine");
     private static IBrush HeaderFill         => Res("ChromeBackground");
@@ -216,11 +217,14 @@ public partial class ScheduleGridView : UserControl
                         Padding      = new Thickness(1, 0),
                         Child        = new TextBlock
                         {
-                            Text         = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation),
-                            FontSize     = 11,
-                            FontWeight   = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground   = entrySelected ? TileBorderSelected : Brushes.Black,
-                            TextTrimming = TextTrimming.CharacterEllipsis,
+                            Text            = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation),
+                            FontSize        = 11,
+                            FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
+                            Foreground      = entrySelected        ? TileBorderSelected
+                                           : entry.IsDeemphasized  ? TileDeemphasizedText
+                                           : Brushes.Black,
+                            TextTrimming    = TextTrimming.CharacterEllipsis,
+                            TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                         },
                     };
                     stack.Children.Add(entryRow);
@@ -568,13 +572,15 @@ public partial class ScheduleGridView : UserControl
                         Tag          = clickCtx,
                         Child        = new TextBlock
                         {
-                            Text = labelText,
-                            FontSize = 11,
-                            FontWeight = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground = entrySelected ? TileBorderSelected
-                                       : entry.IsOverlay ? OverlayFrameBorder
-                                       : Brushes.Black,
-                            TextTrimming = TextTrimming.CharacterEllipsis,
+                            Text            = labelText,
+                            FontSize        = 11,
+                            FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
+                            Foreground      = entrySelected        ? TileBorderSelected
+                                           : entry.IsOverlay       ? OverlayFrameBorder
+                                           : entry.IsDeemphasized  ? TileDeemphasizedText
+                                           : Brushes.Black,
+                            TextTrimming    = TextTrimming.CharacterEllipsis,
+                            TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                         },
                     };
                     entryRow.PointerPressed += (sender, e) =>

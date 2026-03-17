@@ -76,21 +76,30 @@ internal record GridLookups(
 /// </list>
 ///
 /// <b>Sentinel handling</b><br/>
-/// The instructor and room filter lists each include one special "catch-all" entry:
+/// The instructor filter list contains two special sentinel entries:
 /// <list type="bullet">
 ///   <item>
-///     <see cref="GridFilterViewModel.NotStaffedId"/> — matches sections that have
-///     <em>no</em> instructor assignment.
+///     <see cref="GridFilterViewModel.NotStaffedId"/> — shows ONLY sections with no
+///     instructor assignment (<see cref="NotStaffedSelected"/>).
 ///   </item>
 ///   <item>
+///     <see cref="GridFilterViewModel.EmphasizeUnstaffedId"/> — all sections pass, but
+///     staffed sections are visually de-emphasised with a strikethrough in the grid
+///     (<see cref="EmphasizeUnstaffedSelected"/>). Does NOT activate
+///     <see cref="FilterInstructor"/>.
+///   </item>
+/// </list>
+/// The room filter has one sentinel:
+/// <list type="bullet">
+///   <item>
 ///     <see cref="GridFilterViewModel.UnroomedId"/> — matches meetings that have
-///     <em>no</em> room assigned.
+///     <em>no</em> room assigned (<see cref="UnroomedSelected"/>).
 ///   </item>
 /// </list>
 /// These IDs are removed from <see cref="NamedInstructorIds"/> and
-/// <see cref="NamedRoomIds"/> respectively. Their presence is stored in
-/// <see cref="NotStaffedSelected"/> and <see cref="UnroomedSelected"/> so that
-/// filter predicates can honour them without treating them as real entity IDs.
+/// <see cref="NamedRoomIds"/> respectively. Their presence is stored as separate
+/// booleans so that filter predicates can honour them without treating them as real
+/// entity IDs.
 /// </summary>
 internal record FilterSnapshot(
     /// <summary>
@@ -127,10 +136,18 @@ internal record FilterSnapshot(
     HashSet<string> LevelIds,
 
     /// <summary>
-    /// True when the "Not staffed" sentinel was selected in the instructor filter.
-    /// Sections with no instructor assignments are included when this is true.
+    /// True when the "Show Unstaffed" sentinel was selected in the instructor filter.
+    /// Only sections with no instructor assignments are included when this is true.
     /// </summary>
     bool NotStaffedSelected,
+
+    /// <summary>
+    /// True when the "Emphasize Unstaffed" sentinel was selected in the instructor filter.
+    /// All sections pass the instructor filter, but sections that ARE staffed receive
+    /// <see cref="TileEntry.IsDeemphasized"/> = true so the renderer can apply a
+    /// strikethrough to them. Does NOT activate <see cref="FilterInstructor"/>.
+    /// </summary>
+    bool EmphasizeUnstaffedSelected,
 
     /// <summary>
     /// True when the "Unroomed" sentinel was selected in the room filter.

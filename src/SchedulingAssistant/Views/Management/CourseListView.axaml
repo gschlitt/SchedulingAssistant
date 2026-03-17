@@ -216,6 +216,7 @@
                 <!--  Subject list  -->
                 <DataGrid
                     MaxHeight="200"
+                    HorizontalAlignment="Left"
                     AutoGenerateColumns="False"
                     CanUserSortColumns="True"
                     IsReadOnly="True"
@@ -224,11 +225,13 @@
                     SelectedItem="{Binding SelectedSubject}">
                     <DataGrid.Columns>
                         <DataGridTextColumn
-                            Width="*"
+                            Width="Auto"
+                            MinWidth="160"
                             Binding="{Binding Name}"
                             Header="Name" />
                         <DataGridTextColumn
-                            Width="150"
+                            Width="Auto"
+                            MinWidth="160"
                             Binding="{Binding CalendarAbbreviation}"
                             Header="Calendar Abbreviation" />
                     </DataGrid.Columns>

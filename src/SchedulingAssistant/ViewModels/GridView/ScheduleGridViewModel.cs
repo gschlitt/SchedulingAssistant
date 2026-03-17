@@ -239,7 +239,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // Push filtered section IDs to SectionStore so the section list can highlight matching cards.
         // Only publish when a real (non-overlay) filter is active; null signals "no highlighting".
-        IReadOnlySet<string>? filteredIds = Filter.HasRegularFilter
+        //
+        // We check the snapshot rather than Filter.HasRegularFilter because "Emphasize Unstaffed"
+        // sets HasRegularFilter=true (it is an active filter state) but does not exclude any
+        // sections — publishing all section IDs would light up every card in the section list,
+        // which would be misleading. The snap.FilterX properties are false for that sentinel.
+        bool hasActualFilter = snap.FilterInstructor || snap.FilterRoom || snap.FilterSubject
+                            || snap.FilterCampus    || snap.FilterSectionType || snap.FilterTag
+                            || snap.FilterMeetingType || snap.FilterLevel;
+        IReadOnlySet<string>? filteredIds = hasActualFilter
             ? filtered.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet()
             : null;
         _sectionStore.SetFilteredSectionIds(filteredIds);
@@ -377,8 +385,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // Strip sentinels from the ID sets and record their presence as booleans.
         // SelectedInstructorIds / SelectedRoomIds return newly-allocated HashSets on
         // each call, so Remove() here does not mutate any live filter collection.
-        bool notStaffed = instructorIds.Remove(GridFilterViewModel.NotStaffedId);
-        bool unroomed   = roomIds.Remove(GridFilterViewModel.UnroomedId);
+        bool notStaffed          = instructorIds.Remove(GridFilterViewModel.NotStaffedId);
+        bool emphasizeUnstaffed  = instructorIds.Remove(GridFilterViewModel.EmphasizeUnstaffedId);
+        bool unroomed            = roomIds.Remove(GridFilterViewModel.UnroomedId);
 
         return new FilterSnapshot(
             NamedInstructorIds: instructorIds,
@@ -389,8 +398,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             TagIds:             Filter.SelectedTagIds,
             MeetingTypeIds:     Filter.SelectedMeetingTypeIds,
             LevelIds:           Filter.SelectedLevelIds,
-            NotStaffedSelected: notStaffed,
-            UnroomedSelected:   unroomed,
+            NotStaffedSelected:         notStaffed,
+            EmphasizeUnstaffedSelected: emphasizeUnstaffed,
+            UnroomedSelected:           unroomed,
             HasOverlay:         Filter.HasOverlay,
             OverlayType:        Filter.OverlayType,
             SelectedOverlayId:  Filter.SelectedOverlayId);
@@ -573,7 +583,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
             // ── Build display label (DRY helper used by all three passes) ──────────
             var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
-            bool sectionIsOverlay = overlayMatchedIds.Contains(section.Id);
+            bool sectionIsOverlay  = overlayMatchedIds.Contains(section.Id);
+            // "Emphasize Unstaffed" mode: staffed sections are de-emphasised with a
+            // strikethrough in the grid. Unstaffed sections render normally.
+            bool isDeemphasized    = snap.EmphasizeUnstaffedSelected && section.InstructorIds.Any();
 
             // ── Meeting-level filters and block emission ───────────────────────────
             foreach (var slot in section.Schedule)
@@ -601,7 +614,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 blocks.Add(new SectionMeetingBlock(
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
                     isOverlay, label, initials, section.Id, section.SemesterId, semName,
-                    SectionDaySchedule.FormatFrequency(slot.Frequency)));
+                    SectionDaySchedule.FormatFrequency(slot.Frequency),
+                    IsDeemphasized: isDeemphasized));
             }
         }
 
@@ -971,7 +985,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized),
         CommitmentBlock c     => new TileEntry(c.Name, string.Empty, string.Empty, true, true),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };

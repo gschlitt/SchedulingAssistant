@@ -12,7 +12,8 @@
     <Color x:Key="FilterColor">#408EC6</Color>
     <!--  Common selection color: used for selected section in both the Schedule Grid tile and the Section List card  -->
     <Color x:Key="SelectedSectionColor">#A8DCAB</Color>
-
+    <!--  Text colour for de-emphasised (staffed) tiles when "Emphasize Unstaffed" filter is active  -->
+    <Color x:Key="TileDeemphasizedTextColor">#A8A8A8</Color>
 
 
 
@@ -33,6 +34,11 @@
     <SolidColorBrush x:Key="TileBorder" Color="#7AAAD4" />
     <SolidColorBrush x:Key="TileBorderSelected" Color="Black" />
     <SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
+    <!--
+        Text colour for de-emphasised (staffed) tiles when "Emphasize Unstaffed" filter is active.
+        One step lighter than the default Black tile text, so staffed sections recede visually.
+    -->
+    <SolidColorBrush x:Key="TileDeemphasizedText" Color="{StaticResource TileDeemphasizedTextColor}" />
 
     <!--  ── Schedule grid canvas chrome ────────────────────────────────  -->
     <SolidColorBrush x:Key="GridRuleLine" Color="#E0E0E0" />

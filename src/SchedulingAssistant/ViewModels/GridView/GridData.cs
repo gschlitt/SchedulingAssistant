@@ -44,12 +44,15 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// SemesterName        = display name of the semester (e.g. "Fall 2025") used for color lookup
 /// FrequencyAnnotation = parenthesised frequency annotation for this specific meeting slot,
 ///                       e.g. "(odd)", "(1,6,7)". Empty string for weekly meetings.
+/// IsDeemphasized      = true when "Emphasize Unstaffed" is active and this section is staffed.
+///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
     string Label, string Initials, string SectionId,
     string SemesterId = "", string SemesterName = "",
-    string FrequencyAnnotation = ""
+    string FrequencyAnnotation = "",
+    bool IsDeemphasized = false
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName);
 
 /// <summary>
@@ -82,6 +85,8 @@ public record CommitmentBlock(
 ///                       It does NOT affect visual styling — IsOverlay handles that.
 /// FrequencyAnnotation = parenthesised frequency annotation, e.g. "(odd)", "(1,6,7)".
 ///                       Empty string for weekly meetings and all commitments.
+/// IsDeemphasized      = true when "Emphasize Unstaffed" is active and this section is staffed.
+///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
 /// </summary>
 public record TileEntry(
     string Label,
@@ -89,7 +94,8 @@ public record TileEntry(
     string SectionId,
     bool IsOverlay = false,
     bool IsCommitment = false,
-    string FrequencyAnnotation = "");
+    string FrequencyAnnotation = "",
+    bool IsDeemphasized = false);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections
