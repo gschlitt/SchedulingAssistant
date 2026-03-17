@@ -20,6 +20,10 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     private readonly AcademicYearRepository _academicYearRepo;
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
 
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
     [ObservableProperty] private Instructor? _selectedInstructor;
@@ -71,7 +75,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         AcademicYearRepository academicYearRepo,
         SemesterContext semesterContext,
         SectionChangeNotifier changeNotifier,
-        IDialogService dialog)
+        IDialogService dialog,
+        WriteLockService lockService)
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
@@ -83,6 +88,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _academicYearRepo = academicYearRepo;
         _semesterContext = semesterContext;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
         _releaseVm = new ReleaseManagementViewModel(releaseRepo);
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);

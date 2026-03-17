@@ -15,6 +15,10 @@ public partial class RoomListViewModel : ViewModelBase
     private readonly SectionListViewModel _sectionListVm;
     private readonly DatabaseContext _db;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
 
     public string DisplayName => "Rooms";
 
@@ -27,13 +31,16 @@ public partial class RoomListViewModel : ViewModelBase
         SectionRepository sectionRepo,
         SectionListViewModel sectionListVm,
         DatabaseContext db,
-        IDialogService dialog)
+        IDialogService dialog,
+        WriteLockService lockService)
     {
         _repo = repo;
         _sectionRepo = sectionRepo;
         _sectionListVm = sectionListVm;
         _db = db;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
         Load();
     }
 

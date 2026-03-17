@@ -18,6 +18,10 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDialogService _dialog;
     private readonly string _type;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
 
     public string DisplayName { get; }
 
@@ -41,6 +45,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         DatabaseContext db,
         SectionListViewModel sectionListVm,
         IDialogService dialog,
+        WriteLockService lockService,
         bool showAbbreviation = false)
     {
         _type = propertyType;
@@ -52,6 +57,8 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         _db = db;
         _sectionListVm = sectionListVm;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
         ShowAbbreviation = showAbbreviation;
         Load();
     }

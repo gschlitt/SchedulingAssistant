@@ -16,6 +16,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IServiceProvider _services;
     private readonly ScheduleGridViewModel _scheduleGridVm;
+    private readonly WriteLockService _lockService;
 
     /// <summary>
     /// The permanent left-panel section list. Held for app lifetime.
@@ -69,6 +70,43 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public MainWindow? MainWindowReference { get; set; }
 
+    // ── Write-lock properties ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// True when this instance holds the write lock and the user may make edits.
+    /// False in read-only mode. Bound by container <c>IsEnabled</c> in the view
+    /// to gate all write-capable UI in a single binding per container.
+    /// </summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>
+    /// True when the lock banner should be displayed (i.e., this instance is in
+    /// read-only mode).
+    /// </summary>
+    public bool ShowLockBanner => !_lockService.IsWriter;
+
+    /// <summary>
+    /// Human-readable description of the current lock state for the banner.
+    /// Shows who holds the lock and since when, or null when this instance is the writer.
+    /// </summary>
+    public string? LockStatusMessage
+    {
+        get
+        {
+            if (_lockService.IsWriter) return null;
+            var h = _lockService.CurrentHolder;
+            if (h is null) return "Read-only — database is locked by another instance.";
+            var localTime = h.Acquired.ToLocalTime().ToString("h:mm tt");
+            return $"Read-only — held by {h.Username} on {h.Machine} since {localTime}";
+        }
+    }
+
+    /// <summary>
+    /// True when a read-only instance has detected that the write lock is no longer
+    /// held and the user should be prompted to switch to edit mode.
+    /// </summary>
+    public bool ShowWriteLockAvailablePrompt => _lockService.WriteLockBecameAvailable;
+
     internal void SetDatabaseName(string name) => DatabaseName = name;
 
     /// <summary>
@@ -97,13 +135,45 @@ public partial class MainWindowViewModel : ViewModelBase
         SemesterContext semesterContext,
         SectionListViewModel sectionListVm,
         ScheduleGridViewModel scheduleGridVm,
-        WorkloadPanelViewModel workloadPanelVm)
+        WorkloadPanelViewModel workloadPanelVm,
+        WriteLockService lockService)
     {
         _services = services;
         SemesterContext = semesterContext;
         SectionListVm = sectionListVm;
         _scheduleGridVm = scheduleGridVm;
         WorkloadPanelVm = workloadPanelVm;
+        _lockService = lockService;
+
+        // React to lock state changes (e.g., writer released the lock while we are
+        // in read-only mode) so the banner updates automatically.
+        _lockService.LockStateChanged += OnLockStateChanged;
+    }
+
+    /// <summary>
+    /// Called on the UI thread when the lock state changes. Re-raises all lock-derived
+    /// properties so the banner and control containers update via data binding.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        OnPropertyChanged(nameof(ShowLockBanner));
+        OnPropertyChanged(nameof(LockStatusMessage));
+        OnPropertyChanged(nameof(ShowWriteLockAvailablePrompt));
+    }
+
+    /// <summary>
+    /// Attempts to re-acquire the write lock. Called when the user clicks the
+    /// "Switch to edit mode" button in the read-only banner after the polling
+    /// timer has signalled that the lock is no longer held.
+    /// </summary>
+    [RelayCommand]
+    private void AcquireWriteLock()
+    {
+        var path = AppSettings.Current.DatabasePath;
+        if (path is null) return;
+        _lockService.TryAcquire(path);
+        OnLockStateChanged();
     }
 
     partial void OnFlyoutPageChanged(object? oldValue, object? newValue)

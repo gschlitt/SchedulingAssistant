@@ -28,6 +28,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SectionStore _sectionStore;
     private readonly SectionChangeNotifier _changeNotifier;
     private readonly InstructorCommitmentRepository _commitmentRepo;
+    private readonly WriteLockService _lockService;
 
     /// <summary>
     /// Tracks the set of semester IDs from the last reload so <see cref="ReloadCore"/>
@@ -60,6 +61,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>State for the right-click context menu on section tiles.</summary>
     public SectionContextMenuViewModel ContextMenu { get; }
 
+    /// <summary>
+    /// True when the write lock is held by this instance and write-capable UI
+    /// (such as the right-click context menu) should be available.
+    /// </summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
     public ScheduleGridViewModel(
         SectionRepository sectionRepo,
         CourseRepository courseRepo,
@@ -71,7 +78,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         AcademicUnitService academicUnitService,
         SectionStore sectionStore,
         SectionChangeNotifier changeNotifier,
-        InstructorCommitmentRepository commitmentRepo)
+        InstructorCommitmentRepository commitmentRepo,
+        WriteLockService lockService)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -84,6 +92,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _sectionStore = sectionStore;
         _changeNotifier = changeNotifier;
         _commitmentRepo = commitmentRepo;
+        _lockService = lockService;
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.

@@ -17,7 +17,7 @@
     x:DataType="vm:MainWindowViewModel"
     b:DismissBehaviors.EscapeCommand="{Binding CloseFlyoutCommand}">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
         <!--  Top menu bar  -->
         <Border
@@ -241,8 +241,37 @@
             </DockPanel>
         </Border>
 
+        <!--  Write-lock banner — visible only in read-only mode.
+              Shown between the menu bar and the content area so it is always visible
+              without displacing any panel content. The "Switch to edit mode" button
+              appears only after the polling timer detects that the lock is available.  -->
+        <Border
+            Grid.Row="1"
+            IsVisible="{Binding ShowLockBanner}"
+            Background="{StaticResource ErrorBannerBackground}"
+            BorderBrush="{StaticResource ErrorBannerBorder}"
+            BorderThickness="0,0,0,1"
+            Padding="12,4">
+            <DockPanel>
+                <Button
+                    DockPanel.Dock="Right"
+                    Margin="8,0,0,0"
+                    Padding="8,2"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    IsVisible="{Binding ShowWriteLockAvailablePrompt}"
+                    Command="{Binding AcquireWriteLockCommand}"
+                    Content="Switch to edit mode"
+                    ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Foreground="{StaticResource ErrorBannerText}"
+                    Text="{Binding LockStatusMessage}" />
+            </DockPanel>
+        </Border>
+
         <!--  Main body: layered panel (permanent grid beneath, flyout overlay above)  -->
-        <Panel Grid.Row="1">
+        <Panel Grid.Row="2">
 
             <!--  Layer 0: permanent three-panel grid.
                   ConditionalColumnWidthBehavior toggles column 0 between 370px (collapsed)
@@ -300,11 +329,13 @@
                                         </StackPanel>
                                     </DockPanel>
 
-                                    <!--  Action buttons  -->
+                                    <!--  Action buttons — the entire group is disabled in read-only mode
+                                          via a single IsEnabled binding on the container.  -->
                                     <StackPanel
                                         Grid.Row="1"
                                         Margin="0,4,0,0"
                                         DataContext="{Binding SectionListVm}"
+                                        IsEnabled="{Binding DataContext.IsWriteEnabled, ElementName=RootWindow}"
                                         Orientation="Horizontal"
                                         Spacing="3"
                                         VerticalAlignment="Top">

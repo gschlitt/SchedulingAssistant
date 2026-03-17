@@ -150,9 +150,10 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <!--  Course toolbar  -->
+                <!--  Course toolbar — IsEnabled gates the entire group in read-only mode  -->
                 <StackPanel
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                    IsEnabled="{Binding IsWriteEnabled}"
                     Orientation="Horizontal"
                     Spacing="8">
                     <Button

@@ -13,6 +13,10 @@ public partial class CourseListViewModel : ViewModelBase
     private readonly SubjectRepository _subjectRepo;
     private readonly SectionPropertyRepository _propertyRepo;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
@@ -30,12 +34,15 @@ public partial class CourseListViewModel : ViewModelBase
         SectionRepository sectionRepo,
         SemesterRepository semesterRepo,
         AcademicYearRepository academicYearRepo,
-        InstructorRepository instructorRepo)
+        InstructorRepository instructorRepo,
+        WriteLockService lockService)
     {
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
         _propertyRepo = propertyRepo;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());

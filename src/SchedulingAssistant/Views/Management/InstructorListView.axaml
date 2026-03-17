@@ -216,8 +216,9 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!--  Buttons  -->
-            <StackPanel Orientation="Horizontal" Spacing="3">
+            <!--  Buttons — IsEnabled gates the entire group in read-only mode  -->
+            <StackPanel Orientation="Horizontal" Spacing="3"
+                        IsEnabled="{Binding IsWriteEnabled}">
                 <Button
                     Width="45"
                     Padding="5,3"

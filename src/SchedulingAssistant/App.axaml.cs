@@ -67,6 +67,12 @@ public partial class App : Application
         // Prune old log files (non-throwing).
         if (Logger is FileAppLogger fal) fal.PruneOldLogs();
 
+        // Acquire the write lock before touching the database file.
+        // This must happen before DatabaseContext is initialized so that if two
+        // instances open the same file simultaneously, the loser enters read-only
+        // mode before any writes occur.
+        Services.GetRequiredService<WriteLockService>().TryAcquire(dbPath);
+
         // Eagerly initialize the database (schema creation + seeding).
         Services.GetRequiredService<DatabaseContext>();
 
@@ -101,6 +107,7 @@ public partial class App : Application
 
         // Services
         services.AddSingleton<SemesterContext>();
+        services.AddSingleton<WriteLockService>();
         // These services are stateless wrappers; singletons match their actual lifetime.
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();
@@ -141,7 +148,8 @@ public partial class App : Application
             sp.GetRequiredService<AcademicUnitService>(),
             sp.GetRequiredService<SectionStore>(),
             sp.GetRequiredService<SectionChangeNotifier>(),
-            sp.GetRequiredService<InstructorCommitmentRepository>()));
+            sp.GetRequiredService<InstructorCommitmentRepository>(),
+            sp.GetRequiredService<WriteLockService>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<InstructorRepository>(),
             sp.GetRequiredService<SectionRepository>(),
@@ -162,7 +170,8 @@ public partial class App : Application
                 sp.GetRequiredService<AcademicYearRepository>(),
                 sp.GetRequiredService<SemesterContext>(),
                 sp.GetRequiredService<SectionChangeNotifier>(),
-                sp.GetRequiredService<IDialogService>()));
+                sp.GetRequiredService<IDialogService>(),
+                sp.GetRequiredService<WriteLockService>()));
             
         services.AddTransient<RoomListViewModel>();
         services.AddTransient<SemesterListViewModel>();

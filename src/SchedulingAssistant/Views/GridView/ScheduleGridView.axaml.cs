@@ -593,10 +593,13 @@ public partial class ScheduleGridView : UserControl
 
                         if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
                         {
-                            var ctx = (TileClickContext)((Border)sender!).Tag!;
-                            _vm?.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
-                            if (_vm is not null)
+                            // Context menu performs write operations — suppress in read-only mode.
+                            if (_vm is not null && _vm.IsWriteEnabled)
+                            {
+                                var ctx = (TileClickContext)((Border)sender!).Tag!;
+                                _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
                                 _vm.ContextMenu.IsOpen = true;
+                            }
                             e.Handled = true;
                             return;
                         }

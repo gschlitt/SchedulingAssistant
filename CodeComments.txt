@@ -16,7 +16,6 @@ Overlay color needs to work in conjunction with Multi-semester. Color choices ar
 
 Confirm section deletes!
 
-Outline sections that are selected via a filter .
 
 Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
 
@@ -37,15 +36,11 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 Agenda.
 
-Auto tags on courses.
 
 Should there be an inactivation on section properties etc so they could be retired rather than deleted.
 
 Ordering on Section Prefixes,
 
-Remember most recently used semesters.
-
-Mailer?
 
 Filter by course.
 
@@ -61,7 +56,7 @@ User can add fields to the right?
 
 Zoom to cursor? Via scroll wheel?
 
-Work on colors a bit. Keep red for overlay, need something different in menu to mark filters.
+
 
 Banner on sections header to show number of sections
 

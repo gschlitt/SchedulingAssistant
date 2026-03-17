@@ -19,6 +19,10 @@ public partial class AcademicYearListViewModel : ViewModelBase
     private readonly LegalStartTimeRepository _legalStartTimeRepo;
     private readonly DatabaseContext _db;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
@@ -44,7 +48,8 @@ public partial class AcademicYearListViewModel : ViewModelBase
         SemesterContext semesterContext,
         LegalStartTimeRepository legalStartTimeRepo,
         DatabaseContext db,
-        IDialogService dialog)
+        IDialogService dialog,
+        WriteLockService lockService)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
@@ -53,6 +58,8 @@ public partial class AcademicYearListViewModel : ViewModelBase
         _legalStartTimeRepo = legalStartTimeRepo;
         _db = db;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
         Load();
     }
 

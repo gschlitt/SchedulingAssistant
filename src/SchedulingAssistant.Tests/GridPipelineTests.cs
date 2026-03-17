@@ -77,11 +77,12 @@ public class GridPipelineTests
         IEnumerable<string>? tags         = null,
         IEnumerable<string>? meetingTypes = null,
         IEnumerable<string>? levels       = null,
-        bool notStaffed   = false,
-        bool unroomed     = false,
-        bool hasOverlay   = false,
-        string? overlayType = null,
-        string? overlayId   = null) =>
+        bool notStaffed          = false,
+        bool emphasizeUnstaffed  = false,
+        bool unroomed            = false,
+        bool hasOverlay          = false,
+        string? overlayType      = null,
+        string? overlayId        = null) =>
         new(
             new HashSet<string>(instructors  ?? []),
             new HashSet<string>(rooms        ?? []),
@@ -91,7 +92,7 @@ public class GridPipelineTests
             new HashSet<string>(tags         ?? []),
             new HashSet<string>(meetingTypes ?? []),
             new HashSet<string>(levels       ?? []),
-            notStaffed, unroomed, hasOverlay, overlayType, overlayId);
+            notStaffed, emphasizeUnstaffed, unroomed, hasOverlay, overlayType, overlayId);
 
     /// <summary>
     /// Creates a <see cref="GridLookups"/> with empty supporting dictionaries by default.
