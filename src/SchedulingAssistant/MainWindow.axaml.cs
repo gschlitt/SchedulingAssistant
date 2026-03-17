@@ -63,6 +63,20 @@ public partial class MainWindow : Window
 #endif
     }
 
+    /// <summary>
+    /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
+    /// All shutdown logic (e.g. backup, save-state) belongs here so both paths are handled identically.
+    /// </summary>
+    /// <param name="e">Closing event args; set <c>e.Cancel = true</c> to abort the close.</param>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+
+        // Dispose the DI container, which closes the SQLite connection cleanly.
+        // This is the hook point for a pre-exit backup — add it here before Dispose.
+        (App.Services as IDisposable)?.Dispose();
+    }
+
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);

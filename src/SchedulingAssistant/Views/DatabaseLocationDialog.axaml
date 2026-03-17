@@ -27,7 +27,7 @@
                 <StackPanel Spacing="4">
                     <TextBlock Text="Database name:" FontSize="13" />
                     <TextBox x:Name="NameBox"
-                             Watermark="e.g. MyUniversity"
+                             Watermark="e.g. Psychology Dept."
                              TextChanged="OnNameOrFolderChanged" />
                     <TextBlock x:Name="NameValidation"
                                FontSize="11" Foreground="{StaticResource TextValidationError}"

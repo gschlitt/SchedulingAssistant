@@ -31,7 +31,8 @@ public partial class DatabaseLocationDialog : Window
             HeadingText.Text = "Welcome to Scheduling Assistant";
             BodyText.Text =
                 "Give your database a name and choose where to save it. " +
-                "You can use a local folder or a shared network drive so colleagues can use the same database.";
+                "You can use a local folder or a shared network drive so colleagues can use the same database. " +
+                "Be sure to use a location that is backed up regularly!";
             ShowCreateSection();
         }
         else if (mode == DatabaseLocationMode.OpenExisting)

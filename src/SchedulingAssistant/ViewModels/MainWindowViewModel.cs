@@ -218,4 +218,12 @@ public partial class MainWindowViewModel : ViewModelBase
         if (databasePath is null || MainWindowReference is null) return;
         await MainWindowReference.SwitchDatabaseAsync(databasePath);
     }
+
+    /// <summary>
+    /// Closes the main window via the Files → Exit menu item.
+    /// Triggers the same <see cref="MainWindow.OnClosing"/> path as clicking the title-bar X,
+    /// so all shutdown logic lives in one place.
+    /// </summary>
+    [RelayCommand]
+    private void Exit() => MainWindowReference?.Close();
 }
