@@ -11,22 +11,43 @@ public partial class SemesterListViewModel : ViewModelBase
 {
     private readonly SemesterRepository _repo;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
 
     [ObservableProperty] private ObservableCollection<Semester> _semesters = new();
     [ObservableProperty] private Semester? _selectedSemester;
     [ObservableProperty] private SemesterEditViewModel? _editVm;
 
-    public SemesterListViewModel(SemesterRepository repo, IDialogService dialog)
+    /// <summary>True when the current user holds the write lock; controls whether CRUD buttons are enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
+    public SemesterListViewModel(SemesterRepository repo, IDialogService dialog, WriteLockService lockService)
     {
         _repo = repo;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
     private void Load() =>
         Semesters = new ObservableCollection<Semester>(_repo.GetAll());
 
-    [RelayCommand]
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         var semester = new Semester();
@@ -39,7 +60,7 @@ public partial class SemesterListViewModel : ViewModelBase
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedSemester is null) return;
@@ -53,7 +74,7 @@ public partial class SemesterListViewModel : ViewModelBase
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedSemester is null) return;

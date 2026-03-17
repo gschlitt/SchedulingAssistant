@@ -23,6 +23,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
     private readonly SectionPropertyRepository _propertyRepo;
+    private readonly WriteLockService _lockService;
 
     // ── Observable Properties ──────────────────────────────────────────────────
 
@@ -94,6 +95,12 @@ public partial class SectionListViewModel : ViewModelBase
     /// <summary>Current sort mode; used by context menu to show checkmarks.</summary>
     public SectionSortMode CurrentSortMode => _sortMode;
 
+    /// <summary>True when the current user holds the write lock; controls whether CRUD commands are enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>CanExecute predicate shared by all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     // ── Property-Changed Hooks ─────────────────────────────────────────────────
 
     partial void OnEditVmChanged(SectionEditViewModel? value) =>
@@ -131,7 +138,8 @@ public partial class SectionListViewModel : ViewModelBase
         SemesterContext semesterContext,
         SectionStore sectionStore,
         SectionPropertyRepository propertyRepo,
-        IDialogService dialog)
+        IDialogService dialog,
+        WriteLockService lockService)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -146,6 +154,8 @@ public partial class SectionListViewModel : ViewModelBase
         _sectionStore = sectionStore;
         _propertyRepo = propertyRepo;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
 
@@ -163,6 +173,22 @@ public partial class SectionListViewModel : ViewModelBase
         UpdateSortModeLabel();
 
         Load();
+    }
+
+    // ── Lock State ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies all write commands so
+    /// they re-evaluate their CanExecute, and updates the IsWriteEnabled binding.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        AddToSemesterCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        CopyCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
     }
 
     // ── Context Change Handlers ────────────────────────────────────────────────
@@ -453,7 +479,7 @@ public partial class SectionListViewModel : ViewModelBase
 
     // ── Add ────────────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         if (_semesterContext.IsMultiSemesterMode)
@@ -499,7 +525,7 @@ public partial class SectionListViewModel : ViewModelBase
     /// and opens the inline editor.
     /// </summary>
     /// <param name="semesterId">The ID of the semester to add to.</param>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void AddToSemester(string semesterId)
     {
         IsAddSemesterPromptVisible = false;
@@ -703,7 +729,7 @@ public partial class SectionListViewModel : ViewModelBase
 
     // ── Edit ───────────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedSectionItem is null) return;
@@ -761,7 +787,7 @@ public partial class SectionListViewModel : ViewModelBase
 
     // ── Copy ───────────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Copy()
     {
         if (SelectedSectionItem is null) return;
@@ -830,7 +856,7 @@ public partial class SectionListViewModel : ViewModelBase
 
     // ── Delete ─────────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedSection is null) return;

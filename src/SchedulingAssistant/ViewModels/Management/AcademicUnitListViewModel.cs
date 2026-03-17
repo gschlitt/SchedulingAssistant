@@ -11,6 +11,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class AcademicUnitListViewModel : ViewModelBase
 {
     private readonly AcademicUnitService _service;
+    private readonly WriteLockService _lockService;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValidationError))]
@@ -29,11 +30,16 @@ public partial class AcademicUnitListViewModel : ViewModelBase
         }
     }
 
-    private bool CanSave() => Name.Trim().Length > 0 && ValidationError is null;
+    private bool CanSave() => _lockService.IsWriter && Name.Trim().Length > 0 && ValidationError is null;
 
-    public AcademicUnitListViewModel(AcademicUnitService service)
+    /// <summary>True when the current user holds the write lock; controls whether the Edit button is enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    public AcademicUnitListViewModel(AcademicUnitService service, WriteLockService lockService)
     {
         _service = service;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
@@ -42,6 +48,16 @@ public partial class AcademicUnitListViewModel : ViewModelBase
         var unit = _service.GetUnit();
         Name = unit.Name;
         IsEditing = false;
+    }
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        SaveCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]

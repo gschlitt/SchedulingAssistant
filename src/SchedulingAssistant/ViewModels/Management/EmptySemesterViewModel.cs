@@ -15,6 +15,13 @@ public partial class EmptySemesterViewModel : ViewModelBase
     private readonly SemesterRepository _semRepo;
     private readonly SectionRepository _sectionRepo;
     private readonly SemesterContext _semesterContext;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when the current user holds the write lock; gates the Empty Semester button.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
@@ -25,7 +32,7 @@ public partial class EmptySemesterViewModel : ViewModelBase
     [ObservableProperty] private bool _isCurrentlyLoaded;
     [ObservableProperty] private string? _statusMessage;
 
-    public bool CanEmpty => SelectedSemester is not null && !IsCurrentlyLoaded;
+    public bool CanEmpty => _lockService.IsWriter && SelectedSemester is not null && !IsCurrentlyLoaded;
 
     /// <summary>Set by the view. Called before deletion with (semesterName, sectionCount).
     /// Should return true if the user confirms, false to cancel.</summary>
@@ -38,12 +45,15 @@ public partial class EmptySemesterViewModel : ViewModelBase
         AcademicYearRepository ayRepo,
         SemesterRepository semRepo,
         SectionRepository sectionRepo,
-        SemesterContext semesterContext)
+        SemesterContext semesterContext,
+        WriteLockService lockService)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
         _sectionRepo = sectionRepo;
         _semesterContext = semesterContext;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
@@ -51,6 +61,16 @@ public partial class EmptySemesterViewModel : ViewModelBase
     {
         AcademicYears = new ObservableCollection<AcademicYear>(_ayRepo.GetAll());
         SelectedAcademicYear = AcademicYears.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        EmptyCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedAcademicYearChanged(AcademicYear? value)

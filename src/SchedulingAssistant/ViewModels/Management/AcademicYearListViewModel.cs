@@ -24,6 +24,9 @@ public partial class AcademicYearListViewModel : ViewModelBase
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
     [ObservableProperty] private AcademicYearEditViewModel? _editVm;
@@ -59,7 +62,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
         _db = db;
         _dialog = dialog;
         _lockService = lockService;
-        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
@@ -67,6 +70,17 @@ public partial class AcademicYearListViewModel : ViewModelBase
     {
         AcademicYears = new ObservableCollection<AcademicYear>(_ayRepo.GetAll());
         SelectedAcademicYear = AcademicYears.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -83,7 +97,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
         mainVm.NavigateToEmptySemesterCommand.Execute(null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         var ay = new AcademicYear();
@@ -146,7 +160,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
             });
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedAcademicYear is null) return;

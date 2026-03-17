@@ -11,15 +11,24 @@ public partial class SubjectListViewModel : ViewModelBase
 {
     private readonly SubjectRepository _repo;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
     [ObservableProperty] private SubjectEditViewModel? _editVm;
 
-    public SubjectListViewModel(SubjectRepository repo, IDialogService dialog)
+    /// <summary>True when the current user holds the write lock; controls whether CRUD buttons are enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
+    public SubjectListViewModel(SubjectRepository repo, IDialogService dialog, WriteLockService lockService)
     {
         _repo = repo;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
@@ -29,7 +38,19 @@ public partial class SubjectListViewModel : ViewModelBase
         SelectedSubject = null;
     }
 
-    [RelayCommand]
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         var subject = new Subject();
@@ -44,7 +65,7 @@ public partial class SubjectListViewModel : ViewModelBase
             abbreviationExists: abbr => _repo.ExistsByAbbreviation(abbr));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedSubject is null) return;
@@ -65,7 +86,7 @@ public partial class SubjectListViewModel : ViewModelBase
             abbreviationExists: abbr => _repo.ExistsByAbbreviation(abbr, excludeId: clone.Id));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedSubject is null) return;

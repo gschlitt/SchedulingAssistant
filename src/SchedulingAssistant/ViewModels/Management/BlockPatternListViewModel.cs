@@ -13,6 +13,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class BlockPatternListViewModel : ViewModelBase
 {
     private readonly BlockPatternRepository _patternRepository;
+    private readonly WriteLockService _lockService;
     private const int MaxSlots = 5;
 
     public BlockPatternSlotViewModel Slot1 { get; }
@@ -24,9 +25,15 @@ public partial class BlockPatternListViewModel : ViewModelBase
     /// <summary>True while any slot is being edited; used to disable other slot's buttons.</summary>
     public bool IsEditingAny => Slot1.IsEditing || Slot2.IsEditing || Slot3.IsEditing || Slot4.IsEditing || Slot5.IsEditing;
 
-    public BlockPatternListViewModel(BlockPatternRepository patternRepository)
+    /// <summary>True when the current user holds the write lock; controls whether Edit/Clear buttons are enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    public BlockPatternListViewModel(BlockPatternRepository patternRepository, WriteLockService lockService)
     {
         _patternRepository = patternRepository;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
+
         var includeSaturday = AppSettings.Current.IncludeSaturday;
 
         var allPatterns = _patternRepository.GetAll();
@@ -34,14 +41,33 @@ public partial class BlockPatternListViewModel : ViewModelBase
             .Select(i => allPatterns.Count > i ? allPatterns[i] : null)
             .ToList();
 
-        Slot1 = new BlockPatternSlotViewModel(1, patterns[0], includeSaturday, _patternRepository, OnSlotEditingChanged);
-        Slot2 = new BlockPatternSlotViewModel(2, patterns[1], includeSaturday, _patternRepository, OnSlotEditingChanged);
-        Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, _patternRepository, OnSlotEditingChanged);
-        Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, _patternRepository, OnSlotEditingChanged);
-        Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, _patternRepository, OnSlotEditingChanged);
+        Slot1 = new BlockPatternSlotViewModel(1, patterns[0], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot2 = new BlockPatternSlotViewModel(2, patterns[1], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
     }
 
     private void OnSlotEditingChanged() => OnPropertyChanged(nameof(IsEditingAny));
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states on all slots.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        Slot1.EditCommand.NotifyCanExecuteChanged();
+        Slot1.ClearCommand.NotifyCanExecuteChanged();
+        Slot2.EditCommand.NotifyCanExecuteChanged();
+        Slot2.ClearCommand.NotifyCanExecuteChanged();
+        Slot3.EditCommand.NotifyCanExecuteChanged();
+        Slot3.ClearCommand.NotifyCanExecuteChanged();
+        Slot4.EditCommand.NotifyCanExecuteChanged();
+        Slot4.ClearCommand.NotifyCanExecuteChanged();
+        Slot5.EditCommand.NotifyCanExecuteChanged();
+        Slot5.ClearCommand.NotifyCanExecuteChanged();
+    }
 }
 
 /// <summary>
@@ -64,20 +90,26 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
     private readonly bool _includeSaturday;
     private readonly BlockPatternRepository _patternRepository;
     private readonly Action _onEditingChanged;
+    private readonly Func<bool> _canWrite;
 
     public BlockPatternSlotViewModel(
         int slotNumber,
         BlockPattern? pattern,
         bool includeSaturday,
         BlockPatternRepository patternRepository,
-        Action onEditingChanged)
+        Action onEditingChanged,
+        Func<bool> canWrite)
     {
         SlotNumber = slotNumber;
         _pattern = pattern;
         _includeSaturday = includeSaturday;
         _patternRepository = patternRepository;
         _onEditingChanged = onEditingChanged;
+        _canWrite = canWrite;
     }
+
+    /// <summary>Returns true when the parent write lock is held. Used as a CanExecute predicate for Edit and Clear commands.</summary>
+    private bool CanWrite() => _canWrite();
 
     partial void OnEditVmChanged(BlockPatternEditViewModel? value)
     {
@@ -90,7 +122,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(DisplayName));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         EditVm = new BlockPatternEditViewModel(
@@ -116,7 +148,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Clear()
     {
         if (Pattern?.Id is { } id)

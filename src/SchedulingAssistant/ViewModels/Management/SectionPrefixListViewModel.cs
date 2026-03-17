@@ -16,6 +16,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     private readonly SectionPrefixRepository _repo;
     private readonly SectionPropertyRepository _propertyRepo;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
 
     /// <summary>The list of section prefixes shown in the data grid.</summary>
     [ObservableProperty] private ObservableCollection<SectionPrefixRow> _items = new();
@@ -28,17 +29,27 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private SectionPrefixEditViewModel? _editVm;
 
+    /// <summary>True when the current user holds the write lock; controls whether CRUD buttons are enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     /// <param name="repo">Repository for section prefix CRUD operations.</param>
     /// <param name="propertyRepo">Repository used to load campus options for the dropdown.</param>
     /// <param name="dialog">Service for confirmation and error dialogs.</param>
+    /// <param name="lockService">Write lock service; gates edit operations in read-only mode.</param>
     public SectionPrefixListViewModel(
         SectionPrefixRepository repo,
         SectionPropertyRepository propertyRepo,
-        IDialogService dialog)
+        IDialogService dialog,
+        WriteLockService lockService)
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
@@ -55,6 +66,18 @@ public partial class SectionPrefixListViewModel : ViewModelBase
             prefixes.Select(p => new SectionPrefixRow(p, ResolveCampusName(p.CampusId, campuses))));
     }
 
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
+
     /// <summary>Builds the campus option list for the edit form dropdown.</summary>
     private List<CampusOption> BuildCampusOptions()
     {
@@ -68,7 +91,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
         campusId is not null && lookup.TryGetValue(campusId, out var name) ? name : string.Empty;
 
     /// <summary>Opens the Add form for a new prefix.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         var model = new SectionPrefix();
@@ -82,7 +105,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     }
 
     /// <summary>Opens the Edit form for the currently selected prefix.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedItem is null) return;
@@ -107,7 +130,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// <summary>
     /// Prompts for confirmation then deletes the currently selected prefix.
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedItem is null) return;

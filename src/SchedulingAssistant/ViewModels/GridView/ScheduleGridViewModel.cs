@@ -100,7 +100,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
             _sectionStore.Reload(_sectionRepo, semIds);
-        });
+        }, lockService);
 
         LoadAcademicUnitName();
 

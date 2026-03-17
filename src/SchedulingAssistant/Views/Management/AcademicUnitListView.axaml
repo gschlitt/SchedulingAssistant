@@ -16,7 +16,8 @@
                     Padding="8,6" Background="{StaticResource ControlBackground}">
                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
             </Border>
-            <Button Content="Edit" Command="{Binding EditCommand}" Width="80" HorizontalAlignment="Left" />
+            <Button Content="Edit" Command="{Binding EditCommand}" Width="80" HorizontalAlignment="Left"
+                    IsEnabled="{Binding IsWriteEnabled}" />
         </StackPanel>
 
         <!-- Edit form (when editing) -->

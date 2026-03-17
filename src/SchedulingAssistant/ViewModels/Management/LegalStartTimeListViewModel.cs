@@ -15,7 +15,14 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     private readonly LegalStartTimeRepository _repo;
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
+    private readonly WriteLockService _lockService;
     private string? _currentAcademicYearId;
+
+    /// <summary>True when the current user holds the write lock; controls whether CRUD and settings controls are enabled.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
 
     [ObservableProperty] private ObservableCollection<LegalStartTime> _entries = new();
     [ObservableProperty] private LegalStartTime? _selectedEntry;
@@ -70,13 +77,27 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public LegalStartTimeListViewModel(LegalStartTimeRepository repo, SemesterContext semesterContext, IDialogService dialog)
+    public LegalStartTimeListViewModel(LegalStartTimeRepository repo, SemesterContext semesterContext, IDialogService dialog, WriteLockService lockService)
     {
         _repo = repo;
         _semesterContext = semesterContext;
         _dialog = dialog;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Load();
+    }
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
     }
 
     private void OnSemesterContextChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -116,7 +137,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(SelectedPreferredOption));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         if (string.IsNullOrEmpty(_currentAcademicYearId)) return;
@@ -130,7 +151,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
@@ -144,7 +165,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;

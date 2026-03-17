@@ -20,6 +20,9 @@ public partial class RoomListViewModel : ViewModelBase
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     public string DisplayName => "Rooms";
 
     [ObservableProperty] private ObservableCollection<Room> _rooms = new();
@@ -40,12 +43,26 @@ public partial class RoomListViewModel : ViewModelBase
         _db = db;
         _dialog = dialog;
         _lockService = lockService;
-        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
     private void Load() =>
         Rooms = new ObservableCollection<Room>(_repo.GetAll());
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        MoveUpCommand.NotifyCanExecuteChanged();
+        MoveDownCommand.NotifyCanExecuteChanged();
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>
     /// Re-evaluates the Move Up/Down button states whenever the selection changes.
@@ -58,8 +75,8 @@ public partial class RoomListViewModel : ViewModelBase
 
     // ── Ordering ──────────────────────────────────────────────────────────────
 
-    private bool CanMoveUp()   => SelectedRoom != null && Rooms.IndexOf(SelectedRoom) > 0;
-    private bool CanMoveDown() => SelectedRoom != null && Rooms.IndexOf(SelectedRoom) < Rooms.Count - 1;
+    private bool CanMoveUp()   => _lockService.IsWriter && SelectedRoom != null && Rooms.IndexOf(SelectedRoom) > 0;
+    private bool CanMoveDown() => _lockService.IsWriter && SelectedRoom != null && Rooms.IndexOf(SelectedRoom) < Rooms.Count - 1;
 
     /// <summary>
     /// Moves the selected room one position earlier in the list and persists the new order.
@@ -101,7 +118,7 @@ public partial class RoomListViewModel : ViewModelBase
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         // New rooms land at the end of the list.
@@ -114,7 +131,7 @@ public partial class RoomListViewModel : ViewModelBase
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedRoom is null) return;
@@ -130,7 +147,7 @@ public partial class RoomListViewModel : ViewModelBase
             onCancel: () => EditVm = null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedRoom is null) return;

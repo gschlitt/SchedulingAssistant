@@ -25,6 +25,9 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
     [ObservableProperty] private Instructor? _selectedInstructor;
     [ObservableProperty] private InstructorEditViewModel? _editVm;
@@ -89,7 +92,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _semesterContext = semesterContext;
         _dialog = dialog;
         _lockService = lockService;
-        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
+        _lockService.LockStateChanged += OnLockStateChanged;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo);
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);
@@ -100,6 +103,18 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _semesterContext.PropertyChanged += OnSemesterContextPropertyChanged;
         _releaseVm.ReleasesChanged += RefreshWorkload;
         _workloadVm.PropertyChanged += OnWorkloadVmPropertyChanged;
+    }
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
     }
 
     private void OnSemesterContextPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -251,7 +266,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<SectionPropertyValue> GetStaffTypes() =>
         _propertyRepo.GetAll(SectionPropertyTypes.StaffType);
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         var instructor = new Instructor();
@@ -266,7 +281,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             initialsExist: initials => _repo.ExistsByInitials(initials));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedInstructor is null) return;
@@ -293,7 +308,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             initialsExist: initials => _repo.ExistsByInitials(initials, excludeId: copy.Id));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedInstructor is null) return;

@@ -22,6 +22,13 @@ public partial class CopySemesterViewModel : ViewModelBase
     private readonly ScheduleValidationService _scheduleValidation;
     private readonly CourseRepository _courseRepo;
     private readonly SubjectRepository _subjectRepo;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>True when the current user holds the write lock; gates all Copy Semester controls.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
 
     // Cached between Copy() and ContinueCopy()
     private List<Section>? _sourceSections;
@@ -89,7 +96,8 @@ public partial class CopySemesterViewModel : ViewModelBase
         DatabaseContext db,
         ScheduleValidationService scheduleValidation,
         CourseRepository courseRepo,
-        SubjectRepository subjectRepo)
+        SubjectRepository subjectRepo,
+        WriteLockService lockService)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
@@ -98,6 +106,8 @@ public partial class CopySemesterViewModel : ViewModelBase
         _scheduleValidation = scheduleValidation;
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
+        _lockService = lockService;
+        _lockService.LockStateChanged += OnLockStateChanged;
         Load();
     }
 
@@ -106,6 +116,17 @@ public partial class CopySemesterViewModel : ViewModelBase
         AcademicYears = new ObservableCollection<AcademicYear>(_ayRepo.GetAll());
         FromAcademicYear = AcademicYears.FirstOrDefault();
         ToAcademicYear = AcademicYears.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        CopyCommand.NotifyCanExecuteChanged();
+        ContinueCopyCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnFromAcademicYearChanged(AcademicYear? value)
@@ -163,7 +184,7 @@ public partial class CopySemesterViewModel : ViewModelBase
                         (FromAcademicYear.Id != ToAcademicYear.Id || FromSemester.Id != ToSemester.Id);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Copy()
     {
         StatusMessage = null;
@@ -211,7 +232,7 @@ public partial class CopySemesterViewModel : ViewModelBase
         FlaggedDescriptions = new ObservableCollection<string>();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void ContinueCopy()
     {
         if (WriteCsvReport)

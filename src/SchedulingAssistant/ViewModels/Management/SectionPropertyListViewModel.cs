@@ -23,6 +23,9 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     public string DisplayName { get; }
 
     /// <summary>
@@ -58,13 +61,27 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         _sectionListVm = sectionListVm;
         _dialog = dialog;
         _lockService = lockService;
-        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
+        _lockService.LockStateChanged += OnLockStateChanged;
         ShowAbbreviation = showAbbreviation;
         Load();
     }
 
     public void Load() =>
         Items = new ObservableCollection<SectionPropertyValue>(_repo.GetAll(_type));
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        MoveUpCommand.NotifyCanExecuteChanged();
+        MoveDownCommand.NotifyCanExecuteChanged();
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>
     /// Re-evaluates the Move Up/Down button states whenever the selection changes.
@@ -77,8 +94,8 @@ public partial class SectionPropertyListViewModel : ViewModelBase
 
     // ── Ordering ──────────────────────────────────────────────────────────────
 
-    private bool CanMoveUp()   => SelectedItem != null && Items.IndexOf(SelectedItem) > 0;
-    private bool CanMoveDown() => SelectedItem != null && Items.IndexOf(SelectedItem) < Items.Count - 1;
+    private bool CanMoveUp()   => _lockService.IsWriter && SelectedItem != null && Items.IndexOf(SelectedItem) > 0;
+    private bool CanMoveDown() => _lockService.IsWriter && SelectedItem != null && Items.IndexOf(SelectedItem) < Items.Count - 1;
 
     /// <summary>
     /// Moves the selected item one position earlier in the list and persists the new order.
@@ -120,7 +137,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         // New items land at the end of the list.
@@ -135,7 +152,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
             showAbbreviation: ShowAbbreviation);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedItem is null) return;
@@ -153,7 +170,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
             showAbbreviation: ShowAbbreviation);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedItem is null) return;

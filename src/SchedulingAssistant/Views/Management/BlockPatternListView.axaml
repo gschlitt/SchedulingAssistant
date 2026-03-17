@@ -20,7 +20,8 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="Pattern 1"
                                FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                                IsEnabled="{Binding $parent[UserControl].DataContext.IsWriteEnabled}">
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
@@ -82,7 +83,8 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="Pattern 2"
                                FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                                IsEnabled="{Binding $parent[UserControl].DataContext.IsWriteEnabled}">
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
@@ -144,7 +146,8 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="Pattern 3"
                                FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                                IsEnabled="{Binding $parent[UserControl].DataContext.IsWriteEnabled}">
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
@@ -206,7 +209,8 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="Pattern 4"
                                FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                                IsEnabled="{Binding $parent[UserControl].DataContext.IsWriteEnabled}">
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
@@ -268,7 +272,8 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="Pattern 5"
                                FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
+                                IsEnabled="{Binding $parent[UserControl].DataContext.IsWriteEnabled}">
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"

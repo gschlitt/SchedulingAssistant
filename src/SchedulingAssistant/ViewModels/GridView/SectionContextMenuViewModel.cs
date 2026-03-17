@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.GridView;
@@ -12,6 +13,10 @@ public partial class SectionContextMenuViewModel : ObservableObject
 {
     private readonly SectionRepository _sectionRepo;
     private readonly Action _onSaved;
+    private readonly WriteLockService _lockService;
+
+    /// <summary>CanExecute predicate for the Confirm command; refuses writes in reader mode.</summary>
+    private bool CanConfirm() => _lockService.IsWriter;
 
     private Section? _section;
     private int _meetingDay;
@@ -37,10 +42,11 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
     [ObservableProperty] private ContextMenuItemVm? _selectedRoom;
 
-    public SectionContextMenuViewModel(SectionRepository sectionRepo, Action onSaved)
+    public SectionContextMenuViewModel(SectionRepository sectionRepo, Action onSaved, WriteLockService lockService)
     {
         _sectionRepo = sectionRepo;
         _onSaved = onSaved;
+        _lockService = lockService;
     }
 
     public void Load(
@@ -100,7 +106,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
     [RelayCommand]
     private void ShowTags() => ActiveSubPanel = TileSubPanel.Tags;
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanConfirm))]
     private void Confirm()
     {
         if (_section is null) return;

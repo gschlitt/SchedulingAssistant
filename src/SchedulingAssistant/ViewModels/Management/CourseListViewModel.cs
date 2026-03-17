@@ -18,6 +18,9 @@ public partial class CourseListViewModel : ViewModelBase
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
     [ObservableProperty] private SubjectEditViewModel? _subjectEditVm;
@@ -42,7 +45,7 @@ public partial class CourseListViewModel : ViewModelBase
         _propertyRepo = propertyRepo;
         _dialog = dialog;
         _lockService = lockService;
-        _lockService.LockStateChanged += () => OnPropertyChanged(nameof(IsWriteEnabled));
+        _lockService.LockStateChanged += OnLockStateChanged;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
@@ -53,6 +56,21 @@ public partial class CourseListViewModel : ViewModelBase
     }
 
     public bool HasSubjects => Subjects.Count > 0;
+
+    /// <summary>
+    /// Called when the write lock state changes. Notifies the UI to re-evaluate
+    /// <see cref="IsWriteEnabled"/> and all write command CanExecute states.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+        AddSubjectCommand.NotifyCanExecuteChanged();
+        EditSubjectCommand.NotifyCanExecuteChanged();
+        DeleteSubjectCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>
     /// Loads all courses from the database and populates the <see cref="Course.TagSummary"/>
@@ -80,7 +98,7 @@ public partial class CourseListViewModel : ViewModelBase
     private List<SectionPropertyValue> LoadAllTags() =>
         _propertyRepo.GetAll(SectionPropertyTypes.Tag);
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         var course = new Course();
@@ -96,7 +114,7 @@ public partial class CourseListViewModel : ViewModelBase
             subjects: Subjects);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
         if (SelectedCourse is null) return;
@@ -121,7 +139,7 @@ public partial class CourseListViewModel : ViewModelBase
             subjects: Subjects);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedCourse is null) return;
@@ -146,7 +164,7 @@ public partial class CourseListViewModel : ViewModelBase
 
     // ── Subject management ──────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void AddSubject()
     {
         var subject = new Subject();
@@ -161,7 +179,7 @@ public partial class CourseListViewModel : ViewModelBase
             abbreviationExists: abbr => _subjectRepo.ExistsByAbbreviation(abbr));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void EditSubject()
     {
         if (SelectedSubject is null) return;
@@ -182,7 +200,7 @@ public partial class CourseListViewModel : ViewModelBase
             abbreviationExists: abbr => _subjectRepo.ExistsByAbbreviation(abbr, excludeId: clone.Id));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task DeleteSubject()
     {
         if (SelectedSubject is null) return;
