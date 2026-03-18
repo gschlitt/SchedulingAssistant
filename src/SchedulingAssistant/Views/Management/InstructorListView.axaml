@@ -173,36 +173,46 @@
                 FontSize="10"
                 IsChecked="{Binding ShowOnlyActive}" />
 
+            <!--  CanUserSortColumns enables click-to-sort on column headers.
+                  The Sorting event is handled in code-behind, which delegates to
+                  InstructorListViewModel.SetSortMode() and sets e.Handled=true to
+                  suppress the DataGrid's built-in client-side sort (we sort at the DB level).
+                  Tag values on each column identify which InstructorSortMode to apply.  -->
             <DataGrid
                 MaxHeight="250"
                 AutoGenerateColumns="False"
                 BorderBrush="#CCCCCC"
                 BorderThickness="1"
-                CanUserSortColumns="False"
+                CanUserSortColumns="True"
                 IsReadOnly="True"
                 ItemsSource="{Binding Instructors}"
-                SelectedItem="{Binding SelectedInstructor}">
+                SelectedItem="{Binding SelectedInstructor}"
+                Sorting="DataGrid_Sorting">
                 <DataGrid.Columns>
                     <DataGridTextColumn
                         Width="*"
                         Binding="{Binding FirstName}"
                         FontSize="12"
-                        Header="First" />
+                        Header="First"
+                        Tag="FirstName" />
                     <DataGridTextColumn
                         Width="*"
                         Binding="{Binding LastName}"
                         FontSize="12"
-                        Header="Last" />
+                        Header="Last"
+                        Tag="LastName" />
                     <DataGridTextColumn
                         Width="40"
                         Binding="{Binding Initials}"
                         FontSize="12"
-                        Header="Init" />
+                        Header="Init"
+                        Tag="Initials" />
                     <DataGridTextColumn
                         Width="*"
                         Binding="{Binding StaffTypeName}"
                         FontSize="12"
-                        Header="Type" />
+                        Header="Type"
+                        Tag="StaffType" />
                     <DataGridTextColumn
                         Width="*"
                         Binding="{Binding Email}"

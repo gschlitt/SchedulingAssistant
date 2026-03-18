@@ -36,6 +36,7 @@ public class AppSettings
     public double? PreferredBlockLength { get; set; } = null;
     public bool ShowOnlyActiveInstructors { get; set; } = true;
     public SectionSortMode SectionSortMode { get; set; } = SectionSortMode.SubjectCourseCode;
+    public InstructorSortMode InstructorSortMode { get; set; } = InstructorSortMode.LastName;
 
     /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }

@@ -1,14 +1,42 @@
 using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Data.Repositories;
 
 public class InstructorRepository(DatabaseContext db)
 {
+    /// <summary>
+    /// Returns all instructors, ordered according to the persisted
+    /// <see cref="AppSettings.InstructorSortMode"/> preference.
+    /// <para>
+    /// <b>LastName / FirstName / Initials</b> — sort is applied at the SQL level via
+    /// <c>ORDER BY</c> on dedicated columns, so the same order is returned to every
+    /// caller (section-editor picker, grid-filter list, etc.).
+    /// </para>
+    /// <para>
+    /// <b>StaffType</b> — SQLite does not have access to the resolved staff-type name
+    /// (it is a <c>[JsonIgnore]</c> display-only field populated after the query).
+    /// The SQL query therefore returns rows in last-name order, and the caller
+    /// (<see cref="ViewModels.Management.InstructorListViewModel"/>) re-sorts in memory
+    /// by <c>StaffTypeName</c> once name resolution is complete.  Other consumers
+    /// (section editor, grid filter) receive last-name order for StaffType mode, which
+    /// is still a reasonable fallback.
+    /// </para>
+    /// </summary>
     public List<Instructor> GetAll()
     {
+        // For StaffType the SQL sort is a best-effort fallback; the VM re-sorts in memory
+        // after resolving display names (see InstructorListViewModel.Load()).
+        var orderBy = AppSettings.Current.InstructorSortMode switch
+        {
+            InstructorSortMode.FirstName => "first_name, last_name",
+            InstructorSortMode.Initials  => "initials, last_name, first_name",
+            _                            => "last_name, first_name",   // LastName + StaffType fallback
+        };
+
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT id, data FROM Instructors ORDER BY first_name, last_name";
+        cmd.CommandText = $"SELECT id, data FROM Instructors ORDER BY {orderBy}";
         using var reader = cmd.ExecuteReader();
         var results = new List<Instructor>();
         while (reader.Read())

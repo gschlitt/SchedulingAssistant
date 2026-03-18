@@ -146,7 +146,35 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
                 : null;
 
         var filtered = ShowOnlyActive ? all.Where(i => i.IsActive).ToList() : all;
+
+        // StaffType sort must be applied in memory here because StaffTypeName is a
+        // display-only property resolved above — it is not stored in the database and
+        // therefore cannot be used in an ORDER BY clause.  All other sort modes are
+        // handled at the SQL level in InstructorRepository.GetAll().
+        if (AppSettings.Current.InstructorSortMode == InstructorSortMode.StaffType)
+            filtered = filtered
+                .OrderBy(i => i.StaffTypeName ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(i => i.LastName,  StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
         Instructors = new ObservableCollection<Instructor>(filtered);
+    }
+
+    /// <summary>
+    /// Persists <paramref name="mode"/> to <see cref="AppSettings"/> and reloads the
+    /// instructor list so the new order takes effect immediately.  Because
+    /// <see cref="InstructorRepository.GetAll"/> reads the setting at query time, all
+    /// other instructor loads (section-editor picker, grid-filter list) will also reflect
+    /// the new order the next time they reload.
+    /// </summary>
+    /// <param name="mode">The sort mode chosen by the user.</param>
+    public void SetSortMode(InstructorSortMode mode)
+    {
+        var s = AppSettings.Current;
+        s.InstructorSortMode = mode;
+        s.Save();
+        Load();
     }
 
     partial void OnShowOnlyActiveChanged(bool value)
