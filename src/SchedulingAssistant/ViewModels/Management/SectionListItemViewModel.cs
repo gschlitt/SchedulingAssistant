@@ -154,7 +154,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             {
                 if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
                 var name = $"{instr.FirstName} {instr.LastName}";
-                return a.Workload.HasValue ? $"{name} [{a.Workload.Value:0.#}]" : name;
+                return a.Workload.HasValue ? $"{name} [{a.Workload.Value:0.##}]" : name;
             })
             .Where(n => n is not null)
             .ToList();
@@ -167,7 +167,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             {
                 if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
                 var name = $"{instr.FirstName} {instr.LastName}";
-                return a.Workload.HasValue ? $"{name} ({a.Workload.Value:0.#})" : name;
+                return a.Workload.HasValue ? $"{name} ({a.Workload.Value:0.##})" : name;
             })
             .Where(n => n is not null)
             .ToList();

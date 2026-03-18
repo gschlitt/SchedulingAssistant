@@ -95,7 +95,7 @@ public partial class SectionEditViewModel : ViewModelBase
                 .Select(i =>
                 {
                     var w = i.ParsedWorkload;
-                    return w.HasValue ? $"{i.DisplayName} [{w.Value:0.#}]" : i.DisplayName;
+                    return w.HasValue ? $"{i.DisplayName} [{w.Value:0.##}]" : i.DisplayName;
                 })
                 .ToList();
             return parts.Count > 0 ? string.Join(", ", parts) : "(none)";
