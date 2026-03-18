@@ -20,6 +20,7 @@ using Newtonsoft.Json.Linq;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -35,6 +36,7 @@ public class Phase2Importer
 {
     // ── Repositories ──────────────────────────────────────────────────────────
 
+    private readonly DatabaseContext            _db;
     private readonly SectionPropertyRepository _propRepo;
     private readonly InstructorRepository      _instructorRepo;
     private readonly RoomRepository            _roomRepo;
@@ -90,6 +92,25 @@ public class Phase2Importer
     private readonly Dictionary<string, string> _instructorByOldKey
         = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Maps instructor old Key → (WorkLoadObjectKey → WorkLoadUnits).
+    /// WorkLoadObjectKey from the instructor's WorkLoadRecord matches the
+    /// section's TTId in the year JSON, giving us the per-instructor
+    /// workload credit for each section they teach.
+    /// Only IsSectionType == true entries are stored.
+    /// </summary>
+    private readonly Dictionary<string, Dictionary<string, double>> _workloadByInstructorKey
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Maps Course.Id to its level string (e.g. "100", "200").
+    /// Populated from existing DB courses in <see cref="LoadExistingData"/> and
+    /// extended as new courses are inserted, so sections can inherit the level
+    /// without a second DB round-trip.
+    /// </summary>
+    private readonly Dictionary<string, string> _levelByCourseId
+        = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Maps academic-year name (e.g. "2025-2026") to new AcademicYear.Id.</summary>
     private readonly Dictionary<string, string> _ayByName
         = new(StringComparer.OrdinalIgnoreCase);
@@ -116,6 +137,7 @@ public class Phase2Importer
     /// <param name="db">Open DatabaseContext for the target database.</param>
     public Phase2Importer(DatabaseContext db)
     {
+        _db             = db;
         _propRepo       = new SectionPropertyRepository(db);
         _instructorRepo = new InstructorRepository(db);
         _roomRepo       = new RoomRepository(db);
@@ -313,11 +335,13 @@ public class Phase2Importer
     /// </summary>
     /// <param name="token">Token to potentially resolve.</param>
     /// <param name="refMap">$id → JToken map built by <see cref="BuildRefMap"/>.</param>
-    private static JToken Resolve(JToken? token, Dictionary<string, JToken> refMap)
+    private static JToken? Resolve(JToken? token, Dictionary<string, JToken> refMap)
     {
+        // Treat C# null and JSON null identically — callers use ?. for safe child access.
+        if (token is null || token.Type == JTokenType.Null) return null;
         if (token is JObject obj && obj.Count == 1 && obj["$ref"] is JValue refVal)
             return refMap.TryGetValue(refVal.ToString(), out var target) ? target : token;
-        return token ?? JValue.CreateNull();
+        return token;
     }
 
     /// <summary>
@@ -336,12 +360,29 @@ public class Phase2Importer
     {
         if (token is null) return Enumerable.Empty<JToken>();
         var resolved = Resolve(token, refMap);
+        if (resolved is null) return Enumerable.Empty<JToken>();
 
-        // Form 1: plain JArray — some collections are serialised without the $values wrapper
+        // Form 1: plain JArray
         if (resolved is JArray plainArr) return plainArr;
 
         // Form 2: { "$id": "N", "$values": [...] } — JSON.NET reference-tracking format
-        return resolved["$values"] is JArray valArr ? valArr : Enumerable.Empty<JToken>();
+        if (resolved is JObject resObj && resObj["$values"] is JArray valArr) return valArr;
+
+        // Form 3: double-wrapped — { "$id": "N", "SomeList": { "$id": "M", "$values": [...] } }
+        // Seen in XYZ_UNITS where e.g. Courses → { CourseList → { $values:[...] } }.
+        // Walk the first non-metadata child that is itself a collection.
+        if (resolved is JObject wrapperObj)
+        {
+            foreach (var prop in wrapperObj.Properties())
+            {
+                if (prop.Name.StartsWith("$")) continue;
+                var inner = Resolve(prop.Value, refMap);
+                if (inner is JArray innerArr) return innerArr;
+                if (inner is JObject innerObj && innerObj["$values"] is JArray innerValArr) return innerValArr;
+            }
+        }
+
+        return Enumerable.Empty<JToken>();
     }
 
     // ── Existing-data loader ──────────────────────────────────────────────────
@@ -388,6 +429,10 @@ public class Phase2Importer
                 ? c.CalendarCode[abbr.Length..]
                 : c.CalendarCode;
             _courseByKey[$"{abbr}|{courseNum}"] = c.Id;
+
+            // Cache level so sections can inherit it without a second DB round-trip.
+            if (!string.IsNullOrEmpty(c.Level))
+                _levelByCourseId[c.Id] = c.Level;
         }
 
         foreach (var ay in _ayRepo.GetAll())
@@ -416,9 +461,10 @@ public class Phase2Importer
         if (token is null) return;
 
         var resolved = Resolve(token, refMap);
+        if (resolved is null) return;
 
         IEnumerable<JToken> items =
-            resolved["$values"] is JArray valArr ? valArr :
+            resolved is JObject r && r["$values"] is JArray valArr ? valArr :
             resolved is JArray directArr         ? directArr :
             Enumerable.Empty<JToken>();
 
@@ -553,10 +599,20 @@ public class Phase2Importer
         }
 
         // ── Courses ───────────────────────────────────────────────────────────
+        var unitName     = unit["Name"]?.Value<string>() ?? "?";
         var coursesToken = unit["Courses"];
-        if (coursesToken is null) return;
+        if (coursesToken is null)
+        {
+            _warnings.Add($"[{unitName}] unit[\"Courses\"] key is null/missing — no courses parsed");
+            return;
+        }
 
-        foreach (var item in GetValues(coursesToken, refMap))
+        var courseItems    = GetValues(coursesToken, refMap).ToList();
+        int cInserted      = 0;   // inserted this unit
+        int cSkippedNull   = 0;   // missing abbr or courseNum
+        int cSkippedDupe   = 0;   // already in cache
+
+        foreach (var item in courseItems)
         {
             var resolved = Resolve(item, refMap);
 
@@ -571,12 +627,15 @@ public class Phase2Importer
             var courseNum    = crsCodeToken?["Name"]?.Value<string>();
 
             if (string.IsNullOrWhiteSpace(abbr) || string.IsNullOrWhiteSpace(courseNum))
+            {
+                cSkippedNull++;
                 continue;
+            }
 
             // Composite key: "{subjectAbbr}|{courseNum}" — prevents collisions between
             // subjects that share the same course number (e.g. FLOW 101 vs HIST 101).
             var courseKey = $"{abbr}|{courseNum}";
-            if (_courseByKey.ContainsKey(courseKey)) continue;
+            if (_courseByKey.ContainsKey(courseKey)) { cSkippedDupe++; continue; }
 
             var subjectId = EnsureSubject(abbr, subjectName, dryRun);
 
@@ -596,21 +655,31 @@ public class Phase2Importer
                 }
             }
 
+            var level = CourseLevelParser.ParseLevel(courseNum) ?? string.Empty;
+
             var course = new Course
             {
                 SubjectId    = subjectId,
                 CalendarCode = abbr + courseNum,   // full code e.g. "FLOW101" — abbr prefix + numeric part
                 Title        = title,
                 IsActive     = isActive,
-                TagIds       = tagIds
+                TagIds       = tagIds,
+                Level        = level
             };
 
             if (!dryRun)
                 _courseRepo.Insert(course);
 
             _courseByKey[courseKey] = course.Id;
+
+            // Cache level so sections can inherit it during Phase 2b.
+            if (!string.IsNullOrEmpty(level))
+                _levelByCourseId[course.Id] = level;
             _coursesInserted++;
+            cInserted++;
         }
+
+        _warnings.Add($"[{unitName}] Courses: found={courseItems.Count}, inserted={cInserted}, skipped_null={cSkippedNull}, skipped_dupe={cSkippedDupe}");
     }
 
     /// <summary>
@@ -651,10 +720,20 @@ public class Phase2Importer
     /// <param name="dryRun">When true, report only — do not write to DB.</param>
     private void ImportInstructorsFromUnit(JObject unit, Dictionary<string, JToken> refMap, bool dryRun)
     {
+        var unitNameI  = unit["Name"]?.Value<string>() ?? "?";
         var staffToken = unit["Staff"];
-        if (staffToken is null) return;
+        if (staffToken is null)
+        {
+            _warnings.Add($"[{unitNameI}] unit[\"Staff\"] key is null/missing — no instructors parsed");
+            return;
+        }
 
-        foreach (var item in GetValues(staffToken, refMap))
+        var staffItems   = GetValues(staffToken, refMap).ToList();
+        int iInserted    = 0;
+        int iSkippedNull = 0;   // missing Key/TTId
+        int iSkippedDupe = 0;   // already in cache
+
+        foreach (var item in staffItems)
         {
             var resolved = Resolve(item, refMap);
 
@@ -667,8 +746,8 @@ public class Phase2Importer
             var isActive  = resolved["IsActive"]?.Value<bool>() ?? true;
             var contract  = resolved["Contract"]?.Value<string>();
 
-            if (string.IsNullOrWhiteSpace(oldKey)) continue;
-            if (_instructorByOldKey.ContainsKey(oldKey)) continue;
+            if (string.IsNullOrWhiteSpace(oldKey)) { iSkippedNull++; continue; }
+            if (_instructorByOldKey.ContainsKey(oldKey)) { iSkippedDupe++; continue; }
 
             // Ensure staff type exists
             string? staffTypeId = null;
@@ -692,8 +771,38 @@ public class Phase2Importer
                 _instructorRepo.Insert(instructor);
 
             _instructorByOldKey[oldKey] = instructor.Id;
+
+            // ── Workload lookup ───────────────────────────────────────────────
+            // WorkLoadRecord is an object whose properties are semester keys
+            // (e.g. "Fall2024-2025").  Each value holds a $values array of
+            // workload entries.  We collect every IsSectionType == true entry
+            // so that ImportSection can find the credit for this instructor
+            // when it processes sections later.
+            var workloadLookup = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            if (resolved["WorkLoadRecord"] is JObject workloadRecord)
+            {
+                foreach (var semProp in workloadRecord.Properties())
+                {
+                    if (semProp.Name.StartsWith("$")) continue;
+                    var semValue = Resolve(semProp.Value, refMap);
+                    foreach (var entry in GetValues(semValue, refMap))
+                    {
+                        var e       = Resolve(entry, refMap);
+                        if (e?["IsSectionType"]?.Value<bool>() != true) continue;
+                        var wlKey   = e["WorkLoadObjectKey"]?.Value<string>();
+                        var wlUnits = e["WorkLoadUnits"]?.Value<double>();
+                        if (!string.IsNullOrWhiteSpace(wlKey) && wlUnits.HasValue)
+                            workloadLookup[wlKey] = wlUnits.Value;
+                    }
+                }
+            }
+            _workloadByInstructorKey[oldKey] = workloadLookup;
+
             _instructorsInserted++;
+            iInserted++;
         }
+
+        _warnings.Add($"[{unitNameI}] Staff: found={staffItems.Count}, inserted={iInserted}, skipped_null={iSkippedNull}, skipped_dupe={iSkippedDupe}");
     }
 
     // ── Academic year / semester / section importer ───────────────────────────
@@ -754,7 +863,12 @@ public class Phase2Importer
 
         var ay = new AcademicYear { Name = name };
         if (!dryRun)
+        {
             _ayRepo.Insert(ay);
+            // Seed the institution's default legal start-time matrix for this year,
+            // just as the UI does when a new academic year is created manually.
+            SeedData.SeedDefaultLegalStartTimes(_db.Connection, ay.Id);
+        }
 
         _ayByName[name] = ay.Id;
         _ayInserted++;
@@ -888,13 +1002,28 @@ public class Phase2Importer
         }
 
         // ── Instructor assignments ─────────────────────────────────────────────
+        // The section's SectionKey matches the WorkLoadObjectKey stored in each
+        // instructor's WorkLoadRecord.  Copied sections may lack a TTId, so
+        // SectionKey is the reliable field to use here.
+        var sectionKey = sec["SectionKey"]?.Value<string>()
+                      ?? sec["TTId"]?.Value<string>()
+                      ?? sec["Key"]?.Value<string>();
+
         var assignments = new List<InstructorAssignment>();
         foreach (var staffItem in GetValues(sec["StaffMemberIdentifiers"], refMap))
         {
             // Item2 is the old instructor Key / TTId
             var oldKey = Resolve(staffItem, refMap)?["Item2"]?.Value<string>();
-            if (!string.IsNullOrWhiteSpace(oldKey) && _instructorByOldKey.TryGetValue(oldKey, out var newId))
-                assignments.Add(new InstructorAssignment { InstructorId = newId, Workload = null });
+            if (string.IsNullOrWhiteSpace(oldKey) || !_instructorByOldKey.TryGetValue(oldKey, out var newId))
+                continue;
+
+            decimal? workload = null;
+            if (!string.IsNullOrWhiteSpace(sectionKey)
+                && _workloadByInstructorKey.TryGetValue(oldKey, out var wlLookup)
+                && wlLookup.TryGetValue(sectionKey, out var wlVal))
+                workload = (decimal)wlVal;
+
+            assignments.Add(new InstructorAssignment { InstructorId = newId, Workload = workload });
         }
 
         // ── Schedule (bookings) ───────────────────────────────────────────────
@@ -910,8 +1039,10 @@ public class Phase2Importer
             var endRaw   = booking["EndTime"]?.Value<int>() ?? 0;
             if (beginRaw == 0 || endRaw == 0) continue;
 
-            var startMin    = HhmmToMinutes(beginRaw);
-            var endMin      = HhmmToMinutes(endRaw);
+            var startMin = HhmmToMinutes(beginRaw);
+            // The old app stored end times 10 minutes early (a built-in break buffer).
+            // Add those 10 minutes back so the imported duration reflects the actual class length.
+            var endMin      = HhmmToMinutes(endRaw) + 10;
             var durationMin = endMin - startMin;
             if (durationMin <= 0) continue;
 
@@ -944,6 +1075,16 @@ public class Phase2Importer
             });
         }
 
+        // Inherit the level from the course so level-based filtering works without
+        // a course look-up at query time.
+        var level = courseId is not null && _levelByCourseId.TryGetValue(courseId, out var lv)
+            ? lv : null;
+
+        // CommentPresent/CommentText — map the old system's section comment to Notes.
+        var commentText = sec["CommentPresent"]?.Value<bool>() == true
+            ? sec["CommentText"]?.Value<string>()?.Trim()
+            : null;
+
         var section = new Section
         {
             SemesterId            = semesterId,
@@ -955,7 +1096,9 @@ public class Phase2Importer
             ResourceIds           = resourceIds,
             Reserves              = reserves,
             InstructorAssignments = assignments,
-            Schedule              = schedule
+            Schedule              = schedule,
+            Level                 = level,
+            Notes                 = commentText ?? string.Empty
         };
 
         if (!dryRun)

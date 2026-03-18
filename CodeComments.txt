@@ -1,6 +1,6 @@
 Bugs:
 
-
+Increase precision of workload credit (lab instructors get things like 2/11 of a credit)
 
 A user could enter an early start time before 0830 in the start-time/blocklength selector. What happens then?
 

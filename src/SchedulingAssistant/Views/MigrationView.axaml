@@ -185,6 +185,110 @@
                            Foreground="{StaticResource TextPrimary}" />
             </ScrollViewer>
 
+            <!-- ── Divider ─────────────────────────────────────────────────── -->
+            <Border Margin="0,24,0,16"
+                    Height="1"
+                    Background="{StaticResource SeparatorLine}" />
+
+            <!-- ── Section 4: Meeting-time validator ─────────────────────── -->
+            <TextBlock FontSize="{StaticResource FontSizeLarge}"
+                       FontWeight="SemiBold"
+                       Text="4 · Validate Meeting Times" />
+
+            <TextBlock Margin="0,4,0,12"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       TextWrapping="Wrap"
+                       Text="Scans every section in the current database and flags meetings whose block length or start time doesn't match the academic year's legal schedule matrix. For each flagged section, choose an action and click Apply Fixes." />
+
+            <!-- Scan button + status -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                <Button Content="Seed Legal Start Times"
+                        Command="{Binding SeedMissingLegalStartTimesCommand}"
+                        ToolTip.Tip="Seeds the default block-length/start-time matrix for any academic year that doesn't have one yet. Run this first if the scan reports skipped years."
+                        MinWidth="200" Padding="16,6"
+                        FontSize="{StaticResource FontSizeNormal}" />
+
+                <Button Content="Scan"
+                        Command="{Binding ScanInvalidMeetingsCommand}"
+                        MinWidth="100" Padding="16,6"
+                        FontSize="{StaticResource FontSizeNormal}" />
+
+                <Button Content="Apply Fixes"
+                        Command="{Binding ApplyMeetingFixesCommand}"
+                        MinWidth="120" Padding="16,6"
+                        FontSize="{StaticResource FontSizeNormal}"
+                        IsVisible="{Binding InvalidMeetingItems.Count}" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding MeetingScanStatus}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       IsVisible="{Binding MeetingScanStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+            <!-- One row per flagged section -->
+            <ItemsControl ItemsSource="{Binding InvalidMeetingItems}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,6"
+                                Padding="10,8"
+                                CornerRadius="4"
+                                Background="{StaticResource EditorBackground}">
+                            <StackPanel Spacing="6">
+
+                                <!-- Section identifier -->
+                                <TextBlock Text="{Binding SectionLabel}"
+                                           FontSize="{StaticResource FontSizeNormal}"
+                                           FontWeight="SemiBold" />
+
+                                <!-- Bad meeting times -->
+                                <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                                           Foreground="{StaticResource TextValidationError}"
+                                           TextWrapping="Wrap">
+                                    <Run Text="Bad meetings: " />
+                                    <Run Text="{Binding BadMeetingsLabel}" />
+                                </TextBlock>
+
+                                <!-- Action picker -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="Action:"
+                                               VerticalAlignment="Center"
+                                               FontSize="{StaticResource FontSizeSmall}" />
+                                    <ComboBox ItemsSource="{Binding AllActions}"
+                                              SelectedItem="{Binding SelectedAction}"
+                                              MinWidth="180"
+                                              FontSize="{StaticResource FontSizeSmall}" />
+                                </StackPanel>
+
+                                <!-- Time pickers — visible only when ReviseTime is chosen -->
+                                <StackPanel Orientation="Horizontal" Spacing="8"
+                                            IsVisible="{Binding ShowTimePickers}">
+                                    <TextBlock Text="Block length (hrs):"
+                                               VerticalAlignment="Center"
+                                               FontSize="{StaticResource FontSizeSmall}" />
+                                    <ComboBox ItemsSource="{Binding LegalBlockLengths}"
+                                              SelectedItem="{Binding SelectedBlockLength}"
+                                              MinWidth="80"
+                                              FontSize="{StaticResource FontSizeSmall}" />
+
+                                    <TextBlock Text="Start (min):"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0,0,0"
+                                               FontSize="{StaticResource FontSizeSmall}" />
+                                    <ComboBox ItemsSource="{Binding LegalStartTimesForBlock}"
+                                              SelectedItem="{Binding SelectedStartTime}"
+                                              MinWidth="80"
+                                              FontSize="{StaticResource FontSizeSmall}" />
+                                </StackPanel>
+
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
         </StackPanel>
     </ScrollViewer>
 

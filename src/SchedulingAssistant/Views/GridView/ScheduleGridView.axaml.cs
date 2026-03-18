@@ -530,9 +530,9 @@ public partial class ScheduleGridView : UserControl
                 var (timeBasedH, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
 
                 double startY = effectiveHeaderHeight + TimeToY(tile.StartMinutes, data.FirstRowMinutes)
-                              + gridlineYOffsets[tile.StartMinutes];
+                              + GetGridlineOffset(gridlineYOffsets, tile.StartMinutes);
                 double endY = effectiveHeaderHeight + TimeToY(tile.EndMinutes, data.FirstRowMinutes)
-                            + gridlineYOffsets[tile.EndMinutes];
+                            + GetGridlineOffset(gridlineYOffsets, tile.EndMinutes);
 
                 double adjustedTileY = startY + TilePadding;
                 // Height is the distance between adjusted gridlines, minus padding; but at least the measured content height
@@ -707,6 +707,28 @@ public partial class ScheduleGridView : UserControl
 
     private static double TimeToY(int minutes, int firstRowMinutes) =>
         (minutes - firstRowMinutes) / 30.0 * HalfHourHeight;
+
+    /// <summary>
+    /// Returns the cumulative expansion offset for <paramref name="minutes"/>.
+    /// The dictionary is keyed at 30-minute intervals; if <paramref name="minutes"/>
+    /// doesn't land on a 30-minute mark (e.g., a section with a non-standard duration
+    /// imported from legacy data), this method linearly interpolates between the two
+    /// surrounding gridline entries so rendering degrades gracefully instead of crashing.
+    /// </summary>
+    /// <param name="offsets">The gridlineYOffsets dictionary built during Phase 3.</param>
+    /// <param name="minutes">The time value in minutes from midnight to look up.</param>
+    /// <returns>Cumulative Y expansion offset in pixels.</returns>
+    private static double GetGridlineOffset(Dictionary<int, double> offsets, int minutes)
+    {
+        if (offsets.TryGetValue(minutes, out var exact)) return exact;
+
+        // Interpolate between the two nearest 30-minute gridlines.
+        var lower = (minutes / 30) * 30;
+        var upper = lower + 30;
+        var lo    = offsets.TryGetValue(lower, out var loVal) ? loVal : 0;
+        var hi    = offsets.TryGetValue(upper, out var hiVal) ? hiVal : lo;
+        return lo + (hi - lo) * ((minutes - lower) / 30.0);
+    }
 
     /// <summary>
     /// Measures the natural (unconstrained) pixel width of a text string

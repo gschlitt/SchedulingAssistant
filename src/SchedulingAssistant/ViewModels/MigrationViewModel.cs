@@ -10,7 +10,11 @@ using System.Threading.Tasks;
 #if DEBUG
 using Avalonia.Platform.Storage;
 using SchedulingAssistant.Data;
+using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Migration;
+using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
+using System.Collections.ObjectModel;
 #endif
 
 namespace SchedulingAssistant.ViewModels;
@@ -33,6 +37,7 @@ public partial class MigrationViewModel : ViewModelBase
 #if DEBUG
     private readonly MainWindowViewModel _mainVm;
     private readonly DatabaseContext     _db;
+    private readonly SemesterContext     _semesterContext;
 
     // ── Phase 1 — Years section ───────────────────────────────────────────────
 
@@ -106,10 +111,12 @@ public partial class MigrationViewModel : ViewModelBase
 
     /// <param name="mainVm">Provides the StorageProvider for file/folder pickers.</param>
     /// <param name="db">The active database context, used by the Phase 2 importer.</param>
-    public MigrationViewModel(MainWindowViewModel mainVm, DatabaseContext db)
+    /// <param name="semesterContext">Singleton semester context; reloaded after a real import.</param>
+    public MigrationViewModel(MainWindowViewModel mainVm, DatabaseContext db, SemesterContext semesterContext)
     {
-        _mainVm = mainVm;
-        _db     = db;
+        _mainVm          = mainVm;
+        _db              = db;
+        _semesterContext = semesterContext;
     }
 
     // ── Phase 1 — Years commands ──────────────────────────────────────────────
@@ -254,6 +261,10 @@ public partial class MigrationViewModel : ViewModelBase
         {
             var importer        = new Phase2Importer(_db);
             Phase2StatusMessage = await importer.RunAsync(Phase2UnitsJsonDir, Phase2YearsJsonDir, dryRun: false);
+
+            // Refresh the top-bar academic year and semester dropdowns so the
+            // imported data is immediately visible without restarting the app.
+            _semesterContext.Reload(new AcademicYearRepository(_db), new SemesterRepository(_db));
         }
         catch (Exception ex)
         {
@@ -320,6 +331,250 @@ public partial class MigrationViewModel : ViewModelBase
     /// <param name="csvPath">Full path of the source CSV.</param>
     private static string OutputDirFor(string csvPath)
         => Path.Combine(Path.GetDirectoryName(csvPath) ?? string.Empty, "json-output");
+
+    // ── Section 4: Meeting-time validator ─────────────────────────────────────
+
+    /// <summary>Sections with meetings that violate the legal block-length/start-time matrix.</summary>
+    [ObservableProperty] private ObservableCollection<InvalidMeetingItemViewModel> _invalidMeetingItems = new();
+
+    /// <summary>Status message for the meeting scan or apply pass.</summary>
+    [ObservableProperty] private string? _meetingScanStatus;
+
+    /// <summary>True while a scan or apply operation is in progress.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ScanInvalidMeetingsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ApplyMeetingFixesCommand))]
+    private bool _isMeetingOpRunning;
+
+    /// <summary>
+    /// Scans every section in the current database against its academic year's legal
+    /// block-length / start-time matrix.  Populates <see cref="InvalidMeetingItems"/>
+    /// with any sections that have meetings that don't fit.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRunMeetingOp))]
+    private async Task ScanInvalidMeetings()
+    {
+        IsMeetingOpRunning = true;
+        MeetingScanStatus  = "Scanning…";
+        InvalidMeetingItems.Clear();
+
+        try
+        {
+            var results = await Task.Run(() =>
+            {
+                var semRepo     = new SemesterRepository(_db);
+                var sectionRepo = new SectionRepository(_db);
+                var legalRepo   = new LegalStartTimeRepository(_db);
+                var courseRepo  = new CourseRepository(_db);
+
+                // Build a CalendarCode lookup so we can show "FLOW 101" in the label.
+                var codeById = courseRepo.GetAll()
+                    .ToDictionary(c => c.Id, c => c.CalendarCode);
+
+                // Load all semesters so we know each semester's parent AY.
+                var semesters = semRepo.GetAll();
+
+                // Cache legal times per AY to avoid repeated DB hits.
+                var legalByAy      = new Dictionary<string, List<LegalStartTime>>();
+                var skippedAyNames = new List<string>();   // AYs with no legal times defined
+
+                var found = new List<InvalidMeetingItemViewModel>();
+
+                foreach (var sem in semesters)
+                {
+                    if (!legalByAy.TryGetValue(sem.AcademicYearId, out var legal))
+                    {
+                        legal = legalRepo.GetAll(sem.AcademicYearId);
+                        legalByAy[sem.AcademicYearId] = legal;
+
+                        if (legal.Count == 0)
+                        {
+                            // Track by AY id so we report the name only once.
+                            skippedAyNames.Add(sem.AcademicYearId);
+                        }
+                    }
+
+                    if (legal.Count == 0) continue;  // no matrix defined — skip this semester
+
+                    // Build the validity matrix for fast lookup.
+                    var matrix = legal.ToDictionary(
+                        lt => lt.BlockLength,
+                        lt => new HashSet<int>(lt.StartTimes));
+
+                    foreach (var section in sectionRepo.GetAll(sem.Id))
+                    {
+                        if (section.Schedule.Count == 0) continue;
+
+                        var bad = section.Schedule
+                            .Where(m =>
+                            {
+                                var bl = m.DurationMinutes / 60.0;
+                                return !matrix.TryGetValue(bl, out var valid) || !valid.Contains(m.StartMinutes);
+                            })
+                            .ToList();
+
+                        if (bad.Count == 0) continue;
+
+                        var courseCode = section.CourseId is not null
+                            && codeById.TryGetValue(section.CourseId, out var cc) ? cc : "?";
+                        var label = $"{courseCode} {section.SectionCode}  ({sem.Name})";
+
+                        found.Add(new InvalidMeetingItemViewModel(section, bad, legal, label));
+                    }
+                }
+
+                return (found, skippedAyNames);
+            });
+
+            foreach (var item in results.found)
+                InvalidMeetingItems.Add(item);
+
+            var sb = new System.Text.StringBuilder();
+            if (results.skippedAyNames.Count > 0)
+                sb.AppendLine(
+                    $"⚠  {results.skippedAyNames.Count} academic year(s) were skipped because " +
+                    "no legal start-time matrix is defined for them yet. " +
+                    "Use 'Seed Legal Start Times' below to add the defaults, then re-scan.");
+
+            if (results.found.Count == 0)
+                sb.Append(results.skippedAyNames.Count == 0 ? "✓  No invalid meetings found." : "");
+            else
+                sb.Append($"Found {results.found.Count} section(s) with invalid meetings. " +
+                           "Choose an action for each, then click Apply Fixes.");
+
+            MeetingScanStatus = sb.ToString().TrimEnd();
+        }
+        catch (Exception ex)
+        {
+            MeetingScanStatus = $"Scan failed: {ex.Message}";
+        }
+        finally
+        {
+            IsMeetingOpRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Applies the chosen remediation action for each item in <see cref="InvalidMeetingItems"/>:
+    /// <list type="bullet">
+    ///   <item><description><b>DiscardBadMeetings</b> — removes only the offending meetings from the section.</description></item>
+    ///   <item><description><b>ReviseTime</b> — replaces all offending meetings with the chosen block length and start time (days preserved).</description></item>
+    ///   <item><description><b>DiscardSection</b> — deletes the entire section from the database.</description></item>
+    /// </list>
+    /// Clears <see cref="InvalidMeetingItems"/> on success.  Re-run Scan to verify.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRunMeetingOp))]
+    private async Task ApplyMeetingFixes()
+    {
+        if (InvalidMeetingItems.Count == 0) return;
+
+        IsMeetingOpRunning = true;
+        MeetingScanStatus  = "Applying fixes…";
+
+        try
+        {
+            var snapshot = InvalidMeetingItems.ToList();
+
+            await Task.Run(() =>
+            {
+                var sectionRepo     = new SectionRepository(_db);
+                // Guard against a section appearing more than once (e.g. multiple bad meetings
+                // each creating a row) after a DiscardSection action has already removed it.
+                var deletedIds = new HashSet<string>();
+
+                foreach (var item in snapshot)
+                {
+                    if (deletedIds.Contains(item.Section.Id)) continue;
+
+                    switch (item.SelectedAction)
+                    {
+                        case InvalidMeetingItemViewModel.ActionChoice.DiscardSection:
+                            sectionRepo.Delete(item.Section.Id);
+                            deletedIds.Add(item.Section.Id);
+                            break;
+
+                        case InvalidMeetingItemViewModel.ActionChoice.DiscardBadMeetings:
+                            // Use identity comparison — these are the same object references
+                            // collected during the scan.
+                            item.Section.Schedule.RemoveAll(m => item.BadMeetings.Contains(m));
+                            sectionRepo.Update(item.Section);
+                            break;
+
+                        case InvalidMeetingItemViewModel.ActionChoice.ReviseTime:
+                            if (item.SelectedBlockLength is null || item.SelectedStartTime is null) break;
+                            var newDuration = (int)(item.SelectedBlockLength.Value * 60);
+                            foreach (var m in item.BadMeetings)
+                            {
+                                m.StartMinutes    = item.SelectedStartTime.Value;
+                                m.DurationMinutes = newDuration;
+                            }
+                            sectionRepo.Update(item.Section);
+                            break;
+                    }
+                }
+            });
+
+            InvalidMeetingItems.Clear();
+            MeetingScanStatus = "✓  Fixes applied. Re-scan to verify there are no remaining issues.";
+        }
+        catch (Exception ex)
+        {
+            MeetingScanStatus = $"Apply failed: {ex.Message}";
+        }
+        finally
+        {
+            IsMeetingOpRunning = false;
+        }
+    }
+
+    private bool CanRunMeetingOp() => !IsMeetingOpRunning;
+
+    /// <summary>
+    /// Seeds the default legal block-length / start-time matrix for every academic
+    /// year that currently has no entries in the LegalStartTimes table.
+    /// This is needed for databases that were imported before automatic seeding was
+    /// added to the importer.  Safe to run multiple times — uses INSERT OR IGNORE.
+    /// After seeding, re-run Scan so the validator has a matrix to check against.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRunMeetingOp))]
+    private async Task SeedMissingLegalStartTimes()
+    {
+        IsMeetingOpRunning = true;
+        MeetingScanStatus  = "Seeding legal start times…";
+
+        try
+        {
+            var seeded = await Task.Run(() =>
+            {
+                var ayRepo    = new AcademicYearRepository(_db);
+                var legalRepo = new LegalStartTimeRepository(_db);
+                int count     = 0;
+
+                foreach (var ay in ayRepo.GetAll())
+                {
+                    var existing = legalRepo.GetAll(ay.Id);
+                    if (existing.Count > 0) continue;  // already has a matrix — skip
+
+                    SeedData.SeedDefaultLegalStartTimes(_db.Connection, ay.Id);
+                    count++;
+                }
+
+                return count;
+            });
+
+            MeetingScanStatus = seeded == 0
+                ? "✓  All academic years already have legal start times defined."
+                : $"✓  Seeded defaults for {seeded} academic year(s). Re-scan to validate meetings.";
+        }
+        catch (Exception ex)
+        {
+            MeetingScanStatus = $"Seeding failed: {ex.Message}";
+        }
+        finally
+        {
+            IsMeetingOpRunning = false;
+        }
+    }
 
 #endif
 }

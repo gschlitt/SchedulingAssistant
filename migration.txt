@@ -1,0 +1,19 @@
+Migration Notes
+
+From the database, export the UFV_UNITS table to .csv 
+Keep the top line.
+Separate out the individual units (one line each) to a separate [Name]Unit.csv file
+
+For each unit, export the "[Name]Years to a .csv
+
+In the app, set up a new database of appropriate departmental name.
+
+Under DEBUG Migration, use the first two facilities to convert each file to a .json, place in separate directories.
+Validate meeting times.
+
+Import into database, choose appropriate folders for each json file.
+Dry Run to check, then Import.
+
+
+
+From data it appears no use has been made by BIO of Committments. That import facility has not been wired up yet.
