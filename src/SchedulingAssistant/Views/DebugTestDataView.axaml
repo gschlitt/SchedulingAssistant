@@ -64,6 +64,32 @@
                    TextAlignment="Center"
                    FontSize="12"
                    Foreground="#666666" />
+
+        <!-- Demo Data Generator -->
+        <Border BorderBrush="{DynamicResource MenuBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="10,8">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Demo Data Generator"
+                           FontSize="12"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Writes DemoData.*.cs files from the currently selected academic year. Point the output folder at src/SchedulingAssistant/Demo/ in the repo, then rebuild."
+                           TextWrapping="Wrap"
+                           FontSize="11"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                <TextBlock Text="Output folder:" FontSize="11" />
+                <TextBox Text="{Binding DemoOutputFolder}"
+                         Watermark="e.g. C:\source\repos\SchedulingAssistant\src\SchedulingAssistant\Demo"
+                         FontSize="11" />
+                <Button Content="Generate Demo Data"
+                        Command="{Binding GenerateDemoDataCommand}"
+                        IsEnabled="{Binding !IsGenerating}"
+                        Padding="16,6"
+                        FontSize="11" />
+            </StackPanel>
+        </Border>
+
     </StackPanel>
 
 </UserControl>

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
+using SchedulingAssistant.Demo;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 
@@ -12,6 +13,12 @@ public partial class DebugTestDataViewModel : ViewModelBase
     [ObservableProperty] private int _sectionCount = 10;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private bool _isGenerating;
+
+    /// <summary>
+    /// Destination folder for the generated <c>DemoData.*.cs</c> files.
+    /// Typically points at <c>src/SchedulingAssistant/Demo/</c> in the repo.
+    /// </summary>
+    [ObservableProperty] private string _demoOutputFolder = string.Empty;
 
     /// <summary>
     /// When true, exceptions passed to <see cref="IAppLogger.LogError"/> are re-thrown
@@ -27,6 +34,8 @@ public partial class DebugTestDataViewModel : ViewModelBase
     private readonly SectionListViewModel _sectionListVm;
     private readonly MainWindowViewModel _mainWindowVm;
     private readonly DebugTestDataGenerator _generator;
+    private readonly DemoDataGenerator _demoGenerator;
+    private readonly SemesterContext _semesterContext;
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ILegalStartTimeRepository _startTimeRepo;
     private readonly LegalStartTimesDataExporter _exporter;
@@ -35,16 +44,20 @@ public partial class DebugTestDataViewModel : ViewModelBase
         SectionListViewModel sectionListVm,
         MainWindowViewModel mainWindowVm,
         DebugTestDataGenerator generator,
+        DemoDataGenerator demoGenerator,
+        SemesterContext semesterContext,
         IAcademicYearRepository ayRepo,
         ILegalStartTimeRepository startTimeRepo,
         LegalStartTimesDataExporter exporter)
     {
-        _sectionListVm = sectionListVm;
-        _mainWindowVm = mainWindowVm;
-        _generator = generator;
-        _ayRepo = ayRepo;
-        _startTimeRepo = startTimeRepo;
-        _exporter = exporter;
+        _sectionListVm   = sectionListVm;
+        _mainWindowVm    = mainWindowVm;
+        _generator       = generator;
+        _demoGenerator   = demoGenerator;
+        _semesterContext = semesterContext;
+        _ayRepo          = ayRepo;
+        _startTimeRepo   = startTimeRepo;
+        _exporter        = exporter;
         // Sync the logger with the default field value — OnThrowOnErrorChanged
         // does not fire for field initializers, so we push the default manually.
         App.Logger.ThrowOnError = _throwOnError;
@@ -129,6 +142,53 @@ public partial class DebugTestDataViewModel : ViewModelBase
         {
             StatusMessage = $"Error exporting: {ex.Message}";
             App.Logger.LogError(ex, "DebugTestDataViewModel.ExportStartTimes");
+        }
+        finally
+        {
+            IsGenerating = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads data for the currently selected academic year from the open database and
+    /// writes the <c>DemoData.*.cs</c> partial-class files to <see cref="DemoOutputFolder"/>.
+    /// The output folder must already exist.
+    /// </summary>
+    [RelayCommand]
+    private void GenerateDemoData()
+    {
+        var ayId = _semesterContext.SelectedAcademicYear?.Id;
+        if (string.IsNullOrEmpty(ayId))
+        {
+            StatusMessage = "No academic year selected. Use the semester dropdowns to choose one first.";
+            return;
+        }
+
+        var folder = DemoOutputFolder.Trim();
+        if (string.IsNullOrEmpty(folder))
+        {
+            StatusMessage = "Enter the output folder path before generating.";
+            return;
+        }
+
+        if (!Directory.Exists(folder))
+        {
+            StatusMessage = $"Output folder does not exist: {folder}";
+            return;
+        }
+
+        try
+        {
+            IsGenerating = true;
+            StatusMessage = "Generating demo data files...";
+
+            var progress = new Progress<string>(msg => StatusMessage = msg);
+            _demoGenerator.Generate(ayId, folder, progress);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+            App.Logger.LogError(ex, "DebugTestDataViewModel.GenerateDemoData");
         }
         finally
         {

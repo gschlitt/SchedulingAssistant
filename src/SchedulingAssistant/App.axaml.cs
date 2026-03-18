@@ -202,6 +202,7 @@ public partial class App : Application
 
 #if DEBUG
         services.AddTransient<DebugTestDataGenerator>();
+        services.AddTransient<Demo.DemoDataGenerator>();
         services.AddTransient<DebugTestDataViewModel>();
         // ONE-TIME MIGRATION UTILITY — remove after migration is complete
         services.AddTransient<MigrationViewModel>();
