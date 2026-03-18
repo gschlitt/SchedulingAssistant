@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
@@ -267,16 +268,11 @@ public partial class GridFilterViewModel : ViewModelBase
         var usedTagIds         = sectionList.SelectMany(s => s.TagIds).ToHashSet();
         var usedMeetingTypeIds = sectionList.SelectMany(s => s.Schedule.Select(m => m.MeetingTypeId))
                                             .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
-        var usedLevelIds       = new HashSet<string>();
-        foreach (var section in sectionList)
-        {
-            if (section.CourseId != null && courseLookup.TryGetValue(section.CourseId, out var course))
-            {
-                var level = course.Level;
-                if (!string.IsNullOrEmpty(level))
-                    usedLevelIds.Add(level);
-            }
-        }
+        // Level is now stored on each section (copied from the course at save time).
+        // The filter always shows the full fixed set of level bands (0, 100, … 900)
+        // regardless of which are actually present in this semester, so the user can
+        // easily see that e.g. "no 400-level courses are scheduled this term".
+        var usedLevelIds = CourseLevelParser.AllLevels.ToHashSet();
 
         // Instructors: use the FULL instructor lookup (all active instructors), not just
         // those assigned to sections in this semester. This ensures the overlay listbox

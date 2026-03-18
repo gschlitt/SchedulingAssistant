@@ -33,6 +33,7 @@ public class GridPipelineTests
         string semesterId     = "sem1",
         string? campusId      = null,
         string? sectionTypeId = null,
+        string? level         = null,
         List<string>? tagIds          = null,
         List<string>? instructorIds   = null,
         List<SectionDaySchedule>? schedule = null) =>
@@ -44,6 +45,7 @@ public class GridPipelineTests
             SemesterId    = semesterId,
             CampusId      = campusId,
             SectionTypeId = sectionTypeId,
+            Level         = level,
             TagIds        = tagIds ?? [],
             InstructorAssignments = (instructorIds ?? [])
                 .Select(iid => new InstructorAssignment { InstructorId = iid })
@@ -425,11 +427,11 @@ public class GridPipelineTests
     [Fact]
     public void BuildFilteredBlocks_LevelFilter_ExcludesWrongLevel()
     {
-        // "HIST201" → Level "2XX". Filter is set to "1XX" only.
-        var course  = new Course { Id = "c1", SubjectId = "subj1", CalendarCode = "HIST201" };
-        var section = Sec(courseId: "c1", schedule: [Slot(1, 540)]);
+        // Section has level "200". Filter is set to "100" only — should be excluded.
+        var course  = new Course { Id = "c1", SubjectId = "subj1", CalendarCode = "HIST201", Level = "200" };
+        var section = Sec(courseId: "c1", level: "200", schedule: [Slot(1, 540)]);
         var lookups = Lookups(courses: new() { ["c1"] = course });
-        var snap = Snap(levels: ["1XX"]);
+        var snap = Snap(levels: ["100"]);
 
         var result = ScheduleGridViewModel.BuildFilteredBlocks([section], snap, lookups, []);
 
@@ -439,11 +441,11 @@ public class GridPipelineTests
     [Fact]
     public void BuildFilteredBlocks_LevelFilter_IncludesMatchingLevel()
     {
-        // "HIST101" → Level "1XX". Filter includes "1XX".
-        var course  = new Course { Id = "c1", SubjectId = "subj1", CalendarCode = "HIST101" };
-        var section = Sec(courseId: "c1", schedule: [Slot(1, 540)]);
+        // Section has level "100". Filter includes "100" — should be included.
+        var course  = new Course { Id = "c1", SubjectId = "subj1", CalendarCode = "HIST101", Level = "100" };
+        var section = Sec(courseId: "c1", level: "100", schedule: [Slot(1, 540)]);
         var lookups = Lookups(courses: new() { ["c1"] = course });
-        var snap = Snap(levels: ["1XX"]);
+        var snap = Snap(levels: ["100"]);
 
         var result = ScheduleGridViewModel.BuildFilteredBlocks([section], snap, lookups, []);
 

@@ -234,6 +234,9 @@
                             Classes="nav"
                             Header="Debug">
                             <MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View…" />
+                            <Separator />
+                            <!-- ONE-TIME MIGRATION UTILITY — remove after migration is complete -->
+                            <MenuItem Command="{Binding OpenMigrationCommand}" Header="Migration: CSV → JSON…" />
                         </MenuItem>
                     </Menu>
                 </WrapPanel>

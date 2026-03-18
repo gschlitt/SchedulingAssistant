@@ -330,14 +330,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var tags         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
 
-        // The level "lookup" is a fixed dictionary of the six level strings mapped to
-        // themselves. This lets the level filter use the same dictionary-lookup pattern
-        // as all other filter dimensions rather than needing a special code path.
-        var levels = new Dictionary<string, string>
-        {
-            { "0XX", "0XX" }, { "1XX", "1XX" }, { "2XX", "2XX" },
-            { "3XX", "3XX" }, { "4XX", "4XX" }, { "5+XX", "5+XX" }
-        };
+        // The level "lookup" is a fixed dictionary of all ten level bands mapped to
+        // themselves. Levels are now stored as integers-of-hundreds ("0", "100", …,
+        // "900") set by the administrator per course and copied to each section on
+        // save. The identity dictionary lets the filter use the same lookup pattern
+        // as every other dimension without a special code path.
+        var levels = CourseLevelParser.AllLevels.ToDictionary(l => l, l => l);
 
         // Maps semester DB ID → display name so GridBlocks carry the semester name
         // without the renderer needing to perform extra lookups.
@@ -574,9 +572,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
             if (snap.FilterLevel)
             {
-                if (section.CourseId is null || !lookups.Courses.TryGetValue(section.CourseId, out var c))
-                    continue;
-                if (!snap.LevelIds.Contains(c.Level))
+                // Level is stored on the section itself (copied from the course at save
+                // time), so no course lookup is needed here. Sections with no level
+                // assigned never match a level filter selection.
+                if (!snap.LevelIds.Contains(section.Level ?? string.Empty))
                     continue;
             }
 

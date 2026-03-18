@@ -1,0 +1,191 @@
+<!-- ONE-TIME MIGRATION UTILITY — DELETE AFTER USE -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels"
+             x:Class="SchedulingAssistant.Views.MigrationView"
+             x:DataType="vm:MigrationViewModel"
+             x:CompileBindings="False">
+
+    <ScrollViewer>
+        <StackPanel Spacing="0" Margin="24,16" MaxWidth="640">
+
+            <!-- ── Section 1: XYZ_FLOW_YEARS ─────────────────────────────── -->
+            <TextBlock FontSize="{StaticResource FontSizeLarge}"
+                       FontWeight="SemiBold"
+                       Text="1 · Academic Years  (XYZ_FLOW_YEARS)" />
+
+            <TextBlock Margin="0,4,0,12"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       TextWrapping="Wrap"
+                       Text="Columns used: AcademicYearKey (filename) · JsonData (content). Writes one .json per row." />
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                <TextBox Grid.Column="0"
+                         IsReadOnly="True"
+                         Text="{Binding YearsCsvPath}"
+                         Watermark="No file chosen — click Browse…"
+                         FontSize="{StaticResource FontSizeNormal}" />
+                <Button Grid.Column="1" Margin="8,0,0,0"
+                        Content="Browse…"
+                        Command="{Binding BrowseYearsCsvCommand}"
+                        Padding="12,4"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </Grid>
+
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       Margin="0,0,0,8"
+                       IsVisible="{Binding YearsOutputDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Text="{Binding YearsOutputDir, StringFormat='Output:  {0}'}"
+                       TextTrimming="CharacterEllipsis" />
+
+            <Button Content="Convert Years to JSON"
+                    Command="{Binding ConvertYearsCommand}"
+                    IsEnabled="{Binding !IsYearsRunning}"
+                    Margin="0,0,0,8"
+                    MinWidth="180" Padding="16,6"
+                    FontSize="{StaticResource FontSizeNormal}" />
+
+            <ScrollViewer MaxHeight="240" Margin="0,0,0,4"
+                          IsVisible="{Binding YearsStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding YearsStatusMessage}"
+                           TextWrapping="Wrap"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           FontFamily="Courier New, Consolas, Menlo, monospace"
+                           Foreground="{StaticResource TextPrimary}" />
+            </ScrollViewer>
+
+            <!-- ── Divider ─────────────────────────────────────────────────── -->
+            <Border Margin="0,16,0,16"
+                    Height="1"
+                    Background="{StaticResource SeparatorLine}" />
+
+            <!-- ── Section 2: XYZ_UNITS ──────────────────────────────────── -->
+            <TextBlock FontSize="{StaticResource FontSizeLarge}"
+                       FontWeight="SemiBold"
+                       Text="2 · Academic Units  (XYZ_UNITS)" />
+
+            <TextBlock Margin="0,4,0,12"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       TextWrapping="Wrap"
+                       Text="Columns used: AcademicUnitName (filename) · PermanentProperties (content). Writes one .json per row." />
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                <TextBox Grid.Column="0"
+                         IsReadOnly="True"
+                         Text="{Binding UnitsCsvPath}"
+                         Watermark="No file chosen — click Browse…"
+                         FontSize="{StaticResource FontSizeNormal}" />
+                <Button Grid.Column="1" Margin="8,0,0,0"
+                        Content="Browse…"
+                        Command="{Binding BrowseUnitsCsvCommand}"
+                        Padding="12,4"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </Grid>
+
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       Margin="0,0,0,8"
+                       IsVisible="{Binding UnitsOutputDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Text="{Binding UnitsOutputDir, StringFormat='Output:  {0}'}"
+                       TextTrimming="CharacterEllipsis" />
+
+            <Button Content="Convert Units to JSON"
+                    Command="{Binding ConvertUnitsCommand}"
+                    IsEnabled="{Binding !IsUnitsRunning}"
+                    Margin="0,0,0,8"
+                    MinWidth="180" Padding="16,6"
+                    FontSize="{StaticResource FontSizeNormal}" />
+
+            <ScrollViewer MaxHeight="240"
+                          IsVisible="{Binding UnitsStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding UnitsStatusMessage}"
+                           TextWrapping="Wrap"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           FontFamily="Courier New, Consolas, Menlo, monospace"
+                           Foreground="{StaticResource TextPrimary}" />
+            </ScrollViewer>
+
+            <!-- ── Divider ─────────────────────────────────────────────────── -->
+            <Border Margin="0,24,0,16"
+                    Height="1"
+                    Background="{StaticResource SeparatorLine}" />
+
+            <!-- ── Section 3: Phase 2 — JSON → new schema ─────────────────── -->
+            <TextBlock FontSize="{StaticResource FontSizeLarge}"
+                       FontWeight="SemiBold"
+                       Text="3 · Import into Database  (Phase 2)" />
+
+            <TextBlock Margin="0,4,0,12"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       TextWrapping="Wrap"
+                       Text="Point at both json-output folders produced by steps 1 and 2 above. Run a dry run first to review what will be imported, then click Import to write to the database." />
+
+            <!-- Units JSON folder -->
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       Margin="0,0,0,4"
+                       Text="Units JSON folder (XYZ_UNITS output):" />
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBox Grid.Column="0"
+                         IsReadOnly="True"
+                         Text="{Binding Phase2UnitsJsonDir}"
+                         Watermark="No folder chosen — click Browse…"
+                         FontSize="{StaticResource FontSizeNormal}" />
+                <Button Grid.Column="1" Margin="8,0,0,0"
+                        Content="Browse…"
+                        Command="{Binding BrowsePhase2UnitsDirCommand}"
+                        Padding="12,4"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </Grid>
+
+            <!-- Years JSON folder -->
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSecondary}"
+                       Margin="0,0,0,4"
+                       Text="Years JSON folder (XYZ_FLOW_YEARS output):" />
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <TextBox Grid.Column="0"
+                         IsReadOnly="True"
+                         Text="{Binding Phase2YearsJsonDir}"
+                         Watermark="No folder chosen — click Browse…"
+                         FontSize="{StaticResource FontSizeNormal}" />
+                <Button Grid.Column="1" Margin="8,0,0,0"
+                        Content="Browse…"
+                        Command="{Binding BrowsePhase2YearsDirCommand}"
+                        Padding="12,4"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </Grid>
+
+            <!-- Dry Run / Import buttons -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <Button Content="Dry Run"
+                        Command="{Binding Phase2DryRunCommand}"
+                        MinWidth="120" Padding="16,6"
+                        FontSize="{StaticResource FontSizeNormal}" />
+
+                <Button Content="Import"
+                        Command="{Binding Phase2ImportCommand}"
+                        MinWidth="120" Padding="16,6"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </StackPanel>
+
+            <!-- Status / report -->
+            <ScrollViewer MaxHeight="360"
+                          IsVisible="{Binding Phase2StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding Phase2StatusMessage}"
+                           TextWrapping="Wrap"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           FontFamily="Courier New, Consolas, Menlo, monospace"
+                           Foreground="{StaticResource TextPrimary}" />
+            </ScrollViewer>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

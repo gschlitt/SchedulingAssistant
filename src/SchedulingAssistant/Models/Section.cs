@@ -24,4 +24,11 @@ public class Section
     public List<string> TagIds { get; set; } = new();
     public List<string> ResourceIds { get; set; } = new();
     public List<SectionReserve> Reserves { get; set; } = new();
+
+    /// <summary>
+    /// The course level band, copied from the course at save time (e.g. "100", "300").
+    /// Stored here so level filtering does not require a course lookup at query time.
+    /// Null or empty when the section's course has no level assigned.
+    /// </summary>
+    public string? Level { get; set; }
 }

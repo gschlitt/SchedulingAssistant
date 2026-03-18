@@ -734,6 +734,10 @@ public partial class SectionEditViewModel : ViewModelBase
 
         _section.CourseId = SelectedCourseId;
         _section.SectionCode = trimmedCode;
+
+        // Copy the course's level band to the section so it can be filtered
+        // without a course lookup (e.g. "100", "300", or empty when not set).
+        _section.Level = Courses.FirstOrDefault(c => c.Id == SelectedCourseId)?.Level;
         _section.Notes = Notes.Trim();
         _section.Schedule = Meetings
             .Select(m => m.ToSchedule())

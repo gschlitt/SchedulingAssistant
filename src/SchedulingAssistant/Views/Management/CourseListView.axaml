@@ -58,8 +58,24 @@
                                     ItemsSource="{Binding Subjects}"
                                     SelectedItem="{Binding SelectedSubject}" />
 
-                                <TextBlock Text="Course Number (3 digits, e.g. 101)" />
-                                <TextBox Text="{Binding CourseNumber}" />
+                                <!--  Course number + auto-suggested level side by side  -->
+                                <TextBlock Text="Course number (e.g. 101 or 111LAB, max 8 characters)" />
+                                <Grid ColumnDefinitions="*,12,Auto,8,Auto">
+                                    <TextBox
+                                        Grid.Column="0"
+                                        Text="{Binding CourseNumber}" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        Text="Level" />
+                                    <ComboBox
+                                        Grid.Column="4"
+                                        MinWidth="72"
+                                        ItemsSource="{Binding LevelOptions}"
+                                        SelectedItem="{Binding SelectedLevel}"
+                                        PlaceholderText="—" />
+                                </Grid>
 
                                 <TextBlock
                                     FontSize="12"

@@ -282,6 +282,10 @@ public partial class MainWindowViewModel : ViewModelBase
 #if DEBUG
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
+
+    // ONE-TIME MIGRATION UTILITY — remove after migration is complete
+    [RelayCommand]
+    private void OpenMigration() => OpenFlyout<MigrationViewModel>("Migration: CSV → JSON (one-time utility)");
 #endif
 
     // ── File menu commands ────────────────────────────────────────────────────
