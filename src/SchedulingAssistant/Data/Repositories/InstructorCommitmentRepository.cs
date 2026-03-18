@@ -2,14 +2,14 @@ namespace SchedulingAssistant.Data.Repositories;
 
 using SchedulingAssistant.Models;
 
-public class InstructorCommitmentRepository(DatabaseContext db)
+public class InstructorCommitmentRepository(IDatabaseContext db) : IInstructorCommitmentRepository
 {
     public List<InstructorCommitment> GetByInstructor(string semesterId, string instructorId)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, instructor_id, semester_id, data FROM InstructorCommitments WHERE semester_id = $sid AND instructor_id = $iid ORDER BY json_extract(data, '$.name')";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
-        cmd.Parameters.AddWithValue("$iid", instructorId);
+        cmd.AddParam("$sid", semesterId);
+        cmd.AddParam("$iid", instructorId);
         return ReadCommitments(cmd);
     }
 
@@ -17,7 +17,7 @@ public class InstructorCommitmentRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, instructor_id, semester_id, data FROM InstructorCommitments WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         return ReadCommitment(reader);
@@ -33,10 +33,10 @@ public class InstructorCommitmentRepository(DatabaseContext db)
                 (SELECT ay.name || ' — ' || s.name FROM Semesters s JOIN AcademicYears ay ON ay.id = s.academic_year_id WHERE s.id = $sid),
                 $data)
             """;
-        cmd.Parameters.AddWithValue("$id", commitment.Id);
-        cmd.Parameters.AddWithValue("$iid", commitment.InstructorId);
-        cmd.Parameters.AddWithValue("$sid", commitment.SemesterId);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(commitment));
+        cmd.AddParam("$id", commitment.Id);
+        cmd.AddParam("$iid", commitment.InstructorId);
+        cmd.AddParam("$sid", commitment.SemesterId);
+        cmd.AddParam("$data", JsonHelpers.Serialize(commitment));
         cmd.ExecuteNonQuery();
     }
 
@@ -52,10 +52,10 @@ public class InstructorCommitmentRepository(DatabaseContext db)
                 data            = $data
             WHERE id = $id
             """;
-        cmd.Parameters.AddWithValue("$id", commitment.Id);
-        cmd.Parameters.AddWithValue("$iid", commitment.InstructorId);
-        cmd.Parameters.AddWithValue("$sid", commitment.SemesterId);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(commitment));
+        cmd.AddParam("$id", commitment.Id);
+        cmd.AddParam("$iid", commitment.InstructorId);
+        cmd.AddParam("$sid", commitment.SemesterId);
+        cmd.AddParam("$data", JsonHelpers.Serialize(commitment));
         cmd.ExecuteNonQuery();
     }
 
@@ -63,11 +63,11 @@ public class InstructorCommitmentRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM InstructorCommitments WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 
-    private static List<InstructorCommitment> ReadCommitments(Microsoft.Data.Sqlite.SqliteCommand cmd)
+    private static List<InstructorCommitment> ReadCommitments(System.Data.Common.DbCommand cmd)
     {
         using var reader = cmd.ExecuteReader();
         var results = new List<InstructorCommitment>();
@@ -76,7 +76,7 @@ public class InstructorCommitmentRepository(DatabaseContext db)
         return results;
     }
 
-    private static InstructorCommitment ReadCommitment(Microsoft.Data.Sqlite.SqliteDataReader reader)
+    private static InstructorCommitment ReadCommitment(System.Data.Common.DbDataReader reader)
     {
         var commitment = JsonHelpers.Deserialize<InstructorCommitment>(reader.GetString(3));
         commitment.Id = reader.GetString(0);

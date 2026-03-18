@@ -19,20 +19,20 @@ public class WorkloadHistoryItemViewModel : ObservableObject
 
 public partial class WorkloadHistoryViewModel : ViewModelBase
 {
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly SemesterRepository _semesterRepo;
-    private readonly AcademicYearRepository _academicYearRepo;
-    private readonly ReleaseRepository _releaseRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly ISemesterRepository _semesterRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
+    private readonly IReleaseRepository _releaseRepo;
 
     [ObservableProperty] private ObservableCollection<WorkloadHistoryItemViewModel> _items = new();
 
     public WorkloadHistoryViewModel(
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        SemesterRepository semesterRepo,
-        AcademicYearRepository academicYearRepo,
-        ReleaseRepository releaseRepo)
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        ISemesterRepository semesterRepo,
+        IAcademicYearRepository academicYearRepo,
+        IReleaseRepository releaseRepo)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;

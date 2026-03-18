@@ -1,9 +1,8 @@
-using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class SemesterRepository(DatabaseContext db)
+public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
 {
     public List<Semester> GetAll()
     {
@@ -17,7 +16,7 @@ public class SemesterRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT id, academic_year_id, name, sort_order FROM Semesters WHERE academic_year_id = $ayid ORDER BY sort_order";
-        cmd.Parameters.AddWithValue("$ayid", academicYearId);
+        cmd.AddParam("$ayid", academicYearId);
         return ReadSemesters(cmd);
     }
 
@@ -25,7 +24,7 @@ public class SemesterRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, academic_year_id, name, sort_order FROM Semesters WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         return ReadSemesters(cmd).FirstOrDefault();
     }
 
@@ -34,10 +33,10 @@ public class SemesterRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Semesters (id, academic_year_id, name, sort_order, data) VALUES ($id, $ayid, $name, $so, '{}')";
-        cmd.Parameters.AddWithValue("$id", semester.Id);
-        cmd.Parameters.AddWithValue("$ayid", semester.AcademicYearId);
-        cmd.Parameters.AddWithValue("$name", semester.Name);
-        cmd.Parameters.AddWithValue("$so", semester.SortOrder);
+        cmd.AddParam("$id", semester.Id);
+        cmd.AddParam("$ayid", semester.AcademicYearId);
+        cmd.AddParam("$name", semester.Name);
+        cmd.AddParam("$so", semester.SortOrder);
         cmd.ExecuteNonQuery();
     }
 
@@ -46,10 +45,10 @@ public class SemesterRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE Semesters SET academic_year_id = $ayid, name = $name, sort_order = $so WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", semester.Id);
-        cmd.Parameters.AddWithValue("$ayid", semester.AcademicYearId);
-        cmd.Parameters.AddWithValue("$name", semester.Name);
-        cmd.Parameters.AddWithValue("$so", semester.SortOrder);
+        cmd.AddParam("$id", semester.Id);
+        cmd.AddParam("$ayid", semester.AcademicYearId);
+        cmd.AddParam("$name", semester.Name);
+        cmd.AddParam("$so", semester.SortOrder);
         cmd.ExecuteNonQuery();
     }
 
@@ -57,7 +56,7 @@ public class SemesterRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Semesters WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 
@@ -65,11 +64,11 @@ public class SemesterRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Semesters WHERE academic_year_id = $ayid";
-        cmd.Parameters.AddWithValue("$ayid", academicYearId);
+        cmd.AddParam("$ayid", academicYearId);
         cmd.ExecuteNonQuery();
     }
 
-    private static List<Semester> ReadSemesters(SqliteCommand cmd)
+    private static List<Semester> ReadSemesters(System.Data.Common.DbCommand cmd)
     {
         using var reader = cmd.ExecuteReader();
         var results = new List<Semester>();

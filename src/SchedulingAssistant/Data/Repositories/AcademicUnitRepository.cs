@@ -2,7 +2,7 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class AcademicUnitRepository(DatabaseContext db)
+public class AcademicUnitRepository(IDatabaseContext db) : IAcademicUnitRepository
 {
     public List<AcademicUnit> GetAll()
     {
@@ -23,7 +23,7 @@ public class AcademicUnitRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, data FROM AcademicUnits WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         var unit = JsonHelpers.Deserialize<AcademicUnit>(reader.GetString(1));
@@ -41,8 +41,8 @@ public class AcademicUnitRepository(DatabaseContext db)
         cmd.CommandText = excludeId is null
             ? "SELECT COUNT(*) FROM AcademicUnits WHERE LOWER(data ->> 'name') = LOWER($name)"
             : "SELECT COUNT(*) FROM AcademicUnits WHERE LOWER(data ->> 'name') = LOWER($name) AND id != $excludeId";
-        cmd.Parameters.AddWithValue("$name", name);
-        if (excludeId is not null) cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        cmd.AddParam("$name", name);
+        if (excludeId is not null) cmd.AddParam("$excludeId", excludeId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -50,9 +50,9 @@ public class AcademicUnitRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO AcademicUnits (id, name, data) VALUES ($id, $name, $data)";
-        cmd.Parameters.AddWithValue("$id", unit.Id);
-        cmd.Parameters.AddWithValue("$name", (object?)unit.Name ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
+        cmd.AddParam("$id", unit.Id);
+        cmd.AddParam("$name", unit.Name);
+        cmd.AddParam("$data", JsonHelpers.Serialize(unit));
         cmd.ExecuteNonQuery();
     }
 
@@ -60,9 +60,9 @@ public class AcademicUnitRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE AcademicUnits SET name = $name, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", unit.Id);
-        cmd.Parameters.AddWithValue("$name", (object?)unit.Name ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
+        cmd.AddParam("$id", unit.Id);
+        cmd.AddParam("$name", unit.Name);
+        cmd.AddParam("$data", JsonHelpers.Serialize(unit));
         cmd.ExecuteNonQuery();
     }
 
@@ -70,7 +70,7 @@ public class AcademicUnitRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM AcademicUnits WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 }

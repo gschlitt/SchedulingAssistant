@@ -36,15 +36,15 @@ public class Phase2Importer
 {
     // ── Repositories ──────────────────────────────────────────────────────────
 
-    private readonly DatabaseContext            _db;
-    private readonly SectionPropertyRepository _propRepo;
-    private readonly InstructorRepository      _instructorRepo;
-    private readonly RoomRepository            _roomRepo;
-    private readonly SubjectRepository         _subjectRepo;
-    private readonly CourseRepository          _courseRepo;
-    private readonly AcademicYearRepository    _ayRepo;
-    private readonly SemesterRepository        _semesterRepo;
-    private readonly SectionRepository         _sectionRepo;
+    private readonly IDatabaseContext            _db;
+    private readonly ISectionPropertyRepository _propRepo;
+    private readonly IInstructorRepository      _instructorRepo;
+    private readonly IRoomRepository            _roomRepo;
+    private readonly ISubjectRepository         _subjectRepo;
+    private readonly ICourseRepository          _courseRepo;
+    private readonly IAcademicYearRepository    _ayRepo;
+    private readonly ISemesterRepository        _semesterRepo;
+    private readonly ISectionRepository         _sectionRepo;
 
     // ── Name → ID lookup caches (case-insensitive) ────────────────────────────
     // Pre-loaded from the DB, then extended as new rows are inserted so that
@@ -135,7 +135,7 @@ public class Phase2Importer
     // ── Constructor ───────────────────────────────────────────────────────────
 
     /// <param name="db">Open DatabaseContext for the target database.</param>
-    public Phase2Importer(DatabaseContext db)
+    public Phase2Importer(IDatabaseContext db)
     {
         _db             = db;
         _propRepo       = new SectionPropertyRepository(db);

@@ -12,7 +12,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class BlockPatternListViewModel : ViewModelBase
 {
-    private readonly BlockPatternRepository _patternRepository;
+    private readonly IBlockPatternRepository _patternRepository;
     private readonly WriteLockService _lockService;
     private const int MaxSlots = 5;
 
@@ -28,7 +28,7 @@ public partial class BlockPatternListViewModel : ViewModelBase
     /// <summary>True when the current user holds the write lock; controls whether Edit/Clear buttons are enabled.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
-    public BlockPatternListViewModel(BlockPatternRepository patternRepository, WriteLockService lockService)
+    public BlockPatternListViewModel(IBlockPatternRepository patternRepository, WriteLockService lockService)
     {
         _patternRepository = patternRepository;
         _lockService = lockService;
@@ -46,6 +46,7 @@ public partial class BlockPatternListViewModel : ViewModelBase
         Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
         Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
         Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+
     }
 
     private void OnSlotEditingChanged() => OnPropertyChanged(nameof(IsEditingAny));
@@ -88,7 +89,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
     public string DisplayName => Pattern?.Name is { Length: > 0 } n ? n : "(not set)";
 
     private readonly bool _includeSaturday;
-    private readonly BlockPatternRepository _patternRepository;
+    private readonly IBlockPatternRepository _patternRepository;
     private readonly Action _onEditingChanged;
     private readonly Func<bool> _canWrite;
 
@@ -96,7 +97,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
         int slotNumber,
         BlockPattern? pattern,
         bool includeSaturday,
-        BlockPatternRepository patternRepository,
+        IBlockPatternRepository patternRepository,
         Action onEditingChanged,
         Func<bool> canWrite)
     {

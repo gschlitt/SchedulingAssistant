@@ -36,7 +36,7 @@ public partial class MigrationViewModel : ViewModelBase
 {
 #if DEBUG
     private readonly MainWindowViewModel _mainVm;
-    private readonly DatabaseContext     _db;
+    private readonly IDatabaseContext    _db;
     private readonly SemesterContext     _semesterContext;
 
     // ── Phase 1 — Years section ───────────────────────────────────────────────
@@ -112,7 +112,7 @@ public partial class MigrationViewModel : ViewModelBase
     /// <param name="mainVm">Provides the StorageProvider for file/folder pickers.</param>
     /// <param name="db">The active database context, used by the Phase 2 importer.</param>
     /// <param name="semesterContext">Singleton semester context; reloaded after a real import.</param>
-    public MigrationViewModel(MainWindowViewModel mainVm, DatabaseContext db, SemesterContext semesterContext)
+    public MigrationViewModel(MainWindowViewModel mainVm, IDatabaseContext db, SemesterContext semesterContext)
     {
         _mainVm          = mainVm;
         _db              = db;

@@ -3,11 +3,11 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class BlockPatternRepository
+public class BlockPatternRepository : IBlockPatternRepository
 {
-    private readonly DatabaseContext _db;
+    private readonly IDatabaseContext _db;
 
-    public BlockPatternRepository(DatabaseContext db)
+    public BlockPatternRepository(IDatabaseContext db)
     {
         _db = db;
     }
@@ -31,7 +31,7 @@ public class BlockPatternRepository
     {
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, data FROM BlockPatterns WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         var pattern = JsonHelpers.Deserialize<BlockPattern>(reader.GetString(1));
@@ -43,9 +43,9 @@ public class BlockPatternRepository
     {
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO BlockPatterns (id, name, data) VALUES ($id, $name, $data)";
-        cmd.Parameters.AddWithValue("$id", pattern.Id);
-        cmd.Parameters.AddWithValue("$name", pattern.Name);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(pattern));
+        cmd.AddParam("$id", pattern.Id);
+        cmd.AddParam("$name", pattern.Name);
+        cmd.AddParam("$data", JsonHelpers.Serialize(pattern));
         cmd.ExecuteNonQuery();
     }
 
@@ -53,9 +53,9 @@ public class BlockPatternRepository
     {
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE BlockPatterns SET name = $name, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", pattern.Id);
-        cmd.Parameters.AddWithValue("$name", pattern.Name);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(pattern));
+        cmd.AddParam("$id", pattern.Id);
+        cmd.AddParam("$name", pattern.Name);
+        cmd.AddParam("$data", JsonHelpers.Serialize(pattern));
         cmd.ExecuteNonQuery();
     }
 
@@ -63,7 +63,7 @@ public class BlockPatternRepository
     {
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM BlockPatterns WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 }

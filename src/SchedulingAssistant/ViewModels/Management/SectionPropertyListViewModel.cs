@@ -10,11 +10,11 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class SectionPropertyListViewModel : ViewModelBase
 {
-    private readonly SectionPropertyRepository _repo;
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly InstructorRepository _instructorRepo;
-    private readonly DatabaseContext _db;
+    private readonly ISectionPropertyRepository _repo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly IDatabaseContext _db;
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDialogService _dialog;
     private readonly string _type;
@@ -41,11 +41,11 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     public SectionPropertyListViewModel(
         string propertyType,
         string displayName,
-        SectionPropertyRepository repo,
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        InstructorRepository instructorRepo,
-        DatabaseContext db,
+        ISectionPropertyRepository repo,
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        IInstructorRepository instructorRepo,
+        IDatabaseContext db,
         SectionListViewModel sectionListVm,
         IDialogService dialog,
         WriteLockService lockService,

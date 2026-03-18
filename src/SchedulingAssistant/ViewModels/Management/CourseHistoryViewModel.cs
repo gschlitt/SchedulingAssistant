@@ -10,18 +10,18 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class CourseHistoryViewModel : ViewModelBase
 {
-    private readonly SectionRepository _sectionRepo;
-    private readonly SemesterRepository _semesterRepo;
-    private readonly AcademicYearRepository _academicYearRepo;
-    private readonly InstructorRepository _instructorRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ISemesterRepository _semesterRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
+    private readonly IInstructorRepository _instructorRepo;
 
     [ObservableProperty] private ObservableCollection<CourseHistoryItemViewModel> _items = new();
 
     public CourseHistoryViewModel(
-        SectionRepository sectionRepo,
-        SemesterRepository semesterRepo,
-        AcademicYearRepository academicYearRepo,
-        InstructorRepository instructorRepo)
+        ISectionRepository sectionRepo,
+        ISemesterRepository semesterRepo,
+        IAcademicYearRepository academicYearRepo,
+        IInstructorRepository instructorRepo)
     {
         _sectionRepo = sectionRepo;
         _semesterRepo = semesterRepo;

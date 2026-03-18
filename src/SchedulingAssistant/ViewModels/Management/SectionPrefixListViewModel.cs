@@ -13,8 +13,8 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class SectionPrefixListViewModel : ViewModelBase
 {
-    private readonly SectionPrefixRepository _repo;
-    private readonly SectionPropertyRepository _propertyRepo;
+    private readonly ISectionPrefixRepository _repo;
+    private readonly ISectionPropertyRepository _propertyRepo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -40,8 +40,8 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// <param name="dialog">Service for confirmation and error dialogs.</param>
     /// <param name="lockService">Write lock service; gates edit operations in read-only mode.</param>
     public SectionPrefixListViewModel(
-        SectionPrefixRepository repo,
-        SectionPropertyRepository propertyRepo,
+        ISectionPrefixRepository repo,
+        ISectionPropertyRepository propertyRepo,
         IDialogService dialog,
         WriteLockService lockService)
     {

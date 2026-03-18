@@ -11,9 +11,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class EmptySemesterViewModel : ViewModelBase
 {
-    private readonly AcademicYearRepository _ayRepo;
-    private readonly SemesterRepository _semRepo;
-    private readonly SectionRepository _sectionRepo;
+    private readonly IAcademicYearRepository _ayRepo;
+    private readonly ISemesterRepository _semRepo;
+    private readonly ISectionRepository _sectionRepo;
     private readonly SemesterContext _semesterContext;
     private readonly WriteLockService _lockService;
 
@@ -42,9 +42,9 @@ public partial class EmptySemesterViewModel : ViewModelBase
     public Func<string, Task>? ShowError { get; set; }
 
     public EmptySemesterViewModel(
-        AcademicYearRepository ayRepo,
-        SemesterRepository semRepo,
-        SectionRepository sectionRepo,
+        IAcademicYearRepository ayRepo,
+        ISemesterRepository semRepo,
+        ISectionRepository sectionRepo,
         SemesterContext semesterContext,
         WriteLockService lockService)
     {

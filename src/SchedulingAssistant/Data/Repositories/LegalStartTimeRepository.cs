@@ -1,15 +1,14 @@
-using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class LegalStartTimeRepository(DatabaseContext db)
+public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepository
 {
     public List<LegalStartTime> GetAll(string academicYearId)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT block_length, start_times FROM LegalStartTimes WHERE academic_year_id = $ay ORDER BY block_length";
-        cmd.Parameters.AddWithValue("$ay", academicYearId);
+        cmd.AddParam("$ay", academicYearId);
         using var reader = cmd.ExecuteReader();
         var results = new List<LegalStartTime>();
         while (reader.Read())
@@ -25,8 +24,8 @@ public class LegalStartTimeRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT block_length, start_times FROM LegalStartTimes WHERE academic_year_id = $ay AND block_length = $bl";
-        cmd.Parameters.AddWithValue("$ay", academicYearId);
-        cmd.Parameters.AddWithValue("$bl", blockLength);
+        cmd.AddParam("$ay", academicYearId);
+        cmd.AddParam("$bl", blockLength);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         return new LegalStartTime
@@ -40,9 +39,9 @@ public class LegalStartTimeRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO LegalStartTimes (academic_year_id, block_length, start_times) VALUES ($ay, $bl, $st)";
-        cmd.Parameters.AddWithValue("$ay", academicYearId);
-        cmd.Parameters.AddWithValue("$bl", entry.BlockLength);
-        cmd.Parameters.AddWithValue("$st", JsonHelpers.Serialize(entry.StartTimes));
+        cmd.AddParam("$ay", academicYearId);
+        cmd.AddParam("$bl", entry.BlockLength);
+        cmd.AddParam("$st", JsonHelpers.Serialize(entry.StartTimes));
         cmd.ExecuteNonQuery();
     }
 
@@ -50,9 +49,9 @@ public class LegalStartTimeRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE LegalStartTimes SET start_times = $st WHERE academic_year_id = $ay AND block_length = $bl";
-        cmd.Parameters.AddWithValue("$ay", academicYearId);
-        cmd.Parameters.AddWithValue("$bl", entry.BlockLength);
-        cmd.Parameters.AddWithValue("$st", JsonHelpers.Serialize(entry.StartTimes));
+        cmd.AddParam("$ay", academicYearId);
+        cmd.AddParam("$bl", entry.BlockLength);
+        cmd.AddParam("$st", JsonHelpers.Serialize(entry.StartTimes));
         cmd.ExecuteNonQuery();
     }
 
@@ -60,8 +59,8 @@ public class LegalStartTimeRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM LegalStartTimes WHERE academic_year_id = $ay AND block_length = $bl";
-        cmd.Parameters.AddWithValue("$ay", academicYearId);
-        cmd.Parameters.AddWithValue("$bl", blockLength);
+        cmd.AddParam("$ay", academicYearId);
+        cmd.AddParam("$bl", blockLength);
         cmd.ExecuteNonQuery();
     }
 
@@ -80,8 +79,8 @@ public class LegalStartTimeRepository(DatabaseContext db)
             FROM LegalStartTimes
             WHERE academic_year_id = $from_ay
             """;
-        cmd.Parameters.AddWithValue("$to_ay", toAcademicYearId);
-        cmd.Parameters.AddWithValue("$from_ay", fromAcademicYearId);
+        cmd.AddParam("$to_ay", toAcademicYearId);
+        cmd.AddParam("$from_ay", fromAcademicYearId);
         cmd.ExecuteNonQuery();
     }
 }

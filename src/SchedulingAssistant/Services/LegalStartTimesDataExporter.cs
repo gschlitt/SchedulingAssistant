@@ -11,8 +11,8 @@ namespace SchedulingAssistant.Services;
 /// </summary>
 public class LegalStartTimesDataExporter
 {
-    private readonly AcademicYearRepository _ayRepo;
-    private readonly LegalStartTimeRepository _startTimeRepo;
+    private readonly IAcademicYearRepository _ayRepo;
+    private readonly ILegalStartTimeRepository _startTimeRepo;
 
     public record AcademicYearStartTimesExport(
         [property: JsonPropertyName("academic_year_id")] string AcademicYearId,
@@ -33,8 +33,8 @@ public class LegalStartTimesDataExporter
     );
 
     public LegalStartTimesDataExporter(
-        AcademicYearRepository ayRepo,
-        LegalStartTimeRepository startTimeRepo)
+        IAcademicYearRepository ayRepo,
+        ILegalStartTimeRepository startTimeRepo)
     {
         _ayRepo = ayRepo;
         _startTimeRepo = startTimeRepo;

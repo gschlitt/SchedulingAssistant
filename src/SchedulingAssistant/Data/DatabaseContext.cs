@@ -1,26 +1,36 @@
+using System.Data.Common;
 using Microsoft.Data.Sqlite;
 
 namespace SchedulingAssistant.Data;
 
-public class DatabaseContext : IDisposable
+/// <summary>
+/// SQLite-backed implementation of <see cref="IDatabaseContext"/>.
+/// Opens the database file, creates the schema on first run, applies migrations, and seeds initial data.
+/// </summary>
+public class DatabaseContext : IDatabaseContext
 {
-    public SqliteConnection Connection { get; }
+    // Stored as SqliteConnection so internal helpers (SeedData, schema migrations) can use it
+    // directly without casting. Exposed publicly as the base DbConnection type.
+    private readonly SqliteConnection _conn;
+
+    /// <inheritdoc/>
+    public DbConnection Connection => _conn;
 
     public DatabaseContext(string dbPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
-        Connection = new SqliteConnection($"Data Source={dbPath}");
+        _conn = new SqliteConnection($"Data Source={dbPath}");
         try
         {
-            Connection.Open();
+            _conn.Open();
             InitializeSchema();
             Migrate();
-            SeedData.EnsureSeeded(Connection);
+            SeedData.EnsureSeeded(_conn);
         }
         catch (Exception ex)
         {
-            Connection.Dispose();
+            _conn.Dispose();
             throw new InvalidOperationException(
                 $"Failed to open or initialize the database at '{dbPath}'. " +
                 "The file may be locked by another process, corrupted, or the path may be invalid.",
@@ -30,7 +40,7 @@ public class DatabaseContext : IDisposable
 
     private void InitializeSchema()
     {
-        using var cmd = Connection.CreateCommand();
+        using var cmd = _conn.CreateCommand();
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS AcademicYears (
                 id   TEXT PRIMARY KEY,
@@ -144,7 +154,7 @@ public class DatabaseContext : IDisposable
     /// </summary>
     private void Migrate()
     {
-        using var cmd = Connection.CreateCommand();
+        using var cmd = _conn.CreateCommand();
 
         // Purge invalid commitment records (missing instructor_id or semester_id)
         cmd.CommandText = "DELETE FROM InstructorCommitments WHERE instructor_id IS NULL OR instructor_id = '' OR semester_id IS NULL OR semester_id = ''";
@@ -165,24 +175,24 @@ public class DatabaseContext : IDisposable
         }
 
         // Human-readable columns for DB browsing (added across all entity tables)
-        AddColumnIfMissing(Connection, "AcademicYears",       "name",          "TEXT");
-        AddColumnIfMissing(Connection, "Instructors",         "last_name",     "TEXT");
-        AddColumnIfMissing(Connection, "Instructors",         "first_name",    "TEXT");
-        AddColumnIfMissing(Connection, "Instructors",         "initials",      "TEXT");
-        AddColumnIfMissing(Connection, "Rooms",               "building",      "TEXT");
-        AddColumnIfMissing(Connection, "Rooms",               "room_number",   "TEXT");
-        AddColumnIfMissing(Connection, "Subjects",            "name",          "TEXT");
-        AddColumnIfMissing(Connection, "Subjects",            "abbreviation",  "TEXT");
-        AddColumnIfMissing(Connection, "Courses",             "calendar_code", "TEXT");
-        AddColumnIfMissing(Connection, "Courses",             "title",         "TEXT");
-        AddColumnIfMissing(Connection, "Sections",            "section_code",  "TEXT");
-        AddColumnIfMissing(Connection, "Sections",            "course_code",   "TEXT");
-        AddColumnIfMissing(Connection, "SectionPropertyValues", "name",        "TEXT");
-        AddColumnIfMissing(Connection, "AcademicUnits",       "name",          "TEXT");
-        AddColumnIfMissing(Connection, "InstructorCommitments", "instructor_name", "TEXT");
-        AddColumnIfMissing(Connection, "InstructorCommitments", "semester_name",   "TEXT");
+        AddColumnIfMissing(_conn, "AcademicYears",       "name",          "TEXT");
+        AddColumnIfMissing(_conn, "Instructors",         "last_name",     "TEXT");
+        AddColumnIfMissing(_conn, "Instructors",         "first_name",    "TEXT");
+        AddColumnIfMissing(_conn, "Instructors",         "initials",      "TEXT");
+        AddColumnIfMissing(_conn, "Rooms",               "building",      "TEXT");
+        AddColumnIfMissing(_conn, "Rooms",               "room_number",   "TEXT");
+        AddColumnIfMissing(_conn, "Subjects",            "name",          "TEXT");
+        AddColumnIfMissing(_conn, "Subjects",            "abbreviation",  "TEXT");
+        AddColumnIfMissing(_conn, "Courses",             "calendar_code", "TEXT");
+        AddColumnIfMissing(_conn, "Courses",             "title",         "TEXT");
+        AddColumnIfMissing(_conn, "Sections",            "section_code",  "TEXT");
+        AddColumnIfMissing(_conn, "Sections",            "course_code",   "TEXT");
+        AddColumnIfMissing(_conn, "SectionPropertyValues", "name",        "TEXT");
+        AddColumnIfMissing(_conn, "AcademicUnits",       "name",          "TEXT");
+        AddColumnIfMissing(_conn, "InstructorCommitments", "instructor_name", "TEXT");
+        AddColumnIfMissing(_conn, "InstructorCommitments", "semester_name",   "TEXT");
 
-        BackfillReadableColumns(Connection);
+        BackfillReadableColumns(_conn);
     }
 
     /// <summary>
@@ -261,6 +271,6 @@ public class DatabaseContext : IDisposable
 
     public void Dispose()
     {
-        Connection.Dispose();
+        _conn.Dispose();
     }
 }

@@ -14,12 +14,12 @@ public partial class SectionPropertiesViewModel : ViewModelBase
     private ViewModelBase? _selectedCategory;
 
     public SectionPropertiesViewModel(
-        SectionPropertyRepository repo,
-        RoomRepository roomRepo,
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        InstructorRepository instructorRepo,
-        DatabaseContext db,
+        ISectionPropertyRepository repo,
+        IRoomRepository roomRepo,
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        IInstructorRepository instructorRepo,
+        IDatabaseContext db,
         SectionListViewModel sectionListVm,
         IDialogService dialog,
         WriteLockService lockService)

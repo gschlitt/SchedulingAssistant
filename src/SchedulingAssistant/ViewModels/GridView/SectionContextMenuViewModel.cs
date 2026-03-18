@@ -11,7 +11,7 @@ public enum TileSubPanel { None, Instructors, Room, Tags }
 
 public partial class SectionContextMenuViewModel : ObservableObject
 {
-    private readonly SectionRepository _sectionRepo;
+    private readonly ISectionRepository _sectionRepo;
     private readonly Action _onSaved;
     private readonly WriteLockService _lockService;
 
@@ -42,7 +42,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
     [ObservableProperty] private ContextMenuItemVm? _selectedRoom;
 
-    public SectionContextMenuViewModel(SectionRepository sectionRepo, Action onSaved, WriteLockService lockService)
+    public SectionContextMenuViewModel(ISectionRepository sectionRepo, Action onSaved, WriteLockService lockService)
     {
         _sectionRepo = sectionRepo;
         _onSaved = onSaved;

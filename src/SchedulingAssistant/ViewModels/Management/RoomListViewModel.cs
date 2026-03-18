@@ -10,10 +10,10 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class RoomListViewModel : ViewModelBase
 {
-    private readonly RoomRepository _repo;
-    private readonly SectionRepository _sectionRepo;
+    private readonly IRoomRepository _repo;
+    private readonly ISectionRepository _sectionRepo;
     private readonly SectionListViewModel _sectionListVm;
-    private readonly DatabaseContext _db;
+    private readonly IDatabaseContext _db;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -30,10 +30,10 @@ public partial class RoomListViewModel : ViewModelBase
     [ObservableProperty] private RoomEditViewModel? _editVm;
 
     public RoomListViewModel(
-        RoomRepository repo,
-        SectionRepository sectionRepo,
+        IRoomRepository repo,
+        ISectionRepository sectionRepo,
         SectionListViewModel sectionListVm,
-        DatabaseContext db,
+        IDatabaseContext db,
         IDialogService dialog,
         WriteLockService lockService)
     {

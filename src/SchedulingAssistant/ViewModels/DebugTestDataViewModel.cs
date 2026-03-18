@@ -27,16 +27,16 @@ public partial class DebugTestDataViewModel : ViewModelBase
     private readonly SectionListViewModel _sectionListVm;
     private readonly MainWindowViewModel _mainWindowVm;
     private readonly DebugTestDataGenerator _generator;
-    private readonly AcademicYearRepository _ayRepo;
-    private readonly LegalStartTimeRepository _startTimeRepo;
+    private readonly IAcademicYearRepository _ayRepo;
+    private readonly ILegalStartTimeRepository _startTimeRepo;
     private readonly LegalStartTimesDataExporter _exporter;
 
     public DebugTestDataViewModel(
         SectionListViewModel sectionListVm,
         MainWindowViewModel mainWindowVm,
         DebugTestDataGenerator generator,
-        AcademicYearRepository ayRepo,
-        LegalStartTimeRepository startTimeRepo,
+        IAcademicYearRepository ayRepo,
+        ILegalStartTimeRepository startTimeRepo,
         LegalStartTimesDataExporter exporter)
     {
         _sectionListVm = sectionListVm;

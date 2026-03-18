@@ -15,13 +15,13 @@ public enum CopyState { Ready, FlaggedWarning, Complete }
 
 public partial class CopySemesterViewModel : ViewModelBase
 {
-    private readonly AcademicYearRepository _ayRepo;
-    private readonly SemesterRepository _semRepo;
-    private readonly SectionRepository _sectionRepo;
-    private readonly DatabaseContext _db;
+    private readonly IAcademicYearRepository _ayRepo;
+    private readonly ISemesterRepository _semRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly IDatabaseContext _db;
     private readonly ScheduleValidationService _scheduleValidation;
-    private readonly CourseRepository _courseRepo;
-    private readonly SubjectRepository _subjectRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly ISubjectRepository _subjectRepo;
     private readonly WriteLockService _lockService;
 
     /// <summary>True when the current user holds the write lock; gates all Copy Semester controls.</summary>
@@ -90,13 +90,13 @@ public partial class CopySemesterViewModel : ViewModelBase
     public bool IsComplete => State == CopyState.Complete;
 
     public CopySemesterViewModel(
-        AcademicYearRepository ayRepo,
-        SemesterRepository semRepo,
-        SectionRepository sectionRepo,
-        DatabaseContext db,
+        IAcademicYearRepository ayRepo,
+        ISemesterRepository semRepo,
+        ISectionRepository sectionRepo,
+        IDatabaseContext db,
         ScheduleValidationService scheduleValidation,
-        CourseRepository courseRepo,
-        SubjectRepository subjectRepo,
+        ICourseRepository courseRepo,
+        ISubjectRepository subjectRepo,
         WriteLockService lockService)
     {
         _ayRepo = ayRepo;

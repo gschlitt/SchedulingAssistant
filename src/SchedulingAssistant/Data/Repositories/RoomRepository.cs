@@ -1,9 +1,8 @@
-using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class RoomRepository(DatabaseContext db)
+public class RoomRepository(IDatabaseContext db) : IRoomRepository
 {
     /// <summary>
     /// Returns all rooms ordered by <see cref="Room.SortOrder"/> ascending, then by building
@@ -33,7 +32,7 @@ public class RoomRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, data FROM Rooms WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         var room = JsonHelpers.Deserialize<Room>(reader.GetString(1));
@@ -46,10 +45,10 @@ public class RoomRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Rooms (id, building, room_number, data) VALUES ($id, $building, $roomNumber, $data)";
-        cmd.Parameters.AddWithValue("$id", room.Id);
-        cmd.Parameters.AddWithValue("$building",   (object?)room.Building    ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$roomNumber", (object?)room.RoomNumber  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(room));
+        cmd.AddParam("$id", room.Id);
+        cmd.AddParam("$building",   room.Building);
+        cmd.AddParam("$roomNumber", room.RoomNumber);
+        cmd.AddParam("$data", JsonHelpers.Serialize(room));
         cmd.ExecuteNonQuery();
     }
 
@@ -58,19 +57,19 @@ public class RoomRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE Rooms SET building = $building, room_number = $roomNumber, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", room.Id);
-        cmd.Parameters.AddWithValue("$building",   (object?)room.Building   ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$roomNumber", (object?)room.RoomNumber ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(room));
+        cmd.AddParam("$id", room.Id);
+        cmd.AddParam("$building",   room.Building);
+        cmd.AddParam("$roomNumber", room.RoomNumber);
+        cmd.AddParam("$data", JsonHelpers.Serialize(room));
         cmd.ExecuteNonQuery();
     }
 
-    public void Delete(string id, SqliteTransaction? tx = null)
+    public void Delete(string id, System.Data.Common.DbTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Rooms WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 }

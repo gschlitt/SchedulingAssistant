@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using System.Data.Common;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 
@@ -10,7 +10,7 @@ public static class SeedData
     /// Called by DatabaseContext after schema initialization.
     /// Ensures baseline records exist (Academic Unit, default Section Prefixes).
     /// </summary>
-    public static void EnsureSeeded(SqliteConnection conn)
+    public static void EnsureSeeded(DbConnection conn)
     {
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM AcademicUnits";
@@ -22,8 +22,8 @@ public static class SeedData
             cmd.CommandText = "INSERT INTO AcademicUnits (id, data) VALUES ($id, $data)";
             cmd.Parameters.Clear();
             var unit = new SchedulingAssistant.Models.AcademicUnit { Name = "Default" };
-            cmd.Parameters.AddWithValue("$id", unit.Id);
-            cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(unit));
+            cmd.AddParam("$id", unit.Id);
+            cmd.AddParam("$data", JsonHelpers.Serialize(unit));
             cmd.ExecuteNonQuery();
         }
 
@@ -38,7 +38,7 @@ public static class SeedData
     /// Uses INSERT OR IGNORE so it is safe to call even if rows already exist.
     /// </summary>
     /// <param name="conn">Open SQLite connection.</param>
-    private static void EnsureDefaultSectionPrefixes(SqliteConnection conn)
+    private static void EnsureDefaultSectionPrefixes(DbConnection conn)
     {
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM SectionPrefixes";
@@ -58,9 +58,9 @@ public static class SeedData
 
         cmd.CommandText =
             "INSERT OR IGNORE INTO SectionPrefixes (id, prefix, data) VALUES ($id, $prefix, $data)";
-        var idParam     = cmd.Parameters.Add("$id",     SqliteType.Text);
-        var prefixParam = cmd.Parameters.Add("$prefix", SqliteType.Text);
-        var dataParam   = cmd.Parameters.Add("$data",   SqliteType.Text);
+        var idParam     = cmd.CreateParameter(); idParam.ParameterName     = "$id";     cmd.Parameters.Add(idParam);
+        var prefixParam = cmd.CreateParameter(); prefixParam.ParameterName = "$prefix"; cmd.Parameters.Add(prefixParam);
+        var dataParam   = cmd.CreateParameter(); dataParam.ParameterName   = "$data";   cmd.Parameters.Add(dataParam);
 
         foreach (var (prefixText, campusId) in defaults)
         {
@@ -79,13 +79,13 @@ public static class SeedData
     /// <param name="conn">Open SQLite connection.</param>
     /// <param name="name">Campus name to find or create (e.g. "Abbotsford").</param>
     /// <returns>The ID of the existing or newly created campus record.</returns>
-    private static string FindOrCreateCampus(SqliteConnection conn, string name)
+    private static string FindOrCreateCampus(DbConnection conn, string name)
     {
         using var findCmd = conn.CreateCommand();
         findCmd.CommandText =
             "SELECT id FROM SectionPropertyValues " +
             "WHERE type = 'campus' AND LOWER(json_extract(data, '$.name')) = LOWER($name)";
-        findCmd.Parameters.AddWithValue("$name", name);
+        findCmd.AddParam("$name", name);
         var existing = findCmd.ExecuteScalar() as string;
         if (existing is not null)
             return existing;
@@ -95,9 +95,9 @@ public static class SeedData
         insertCmd.CommandText =
             "INSERT INTO SectionPropertyValues (id, type, name, data) " +
             "VALUES ($id, 'campus', $name, $data)";
-        insertCmd.Parameters.AddWithValue("$id",   campus.Id);
-        insertCmd.Parameters.AddWithValue("$name", campus.Name);
-        insertCmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(campus));
+        insertCmd.AddParam("$id",   campus.Id);
+        insertCmd.AddParam("$name", campus.Name);
+        insertCmd.AddParam("$data", JsonHelpers.Serialize(campus));
         insertCmd.ExecuteNonQuery();
         return campus.Id;
     }
@@ -112,7 +112,7 @@ public static class SeedData
     /// </summary>
     /// <param name="conn">Open SQLite connection.</param>
     /// <param name="academicYearId">ID of the academic year to seed.</param>
-    public static void SeedDefaultLegalStartTimes(SqliteConnection conn, string academicYearId)
+    public static void SeedDefaultLegalStartTimes(DbConnection conn, string academicYearId)
     {
         // Block lengths (hours) and their standard start times (minutes from midnight).
         // These times are institution-specific and optimized for the academic calendar.
@@ -132,9 +132,9 @@ public static class SeedData
         cmd.CommandText =
             "INSERT OR IGNORE INTO LegalStartTimes (academic_year_id, block_length, start_times) " +
             "VALUES ($ay, $bl, $st)";
-        var ayParam = cmd.Parameters.Add("$ay", SqliteType.Text);
-        var blParam = cmd.Parameters.Add("$bl", SqliteType.Real);
-        var stParam = cmd.Parameters.Add("$st", SqliteType.Text);
+        var ayParam = cmd.CreateParameter(); ayParam.ParameterName = "$ay"; cmd.Parameters.Add(ayParam);
+        var blParam = cmd.CreateParameter(); blParam.ParameterName = "$bl"; cmd.Parameters.Add(blParam);
+        var stParam = cmd.CreateParameter(); stParam.ParameterName = "$st"; cmd.Parameters.Add(stParam);
 
         ayParam.Value = academicYearId;
         foreach (var (blockLengthHours, startTimesMinutes) in defaults)
@@ -149,7 +149,7 @@ public static class SeedData
     /// Import persisted start times data for a specific academic year.
     /// Used when a user creates a new academic year and chooses to import from persisted config.
     /// </summary>
-    public static void ImportPersistedStartTimes(SqliteConnection conn, string academicYearId)
+    public static void ImportPersistedStartTimes(DbConnection conn, string academicYearId)
     {
         var persistedData = LegalStartTimesDataStore.LoadPersistedData();
         if (persistedData?.AcademicYears.Count == 0) return;
@@ -158,9 +158,9 @@ public static class SeedData
         using var insertCmd = conn.CreateCommand();
         insertCmd.CommandText =
             "INSERT OR IGNORE INTO LegalStartTimes (academic_year_id, block_length, start_times) VALUES ($ay, $bl, $st)";
-        var ayParam = insertCmd.Parameters.Add("$ay", SqliteType.Text);
-        var blParam = insertCmd.Parameters.Add("$bl", SqliteType.Real);
-        var stParam = insertCmd.Parameters.Add("$st", SqliteType.Text);
+        var ayParam = insertCmd.CreateParameter(); ayParam.ParameterName = "$ay"; insertCmd.Parameters.Add(ayParam);
+        var blParam = insertCmd.CreateParameter(); blParam.ParameterName = "$bl"; insertCmd.Parameters.Add(blParam);
+        var stParam = insertCmd.CreateParameter(); stParam.ParameterName = "$st"; insertCmd.Parameters.Add(stParam);
 
         // Use the first academic year's configuration from the persisted data
         var firstAyExport = persistedData.AcademicYears.FirstOrDefault();

@@ -12,12 +12,12 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class AcademicYearListViewModel : ViewModelBase
 {
-    private readonly AcademicYearRepository _ayRepo;
-    private readonly SemesterRepository _semRepo;
-    private readonly SectionRepository _sectionRepo;
+    private readonly IAcademicYearRepository _ayRepo;
+    private readonly ISemesterRepository _semRepo;
+    private readonly ISectionRepository _sectionRepo;
     private readonly SemesterContext _semesterContext;
-    private readonly LegalStartTimeRepository _legalStartTimeRepo;
-    private readonly DatabaseContext _db;
+    private readonly ILegalStartTimeRepository _legalStartTimeRepo;
+    private readonly IDatabaseContext _db;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -45,12 +45,12 @@ public partial class AcademicYearListViewModel : ViewModelBase
     public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
 
     public AcademicYearListViewModel(
-        AcademicYearRepository ayRepo,
-        SemesterRepository semRepo,
-        SectionRepository sectionRepo,
+        IAcademicYearRepository ayRepo,
+        ISemesterRepository semRepo,
+        ISectionRepository sectionRepo,
         SemesterContext semesterContext,
-        LegalStartTimeRepository legalStartTimeRepo,
-        DatabaseContext db,
+        ILegalStartTimeRepository legalStartTimeRepo,
+        IDatabaseContext db,
         IDialogService dialog,
         WriteLockService lockService)
     {

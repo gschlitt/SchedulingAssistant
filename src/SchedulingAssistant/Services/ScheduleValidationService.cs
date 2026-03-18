@@ -7,7 +7,7 @@ namespace SchedulingAssistant.Services;
 /// Checks sections against an academic year's legal start-time matrix.
 /// Reusable across copy-semester, start-time editing, etc.
 /// </summary>
-public class ScheduleValidationService(LegalStartTimeRepository legalStartTimeRepo)
+public class ScheduleValidationService(ILegalStartTimeRepository legalStartTimeRepo)
 {
     /// <summary>
     /// Returns sections whose schedule entries don't fit the given academic year's

@@ -1,9 +1,8 @@
-using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class SectionRepository(DatabaseContext db)
+public class SectionRepository(IDatabaseContext db) : ISectionRepository
 {
     public List<Section> GetAll()
     {
@@ -17,7 +16,7 @@ public class SectionRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT id, semester_id, course_id, data FROM Sections WHERE semester_id = $sid ORDER BY data ->> 'sectionCode'";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
+        cmd.AddParam("$sid", semesterId);
         return ReadSections(cmd);
     }
 
@@ -26,7 +25,7 @@ public class SectionRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT id, semester_id, course_id, data FROM Sections WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         return ReadSections(cmd).FirstOrDefault();
     }
 
@@ -38,11 +37,11 @@ public class SectionRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT id, semester_id, course_id, data FROM Sections WHERE course_id = $cid ORDER BY data ->> 'sectionCode'";
-        cmd.Parameters.AddWithValue("$cid", courseId);
+        cmd.AddParam("$cid", courseId);
         return ReadSections(cmd);
     }
 
-    public void Insert(Section section, SqliteTransaction? tx = null)
+    public void Insert(Section section, System.Data.Common.DbTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
@@ -54,15 +53,15 @@ public class SectionRepository(DatabaseContext db)
                     (SELECT json_extract(data, '$.calendarCode') FROM Courses WHERE id = $cid),
                     $data)
             """;
-        cmd.Parameters.AddWithValue("$id", section.Id);
-        cmd.Parameters.AddWithValue("$sid", section.SemesterId);
-        cmd.Parameters.AddWithValue("$cid", (object?)section.CourseId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$sectionCode", (object?)section.SectionCode ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(section));
+        cmd.AddParam("$id", section.Id);
+        cmd.AddParam("$sid", section.SemesterId);
+        cmd.AddParam("$cid", section.CourseId);
+        cmd.AddParam("$sectionCode", section.SectionCode);
+        cmd.AddParam("$data", JsonHelpers.Serialize(section));
         cmd.ExecuteNonQuery();
     }
 
-    public void Update(Section section, SqliteTransaction? tx = null)
+    public void Update(Section section, System.Data.Common.DbTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
@@ -78,11 +77,11 @@ public class SectionRepository(DatabaseContext db)
                 data         = $data
             WHERE id = $id
             """;
-        cmd.Parameters.AddWithValue("$id", section.Id);
-        cmd.Parameters.AddWithValue("$sid", section.SemesterId);
-        cmd.Parameters.AddWithValue("$cid", (object?)section.CourseId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$sectionCode", (object?)section.SectionCode ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(section));
+        cmd.AddParam("$id", section.Id);
+        cmd.AddParam("$sid", section.SemesterId);
+        cmd.AddParam("$cid", section.CourseId);
+        cmd.AddParam("$sectionCode", section.SectionCode);
+        cmd.AddParam("$data", JsonHelpers.Serialize(section));
         cmd.ExecuteNonQuery();
     }
 
@@ -94,7 +93,7 @@ public class SectionRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT COUNT(*) FROM Sections WHERE semester_id IN (SELECT id FROM Semesters WHERE academic_year_id = $ayid)";
-        cmd.Parameters.AddWithValue("$ayid", academicYearId);
+        cmd.AddParam("$ayid", academicYearId);
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
@@ -109,11 +108,11 @@ public class SectionRepository(DatabaseContext db)
         cmd.CommandText = excludeId is null
             ? "SELECT COUNT(*) FROM Sections WHERE semester_id = $sid AND course_id = $cid AND LOWER(data ->> 'sectionCode') = LOWER($code)"
             : "SELECT COUNT(*) FROM Sections WHERE semester_id = $sid AND course_id = $cid AND LOWER(data ->> 'sectionCode') = LOWER($code) AND id != $excludeId";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
-        cmd.Parameters.AddWithValue("$cid", courseId);
-        cmd.Parameters.AddWithValue("$code", sectionCode);
+        cmd.AddParam("$sid", semesterId);
+        cmd.AddParam("$cid", courseId);
+        cmd.AddParam("$code", sectionCode);
         if (excludeId is not null)
-            cmd.Parameters.AddWithValue("$excludeId", excludeId);
+            cmd.AddParam("$excludeId", excludeId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -121,7 +120,7 @@ public class SectionRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Sections WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 
@@ -132,7 +131,7 @@ public class SectionRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM Sections WHERE semester_id = $sid";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
+        cmd.AddParam("$sid", semesterId);
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
@@ -143,11 +142,11 @@ public class SectionRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Sections WHERE semester_id = $sid";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
+        cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();
     }
 
-    private static List<Section> ReadSections(SqliteCommand cmd)
+    private static List<Section> ReadSections(System.Data.Common.DbCommand cmd)
     {
         using var reader = cmd.ExecuteReader();
         var results = new List<Section>();

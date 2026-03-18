@@ -74,15 +74,15 @@ public partial class App : Application
         Services.GetRequiredService<WriteLockService>().TryAcquire(dbPath);
 
         // Eagerly initialize the database (schema creation + seeding).
-        Services.GetRequiredService<DatabaseContext>();
+        Services.GetRequiredService<IDatabaseContext>();
 
         // Seed the global semester context from the database,
         // restoring the last-used academic year and semester(s) from local settings.
         var startupSettings = AppSettings.Current;
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
-            Services.GetRequiredService<AcademicYearRepository>(),
-            Services.GetRequiredService<SemesterRepository>(),
+            Services.GetRequiredService<IAcademicYearRepository>(),
+            Services.GetRequiredService<ISemesterRepository>(),
             restoreAcademicYearId: startupSettings.LastSelectedAcademicYearId,
             restoreSemesterIds:    startupSettings.LastSelectedSemesterIds.Count > 0
                                        ? startupSettings.LastSelectedSemesterIds.ToHashSet()
@@ -91,7 +91,7 @@ public partial class App : Application
         // Seed the section store so ViewModels can read from the cache on first load.
         var sectionStore = Services.GetRequiredService<SectionStore>();
         sectionStore.Reload(
-            Services.GetRequiredService<SectionRepository>(),
+            Services.GetRequiredService<ISectionRepository>(),
             semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
 
         var vm = Services.GetRequiredService<MainWindowViewModel>();
@@ -116,21 +116,21 @@ public partial class App : Application
         // Data layer — DatabaseContext receives the resolved path directly.
         // Repositories are stateless wrappers around the singleton DatabaseContext,
         // so they are registered as singletons to accurately reflect their actual lifetime.
-        services.AddSingleton<DatabaseContext>(_ => new DatabaseContext(dbPath));
-        services.AddSingleton<AcademicYearRepository>();
-        services.AddSingleton<SemesterRepository>();
-        services.AddSingleton<InstructorRepository>();
-        services.AddSingleton<RoomRepository>();
-        services.AddSingleton<LegalStartTimeRepository>();
-        services.AddSingleton<BlockPatternRepository>();
-        services.AddSingleton<SubjectRepository>();
-        services.AddSingleton<CourseRepository>();
-        services.AddSingleton<SectionRepository>();
-        services.AddSingleton<SectionPropertyRepository>();
-        services.AddSingleton<AcademicUnitRepository>();
-        services.AddSingleton<ReleaseRepository>();
-        services.AddSingleton<InstructorCommitmentRepository>();
-        services.AddSingleton<SectionPrefixRepository>();
+        services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath));
+        services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
+        services.AddSingleton<ISemesterRepository, SemesterRepository>();
+        services.AddSingleton<IInstructorRepository, InstructorRepository>();
+        services.AddSingleton<IRoomRepository, RoomRepository>();
+        services.AddSingleton<ILegalStartTimeRepository, LegalStartTimeRepository>();
+        services.AddSingleton<IBlockPatternRepository, BlockPatternRepository>();
+        services.AddSingleton<ISubjectRepository, SubjectRepository>();
+        services.AddSingleton<ICourseRepository, CourseRepository>();
+        services.AddSingleton<ISectionRepository, SectionRepository>();
+        services.AddSingleton<ISectionPropertyRepository, SectionPropertyRepository>();
+        services.AddSingleton<IAcademicUnitRepository, AcademicUnitRepository>();
+        services.AddSingleton<IReleaseRepository, ReleaseRepository>();
+        services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
+        services.AddSingleton<ISectionPrefixRepository, SectionPrefixRepository>();
 
         // ViewModels
         services.AddSingleton<SectionStore>();
@@ -138,36 +138,36 @@ public partial class App : Application
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<ScheduleGridViewModel>(sp => new ScheduleGridViewModel(
-            sp.GetRequiredService<SectionRepository>(),
-            sp.GetRequiredService<CourseRepository>(),
-            sp.GetRequiredService<InstructorRepository>(),
-            sp.GetRequiredService<RoomRepository>(),
-            sp.GetRequiredService<SubjectRepository>(),
-            sp.GetRequiredService<SectionPropertyRepository>(),
+            sp.GetRequiredService<ISectionRepository>(),
+            sp.GetRequiredService<ICourseRepository>(),
+            sp.GetRequiredService<IInstructorRepository>(),
+            sp.GetRequiredService<IRoomRepository>(),
+            sp.GetRequiredService<ISubjectRepository>(),
+            sp.GetRequiredService<ISectionPropertyRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>(),
             sp.GetRequiredService<SectionStore>(),
             sp.GetRequiredService<SectionChangeNotifier>(),
-            sp.GetRequiredService<InstructorCommitmentRepository>(),
+            sp.GetRequiredService<IInstructorCommitmentRepository>(),
             sp.GetRequiredService<WriteLockService>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
-            sp.GetRequiredService<InstructorRepository>(),
-            sp.GetRequiredService<SectionRepository>(),
-            sp.GetRequiredService<CourseRepository>(),
-            sp.GetRequiredService<ReleaseRepository>(),
-            sp.GetRequiredService<SemesterRepository>(),
+            sp.GetRequiredService<IInstructorRepository>(),
+            sp.GetRequiredService<ISectionRepository>(),
+            sp.GetRequiredService<ICourseRepository>(),
+            sp.GetRequiredService<IReleaseRepository>(),
+            sp.GetRequiredService<ISemesterRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<SectionStore>()));
         services.AddTransient<InstructorListViewModel>(sp =>
             new InstructorListViewModel(
-                sp.GetRequiredService<InstructorRepository>(),
-                sp.GetRequiredService<SectionPropertyRepository>(),
-                sp.GetRequiredService<SectionRepository>(),
-                sp.GetRequiredService<CourseRepository>(),
-                sp.GetRequiredService<ReleaseRepository>(),
-                sp.GetRequiredService<InstructorCommitmentRepository>(),
-                sp.GetRequiredService<SemesterRepository>(),
-                sp.GetRequiredService<AcademicYearRepository>(),
+                sp.GetRequiredService<IInstructorRepository>(),
+                sp.GetRequiredService<ISectionPropertyRepository>(),
+                sp.GetRequiredService<ISectionRepository>(),
+                sp.GetRequiredService<ICourseRepository>(),
+                sp.GetRequiredService<IReleaseRepository>(),
+                sp.GetRequiredService<IInstructorCommitmentRepository>(),
+                sp.GetRequiredService<ISemesterRepository>(),
+                sp.GetRequiredService<IAcademicYearRepository>(),
                 sp.GetRequiredService<SemesterContext>(),
                 sp.GetRequiredService<SectionChangeNotifier>(),
                 sp.GetRequiredService<IDialogService>(),

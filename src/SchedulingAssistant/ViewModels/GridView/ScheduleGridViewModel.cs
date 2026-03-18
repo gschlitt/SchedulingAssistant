@@ -17,17 +17,17 @@ public record SemesterLineSegment(string DisplayText, IBrush? Background, IBrush
 
 public partial class ScheduleGridViewModel : ViewModelBase
 {
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly InstructorRepository _instructorRepo;
-    private readonly RoomRepository _roomRepo;
-    private readonly SubjectRepository _subjectRepo;
-    private readonly SectionPropertyRepository _propertyRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly IRoomRepository _roomRepo;
+    private readonly ISubjectRepository _subjectRepo;
+    private readonly ISectionPropertyRepository _propertyRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
     private readonly SectionStore _sectionStore;
     private readonly SectionChangeNotifier _changeNotifier;
-    private readonly InstructorCommitmentRepository _commitmentRepo;
+    private readonly IInstructorCommitmentRepository _commitmentRepo;
     private readonly WriteLockService _lockService;
 
     /// <summary>
@@ -68,17 +68,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
     public bool IsWriteEnabled => _lockService.IsWriter;
 
     public ScheduleGridViewModel(
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        InstructorRepository instructorRepo,
-        RoomRepository roomRepo,
-        SubjectRepository subjectRepo,
-        SectionPropertyRepository propertyRepo,
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        IInstructorRepository instructorRepo,
+        IRoomRepository roomRepo,
+        ISubjectRepository subjectRepo,
+        ISectionPropertyRepository propertyRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
         SectionStore sectionStore,
         SectionChangeNotifier changeNotifier,
-        InstructorCommitmentRepository commitmentRepo,
+        IInstructorCommitmentRepository commitmentRepo,
         WriteLockService lockService)
     {
         _sectionRepo = sectionRepo;
