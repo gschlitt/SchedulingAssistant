@@ -38,6 +38,15 @@
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
 
+  <!--  Help documentation: HTML/CSS files copied to the output directory so the
+        "Open in Browser" feature can locate them by absolute path at runtime.
+        They live in Help/ (not Assets/) to avoid being embedded as AvaloniaResources.  -->
+  <ItemGroup>
+    <Content Include="Help/**">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <None Remove="Assets\filter-icon.svg" />
     <None Remove="Assets\overlay-icon.svg" />

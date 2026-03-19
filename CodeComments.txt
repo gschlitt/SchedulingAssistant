@@ -43,8 +43,8 @@ Should there be an inactivation on section properties etc so they could be retir
 
 Ordering on Section Prefixes,
 
+need a bit of margin on lefthand section list
 
-Filter by course.
 
 What happens if we modify legal start times while a semester is in use?
 

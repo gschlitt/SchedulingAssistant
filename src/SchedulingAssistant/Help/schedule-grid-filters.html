@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grid Filters — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Filtering the Schedule Grid</h1>
+
+<p>
+    The filter panel lets you narrow the grid to show only the sections you care about. Open it
+    by clicking the <strong>filter icon</strong> (funnel) in the top-right corner of the Schedule
+    Grid panel.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Using Grid Filters</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Grid Filters Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>schedule-grid-filters.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Using Grid Filters"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>Filter Dimensions</h2>
+<p>You can filter by any combination of these eight dimensions:</p>
+<ul>
+    <li><strong>Instructors</strong> — show only sections taught by selected instructors</li>
+    <li><strong>Rooms</strong> — show only sections meeting in selected rooms</li>
+    <li><strong>Subjects</strong> — e.g. HIST, MATH, ENGL</li>
+    <li><strong>Campuses</strong> — if your institution uses multiple campus codes</li>
+    <li><strong>Section Types</strong> — e.g. Lecture, Lab, Seminar</li>
+    <li><strong>Tags</strong> — arbitrary labels you can attach to sections</li>
+    <li><strong>Meeting Types</strong> — e.g. In-Person, Online, Hybrid</li>
+    <li><strong>Levels</strong> — e.g. 100-level, 200-level, Graduate</li>
+</ul>
+
+<h2>AND / OR Logic</h2>
+<p>The filter uses two-level logic:</p>
+<ul>
+    <li>Selections <em>within</em> a dimension are combined with <strong>OR</strong>
+        (a section matches if it belongs to <em>any</em> of the chosen values).</li>
+    <li>Selections <em>across</em> dimensions are combined with <strong>AND</strong>
+        (a section must satisfy <em>all</em> active filters simultaneously).</li>
+</ul>
+
+<div class="tip">
+    <p><strong>Example:</strong> Checking <em>Prof. Smith</em> and <em>Prof. Jones</em> under
+    Instructors, plus <em>Room 201</em> under Rooms, will show sections taught by <em>either</em>
+    Smith or Jones that <em>also</em> meet in Room 201.</p>
+</div>
+
+<h2>The Filter Badge</h2>
+<p>
+    When any filter is active, an amber badge appears on the filter icon showing how many
+    dimensions are currently filtering. This reminds you that the grid is not showing everything.
+    Click the icon again and choose <strong>Clear All</strong> to reset.
+</p>
+
+<h2>Overlays vs. Filters</h2>
+<p>
+    Overlays are different from filters. An overlay <em>highlights</em> matching sections in red
+    while keeping all other sections visible (greyed out). Access overlays by right-clicking a
+    tile or from the filter panel's Overlay tab.
+</p>
+
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Make Workload Easy — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Make Workload Easy</h1>
+
+<p>
+    You've built out your semester — sections are timed and roomed, but instructors haven't
+    been assigned yet. This workflow uses filters and overlays together to get from
+    <em>fully unstaffed</em> to <em>fully assigned</em> quickly and without conflicts.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Workload Assignment Workflow</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Workload Assignment Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>workload-assignment.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Make Workload Easy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>The Big Idea</h2>
+<p>
+    The key insight is to use two features in tandem:
+</p>
+<ul>
+    <li>
+        <strong>The Instructor filter</strong> isolates the sections that still need an
+        instructor — so the grid shows only the work left to assign.
+    </li>
+    <li>
+        <strong>An instructor overlay</strong> paints that instructor's existing commitments
+        in red — so you can immediately see what's already claimed and what fits.
+    </li>
+</ul>
+<p>
+    Working through your instructor list one by one, you assign sections into the gaps.
+    By the time you move to the next instructor, the unassigned pool on the grid has
+    already shrunk.
+</p>
+
+<h2>Step by Step</h2>
+
+<h3>1. Show only unstaffed sections</h3>
+<p>
+    Open the filter panel (funnel icon, top-right of the Schedule Grid). Under
+    <strong>Instructors</strong>, select <strong>Unstaffed</strong>.
+</p>
+<p>
+    The grid now shows only sections with no instructor assigned. Everything already
+    staffed disappears — you're looking at exactly the work that remains.
+</p>
+
+<div class="tip">
+    <p>If you want the staffed sections to stay visible for context rather than vanish entirely,
+    use the <strong>Unstaffed overlay</strong> instead of the filter. Unstaffed sections are
+    highlighted in red; everything else remains visible but is greyed out. Pick whichever
+    gives you the clearer picture for your roster size.</p>
+</div>
+
+<h3>2. Pick your first instructor and activate their overlay</h3>
+<p>
+    Right-click any tile on the grid (or any section in the Section List) and choose
+    <strong>View Instructor Overlay</strong> for the instructor you want to staff first.
+</p>
+<p>
+    The overlay highlights — in red — every section already assigned to that instructor,
+    plus any standing commitments (committee meetings, research blocks, and so on). The
+    rest of the grid remains visible but subdued.
+</p>
+<p>
+    You now have two layers of information at once: the red overlay tells you
+    <em>what this instructor already has</em>, and the remaining highlighted tiles
+    tell you <em>what still needs an instructor</em>.
+</p>
+
+<h3>3. Find a section that fits</h3>
+<p>
+    Scan for an unstaffed section whose time slot doesn't overlap with any of the
+    instructor's red tiles. A clean gap in the overlay is a safe assignment.
+</p>
+
+<h3>4. Assign the section</h3>
+<p>
+    Right-click the section tile and choose <strong>Edit</strong> (or double-click to
+    open the inline editor). Set the <strong>Instructor</strong> field to this instructor
+    and save.
+</p>
+<p>
+    The tile is no longer unstaffed, so it drops off the filter and the grid refreshes.
+    The instructor's overlay now includes the newly assigned section — confirming the
+    assignment and updating the picture simultaneously.
+</p>
+
+<h3>5. Repeat until the instructor has a full workload</h3>
+<p>
+    Continue finding and assigning sections in the remaining gaps. The Workload Panel
+    (bottom-left) updates in real time and shows the instructor's running total — use
+    it to know when they're full.
+</p>
+
+<h3>6. Move to the next instructor</h3>
+<p>
+    Switch the overlay to your next instructor. The unstaffed filter is still active, so
+    the grid automatically reflects the reduced pool. Work through the gaps in the new
+    overlay exactly as before.
+</p>
+<p>
+    Repeat until the unstaffed filter shows an empty grid — every section has an
+    instructor.
+</p>
+
+<hr>
+
+<div class="note">
+    <p>The filter and overlay are independent controls — you can change the overlay at any
+    time without disturbing the filter, and vice versa. Clear the filter when you want to
+    step back and see the full picture.</p>
+</div>
+
+</body>
+</html>

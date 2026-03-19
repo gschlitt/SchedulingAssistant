@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exporting — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Exporting</h1>
+
+<p>
+    TermPoint can export your schedule data in several formats. All export options are available
+    under the <strong>Export</strong> menu in the toolbar.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Exporting Your Schedule</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Export Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>exporting.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Exporting"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>Export Schedule PNG</h2>
+<p>
+    Captures the current Schedule Grid exactly as it appears — including any active filters and
+    multi-semester colouring — and saves it as a PNG image.
+</p>
+<ul>
+    <li>Go to <strong>Export → Export Schedule PNG…</strong></li>
+    <li>Choose a file location and name.</li>
+    <li>The exported image uses a dark-on-light colour scheme optimised for printing.</li>
+</ul>
+
+<div class="tip">
+    <p>Set your filters before exporting to get a focused view, such as a single instructor's
+    schedule or a specific set of rooms.</p>
+</div>
+
+<h2>Workload Report</h2>
+<p>
+    Produces a plain-text summary of each instructor's assigned sections across the selected
+    semesters, grouped by instructor.
+</p>
+<ul>
+    <li>Go to <strong>Export → Workload Report…</strong></li>
+    <li>Select the academic year and semesters to include.</li>
+    <li>Copy the report text or save it to a file.</li>
+</ul>
+
+<h2>Workload Mailer</h2>
+<p>
+    Generates a personalised email for each instructor containing their scheduled sections.
+    TermPoint opens each message in your default email client so you can review and send it
+    individually.
+</p>
+
+<h3>Setup</h3>
+<ol>
+    <li>Go to <strong>Export → Workload Mailer…</strong></li>
+    <li>Select the academic year and the semesters to include.</li>
+    <li>Choose which instructors to email (those without an email address on file are greyed out).</li>
+    <li>Edit the subject and body templates. Use the placeholder legend shown in the panel:
+        <ul>
+            <li><code>{FirstName}</code>, <code>{LastName}</code> — instructor's name</li>
+            <li><code>{AcademicYear}</code> — e.g. "2025–2026"</li>
+            <li><code>{Semester}</code> — e.g. "Fall"</li>
+            <li><code>{Workload}</code> — the generated workload block for this instructor</li>
+        </ul>
+    </li>
+    <li>Click <strong>Start Sending</strong>. Each instructor's rendered email opens in your
+        mail client. Review it, click Send in your email app, then return to TermPoint and
+        click <strong>Next</strong> to continue to the next instructor.</li>
+</ol>
+
+<div class="note">
+    <p>TermPoint uses <code>mailto:</code> links — it does not send email directly. Your
+    default email client (Outlook, Apple Mail, etc.) handles the actual sending.</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.HelpView"
+             x:DataType="vm:HelpViewModel"
+             x:CompileBindings="False"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+
+    <!--
+        Two-column layout:
+          Col 0 (200 px) — cascading topic TreeView
+          Col 1 (1 px)   — vertical separator
+          Col 2 (*)      — content pane (topic summary + browser-launch buttons)
+    -->
+    <Grid ColumnDefinitions="200,1,*"
+          Margin="16,0,16,4">
+
+        <!-- ── Left: Topic navigation tree ──────────────────────────────── -->
+        <TreeView Grid.Column="0"
+                  ItemsSource="{Binding Topics}"
+                  SelectedItem="{Binding SelectedTopic, Mode=TwoWay}"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Padding="0,0,8,0">
+            <TreeView.ItemTemplate>
+                <!--
+                    TreeDataTemplate drives the hierarchy.  When Children is null or empty
+                    Avalonia shows no expand chevron, making the node a leaf.
+                -->
+                <TreeDataTemplate ItemsSource="{Binding Children}">
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="{StaticResource FontSizeSmall}"
+                               Padding="2,3"
+                               TextWrapping="Wrap" />
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+        <!-- ── Vertical separator ────────────────────────────────────────── -->
+        <Border Grid.Column="1"
+                Background="{StaticResource SeparatorLine}"
+                Margin="0,4" />
+
+        <!-- ── Right: Content pane ───────────────────────────────────────── -->
+        <Grid Grid.Column="2" Margin="16,0,0,0">
+
+            <!-- No topic selected yet -->
+            <TextBlock Text="Select a topic from the list."
+                       IsVisible="{Binding SelectedTopic, Converter={x:Static ObjectConverters.IsNull}}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextSubtle}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+
+            <!-- Topic detail card -->
+            <StackPanel IsVisible="{Binding SelectedTopic, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        Spacing="14"
+                        VerticalAlignment="Top">
+
+                <!-- Topic title -->
+                <TextBlock Text="{Binding SelectedTopic.Title}"
+                           FontSize="{StaticResource FontSizeLarge}"
+                           FontWeight="SemiBold" />
+
+                <!-- One-line description -->
+                <TextBlock Text="{Binding SelectedTopic.Description}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding SelectedTopic.Description,
+                                       Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                <!-- Action buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="10">
+
+                    <!--  Open full article in the system default browser.
+                          The HTML file in the Help/ folder renders with all formatting,
+                          callout boxes, and links exactly as authored.  -->
+                    <Button Command="{Binding OpenArticleCommand}"
+                            IsVisible="{Binding HasArticle}"
+                            Classes="nav"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="📄" FontSize="12" VerticalAlignment="Center" />
+                            <TextBlock Text="Open Article in Browser"
+                                       FontSize="{StaticResource FontSizeSmall}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!--  Watch the companion YouTube video in the default browser.
+                          Only visible when a VideoUrl has been added to the topic.  -->
+                    <Button Command="{Binding OpenVideoCommand}"
+                            IsVisible="{Binding HasVideo}"
+                            Classes="nav"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="▶" FontSize="12" VerticalAlignment="Center" />
+                            <TextBlock Text="Watch Video"
+                                       FontSize="{StaticResource FontSizeSmall}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+
+                <!-- Hint when no video is attached yet -->
+                <TextBlock IsVisible="{Binding !HasVideo}"
+                           FontSize="11"
+                           Foreground="{StaticResource TextSubtle}"
+                           FontStyle="Italic"
+                           Text="No video for this topic yet. Add a VideoUrl to the topic in HelpViewModel.cs." />
+
+            </StackPanel>
+
+        </Grid>
+
+    </Grid>
+
+</UserControl>

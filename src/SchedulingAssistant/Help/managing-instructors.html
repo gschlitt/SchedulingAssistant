@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Managing Instructors — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Managing Instructors</h1>
+
+<p>
+    Instructors are the faculty members who teach sections. The Instructor list is found under
+    the <strong>Instructors</strong> button in the toolbar.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Instructors and Commitments</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Instructors Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>managing-instructors.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Instructors and Commitments"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>The Instructor List</h2>
+<p>
+    Open the Instructor flyout from the toolbar. Each row shows the instructor's name, staff type,
+    and whether they are currently <em>active</em>. Inactive instructors can be hidden from
+    pickers and the workload panel using the <strong>Show only active</strong> toggle in Settings.
+</p>
+
+<h2>Adding and Editing Instructors</h2>
+<p>Click <strong>+ Add Instructor</strong> to create a new entry. Fields include:</p>
+<ul>
+    <li><strong>First / Last name</strong></li>
+    <li><strong>Email address</strong> — used by the Workload Mailer feature</li>
+    <li><strong>Staff Type</strong> — e.g. Full-Time, Adjunct, Visiting (configurable in
+        Section Properties)</li>
+    <li><strong>Active</strong> — uncheck to retire an instructor without deleting them</li>
+    <li><strong>Notes</strong> — free-form text field</li>
+</ul>
+
+<h2>Instructor Commitments</h2>
+<p>
+    A <em>commitment</em> is a recurring time block that an instructor is unavailable — for
+    example, a standing committee meeting, a research block, or a course release. Commitments
+    are per-semester.
+</p>
+<p>To add a commitment, expand an instructor in the list and click <strong>Commitments</strong>.
+    Each commitment has:</p>
+<ul>
+    <li>A label (e.g. "Research Release", "Faculty Senate")</li>
+    <li>Day of week and start/end time</li>
+    <li>Semester scope</li>
+</ul>
+
+<h3>Viewing Commitments on the Grid</h3>
+<p>
+    When an instructor overlay is active (right-click a tile → <strong>View Instructor
+    Overlay</strong>), commitments appear as red-striped blocks on the grid alongside that
+    instructor's sections. This lets you see potential conflicts at a glance.
+</p>
+
+<h2>Workload Panel</h2>
+<p>
+    The Workload Panel (bottom-left) summarises each instructor's total scheduled teaching hours
+    for the visible semesters. Click any row to highlight that instructor's sections on the grid.
+</p>
+
+<h2>Workload Mailer</h2>
+<p>
+    The <strong>Export → Workload Mailer</strong> feature generates a personalised workload
+    summary email for each instructor and opens it in your default mail client. You can review
+    and edit each message before sending. See the <em>Exporting</em> help topic for details.
+</p>
+
+</body>
+</html>

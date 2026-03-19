@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Getting Started — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Getting Started</h1>
+
+<p>
+    This page walks you through launching TermPoint for the first time, opening or creating a
+    database, and getting oriented with the main layout.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Getting Started</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Getting Started Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>getting-started.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Getting Started"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>First Launch</h2>
+<p>
+    When you open TermPoint for the first time, you will be prompted to either
+    <strong>open an existing database</strong> or <strong>create a new one</strong>.
+    TermPoint stores all data in a single SQLite file (a <code>.db</code> file) that you keep
+    anywhere on your drive.
+</p>
+<ul>
+    <li><strong>New database</strong> — choose a location and file name. TermPoint will create the
+        file and seed it with default scheduling settings.</li>
+    <li><strong>Open existing</strong> — browse to a <code>.db</code> file you already have.
+        Recent files are listed in the <strong>Files</strong> menu for quick access.</li>
+</ul>
+
+<div class="tip">
+    <p>Keep the database file on a network share if multiple administrators need to take turns
+    editing. TermPoint uses a write-lock so only one person edits at a time — others can still
+    open the file in read-only mode.</p>
+</div>
+
+<h2>The Main Layout</h2>
+<p>Once a database is open you'll see three panels:</p>
+<ul>
+    <li><strong>Section List</strong> (left top) — lists every section in the current semester.
+        Click a section to select it on the grid; double-click to open its editor.</li>
+    <li><strong>Workload Panel</strong> (left bottom) — summarizes teaching load per instructor.</li>
+    <li><strong>Schedule Grid</strong> (right) — the main weekly view, Monday–Friday,
+        08:30–22:00.</li>
+</ul>
+<p>
+    The panels can be detached into floating windows using the <strong>⎘</strong> icon in each
+    panel header. Drag them wherever suits your screen.
+</p>
+
+<h2>Choosing an Academic Year and Semester</h2>
+<p>
+    The <strong>Academic Year</strong> dropdown and the <strong>Semester</strong> checkboxes in the
+    top-right corner of the toolbar control which data is shown. Select one or more semesters to
+    compare them side by side on the grid.
+</p>
+
+<div class="note">
+    <p>Academic years must be created before semesters can be added to them. Use
+    <strong>Academic Years</strong> in the toolbar, then add semesters from the semester list
+    inside that flyout.</p>
+</div>
+
+<h2>Keyboard Shortcuts</h2>
+<table style="border-collapse:collapse; font-size:12.5px; width:100%;">
+    <thead>
+        <tr style="background:#f0f4f8; text-align:left;">
+            <th style="padding:6px 10px; border:1px solid #cddaeb;">Key</th>
+            <th style="padding:6px 10px; border:1px solid #cddaeb;">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td style="padding:5px 10px; border:1px solid #cddaeb;"><kbd>Escape</kbd></td>
+            <td style="padding:5px 10px; border:1px solid #cddaeb;">Close the current flyout panel</td></tr>
+        <tr><td style="padding:5px 10px; border:1px solid #cddaeb;"><kbd>Double-click</kbd> on grid tile</td>
+            <td style="padding:5px 10px; border:1px solid #cddaeb;">Open the section editor for that tile</td></tr>
+        <tr><td style="padding:5px 10px; border:1px solid #cddaeb;"><kbd>Right-click</kbd> on grid tile</td>
+            <td style="padding:5px 10px; border:1px solid #cddaeb;">Context menu for the section</td></tr>
+    </tbody>
+</table>
+
+</body>
+</html>

@@ -136,6 +136,10 @@ public sealed class WriteLockService : IDisposable
             StartPolling();
             App.Logger.LogInfo($"[WriteLockService] Read-only mode; lock held by {CurrentHolder?.Username}@{CurrentHolder?.Machine}");
         }
+
+        // Notify all subscribers (MainWindowViewModel, SectionListViewModel, etc.) that
+        // lock state has changed, so they can re-evaluate IsWriter and update their UI.
+        Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
     }
 
     /// <summary>

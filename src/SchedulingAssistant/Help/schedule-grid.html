@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Schedule Grid — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>The Schedule Grid</h1>
+
+<p>
+    The Schedule Grid is the primary view in TermPoint. It displays all sections for the selected
+    semester(s) as colour-coded tiles on a Monday–Friday, 08:30–22:00 canvas.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Reading the Schedule Grid</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Schedule Grid Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>schedule-grid.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Reading the Schedule Grid"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>Anatomy of a Tile</h2>
+<p>
+    Each tile represents one section meeting. Information is packed onto a single line to conserve
+    vertical space:
+</p>
+<pre style="background:#f5f5f5; border:1px solid #cddaeb; border-radius:4px; padding:10px 14px; font-size:12px;">
+HIST 101 A  JRS
+</pre>
+<ul>
+    <li><strong>HIST 101</strong> — subject and course number</li>
+    <li><strong>A</strong> — section code</li>
+    <li><strong>JRS</strong> — instructor initials</li>
+</ul>
+
+<h3>Co-scheduled sections</h3>
+<p>
+    When two or more sections share the exact same start time and duration they appear <em>stacked</em>
+    inside one tile, separated by a thin rule. This is common for cross-listed courses.
+</p>
+
+<h3>Overlapping sections</h3>
+<p>
+    Sections that overlap in time but are not co-scheduled appear <em>side by side</em> in the
+    same day column, each at its correct vertical position.
+</p>
+
+<h2>Selecting a Section</h2>
+<p>
+    Click any tile to select the section. The selection is synchronised across all three panels:
+    the section is highlighted in the Section List on the left, and the Workload Panel scrolls
+    to the relevant instructor row.
+</p>
+<p>
+    <strong>Double-click</strong> a tile to jump directly to that section's editor in the
+    Section List panel.
+</p>
+
+<h2>Right-click Context Menu</h2>
+<p>Right-clicking a tile shows a context menu with quick actions:</p>
+<ul>
+    <li><strong>Edit</strong> — opens the inline editor</li>
+    <li><strong>Copy</strong> — creates a duplicate of the section below it in the list</li>
+    <li><strong>View Instructor Overlay</strong> — highlights all sections for this instructor
+        in red, including any standing commitments</li>
+</ul>
+
+<h2>Multi-Semester View</h2>
+<p>
+    When more than one semester is checked in the top-right Semester selector, the grid shows
+    sections from all selected semesters simultaneously. Each semester is assigned a distinct
+    background colour so you can tell them apart at a glance. A small semester-name badge
+    appears in the bottom-right corner of each tile.
+</p>
+
+<div class="note">
+    <p>Sections that exist in multiple semesters carry a small indicator dot in the Section List to
+    show how many semesters they appear in.</p>
+</div>
+
+</body>
+</html>

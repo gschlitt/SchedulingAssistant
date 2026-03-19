@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Managing Sections — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Managing Sections</h1>
+
+<p>
+    Sections are the core data entity in TermPoint. A section represents one scheduled offering
+    of a course — its time, room, instructor, and other attributes for a given semester.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Adding and Editing Sections</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Sections Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>managing-sections.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Adding and Editing Sections"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>Adding a New Section</h2>
+<p>
+    Click the <strong>+ Add Section</strong> button at the top of the Section List panel. A new
+    section form appears at the top of the list. The editor uses a <em>step-gate</em> sequence
+    to avoid partial data:
+</p>
+<ol>
+    <li><strong>Choose a course</strong> from the dropdown. Until a course is selected, the
+        Section Code field is disabled.</li>
+    <li><strong>Enter a section code</strong> (e.g. <code>A</code>, <code>01</code>,
+        <code>ONLINE</code>). The code must be unique within the same course and semester.
+        Press <kbd>Tab</kbd> or click away to validate it.</li>
+    <li>Once the code is confirmed, all other fields unlock: instructor, room, meeting time,
+        section type, tags, and so on.</li>
+</ol>
+
+<div class="tip">
+    <p>If you use a naming convention for section codes (e.g. <code>HY1</code>, <code>HY2</code>),
+    select a <strong>Section Prefix</strong> from the picker that appears after choosing the course.
+    TermPoint will auto-generate the next available code and immediately unlock all fields.</p>
+</div>
+
+<h2>Editing an Existing Section</h2>
+<p>
+    Double-click any section in the Section List, or double-click its tile on the Schedule Grid.
+    The section expands inline showing the full editor. Only one section can be open for editing
+    at a time — opening another collapses the previous one automatically.
+</p>
+<p>Changes are saved automatically as you type (most fields) or when you confirm a picker selection.</p>
+
+<h2>Copying a Section</h2>
+<p>
+    Right-click a section in the list (or its tile on the grid) and choose <strong>Copy</strong>.
+    A new section is inserted immediately below the original, pre-filled with:
+</p>
+<ul>
+    <li>The same course</li>
+    <li>An auto-incremented section code (e.g. <code>AB1</code> → <code>AB2</code>), if derivable</li>
+    <li>The same campus (if inferred from a section prefix)</li>
+</ul>
+<p>
+    If the derived code is already taken, a notice appears and the code is left blank for you
+    to enter manually.
+</p>
+
+<h2>Section Code Uniqueness</h2>
+<p>
+    Within a semester, no two sections of the same course may share the same section code
+    (comparison is case-insensitive). TermPoint enforces this at validation time and shows an
+    inline error if there is a conflict.
+</p>
+
+<h2>Deleting a Section</h2>
+<p>
+    Open the section editor and click the <strong>Delete</strong> button at the bottom of the
+    form. You will be asked to confirm before the section is permanently removed.
+</p>
+
+<div class="warn">
+    <p>Deletion cannot be undone. If you need to temporarily remove a section from the view,
+    consider changing its meeting type to a filtered-out value instead.</p>
+</div>
+
+</body>
+</html>

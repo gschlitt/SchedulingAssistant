@@ -222,6 +222,18 @@
                         </MenuItem>
                     </Menu>
 
+                    <Border
+                        Width="1"
+                        Margin="4,10"
+                        Background="{StaticResource SeparatorLine}" />
+
+                    <!--  Help button — opens the Help documentation flyout  -->
+                    <Button
+                        Margin="4,4,0,4"
+                        Classes="nav"
+                        Command="{Binding NavigateToHelpCommand}"
+                        Content="Help" />
+
                     <!--  Debug menu (added in code-behind in DEBUG mode)  -->
                     <Menu
                         x:Name="DebugMenu"

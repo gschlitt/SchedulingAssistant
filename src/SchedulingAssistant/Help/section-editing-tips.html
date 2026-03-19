@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Section Editing Tips — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Section Editing Tips</h1>
+
+<p>
+    Two features in the section editor can save a lot of repetitive clicking once you know
+    they're there: smart section-code incrementing when you copy, and block-pattern propagation
+    when you set meeting times.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Section Editing Tips</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Section Editing Tips Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>section-editing-tips.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Section Editing Tips"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>Copying a Section Increments the Code Automatically</h2>
+
+<p>
+    When you copy a section, TermPoint doesn't just duplicate it — it also advances the
+    section code. The rule is simple: if the code ends in a number, that number goes up by
+    one. If the next number is already taken, you'll see a notice and the code field is left
+    blank for you to fill in manually.
+</p>
+
+<table style="border-collapse:collapse; font-size:12.5px; width:auto; margin: 0 0 14px;">
+    <thead>
+        <tr style="background:#f0f4f8; text-align:left;">
+            <th style="padding:6px 14px; border:1px solid #cddaeb;">Original code</th>
+            <th style="padding:6px 14px; border:1px solid #cddaeb;">Copy gets</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td style="padding:5px 14px; border:1px solid #cddaeb;"><code>AB2</code></td>
+            <td style="padding:5px 14px; border:1px solid #cddaeb;">blank (no number to increment)</td></tr>
+        <tr><td style="padding:5px 14px; border:1px solid #cddaeb;"><code>01</code></td>
+            <td style="padding:5px 14px; border:1px solid #cddaeb;"><code>02</code></td></tr>
+        <tr><td style="padding:5px 14px; border:1px solid #cddaeb;"><code>HY1</code></td>
+            <td style="padding:5px 14px; border:1px solid #cddaeb;"><code>HY2</code></td></tr>
+        <tr><td style="padding:5px 14px; border:1px solid #cddaeb;"><code>ONLINE3</code></td>
+            <td style="padding:5px 14px; border:1px solid #cddaeb;"><code>ONLINE4</code></td></tr>
+    </tbody>
+</table>
+
+<p>
+    The copied section opens immediately in the editor with all other fields carried over
+    from the original. Adjust whatever needs to change — room, instructor, meeting time — and
+    you're done.
+</p>
+
+<div class="tip">
+    <p>This pairs well with block patterns (see below). Copy a section, pick a different
+    time slot, and you have a second offering of the same course in seconds.</p>
+</div>
+
+<hr>
+
+<h2>Setting Meeting Times with Block Patterns</h2>
+
+<p>
+    Most courses follow one of a handful of standard weekly rhythms — MWF, TR, a single
+    long block on Monday, and so on. Block patterns let you express that rhythm once and
+    have TermPoint fill in all the meeting days for you.
+</p>
+
+<h3>What is a block pattern?</h3>
+<p>
+    A block pattern is a named set of weekdays — for example, <em>MWF</em> (Monday,
+    Wednesday, Friday) or <em>TR</em> (Tuesday, Thursday). You define them once in
+    <strong>Settings → Block Patterns</strong> and they're available everywhere in the
+    section editor from then on.
+</p>
+
+<div class="note">
+    <p>Block patterns are set up per academic year under <strong>Settings → Block Patterns</strong>
+    in the top menu bar. If your institution's standard patterns aren't already there, add them
+    once and they'll be available for every section in that year.</p>
+</div>
+
+<h3>How propagation works</h3>
+<p>
+    In the section editor, select a <strong>Block Pattern</strong> from the dropdown, then
+    choose a <strong>Block Length</strong> (e.g. 50 min, 75 min, 3 hours) and the
+    <strong>Start Time</strong> for the <em>first</em> meeting in the pattern.
+</p>
+<p>
+    TermPoint immediately creates all the remaining meetings — same length, same start time —
+    one for each day in the pattern. You don't have to touch them individually.
+</p>
+
+<div class="tip">
+    <p>Need one day to differ? Every individual meeting is editable. Change the start time or
+    duration on any single day after propagation and the others are unaffected. Propagation
+    is a one-time fill, not a permanent link.</p>
+</div>
+
+<h3>A typical workflow</h3>
+<ol>
+    <li>Open or create a section and unlock the meeting fields.</li>
+    <li>Select <strong>Block Pattern</strong> — e.g. <em>MWF</em>.</li>
+    <li>Choose <strong>Block Length</strong> — e.g. <em>50 min</em>.</li>
+    <li>Choose <strong>Start Time</strong> — e.g. <em>10:00 AM</em>.</li>
+    <li>TermPoint fills in Monday 10:00–10:50, Wednesday 10:00–10:50, Friday 10:00–10:50.</li>
+    <li>Edit any individual day if needed. Done.</li>
+</ol>
+
+</body>
+</html>
