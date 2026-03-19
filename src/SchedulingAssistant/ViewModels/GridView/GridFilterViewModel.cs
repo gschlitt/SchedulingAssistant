@@ -63,6 +63,7 @@ public partial class GridFilterViewModel : ViewModelBase
     public ObservableCollection<FilterItemViewModel> Tags         { get; } = new();
     public ObservableCollection<FilterItemViewModel> MeetingTypes { get; } = new();
     public ObservableCollection<FilterItemViewModel> Levels       { get; } = new();
+    public ObservableCollection<FilterItemViewModel> Courses      { get; } = new();
 
     // ── Derived selected-ID sets (computed on demand) ─────────────────────────
 
@@ -74,6 +75,7 @@ public partial class GridFilterViewModel : ViewModelBase
     public HashSet<string> SelectedTagIds         => SelectedIds(Tags);
     public HashSet<string> SelectedMeetingTypeIds => SelectedIds(MeetingTypes);
     public HashSet<string> SelectedLevelIds       => SelectedIds(Levels);
+    public HashSet<string> SelectedCourseIds      => SelectedIds(Courses);
 
     private static HashSet<string> SelectedIds(IEnumerable<FilterItemViewModel> items)
         => items.Where(i => i.IsSelected).Select(i => i.Id).ToHashSet();
@@ -248,7 +250,8 @@ public partial class GridFilterViewModel : ViewModelBase
         IReadOnlyDictionary<string, SectionPropertyValue> sectionTypeLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> tagLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> meetingTypeLookup,
-        IReadOnlyDictionary<string, string> levelLookup)
+        IReadOnlyDictionary<string, string> levelLookup,
+        IReadOnlyDictionary<string, Course> courseLookup)
     {
         // Instructors: use the FULL instructor lookup (all active instructors), not just
         // those assigned to sections in this semester. This ensures the overlay listbox
@@ -293,6 +296,9 @@ public partial class GridFilterViewModel : ViewModelBase
         // Levels always show the full fixed set of level bands (0, 100, … 900).
         RebuildList(Levels,       levelLookup.Keys,
             id => levelLookup.TryGetValue(id, out var v) ? v : id);
+        // Courses: all courses in the system, sorted by calendar code (e.g. "HIST101").
+        RebuildList(Courses, courseLookup.Keys,
+            id => courseLookup.TryGetValue(id, out var v) ? v.CalendarCode : null);
 
         RefreshInstructorMutualExclusion();
         RefreshRoomMutualExclusion();
@@ -482,6 +488,7 @@ public partial class GridFilterViewModel : ViewModelBase
         AppendSummaryPart(parts, "Tags",          Tags);
         AppendSummaryPart(parts, "Meeting Type",  MeetingTypes);
         AppendSummaryPart(parts, "Level",         Levels);
+        AppendSummaryPart(parts, "Course",        Courses);
 
         HasRegularFilter = parts.Count > 0;
         IsActive = HasRegularFilter || HasOverlay;
@@ -510,5 +517,6 @@ public partial class GridFilterViewModel : ViewModelBase
         yield return Tags;
         yield return MeetingTypes;
         yield return Levels;
+        yield return Courses;
     }
 }

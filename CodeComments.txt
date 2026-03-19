@@ -1,5 +1,6 @@
 Bugs:
 
+Is frequency being copied over by copy? By import from old db?
 
 A user could enter an early start time before 0830 in the start-time/blocklength selector. What happens then?
 
@@ -36,7 +37,7 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 Agenda.
 
-
+Improve human-readability of db.
 
 Should there be an inactivation on section properties etc so they could be retired rather than deleted.
 

@@ -255,7 +255,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // which would be misleading. The snap.FilterX properties are false for that sentinel.
         bool hasActualFilter = snap.FilterInstructor || snap.FilterRoom || snap.FilterSubject
                             || snap.FilterCampus    || snap.FilterSectionType || snap.FilterTag
-                            || snap.FilterMeetingType || snap.FilterLevel;
+                            || snap.FilterMeetingType || snap.FilterLevel || snap.FilterCourse;
         IReadOnlySet<string>? filteredIds = hasActualFilter
             ? filtered.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet()
             : null;
@@ -366,7 +366,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             lookups.SectionTypes,
             lookups.Tags,
             lookups.MeetingTypes,
-            lookups.Levels);
+            lookups.Levels,
+            lookups.Courses);
     }
 
     /// <summary>
@@ -403,6 +404,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             TagIds:             Filter.SelectedTagIds,
             MeetingTypeIds:     Filter.SelectedMeetingTypeIds,
             LevelIds:           Filter.SelectedLevelIds,
+            CourseIds:          Filter.SelectedCourseIds,
             NotStaffedSelected:         notStaffed,
             EmphasizeUnstaffedSelected: emphasizeUnstaffed,
             UnroomedSelected:           unroomed,
@@ -567,6 +569,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (!snap.SubjectIds.Contains(c.SubjectId))
                     continue;
             }
+
+            // OR within the course dimension: section must belong to one of the selected courses.
+            if (snap.FilterCourse && !snap.CourseIds.Contains(section.CourseId ?? string.Empty))
+                continue;
 
             if (snap.FilterLevel)
             {

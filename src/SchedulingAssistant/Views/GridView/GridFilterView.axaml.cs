@@ -77,6 +77,7 @@ public partial class GridFilterView : UserControl
         SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags);
         SetHeader(MeetingTypeToggle, MeetingTypePanel, "Meeting Type", _vm.MeetingTypes);
         SetHeader(LevelToggle,       LevelPanel,       "Level",        _vm.Levels);
+        SetHeader(CourseToggle,      CoursePanel,      "Course",       _vm.Courses);
         UpdateOverlayHeaders();
     }
 

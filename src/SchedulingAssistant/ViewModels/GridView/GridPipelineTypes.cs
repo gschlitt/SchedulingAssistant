@@ -135,6 +135,9 @@ internal record FilterSnapshot(
     /// <summary>Course level strings selected in the filter, e.g. "1XX", "2XX".</summary>
     HashSet<string> LevelIds,
 
+    /// <summary>Course IDs selected in the filter. Empty when the course dimension is inactive.</summary>
+    HashSet<string> CourseIds,
+
     /// <summary>
     /// True when the "Show Unstaffed" sentinel was selected in the instructor filter.
     /// Only sections with no instructor assignments are included when this is true.
@@ -201,4 +204,7 @@ internal record FilterSnapshot(
 
     /// <summary>True when one or more course levels are selected.</summary>
     public bool FilterLevel => LevelIds.Count > 0;
+
+    /// <summary>True when one or more courses are selected.</summary>
+    public bool FilterCourse => CourseIds.Count > 0;
 }

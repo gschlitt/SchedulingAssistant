@@ -409,6 +409,42 @@
                             </Popup>
                         </Panel>
 
+                        <!--  Course  -->
+                        <Panel x:Name="CoursePanel" IsVisible="True">
+                            <ToggleButton
+                                x:Name="CourseToggle"
+                                VerticalAlignment="Center"
+                                Classes="FilterDim" />
+                            <Popup
+                                x:Name="CoursePopup"
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #CourseToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #CourseToggle}">
+                                <Border
+                                    MinWidth="120"
+                                    MaxHeight="220"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource FilterExpanderBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox
+                                            Classes="FilterList"
+                                            ItemsSource="{Binding Courses}"
+                                            SelectionMode="Multiple">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+
                     <!--  Separator between filter and overlay panels  -->
                     <Border
                         Width="3"
