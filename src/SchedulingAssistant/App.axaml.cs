@@ -25,7 +25,9 @@ public partial class App : Application
 
     public override void Initialize()
     {
+#if DEBUG
         this.UseHotReload();
+#endif
         AvaloniaXamlLoader.Load(this);
     }
 
