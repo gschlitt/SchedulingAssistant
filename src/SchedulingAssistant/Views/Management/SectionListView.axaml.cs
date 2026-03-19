@@ -41,6 +41,30 @@ public partial class SectionListView : UserControl
         // are wider than the current column. Deferred to the next layout pass.
         if (e.PropertyName == nameof(SectionListViewModel.SectionItems))
             Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
+
+        // When the inline editor opens (e.g. via double-click from the Schedule Grid),
+        // the expanding item changes the list layout AFTER any BringIntoView call that
+        // was queued by the selection change. The item may therefore end up outside the
+        // visible area. Re-scroll to the selected item after the layout has settled.
+        if (e.PropertyName == nameof(SectionListViewModel.EditVm))
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                ScrollSelectedItemIntoView,
+                Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Brings the currently selected ListBox item into the visible area of the scroll viewer.
+    /// Called after the inline editor opens or closes, since the layout shift caused by
+    /// expanding/collapsing the editor form can push the selected item out of the viewport.
+    /// Uses BringIntoView() which bubbles up to the outer ScrollViewer automatically.
+    /// </summary>
+    private void ScrollSelectedItemIntoView()
+    {
+        var listBox = this.FindControl<ListBox>("SectionListBox");
+        if (listBox?.SelectedItem is null) return;
+
+        var container = listBox.ContainerFromItem(listBox.SelectedItem) as Control;
+        container?.BringIntoView();
     }
 
     /// <summary>
