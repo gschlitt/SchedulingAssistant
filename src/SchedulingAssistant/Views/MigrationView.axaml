@@ -1,9 +1,7 @@
 <!-- ONE-TIME MIGRATION UTILITY — DELETE AFTER USE -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels"
              x:Class="SchedulingAssistant.Views.MigrationView"
-             x:DataType="vm:MigrationViewModel"
              x:CompileBindings="False">
 
     <ScrollViewer>

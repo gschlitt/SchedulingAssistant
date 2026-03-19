@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scheduling Assistant — Demo</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        /* The Avalonia host div fills the viewport. Avalonia creates its own
+           canvas inside this div; the div must be a block container (not a canvas)
+           so that child elements receive proper layout dimensions. */
+        #out {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="out"></div>
+    <script type="module">
+        // Avalonia.Browser publishes its WASM bootstrap as main.js in the AppBundle.
+        import { dotnet } from './_framework/dotnet.js';
+
+        await dotnet
+            .withConfig({ applicationArguments: [] })
+            .run();
+    </script>
+</body>
+</html>

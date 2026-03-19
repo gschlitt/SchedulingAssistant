@@ -2,7 +2,6 @@
     x:Class="SchedulingAssistant.Views.GridView.GridFilterView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
     xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
     xmlns:b="using:SchedulingAssistant.Behaviors"
     x:Name="FilterRoot"
@@ -103,11 +102,11 @@
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Spacing="6">
-                            <svg:Svg
+                            <PathIcon
                                 Width="16"
                                 Height="16"
                                 VerticalAlignment="Center"
-                                Path="/Assets/filter-icon.svg" />
+                                Data="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
                         </StackPanel>
                         <!--  Instructor  -->
                         <Panel x:Name="InstructorPanel" IsVisible="True">
@@ -421,11 +420,11 @@
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Spacing="6">
-                            <svg:Svg
+                            <PathIcon
                                 Width="16"
                                 Height="16"
                                 VerticalAlignment="Center"
-                                Path="/Assets/overlay-icon.svg" />
+                                Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
                         </StackPanel>
                         <!--  Overlay: Instructor  -->
                         <Panel x:Name="InstructorOverlayPanel" IsVisible="False">

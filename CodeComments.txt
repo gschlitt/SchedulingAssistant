@@ -36,6 +36,8 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 Agenda.
 
+Version management.
+
 
 Should there be an inactivation on section properties etc so they could be retired rather than deleted.
 

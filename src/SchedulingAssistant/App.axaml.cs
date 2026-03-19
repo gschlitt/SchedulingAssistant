@@ -1,15 +1,22 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+#if !BROWSER
 using HotAvalonia;
+#endif
 using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
+using SchedulingAssistant.Data.Repositories.Demo;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
+using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.Management;
+using System;
+using System.IO;
+using System.Linq;
 
 namespace SchedulingAssistant;
 
@@ -25,7 +32,9 @@ public partial class App : Application
 
     public override void Initialize()
     {
+#if !BROWSER
         this.UseHotReload();
+#endif
         AvaloniaXamlLoader.Load(this);
     }
 
@@ -33,20 +42,31 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Show MainWindow hidden — it will run async startup in OnOpened,
+            // Desktop path — show MainWindow hidden; it will run async startup in OnOpened,
             // initialize the DB, then make itself visible.
             var win = new MainWindow();
             win.IsVisible = false;
             desktop.MainWindow = win;
         }
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            // Browser (WASM) path — no DB picker, no splash screen.
+            // Wire MainView directly with the pre-built demo DI container.
+            // See InitializeDemoServices() and ConfigureDemoServices() below.
+            var vm = InitializeDemoServices();
+            singleView.MainView = new MainView { DataContext = vm };
+        }
 
         base.OnFrameworkInitializationCompleted();
     }
 
+#if !BROWSER
     /// <summary>
     /// Called by MainWindow once a database path has been resolved.
-    /// Builds the full DI container and returns the root view model.
+    /// Builds the full DI container (SQLite-backed) and returns the root view model.
     /// </summary>
+    /// <param name="dbPath">Absolute path to the SQLite database file.</param>
+    /// <returns>The singleton <see cref="MainWindowViewModel"/> for the new container.</returns>
     public static MainWindowViewModel InitializeServices(string dbPath)
     {
         var services = new ServiceCollection();
@@ -60,24 +80,16 @@ public partial class App : Application
 
         Services = services.BuildServiceProvider();
 
-        // Expose the singleton logger from DI so any code using App.Logger
-        // gets the same instance.
         Logger = Services.GetRequiredService<IAppLogger>();
-
-        // Prune old log files (non-throwing).
         if (Logger is FileAppLogger fal) fal.PruneOldLogs();
 
         // Acquire the write lock before touching the database file.
-        // This must happen before DatabaseContext is initialized so that if two
-        // instances open the same file simultaneously, the loser enters read-only
-        // mode before any writes occur.
         Services.GetRequiredService<WriteLockService>().TryAcquire(dbPath);
 
         // Eagerly initialize the database (schema creation + seeding).
         Services.GetRequiredService<IDatabaseContext>();
 
-        // Seed the global semester context from the database,
-        // restoring the last-used academic year and semester(s) from local settings.
+        // Seed the global semester context from the database.
         var startupSettings = AppSettings.Current;
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
@@ -98,24 +110,61 @@ public partial class App : Application
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath));
         return vm;
     }
+#endif // !BROWSER
+
+    /// <summary>
+    /// Browser (WASM) entry point — builds a DI container backed by static demo data
+    /// instead of SQLite, seeds the semester context and section store, and returns
+    /// the root view model ready to bind directly to <see cref="MainView"/>.
+    /// No file I/O, no DB picker, no splash screen.
+    /// </summary>
+    /// <returns>The singleton <see cref="MainWindowViewModel"/> for the demo container.</returns>
+    public static MainWindowViewModel InitializeDemoServices()
+    {
+        var services = new ServiceCollection();
+        ConfigureDemoServices(services);
+
+        (Services as IDisposable)?.Dispose();
+        Services = services.BuildServiceProvider();
+        Logger = Services.GetRequiredService<IAppLogger>();
+
+        // In the demo there is no competing process, so grant write access immediately
+        // so the interactive UI is fully enabled (flyouts, section editor, etc.).
+        Services.GetRequiredService<WriteLockService>().AcquireDemo();
+
+        // Seed semester context — no saved selection to restore in the demo, so
+        // the first academic year and its first semester are selected by default.
+        var semesterContext = Services.GetRequiredService<SemesterContext>();
+        semesterContext.Reload(
+            Services.GetRequiredService<IAcademicYearRepository>(),
+            Services.GetRequiredService<ISemesterRepository>());
+
+        // Seed the section store for the default selected semester(s).
+        var sectionStore = Services.GetRequiredService<SectionStore>();
+        sectionStore.Reload(
+            Services.GetRequiredService<ISectionRepository>(),
+            semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
+
+        var vm = Services.GetRequiredService<MainWindowViewModel>();
+        vm.SetDatabaseName("Demo");
+        return vm;
+    }
+
+#if !BROWSER
+    // ── Desktop DI ───────────────────────────────────────────────────────────
 
     private static void ConfigureServices(IServiceCollection services, string dbPath)
     {
-        // Logger — singleton so the same instance is used everywhere.
-        // Swap FileAppLogger for a remote/database implementation here when ready.
         services.AddSingleton<IAppLogger>(new FileAppLogger());
 
         // Services
         services.AddSingleton<SemesterContext>();
         services.AddSingleton<WriteLockService>();
-        // These services are stateless wrappers; singletons match their actual lifetime.
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();
         services.AddTransient<IDialogService, DialogService>();
 
         // Data layer — DatabaseContext receives the resolved path directly.
-        // Repositories are stateless wrappers around the singleton DatabaseContext,
-        // so they are registered as singletons to accurately reflect their actual lifetime.
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath));
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
@@ -132,7 +181,72 @@ public partial class App : Application
         services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
         services.AddSingleton<ISectionPrefixRepository, SectionPrefixRepository>();
 
-        // ViewModels
+        RegisterViewModels(services);
+
+#if DEBUG
+        services.AddTransient<DebugTestDataGenerator>();
+        services.AddTransient<Demo.DemoDataGenerator>();
+        services.AddTransient<DebugTestDataViewModel>();
+        // ONE-TIME MIGRATION UTILITY — remove after migration is complete
+        services.AddTransient<MigrationViewModel>();
+#endif
+    }
+#endif // !BROWSER
+
+    // ── Demo / Browser DI ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Registers demo (in-memory, read-only) implementations of every repository interface.
+    /// Called only from <see cref="InitializeDemoServices"/> in the browser (WASM) build path.
+    /// The demo repositories are backed by the static <see cref="Demo.DemoData"/> class and
+    /// perform no file I/O — Insert/Update/Delete are silent no-ops.
+    /// </summary>
+    private static void ConfigureDemoServices(IServiceCollection services)
+    {
+        // ConsoleAppLogger: no file-system access required — safe in WASM.
+        services.AddSingleton<IAppLogger>(new ConsoleAppLogger());
+
+        // Services — WriteLockService is registered but TryAcquire is never called;
+        // it is included because ScheduleGridViewModel and InstructorListViewModel
+        // depend on it via constructor injection.
+        // NullDialogService: native window dialogs are unavailable in WASM.
+        services.AddSingleton<SemesterContext>();
+        services.AddSingleton<WriteLockService>();
+        services.AddSingleton<AcademicUnitService>();
+        services.AddSingleton<ScheduleValidationService>();
+        services.AddTransient<IDialogService, NullDialogService>();
+
+        // Demo data layer — static DemoData lists, no SQLite.
+        services.AddSingleton<IDatabaseContext, DemoDatabaseContext>();
+        services.AddSingleton<IAcademicYearRepository,        DemoAcademicYearRepository>();
+        services.AddSingleton<ISemesterRepository,            DemoSemesterRepository>();
+        services.AddSingleton<IInstructorRepository,          DemoInstructorRepository>();
+        services.AddSingleton<IRoomRepository,                DemoRoomRepository>();
+        services.AddSingleton<ILegalStartTimeRepository,      DemoLegalStartTimeRepository>();
+        services.AddSingleton<IBlockPatternRepository,        DemoBlockPatternRepository>();
+        services.AddSingleton<ISubjectRepository,             DemoSubjectRepository>();
+        services.AddSingleton<ICourseRepository,              DemoCourseRepository>();
+        services.AddSingleton<ISectionRepository,             DemoSectionRepository>();
+        services.AddSingleton<ISectionPropertyRepository,     DemoSectionPropertyRepository>();
+        services.AddSingleton<IAcademicUnitRepository,        DemoAcademicUnitRepository>();
+        services.AddSingleton<IReleaseRepository,             DemoReleaseRepository>();
+        services.AddSingleton<IInstructorCommitmentRepository,DemoInstructorCommitmentRepository>();
+        services.AddSingleton<ISectionPrefixRepository,       DemoSectionPrefixRepository>();
+
+        RegisterViewModels(services);
+        // Note: debug-only services (DemoDataGenerator, MigrationViewModel, etc.) are
+        // intentionally omitted from the demo build.
+    }
+
+    // ── Shared ViewModel registration ────────────────────────────────────────
+
+    /// <summary>
+    /// Registers all ViewModels that are identical between the desktop and demo builds.
+    /// Called from both <see cref="ConfigureServices"/> and <see cref="ConfigureDemoServices"/>
+    /// to keep the two DI configurations in sync without duplicating the registration block.
+    /// </summary>
+    private static void RegisterViewModels(IServiceCollection services)
+    {
         services.AddSingleton<SectionStore>();
         services.AddSingleton<SectionChangeNotifier>();
         services.AddSingleton<MainWindowViewModel>();
@@ -172,7 +286,7 @@ public partial class App : Application
                 sp.GetRequiredService<SectionChangeNotifier>(),
                 sp.GetRequiredService<IDialogService>(),
                 sp.GetRequiredService<WriteLockService>()));
-            
+
         services.AddTransient<RoomListViewModel>();
         services.AddTransient<SemesterListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();
@@ -191,21 +305,7 @@ public partial class App : Application
         services.AddTransient<WorkloadMailerViewModel>();
         services.AddTransient<SectionPrefixListViewModel>();
 
-        // Views
         services.AddTransient<CourseHistoryView>();
-
-        //Dialogs
-        
-
-        // Data export utilities
         services.AddTransient<LegalStartTimesDataExporter>();
-
-#if DEBUG
-        services.AddTransient<DebugTestDataGenerator>();
-        services.AddTransient<Demo.DemoDataGenerator>();
-        services.AddTransient<DebugTestDataViewModel>();
-        // ONE-TIME MIGRATION UTILITY — remove after migration is complete
-        services.AddTransient<MigrationViewModel>();
-#endif
     }
 }

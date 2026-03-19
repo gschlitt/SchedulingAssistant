@@ -124,7 +124,7 @@ public partial class AcademicYearListViewModel : ViewModelBase
                             var shouldImport = await ConfirmImportPersistedData(persistedSummary);
                             if (shouldImport)
                             {
-                                var dbContext = App.Services.GetRequiredService<DatabaseContext>();
+                                var dbContext = App.Services.GetRequiredService<IDatabaseContext>();
                                 SeedData.ImportPersistedStartTimes(dbContext.Connection, saved.Id);
                                 dataImported = true;
                             }

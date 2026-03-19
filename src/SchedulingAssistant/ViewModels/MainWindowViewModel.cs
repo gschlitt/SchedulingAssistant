@@ -284,8 +284,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
 
     // ONE-TIME MIGRATION UTILITY — remove after migration is complete
+    // Not available in the browser (WASM) demo build.
+#if !BROWSER
     [RelayCommand]
     private void OpenMigration() => OpenFlyout<MigrationViewModel>("Migration: CSV → JSON (one-time utility)");
+#endif
 #endif
 
     // ── File menu commands ────────────────────────────────────────────────────

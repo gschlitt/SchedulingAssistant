@@ -87,6 +87,14 @@ public partial class SectionMeetingViewModel : ViewModelBase
             double blockLengthHours = existing.DurationMinutes / 60.0;
             _selectedBlockLength = AvailableBlockLengths.FirstOrDefault(b => Math.Abs(b - blockLengthHours) < 0.01);
             RefreshStartTimes();
+            // If the section's actual start time falls outside the legal list (e.g. a section
+            // imported from legacy data at a non-standard time), insert it so the combobox
+            // can display and retain the real value rather than showing blank.
+            if (!AvailableStartTimes.Contains(existing.StartMinutes))
+            {
+                int insertAt = AvailableStartTimes.TakeWhile(t => t < existing.StartMinutes).Count();
+                AvailableStartTimes.Insert(insertAt, existing.StartMinutes);
+            }
             _selectedStartTime = existing.StartMinutes;
             _selectedMeetingTypeId = existing.MeetingTypeId ?? "";
             _selectedRoomId = existing.RoomId ?? "";

@@ -951,10 +951,16 @@
                                                 </Grid>
 
                                                 <!--  Meetings  -->
-                                                <ItemsControl ItemsSource="{Binding MeetingDetails}">
+                                                <!--  Background/Foreground set explicitly: in Avalonia WASM (SimpleTheme),
+                                                      nested ItemsControl may resolve to a black background and/or inherit
+                                                      an unexpected foreground, causing rows to render as solid black bars.  -->
+                                                <ItemsControl
+                                                    Background="Transparent"
+                                                    Foreground="{StaticResource TextPrimary}"
+                                                    ItemsSource="{Binding MeetingDetails}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
-                                                            <Grid Margin="0,1,0,0">
+                                                            <Grid Margin="0,1,0,0" Background="Transparent">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="45" />
                                                                     <ColumnDefinition Width="45" />

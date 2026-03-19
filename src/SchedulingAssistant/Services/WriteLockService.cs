@@ -139,6 +139,17 @@ public sealed class WriteLockService : IDisposable
     }
 
     /// <summary>
+    /// Grants write access without acquiring a file lock. Used in the browser (WASM)
+    /// demo build, where there is no file system and no competing processes to guard
+    /// against. All write operations are no-ops in the demo repositories, so setting
+    /// <see cref="IsWriter"/> to <c>true</c> simply unblocks the interactive UI.
+    /// </summary>
+    public void AcquireDemo()
+    {
+        IsWriter = true;
+    }
+
+    /// <summary>
     /// Releases the write lock if this instance holds it, stopping the heartbeat
     /// timer and deleting the lock file. Also stops the poll timer if this instance
     /// is in read-only mode. Safe to call multiple times or when in read-only mode

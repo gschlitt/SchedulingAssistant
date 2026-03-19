@@ -1,3 +1,21 @@
+// MainWindow.axaml.cs
+//
+// WHY THIS CLASS IS A THIN SHELL:
+// All application UI lives in MainView (UserControl) so the browser (WASM) build can
+// host the same UI via ISingleViewApplicationLifetime without a Window.
+//
+// What stays here: everything that *requires* a Window —
+//   • Startup: splash screen, DB-path dialog, DI initialization
+//   • Runtime: switching databases, write-lock acquisition
+//   • Window management: OnClosing (disposes DI container), panel detaching
+//     (creates secondary windows for the Workload and Schedule Grid panels)
+//
+// What moved to MainView.axaml.cs:
+//   • OnDataContextChanged — ViewModel event wiring, EditRequested callback
+//   • OnWorkloadItemClicked — cross-panel selection sync
+//   • OnSectionViewHeaderPointerPressed — sort-mode context menu
+//   • OnMainWindowVmPropertyChanged — flyout-close workload refresh
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
@@ -8,19 +26,14 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SchedulingAssistant.Controls;
-using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
-using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.GridView;
-using SchedulingAssistant.Views.Management;
 using System;
-using System.ComponentModel;
-using System.Threading.Tasks;
 using System.IO;
-using System.Linq;
+using System.Threading.Tasks;
 
 namespace SchedulingAssistant;
 
@@ -28,17 +41,28 @@ public partial class MainWindow : Window
 {
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
-    private MainWindowViewModel? _previousVm;
 
-    public ScheduleGridView? ScheduleGridViewInstance { get; private set; }
+    /// <summary>
+    /// Reference to the schedule grid view instance, resolved inside MainView after
+    /// DataContext is bound.  Delegated here for callers that hold a MainWindow reference.
+    /// </summary>
+    public ScheduleGridView? ScheduleGridViewInstance =>
+        this.FindControl<MainView>("MainViewInstance")?.ScheduleGridViewInstance;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        // Escape-to-close-flyout is handled declaratively by DismissBehaviors.EscapeCommand
-        // on the Window element in AXAML. The KeyDown handler below is retained only for
-        // the DEBUG-only error simulation hotkeys.
+        // Wire detach events from the DetachablePanels that live inside MainView.
+        // We subscribe here (in the desktop Window) rather than in MainView because
+        // panel detaching creates secondary Window instances — a concept that does not
+        // exist in the browser build and therefore must not leak into shared view code.
+        var mainView = this.FindControl<MainView>("MainViewInstance");
+        var workloadPanel   = mainView?.FindControl<DetachablePanel>("WorkloadPanel");
+        var schedulePanel   = mainView?.FindControl<DetachablePanel>("ScheduleGridPanel");
+        if (workloadPanel  is not null) workloadPanel.DetachRequested  += OnWorkloadDetach;
+        if (schedulePanel  is not null) schedulePanel.DetachRequested  += OnScheduleGridDetach;
+
 #if DEBUG
         KeyDown += (_, e) =>
         {
@@ -65,15 +89,12 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
-    /// All shutdown logic (e.g. backup, save-state) belongs here so both paths are handled identically.
+    /// Disposes the DI container, which closes the SQLite connection cleanly.
     /// </summary>
     /// <param name="e">Closing event args; set <c>e.Cancel = true</c> to abort the close.</param>
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
-
-        // Dispose the DI container, which closes the SQLite connection cleanly.
-        // This is the hook point for a pre-exit backup — add it here before Dispose.
         (App.Services as IDisposable)?.Dispose();
     }
 
@@ -108,7 +129,6 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrWhiteSpace(settings.DatabasePath) && File.Exists(settings.DatabasePath))
         {
-            // Happy path — saved path exists and file is there.
             dbPath = settings.DatabasePath;
         }
         else
@@ -121,7 +141,6 @@ public partial class MainWindow : Window
 
             if (dbPath is null)
             {
-                // User cancelled — inform and exit.
                 await ShowCancelMessageAsync();
                 (Avalonia.Application.Current?.ApplicationLifetime as
                     Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
@@ -133,44 +152,42 @@ public partial class MainWindow : Window
             settings.Save();
         }
 
-        // Record this database in recent list
         settings.AddRecentDatabase(dbPath);
 
-        // Initialize DI and DB, wire up the view model, then reveal the window.
+#if !BROWSER
         var vm = App.InitializeServices(dbPath);
         DataContext = vm;
 
-        // Set the main window reference and load recent databases
         vm.MainWindowReference = this;
         vm.LoadRecentDatabases();
 
         IsVisible = true;
         Activate();
+#endif
     }
 
     /// <summary>
-    /// Switch to a different database without restarting the app.
-    /// Call this from the Files menu to open a different database.
-    /// The database file will be created if it doesn't exist.
+    /// Switches to a different database without restarting the app.
+    /// Called from the Files menu to open a different database file.
+    /// The database file will be created if it does not already exist.
     /// </summary>
+    /// <param name="newDatabasePath">Absolute path to the target database file.</param>
     public async Task SwitchDatabaseAsync(string newDatabasePath)
     {
         try
         {
-            // Update settings and record in recent list
             var settings = AppSettings.Current;
             settings.DatabasePath = newDatabasePath;
             settings.Save();
             settings.AddRecentDatabase(newDatabasePath);
 
-            // Reinitialize DI and set new data context.
-            // DatabaseContext will create the file if it doesn't exist.
+#if !BROWSER
             var vm = App.InitializeServices(newDatabasePath);
             DataContext = vm;
 
-            // Reload recent databases in the menu
             vm.MainWindowReference = this;
             vm.LoadRecentDatabases();
+#endif
         }
         catch (Exception ex)
         {
@@ -178,6 +195,206 @@ public partial class MainWindow : Window
             await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
         }
     }
+
+    // ── Detach handlers ─────────────────────────────────────────────────────
+    // These create secondary Window instances and therefore cannot live in MainView,
+    // which is shared with the browser build where secondary windows do not exist.
+
+    private void OnWorkloadDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+        DetachSlot(slot, ref _workloadWindow,
+            () => new WorkloadPanelView { DataContext = ((MainWindowViewModel)DataContext!).WorkloadPanelVm },
+            () => { slot.IsVisible = true; _workloadWindow = null; });
+    }
+
+    private void OnScheduleGridDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+        var headerContext = CreateScheduleGridHeaderContext();
+        DetachSlot(slot, ref _scheduleGridWindow,
+            () => new ScheduleGridView { DataContext = ((MainWindowViewModel)DataContext!).ScheduleGridVm },
+            () => { slot.IsVisible = true; _scheduleGridWindow = null; },
+            headerContext);
+    }
+
+    private StackPanel CreateScheduleGridHeaderContext()
+    {
+        var vm = (MainWindowViewModel)DataContext!;
+
+        var stack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var auTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        auTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.AcademicUnitName") { Source = vm });
+        auTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.AcademicUnitName")
+        {
+            Source = vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(auTextBlock);
+
+        var auSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        auSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.AcademicUnitName")
+        {
+            Source = vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(auSeparator);
+
+        var semFontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d);
+        var semItemsControl = new ItemsControl
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            ItemsPanel = new FuncTemplate<Panel?>(() => new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 4
+            }),
+            ItemTemplate = new FuncDataTemplate<SemesterLineSegment>((seg, _) =>
+                new Border
+                {
+                    Padding          = new Thickness(6, 2),
+                    Background       = seg.Background,
+                    BorderBrush      = seg.Border,
+                    BorderThickness  = new Thickness(1),
+                    CornerRadius     = new CornerRadius(2),
+                    Child = new TextBlock
+                    {
+                        FontSize = semFontSize,
+                        Text     = seg.DisplayText
+                    }
+                })
+        };
+        semItemsControl.Bind(ItemsControl.ItemsSourceProperty,
+            new Binding("ScheduleGridVm.SemesterLineSegments") { Source = vm });
+        stack.Children.Add(semItemsControl);
+
+        var subjectSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        subjectSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
+        {
+            Source = vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(subjectSeparator);
+
+        var subjectTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        subjectTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.SubjectFilterSummary") { Source = vm });
+        subjectTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
+        {
+            Source = vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(subjectTextBlock);
+
+        var statsSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        statsSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
+        {
+            Source = vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(statsSeparator);
+
+        var statsTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        statsTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.StatsLine") { Source = vm });
+        statsTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
+        {
+            Source = vm,
+            Converter = StringConverters.IsNotNullOrEmpty
+        });
+        stack.Children.Add(statsTextBlock);
+
+        var filterSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        filterSeparator.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = vm.ScheduleGridVm });
+        stack.Children.Add(filterSeparator);
+
+        var filteredByLabel = new TextBlock
+        {
+            Text = "Filtered by:",
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            FontWeight = FontWeight.Bold,
+            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        filteredByLabel.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = vm.ScheduleGridVm });
+        stack.Children.Add(filteredByLabel);
+
+        var filterTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            FontWeight = FontWeight.Bold,
+            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 400
+        };
+        filterTextBlock.Bind(TextBlock.TextProperty, new Binding("Filter.ActiveSummary") { Source = vm.ScheduleGridVm });
+        filterTextBlock.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = vm.ScheduleGridVm });
+        stack.Children.Add(filterTextBlock);
+
+        return stack;
+    }
+
+    // ── Core detach mechanism ───────────────────────────────────────────────
+
+    private void DetachSlot(
+        DetachablePanel slot,
+        ref DetachedPanelWindow? existingWindow,
+        Func<Control> buildContent,
+        Action onReattach,
+        object? headerContext = null)
+    {
+        if (existingWindow is not null)
+        {
+            existingWindow.Activate();
+            return;
+        }
+
+        slot.IsVisible = false;
+
+        var win = new DetachedPanelWindow { OnReattach = onReattach };
+        win.SetContent(slot.Header, buildContent(), headerContext);
+        existingWindow = win;
+        win.Show(this);
+    }
+
+    // ── Dialog helpers ───────────────────────────────────────────────────────
 
     private async Task<string?> ShowLocationDialogAsync(DatabaseLocationMode mode)
     {
@@ -245,11 +462,7 @@ public partial class MainWindow : Window
         };
 
         var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
-        var panel = new StackPanel
-        {
-            Margin = new Avalonia.Thickness(28),
-            Spacing = 16
-        };
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(28), Spacing = 16 };
         panel.Children.Add(new TextBlock
         {
             Text = "A database location must be chosen before Scheduling Assistant can open. The application will now close.",
@@ -276,11 +489,7 @@ public partial class MainWindow : Window
         };
 
         var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
-        var panel = new StackPanel
-        {
-            Margin = new Avalonia.Thickness(28),
-            Spacing = 16
-        };
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(28), Spacing = 16 };
         panel.Children.Add(new TextBlock
         {
             Text = message,
@@ -292,306 +501,5 @@ public partial class MainWindow : Window
 
         ok.Click += (_, _) => msg.Close();
         await msg.ShowDialog(this);
-    }
-
-    private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;
-
-    // ── Data-context wiring ──────────────────────────────────────────────────
-
-    protected override void OnDataContextChanged(EventArgs e)
-    {
-        base.OnDataContextChanged(e);
-
-        if (DataContext is MainWindowViewModel vm)
-        {
-            // Unsubscribe from the old VM to prevent memory leaks and stale event callbacks
-            // when the DataContext is replaced (e.g. on database switch).
-            if (_previousVm is not null)
-            {
-                _previousVm.PropertyChanged -= OnMainWindowVmPropertyChanged;
-                _previousVm.WorkloadPanelVm.ItemClicked -= OnWorkloadItemClicked;
-            }
-
-            // Wire the grid's double-click-to-edit callback at the view level.
-            // This keeps SectionListViewModel and ScheduleGridViewModel decoupled —
-            // neither holds a reference to the other.
-            vm.ScheduleGridVm.EditRequested = vm.SectionListVm.EditSectionById;
-
-            vm.PropertyChanged += OnMainWindowVmPropertyChanged;
-            vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
-
-            _previousVm = vm;
-
-            ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
-
-#if DEBUG
-            // Show debug menu in DEBUG mode
-            var debugMenu = this.FindControl<Menu>("DebugMenu");
-            if (debugMenu is not null)
-                debugMenu.IsVisible = true;
-#endif
-        }
-    }
-
-    private void OnMainWindowVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // When flyout closes (FlyoutPage becomes null), refresh workload to catch any release changes
-        if (e.PropertyName == nameof(MainWindowViewModel.FlyoutPage) && Vm.FlyoutPage is null)
-            Vm.WorkloadPanelVm.Reload();
-    }
-
-    private void OnWorkloadItemClicked(WorkloadItemViewModel item)
-    {
-        // Only handle section items; releases don't have a direct display in Section View
-        if (item.Kind != WorkloadItemKind.Section)
-            return;
-
-        // Find the corresponding section in the section list and select it
-        var sectionId = item.Id;
-        var sectionItem = Vm.SectionListVm.SectionItems.OfType<SectionListItemViewModel>()
-            .FirstOrDefault(s => s.Section.Id == sectionId);
-
-        if (sectionItem is not null)
-        {
-            Vm.SectionListVm.SelectedItem = sectionItem;
-            // SelectedItem change will automatically sync to ScheduleGridViewModel.SelectedSectionId
-        }
-    }
-
-    private void OnSectionViewHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
-            return;
-
-        var vm = Vm.SectionListVm;
-        var cur = vm.CurrentSortMode;
-        string Mark(SectionSortMode m) => cur == m ? "✓  " : "    ";
-
-        var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem
-        {
-            Header  = Mark(SectionSortMode.SubjectCourseCode) + "Sort by Subject / Course Code",
-            Command = vm.SortBySubjectCourseCodeCommand,
-        });
-        menu.Items.Add(new MenuItem
-        {
-            Header  = Mark(SectionSortMode.Instructor) + "Sort by Instructor",
-            Command = vm.SortByInstructorCommand,
-        });
-        menu.Items.Add(new MenuItem
-        {
-            Header  = Mark(SectionSortMode.SectionType) + "Sort by Section Type",
-            Command = vm.SortBySectionTypeCommand,
-        });
-
-        if (sender is Control ctrl)
-            menu.Open(ctrl);
-        e.Handled = true;
-    }
-
-    // ── Detach handlers ─────────────────────────────────────────────────────
-
-    private void OnWorkloadDetach(object? sender, EventArgs e)
-    {
-        var slot = (DetachablePanel)sender!;
-        DetachSlot(slot, ref _workloadWindow,
-            () => new WorkloadPanelView { DataContext = Vm.WorkloadPanelVm },
-            () => { slot.IsVisible = true; _workloadWindow = null; });
-    }
-
-    private void OnScheduleGridDetach(object? sender, EventArgs e)
-    {
-        var slot = (DetachablePanel)sender!;
-        var headerContext = CreateScheduleGridHeaderContext();
-        DetachSlot(slot, ref _scheduleGridWindow,
-            () => new ScheduleGridView { DataContext = Vm.ScheduleGridVm },
-            () => { slot.IsVisible = true; _scheduleGridWindow = null; },
-            headerContext);
-    }
-
-    private StackPanel CreateScheduleGridHeaderContext()
-    {
-        var stack = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        // Academic Unit name
-        var auTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        auTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.AcademicUnitName") { Source = Vm });
-        auTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.AcademicUnitName")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(auTextBlock);
-
-        // Separator (only shown when Academic Unit is available)
-        var auSeparator = new Border
-        {
-            Width = 1,
-            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-            Margin = new Thickness(0, 3)
-        };
-        auSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.AcademicUnitName")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(auSeparator);
-
-        // Semester — ItemsControl of colored segment pills, matching the main-window AXAML layout.
-        // SemesterLineSegment is a record (immutable), so properties are read directly in the
-        // template factory; ItemsControl rebuilds from scratch whenever the binding fires.
-        var semFontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d);
-        var semItemsControl = new ItemsControl
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            ItemsPanel = new FuncTemplate<Panel?>(() => new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 4
-            }),
-            ItemTemplate = new FuncDataTemplate<SemesterLineSegment>((seg, _) =>
-                new Border
-                {
-                    Padding          = new Thickness(6, 2),
-                    Background       = seg.Background,
-                    BorderBrush      = seg.Border,
-                    BorderThickness  = new Thickness(1),
-                    CornerRadius     = new CornerRadius(2),
-                    Child = new TextBlock
-                    {
-                        FontSize = semFontSize,
-                        Text     = seg.DisplayText
-                    }
-                })
-        };
-        semItemsControl.Bind(ItemsControl.ItemsSourceProperty,
-            new Binding("ScheduleGridVm.SemesterLineSegments") { Source = Vm });
-        stack.Children.Add(semItemsControl);
-
-        // Subject filter separator (only shown when subject filter is active)
-        var subjectSeparator = new Border
-        {
-            Width = 1,
-            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-            Margin = new Thickness(0, 3)
-        };
-        subjectSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(subjectSeparator);
-
-        // Subject filter
-        var subjectTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        subjectTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.SubjectFilterSummary") { Source = Vm });
-        subjectTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(subjectTextBlock);
-
-        // Stats separator
-        var statsSeparator = new Border
-        {
-            Width = 1,
-            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-            Margin = new Thickness(0, 3)
-        };
-        statsSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(statsSeparator);
-
-        // Stats
-        var statsTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        statsTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.StatsLine") { Source = Vm });
-        statsTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(statsTextBlock);
-
-        // Filter separator
-        var filterSeparator = new Border
-        {
-            Width = 1,
-            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-            Margin = new Thickness(0, 3)
-        };
-        filterSeparator.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
-        stack.Children.Add(filterSeparator);
-
-        // "Filtered by:" label
-        var filteredByLabel = new TextBlock
-        {
-            Text = "Filtered by:",
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            FontWeight = FontWeight.Bold,
-            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        filteredByLabel.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
-        stack.Children.Add(filteredByLabel);
-
-        // Filter summary
-        var filterTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            FontWeight = FontWeight.Bold,
-            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 400
-        };
-        filterTextBlock.Bind(TextBlock.TextProperty, new Binding("Filter.ActiveSummary") { Source = Vm.ScheduleGridVm });
-        filterTextBlock.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
-        stack.Children.Add(filterTextBlock);
-
-        return stack;
-    }
-
-    // ── Core detach mechanism ───────────────────────────────────────────────
-
-    private void DetachSlot(
-        DetachablePanel slot,
-        ref DetachedPanelWindow? existingWindow,
-        Func<Control> buildContent,
-        Action onReattach,
-        object? headerContext = null)
-    {
-        if (existingWindow is not null)
-        {
-            existingWindow.Activate();
-            return;
-        }
-
-        slot.IsVisible = false;
-
-        var win = new DetachedPanelWindow { OnReattach = onReattach };
-        win.SetContent(slot.Header, buildContent(), headerContext);
-        existingWindow = win;
-        win.Show(this);
     }
 }

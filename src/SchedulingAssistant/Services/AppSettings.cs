@@ -1,5 +1,7 @@
-using System.Text.Json;
 using SchedulingAssistant.Models;
+#if !BROWSER
+using System.Text.Json;
+#endif
 
 namespace SchedulingAssistant.Services;
 
@@ -12,11 +14,13 @@ namespace SchedulingAssistant.Services;
 /// </summary>
 public class AppSettings
 {
+#if !BROWSER
     private static readonly string SettingsDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SchedulingAssistant");
 
     private static readonly string SettingsPath =
         Path.Combine(SettingsDir, "settings.json");
+#endif
 
     /// <summary>
     /// In-memory singleton. Populated on first access or by an explicit <see cref="Load"/> call.
@@ -27,7 +31,7 @@ public class AppSettings
 
     /// <summary>
     /// Returns the cached <see cref="AppSettings"/> instance, loading from disk on first access.
-    /// This is the preferred accessor — it reads the file at most once per app session.
+    /// In the browser/demo build this always returns in-memory defaults — there is no file system.
     /// </summary>
     public static AppSettings Current => _instance ??= Load();
 
@@ -76,9 +80,14 @@ public class AppSettings
     /// Reads the settings JSON file from disk and caches the result in <see cref="Current"/>.
     /// Prefer <see cref="Current"/> for routine reads; call this only when a forced re-read is needed.
     /// Returns a default <see cref="AppSettings"/> if the file does not exist or cannot be parsed.
+    /// In the browser/demo build this always returns in-memory defaults — there is no file system.
     /// </summary>
     public static AppSettings Load()
     {
+#if BROWSER
+        _instance ??= new AppSettings();
+        return _instance;
+#else
         AppSettings result;
         if (!File.Exists(SettingsPath))
         {
@@ -99,21 +108,35 @@ public class AppSettings
 
         _instance = result;
         return result;
+#endif
     }
 
+    /// <summary>
+    /// Persists the current settings to disk.
+    /// No-op in the browser/demo build — there is no writable file system.
+    /// </summary>
     public void Save()
     {
+#if !BROWSER
         Directory.CreateDirectory(SettingsDir);
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(SettingsPath, json);
+#endif
     }
 
     /// <summary>
     /// Add a database to the recent list. Moves to front if already present, keeps max 10 entries.
     /// Only adds if the file exists.
     /// </summary>
+    /// <summary>
+    /// Adds a database path to the recent-files list and saves settings.
+    /// No-op in the browser/demo build — there is no file system to reference.
+    /// </summary>
     public void AddRecentDatabase(string databasePath)
     {
+#if BROWSER
+        return;
+#else
         if (!File.Exists(databasePath)) return;
 
         // Normalize path for comparison
@@ -130,5 +153,6 @@ public class AppSettings
             RecentDatabases.RemoveRange(10, RecentDatabases.Count - 10);
 
         Save();
+#endif
     }
 }
