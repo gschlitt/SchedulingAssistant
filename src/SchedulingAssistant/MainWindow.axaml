@@ -9,7 +9,7 @@
     xmlns:vm="using:SchedulingAssistant.ViewModels"
     xmlns:b="using:SchedulingAssistant.Behaviors"
     x:Name="RootWindow"
-    Title="Scheduling Assistant"
+    Title="TermPoint"
     Width="1400"
     Height="800"
     MinHeight="600"

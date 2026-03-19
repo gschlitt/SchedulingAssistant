@@ -21,6 +21,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace SchedulingAssistant;
 
@@ -35,6 +36,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        Title = $"TermPoint v{version?.Major}.{version?.Minor}.{version?.Build}";
 
         // Escape-to-close-flyout is handled declaratively by DismissBehaviors.EscapeCommand
         // on the Window element in AXAML. The KeyDown handler below is retained only for
@@ -190,11 +194,11 @@ public partial class MainWindow : Window
     {
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SchedulingAssistant", "Logs");
+            "TermPoint", "Logs");
 
         var msg = new Window
         {
-            Title = "Scheduling Assistant — Startup Error",
+            Title = "TermPoint — Startup Error",
             Width = 480,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
@@ -236,7 +240,7 @@ public partial class MainWindow : Window
     {
         var msg = new Window
         {
-            Title = "Scheduling Assistant",
+            Title = "TermPoint",
             Width = 400,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
@@ -403,9 +407,25 @@ public partial class MainWindow : Window
     {
         var slot = (DetachablePanel)sender!;
         var headerContext = CreateScheduleGridHeaderContext();
+
+        // Remove the view from the ContentPresenter entirely while detached.
+        // Just hiding the slot leaves the view in the visual tree with live bindings,
+        // which causes the right-click popup (and others) to fire on both the hidden
+        // view and the detached window simultaneously.
+        slot.PanelContent = null;
+
         DetachSlot(slot, ref _scheduleGridWindow,
             () => new ScheduleGridView { DataContext = Vm.ScheduleGridVm },
-            () => { slot.IsVisible = true; _scheduleGridWindow = null; },
+            () =>
+            {
+                // On reattach, create a fresh view and update the instance reference
+                // used by ExportViewModel for PNG export.
+                var freshView = new ScheduleGridView { DataContext = Vm.ScheduleGridVm };
+                ScheduleGridViewInstance = freshView;
+                slot.PanelContent = freshView;
+                slot.IsVisible = true;
+                _scheduleGridWindow = null;
+            },
             headerContext);
     }
 

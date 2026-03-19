@@ -13,7 +13,7 @@ namespace SchedulingAssistant.Services;
 public class AppSettings
 {
     private static readonly string SettingsDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SchedulingAssistant");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint");
 
     private static readonly string SettingsPath =
         Path.Combine(SettingsDir, "settings.json");

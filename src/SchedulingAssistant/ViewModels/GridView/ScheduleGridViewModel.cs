@@ -359,11 +359,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private void PopulateFilterOptions(GridLookups lookups)
     {
         Filter.PopulateOptions(
-            lookups.Sections,
             lookups.Instructors,
             lookups.Rooms,
             lookups.Subjects,
-            lookups.Courses,
             lookups.Campuses,
             lookups.SectionTypes,
             lookups.Tags,

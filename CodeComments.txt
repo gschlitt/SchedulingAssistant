@@ -1,6 +1,5 @@
 Bugs:
 
-Increase precision of workload credit (lab instructors get things like 2/11 of a credit)
 
 A user could enter an early start time before 0830 in the start-time/blocklength selector. What happens then?
 
@@ -16,6 +15,7 @@ Overlay color needs to work in conjunction with Multi-semester. Color choices ar
 
 Confirm section deletes!
 
+Migration utility needs to handle campus and generate a level for the courses and sections.
 
 Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
 
@@ -35,6 +35,7 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 
 Agenda.
+
 
 
 Should there be an inactivation on section properties etc so they could be retired rather than deleted.
@@ -72,7 +73,7 @@ Handle non-active courses and non-active instructors.
 
 
 
-Migration is a biggy!
+
 
 Longer term: webhosting, error logging to website, multiuser. Multiple windows?
 

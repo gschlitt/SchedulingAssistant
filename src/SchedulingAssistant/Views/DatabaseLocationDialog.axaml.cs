@@ -28,7 +28,7 @@ public partial class DatabaseLocationDialog : Window
 
         if (mode == DatabaseLocationMode.FirstRun)
         {
-            HeadingText.Text = "Welcome to Scheduling Assistant";
+            HeadingText.Text = "Welcome to TermPoint";
             BodyText.Text =
                 "Give your database a name and choose where to save it. " +
                 "You can use a local folder or a shared network drive so colleagues can use the same database. " +

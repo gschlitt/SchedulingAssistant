@@ -774,6 +774,18 @@
                     ItemsSource="{Binding SectionItems}"
                     SelectedItem="{Binding SelectedItem}"
                     SelectionMode="Single">
+                    <!--
+                        Disable virtualisation so that when an item expands to show the inline
+                        editor, the panel recalculates all item positions correctly.
+                        VirtualizingStackPanel (the default) does not reflow on dynamic height
+                        changes, which causes subsequent items to render at stale y-offsets and
+                        visually overlap the expanded editor.
+                    -->
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
                     <ListBox.ItemContainerTheme>
                         <ControlTheme BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
                             <Setter Property="Padding" Value="0" />

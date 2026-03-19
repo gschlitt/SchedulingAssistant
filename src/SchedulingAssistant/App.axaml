@@ -9,7 +9,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://SchedulingAssistant/AppColors.axaml" />
+                <ResourceInclude Source="avares://TermPoint/AppColors.axaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!--  Font sizes  -->

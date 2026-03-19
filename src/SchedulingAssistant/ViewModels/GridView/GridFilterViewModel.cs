@@ -234,54 +234,29 @@ public partial class GridFilterViewModel : ViewModelBase
     // ── Populate ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Rebuilds option lists from the sections visible in the current semester.
+    /// Rebuilds option lists from the full set of available entities, regardless of
+    /// which are currently used by sections in the loaded semester(s).
     /// Preserves IsSelected state for items that still exist (matched by Id).
     /// Should be called at the start of ScheduleGridViewModel.Reload(), BEFORE
     /// the filter change event is subscribed for this cycle.
     /// </summary>
     public void PopulateOptions(
-        IEnumerable<Section>              sections,
         IReadOnlyDictionary<string, Instructor> instructorLookup,
         IReadOnlyDictionary<string, Room>       roomLookup,
         IReadOnlyDictionary<string, Subject>    subjectLookup,
-        IReadOnlyDictionary<string, Course>     courseLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> campusLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> sectionTypeLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> tagLookup,
         IReadOnlyDictionary<string, SectionPropertyValue> meetingTypeLookup,
         IReadOnlyDictionary<string, string> levelLookup)
     {
-        var sectionList = sections.ToList();
-
-        // Build sets of IDs actually used in this semester
-        var usedInstructorIds  = sectionList.SelectMany(s => s.InstructorIds).ToHashSet();
-        var usedRoomIds        = sectionList.SelectMany(s => s.Schedule.Select(m => m.RoomId))
-                                            .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
-        var usedSubjectIds     = sectionList
-                                    .Where(s => !string.IsNullOrEmpty(s.CourseId) && courseLookup.ContainsKey(s.CourseId))
-                                    .Select(s => courseLookup[s.CourseId!].SubjectId)
-                                    .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
-        var usedCampusIds      = sectionList.Select(s => s.CampusId)
-                                            .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
-        var usedSectionTypeIds = sectionList.Select(s => s.SectionTypeId)
-                                            .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
-        var usedTagIds         = sectionList.SelectMany(s => s.TagIds).ToHashSet();
-        var usedMeetingTypeIds = sectionList.SelectMany(s => s.Schedule.Select(m => m.MeetingTypeId))
-                                            .Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet();
-        // Level is now stored on each section (copied from the course at save time).
-        // The filter always shows the full fixed set of level bands (0, 100, … 900)
-        // regardless of which are actually present in this semester, so the user can
-        // easily see that e.g. "no 400-level courses are scheduled this term".
-        var usedLevelIds = CourseLevelParser.AllLevels.ToHashSet();
-
         // Instructors: use the FULL instructor lookup (all active instructors), not just
         // those assigned to sections in this semester. This ensures the overlay listbox
         // always shows every instructor so their commitments can be overlaid even when
-        // they have no sections scheduled yet. The filter checkboxes also show all
-        // instructors — selecting one with no sections simply shows an empty grid, which
-        // is harmless. The instructorLookup is already filtered by ShowOnlyActiveInstructors
-        // (set in AppSettings), so inactive instructors are excluded regardless.
-        RebuildList(Instructors,  instructorLookup.Keys.ToHashSet(),
+        // they have no sections scheduled yet. The instructorLookup is already filtered
+        // by ShowOnlyActiveInstructors (set in AppSettings), so inactive instructors
+        // are excluded regardless.
+        RebuildList(Instructors,  instructorLookup.Keys,
             id => instructorLookup.TryGetValue(id, out var v) ? $"{v.FirstName} {v.LastName}" : null);
         // Insert in reverse order: Emphasize Unstaffed goes in first (lands at [0]),
         // then Unstaffed is inserted at [0], pushing Emphasize to [1].
@@ -289,7 +264,11 @@ public partial class GridFilterViewModel : ViewModelBase
         InsertSentinelItem(Instructors, ref _emphasizeUnstaffedItem, EmphasizeUnstaffedId, "Unstaffed (Emphasize)");
         InsertSentinelItem(Instructors, ref _notStaffedItem,         NotStaffedId,         "Unstaffed");
 
-        RebuildList(Rooms,        usedRoomIds,
+        // All rooms, subjects, campuses, section types, tags, and meeting types are shown
+        // in full — not filtered to only those present in the current semester's sections.
+        // This lets users filter by values that exist in the system even if no section
+        // currently uses them, avoiding the "where did my tag go?" confusion.
+        RebuildList(Rooms,        roomLookup.Keys,
             id => roomLookup.TryGetValue(id, out var v)
                   ? (string.IsNullOrWhiteSpace(v.Building) ? v.RoomNumber : $"{v.Building} {v.RoomNumber}")
                   : null);
@@ -301,17 +280,18 @@ public partial class GridFilterViewModel : ViewModelBase
         SyncCollection(NamedInstructors, Instructors.Where(i => !i.IsSentinel));
         SyncCollection(NamedRooms,       Rooms.Skip(1));
 
-        RebuildList(Subjects,     usedSubjectIds,
+        RebuildList(Subjects,     subjectLookup.Keys,
             id => subjectLookup.TryGetValue(id, out var v) ? v.Name : null);
-        RebuildList(Campuses,     usedCampusIds,
+        RebuildList(Campuses,     campusLookup.Keys,
             id => campusLookup.TryGetValue(id, out var v) ? v.Name : null);
-        RebuildList(SectionTypes, usedSectionTypeIds,
+        RebuildList(SectionTypes, sectionTypeLookup.Keys,
             id => sectionTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
-        RebuildList(Tags,         usedTagIds,
+        RebuildList(Tags,         tagLookup.Keys,
             id => tagLookup.TryGetValue(id, out var v) ? v.Name : null);
-        RebuildList(MeetingTypes, usedMeetingTypeIds,
+        RebuildList(MeetingTypes, meetingTypeLookup.Keys,
             id => meetingTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
-        RebuildList(Levels,       usedLevelIds,
+        // Levels always show the full fixed set of level bands (0, 100, … 900).
+        RebuildList(Levels,       levelLookup.Keys,
             id => levelLookup.TryGetValue(id, out var v) ? v : id);
 
         RefreshInstructorMutualExclusion();

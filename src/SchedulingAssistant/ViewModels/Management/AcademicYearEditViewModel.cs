@@ -18,7 +18,22 @@ public partial class AcademicYearEditViewModel : ViewModelBase
     private readonly Action _onCancel;
     private readonly Func<string, bool> _nameExists;
 
-    private static readonly Regex NamePattern = new(@"^\d{4}-\d{4}$", RegexOptions.Compiled);
+    private static readonly Regex YearPattern = new(@"^\d{4}$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Expands a 4-digit start year entered by the user into the canonical "YYYY-YYYY+1" name.
+    /// Returns the expanded name, or the original trimmed input if it is not a bare 4-digit year.
+    /// </summary>
+    private static string ExpandName(string raw)
+    {
+        var trimmed = raw.Trim();
+        if (YearPattern.IsMatch(trimmed))
+        {
+            var y1 = int.Parse(trimmed);
+            return $"{y1}-{y1 + 1}";
+        }
+        return trimmed;
+    }
 
     public string? ValidationError
     {
@@ -28,16 +43,20 @@ public partial class AcademicYearEditViewModel : ViewModelBase
             if (trimmed.Length == 0)
                 return null; // no message while field is still empty
 
-            if (!NamePattern.IsMatch(trimmed))
-                return "Format must be YYYY-YYYY (e.g. 2024-2025).";
+            // Accept a bare 4-digit year; anything else must be the expanded form.
+            if (!YearPattern.IsMatch(trimmed) && !(trimmed.Length == 9 && trimmed[4] == '-'))
+                return "Enter the calendar year in which the academic year begins (e.g. 2024).";
 
-            var y1 = int.Parse(trimmed[..4]);
-            var y2 = int.Parse(trimmed[5..]);
+            var expanded = ExpandName(trimmed);
+
+            // After expansion, validate the YYYY-YYYY+1 structure.
+            var y1 = int.Parse(expanded[..4]);
+            var y2 = int.Parse(expanded[5..]);
             if (y2 != y1 + 1)
                 return $"The second year must be {y1 + 1}.";
 
-            if (_nameExists(trimmed))
-                return $"{trimmed} already exists.";
+            if (_nameExists(expanded))
+                return $"{expanded} already exists.";
 
             return null;
         }
@@ -64,7 +83,7 @@ public partial class AcademicYearEditViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
     {
-        _academicYear.Name = Name.Trim();
+        _academicYear.Name = ExpandName(Name);
         if (_onSaveAsync is not null)
         {
             await _onSaveAsync(_academicYear);

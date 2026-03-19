@@ -36,7 +36,7 @@
                             FontWeight="SemiBold"
                             Text="Add Academic Year" />
 
-                        <TextBlock Text="Name (e.g. 2024-2025)" />
+                        <TextBlock Text="Enter the calendar year in which the new academic year begins (e.g. 2024 for 2024-2025)" TextWrapping="Wrap" />
                         <TextBox Text="{Binding Name}" />
                         <TextBlock
                             FontSize="12"

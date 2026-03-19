@@ -424,6 +424,13 @@ public partial class ScheduleGridView : UserControl
         _canvas.Height = totalHeight;
         UpdateZoomContainerSize();
 
+        // ── Canvas base background ────────────────────────────────────────
+        // Fills the entire canvas with white before any other content is drawn.
+        // Required for PNG export: RenderTargetBitmap renders only the canvas itself
+        // (without the parent ScrollViewer's background), so any unpainted area would
+        // appear transparent — and thus dark — in the exported file.
+        AddRect(_canvas, 0, 0, totalWidth, totalHeight, Brushes.White, null);
+
         // ── Gutter background ──────────────────────────────────────────────
         AddRect(_canvas, 0, 0, TimeGutterWidth, totalHeight, GutterBg, null);
 
