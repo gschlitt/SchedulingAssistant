@@ -35,6 +35,23 @@ public partial class SectionListView : UserControl
             _vm.PropertyChanged += OnViewModelPropertyChanged;
     }
 
+    /// <summary>
+    /// Responds to property changes on the ViewModel that require the view to take action.
+    /// Two cases are handled here rather than in the ViewModel because both are purely visual
+    /// concerns — they require direct access to named controls or Avalonia layout APIs that
+    /// a ViewModel must not know about:
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     <b>SectionItems changed</b> — re-measures the content stack to widen the left panel
+    ///     column if new cards are wider than the current allocation.
+    ///   </description></item>
+    ///   <item><description>
+    ///     <b>EditVm changed</b> — re-scrolls the selected item into view after the inline
+    ///     editor opens or closes. See <see cref="ScrollSelectedItemIntoView"/> for the full
+    ///     rationale.
+    ///   </description></item>
+    /// </list>
+    /// </summary>
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Re-measure the content width when the section list changes, in case new cards
