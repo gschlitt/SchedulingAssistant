@@ -370,8 +370,8 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SectionPropertyValue> allReserves,
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
-        BlockPatternRepository blockPatternRepository,
-        SectionPrefixRepository prefixRepository,
+        IBlockPatternRepository blockPatternRepository,
+        ISectionPrefixRepository prefixRepository,
         double? defaultBlockLength = null)
     {
         _section = section;

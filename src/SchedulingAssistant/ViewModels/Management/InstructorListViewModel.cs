@@ -10,14 +10,14 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class InstructorListViewModel : ViewModelBase, IDisposable
 {
-    private readonly InstructorRepository _repo;
-    private readonly SectionPropertyRepository _propertyRepo;
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly ReleaseRepository _releaseRepo;
-    private readonly InstructorCommitmentRepository _commitmentRepo;
-    private readonly SemesterRepository _semesterRepo;
-    private readonly AcademicYearRepository _academicYearRepo;
+    private readonly IInstructorRepository _repo;
+    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly IReleaseRepository _releaseRepo;
+    private readonly IInstructorCommitmentRepository _commitmentRepo;
+    private readonly ISemesterRepository _semesterRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
@@ -68,14 +68,14 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     }
 
     public InstructorListViewModel(
-        InstructorRepository repo,
-        SectionPropertyRepository propertyRepo,
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        ReleaseRepository releaseRepo,
-        InstructorCommitmentRepository commitmentRepo,
-        SemesterRepository semesterRepo,
-        AcademicYearRepository academicYearRepo,
+        IInstructorRepository repo,
+        ISectionPropertyRepository propertyRepo,
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        IReleaseRepository releaseRepo,
+        IInstructorCommitmentRepository commitmentRepo,
+        ISemesterRepository semesterRepo,
+        IAcademicYearRepository academicYearRepo,
         SemesterContext semesterContext,
         SectionChangeNotifier changeNotifier,
         IDialogService dialog,

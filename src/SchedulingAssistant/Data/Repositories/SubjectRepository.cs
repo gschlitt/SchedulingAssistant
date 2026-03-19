@@ -2,7 +2,7 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class SubjectRepository(DatabaseContext db)
+public class SubjectRepository(IDatabaseContext db) : ISubjectRepository
 {
     public List<Subject> GetAll()
     {
@@ -23,7 +23,7 @@ public class SubjectRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, data FROM Subjects WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         var subject = JsonHelpers.Deserialize<Subject>(reader.GetString(1));
@@ -36,7 +36,7 @@ public class SubjectRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM Courses WHERE subject_id = $id";
-        cmd.Parameters.AddWithValue("$id", subjectId);
+        cmd.AddParam("$id", subjectId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -50,8 +50,8 @@ public class SubjectRepository(DatabaseContext db)
         cmd.CommandText = excludeId is null
             ? "SELECT COUNT(*) FROM Subjects WHERE LOWER(data ->> 'name') = LOWER($name)"
             : "SELECT COUNT(*) FROM Subjects WHERE LOWER(data ->> 'name') = LOWER($name) AND id != $excludeId";
-        cmd.Parameters.AddWithValue("$name", name);
-        if (excludeId is not null) cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        cmd.AddParam("$name", name);
+        if (excludeId is not null) cmd.AddParam("$excludeId", excludeId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -65,8 +65,8 @@ public class SubjectRepository(DatabaseContext db)
         cmd.CommandText = excludeId is null
             ? "SELECT COUNT(*) FROM Subjects WHERE LOWER(data ->> 'calendarAbbreviation') = LOWER($abbr)"
             : "SELECT COUNT(*) FROM Subjects WHERE LOWER(data ->> 'calendarAbbreviation') = LOWER($abbr) AND id != $excludeId";
-        cmd.Parameters.AddWithValue("$abbr", abbreviation);
-        if (excludeId is not null) cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        cmd.AddParam("$abbr", abbreviation);
+        if (excludeId is not null) cmd.AddParam("$excludeId", excludeId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -75,10 +75,10 @@ public class SubjectRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Subjects (id, name, abbreviation, data) VALUES ($id, $name, $abbreviation, $data)";
-        cmd.Parameters.AddWithValue("$id", subject.Id);
-        cmd.Parameters.AddWithValue("$name",         (object?)subject.Name                  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$abbreviation", (object?)subject.CalendarAbbreviation  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(subject));
+        cmd.AddParam("$id", subject.Id);
+        cmd.AddParam("$name",         subject.Name);
+        cmd.AddParam("$abbreviation", subject.CalendarAbbreviation);
+        cmd.AddParam("$data", JsonHelpers.Serialize(subject));
         cmd.ExecuteNonQuery();
     }
 
@@ -87,10 +87,10 @@ public class SubjectRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE Subjects SET name = $name, abbreviation = $abbreviation, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", subject.Id);
-        cmd.Parameters.AddWithValue("$name",         (object?)subject.Name                 ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$abbreviation", (object?)subject.CalendarAbbreviation ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(subject));
+        cmd.AddParam("$id", subject.Id);
+        cmd.AddParam("$name",         subject.Name);
+        cmd.AddParam("$abbreviation", subject.CalendarAbbreviation);
+        cmd.AddParam("$data", JsonHelpers.Serialize(subject));
         cmd.ExecuteNonQuery();
     }
 
@@ -98,7 +98,7 @@ public class SubjectRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Subjects WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 }

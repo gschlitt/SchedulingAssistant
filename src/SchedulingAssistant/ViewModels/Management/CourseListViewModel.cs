@@ -9,9 +9,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class CourseListViewModel : ViewModelBase
 {
-    private readonly CourseRepository _courseRepo;
-    private readonly SubjectRepository _subjectRepo;
-    private readonly SectionPropertyRepository _propertyRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly ISubjectRepository _subjectRepo;
+    private readonly ISectionPropertyRepository _propertyRepo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -30,14 +30,14 @@ public partial class CourseListViewModel : ViewModelBase
     [ObservableProperty] private CourseHistoryViewModel _courseHistoryVm;
 
     public CourseListViewModel(
-        CourseRepository courseRepo,
-        SubjectRepository subjectRepo,
-        SectionPropertyRepository propertyRepo,
+        ICourseRepository courseRepo,
+        ISubjectRepository subjectRepo,
+        ISectionPropertyRepository propertyRepo,
         IDialogService dialog,
-        SectionRepository sectionRepo,
-        SemesterRepository semesterRepo,
-        AcademicYearRepository academicYearRepo,
-        InstructorRepository instructorRepo,
+        ISectionRepository sectionRepo,
+        ISemesterRepository semesterRepo,
+        IAcademicYearRepository academicYearRepo,
+        IInstructorRepository instructorRepo,
         WriteLockService lockService)
     {
         _courseRepo = courseRepo;

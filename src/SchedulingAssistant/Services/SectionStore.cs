@@ -106,7 +106,7 @@ public class SectionStore
     /// The IDs of all semesters to load. Passing an empty sequence is valid and
     /// produces an empty cache.
     /// </param>
-    public void Reload(SectionRepository sectionRepo, IEnumerable<string> semesterIds)
+    public void Reload(ISectionRepository sectionRepo, IEnumerable<string> semesterIds)
     {
         var dict = new Dictionary<string, IReadOnlyList<Section>>();
         foreach (var semId in semesterIds)

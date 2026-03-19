@@ -1,10 +1,9 @@
-using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class InstructorRepository(DatabaseContext db)
+public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
 {
     /// <summary>
     /// Returns all instructors, ordered according to the persisted
@@ -52,7 +51,7 @@ public class InstructorRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, data FROM Instructors WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         var instructor = JsonHelpers.Deserialize<Instructor>(reader.GetString(1));
@@ -72,7 +71,7 @@ public class InstructorRepository(DatabaseContext db)
                 WHERE json_extract(value, '$.instructorId') = $id
             )
             """;
-        cmd.Parameters.AddWithValue("$id", instructorId);
+        cmd.AddParam("$id", instructorId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -86,8 +85,8 @@ public class InstructorRepository(DatabaseContext db)
         cmd.CommandText = excludeId is null
             ? "SELECT COUNT(*) FROM Instructors WHERE LOWER(data ->> 'initials') = LOWER($initials)"
             : "SELECT COUNT(*) FROM Instructors WHERE LOWER(data ->> 'initials') = LOWER($initials) AND id != $excludeId";
-        cmd.Parameters.AddWithValue("$initials", initials);
-        if (excludeId is not null) cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        cmd.AddParam("$initials", initials);
+        if (excludeId is not null) cmd.AddParam("$excludeId", excludeId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -97,26 +96,26 @@ public class InstructorRepository(DatabaseContext db)
         cmd.CommandText =
             "INSERT INTO Instructors (id, last_name, first_name, initials, data) " +
             "VALUES ($id, $lastName, $firstName, $initials, $data)";
-        cmd.Parameters.AddWithValue("$id", instructor.Id);
-        cmd.Parameters.AddWithValue("$lastName",  (object?)instructor.LastName  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$firstName", (object?)instructor.FirstName ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$initials",  (object?)instructor.Initials  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(instructor));
+        cmd.AddParam("$id", instructor.Id);
+        cmd.AddParam("$lastName",  instructor.LastName);
+        cmd.AddParam("$firstName", instructor.FirstName);
+        cmd.AddParam("$initials",  instructor.Initials);
+        cmd.AddParam("$data", JsonHelpers.Serialize(instructor));
         cmd.ExecuteNonQuery();
     }
 
-    public void Update(Instructor instructor, SqliteTransaction? tx = null)
+    public void Update(Instructor instructor, System.Data.Common.DbTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
             "UPDATE Instructors SET last_name = $lastName, first_name = $firstName, " +
             "initials = $initials, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", instructor.Id);
-        cmd.Parameters.AddWithValue("$lastName",  (object?)instructor.LastName  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$firstName", (object?)instructor.FirstName ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$initials",  (object?)instructor.Initials  ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(instructor));
+        cmd.AddParam("$id", instructor.Id);
+        cmd.AddParam("$lastName",  instructor.LastName);
+        cmd.AddParam("$firstName", instructor.FirstName);
+        cmd.AddParam("$initials",  instructor.Initials);
+        cmd.AddParam("$data", JsonHelpers.Serialize(instructor));
         cmd.ExecuteNonQuery();
     }
 
@@ -124,7 +123,7 @@ public class InstructorRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Instructors WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 }

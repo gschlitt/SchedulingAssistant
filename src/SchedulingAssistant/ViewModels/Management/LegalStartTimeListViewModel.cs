@@ -12,7 +12,7 @@ public record NullableBlockLengthOption(double? Value, string Label);
 
 public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
 {
-    private readonly LegalStartTimeRepository _repo;
+    private readonly ILegalStartTimeRepository _repo;
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
@@ -77,7 +77,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public LegalStartTimeListViewModel(LegalStartTimeRepository repo, SemesterContext semesterContext, IDialogService dialog, WriteLockService lockService)
+    public LegalStartTimeListViewModel(ILegalStartTimeRepository repo, SemesterContext semesterContext, IDialogService dialog, WriteLockService lockService)
     {
         _repo = repo;
         _semesterContext = semesterContext;

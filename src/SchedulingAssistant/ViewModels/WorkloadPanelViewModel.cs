@@ -9,11 +9,11 @@ namespace SchedulingAssistant.ViewModels;
 
 public partial class WorkloadPanelViewModel : ViewModelBase
 {
-    private readonly InstructorRepository _instructorRepo;
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly ReleaseRepository _releaseRepo;
-    private readonly SemesterRepository _semesterRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly IReleaseRepository _releaseRepo;
+    private readonly ISemesterRepository _semesterRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
 
@@ -27,11 +27,11 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     public event Action<WorkloadItemViewModel>? ItemClicked;
 
     public WorkloadPanelViewModel(
-        InstructorRepository instructorRepo,
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        ReleaseRepository releaseRepo,
-        SemesterRepository semesterRepo,
+        IInstructorRepository instructorRepo,
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        IReleaseRepository releaseRepo,
+        ISemesterRepository semesterRepo,
         SemesterContext semesterContext,
         SectionStore sectionStore)
     {

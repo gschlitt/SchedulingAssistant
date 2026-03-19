@@ -2,13 +2,13 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class ReleaseRepository(DatabaseContext db)
+public class ReleaseRepository(IDatabaseContext db) : IReleaseRepository
 {
     public List<Release> GetBySemester(string semesterId)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, semester_id, instructor_id, data FROM Releases WHERE semester_id = $sid ORDER BY data ->> 'title'";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
+        cmd.AddParam("$sid", semesterId);
         return ReadReleases(cmd);
     }
 
@@ -16,8 +16,8 @@ public class ReleaseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, semester_id, instructor_id, data FROM Releases WHERE semester_id = $sid AND instructor_id = $iid ORDER BY data ->> 'title'";
-        cmd.Parameters.AddWithValue("$sid", semesterId);
-        cmd.Parameters.AddWithValue("$iid", instructorId);
+        cmd.AddParam("$sid", semesterId);
+        cmd.AddParam("$iid", instructorId);
         return ReadReleases(cmd);
     }
 
@@ -25,7 +25,7 @@ public class ReleaseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, semester_id, instructor_id, data FROM Releases WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         return ReadRelease(reader);
@@ -35,10 +35,10 @@ public class ReleaseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO Releases (id, semester_id, instructor_id, data) VALUES ($id, $sid, $iid, $data)";
-        cmd.Parameters.AddWithValue("$id", release.Id);
-        cmd.Parameters.AddWithValue("$sid", release.SemesterId);
-        cmd.Parameters.AddWithValue("$iid", release.InstructorId);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(release));
+        cmd.AddParam("$id", release.Id);
+        cmd.AddParam("$sid", release.SemesterId);
+        cmd.AddParam("$iid", release.InstructorId);
+        cmd.AddParam("$data", JsonHelpers.Serialize(release));
         cmd.ExecuteNonQuery();
     }
 
@@ -46,10 +46,10 @@ public class ReleaseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE Releases SET semester_id = $sid, instructor_id = $iid, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", release.Id);
-        cmd.Parameters.AddWithValue("$sid", release.SemesterId);
-        cmd.Parameters.AddWithValue("$iid", release.InstructorId);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(release));
+        cmd.AddParam("$id", release.Id);
+        cmd.AddParam("$sid", release.SemesterId);
+        cmd.AddParam("$iid", release.InstructorId);
+        cmd.AddParam("$data", JsonHelpers.Serialize(release));
         cmd.ExecuteNonQuery();
     }
 
@@ -57,11 +57,11 @@ public class ReleaseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Releases WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 
-    private static List<Release> ReadReleases(Microsoft.Data.Sqlite.SqliteCommand cmd)
+    private static List<Release> ReadReleases(System.Data.Common.DbCommand cmd)
     {
         using var reader = cmd.ExecuteReader();
         var results = new List<Release>();
@@ -70,7 +70,7 @@ public class ReleaseRepository(DatabaseContext db)
         return results;
     }
 
-    private static Release ReadRelease(Microsoft.Data.Sqlite.SqliteDataReader reader)
+    private static Release ReadRelease(System.Data.Common.DbDataReader reader)
     {
         var release = JsonHelpers.Deserialize<Release>(reader.GetString(3));
         release.Id = reader.GetString(0);

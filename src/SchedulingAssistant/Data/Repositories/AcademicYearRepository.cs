@@ -2,7 +2,7 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class AcademicYearRepository(DatabaseContext db)
+public class AcademicYearRepository(IDatabaseContext db) : IAcademicYearRepository
 {
     public List<AcademicYear> GetAll()
     {
@@ -23,7 +23,7 @@ public class AcademicYearRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, data FROM AcademicYears WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         var ay = JsonHelpers.Deserialize<AcademicYear>(reader.GetString(1));
@@ -35,7 +35,7 @@ public class AcademicYearRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM AcademicYears WHERE data ->> 'name' = $name";
-        cmd.Parameters.AddWithValue("$name", name);
+        cmd.AddParam("$name", name);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -43,9 +43,9 @@ public class AcademicYearRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO AcademicYears (id, name, data) VALUES ($id, $name, $data)";
-        cmd.Parameters.AddWithValue("$id", academicYear.Id);
-        cmd.Parameters.AddWithValue("$name", (object?)academicYear.Name ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(academicYear));
+        cmd.AddParam("$id", academicYear.Id);
+        cmd.AddParam("$name", academicYear.Name);
+        cmd.AddParam("$data", JsonHelpers.Serialize(academicYear));
         cmd.ExecuteNonQuery();
     }
 
@@ -53,9 +53,9 @@ public class AcademicYearRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE AcademicYears SET name = $name, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", academicYear.Id);
-        cmd.Parameters.AddWithValue("$name", (object?)academicYear.Name ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(academicYear));
+        cmd.AddParam("$id", academicYear.Id);
+        cmd.AddParam("$name", academicYear.Name);
+        cmd.AddParam("$data", JsonHelpers.Serialize(academicYear));
         cmd.ExecuteNonQuery();
     }
 
@@ -63,7 +63,7 @@ public class AcademicYearRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM AcademicYears WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 }

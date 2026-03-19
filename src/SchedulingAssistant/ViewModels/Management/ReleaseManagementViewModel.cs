@@ -12,7 +12,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class ReleaseManagementViewModel : ViewModelBase
 {
-    private readonly ReleaseRepository _releaseRepo;
+    private readonly IReleaseRepository _releaseRepo;
     private string _instructorId = string.Empty;
     private string _semesterId = string.Empty;
 
@@ -24,7 +24,7 @@ public partial class ReleaseManagementViewModel : ViewModelBase
     /// <summary>Fired when releases are added/edited/deleted to notify parent to refresh workload display.</summary>
     public event Action? ReleasesChanged;
 
-    public ReleaseManagementViewModel(ReleaseRepository releaseRepo)
+    public ReleaseManagementViewModel(IReleaseRepository releaseRepo)
     {
         _releaseRepo = releaseRepo;
     }

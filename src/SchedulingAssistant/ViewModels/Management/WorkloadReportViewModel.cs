@@ -16,12 +16,12 @@ public partial class WorkloadReportViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainVm;
     private readonly SemesterContext _semesterContext;
-    private readonly InstructorRepository _instructorRepo;
-    private readonly SectionRepository _sectionRepo;
-    private readonly ReleaseRepository _releaseRepo;
-    private readonly SemesterRepository _semesterRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly IReleaseRepository _releaseRepo;
+    private readonly ISemesterRepository _semesterRepo;
     private readonly AcademicUnitService _academicUnitService;
-    private readonly CourseRepository _courseRepo;
+    private readonly ICourseRepository _courseRepo;
 
     [ObservableProperty]
     private string? _statusMessage;
@@ -33,12 +33,12 @@ public partial class WorkloadReportViewModel : ViewModelBase
     public WorkloadReportViewModel(
         MainWindowViewModel mainVm,
         SemesterContext semesterContext,
-        InstructorRepository instructorRepo,
-        SectionRepository sectionRepo,
-        ReleaseRepository releaseRepo,
-        SemesterRepository semesterRepo,
+        IInstructorRepository instructorRepo,
+        ISectionRepository sectionRepo,
+        IReleaseRepository releaseRepo,
+        ISemesterRepository semesterRepo,
         AcademicUnitService academicUnitService,
-        CourseRepository courseRepo)
+        ICourseRepository courseRepo)
     {
         _mainVm = mainVm;
         _semesterContext = semesterContext;

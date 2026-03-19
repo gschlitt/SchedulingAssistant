@@ -11,24 +11,24 @@ namespace SchedulingAssistant.Services;
 public class DebugTestDataGenerator
 {
     private readonly Random _random = new();
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly InstructorRepository _instructorRepo;
-    private readonly RoomRepository _roomRepo;
-    private readonly LegalStartTimeRepository _legalStartTimeRepo;
-    private readonly SemesterRepository _semesterRepo;
-    private readonly BlockPatternRepository _blockPatternRepo;
-    private readonly SectionPropertyRepository _propertyRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly IRoomRepository _roomRepo;
+    private readonly ILegalStartTimeRepository _legalStartTimeRepo;
+    private readonly ISemesterRepository _semesterRepo;
+    private readonly IBlockPatternRepository _blockPatternRepo;
+    private readonly ISectionPropertyRepository _propertyRepo;
 
     public DebugTestDataGenerator(
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        InstructorRepository instructorRepo,
-        RoomRepository roomRepo,
-        LegalStartTimeRepository legalStartTimeRepo,
-        SemesterRepository semesterRepo,
-        BlockPatternRepository blockPatternRepo,
-        SectionPropertyRepository propertyRepo)
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        IInstructorRepository instructorRepo,
+        IRoomRepository roomRepo,
+        ILegalStartTimeRepository legalStartTimeRepo,
+        ISemesterRepository semesterRepo,
+        IBlockPatternRepository blockPatternRepo,
+        ISectionPropertyRepository propertyRepo)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;

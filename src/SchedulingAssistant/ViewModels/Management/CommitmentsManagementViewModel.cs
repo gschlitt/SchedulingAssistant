@@ -22,7 +22,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class CommitmentsManagementViewModel : ViewModelBase
 {
-    private readonly InstructorCommitmentRepository _commitmentRepo;
+    private readonly IInstructorCommitmentRepository _commitmentRepo;
 
     // SectionChangeNotifier is the shared singleton that bridges changes in this flyout
     // to the Schedule Grid. Despite its name ("Section"), it is used for any data change
@@ -40,7 +40,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
 
     [ObservableProperty] private string? _lastErrorMessage;
 
-    public CommitmentsManagementViewModel(InstructorCommitmentRepository commitmentRepo, SectionChangeNotifier changeNotifier)
+    public CommitmentsManagementViewModel(IInstructorCommitmentRepository commitmentRepo, SectionChangeNotifier changeNotifier)
     {
         _commitmentRepo = commitmentRepo;
         _changeNotifier = changeNotifier;

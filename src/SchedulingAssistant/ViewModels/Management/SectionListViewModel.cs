@@ -11,18 +11,18 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class SectionListViewModel : ViewModelBase
 {
-    private readonly SectionRepository _sectionRepo;
-    private readonly CourseRepository _courseRepo;
-    private readonly SubjectRepository _subjectRepo;
-    private readonly InstructorRepository _instructorRepo;
-    private readonly RoomRepository _roomRepo;
-    private readonly LegalStartTimeRepository _legalStartTimeRepo;
-    private readonly SemesterRepository _semesterRepo;
-    private readonly BlockPatternRepository _blockPatternRepo;
-    private readonly SectionPrefixRepository _prefixRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly ICourseRepository _courseRepo;
+    private readonly ISubjectRepository _subjectRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly IRoomRepository _roomRepo;
+    private readonly ILegalStartTimeRepository _legalStartTimeRepo;
+    private readonly ISemesterRepository _semesterRepo;
+    private readonly IBlockPatternRepository _blockPatternRepo;
+    private readonly ISectionPrefixRepository _prefixRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
-    private readonly SectionPropertyRepository _propertyRepo;
+    private readonly ISectionPropertyRepository _propertyRepo;
     private readonly WriteLockService _lockService;
 
     // ── Observable Properties ──────────────────────────────────────────────────
@@ -126,18 +126,18 @@ public partial class SectionListViewModel : ViewModelBase
     // ── Constructor ────────────────────────────────────────────────────────────
 
     public SectionListViewModel(
-        SectionRepository sectionRepo,
-        CourseRepository courseRepo,
-        SubjectRepository subjectRepo,
-        InstructorRepository instructorRepo,
-        RoomRepository roomRepo,
-        LegalStartTimeRepository legalStartTimeRepo,
-        SemesterRepository semesterRepo,
-        BlockPatternRepository blockPatternRepo,
-        SectionPrefixRepository prefixRepo,
+        ISectionRepository sectionRepo,
+        ICourseRepository courseRepo,
+        ISubjectRepository subjectRepo,
+        IInstructorRepository instructorRepo,
+        IRoomRepository roomRepo,
+        ILegalStartTimeRepository legalStartTimeRepo,
+        ISemesterRepository semesterRepo,
+        IBlockPatternRepository blockPatternRepo,
+        ISectionPrefixRepository prefixRepo,
         SemesterContext semesterContext,
         SectionStore sectionStore,
-        SectionPropertyRepository propertyRepo,
+        ISectionPropertyRepository propertyRepo,
         IDialogService dialog,
         WriteLockService lockService)
     {

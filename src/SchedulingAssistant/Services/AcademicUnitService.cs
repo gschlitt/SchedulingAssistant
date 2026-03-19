@@ -7,7 +7,7 @@ namespace SchedulingAssistant.Services;
 /// Service for accessing the single Academic Unit in the system.
 /// There is always exactly one Academic Unit (created at database initialization if missing).
 /// </summary>
-public class AcademicUnitService(AcademicUnitRepository repository)
+public class AcademicUnitService(IAcademicUnitRepository repository)
 {
     /// <summary>
     /// Gets the one and only Academic Unit.

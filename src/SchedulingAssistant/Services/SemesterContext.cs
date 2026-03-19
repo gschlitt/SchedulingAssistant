@@ -171,7 +171,7 @@ public partial class SemesterContext : ObservableObject
     /// When provided, overrides the in-memory semester selection for restoration. Paired with
     /// <paramref name="restoreAcademicYearId"/>. Pass <c>null</c> to preserve current selection.
     /// </param>
-    public void Reload(AcademicYearRepository ayRepo, SemesterRepository semRepo,
+    public void Reload(IAcademicYearRepository ayRepo, ISemesterRepository semRepo,
         string? restoreAcademicYearId = null, IReadOnlySet<string>? restoreSemesterIds = null)
     {
         var previousYearId      = restoreAcademicYearId ?? SelectedAcademicYear?.Id;

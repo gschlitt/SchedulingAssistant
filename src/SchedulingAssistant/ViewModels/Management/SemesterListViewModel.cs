@@ -9,7 +9,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class SemesterListViewModel : ViewModelBase
 {
-    private readonly SemesterRepository _repo;
+    private readonly ISemesterRepository _repo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -23,7 +23,7 @@ public partial class SemesterListViewModel : ViewModelBase
     /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
     private bool CanWrite() => _lockService.IsWriter;
 
-    public SemesterListViewModel(SemesterRepository repo, IDialogService dialog, WriteLockService lockService)
+    public SemesterListViewModel(ISemesterRepository repo, IDialogService dialog, WriteLockService lockService)
     {
         _repo = repo;
         _dialog = dialog;

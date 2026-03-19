@@ -14,6 +14,6 @@ Validate meeting times.
 Import into database, choose appropriate folders for each json file.
 Dry Run to check, then Import.
 
-
+Migration should guess campuses if they're not already coded.
 
 From data it appears no use has been made by BIO of Committments. That import facility has not been wired up yet.

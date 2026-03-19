@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using System.Data.Common;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
@@ -71,14 +71,14 @@ public sealed class RefreshTests : IDisposable
     /// Inserts a minimal Semester row directly via SQL so that sections can be
     /// inserted under it without requiring the full SemesterRepository setup.
     /// </summary>
-    /// <param name="conn">An open <see cref="SqliteConnection"/> with the schema already created.</param>
+    /// <param name="conn">An open <see cref="DbConnection"/> with the schema already created.</param>
     /// <param name="semesterId">The GUID string to use as the semester primary key.</param>
-    private static void InsertSemester(SqliteConnection conn, string semesterId)
+    private static void InsertSemester(DbConnection conn, string semesterId)
     {
         using var cmd = conn.CreateCommand();
         cmd.CommandText =
             "INSERT OR IGNORE INTO Semesters (id, academic_year_id, name, sort_order) VALUES ($id, '', 'Test Semester', 0)";
-        cmd.Parameters.AddWithValue("$id", semesterId);
+        var p = cmd.CreateParameter(); p.ParameterName = "$id"; p.Value = semesterId; cmd.Parameters.Add(p);
         cmd.ExecuteNonQuery();
     }
 

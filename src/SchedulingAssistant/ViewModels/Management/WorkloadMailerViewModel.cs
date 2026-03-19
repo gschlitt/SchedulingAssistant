@@ -73,12 +73,12 @@ public partial class MailerInstructorItem : ObservableObject
 /// </summary>
 public partial class WorkloadMailerViewModel : ViewModelBase
 {
-    private readonly AcademicYearRepository _ayRepo;
-    private readonly SemesterRepository _semRepo;
-    private readonly InstructorRepository _instructorRepo;
-    private readonly SectionRepository _sectionRepo;
-    private readonly ReleaseRepository _releaseRepo;
-    private readonly CourseRepository _courseRepo;
+    private readonly IAcademicYearRepository _ayRepo;
+    private readonly ISemesterRepository _semRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly ISectionRepository _sectionRepo;
+    private readonly IReleaseRepository _releaseRepo;
+    private readonly ICourseRepository _courseRepo;
 
     // Resolved when BeginSending is called; used throughout the Sending step.
     private List<MailerInstructorItem> _queue = new();
@@ -168,12 +168,12 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     /// <param name="releaseRepo">Repository for non-instructional releases (used during sending).</param>
     /// <param name="courseRepo">Repository for courses (used to resolve course codes during sending).</param>
     public WorkloadMailerViewModel(
-        AcademicYearRepository ayRepo,
-        SemesterRepository semRepo,
-        InstructorRepository instructorRepo,
-        SectionRepository sectionRepo,
-        ReleaseRepository releaseRepo,
-        CourseRepository courseRepo)
+        IAcademicYearRepository ayRepo,
+        ISemesterRepository semRepo,
+        IInstructorRepository instructorRepo,
+        ISectionRepository sectionRepo,
+        IReleaseRepository releaseRepo,
+        ICourseRepository courseRepo)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;

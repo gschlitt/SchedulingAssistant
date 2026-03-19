@@ -2,7 +2,7 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
 
-public class CourseRepository(DatabaseContext db)
+public class CourseRepository(IDatabaseContext db) : ICourseRepository
 {
     public List<Course> GetAll()
     {
@@ -17,7 +17,7 @@ public class CourseRepository(DatabaseContext db)
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT id, subject_id, data FROM Courses WHERE subject_id = $sid ORDER BY data ->> 'calendarCode'";
-        cmd.Parameters.AddWithValue("$sid", subjectId);
+        cmd.AddParam("$sid", subjectId);
         return ReadCourses(cmd);
     }
 
@@ -33,7 +33,7 @@ public class CourseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, subject_id, data FROM Courses WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         return ReadCourses(cmd).FirstOrDefault();
     }
 
@@ -42,7 +42,7 @@ public class CourseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM Sections WHERE course_id = $id";
-        cmd.Parameters.AddWithValue("$id", courseId);
+        cmd.AddParam("$id", courseId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -56,8 +56,8 @@ public class CourseRepository(DatabaseContext db)
         cmd.CommandText = excludeId is null
             ? "SELECT COUNT(*) FROM Courses WHERE LOWER(data ->> 'calendarCode') = LOWER($code)"
             : "SELECT COUNT(*) FROM Courses WHERE LOWER(data ->> 'calendarCode') = LOWER($code) AND id != $excludeId";
-        cmd.Parameters.AddWithValue("$code", code);
-        if (excludeId is not null) cmd.Parameters.AddWithValue("$excludeId", excludeId);
+        cmd.AddParam("$code", code);
+        if (excludeId is not null) cmd.AddParam("$excludeId", excludeId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
@@ -67,11 +67,11 @@ public class CourseRepository(DatabaseContext db)
         cmd.CommandText =
             "INSERT INTO Courses (id, subject_id, calendar_code, title, data) " +
             "VALUES ($id, $sid, $calendarCode, $title, $data)";
-        cmd.Parameters.AddWithValue("$id", course.Id);
-        cmd.Parameters.AddWithValue("$sid", course.SubjectId);
-        cmd.Parameters.AddWithValue("$calendarCode", (object?)course.CalendarCode ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$title",        (object?)course.Title        ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(course));
+        cmd.AddParam("$id", course.Id);
+        cmd.AddParam("$sid", course.SubjectId);
+        cmd.AddParam("$calendarCode", course.CalendarCode);
+        cmd.AddParam("$title",        course.Title);
+        cmd.AddParam("$data", JsonHelpers.Serialize(course));
         cmd.ExecuteNonQuery();
     }
 
@@ -80,17 +80,17 @@ public class CourseRepository(DatabaseContext db)
     /// </summary>
     /// <param name="course">The course to update.</param>
     /// <param name="tx">Optional transaction to join. Pass null for auto-commit behaviour.</param>
-    public void Update(Course course, Microsoft.Data.Sqlite.SqliteTransaction? tx = null)
+    public void Update(Course course, System.Data.Common.DbTransaction? tx = null)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
             "UPDATE Courses SET subject_id = $sid, calendar_code = $calendarCode, title = $title, data = $data WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", course.Id);
-        cmd.Parameters.AddWithValue("$sid", course.SubjectId);
-        cmd.Parameters.AddWithValue("$calendarCode", (object?)course.CalendarCode ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$title",        (object?)course.Title        ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$data", JsonHelpers.Serialize(course));
+        cmd.AddParam("$id", course.Id);
+        cmd.AddParam("$sid", course.SubjectId);
+        cmd.AddParam("$calendarCode", course.CalendarCode);
+        cmd.AddParam("$title",        course.Title);
+        cmd.AddParam("$data", JsonHelpers.Serialize(course));
         cmd.ExecuteNonQuery();
     }
 
@@ -98,11 +98,11 @@ public class CourseRepository(DatabaseContext db)
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Courses WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 
-    private static List<Course> ReadCourses(Microsoft.Data.Sqlite.SqliteCommand cmd)
+    private static List<Course> ReadCourses(System.Data.Common.DbCommand cmd)
     {
         using var reader = cmd.ExecuteReader();
         var results = new List<Course>();
