@@ -87,6 +87,14 @@ public class AppSettings
     public int MaxBackupCount { get; set; } = 5;
 
     /// <summary>
+    /// The highest application version whose feature announcements the user has
+    /// acknowledged. <see cref="AppNotificationService.EnqueueUnseenAnnouncements"/>
+    /// compares this against <see cref="AppAnnouncements.All"/> to decide which
+    /// announcements to show, and updates it after enqueueing. Null on a fresh install.
+    /// </summary>
+    public string? LastAcknowledgedVersion { get; set; }
+
+    /// <summary>
     /// Email subject template for the Workload Mailer.
     /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}.
     /// </summary>

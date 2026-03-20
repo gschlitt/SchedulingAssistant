@@ -16,8 +16,16 @@ public interface IAppLogger
     /// </summary>
     bool ThrowOnError { get; set; }
 
+    /// <summary>
+    /// Fired after every <see cref="LogError"/> call with a short user-readable message
+    /// (the <c>context</c> if provided, otherwise the exception message).
+    /// <see cref="AppNotificationService"/> subscribes to this so logged errors are
+    /// automatically surfaced in the main-window notification banner.
+    /// </summary>
+    event EventHandler<string>? ErrorLogged;
+
     /// <summary>Log an exception with an optional human-readable context message.</summary>
-    void LogError(Exception ex, string? context = null);
+    void LogError(Exception? ex, string? context = null);
 
     /// <summary>Log a plain message (no exception).</summary>
     void LogWarning(string message, string? context = null);

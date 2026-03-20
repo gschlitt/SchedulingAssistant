@@ -17,7 +17,36 @@
     x:CompileBindings="False"
     x:DataType="vm:MainWindowViewModel">
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Window.Styles>
+        <!--
+            Notification banner colour schemes, selected by the CSS class applied to the
+            Border via the NotificationSeverityClass binding. Colours are sourced from
+            AppColors.axaml so they can be changed in one place.
+        -->
+        <Style Selector="Border.notification_info">
+            <Setter Property="Background" Value="{StaticResource NotificationInfoBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource NotificationInfoBorder}" />
+        </Style>
+        <Style Selector="Border.notification_info TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource NotificationInfoText}" />
+        </Style>
+        <Style Selector="Border.notification_warning">
+            <Setter Property="Background" Value="{StaticResource NotificationWarningBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource NotificationWarningBorder}" />
+        </Style>
+        <Style Selector="Border.notification_warning TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource NotificationWarningText}" />
+        </Style>
+        <Style Selector="Border.notification_error">
+            <Setter Property="Background" Value="{StaticResource NotificationErrorBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource NotificationErrorBorder}" />
+        </Style>
+        <Style Selector="Border.notification_error TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource NotificationErrorText}" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
 
         <!--  Top menu bar  -->
         <Border
@@ -309,8 +338,48 @@
             </DockPanel>
         </Border>
 
+        <!--
+            Notification banner — shown between the lock banner and the content area.
+            The CSS class on the Border is set by NotificationSeverityClass and drives
+            the colour scheme via the Window.Styles block above.
+        -->
+        <Border
+            Grid.Row="2"
+            Padding="12,4"
+            BorderThickness="0,0,0,1"
+            Classes.notification_info="{Binding NotificationIsInfo}"
+            Classes.notification_warning="{Binding NotificationIsWarning}"
+            Classes.notification_error="{Binding NotificationIsError}"
+            IsVisible="{Binding HasNotification}">
+            <DockPanel>
+                <!--  Dismiss button — rightmost, only when dismissable  -->
+                <Button
+                    Margin="8,0,0,0"
+                    Padding="8,2"
+                    Command="{Binding DismissNotificationCommand}"
+                    Content="Dismiss"
+                    DockPanel.Dock="Right"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    IsVisible="{Binding NotificationIsDismissable}" />
+                <!--  Hyperlink — shown when notification carries a link  -->
+                <Button
+                    Margin="8,0,0,0"
+                    Padding="8,2"
+                    Command="{Binding OpenNotificationLinkCommand}"
+                    Content="{Binding NotificationLinkText}"
+                    DockPanel.Dock="Right"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    IsVisible="{Binding NotificationHasLink}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Text="{Binding NotificationMessage}"
+                    TextWrapping="NoWrap" />
+            </DockPanel>
+        </Border>
+
         <!--  Main body: layered panel (permanent grid beneath, flyout overlay above)  -->
-        <Panel Grid.Row="2">
+        <Panel Grid.Row="3">
 
             <!--
                 Layer 0: permanent three-panel grid.

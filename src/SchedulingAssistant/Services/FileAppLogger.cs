@@ -18,6 +18,10 @@ public sealed class FileAppLogger : IAppLogger
 {
     /// <inheritdoc/>
     public bool ThrowOnError { get; set; }
+
+    /// <inheritdoc/>
+    public event EventHandler<string>? ErrorLogged;
+
     private static readonly string LogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "SchedulingAssistant", "Logs");
@@ -27,13 +31,20 @@ public sealed class FileAppLogger : IAppLogger
 
     private readonly object _lock = new();
 
-    public void LogError(Exception ex, string? context = null)
+    public void LogError(Exception? ex, string? context = null)
     {
         Write("ERROR", context, ex);
 
+        // Surface to the notification banner — use the context string when provided
+        // (it is more user-readable than a raw exception message).
+        var notificationMessage = !string.IsNullOrWhiteSpace(context)
+            ? context
+            : ex?.Message ?? "An error occurred.";
+        ErrorLogged?.Invoke(this, notificationMessage);
+
         // In dev mode, re-throw so exceptions are never silently swallowed.
         // ExceptionDispatchInfo preserves the original stack trace.
-        if (ThrowOnError)
+        if (ThrowOnError && ex is not null)
             ExceptionDispatchInfo.Capture(ex).Throw();
     }
 

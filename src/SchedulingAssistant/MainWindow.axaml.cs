@@ -184,6 +184,10 @@ public partial class MainWindow : Window
         vm.MainWindowReference = this;
         vm.LoadRecentDatabases();
 
+        // Enqueue any feature announcements the user hasn't seen yet.
+        if (App.Services.GetService(typeof(AppNotificationService)) is AppNotificationService notifier)
+            notifier.EnqueueUnseenAnnouncements();
+
         IsVisible = true;
         Activate();
     }

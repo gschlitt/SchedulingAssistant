@@ -121,6 +121,7 @@ public partial class App : Application
         services.AddSingleton<SemesterContext>();
         services.AddSingleton<WriteLockService>();
         services.AddSingleton<BackupService>();
+        services.AddSingleton<AppNotificationService>();
         // These services are stateless wrappers; singletons match their actual lifetime.
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();

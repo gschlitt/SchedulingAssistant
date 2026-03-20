@@ -17,6 +17,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IServiceProvider _services;
     private readonly ScheduleGridViewModel _scheduleGridVm;
     private readonly WriteLockService _lockService;
+    private readonly AppNotificationService _notificationService;
 
     /// <summary>
     /// The permanent left-panel section list. Held for app lifetime.
@@ -123,6 +124,54 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public bool ShowWriteLockAvailablePrompt => _lockService.WriteLockBecameAvailable;
 
+    // ── Notification banner properties ────────────────────────────────────────
+
+    /// <summary>True when a notification is currently queued for display.</summary>
+    public bool HasNotification => _notificationService.HasNotification;
+
+    /// <summary>Text of the current notification, or null when the banner is hidden.</summary>
+    public string? NotificationMessage => _notificationService.Current?.Message;
+
+    /// <summary>True when the current notification is informational (blue banner).</summary>
+    public bool NotificationIsInfo    => _notificationService.Current?.IsInfo    ?? true;
+    /// <summary>True when the current notification is a warning (amber banner).</summary>
+    public bool NotificationIsWarning => _notificationService.Current?.IsWarning ?? false;
+    /// <summary>True when the current notification is an error (red banner).</summary>
+    public bool NotificationIsError   => _notificationService.Current?.IsError   ?? false;
+
+    /// <summary>True when the current notification may be dismissed by the user.</summary>
+    public bool NotificationIsDismissable => _notificationService.Current?.IsDismissable ?? false;
+
+    /// <summary>True when the current notification carries a hyperlink.</summary>
+    public bool NotificationHasLink => _notificationService.Current?.HasLink ?? false;
+
+    /// <summary>Display label of the current notification's hyperlink, or null.</summary>
+    public string? NotificationLinkText => _notificationService.Current?.LinkText;
+
+    /// <summary>URL of the current notification's hyperlink, or null.</summary>
+    public string? NotificationLinkUrl => _notificationService.Current?.LinkUrl;
+
+    /// <summary>Dismisses the current notification, advancing to the next queued one if any.</summary>
+    [RelayCommand]
+    private void DismissNotification() => _notificationService.Dismiss();
+
+    /// <summary>
+    /// Opens the current notification's hyperlink in the default browser.
+    /// No-op when the current notification has no link.
+    /// </summary>
+    [RelayCommand]
+    private void OpenNotificationLink()
+    {
+        var url = _notificationService.Current?.LinkUrl;
+        if (string.IsNullOrEmpty(url)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+                { UseShellExecute = true });
+        }
+        catch { /* non-critical — link open failure should not crash the app */ }
+    }
+
     internal void SetDatabaseName(string name) => DatabaseName = name;
 
     /// <summary>
@@ -152,18 +201,23 @@ public partial class MainWindowViewModel : ViewModelBase
         SectionListViewModel sectionListVm,
         ScheduleGridViewModel scheduleGridVm,
         WorkloadPanelViewModel workloadPanelVm,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        AppNotificationService notificationService)
     {
-        _services = services;
-        SemesterContext = semesterContext;
-        SectionListVm = sectionListVm;
-        _scheduleGridVm = scheduleGridVm;
-        WorkloadPanelVm = workloadPanelVm;
-        _lockService = lockService;
+        _services             = services;
+        SemesterContext       = semesterContext;
+        SectionListVm         = sectionListVm;
+        _scheduleGridVm       = scheduleGridVm;
+        WorkloadPanelVm       = workloadPanelVm;
+        _lockService          = lockService;
+        _notificationService  = notificationService;
 
         // React to lock state changes (e.g., writer released the lock while we are
         // in read-only mode) so the banner updates automatically.
         _lockService.LockStateChanged += OnLockStateChanged;
+
+        // Re-raise notification properties when the current notification changes.
+        _notificationService.NotificationChanged += OnNotificationChanged;
     }
 
     /// <summary>
@@ -176,6 +230,23 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowLockBanner));
         OnPropertyChanged(nameof(LockStatusMessage));
         OnPropertyChanged(nameof(ShowWriteLockAvailablePrompt));
+    }
+
+    /// <summary>
+    /// Called on the UI thread when the notification queue changes. Re-raises all
+    /// notification-derived properties so the banner updates via data binding.
+    /// </summary>
+    private void OnNotificationChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(HasNotification));
+        OnPropertyChanged(nameof(NotificationMessage));
+        OnPropertyChanged(nameof(NotificationIsInfo));
+        OnPropertyChanged(nameof(NotificationIsWarning));
+        OnPropertyChanged(nameof(NotificationIsError));
+        OnPropertyChanged(nameof(NotificationIsDismissable));
+        OnPropertyChanged(nameof(NotificationHasLink));
+        OnPropertyChanged(nameof(NotificationLinkText));
+        OnPropertyChanged(nameof(NotificationLinkUrl));
     }
 
     /// <summary>

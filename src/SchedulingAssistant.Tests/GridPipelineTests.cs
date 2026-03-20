@@ -94,6 +94,7 @@ public class GridPipelineTests
             new HashSet<string>(tags         ?? []),
             new HashSet<string>(meetingTypes ?? []),
             new HashSet<string>(levels       ?? []),
+            new HashSet<string>(),   // CourseIds — not used by these tests
             notStaffed, emphasizeUnstaffed, unroomed, hasOverlay, overlayType, overlayId);
 
     /// <summary>
@@ -108,6 +109,7 @@ public class GridPipelineTests
         new(
             Sections:         sections ?? [],
             Courses:          courses  ?? new(),
+            ActiveCourses:    courses  ?? new(),
             Instructors:      instructors ?? new(),
             Rooms:            new Dictionary<string, Room>(),
             Subjects:         new Dictionary<string, Subject>(),

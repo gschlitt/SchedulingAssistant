@@ -69,9 +69,25 @@
     <SolidColorBrush x:Key="OverlayBadgeBorder" Color="#E08000" />
     <SolidColorBrush x:Key="OverlayBadgeText" Color="{StaticResource OverlayColor}" />
     <!--  ── Error / warning banners ─────────────────────────────────────  -->
+    <!--  Write-lock banner (amber)  -->
     <SolidColorBrush x:Key="ErrorBannerBackground" Color="#FFF3CD" />
     <SolidColorBrush x:Key="ErrorBannerBorder" Color="#E6A817" />
     <SolidColorBrush x:Key="ErrorBannerText" Color="#7A4E00" />
+
+    <!--  Notification banner — Info (blue)  -->
+    <SolidColorBrush x:Key="NotificationInfoBackground" Color="#EEF4FC" />
+    <SolidColorBrush x:Key="NotificationInfoBorder" Color="#7AAAD4" />
+    <SolidColorBrush x:Key="NotificationInfoText" Color="#1A3A5C" />
+
+    <!--  Notification banner — Warning (amber, same family as lock banner)  -->
+    <SolidColorBrush x:Key="NotificationWarningBackground" Color="#FFF3CD" />
+    <SolidColorBrush x:Key="NotificationWarningBorder" Color="#E6A817" />
+    <SolidColorBrush x:Key="NotificationWarningText" Color="#7A4E00" />
+
+    <!--  Notification banner — Error (red)  -->
+    <SolidColorBrush x:Key="NotificationErrorBackground" Color="#FDECEA" />
+    <SolidColorBrush x:Key="NotificationErrorBorder" Color="#CC0000" />
+    <SolidColorBrush x:Key="NotificationErrorText" Color="#7A0000" />
 
     <!--  ── Inline section editor highlight ─────────────────────────────  -->
     <SolidColorBrush x:Key="EditorBackground" Color="#EEF5FF" />
