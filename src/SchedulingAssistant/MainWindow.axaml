@@ -337,21 +337,29 @@
                                             FontSize="{StaticResource FontSizeLarge}"
                                             FontWeight="SemiBold"
                                             Text="Section View" />
-                                        <StackPanel
+                                        <Border
+                                            Padding="5,1"
+                                            HorizontalAlignment="Left"
                                             VerticalAlignment="Center"
-                                            Orientation="Horizontal">
-                                            <ToolTip.Tip>Right-click to set sorting mode</ToolTip.Tip>
-                                            <TextBlock
-                                                FontSize="{StaticResource FontSizeNormal}"
-                                                Foreground="{StaticResource TextPrimary}"
-                                                Text="Sorted by:" />
-                                            <TextBlock
-                                                Margin="4,0,0,0"
-                                                VerticalAlignment="Center"
-                                                FontSize="{StaticResource FontSizeNormal}"
-                                                Foreground="{StaticResource TextPrimary}"
-                                                Text="{Binding SectionListVm.SortModeLabel}" />
-                                        </StackPanel>
+                                            Background="{StaticResource ButtonBackground}"
+                                            BorderBrush="{StaticResource ButtonBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            ToolTip.Tip="Right-click to set sorting mode">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock
+                                                    FontSize="{StaticResource FontSizeNormal}"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextPrimary}"
+                                                    Text="Sorted by:" />
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontSize="{StaticResource FontSizeNormal}"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextPrimary}"
+                                                    Text="{Binding SectionListVm.SortModeLabel}" />
+                                            </StackPanel>
+                                        </Border>
                                     </DockPanel>
 
                                     <!--  Action buttons — the entire group is disabled in read-only mode
