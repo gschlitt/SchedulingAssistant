@@ -1076,9 +1076,12 @@ public class Phase2Importer
         }
 
         // Inherit the level from the course so level-based filtering works without
-        // a course look-up at query time.
-        var level = courseId is not null && _levelByCourseId.TryGetValue(courseId, out var lv)
-            ? lv : null;
+        // a course look-up at query time.  If the course was stored without a level
+        // (e.g. imported before level support was added), derive it from the course
+        // number using the same heuristic applied when courses are inserted.
+        var level = (courseId is not null && _levelByCourseId.TryGetValue(courseId, out var lv))
+            ? lv
+            : CourseLevelParser.ParseLevel(courseNum);
 
         // CommentPresent/CommentText — map the old system's section comment to Notes.
         var commentText = sec["CommentPresent"]?.Value<bool>() == true
