@@ -35,6 +35,14 @@ public class AppSettings
     public bool IncludeSaturday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;
     public bool ShowOnlyActiveInstructors { get; set; } = true;
+
+    /// <summary>
+    /// When true, only active courses are shown in the Courses management flyout.
+    /// Inactive courses are always hidden from the section editor and grid filter
+    /// regardless of this setting.
+    /// </summary>
+    public bool ShowOnlyActiveCourses { get; set; } = true;
+
     public SectionSortMode SectionSortMode { get; set; } = SectionSortMode.SubjectCourseCode;
     public InstructorSortMode InstructorSortMode { get; set; } = InstructorSortMode.LastName;
 

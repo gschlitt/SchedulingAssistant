@@ -860,6 +860,7 @@ public partial class SectionListViewModel : ViewModelBase
     private async Task Delete()
     {
         if (SelectedSection is null) return;
+        if (!await _dialog.Confirm($"Delete {SelectedSectionItem!.Heading}?")) return;
         if (ExpandedItem?.Section.Id == SelectedSection.Id)
             CollapseEditor();
         try

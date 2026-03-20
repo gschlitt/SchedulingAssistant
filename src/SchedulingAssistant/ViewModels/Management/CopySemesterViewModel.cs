@@ -306,6 +306,7 @@ public partial class CopySemesterViewModel : ViewModelBase
                     Day = m.Day,
                     StartMinutes = m.StartMinutes,
                     DurationMinutes = m.DurationMinutes,
+                    Frequency = m.Frequency,
                     RoomId = IncludeRoomAssignments ? m.RoomId : null,
                     MeetingTypeId = IncludeMeetingTypeAssignments ? m.MeetingTypeId : null,
                 }).ToList();

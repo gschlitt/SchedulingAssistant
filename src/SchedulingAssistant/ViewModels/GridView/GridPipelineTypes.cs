@@ -20,8 +20,16 @@ internal record GridLookups(
     /// <summary>All sections loaded for the currently selected semester(s).</summary>
     IReadOnlyList<Section> Sections,
 
-    /// <summary>All courses, keyed by course ID.</summary>
+    /// <summary>All courses (including inactive), keyed by course ID. Used for grid tile display.</summary>
     IReadOnlyDictionary<string, Course> Courses,
+
+    /// <summary>
+    /// Active courses only, keyed by course ID.
+    /// Used exclusively for populating the filter options list so that inactive
+    /// courses are never presented as filter choices, even if sections that use
+    /// them are still visible on the grid.
+    /// </summary>
+    IReadOnlyDictionary<string, Course> ActiveCourses,
 
     /// <summary>All instructors, keyed by instructor ID.</summary>
     IReadOnlyDictionary<string, Instructor> Instructors,

@@ -29,6 +29,12 @@ public partial class CourseListViewModel : ViewModelBase
     [ObservableProperty] private CourseEditViewModel? _editVm;
     [ObservableProperty] private CourseHistoryViewModel _courseHistoryVm;
 
+    /// <summary>
+    /// When true, only active courses are shown in the list.
+    /// Mirrors <see cref="AppSettings.ShowOnlyActiveCourses"/> and is persisted on change.
+    /// </summary>
+    [ObservableProperty] private bool _showOnlyActive = true;
+
     public CourseListViewModel(
         ICourseRepository courseRepo,
         ISubjectRepository subjectRepo,
@@ -47,6 +53,8 @@ public partial class CourseListViewModel : ViewModelBase
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
+
+        ShowOnlyActive = AppSettings.Current.ShowOnlyActiveCourses;
 
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
         if (Subjects.Count > 0)
@@ -73,7 +81,8 @@ public partial class CourseListViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Loads all courses from the database and populates the <see cref="Course.TagSummary"/>
+    /// Loads courses from the database, optionally filtering to active-only based on
+    /// <see cref="ShowOnlyActive"/>, and populates the <see cref="Course.TagSummary"/>
     /// display property on each by resolving tag IDs to names.
     /// </summary>
     private void LoadCourses()
@@ -81,7 +90,9 @@ public partial class CourseListViewModel : ViewModelBase
         var tagById = _propertyRepo.GetAll(SectionPropertyTypes.Tag)
                                    .ToDictionary(t => t.Id, t => t.Name);
 
-        var courses = _courseRepo.GetAll();
+        // Respect the "show only active" toggle: inactive courses are hidden from the
+        // list when the checkbox is checked, but can still be revealed for editing.
+        var courses = ShowOnlyActive ? _courseRepo.GetAllActive() : _courseRepo.GetAll();
         foreach (var course in courses)
             course.TagSummary = string.Join(", ",
                 course.TagIds.Select(id => tagById.TryGetValue(id, out var name) ? name : null)
@@ -242,5 +253,18 @@ public partial class CourseListViewModel : ViewModelBase
             CourseHistoryVm.LoadByCourse(value.Id);
         else
             CourseHistoryVm.Items.Clear();
+    }
+
+    /// <summary>
+    /// Called when <see cref="ShowOnlyActive"/> changes.
+    /// Persists the new value to <see cref="AppSettings"/> and reloads the course list.
+    /// </summary>
+    /// <param name="value">The new checkbox state.</param>
+    partial void OnShowOnlyActiveChanged(bool value)
+    {
+        LoadCourses();
+        var settings = AppSettings.Current;
+        settings.ShowOnlyActiveCourses = value;
+        settings.Save();
     }
 }

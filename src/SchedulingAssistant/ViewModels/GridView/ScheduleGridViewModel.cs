@@ -320,10 +320,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 : Array.Empty<Section>())
             .ToList();
 
-        var courses     = _courseRepo.GetAll().ToDictionary(c => c.Id);
-        var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var subjects    = _subjectRepo.GetAll().ToDictionary(s => s.Id);
+        var courses       = _courseRepo.GetAll().ToDictionary(c => c.Id);
+        // Active courses are kept separate so the filter options list omits inactive
+        // courses without affecting grid tile display of existing sections.
+        var activeCourses = _courseRepo.GetAllActive().ToDictionary(c => c.Id);
+        var instructors   = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+        var rooms         = _roomRepo.GetAll().ToDictionary(r => r.Id);
+        var subjects      = _subjectRepo.GetAll().ToDictionary(s => s.Id);
 
         var campuses     = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
         var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
@@ -342,7 +345,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var semesterIdToName = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Name);
 
         return new GridLookups(
-            sections, courses, instructors, rooms, subjects,
+            sections, courses, activeCourses, instructors, rooms, subjects,
             campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName);
     }
 
@@ -367,7 +370,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             lookups.Tags,
             lookups.MeetingTypes,
             lookups.Levels,
-            lookups.Courses);
+            lookups.ActiveCourses);  // Filter shows only active courses
     }
 
     /// <summary>

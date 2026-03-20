@@ -123,6 +123,13 @@
                     </ContentControl.ContentTemplate>
                 </ContentControl>
 
+                <!--  Show only active courses toggle  -->
+                <CheckBox
+                    Content="Show only active courses"
+                    FontSize="10"
+                    IsChecked="{Binding ShowOnlyActive}"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}" />
+
                 <!--  Course list — columns auto-size to content  -->
 
                 <!--
