@@ -1,32 +1,16 @@
 Bugs:
 
-Is frequency being copied over by copy? By import from old db?
-
 A user could enter an early start time before 0830 in the start-time/blocklength selector. What happens then?
 
-Handling of inactive instructors and inactive courses. 
 
-Deleting an academic year doesn't give you the choice! Should be forbidden probably without emptying semesters?
 
 Fontsize seems hardcoded in a number of places, should be able to adjust from app.axaml
-
-Printing to png seems to print in dark mode?
-
-Overlay color needs to work in conjunction with Multi-semester. Color choices are the issue.
-
-Confirm section deletes!
 
 Migration utility needs to handle campus and generate a level for the courses and sections.
 
 Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
 
 Width of courses menu should be dynamic.
-
-Colors:
-
-Overlay color: in menu bar around selected cards and the text within the card
-Filter selected color: in menu bar, and frames the sections in section view
-Selected color: now orange in Schedule View, blue in list, needs to be consistent.
 
 
 
@@ -36,6 +20,9 @@ Selected color: now orange in Schedule View, blue in list, needs to be consisten
 
 
 Agenda.
+
+Backup! (to csv and alternate db?) 
+-sort on csv
 
 Improve human-readability of db.
 
@@ -62,12 +49,12 @@ Zoom to cursor? Via scroll wheel?
 
 Banner on sections header to show number of sections
 
-Backup! (to csv and alternate db?)
+
 
 workload view disappears when detached and the "shutdown"
 logic for revisions and deletions of block lengths.
 
-Handle non-active courses and non-active instructors.
+
 
 
 

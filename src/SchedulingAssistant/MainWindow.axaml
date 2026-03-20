@@ -2,20 +2,20 @@
     x:Class="SchedulingAssistant.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:controls="using:SchedulingAssistant.Controls"
     xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
     xmlns:panelViews="using:SchedulingAssistant.Views"
     xmlns:views="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels"
-    xmlns:b="using:SchedulingAssistant.Behaviors"
     x:Name="RootWindow"
     Title="TermPoint"
     Width="1400"
     Height="800"
     MinHeight="600"
+    b:DismissBehaviors.EscapeCommand="{Binding CloseFlyoutCommand}"
     x:CompileBindings="False"
-    x:DataType="vm:MainWindowViewModel"
-    b:DismissBehaviors.EscapeCommand="{Binding CloseFlyoutCommand}">
+    x:DataType="vm:MainWindowViewModel">
 
     <Grid RowDefinitions="Auto,Auto,*">
 
@@ -59,43 +59,53 @@
                         Background="{StaticResource SeparatorLine}" />
 
                     <!--  Semester multi-select picker  -->
-                    <!--  Replaces the single-select ComboBox with a button + popup approach
-                          so the user can check multiple semesters within the selected year.  -->
+                    <!--
+                        Replaces the single-select ComboBox with a button + popup approach
+                        so the user can check multiple semesters within the selected year.
+                    -->
                     <TextBlock
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{StaticResource TextSemesterLabel}"
                         Text="Semester:" />
                     <Panel VerticalAlignment="Center">
-                        <!--  The button label shows the current selection, e.g. "Fall 2025"
-                              or "Early Summer, Summer". Clicking toggles the popup open/closed.  -->
-                        <Button x:Name="SemesterPickerButton"
-                                Content="{Binding SemesterContext.SelectedSemestersLabel}"
-                                Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
-                                MinWidth="120"
-                                Padding="8,4"
-                                VerticalAlignment="Center" />
+                        <!--
+                            The button label shows the current selection, e.g. "Fall 2025"
+                            or "Early Summer, Summer". Clicking toggles the popup open/closed.
+                        -->
+                        <Button
+                            x:Name="SemesterPickerButton"
+                            MinWidth="120"
+                            Padding="8,4"
+                            VerticalAlignment="Center"
+                            Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
+                            Content="{Binding SemesterContext.SelectedSemestersLabel}" />
 
-                        <!--  Popup with one CheckBox per semester in the selected year.
-                              LightDismissOverlayMode closes it when the user clicks elsewhere.
-                              Two-way binding on IsOpen lets the light-dismiss update the ViewModel.  -->
-                        <Popup IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
-                               PlacementMode="Bottom"
-                               PlacementTarget="{Binding ElementName=SemesterPickerButton}"
-                               IsLightDismissEnabled="True">
-                            <Border Background="{StaticResource FlyoutBackground}"
-                                    BorderBrush="{StaticResource ChromeBorder}"
-                                    BorderThickness="1"
-                                    CornerRadius="2"
-                                    Padding="4,4"
-                                    MinWidth="150">
+                        <!--
+                            Popup with one CheckBox per semester in the selected year.
+                            LightDismissOverlayMode closes it when the user clicks elsewhere.
+                            Two-way binding on IsOpen lets the light-dismiss update the ViewModel.
+                        -->
+                        <Popup
+                            IsLightDismissEnabled="True"
+                            IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
+                            PlacementMode="Bottom"
+                            PlacementTarget="{Binding ElementName=SemesterPickerButton}">
+                            <Border
+                                MinWidth="150"
+                                Padding="4,4"
+                                Background="{StaticResource FlyoutBackground}"
+                                BorderBrush="{StaticResource ChromeBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2">
                                 <ItemsControl ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                      Content="{Binding DisplayName}"
-                                                      Padding="4,3"
-                                                      FontSize="12" />
+                                            <CheckBox
+                                                Padding="4,3"
+                                                Content="{Binding DisplayName}"
+                                                FontSize="12"
+                                                IsChecked="{Binding IsSelected, Mode=TwoWay}" />
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -198,6 +208,8 @@
                             <MenuItem Command="{Binding NavigateToBlockPatternsCommand}" Header="Block Patterns" />
                             <MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />
                             <MenuItem Command="{Binding NavigateToSectionPrefixesCommand}" Header="Section Prefixes" />
+                            <Separator />
+                            <MenuItem Command="{Binding NavigateToSettingsCommand}" Header="Backup &amp; Settings" />
                         </MenuItem>
                     </Menu>
 
@@ -247,7 +259,7 @@
                             Header="Debug">
                             <MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View…" />
                             <Separator />
-                            <!-- ONE-TIME MIGRATION UTILITY — remove after migration is complete -->
+                            <!--  ONE-TIME MIGRATION UTILITY — remove after migration is complete  -->
                             <MenuItem Command="{Binding OpenMigrationCommand}" Header="Migration: CSV → JSON…" />
                         </MenuItem>
                     </Menu>
@@ -256,36 +268,38 @@
             </DockPanel>
         </Border>
 
-        <!--  Write-lock banner — visible only in read-only mode.
-              Shown between the menu bar and the content area so it is always visible
-              without displacing any panel content. The "Switch to edit mode" button
-              appears only after the polling timer detects that the lock is available.  -->
+        <!--
+            Write-lock banner — visible only in read-only mode.
+            Shown between the menu bar and the content area so it is always visible
+            without displacing any panel content. The "Switch to edit mode" button
+            appears only after the polling timer detects that the lock is available.
+        -->
         <Border
             Grid.Row="1"
-            IsVisible="{Binding ShowLockBanner}"
+            Padding="12,4"
             Background="{StaticResource ErrorBannerBackground}"
             BorderBrush="{StaticResource ErrorBannerBorder}"
             BorderThickness="0,0,0,1"
-            Padding="12,4">
+            IsVisible="{Binding ShowLockBanner}">
             <DockPanel>
                 <!--  "Switch to edit mode" — rightmost; only shown when lock is free  -->
                 <Button
-                    DockPanel.Dock="Right"
                     Margin="8,0,0,0"
                     Padding="8,2"
-                    FontSize="{StaticResource FontSizeNormal}"
-                    IsVisible="{Binding ShowWriteLockAvailablePrompt}"
                     Command="{Binding AcquireWriteLockCommand}"
                     Content="Switch to edit mode"
+                    DockPanel.Dock="Right"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    IsVisible="{Binding ShowWriteLockAvailablePrompt}"
                     ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
                 <!--  Refresh — always visible in read-only mode; reloads section data from DB  -->
                 <Button
-                    DockPanel.Dock="Right"
                     Margin="8,0,0,0"
                     Padding="8,2"
-                    FontSize="{StaticResource FontSizeNormal}"
                     Command="{Binding RefreshDataCommand}"
                     Content="Refresh View"
+                    DockPanel.Dock="Right"
+                    FontSize="{StaticResource FontSizeNormal}"
                     ToolTip.Tip="{Binding RefreshButtonTooltip}" />
                 <TextBlock
                     VerticalAlignment="Center"
@@ -298,15 +312,19 @@
         <!--  Main body: layered panel (permanent grid beneath, flyout overlay above)  -->
         <Panel Grid.Row="2">
 
-            <!--  Layer 0: permanent three-panel grid.
-                  ConditionalColumnWidthBehavior toggles column 0 between 370px (collapsed)
-                  and 650px (editor open) by watching SectionListVm.IsEditing. This replaces
-                  the UpdateLeftColumnWidth code-behind method and its PropertyChanged subscription. -->
-            <Grid x:Name="ThreePanelGrid" ColumnDefinitions="370,4,*"
-                  b:ConditionalColumnWidthBehavior.ColumnIndex="0"
-                  b:ConditionalColumnWidthBehavior.Condition="{Binding SectionListVm.IsEditing}"
-                  b:ConditionalColumnWidthBehavior.TrueWidth="650"
-                  b:ConditionalColumnWidthBehavior.FalseWidth="370">
+            <!--
+                Layer 0: permanent three-panel grid.
+                ConditionalColumnWidthBehavior toggles column 0 between 370px (collapsed)
+                and 650px (editor open) by watching SectionListVm.IsEditing. This replaces
+                the UpdateLeftColumnWidth code-behind method and its PropertyChanged subscription.
+            -->
+            <Grid
+                x:Name="ThreePanelGrid"
+                b:ConditionalColumnWidthBehavior.ColumnIndex="0"
+                b:ConditionalColumnWidthBehavior.Condition="{Binding SectionListVm.IsEditing}"
+                b:ConditionalColumnWidthBehavior.FalseWidth="370"
+                b:ConditionalColumnWidthBehavior.TrueWidth="650"
+                ColumnDefinitions="370,4,*">
 
                 <!--  Left column: Section Editor (top) + Workload (bottom)  -->
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
@@ -321,57 +339,35 @@
                             <!--  Header  -->
                             <Border
                                 Grid.Row="0"
+                                Padding="8,4"
                                 Background="{StaticResource ChromeBackground}"
                                 BorderBrush="{StaticResource ChromeBorder}"
                                 BorderThickness="0,0,0,1"
-                                Padding="8,4"
                                 PointerPressed="OnSectionViewHeaderPointerPressed">
                                 <Grid RowDefinitions="Auto,Auto">
 
                                     <!--  Title + sort-mode context (right-click to change sort)  -->
-                                    <DockPanel Grid.Row="0">
-                                        <TextBlock
-                                            DockPanel.Dock="Left"
-                                            Margin="0,0,12,0"
-                                            VerticalAlignment="Center"
-                                            FontSize="{StaticResource FontSizeLarge}"
-                                            FontWeight="SemiBold"
-                                            Text="Section View" />
-                                        <Border
-                                            Padding="5,1"
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Center"
-                                            Background="{StaticResource ButtonBackground}"
-                                            BorderBrush="{StaticResource ButtonBorder}"
-                                            BorderThickness="1"
-                                            CornerRadius="10"
-                                            ToolTip.Tip="Right-click to set sorting mode">
-                                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <TextBlock
-                                                    FontSize="{StaticResource FontSizeNormal}"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource TextPrimary}"
-                                                    Text="Sorted by:" />
-                                                <TextBlock
-                                                    VerticalAlignment="Center"
-                                                    FontSize="{StaticResource FontSizeNormal}"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource TextPrimary}"
-                                                    Text="{Binding SectionListVm.SortModeLabel}" />
-                                            </StackPanel>
-                                        </Border>
-                                    </DockPanel>
 
-                                    <!--  Action buttons — the entire group is disabled in read-only mode
-                                          via a single IsEnabled binding on the container.  -->
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Margin="1,0,0,0"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        FontSize="{StaticResource FontSizeLarge}"
+                                        FontWeight="SemiBold"
+                                        Text="Section View" />
+                                    <!--
+                                        Action buttons — the entire group is disabled in read-only mode
+                                        via a single IsEnabled binding on the container.
+                                    -->
                                     <StackPanel
                                         Grid.Row="1"
                                         Margin="0,4,0,0"
+                                        VerticalAlignment="Top"
                                         DataContext="{Binding SectionListVm}"
                                         IsEnabled="{Binding DataContext.IsWriteEnabled, ElementName=RootWindow}"
                                         Orientation="Horizontal"
-                                        Spacing="3"
-                                        VerticalAlignment="Top">
+                                        Spacing="3">
                                         <Button
                                             MinWidth="0"
                                             MinHeight="0"
@@ -427,15 +423,35 @@
                                             Content="Delete"
                                             FontSize="10"
                                             IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <Border
+                                            Padding="5,1"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            Background="{StaticResource ButtonBackground}"
+                                            BorderBrush="{StaticResource ButtonBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            ToolTip.Tip="Right-click to set sorting mode">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock
+                                                    FontSize="{StaticResource FontSizeNormal}"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextPrimary}"
+                                                    Text="Sorted by:" />
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontSize="{StaticResource FontSizeNormal}"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextPrimary}"
+                                                    Text="{Binding SortModeLabel}" />
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
-
                                 </Grid>
                             </Border>
 
                             <!--  Content  -->
-                            <views:SectionListView
-                                Grid.Row="1"
-                                DataContext="{Binding SectionListVm}" />
+                            <views:SectionListView Grid.Row="1" DataContext="{Binding SectionListVm}" />
 
                         </Grid>
                     </Border>
@@ -493,9 +509,7 @@
                                 Margin="0,3"
                                 Background="{StaticResource SeparatorLine}"
                                 IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <ItemsControl
-                                VerticalAlignment="Center"
-                                ItemsSource="{Binding ScheduleGridVm.SemesterLineSegments}">
+                            <ItemsControl VerticalAlignment="Center" ItemsSource="{Binding ScheduleGridVm.SemesterLineSegments}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <StackPanel Orientation="Horizontal" Spacing="4" />
@@ -509,9 +523,7 @@
                                             BorderBrush="{Binding Border}"
                                             BorderThickness="1"
                                             CornerRadius="2">
-                                            <TextBlock
-                                                FontSize="{StaticResource FontSizeLarge}"
-                                                Text="{Binding DisplayText}" />
+                                            <TextBlock FontSize="{StaticResource FontSizeLarge}" Text="{Binding DisplayText}" />
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -582,10 +594,11 @@
             <!--  Layer 1: management flyout overlay  -->
             <Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
 
-                <!--  Dim backdrop — clicking it closes the flyout.
-                      DismissBehaviors.ClickCommand replaces the OnFlyoutBackdropPressed code-behind handler. -->
-                <Border Background="{StaticResource FlyoutScrim}"
-                        b:DismissBehaviors.ClickCommand="{Binding CloseFlyoutCommand}" />
+                <!--
+                    Dim backdrop — clicking it closes the flyout.
+                    DismissBehaviors.ClickCommand replaces the OnFlyoutBackdropPressed code-behind handler.
+                -->
+                <Border b:DismissBehaviors.ClickCommand="{Binding CloseFlyoutCommand}" Background="{StaticResource FlyoutScrim}" />
 
                 <!--  Flyout panel (drops from top)  -->
                 <Border

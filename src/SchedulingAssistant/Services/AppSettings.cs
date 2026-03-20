@@ -68,6 +68,25 @@ public class AppSettings
     public List<string> RecentDatabases { get; set; } = new();
 
     /// <summary>
+    /// Folder path where automated backups are written.
+    /// Null means no backup folder has been configured and backups are skipped.
+    /// </summary>
+    public string? BackupFolderPath { get; set; }
+
+    /// <summary>
+    /// Interval in minutes between periodic backups during an active write session.
+    /// Default: 30. Must be at least 1.
+    /// </summary>
+    public int BackupIntervalMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Maximum number of backup files to retain per database.
+    /// When exceeded, the oldest backup pair (.db + _sections.csv) is deleted.
+    /// Default: 5.
+    /// </summary>
+    public int MaxBackupCount { get; set; } = 5;
+
+    /// <summary>
     /// Email subject template for the Workload Mailer.
     /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}.
     /// </summary>

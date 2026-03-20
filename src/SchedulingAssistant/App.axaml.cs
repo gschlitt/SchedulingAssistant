@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.Exceptions;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
@@ -69,6 +70,15 @@ public partial class App : Application
         // Prune old log files (non-throwing).
         if (Logger is FileAppLogger fal) fal.PruneOldLogs();
 
+        // Integrity check — run before acquiring the write lock or touching the schema,
+        // so any corruption is surfaced on a pristine connection. The check is a no-op
+        // when the file does not yet exist (brand-new database).
+        if (File.Exists(dbPath) && !BackupService.CheckIntegrity(dbPath))
+        {
+            // Signal the caller; MainWindow.RunStartupAsync handles the restore dialog.
+            throw new DatabaseCorruptException(dbPath);
+        }
+
         // Acquire the write lock before touching the database file.
         // This must happen before DatabaseContext is initialized so that if two
         // instances open the same file simultaneously, the loser enters read-only
@@ -110,6 +120,7 @@ public partial class App : Application
         // Services
         services.AddSingleton<SemesterContext>();
         services.AddSingleton<WriteLockService>();
+        services.AddSingleton<BackupService>();
         // These services are stateless wrappers; singletons match their actual lifetime.
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();

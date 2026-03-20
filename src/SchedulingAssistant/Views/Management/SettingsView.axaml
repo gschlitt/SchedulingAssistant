@@ -5,16 +5,137 @@
              x:DataType="vm:SettingsViewModel"
              x:CompileBindings="False">
 
-    <StackPanel Spacing="16" MaxWidth="480" HorizontalAlignment="Left">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="24" MaxWidth="540" Margin="0,0,16,16" HorizontalAlignment="Left">
 
-        <TextBlock Text="Scheduling" FontWeight="SemiBold" FontSize="14" />
+            <!-- ══════════════════════════════════════════════════════════════
+                 SECTION — Scheduling
+                 ═════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Scheduling" FontWeight="SemiBold" FontSize="14" />
 
-        <CheckBox Content="Include Saturday as an available scheduling day"
-                  IsChecked="{Binding IncludeSaturday}" />
+                <CheckBox Content="Include Saturday as an available scheduling day"
+                          IsChecked="{Binding IncludeSaturday}" />
 
-        <TextBlock Text="Changes take effect the next time you open the section editor."
-                   FontSize="11" Foreground="{StaticResource TextDimLabel}" />
+                <TextBlock Text="Changes take effect the next time you open the section editor."
+                           FontSize="11" Foreground="{StaticResource TextDimLabel}" />
+            </StackPanel>
 
-    </StackPanel>
+            <!-- ══════════════════════════════════════════════════════════════
+                 SECTION — Backup
+                 ═════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Automated Backup" FontWeight="SemiBold" FontSize="14" />
+
+                <TextBlock TextWrapping="Wrap" FontSize="11"
+                           Foreground="{StaticResource TextDimLabel}"
+                           Text="Backups are taken at the start of each write session and periodically thereafter. Each backup consists of a SQLite database file and a human-readable sections CSV." />
+
+                <!-- Backup folder -->
+                <TextBlock Text="Backup Folder" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right"
+                            Content="Browse…"
+                            Padding="10,4"
+                            Margin="6,0,0,0"
+                            Click="OnBrowseBackupFolder" />
+                    <TextBox Text="{Binding BackupFolderPath, Mode=TwoWay}"
+                             FontSize="11"
+                             Watermark="No backup folder configured"
+                             IsReadOnly="False" />
+                </DockPanel>
+
+                <TextBlock FontSize="11" Foreground="DarkOrange"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding !IsBackupConfigured}"
+                           Text="No backup folder is configured. Backups will not run until a folder is set." />
+
+                <!-- Interval and max count side by side -->
+                <Grid ColumnDefinitions="*,16,*" Margin="0,4,0,0">
+
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Backup interval (minutes)" FontSize="11" FontWeight="SemiBold" />
+                        <NumericUpDown Value="{Binding BackupIntervalMinutes, Mode=TwoWay}"
+                                       Minimum="1" Maximum="480" Increment="5"
+                                       FormatString="0"
+                                       FontSize="11" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="Backups to keep" FontSize="11" FontWeight="SemiBold" />
+                        <NumericUpDown Value="{Binding MaxBackupCount, Mode=TwoWay}"
+                                       Minimum="1" Maximum="50" Increment="1"
+                                       FormatString="0"
+                                       FontSize="11" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Status + manual trigger -->
+                <Border Background="{StaticResource FilterBarBackground}"
+                        CornerRadius="3" Padding="8,6">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right"
+                                Content="Back Up Now"
+                                Command="{Binding BackUpNowCommand}"
+                                Padding="10,4"
+                                Margin="8,0,0,0"
+                                IsEnabled="{Binding IsBackupConfigured}" />
+                        <TextBlock Text="{Binding LastBackupStatus}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </DockPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 SECTION — Restore
+                 ═════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Restore from Backup" FontWeight="SemiBold" FontSize="14" />
+
+                <TextBlock TextWrapping="Wrap" FontSize="11"
+                           Foreground="{StaticResource TextDimLabel}"
+                           Text="Restoring replaces the current database with the selected backup and restarts the application. The current database is not kept." />
+
+                <!-- Empty state — shown when backup entries list is empty -->
+                <TextBlock FontSize="11" FontStyle="Italic"
+                           Foreground="{StaticResource TextDimLabel}"
+                           IsVisible="{Binding HasNoBackups}"
+                           Text="No backups found in the configured folder." />
+
+                <!-- Backup list -->
+                <ItemsControl ItemsSource="{Binding BackupEntries}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource FilterBarBackground}"
+                                    CornerRadius="3"
+                                    Padding="8,6"
+                                    Margin="0,0,0,4">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right"
+                                            Content="Restore…"
+                                            Command="{Binding RestoreCommand}"
+                                            CommandParameter="{Binding}"
+                                            Padding="10,3"
+                                            FontSize="11"
+                                            Margin="8,0,0,0" />
+                                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding TimestampDisplay}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Detail}"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextDimLabel}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
 
 </UserControl>

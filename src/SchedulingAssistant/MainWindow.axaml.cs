@@ -22,6 +22,8 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using SchedulingAssistant.Exceptions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SchedulingAssistant;
 
@@ -76,8 +78,12 @@ public partial class MainWindow : Window
     {
         base.OnClosing(e);
 
+        // Stop the periodic backup timer before disposing the container so the timer
+        // callback cannot fire against a half-torn-down DI graph.
+        if (App.Services?.GetService(typeof(BackupService)) is BackupService bs)
+            bs.StopSession();
+
         // Dispose the DI container, which closes the SQLite connection cleanly.
-        // This is the hook point for a pre-exit backup — add it here before Dispose.
         (App.Services as IDisposable)?.Dispose();
     }
 
@@ -141,7 +147,37 @@ public partial class MainWindow : Window
         settings.AddRecentDatabase(dbPath);
 
         // Initialize DI and DB, wire up the view model, then reveal the window.
-        var vm = App.InitializeServices(dbPath);
+        // DatabaseCorruptException is thrown when integrity_check fails; we handle
+        // it by offering a restore dialog before the app opens normally.
+        MainWindowViewModel vm;
+        try
+        {
+            vm = App.InitializeServices(dbPath);
+        }
+        catch (DatabaseCorruptException corruptEx)
+        {
+            var restored = await ShowCorruptDatabaseDialogAsync(corruptEx.DatabasePath);
+            if (!restored)
+            {
+                await ShowCancelMessageAsync();
+                (Avalonia.Application.Current?.ApplicationLifetime as
+                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                    ?.Shutdown();
+                return;
+            }
+            // The restore copied a backup over dbPath — re-initialize with the restored file.
+            vm = App.InitializeServices(dbPath);
+        }
+
+        // Start the automated backup session if this instance acquired the write lock.
+        // Fire-and-forget: the first backup runs asynchronously in the background.
+        if (App.Services.GetService(typeof(BackupService)) is BackupService backup
+            && App.Services.GetService(typeof(WriteLockService)) is WriteLockService wl
+            && wl.IsWriter)
+        {
+            _ = backup.StartSessionAsync(dbPath);
+        }
+
         DataContext = vm;
 
         // Set the main window reference and load recent databases
@@ -170,6 +206,15 @@ public partial class MainWindow : Window
             // Reinitialize DI and set new data context.
             // DatabaseContext will create the file if it doesn't exist.
             var vm = App.InitializeServices(newDatabasePath);
+
+            // Start backup session for the new database if we are the writer.
+            if (App.Services.GetService(typeof(BackupService)) is BackupService switchBackup
+                && App.Services.GetService(typeof(WriteLockService)) is WriteLockService switchWl
+                && switchWl.IsWriter)
+            {
+                _ = switchBackup.StartSessionAsync(newDatabasePath);
+            }
+
             DataContext = vm;
 
             // Reload recent databases in the menu
@@ -234,6 +279,117 @@ public partial class MainWindow : Window
 
         ok.Click += (_, _) => msg.Close();
         await msg.ShowDialog(this);
+    }
+
+    /// <summary>
+    /// Shown when the startup integrity check fails. Lists backups from the configured
+    /// backup folder and lets the user pick one to restore before the app opens.
+    /// Returns true when a backup was successfully restored over <paramref name="dbPath"/>.
+    /// Returns false when the user dismisses without restoring (app will shut down).
+    /// </summary>
+    private async Task<bool> ShowCorruptDatabaseDialogAsync(string dbPath)
+    {
+        // Enumerate backups for this database from the configured folder.
+        var folder = AppSettings.Current.BackupFolderPath;
+        var dbName = Path.GetFileNameWithoutExtension(dbPath);
+        var backups = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+        {
+            backups = Directory.GetFiles(folder, $"{dbName}_*.db")
+                               .OrderByDescending(f => f)
+                               .ToList();
+        }
+
+        var dlg = new Window
+        {
+            Title  = "Database Integrity Check Failed",
+            Width  = 520,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true
+        };
+
+        string? chosen = null;
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 12 };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "The database failed its integrity check and may be corrupt.",
+            FontSize = 13, FontWeight = FontWeight.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"Database: {dbPath}",
+            FontSize = 11, Foreground = Brushes.DarkRed,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        if (backups.Count == 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = "No backups were found. You can exit and manually replace the database file with a backup, or continue at your own risk.",
+                TextWrapping = TextWrapping.Wrap, FontSize = 12
+            });
+        }
+        else
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Select a backup to restore, or exit and handle it manually:",
+                TextWrapping = TextWrapping.Wrap, FontSize = 12
+            });
+
+            foreach (var backupPath in backups)
+            {
+                var label = Path.GetFileNameWithoutExtension(backupPath);
+                var btn   = new Button
+                {
+                    Content = $"Restore: {label}",
+                    FontSize = 11,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Padding = new Thickness(8, 4)
+                };
+                btn.Click += (_, _) => { chosen = backupPath; dlg.Close(); };
+                panel.Children.Add(btn);
+            }
+        }
+
+        var buttonRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8
+        };
+        var continueBtn = new Button { Content = "Continue anyway (risky)", FontSize = 11, Padding = new Thickness(8, 4) };
+        var exitBtn     = new Button { Content = "Exit", FontSize = 11, Padding = new Thickness(8, 4) };
+        continueBtn.Click += (_, _) => { chosen = "continue"; dlg.Close(); };
+        exitBtn.Click     += (_, _) => { chosen = null; dlg.Close(); };
+        buttonRow.Children.Add(continueBtn);
+        buttonRow.Children.Add(exitBtn);
+        panel.Children.Add(buttonRow);
+
+        dlg.Content = panel;
+        await dlg.ShowDialog(this);
+
+        if (chosen is null) return false;       // Exit
+        if (chosen == "continue") return true;  // Proceed with corrupt DB
+
+        // User chose a backup — copy it over the main database file.
+        try
+        {
+            File.Copy(chosen, dbPath, overwrite: true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("Restore Failed", $"Could not restore backup:\n\n{ex.Message}");
+            return false;
+        }
     }
 
     private async Task ShowCancelMessageAsync()

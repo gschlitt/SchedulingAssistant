@@ -767,10 +767,11 @@
                 -->
                 <ListBox
                     x:Name="SectionListBox"
-                    Classes="SectionList"
+                    Margin="5,0"
                     b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                     Background="Transparent"
                     BorderThickness="0"
+                    Classes="SectionList"
                     ItemsSource="{Binding SectionItems}"
                     SelectedItem="{Binding SelectedItem}"
                     SelectionMode="Single">
@@ -818,271 +819,269 @@
                         <!--  Section card with multi-semester left border indicator  -->
                         <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
                             <!--  Filter highlight: 3 pt FilterColor border when section matches active grid filter  -->
-                            <Border
-                                BorderBrush="{StaticResource FilterColorBrush}"
-                                BorderThickness="{Binding IsFilterHighlighted, Converter={StaticResource FilterBorderThicknessConverter}}">
+                            <Border BorderBrush="{StaticResource FilterColorBrush}" BorderThickness="{Binding IsFilterHighlighted, Converter={StaticResource FilterBorderThicknessConverter}}">
                                 <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,2">
-                                <!--  Multi-semester indicator: narrow left border in semester color  -->
-                                <Border
-                                    Padding="0"
-                                    BorderBrush="{Binding SemesterLeftBorderBrush}"
-                                    BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}">
-                                    <StackPanel>
+                                    <!--  Multi-semester indicator: narrow left border in semester color  -->
+                                    <Border
+                                        Padding="0"
+                                        BorderBrush="{Binding SemesterLeftBorderBrush}"
+                                        BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}">
+                                        <StackPanel>
 
-                                        <!--  Summary row (hidden while section is being created)  -->
-                                        <StackPanel IsVisible="{Binding !IsBeingCreated}" Spacing="1">
-                                            <!--  Row 1: Toggle + Heading + Instructor + Section Type + Property indicators  -->
-                                            <Grid
-                                                Margin="2,3,6,2"
-                                                VerticalAlignment="Center"
-                                                ColumnDefinitions="Auto,Auto,*,Auto,Auto">
-                                                <!--  Collapse/expand toggle  -->
-                                                <Button
-                                                    Grid.Column="0"
-                                                    MinWidth="0"
-                                                    MinHeight="0"
-                                                    Padding="2,0"
+                                            <!--  Summary row (hidden while section is being created)  -->
+                                            <StackPanel IsVisible="{Binding !IsBeingCreated}" Spacing="1">
+                                                <!--  Row 1: Toggle + Heading + Instructor + Section Type + Property indicators  -->
+                                                <Grid
+                                                    Margin="2,3,6,2"
                                                     VerticalAlignment="Center"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Command="{Binding ToggleCollapsedCommand}"
-                                                    Cursor="Hand">
-                                                    <Panel>
-                                                        <TextBlock
-                                                            FontSize="8"
-                                                            Foreground="{StaticResource TextLabel}"
-                                                            IsVisible="{Binding IsCollapsed}"
-                                                            Text="▶" />
-                                                        <TextBlock
-                                                            FontSize="8"
-                                                            Foreground="{StaticResource TextLabel}"
-                                                            IsVisible="{Binding !IsCollapsed}"
-                                                            Text="▼" />
-                                                    </Panel>
-                                                </Button>
-                                                <!--  Heading  -->
-                                                <TextBlock
-                                                    Grid.Column="1"
-                                                    Margin="2,0,8,0"
-                                                    FontSize="12"
-                                                    FontWeight="SemiBold"
-                                                    Text="{Binding Heading}" />
-                                                <!--  Instructor  -->
-                                                <TextBlock
-                                                    Grid.Column="2"
-                                                    FontSize="12"
-                                                    IsVisible="{Binding InstructorHeaderLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding InstructorHeaderLine}"
-                                                    TextTrimming="CharacterEllipsis" />
-                                                <!--  Section Type  -->
-                                                <TextBlock
-                                                    Grid.Column="3"
-                                                    Margin="8,0,8,0"
-                                                    FontSize="12"
-                                                    IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding SectionTypeName}" />
-                                                <!--  Right: property indicators (when collapsed)  -->
-                                                <StackPanel
-                                                    Grid.Column="4"
-                                                    IsVisible="{Binding IsCollapsed}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="3">
-                                                    <TextBlock
-                                                        FontSize="9"
-                                                        IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                        Text="🏷️" />
-                                                    <TextBlock
-                                                        FontSize="9"
-                                                        IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                        Text="📋" />
-                                                    <TextBlock
-                                                        FontSize="9"
-                                                        IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                        Text="📦" />
-                                                </StackPanel>
-                                            </Grid>
-
-                                            <!--  Row 2: Meetings (when not collapsed)  -->
-                                            <StackPanel
-                                                Margin="2,2,6,4"
-                                                Grid.IsSharedSizeScope="True"
-                                                IsVisible="{Binding !IsCollapsed}"
-                                                Spacing="0">
-                                                <!--
-                                                    Headers: Day, Start, End, Freq (col 3, hidden when all meetings are weekly), Room, Type.
-                                                    Col 3 uses SharedSizeGroup="FreqCol" so it grows to match the widest frequency
-                                                    value across all data rows; when the header is hidden (all-weekly sections),
-                                                    there is no content in the group and the column collapses to zero.
-                                                -->
-                                                <Grid Margin="0,0,0,2">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="45" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock
+                                                    ColumnDefinitions="Auto,Auto,Auto,Auto,Auto">
+                                                    <!--  Collapse/expand toggle  -->
+                                                    <Button
                                                         Grid.Column="0"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Day" />
+                                                        MinWidth="0"
+                                                        MinHeight="0"
+                                                        Padding="2,0"
+                                                        VerticalAlignment="Center"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Command="{Binding ToggleCollapsedCommand}"
+                                                        Cursor="Hand">
+                                                        <Panel>
+                                                            <TextBlock
+                                                                FontSize="8"
+                                                                Foreground="{StaticResource TextLabel}"
+                                                                IsVisible="{Binding IsCollapsed}"
+                                                                Text="▶" />
+                                                            <TextBlock
+                                                                FontSize="8"
+                                                                Foreground="{StaticResource TextLabel}"
+                                                                IsVisible="{Binding !IsCollapsed}"
+                                                                Text="▼" />
+                                                        </Panel>
+                                                    </Button>
+                                                    <!--  Heading  -->
                                                     <TextBlock
                                                         Grid.Column="1"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Start" />
+                                                        Margin="2,0,8,0"
+                                                        FontSize="12"
+                                                        FontWeight="SemiBold"
+                                                        Text="{Binding Heading}" />
+                                                    <!--  Instructor  -->
                                                     <TextBlock
                                                         Grid.Column="2"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="End" />
+                                                        FontSize="12"
+                                                        IsVisible="{Binding InstructorHeaderLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                        Text="{Binding InstructorHeaderLine}"
+                                                        TextTrimming="CharacterEllipsis" />
+                                                    <!--  Section Type  -->
                                                     <TextBlock
                                                         Grid.Column="3"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        IsVisible="{Binding HasNonDefaultFrequency}"
-                                                        Text="Freq" />
-                                                    <TextBlock
+                                                        Margin="8,0,8,0"
+                                                        FontSize="12"
+                                                        IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                        Text="{Binding SectionTypeName}" />
+                                                    <!--  Right: property indicators (when collapsed)  -->
+                                                    <StackPanel
                                                         Grid.Column="4"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Room" />
-                                                    <TextBlock
-                                                        Grid.Column="5"
-                                                        Margin="2,0,0,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Type" />
+                                                        IsVisible="{Binding IsCollapsed}"
+                                                        Orientation="Horizontal"
+                                                        Spacing="3">
+                                                        <TextBlock
+                                                            FontSize="9"
+                                                            IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                            Text="🏷️" />
+                                                        <TextBlock
+                                                            FontSize="9"
+                                                            IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                            Text="📋" />
+                                                        <TextBlock
+                                                            FontSize="9"
+                                                            IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                            Text="📦" />
+                                                    </StackPanel>
                                                 </Grid>
 
-                                                <!--  Meetings  -->
-                                                <ItemsControl ItemsSource="{Binding MeetingDetails}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
-                                                            <Grid Margin="0,1,0,0">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <!--  Col 3: same SharedSizeGroup as the header — auto-sizes to the widest frequency value across all rows  -->
-                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <ColumnDefinition Width="45" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock
-                                                                    Grid.Column="0"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding Day}" />
-                                                                <TextBlock
-                                                                    Grid.Column="1"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding StartTime}" />
-                                                                <TextBlock
-                                                                    Grid.Column="2"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding EndTime}" />
-                                                                <TextBlock
-                                                                    Grid.Column="3"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding Frequency}" />
-                                                                <TextBlock
-                                                                    Grid.Column="4"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding Room}" />
-                                                                <TextBlock
-                                                                    Grid.Column="5"
-                                                                    Margin="2,1,0,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding MeetingType}" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                <!--  Row 2: Meetings (when not collapsed)  -->
+                                                <StackPanel
+                                                    Margin="2,2,6,4"
+                                                    Grid.IsSharedSizeScope="True"
+                                                    IsVisible="{Binding !IsCollapsed}"
+                                                    Spacing="0">
+                                                    <!--
+                                                        Headers: Day, Start, End, Freq (col 3, hidden when all meetings are weekly), Room, Type.
+                                                        Col 3 uses SharedSizeGroup="FreqCol" so it grows to match the widest frequency
+                                                        value across all data rows; when the header is hidden (all-weekly sections),
+                                                        there is no content in the group and the column collapses to zero.
+                                                    -->
+                                                    <Grid Margin="0,0,0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="45" />
+                                                            <ColumnDefinition Width="45" />
+                                                            <ColumnDefinition Width="45" />
+                                                            <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
+                                                            <ColumnDefinition Width="45" />
+                                                            <ColumnDefinition Width="45" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock
+                                                            Grid.Column="0"
+                                                            Margin="2,0,2,0"
+                                                            FontSize="9"
+                                                            Foreground="{StaticResource TextMuted}"
+                                                            Text="Day" />
+                                                        <TextBlock
+                                                            Grid.Column="1"
+                                                            Margin="2,0,2,0"
+                                                            FontSize="9"
+                                                            Foreground="{StaticResource TextMuted}"
+                                                            Text="Start" />
+                                                        <TextBlock
+                                                            Grid.Column="2"
+                                                            Margin="2,0,2,0"
+                                                            FontSize="9"
+                                                            Foreground="{StaticResource TextMuted}"
+                                                            Text="End" />
+                                                        <TextBlock
+                                                            Grid.Column="3"
+                                                            Margin="2,0,2,0"
+                                                            FontSize="9"
+                                                            Foreground="{StaticResource TextMuted}"
+                                                            IsVisible="{Binding HasNonDefaultFrequency}"
+                                                            Text="Freq" />
+                                                        <TextBlock
+                                                            Grid.Column="4"
+                                                            Margin="2,0,2,0"
+                                                            FontSize="9"
+                                                            Foreground="{StaticResource TextMuted}"
+                                                            Text="Room" />
+                                                        <TextBlock
+                                                            Grid.Column="5"
+                                                            Margin="2,0,0,0"
+                                                            FontSize="9"
+                                                            Foreground="{StaticResource TextMuted}"
+                                                            Text="Type" />
+                                                    </Grid>
+
+                                                    <!--  Meetings  -->
+                                                    <ItemsControl ItemsSource="{Binding MeetingDetails}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
+                                                                <Grid Margin="0,1,0,0">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="45" />
+                                                                        <ColumnDefinition Width="45" />
+                                                                        <ColumnDefinition Width="45" />
+                                                                        <!--  Col 3: same SharedSizeGroup as the header — auto-sizes to the widest frequency value across all rows  -->
+                                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
+                                                                        <ColumnDefinition Width="Auto" MinWidth="45" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock
+                                                                        Grid.Column="0"
+                                                                        Margin="2,1,2,1"
+                                                                        FontSize="11"
+                                                                        Text="{Binding Day}" />
+                                                                    <TextBlock
+                                                                        Grid.Column="1"
+                                                                        Margin="2,1,2,1"
+                                                                        FontSize="11"
+                                                                        Text="{Binding StartTime}" />
+                                                                    <TextBlock
+                                                                        Grid.Column="2"
+                                                                        Margin="2,1,2,1"
+                                                                        FontSize="11"
+                                                                        Text="{Binding EndTime}" />
+                                                                    <TextBlock
+                                                                        Grid.Column="3"
+                                                                        Margin="2,1,2,1"
+                                                                        FontSize="11"
+                                                                        Text="{Binding Frequency}" />
+                                                                    <TextBlock
+                                                                        Grid.Column="4"
+                                                                        Margin="2,1,2,1"
+                                                                        FontSize="11"
+                                                                        Text="{Binding Room}" />
+                                                                    <TextBlock
+                                                                        Grid.Column="5"
+                                                                        Margin="2,1,0,1"
+                                                                        FontSize="11"
+                                                                        Text="{Binding MeetingType}" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+
+                                                <!--  Row 3: Properties (tags, reserves, resources) when not collapsed  -->
+                                                <StackPanel
+                                                    Margin="2,0,6,4"
+                                                    IsVisible="{Binding !IsCollapsed}"
+                                                    Spacing="2">
+                                                    <!--  Tags  -->
+                                                    <StackPanel
+                                                        IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4">
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="12"
+                                                            Text="🏷️" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="11"
+                                                            Text="{Binding TagLine}" />
+                                                    </StackPanel>
+                                                    <!--  Reserves  -->
+                                                    <StackPanel
+                                                        IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4">
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="12"
+                                                            Text="📋" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="11"
+                                                            Text="{Binding ReserveLine}" />
+                                                    </StackPanel>
+                                                    <!--  Resources  -->
+                                                    <StackPanel
+                                                        IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4">
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="12"
+                                                            Text="📦" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="11"
+                                                            Text="{Binding ResourceLine}" />
+                                                    </StackPanel>
+                                                    <!--  Notes  -->
+                                                    <TextBlock
+                                                        Margin="0,2,0,0"
+                                                        FontSize="11"
+                                                        IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                        MaxLines="1"
+                                                        Text="{Binding NoteLine}"
+                                                        TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
                                             </StackPanel>
 
-                                            <!--  Row 3: Properties (tags, reserves, resources) when not collapsed  -->
-                                            <StackPanel
-                                                Margin="2,0,6,4"
-                                                IsVisible="{Binding !IsCollapsed}"
-                                                Spacing="2">
-                                                <!--  Tags  -->
-                                                <StackPanel
-                                                    IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="4">
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="12"
-                                                        Text="🏷️" />
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Text="{Binding TagLine}" />
-                                                </StackPanel>
-                                                <!--  Reserves  -->
-                                                <StackPanel
-                                                    IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="4">
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="12"
-                                                        Text="📋" />
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Text="{Binding ReserveLine}" />
-                                                </StackPanel>
-                                                <!--  Resources  -->
-                                                <StackPanel
-                                                    IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="4">
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="12"
-                                                        Text="📦" />
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Text="{Binding ResourceLine}" />
-                                                </StackPanel>
-                                                <!--  Notes  -->
-                                                <TextBlock
-                                                    Margin="0,2,0,0"
-                                                    FontSize="11"
-                                                    IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    MaxLines="1"
-                                                    Text="{Binding NoteLine}"
-                                                    TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
+                                            <!--  Inline edit form — shown when this item IsExpanded  -->
+                                            <Border
+                                                Padding="8,6,6,8"
+                                                Background="{StaticResource EditorBackground}"
+                                                BorderBrush="{StaticResource EditorBorder}"
+                                                BorderThickness="3,0,0,0"
+                                                IsVisible="{Binding IsExpanded}">
+                                                <ContentControl Content="{Binding $parent[UserControl].DataContext.EditVm}" ContentTemplate="{StaticResource InlineEditFormTemplate}" />
+                                            </Border>
+
                                         </StackPanel>
-
-                                        <!--  Inline edit form — shown when this item IsExpanded  -->
-                                        <Border
-                                            Padding="8,6,6,8"
-                                            Background="{StaticResource EditorBackground}"
-                                            BorderBrush="{StaticResource EditorBorder}"
-                                            BorderThickness="3,0,0,0"
-                                            IsVisible="{Binding IsExpanded}">
-                                            <ContentControl Content="{Binding $parent[UserControl].DataContext.EditVm}" ContentTemplate="{StaticResource InlineEditFormTemplate}" />
-                                        </Border>
-
-                                    </StackPanel>
+                                    </Border>
                                 </Border>
-                            </Border>
                             </Border>
                         </DataTemplate>
 

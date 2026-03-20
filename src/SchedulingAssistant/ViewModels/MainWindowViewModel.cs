@@ -282,6 +282,89 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
+    /// <summary>
+    /// Opens the Settings flyout and wires the restore callback so that
+    /// <see cref="SettingsViewModel"/> can trigger a database restore + app restart
+    /// without knowing anything about the view layer.
+    /// </summary>
+    [RelayCommand]
+    private void NavigateToSettings()
+    {
+        var vm = _services.GetRequiredService<SettingsViewModel>();
+        vm.RestoreCallback = RestoreFromBackupAsync;
+        FlyoutPage  = vm;
+        FlyoutTitle = "Settings";
+    }
+
+    /// <summary>
+    /// Restores a backup by copying it over the main database file, then restarting
+    /// the application. The write lock is released and the DI container is disposed
+    /// before the file copy so the SQLite connection is cleanly closed first.
+    /// </summary>
+    /// <param name="backupDbPath">Full path to the .db backup file to restore from.</param>
+    private async Task RestoreFromBackupAsync(string backupDbPath)
+    {
+        var mainDbPath = AppSettings.Current.DatabasePath;
+        if (mainDbPath is null) return;
+
+        try
+        {
+            // Release the write lock and close the database connection.
+            _services.GetRequiredService<BackupService>().StopSession();
+            _services.GetRequiredService<WriteLockService>().Release();
+            (App.Services as IDisposable)?.Dispose();
+
+            // Overwrite the main database with the selected backup.
+            File.Copy(backupDbPath, mainDbPath, overwrite: true);
+
+            // Restart the application so it opens the restored database cleanly.
+            var exePath = Environment.ProcessPath;
+            if (exePath is not null)
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "Restore failed — DI may be disposed; showing plain error window");
+            // DI is disposed at this point so we cannot use IDialogService.
+            // Build a simple window programmatically (same pattern as MainWindow.ShowStartupErrorAsync).
+            if (MainWindowReference is { } win)
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    var msgWin = new Avalonia.Controls.Window
+                    {
+                        Title    = "Restore Failed",
+                        Width    = 440,
+                        SizeToContent = Avalonia.Controls.SizeToContent.Height,
+                        CanResize = false,
+                        WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterScreen
+                    };
+                    var ok  = new Avalonia.Controls.Button
+                    {
+                        Content             = "OK",
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                    };
+                    var panel = new Avalonia.Controls.StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 12 };
+                    panel.Children.Add(new Avalonia.Controls.TextBlock
+                    {
+                        Text        = $"Could not restore the database:\n\n{ex.Message}\n\nThe application will now close.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        FontSize    = 12
+                    });
+                    panel.Children.Add(ok);
+                    msgWin.Content = panel;
+                    ok.Click += (_, _) => msgWin.Close();
+                    await msgWin.ShowDialog(win);
+                });
+            }
+
+            (Avalonia.Application.Current?.ApplicationLifetime
+                as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                ?.Shutdown();
+        }
+    }
+
 #if DEBUG
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
