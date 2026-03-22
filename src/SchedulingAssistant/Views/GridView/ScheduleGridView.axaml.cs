@@ -210,13 +210,20 @@ public partial class ScheduleGridView : UserControl
         double effectiveHeaderHeight = DayHeaderHeight + (data.IsMultiSemester ? SemesterBarHeight : 0);
 
         
-        //QUERY: Function of tileHeightMap
-
         // ── Phase 1: Measure tile content (heights and per-tile label widths) ─
         // tileMaxTextWidths maps (flatColumn, startMinutes, endMinutes) → the widest
         // Bold label text width across all entries in that tile. Used in Phase 1.5 to
         // compute per-overlap-slot natural widths.
         var tileMaxTextWidths = new Dictionary<(int d, int start, int end), double>();
+        // tileHeightMap maps (startMinutes, endMinutes) → (timeBasedHeight, actualHeight).
+        // Key is the tile's time span only — column is intentionally omitted because in
+        // multi-semester mode co-scheduled tiles across semester sub-columns share the same
+        // time slot and must expand to the same height so they stay vertically aligned.
+        // timeBasedHeight is the pixel height derived purely from the time span (before any
+        // content expansion); actualHeight is the measured StackPanel height. When
+        // actualHeight > timeBasedHeight the difference is distributed across the covered
+        // 30-minute gridline slots in Phase 3 to push later rows down. Only the tallest
+        // tile at each (start, end) pair is kept — hence the Max comparison at insert.
         var tileHeightMap     = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
         var selectedId        = _vm?.SelectedSectionId;
         var entryCursor       = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
