@@ -14,6 +14,14 @@ namespace SchedulingAssistant.Views.GridView;
 public partial class ScheduleGridView : UserControl
 {
     private record TileClickContext(string SectionId, int Day, int StartMinutes);
+
+    /// <summary>
+    /// Snapshot of every entry row rendered during the last full <see cref="Render"/> call.
+    /// Used by <see cref="UpdateSelectionHighlight"/> to repaint selection state without
+    /// triggering a full layout pass.
+    /// </summary>
+    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized);
+    private readonly List<EntryRowInfo> _entryRowRegistry = new();
     
     // Layout constants
     private const double TimeGutterWidth  = 52;
@@ -150,12 +158,34 @@ public partial class ScheduleGridView : UserControl
         Render();
     }
 
-    //QUERY Do we really need to call the whole render method here? Why isn't this just done via a binding to the background of the SelectedSectionId?
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ScheduleGridViewModel.GridData) ||
-            e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
+        if (e.PropertyName == nameof(ScheduleGridViewModel.GridData))
             Render();
+        else if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
+            UpdateSelectionHighlight();
+    }
+
+    /// <summary>
+    /// Repaints entry-row selection styling without a full layout pass. Called when only
+    /// <see cref="ScheduleGridViewModel.SelectedSectionId"/> changes — the tile geometry
+    /// is unchanged, so only Background, FontWeight, and Foreground need updating.
+    /// </summary>
+    private void UpdateSelectionHighlight()
+    {
+        var selectedId = _vm?.SelectedSectionId;
+
+        foreach (var info in _entryRowRegistry)
+        {
+            bool isSelected = selectedId is not null && info.SectionId == selectedId;
+
+            info.Row.Background  = isSelected ? TileFillSelected : Brushes.Transparent;
+            info.Label.FontWeight = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
+            info.Label.Foreground = isSelected       ? TileBorderSelected
+                                  : info.IsOverlay    ? OverlayFrameBorder
+                                  : info.IsDeemphasized ? TileDeemphasizedText
+                                  : Brushes.Black;
+        }
     }
 
     private void Render()
@@ -164,6 +194,7 @@ public partial class ScheduleGridView : UserControl
         if (_canvas is null) return;
 
         _canvas.Children.Clear();
+        _entryRowRegistry.Clear();
 
         var data = _vm?.GridData ?? GridData.Empty;
         if (data.DayColumns.Count == 0) { ShowEmpty(); return; }
@@ -577,6 +608,18 @@ public partial class ScheduleGridView : UserControl
                     // The day number is the day-group index + 1, not the raw column index + 1.
                     int clickDay = (d / semCount) + 1;
                     var clickCtx = new TileClickContext(entryId, clickDay, tile.StartMinutes);
+                    var entryLabel = new TextBlock
+                    {
+                        Text            = labelText,
+                        FontSize        = 11,
+                        FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
+                        Foreground      = entrySelected        ? TileBorderSelected
+                                       : entry.IsOverlay       ? OverlayFrameBorder
+                                       : entry.IsDeemphasized  ? TileDeemphasizedText
+                                       : Brushes.Black,
+                        TextTrimming    = TextTrimming.CharacterEllipsis,
+                        TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
+                    };
                     var entryRow = new Border
                     {
                         Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
@@ -585,19 +628,13 @@ public partial class ScheduleGridView : UserControl
                         // Commitment tiles are display-only — no hand cursor.
                         Cursor       = entry.IsCommitment ? null : entryCursor,
                         Tag          = clickCtx,
-                        Child        = new TextBlock
-                        {
-                            Text            = labelText,
-                            FontSize        = 11,
-                            FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground      = entrySelected        ? TileBorderSelected
-                                           : entry.IsOverlay       ? OverlayFrameBorder
-                                           : entry.IsDeemphasized  ? TileDeemphasizedText
-                                           : Brushes.Black,
-                            TextTrimming    = TextTrimming.CharacterEllipsis,
-                            TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
-                        },
+                        Child        = entryLabel,
                     };
+
+                    // Register for lightweight selection repainting (avoids full Render() on selection change).
+                    if (!entry.IsCommitment)
+                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized));
+
                     entryRow.PointerPressed += (sender, e) =>
                     {
                         // Commitment tiles are display-only. They have no SectionId, so

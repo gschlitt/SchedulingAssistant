@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "created_at": "2026-03-22T19:25:12.907Z",
+  "lifetime": {
+    "total_tokens_estimated": 12147,
+    "total_reads": 2,
+    "total_writes": 4,
+    "total_sessions": 2,
+    "anatomy_hits": 0,
+    "anatomy_misses": 2,
+    "repeated_reads_blocked": 9,
+    "estimated_savings_vs_bare_cli": 99918
+  },
+  "sessions": [
+    {
+      "id": "session-2026-03-22-1230",
+      "started": "2026-03-22T19:30:37.352Z",
+      "ended": "2026-03-22T19:33:01.990Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 11102,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 150,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 379,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 35,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 481,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 11102,
+        "output_tokens_estimated": 1045,
+        "reads_count": 2,
+        "writes_count": 4,
+        "repeated_reads_blocked": 9,
+        "anatomy_lookups": 0
+      }
+    }
+  ],
+  "daemon_usage": [],
+  "waste_flags": [],
+  "optimization_report": {
+    "last_generated": null,
+    "patterns": []
+  }
+}
