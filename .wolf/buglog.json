@@ -16,6 +16,182 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-22T19:32:23.715Z"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-03-22T19:53:29.760Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "No early return/throw for edge case: start >= mins + 30 || end <= mins",
+      "fix": "Added guard clause: if (start >= mins + 30 || end <= mins)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T19:53:29.760Z"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-03-22T19:53:43.352Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "26 lines replaced/restructured",
+      "fix": "Rewrote 33→5 lines (26 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T19:53:43.352Z"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-03-22T20:03:39.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T20:03:39.908Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-03-22T20:54:38.603Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 20→27 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T20:54:38.603Z"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-03-22T20:56:37.516Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 29→43 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T20:56:37.516Z"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-03-22T21:01:08.406Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 27→36 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T21:01:08.406Z"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-03-22T21:08:48.742Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Behaviors/LostFocusCommandBehavior.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 45→55 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T21:08:48.742Z"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-03-22T21:15:05.432Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs",
+      "root_cause": "Condition was: if (sender is AutoCompleteBox acb)",
+      "fix": "Changed to: if (sender is AutoCompleteBox acb && e.NavigationMetho)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T21:15:05.432Z"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-03-22T21:21:58.663Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 52→69 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T21:21:58.663Z"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-03-22T21:44:51.132Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T21:44:51.132Z"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-03-22T21:49:52.770Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 15→36 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T21:49:52.770Z"
     }
   ]
 }

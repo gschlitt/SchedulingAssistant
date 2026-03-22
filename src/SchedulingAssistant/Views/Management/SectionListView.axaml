@@ -172,7 +172,7 @@
                                     CornerRadius="3">
 
                                     <!--
-                                        Columns: Day=80, Length=80, Start=80, Freq=90, MtgType=70, Room=80, ✕=24
+                                        Columns: Day=80, Start=80, Length=80, Freq=90, MtgType=70, Room=80, ✕=24
                                         Row 0: column headers. Row 1: controls. Row 2: custom-weeks input,
                                         shown only when Frequency="Custom". Row 2 occupies only col 3 so the
                                         Freq ComboBox (row 1, col 3) and the Weeks TextBox (row 2, col 3)
@@ -193,14 +193,14 @@
                                             Margin="2,0,2,1"
                                             FontSize="9"
                                             Foreground="{StaticResource TextMuted}"
-                                            Text="Length" />
+                                            Text="Start" />
                                         <TextBlock
                                             Grid.Row="0"
                                             Grid.Column="2"
                                             Margin="2,0,2,1"
                                             FontSize="9"
                                             Foreground="{StaticResource TextMuted}"
-                                            Text="Start" />
+                                            Text="Length" />
                                         <TextBlock
                                             Grid.Row="0"
                                             Grid.Column="3"
@@ -252,35 +252,48 @@
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
 
-                                        <!--  Length  -->
-                                        <ComboBox
+                                        <!--
+                                            Start — AutoCompleteBox with MinimumPrefixLength=0 and FilterMode=None
+                                            so the full preset list always appears in the popup (not filtered by
+                                            what the user is typing). Typed custom values are preserved and
+                                            committed on LostFocus via LostFocusCommandBehavior.
+                                        -->
+                                        <AutoCompleteBox
                                             Grid.Row="1"
                                             Grid.Column="1"
                                             Margin="2,0,2,0"
                                             Padding="3,1"
                                             HorizontalAlignment="Stretch"
+                                            b:LostFocusCommandBehavior.Command="{Binding CommitStartTimeCommand}"
+                                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                                            FilterMode="None"
                                             FontSize="11"
-                                            ItemsSource="{Binding AvailableBlockLengths}"
-                                            PlaceholderText="—"
-                                            SelectedItem="{Binding SelectedBlockLength}" />
+                                            ItemsSource="{Binding AllStartTimeStrings}"
+                                            MinimumPrefixLength="0"
+                                            Text="{Binding StartTimeText, Mode=TwoWay}"
+                                            ToolTip.Tip="{Binding StartTimeError}"
+                                            Watermark="HH:MM" />
 
-                                        <!--  Start  -->
-                                        <ComboBox
+                                        <!--
+                                            Length — same pattern. ItemsSource populated by RefreshBlockLengths()
+                                            after start time is committed; falls back to all known lengths for
+                                            custom start times so the dropdown is never empty.
+                                        -->
+                                        <AutoCompleteBox
                                             Grid.Row="1"
                                             Grid.Column="2"
                                             Margin="2,0,2,0"
                                             Padding="3,1"
                                             HorizontalAlignment="Stretch"
+                                            b:LostFocusCommandBehavior.Command="{Binding CommitBlockLengthCommand}"
+                                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                                            FilterMode="None"
                                             FontSize="11"
-                                            ItemsSource="{Binding AvailableStartTimes}"
-                                            PlaceholderText="—"
-                                            SelectedItem="{Binding SelectedStartTime}">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock FontSize="11" Text="{Binding Converter={StaticResource MinutesToTimeConverter}}" />
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
+                                            ItemsSource="{Binding AvailableBlockLengthStrings}"
+                                            MinimumPrefixLength="0"
+                                            Text="{Binding BlockLengthText, Mode=TwoWay}"
+                                            ToolTip.Tip="{Binding BlockLengthError}"
+                                            Watermark="hours" />
 
                                         <!--  Frequency  -->
                                         <ComboBox

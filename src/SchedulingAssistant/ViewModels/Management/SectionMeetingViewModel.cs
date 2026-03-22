@@ -1,6 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -25,28 +28,64 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <summary>True when the "Custom" frequency option is selected, causing the Weeks text field to appear.</summary>
     public bool IsCustomFrequency => SelectedFrequencyOption == "Custom";
 
-    // ── Existing fields ───────────────────────────────────────────────────────
+    // ── Schedule fields ───────────────────────────────────────────────────────
 
     [ObservableProperty] private int _selectedDay;
-    [ObservableProperty] private double? _selectedBlockLength;
+
+    /// <summary>
+    /// The committed start time in minutes from midnight. Set by <see cref="CommitStartTime"/>
+    /// when the user finishes entering a time. Also set directly (e.g., during pattern coupling).
+    /// </summary>
     [ObservableProperty] private int? _selectedStartTime;
-    [ObservableProperty] private ObservableCollection<int> _availableStartTimes = new();
+
+    /// <summary>
+    /// The committed block length in hours. Set by <see cref="CommitBlockLength"/>
+    /// when the user finishes entering a duration. Also set directly (e.g., during pattern coupling).
+    /// </summary>
+    [ObservableProperty] private double? _selectedBlockLength;
+
+    /// <summary>The raw text currently showing in the Start time field (e.g. "08:30").</summary>
+    [ObservableProperty] private string _startTimeText = "";
+
+    /// <summary>The raw text currently showing in the Length field (e.g. "1.5").</summary>
+    [ObservableProperty] private string _blockLengthText = "";
+
+    /// <summary>Validation error message for the Start field. Null when valid.</summary>
+    [ObservableProperty] private string? _startTimeError;
+
+    /// <summary>Validation error message for the Length field. Null when valid.</summary>
+    [ObservableProperty] private string? _blockLengthError;
+
     [ObservableProperty] private string? _selectedMeetingTypeId;
     [ObservableProperty] private string? _selectedRoomId;
 
     public ObservableCollection<DayOption> AvailableDays { get; }
-    public ObservableCollection<double> AvailableBlockLengths { get; }
     public ObservableCollection<SectionPropertyValue> MeetingTypes { get; }
     public ObservableCollection<Room> Rooms { get; }
 
+    /// <summary>
+    /// All distinct start times available across all block-length rows, formatted as "HH:MM".
+    /// Shown as suggestions in the Start AutoCompleteBox regardless of which block length
+    /// is selected — the user picks start time first, then sees corresponding lengths.
+    /// </summary>
+    public IReadOnlyList<string> AllStartTimeStrings { get; }
+
+    /// <summary>
+    /// Block lengths valid for the currently selected start time, formatted as decimal hours
+    /// (e.g. "1.5", "2", "3"). Populated by <see cref="RefreshBlockLengths"/> after the
+    /// start time is committed. Empty when no start time is set or none of the legal
+    /// start-time entries include the current start time.
+    /// </summary>
+    public ObservableCollection<string> AvailableBlockLengthStrings { get; } = new();
+
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
 
-    /// <param name="legalStartTimes">Academic-year legal start times used to populate the Start dropdown.</param>
+    /// <param name="legalStartTimes">Academic-year legal start times — used for both the start-time suggestion list and the reverse block-length lookup.</param>
     /// <param name="includeSaturday">Whether Saturday should appear as a day option.</param>
     /// <param name="meetingTypes">Available meeting type property values.</param>
     /// <param name="rooms">Available rooms for selection.</param>
     /// <param name="existing">If non-null, the form is populated from this existing schedule entry.</param>
-    /// <param name="defaultBlockLength">Pre-selected block length when adding a new meeting.</param>
+    /// <param name="defaultBlockLength">Preferred block length hint; ignored in new flow since start time must be chosen first.</param>
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
@@ -56,7 +95,16 @@ public partial class SectionMeetingViewModel : ViewModelBase
         double? defaultBlockLength = null)
     {
         _legalStartTimes = legalStartTimes;
-        AvailableBlockLengths = new ObservableCollection<double>(legalStartTimes.Select(l => l.BlockLength));
+
+        // Build the start-time suggestion list from ALL distinct start times across every
+        // block-length row, sorted chronologically.
+        AllStartTimeStrings = legalStartTimes
+            .SelectMany(l => l.StartTimes)
+            .Distinct()
+            .OrderBy(t => t)
+            .Select(FormatTime)
+            .ToList()
+            .AsReadOnly();
 
         var days = new List<DayOption>
         {
@@ -84,12 +132,19 @@ public partial class SectionMeetingViewModel : ViewModelBase
         if (existing != null)
         {
             _selectedDay = existing.Day;
-            double blockLengthHours = existing.DurationMinutes / 60.0;
-            _selectedBlockLength = AvailableBlockLengths.FirstOrDefault(b => Math.Abs(b - blockLengthHours) < 0.01);
-            RefreshStartTimes();
+
+            // Load start time first so RefreshBlockLengths produces the right preset list.
             _selectedStartTime = existing.StartMinutes;
+            _startTimeText     = FormatTime(existing.StartMinutes);
+            RefreshBlockLengths();
+
+            // Load block length — may be a custom value not in the preset list.
+            double blockLengthHours = existing.DurationMinutes / 60.0;
+            _selectedBlockLength = blockLengthHours;
+            _blockLengthText     = FormatBlockLength(blockLengthHours);
+
             _selectedMeetingTypeId = existing.MeetingTypeId ?? "";
-            _selectedRoomId = existing.RoomId ?? "";
+            _selectedRoomId        = existing.RoomId ?? "";
             LoadFrequency(existing.Frequency);
         }
         else
@@ -99,17 +154,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
             // during ComboBox initialization does not fire a spurious PropertyChanged — which
             // would otherwise consume the pattern-coupling slot before the user picks anything.
             _selectedMeetingTypeId = null;
-            _selectedRoomId = "";
+            _selectedRoomId        = "";
             _selectedFrequencyOption = "Weekly";
-
-            // Apply preferred block length if set and available
-            if (defaultBlockLength.HasValue
-                && AvailableBlockLengths.Any(b => Math.Abs(b - defaultBlockLength.Value) < 0.01))
-            {
-                _selectedBlockLength = defaultBlockLength;
-                RefreshStartTimes();
-                // Leave SelectedStartTime unset — user still picks the time
-            }
+            // Start time and block length are left empty; the user picks start time first.
         }
     }
 
@@ -198,13 +245,56 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     partial void OnCustomWeeksTextChanged(string value) => ValidateCustomWeeks();
 
+    /// <summary>
+    /// When the committed start time changes (via user commit or pattern propagation):
+    /// keeps <see cref="StartTimeText"/> in sync, refreshes the block-length suggestion list,
+    /// and clears the block length if it was a preset that no longer applies.
+    /// </summary>
+    partial void OnSelectedStartTimeChanged(int? value)
+    {
+        // Keep the text field in sync so that pattern-propagated values are visible.
+        _startTimeText = value.HasValue ? FormatTime(value.Value) : "";
+        OnPropertyChanged(nameof(StartTimeText));
+
+        StartTimeError = null;
+        RefreshBlockLengths();
+
+        // Clear block length when start time changes so the user re-confirms the length
+        // for the new start time. Custom values are cleared too — re-enter if needed.
+        if (SelectedBlockLength.HasValue)
+            SelectedBlockLength = null;
+    }
+
+    /// <summary>
+    /// When the committed block length changes (via user commit or pattern propagation):
+    /// keeps <see cref="BlockLengthText"/> in sync.
+    /// </summary>
     partial void OnSelectedBlockLengthChanged(double? value)
     {
-        RefreshStartTimes();
-        // Clear start time if it is no longer valid for the new block length.
-        // Do not auto-select — the user picks the start time explicitly.
-        if (SelectedStartTime.HasValue && !AvailableStartTimes.Contains(SelectedStartTime.Value))
-            SelectedStartTime = null;
+        // Keep the text field in sync so that pattern-propagated values are visible.
+        _blockLengthText = value.HasValue ? FormatBlockLength(value.Value) : "";
+        OnPropertyChanged(nameof(BlockLengthText));
+
+        BlockLengthError = null;
+    }
+
+    /// <summary>
+    /// When the start-time text changes, auto-commits if the text exactly matches a preset.
+    /// This provides immediate feedback when the user selects from the suggestion dropdown.
+    /// </summary>
+    partial void OnStartTimeTextChanged(string value)
+    {
+        if (AllStartTimeStrings.Contains(value))
+            CommitStartTime();
+    }
+
+    /// <summary>
+    /// When the block-length text changes, auto-commits if the text exactly matches a preset.
+    /// </summary>
+    partial void OnBlockLengthTextChanged(string value)
+    {
+        if (AvailableBlockLengthStrings.Contains(value))
+            CommitBlockLength();
     }
 
     // ── Validation ────────────────────────────────────────────────────────────
@@ -245,35 +335,201 @@ public partial class SectionMeetingViewModel : ViewModelBase
         CustomWeeksError = null;
     }
 
-    // ── Start time helpers ────────────────────────────────────────────────────
+    // ── Commit commands ───────────────────────────────────────────────────────
 
-    private void RefreshStartTimes()
+    /// <summary>
+    /// Parses and validates <see cref="StartTimeText"/>, then sets <see cref="SelectedStartTime"/>
+    /// if the value is valid. Called on LostFocus from the Start AutoCompleteBox and when
+    /// the text exactly matches a preset suggestion.
+    /// The time must fall within the configured grid range
+    /// (<see cref="AppSettings.GridStartMinutes"/>–<see cref="AppSettings.GridEndMinutes"/>).
+    /// </summary>
+    [RelayCommand]
+    public void CommitStartTime()
     {
-        if (SelectedBlockLength is null) { AvailableStartTimes = new(); return; }
-        var legal = _legalStartTimes.FirstOrDefault(l => Math.Abs(l.BlockLength - SelectedBlockLength.Value) < 0.01);
-        AvailableStartTimes = legal is null
-            ? new ObservableCollection<int>()
-            : new ObservableCollection<int>(legal.StartTimes);
+        if (string.IsNullOrWhiteSpace(StartTimeText))
+        {
+            StartTimeError = null;
+            SelectedStartTime = null;
+            return;
+        }
+
+        var parsed = ParseTime(StartTimeText);
+        if (parsed is null)
+        {
+            StartTimeError = "Enter a time like 09:15";
+            return;
+        }
+
+        int gridStart = AppSettings.Current.GridStartMinutes;
+        int gridEnd   = AppSettings.Current.GridEndMinutes;
+        if (parsed.Value < gridStart || parsed.Value >= gridEnd)
+        {
+            StartTimeError =
+                $"Must be between {FormatTime(gridStart)} and {FormatTime(gridEnd - 1)}";
+            return;
+        }
+
+        StartTimeError = null;
+        SelectedStartTime = parsed.Value;
+    }
+
+    /// <summary>
+    /// Parses and validates <see cref="BlockLengthText"/>, then sets <see cref="SelectedBlockLength"/>
+    /// if the value is valid. Called on LostFocus from the Length AutoCompleteBox and when
+    /// the text exactly matches a preset suggestion.
+    /// Validates that the meeting ends within the configured grid range.
+    /// </summary>
+    [RelayCommand]
+    public void CommitBlockLength()
+    {
+        if (string.IsNullOrWhiteSpace(BlockLengthText))
+        {
+            BlockLengthError = null;
+            SelectedBlockLength = null;
+            return;
+        }
+
+        var parsed = ParseBlockLength(BlockLengthText);
+        if (parsed is null || parsed.Value <= 0)
+        {
+            BlockLengthError = "Enter a duration like 1.5 or 1:30";
+            return;
+        }
+
+        // Validate that the meeting ends within the grid.
+        if (SelectedStartTime.HasValue)
+        {
+            int endMinutes = SelectedStartTime.Value + (int)Math.Round(parsed.Value * 60);
+            int gridEnd    = AppSettings.Current.GridEndMinutes;
+            if (endMinutes > gridEnd)
+            {
+                BlockLengthError =
+                    $"Meeting would end after {FormatTime(gridEnd)}";
+                return;
+            }
+        }
+
+        BlockLengthError = null;
+        SelectedBlockLength = parsed.Value;
+    }
+
+    // ── Block-length refresh (reverse lookup) ─────────────────────────────────
+
+    /// <summary>
+    /// Rebuilds <see cref="AvailableBlockLengthStrings"/> to contain every block length for
+    /// which the currently selected start time is a legal start. This is the reverse of the
+    /// old flow (pick length → see valid starts); now the user picks start first and sees
+    /// which lengths are available.
+    /// When the chosen start time is not in the table (e.g. a custom time like 09:15), falls
+    /// back to showing every known block length as suggestions so the dropdown is never empty.
+    /// </summary>
+    private void RefreshBlockLengths()
+    {
+        AvailableBlockLengthStrings.Clear();
+        if (SelectedStartTime is null) return;
+
+        var matched = _legalStartTimes
+            .Where(l => l.StartTimes.Contains(SelectedStartTime.Value))
+            .Select(l => l.BlockLength)
+            .OrderBy(b => b)
+            .ToList();
+
+        // Fall back to all known block lengths when none match the custom start time.
+        var lengths = matched.Count > 0
+            ? matched
+            : _legalStartTimes.Select(l => l.BlockLength).Distinct().OrderBy(b => b).ToList();
+
+        foreach (var s in lengths.Select(FormatBlockLength))
+            AvailableBlockLengthStrings.Add(s);
+    }
+
+    // ── Format / parse helpers ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Formats minutes-from-midnight as "HH:MM" (e.g. 510 → "08:30").
+    /// </summary>
+    /// <param name="minutes">Time in minutes from midnight.</param>
+    internal static string FormatTime(int minutes) =>
+        $"{minutes / 60:D2}:{minutes % 60:D2}";
+
+    /// <summary>
+    /// Formats a block length in hours as a compact decimal string (e.g. 1.5 → "1.5", 2.0 → "2").
+    /// Uses the invariant culture so the decimal separator is always ".".
+    /// </summary>
+    /// <param name="hours">Block length in hours.</param>
+    internal static string FormatBlockLength(double hours) =>
+        hours.ToString("G", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Parses a time string in "H:MM" or "HH:MM" format to minutes from midnight.
+    /// Returns null if the string cannot be parsed or represents an invalid time.
+    /// </summary>
+    /// <param name="text">The input string to parse.</param>
+    /// <returns>Minutes from midnight, or null if parsing fails.</returns>
+    internal static int? ParseTime(string text)
+    {
+        var parts = text.Trim().Split(':');
+        if (parts.Length != 2) return null;
+        if (!int.TryParse(parts[0].Trim(), out int h)) return null;
+        if (!int.TryParse(parts[1].Trim(), out int m)) return null;
+        if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+        return h * 60 + m;
+    }
+
+    /// <summary>
+    /// Parses a block-length string to hours. Accepts:
+    /// <list type="bullet">
+    ///   <item><term>Decimal hours</term><description>"1.5" → 1.5</description></item>
+    ///   <item><term>H:MM format</term><description>"1:30" → 1.5</description></item>
+    /// </list>
+    /// Returns null if the string cannot be parsed or is non-positive.
+    /// </summary>
+    /// <param name="text">The input string to parse.</param>
+    /// <returns>Block length in hours, or null if parsing fails.</returns>
+    internal static double? ParseBlockLength(string text)
+    {
+        text = text.Trim();
+        if (string.IsNullOrEmpty(text)) return null;
+
+        // H:MM format: "1:30" → 1.5h
+        if (text.Contains(':'))
+        {
+            var parts = text.Split(':');
+            if (parts.Length == 2
+                && int.TryParse(parts[0].Trim(), out int h)
+                && int.TryParse(parts[1].Trim(), out int m)
+                && h >= 0 && m >= 0 && m < 60)
+                return h + m / 60.0;
+            return null;
+        }
+
+        // Decimal hours: "1.5" → 1.5h
+        if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out double val)
+            && val > 0)
+            return val;
+
+        return null;
     }
 
     // ── Model conversion ──────────────────────────────────────────────────────
 
     /// <summary>
     /// Converts the form state back to a <see cref="SectionDaySchedule"/> model.
-    /// Returns null if the block length or start time have not been selected yet.
+    /// Returns null if the start time or block length have not been committed yet.
     /// </summary>
     /// <returns>A new <see cref="SectionDaySchedule"/>, or null if incomplete.</returns>
     public SectionDaySchedule? ToSchedule()
     {
-        if (SelectedBlockLength is null || SelectedStartTime is null) return null;
+        if (SelectedStartTime is null || SelectedBlockLength is null) return null;
         return new SectionDaySchedule
         {
-            Day           = SelectedDay,
-            StartMinutes  = SelectedStartTime.Value,
-            DurationMinutes = (int)(SelectedBlockLength.Value * 60),
-            MeetingTypeId = string.IsNullOrEmpty(SelectedMeetingTypeId) ? null : SelectedMeetingTypeId,
-            RoomId        = string.IsNullOrEmpty(SelectedRoomId)        ? null : SelectedRoomId,
-            Frequency     = BuildStoredFrequency(),
+            Day             = SelectedDay,
+            StartMinutes    = SelectedStartTime.Value,
+            DurationMinutes = (int)Math.Round(SelectedBlockLength.Value * 60),
+            MeetingTypeId   = string.IsNullOrEmpty(SelectedMeetingTypeId) ? null : SelectedMeetingTypeId,
+            RoomId          = string.IsNullOrEmpty(SelectedRoomId)        ? null : SelectedRoomId,
+            Frequency       = BuildStoredFrequency(),
         };
     }
 }

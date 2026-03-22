@@ -429,38 +429,10 @@ public partial class ScheduleGridView : UserControl
             dayXOffsets[d + 1] = dayXOffsets[d] + dayColWidths[d];
 
         // ── Phase 3: Calculate cumulative gridline offsets ───────────────────
-        var    gridlineYOffsets  = new Dictionary<int, double>();
-        double cumulativeOffset  = 0;
-
-        for (int mins = data.FirstRowMinutes; mins <= data.LastRowMinutes; mins += 30)
-        {
-            gridlineYOffsets[mins] = cumulativeOffset;
-
-            // For this half-hour slot, find the maximum expansion needed.
-            double expansionThisSlot = 0;
-
-            foreach (var (_, tile, timeBasedH) in allTiles)
-            {
-                // Check if this tile spans this half-hour slot.
-                if (tile.StartMinutes <= mins && mins < tile.EndMinutes)
-                {
-                    var (_, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
-
-                    if (actualH > timeBasedH)
-                    {
-                        // Distribute this tile's expansion proportionally across its slots.
-                        int    tileSpanMinutes  = tile.EndMinutes - tile.StartMinutes;
-                        double expansionFraction = 1.0 / (tileSpanMinutes / 30.0);
-                        double tileExpansion     = actualH - timeBasedH;
-                        double slotExpansion     = tileExpansion * expansionFraction;
-
-                        expansionThisSlot = Math.Max(expansionThisSlot, slotExpansion);
-                    }
-                }
-            }
-
-            cumulativeOffset += expansionThisSlot;
-        }
+        // Delegates to the static method on ScheduleGridViewModel so the algorithm
+        // can be unit-tested independently of the Avalonia canvas.
+        var gridlineYOffsets = ScheduleGridViewModel.ComputeGridlineOffsets(
+            tileHeightMap, data.FirstRowMinutes, data.LastRowMinutes);
 
         // ── Phase 4: Redraw with adjusted height accounting for expansions ───
         double totalHeight = effectiveHeaderHeight + TimeToY(data.LastRowMinutes, data.FirstRowMinutes)

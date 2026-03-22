@@ -1,7 +1,12 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-22T19:36:43.519Z
-> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-22T21:49:52.718Z
+> Files: 517 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
+
+- `institution-config-plan.md` — Goal (~810 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~4447 tok)
 
 ## ./
 
@@ -558,10 +563,14 @@
 
 - `manual.html` — Scheduling Assistant — User Manual (~10841 tok)
 
+## src/SchedulingAssistant.Tests/
+
+- `GridlineOffsetTests.cs` — Unit tests for <see cref="ScheduleGridViewModel.ComputeGridlineOffsets"/>. The method computes a cum (~6459 tok)
+
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1038 tok)
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices so it can be used during startup error handling. (~2975 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~2980 tok)
 - `app.manifest` (~250 tok)
 - `AppColors.axaml` (~2155 tok)
 - `AssemblyInfo.cs` — Class: AssemblyInfo (~52 tok)
@@ -578,7 +587,9 @@
 - `ConditionalColumnWidthBehavior.cs` — Attached behavior for Grid controls that toggles a column's width between two values based on a boolean condition. When the condition is true, the ... (~1432 tok)
 - `DismissBehaviors.cs` — Attached behavior that executes a command when the Escape key is pressed on a control. Commonly used on a Window or top-level container to dismiss ... (~1110 tok)
 - `DoubleTapCommandBehavior.cs` — Attached behavior that executes a command when a control is double-tapped. Commonly used on ListBox to trigger an edit action when an item is doubl... (~677 tok)
+- `LostFocusCommandBehavior.cs` — Attached behavior that executes a command when focus leaves the control it is attached to. Unlike <s (~774 tok)
 - `LostFocusForwardBehavior.cs` — Attached behavior that listens for the bubbling LostFocus event from any descendant whose Name matches a specified target, and executes a command w... (~1064 tok)
+- `OpenDropDownOnFocusBehavior.cs` — Attached behavior for <see cref="AutoCompleteBox"/> that provides two UX improvements needed when th (~1371 tok)
 - `RightClickCommandBehavior.cs` — Attached behavior that executes a command when the user right-clicks on a control. The command parameter is the PointerPressedEventArgs, which allo... (~606 tok)
 - `SelectionCommandBehavior.cs` — Attached behavior for ListBox controls that converts a single-select action into a command invocation. When an item is selected, the behavior: 1. E... (~1125 tok)
 
@@ -649,9 +660,27 @@
 - `welcome.html` — Welcome — TermPoint Help (~906 tok)
 - `workload-assignment.html` — Make Workload Easy — TermPoint Help (~1413 tok)
 
+## src/SchedulingAssistant/Services/
+
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~1989 tok)
+
+## src/SchedulingAssistant/ViewModels/GridView/
+
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2343 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~15983 tok)
+
+## src/SchedulingAssistant/ViewModels/Management/
+
+- `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1532 tok)
+- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~5830 tok)
+
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11308 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11008 tok)
+
+## src/SchedulingAssistant/Views/Management/
+
+- `SectionListView.axaml` (~18939 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

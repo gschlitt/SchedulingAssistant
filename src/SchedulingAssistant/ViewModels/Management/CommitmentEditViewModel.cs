@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -149,7 +150,12 @@ public partial class CommitmentEditViewModel : ViewModelBase
     private static IReadOnlyList<TimeOption> BuildTimeOptions()
     {
         var options = new List<TimeOption>();
-        for (int minutes = 480; minutes <= 1320; minutes += 30)  // 08:00–22:00
+        // Use the configured grid time range, clamped to start no later than 08:00 so that
+        // common early-morning commitments (e.g. 08:00 office hours) are always available
+        // even if the grid starts at 08:30.
+        int start = Math.Min(AppSettings.Current.GridStartMinutes, 8 * 60);
+        int end   = AppSettings.Current.GridEndMinutes;
+        for (int minutes = start; minutes <= end; minutes += 30)
         {
             var hours = minutes / 60;
             var mins = minutes % 60;

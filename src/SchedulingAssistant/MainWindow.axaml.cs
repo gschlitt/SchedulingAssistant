@@ -86,10 +86,24 @@ public partial class MainWindow : Window
         // Dispose the DI container, which closes the SQLite connection cleanly.
         (App.Services as IDisposable)?.Dispose();
     }
-
+    //debug
+    
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+
+        //debug
+        AddHandler(InputElement.GotFocusEvent, (sender, args) =>
+        {
+            var el = args.Source;
+            System.Diagnostics.Debug.WriteLine(
+                $"FOCUS → {el?.GetType().Name}  Name={(el as Control)?.Name}  DataContext={(el as Control)?.DataContext?.GetType().Name}");
+        }, RoutingStrategies.Bubble);
+
+
+
+
+
         try
         {
             var splash = new SplashScreen();
