@@ -3,18 +3,13 @@
 
 Code should clean. Prefer building reusable code, even if it takes more time, rather than repeating yourself.
 
-Commenting should be on the liberal side, if anything. This code base may be passed on to other developers who may not be directly familiar with C# or Avalonia (but who are experts in their own 
-coding domains)
-
-Methods should be commented, explain the 
-purpose, its parameters, return values, and any exceptions it might throw.
+Commenting should be on the liberal side, if anything. When in doubt, comment. Methods should be commented, explain the purpose, its parameters, return values, and any exceptions it might throw.
 
 Uses /// for single-line XML documentation comments that a documentation generator can process.
 
 Any fonts sizes, weights, and colors used should not be hardcoded, but refer back to appcolors.axaml or app.axaml
 
-Strongly prefer MVVM style with minimal code-behinds. ViewModels should be about business logic and know and say nothing about the view. 
-Prefer attached behaviors to code-behinds, unless it is unnatural and too complex.
+Strongly prefer MVVM style with minimal code-behinds.  Prefer attached behaviors to code-behinds, unless it is unnatural and too complex.
 
 
 # SchedulingAssistant — Project Decisions
@@ -53,7 +48,8 @@ A scheduling **visualization and information management tool** for university ad
 - No conflict detection required
 
 ## Schedule Grid Design Principles
-- **Conserve vertical real estate**: pack as much information as possible onto a single line within each tile. Course code, section code, and instructor initials are all written on one line (e.g. "HIST101 A  JRS"). Never use a separate line for initials if it can be avoided.
+- **Conserve real estate**: pack as much information as possible onto a single line within each tile. Course code, section code, and instructor initials are all written on one line (e.g. "HIST101 A  JRS").
+ Never use a separate line for initials if it can be avoided.
 - Co-scheduled sections (identical start time and duration) share one tile, with entries stacked vertically and separated by a thin rule.
 - Overlapping sections (different time spans) appear side-by-side in the same day column.
 

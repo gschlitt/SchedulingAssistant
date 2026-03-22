@@ -14,12 +14,14 @@ namespace SchedulingAssistant.Views.GridView;
 public partial class ScheduleGridView : UserControl
 {
     private record TileClickContext(string SectionId, int Day, int StartMinutes);
+    
     // Layout constants
     private const double TimeGutterWidth  = 52;
     private const double DayHeaderHeight  = 28;   // height of the day-name row
     private const double SemesterBarHeight = 5;   // thin colored bar below day name in multi-semester mode
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double TilePadding      = 3;
+    
     /// <summary>
     /// Padding added to each side of a day header's text when computing the minimum
     /// width of a day column. The column will be at least (headerTextWidth + 2 × this)
@@ -41,11 +43,11 @@ public partial class ScheduleGridView : UserControl
     /// </summary>
     private const double TileTextOverhead = 28;
 
+    
     // Resources resolved from App.axaml at first render (after resources are loaded).
     private static IBrush Res(string key) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
             ? b : Brushes.Transparent;
-
     private static double FontSizeFromResource(string key) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
             ? d : 12;
@@ -61,6 +63,7 @@ public partial class ScheduleGridView : UserControl
     private static IBrush HeaderFill         => Res("ChromeBackground");
     private static IBrush HeaderBorder       => Res("ChromeBorder");
     private static IBrush GutterBg           => Res("GridGutterBackground");
+
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
@@ -92,10 +95,10 @@ public partial class ScheduleGridView : UserControl
                 }
             };
         }
-
         UpdateZoomLabel();
-    }
+    }   
 
+    
     private void UpdateZoomTransform()
     {
         if (_zoomContainer?.RenderTransform is ScaleTransform scale)
@@ -133,6 +136,7 @@ public partial class ScheduleGridView : UserControl
             label.Text = $"{(int)(_zoomLevel * 100)}%";
     }
 
+
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm is not null)
@@ -146,6 +150,7 @@ public partial class ScheduleGridView : UserControl
         Render();
     }
 
+    //QUERY Do we really need to call the whole render method here? Why isn't this just done via a binding to the background of the SelectedSectionId?
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ScheduleGridViewModel.GridData) ||
@@ -172,6 +177,9 @@ public partial class ScheduleGridView : UserControl
         // effectiveHeaderHeight is the combined height of both the day-name row and the bar
         // (equals DayHeaderHeight in single-semester mode where no bar is drawn).
         double effectiveHeaderHeight = DayHeaderHeight + (data.IsMultiSemester ? SemesterBarHeight : 0);
+
+        
+        //QUERY: Function of tileHeightMap
 
         // ── Phase 1: Measure tile content (heights and per-tile label widths) ─
         // tileMaxTextWidths maps (flatColumn, startMinutes, endMinutes) → the widest

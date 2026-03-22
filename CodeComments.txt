@@ -21,8 +21,20 @@ Width of courses menu should be dynamic.
 
 Agenda.
 
-Backup! (to csv and alternate db?) 
--sort on csv
+Section prefix wizard:
+
+Setting you commonly used section prefixes can save a lot of time. 
+
+Typically sections of a course mention  The Course + A prefix + An instance number of letter
+
+Examples of two different sections of the same course
+PSYC 101 1   PSYC 101 2
+PSYC 101 AB1  PSYC 101 AB2 
+PSYC 101 TUT-1 PSYC 101 TUT-2 (two different tutorial sections)
+PSYC 101 HAM-A  PSYC 101 HAM-B (two different sections on the Hamilton campus)
+
+If your institution's patterns fall within these scopes 
+PSYC 101    PREFIX    VARIABLE (numeric or alphabetic)
 
 Improve human-readability of db.
 
