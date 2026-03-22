@@ -127,6 +127,16 @@ public record GridDayColumn(
     IReadOnlyList<GridTile> Tiles,
     string SemesterName = "");
 
+/// <summary>
+/// Data for a tooltip shown when the user hovers over a tile on the schedule grid.
+/// <para>
+/// <see cref="Lines"/> holds one string per display line (e.g. time range, semester name).
+/// Future fields can be appended here as the tooltip grows; the renderer iterates Lines so
+/// new entries appear automatically without touching the view.
+/// </para>
+/// </summary>
+public record TileTooltip(IReadOnlyList<string> Lines);
+
 /// <summary>All data needed by the view to render the schedule grid.</summary>
 public record GridData(
     /// <summary>Start of the visible time range, snapped to the half-hour at or before the earliest start.</summary>

@@ -92,18 +92,6 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
 
-        //debug
-        AddHandler(InputElement.GotFocusEvent, (sender, args) =>
-        {
-            var el = args.Source;
-            System.Diagnostics.Debug.WriteLine(
-                $"FOCUS → {el?.GetType().Name}  Name={(el as Control)?.Name}  DataContext={(el as Control)?.DataContext?.GetType().Name}");
-        }, RoutingStrategies.Bubble);
-
-
-
-
-
         try
         {
             var splash = new SplashScreen();

@@ -357,7 +357,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
         var parsed = ParseTime(StartTimeText);
         if (parsed is null)
         {
-            StartTimeError = "Enter a time like 09:15";
+            StartTimeError = "Enter a time like 0915";
             return;
         }
 
@@ -447,11 +447,12 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // ── Format / parse helpers ────────────────────────────────────────────────
 
     /// <summary>
-    /// Formats minutes-from-midnight as "HH:MM" (e.g. 510 → "08:30").
+    /// Formats minutes-from-midnight as four-digit military time (e.g. 510 → "0830").
+    /// No colon separator — consistent with the app-wide military time convention.
     /// </summary>
     /// <param name="minutes">Time in minutes from midnight.</param>
     internal static string FormatTime(int minutes) =>
-        $"{minutes / 60:D2}:{minutes % 60:D2}";
+        $"{minutes / 60:D2}{minutes % 60:D2}";
 
     /// <summary>
     /// Formats a block length in hours as a compact decimal string (e.g. 1.5 → "1.5", 2.0 → "2").
@@ -462,18 +463,21 @@ public partial class SectionMeetingViewModel : ViewModelBase
         hours.ToString("G", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Parses a time string in "H:MM" or "HH:MM" format to minutes from midnight.
+    /// Parses a military-time string to minutes from midnight.
+    /// Accepts HHMM with no separator (e.g. "0830", "830", "1230").
+    /// The last two digits are always minutes; preceding digits are hours.
     /// Returns null if the string cannot be parsed or represents an invalid time.
     /// </summary>
-    /// <param name="text">The input string to parse.</param>
+    /// <param name="text">The input string to parse (e.g. "0830" or "830").</param>
     /// <returns>Minutes from midnight, or null if parsing fails.</returns>
     internal static int? ParseTime(string text)
     {
-        var parts = text.Trim().Split(':');
-        if (parts.Length != 2) return null;
-        if (!int.TryParse(parts[0].Trim(), out int h)) return null;
-        if (!int.TryParse(parts[1].Trim(), out int m)) return null;
-        if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+        text = text.Trim();
+        if (string.IsNullOrEmpty(text)) return null;
+        if (!int.TryParse(text, out int hhmm) || hhmm < 0) return null;
+        int h = hhmm / 100;
+        int m = hhmm % 100;
+        if (h > 23 || m > 59) return null;
         return h * 60 + m;
     }
 

@@ -272,7 +272,7 @@
                                             MinimumPrefixLength="0"
                                             Text="{Binding StartTimeText, Mode=TwoWay}"
                                             ToolTip.Tip="{Binding StartTimeError}"
-                                            Watermark="HH:MM" />
+                                            Watermark="HHMM" />
 
                                         <!--
                                             Length — same pattern. ItemsSource populated by RefreshBlockLengths()

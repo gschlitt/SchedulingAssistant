@@ -438,6 +438,20 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// A tuple <c>(Label, Initials)</c> where Label is the tile heading line and
     /// Initials is the instructor text appended after it on the same line.
     /// </returns>
+    /// <summary>
+    /// Builds the tooltip data for a grid tile.
+    /// The first line is always the time range (e.g. "1015-1145").
+    /// Additional lines can be appended here in the future without changing the view.
+    /// </summary>
+    /// <param name="tile">The tile whose tooltip is being built.</param>
+    /// <returns>A <see cref="TileTooltip"/> whose <c>Lines</c> are ready for display.</returns>
+    internal static TileTooltip BuildTileTooltip(GridTile tile)
+    {
+        static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
+        var lines = new List<string> { $"{Fmt(tile.StartMinutes)}-{Fmt(tile.EndMinutes)}" };
+        return new TileTooltip(lines);
+    }
+
     internal static (string Label, string Initials) BuildSectionLabel(
         Section section,
         IReadOnlyDictionary<string, Course> courses,

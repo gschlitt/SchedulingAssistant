@@ -699,6 +699,9 @@ public partial class ScheduleGridView : UserControl
                     };
                 }
 
+                ToolTip.SetTip(border, BuildTileTooltipContent(
+                    ScheduleGridViewModel.BuildTileTooltip(tile)));
+
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, adjustedTileY);
                 _canvas.Children.Add(border);
@@ -734,6 +737,38 @@ public partial class ScheduleGridView : UserControl
         using var bitmap = new RenderTargetBitmap(pixelSize, dpi);
         bitmap.Render(_canvas);
         bitmap.Save(outputPath);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="TileTooltip"/> into a <see cref="ToolTip"/> instance suitable
+    /// for <see cref="ToolTip.SetTip"/>. Passing a <see cref="ToolTip"/> directly (rather
+    /// than arbitrary content) lets us own the background and padding — otherwise Avalonia
+    /// wraps the content in its own default white-background ToolTip.
+    /// </summary>
+    private static ToolTip BuildTileTooltipContent(TileTooltip tooltip)
+    {
+        object content;
+        if (tooltip.Lines.Count == 1)
+        {
+            content = new TextBlock { Text = tooltip.Lines[0] };
+        }
+        else
+        {
+            var panel = new StackPanel { Spacing = 2 };
+            foreach (var line in tooltip.Lines)
+                panel.Children.Add(new TextBlock { Text = line });
+            content = panel;
+        }
+
+        return new ToolTip
+        {
+            Background      = TileFill,
+            BorderBrush     = TileBorder,
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(3),
+            Padding         = new Thickness(6, 4),
+            Content         = content,
+        };
     }
 
     private static double TimeToY(int minutes, int firstRowMinutes) =>

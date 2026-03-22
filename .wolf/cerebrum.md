@@ -8,6 +8,8 @@
 
 <!-- How the user likes things done. Code style, tools, patterns, communication. -->
 
+- **Military time throughout**: All time displays use HHMM with no colon separator (e.g. "0830", "1230"). `FormatTime(int minutes)` must output `$"{h:D2}{m:D2}"`. `ParseTime(string)` accepts HHMM digits only: `h = hhmm / 100`, `m = hhmm % 100`. Watermarks and error hints use "HHMM" and "0915" style examples. Apply this to every new or modified time-display context.
+
 ## Key Learnings
 
 - **Project:** SchedulingAssistant
