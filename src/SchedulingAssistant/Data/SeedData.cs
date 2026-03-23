@@ -31,70 +31,33 @@ public static class SeedData
     }
 
     /// <summary>
-    /// Seeds the default section prefixes when the SectionPrefixes table is empty.
-    /// Creates the associated campuses (Abbotsford, Chilliwack) in SectionPropertyValues
-    /// if they do not already exist, then inserts the four default prefix records:
-    /// AB → Abbotsford, A# → Abbotsford, CH → Chilliwack, C# → Chilliwack.
-    /// Uses INSERT OR IGNORE so it is safe to call even if rows already exist.
+    /// No-op: section prefix seeding has been removed. Institutions configure their own
+    /// prefixes (and campuses) through the Settings flyout. This method is kept as a
+    /// placeholder so the call-site in <see cref="EnsureSeeded"/> does not need changing.
     /// </summary>
-    /// <param name="conn">Open SQLite connection.</param>
-    private static void EnsureDefaultSectionPrefixes(DbConnection conn)
-    {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM SectionPrefixes";
-        if (Convert.ToInt32(cmd.ExecuteScalar()) > 0)
-            return; // already seeded
-
-        var abbotsfordId = FindOrCreateCampus(conn, "Abbotsford");
-        var chilliwackId = FindOrCreateCampus(conn, "Chilliwack");
-
-        (string PrefixText, string CampusId)[] defaults =
-        [
-            ("AB", abbotsfordId),
-            ("A#", abbotsfordId),
-            ("CH", chilliwackId),
-            ("C#", chilliwackId),
-        ];
-
-        cmd.CommandText =
-            "INSERT OR IGNORE INTO SectionPrefixes (id, prefix, data) VALUES ($id, $prefix, $data)";
-        var idParam     = cmd.CreateParameter(); idParam.ParameterName     = "$id";     cmd.Parameters.Add(idParam);
-        var prefixParam = cmd.CreateParameter(); prefixParam.ParameterName = "$prefix"; cmd.Parameters.Add(prefixParam);
-        var dataParam   = cmd.CreateParameter(); dataParam.ParameterName   = "$data";   cmd.Parameters.Add(dataParam);
-
-        foreach (var (prefixText, campusId) in defaults)
-        {
-            var sp = new SectionPrefix { Prefix = prefixText, CampusId = campusId };
-            idParam.Value     = sp.Id;
-            prefixParam.Value = sp.Prefix;
-            dataParam.Value   = JsonHelpers.Serialize(sp);
-            cmd.ExecuteNonQuery();
-        }
-    }
+    private static void EnsureDefaultSectionPrefixes(DbConnection conn) { }
 
     /// <summary>
-    /// Finds a campus in SectionPropertyValues by name (case-insensitive) and returns its ID.
+    /// Finds a campus in the <c>Campuses</c> table by name (case-insensitive) and returns its ID.
     /// If no matching campus exists, a new one is inserted and its new ID is returned.
     /// </summary>
     /// <param name="conn">Open SQLite connection.</param>
-    /// <param name="name">Campus name to find or create (e.g. "Abbotsford").</param>
+    /// <param name="name">Campus name to find or create.</param>
     /// <returns>The ID of the existing or newly created campus record.</returns>
-    private static string FindOrCreateCampus(DbConnection conn, string name)
+    public static string FindOrCreateCampus(DbConnection conn, string name)
     {
         using var findCmd = conn.CreateCommand();
         findCmd.CommandText =
-            "SELECT id FROM SectionPropertyValues " +
-            "WHERE type = 'campus' AND LOWER(json_extract(data, '$.name')) = LOWER($name)";
+            "SELECT id FROM Campuses WHERE LOWER(json_extract(data, '$.Name')) = LOWER($name)";
         findCmd.AddParam("$name", name);
         var existing = findCmd.ExecuteScalar() as string;
         if (existing is not null)
             return existing;
 
-        var campus = new SectionPropertyValue { Name = name };
+        var campus = new SchedulingAssistant.Models.Campus { Name = name };
         using var insertCmd = conn.CreateCommand();
         insertCmd.CommandText =
-            "INSERT INTO SectionPropertyValues (id, type, name, data) " +
-            "VALUES ($id, 'campus', $name, $data)";
+            "INSERT INTO Campuses (id, name, data) VALUES ($id, $name, $data)";
         insertCmd.AddParam("$id",   campus.Id);
         insertCmd.AddParam("$name", campus.Name);
         insertCmd.AddParam("$data", JsonHelpers.Serialize(campus));

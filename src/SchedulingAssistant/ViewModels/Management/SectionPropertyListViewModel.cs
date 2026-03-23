@@ -204,9 +204,6 @@ public partial class SectionPropertyListViewModel : ViewModelBase
                     case SectionPropertyTypes.SectionType:
                         if (section.SectionTypeId == id) { section.SectionTypeId = null; changed = true; }
                         break;
-                    case SectionPropertyTypes.Campus:
-                        if (section.CampusId == id) { section.CampusId = null; changed = true; }
-                        break;
                     case SectionPropertyTypes.Reserve:
                         var before = section.Reserves.Count;
                         section.Reserves.RemoveAll(r => r.ReserveId == id);

@@ -8,9 +8,14 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
+/// <summary>
+/// ViewModel for the Rooms management panel. Provides a list of rooms with
+/// inline Add/Edit/Delete and manual ordering support.
+/// </summary>
 public partial class RoomListViewModel : ViewModelBase
 {
     private readonly IRoomRepository _repo;
+    private readonly ICampusRepository _campusRepo;
     private readonly ISectionRepository _sectionRepo;
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDatabaseContext _db;
@@ -25,12 +30,23 @@ public partial class RoomListViewModel : ViewModelBase
 
     public string DisplayName => "Rooms";
 
-    [ObservableProperty] private ObservableCollection<Room> _rooms = new();
-    [ObservableProperty] private Room? _selectedRoom;
+    [ObservableProperty] private ObservableCollection<RoomRow> _rooms = new();
+    [ObservableProperty] private RoomRow? _selectedRow;
     [ObservableProperty] private RoomEditViewModel? _editVm;
 
+    /// <summary>Convenience accessor for the selected room model; null when nothing is selected.</summary>
+    private Room? SelectedRoom => SelectedRow?.Room;
+
+    /// <param name="repo">Room data repository.</param>
+    /// <param name="campusRepo">Campus repository — supplies campus options to the edit form.</param>
+    /// <param name="sectionRepo">Used during delete to clear the room from any sections that reference it.</param>
+    /// <param name="sectionListVm">Reloaded after edits so the section list reflects name changes.</param>
+    /// <param name="db">Database context for transaction support on delete.</param>
+    /// <param name="dialog">Confirmation and error dialogs.</param>
+    /// <param name="lockService">Write lock; gates edit operations in read-only mode.</param>
     public RoomListViewModel(
         IRoomRepository repo,
+        ICampusRepository campusRepo,
         ISectionRepository sectionRepo,
         SectionListViewModel sectionListVm,
         IDatabaseContext db,
@@ -38,6 +54,7 @@ public partial class RoomListViewModel : ViewModelBase
         WriteLockService lockService)
     {
         _repo = repo;
+        _campusRepo = campusRepo;
         _sectionRepo = sectionRepo;
         _sectionListVm = sectionListVm;
         _db = db;
@@ -47,8 +64,21 @@ public partial class RoomListViewModel : ViewModelBase
         Load();
     }
 
-    private void Load() =>
-        Rooms = new ObservableCollection<Room>(_repo.GetAll());
+    private void Load()
+    {
+        var campusById = _campusRepo.GetAll().ToDictionary(c => c.Id, c => c.Name);
+        Rooms = new ObservableCollection<RoomRow>(
+            _repo.GetAll().Select(r => new RoomRow(r, ResolveCampus(r.CampusId, campusById))));
+    }
+
+    private static string ResolveCampus(string? campusId, Dictionary<string, string> lookup) =>
+        campusId is not null && lookup.TryGetValue(campusId, out var name) ? name : string.Empty;
+
+    /// <summary>Builds the campus option list for the edit form, with a leading "(none)" sentinel.</summary>
+    private List<CampusOption> BuildCampusOptions() =>
+        new List<CampusOption> { new(null, "(none)") }
+            .Concat(_campusRepo.GetAll().Select(c => new CampusOption(c.Id, c.Name)))
+            .ToList();
 
     /// <summary>
     /// Called when the write lock state changes. Notifies the UI to re-evaluate
@@ -67,7 +97,7 @@ public partial class RoomListViewModel : ViewModelBase
     /// <summary>
     /// Re-evaluates the Move Up/Down button states whenever the selection changes.
     /// </summary>
-    partial void OnSelectedRoomChanged(Room? value)
+    partial void OnSelectedRowChanged(RoomRow? value)
     {
         MoveUpCommand.NotifyCanExecuteChanged();
         MoveDownCommand.NotifyCanExecuteChanged();
@@ -75,62 +105,63 @@ public partial class RoomListViewModel : ViewModelBase
 
     // ── Ordering ──────────────────────────────────────────────────────────────
 
-    private bool CanMoveUp()   => _lockService.IsWriter && SelectedRoom != null && Rooms.IndexOf(SelectedRoom) > 0;
-    private bool CanMoveDown() => _lockService.IsWriter && SelectedRoom != null && Rooms.IndexOf(SelectedRoom) < Rooms.Count - 1;
+    private bool CanMoveUp()   => _lockService.IsWriter && SelectedRow != null && Rooms.IndexOf(SelectedRow) > 0;
+    private bool CanMoveDown() => _lockService.IsWriter && SelectedRow != null && Rooms.IndexOf(SelectedRow) < Rooms.Count - 1;
 
     /// <summary>
     /// Moves the selected room one position earlier in the list and persists the new order.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanMoveUp))]
-    private void MoveUp() => ApplyMove(Rooms.IndexOf(SelectedRoom!), -1);
+    private void MoveUp() => ApplyMove(Rooms.IndexOf(SelectedRow!), -1);
 
     /// <summary>
     /// Moves the selected room one position later in the list and persists the new order.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanMoveDown))]
-    private void MoveDown() => ApplyMove(Rooms.IndexOf(SelectedRoom!), +1);
+    private void MoveDown() => ApplyMove(Rooms.IndexOf(SelectedRow!), +1);
 
     /// <summary>
-    /// Reorders the room at <paramref name="index"/> by <paramref name="delta"/> positions
+    /// Reorders the room row at <paramref name="index"/> by <paramref name="delta"/> positions
     /// (+1 or -1), then re-packs all sort orders as 0, 1, 2, … and saves every changed room.
-    /// Reloads the list from DB so the UI reflects the stored order.
     /// </summary>
-    /// <param name="index">Zero-based index of the room to move.</param>
+    /// <param name="index">Zero-based index of the row to move.</param>
     /// <param name="delta">Direction: -1 to move up, +1 to move down.</param>
     private void ApplyMove(int index, int delta)
     {
         var list = Rooms.ToList();
-        var room = list[index];
+        var row  = list[index];
         list.RemoveAt(index);
-        list.Insert(index + delta, room);
+        list.Insert(index + delta, row);
 
         // Re-pack sort orders densely (0, 1, 2, …) to avoid gaps accumulating over time.
         for (var i = 0; i < list.Count; i++)
-            list[i].SortOrder = i;
+            list[i].Room.SortOrder = i;
 
         foreach (var r in list)
-            _repo.Update(r);
+            _repo.Update(r.Room);
 
-        var selectedId = room.Id;
+        var selectedId = row.Room.Id;
         Load();
-        SelectedRoom = Rooms.FirstOrDefault(r => r.Id == selectedId);
+        SelectedRow = Rooms.FirstOrDefault(r => r.Room.Id == selectedId);
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
 
+    /// <summary>Opens the Add form for a new room at the end of the list.</summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
-        // New rooms land at the end of the list.
         var room = new Room
         {
-            SortOrder = Rooms.Count > 0 ? Rooms.Max(r => r.SortOrder) + 1 : 0
+            SortOrder = Rooms.Count > 0 ? Rooms.Max(r => r.Room.SortOrder) + 1 : 0
         };
         EditVm = new RoomEditViewModel(room, isNew: true,
+            campusOptions: BuildCampusOptions(),
             onSave: r => { _repo.Insert(r); Load(); EditVm = null; },
             onCancel: () => EditVm = null);
     }
 
+    /// <summary>Opens the Edit form for the currently selected room.</summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
@@ -138,20 +169,30 @@ public partial class RoomListViewModel : ViewModelBase
         var s = SelectedRoom;
         var copy = new Room
         {
-            Id = s.Id, Building = s.Building, RoomNumber = s.RoomNumber,
-            Capacity = s.Capacity, Features = s.Features, Notes = s.Notes,
-            SortOrder = s.SortOrder,
+            Id         = s.Id,
+            Building   = s.Building,
+            RoomNumber = s.RoomNumber,
+            Capacity   = s.Capacity,
+            Features   = s.Features,
+            Notes      = s.Notes,
+            CampusId   = s.CampusId,
+            SortOrder  = s.SortOrder,
         };
         EditVm = new RoomEditViewModel(copy, isNew: false,
+            campusOptions: BuildCampusOptions(),
             onSave: r => { _repo.Update(r); Load(); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null);
     }
 
+    /// <summary>
+    /// Prompts for confirmation, then deletes the selected room and removes it from
+    /// any sections that reference it (within a transaction).
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedRoom is null) return;
-        var id = SelectedRoom.Id;
+        var id          = SelectedRoom.Id;
         var displayName = $"{SelectedRoom.Building} {SelectedRoom.RoomNumber}".Trim();
 
         if (!await _dialog.Confirm(
@@ -184,3 +225,11 @@ public partial class RoomListViewModel : ViewModelBase
         }
     }
 }
+
+/// <summary>
+/// Display-ready row for the Rooms data grid.
+/// Pairs a <see cref="Room"/> model with its resolved campus display name.
+/// </summary>
+/// <param name="Room">The underlying room model.</param>
+/// <param name="CampusName">Campus display name, or empty string when no campus is associated.</param>
+public record RoomRow(Room Room, string CampusName);

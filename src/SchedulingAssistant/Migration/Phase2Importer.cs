@@ -38,6 +38,7 @@ public class Phase2Importer
 
     private readonly IDatabaseContext            _db;
     private readonly ISectionPropertyRepository _propRepo;
+    private readonly ICampusRepository          _campusRepo;
     private readonly IInstructorRepository      _instructorRepo;
     private readonly IRoomRepository            _roomRepo;
     private readonly ISubjectRepository         _subjectRepo;
@@ -139,6 +140,7 @@ public class Phase2Importer
     {
         _db             = db;
         _propRepo       = new SectionPropertyRepository(db);
+        _campusRepo     = new CampusRepository(db);
         _instructorRepo = new InstructorRepository(db);
         _roomRepo       = new RoomRepository(db);
         _subjectRepo    = new SubjectRepository(db);
@@ -400,7 +402,7 @@ public class Phase2Importer
         foreach (var v in _propRepo.GetAll(SectionPropertyTypes.MeetingType)) _meetingTypeByName[v.Name] = v.Id;
         foreach (var v in _propRepo.GetAll(SectionPropertyTypes.Resource))    _resourceByName[v.Name]    = v.Id;
         foreach (var v in _propRepo.GetAll(SectionPropertyTypes.Reserve))     _reserveByName[v.Name]     = v.Id;
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.Campus))      _campusByName[v.Name]      = v.Id;
+        foreach (var c in _campusRepo.GetAll())                               _campusByName[c.Name]      = c.Id;
 
         foreach (var r in _roomRepo.GetAll())
         {
@@ -953,7 +955,8 @@ public class Phase2Importer
         var campusName   = campusToken?["Name"]?.Value<string>();
         if (!string.IsNullOrWhiteSpace(campusName))
         {
-            EnsurePropertyValue(SectionPropertyTypes.Campus, campusName, _campusByName, dryRun);
+            if (!dryRun && !_campusByName.ContainsKey(campusName))
+                _campusByName[campusName] = SeedData.FindOrCreateCampus(_db.Connection, campusName);
             campusId = _campusByName.GetValueOrDefault(campusName);
         }
 

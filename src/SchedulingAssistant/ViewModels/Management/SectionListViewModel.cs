@@ -23,6 +23,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
     private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ICampusRepository _campusRepo;
     private readonly WriteLockService _lockService;
 
     // ── Observable Properties ──────────────────────────────────────────────────
@@ -138,6 +139,7 @@ public partial class SectionListViewModel : ViewModelBase
         SemesterContext semesterContext,
         SectionStore sectionStore,
         ISectionPropertyRepository propertyRepo,
+        ICampusRepository campusRepo,
         IDialogService dialog,
         WriteLockService lockService)
     {
@@ -153,6 +155,7 @@ public partial class SectionListViewModel : ViewModelBase
         _semesterContext = semesterContext;
         _sectionStore = sectionStore;
         _propertyRepo = propertyRepo;
+        _campusRepo = campusRepo;
         _dialog = dialog;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
@@ -295,7 +298,7 @@ public partial class SectionListViewModel : ViewModelBase
         var instructorLookup  = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var roomLookup        = _roomRepo.GetAll().ToDictionary(r => r.Id);
         var sectionTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
-        var campusLookup      = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
+        var campusLookup      = _campusRepo.GetAll().ToDictionary(c => c.Id);
         var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
         var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
@@ -589,7 +592,7 @@ public partial class SectionListViewModel : ViewModelBase
         double?                    DefaultBlockLength,
         List<SectionPropertyValue> SectionTypes,
         List<SectionPropertyValue> MeetingTypes,
-        List<SectionPropertyValue> Campuses,
+        List<Campus> Campuses,
         List<SectionPropertyValue> AllTags,
         List<SectionPropertyValue> AllResources,
         List<SectionPropertyValue> AllReserves);
@@ -616,7 +619,7 @@ public partial class SectionListViewModel : ViewModelBase
             DefaultBlockLength: settings.PreferredBlockLength,
             SectionTypes:       _propertyRepo.GetAll(SectionPropertyTypes.SectionType),
             MeetingTypes:       _propertyRepo.GetAll(SectionPropertyTypes.MeetingType),
-            Campuses:           _propertyRepo.GetAll(SectionPropertyTypes.Campus),
+            Campuses:           _campusRepo.GetAll(),
             AllTags:            _propertyRepo.GetAll(SectionPropertyTypes.Tag),
             AllResources:       _propertyRepo.GetAll(SectionPropertyTypes.Resource),
             AllReserves:        _propertyRepo.GetAll(SectionPropertyTypes.Reserve));
@@ -638,7 +641,7 @@ public partial class SectionListViewModel : ViewModelBase
             ctx.Instructors.ToDictionary(i => i.Id),
             ctx.Rooms.ToDictionary(r => r.Id),
             ctx.SectionTypes.ToDictionary(v => v.Id),
-            ctx.Campuses.ToDictionary(v => v.Id),
+            ctx.Campuses.ToDictionary(c => c.Id),
             ctx.AllTags.ToDictionary(v => v.Id),
             ctx.AllResources.ToDictionary(v => v.Id),
             ctx.AllReserves.ToDictionary(v => v.Id),
@@ -926,7 +929,7 @@ public partial class SectionListViewModel : ViewModelBase
 
             var generator = new DebugTestDataGenerator(
                 _sectionRepo, _courseRepo, _instructorRepo, _roomRepo,
-                _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _propertyRepo);
+                _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _propertyRepo, _campusRepo);
 
             var sections = generator.GenerateSections(count, semesterId);
             App.Logger.LogInfo($"Generator created {sections.Count} sections", "GenerateRandomSections");

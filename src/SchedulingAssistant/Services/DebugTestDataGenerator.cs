@@ -19,6 +19,7 @@ public class DebugTestDataGenerator
     private readonly ISemesterRepository _semesterRepo;
     private readonly IBlockPatternRepository _blockPatternRepo;
     private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ICampusRepository _campusRepo;
 
     public DebugTestDataGenerator(
         ISectionRepository sectionRepo,
@@ -28,7 +29,8 @@ public class DebugTestDataGenerator
         ILegalStartTimeRepository legalStartTimeRepo,
         ISemesterRepository semesterRepo,
         IBlockPatternRepository blockPatternRepo,
-        ISectionPropertyRepository propertyRepo)
+        ISectionPropertyRepository propertyRepo,
+        ICampusRepository campusRepo)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -38,6 +40,7 @@ public class DebugTestDataGenerator
         _semesterRepo = semesterRepo;
         _blockPatternRepo = blockPatternRepo;
         _propertyRepo = propertyRepo;
+        _campusRepo = campusRepo;
     }
 
     public List<Section> GenerateSections(int count, string semesterId)
@@ -63,7 +66,7 @@ public class DebugTestDataGenerator
         var legalStartTimes = _legalStartTimeRepo.GetAll(semester.AcademicYearId);
         var blockPatterns = _blockPatternRepo.GetAll();
         var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
-        var campuses = _propertyRepo.GetAll(SectionPropertyTypes.Campus);
+        var campuses = _campusRepo.GetAll();
         var tags = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
         var resources = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
         var reserves = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
@@ -199,7 +202,7 @@ public class DebugTestDataGenerator
         Section section,
         List<Instructor> instructors,
         List<SectionPropertyValue> sectionTypes,
-        List<SectionPropertyValue> campuses,
+        List<Campus> campuses,
         List<SectionPropertyValue> tags,
         List<SectionPropertyValue> resources,
         List<SectionPropertyValue> reserves)

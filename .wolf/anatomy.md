@@ -1,12 +1,12 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-22T22:15:17.381Z
-> Files: 517 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-23T02:19:49.401Z
+> Files: 541 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 - `institution-config-plan.md` — Goal (~810 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~4447 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~5096 tok)
 
 ## ./
 
@@ -570,7 +570,7 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1038 tok)
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~2980 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3014 tok)
 - `app.manifest` (~250 tok)
 - `AppColors.axaml` (~2155 tok)
 - `AssemblyInfo.cs` — Class: AssemblyInfo (~52 tok)
@@ -606,21 +606,23 @@
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the schema on first run, applies migrations, and s... (~3100 tok)
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~3150 tok)
 - `DbCommandExtensions.cs` — Extension methods for <see cref="DbCommand"/> to provide a convenient parameter-adding API that works across all ADO.NET providers. (~437 tok)
 - `IDatabaseContext.cs` — Abstraction over the application database connection. The SQLite desktop implementation opens a file-based database; alternative implementations (e... (~201 tok)
 - `JsonHelpers.cs` — Deserializes a JSON string into the specified type. (~316 tok)
-- `SeedData.cs` — Called by DatabaseContext after schema initialization. Ensures baseline records exist (Academic Unit, default Section Prefixes). (~2306 tok)
+- `SeedData.cs` — Called by DatabaseContext after schema initialization. Ensures baseline records exist (Academic Unit (~1845 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
 - `AcademicUnitRepository.cs` — Returns true if an academic unit with this name already exists (case-insensitive). Pass excludeId to ignore the unit currently being edited. (~792 tok)
 - `AcademicYearRepository.cs` — AcademicYearRepository: GetAll, ExistsByName, Insert, Update + 1 more (~692 tok)
 - `BlockPatternRepository.cs` — BlockPatternRepository: GetAll, Insert, Update, Delete (~639 tok)
+- `CampusRepository.cs` — SQLite-backed implementation of <see cref="ICampusRepository"/>. Uses the project's standard pattern (~886 tok)
 - `CourseRepository.cs` — Returns true if any sections reference this course. (~1270 tok)
 - `IAcademicUnitRepository.cs` — Data access contract for <see cref="AcademicUnit"/> entities (colleges, departments, etc.). (~336 tok)
 - `IAcademicYearRepository.cs` — Data access contract for <see cref="AcademicYear"/> entities. (~297 tok)
 - `IBlockPatternRepository.cs` — Data access contract for <see cref="BlockPattern"/> entities (standard meeting-time patterns). (~254 tok)
+- `ICampusRepository.cs` — Data access contract for <see cref="Campus"/> entities. (~300 tok)
 - `ICourseRepository.cs` — Data access contract for <see cref="Course"/> entities. (~484 tok)
 - `IInstructorCommitmentRepository.cs` — Data access contract for <see cref="InstructorCommitment"/> entities (blocked-off time on an instructor's schedule for a given semester). (~343 tok)
 - `IInstructorRepository.cs` — Data access contract for <see cref="Instructor"/> entities. (~422 tok)
@@ -660,27 +662,55 @@
 - `welcome.html` — Welcome — TermPoint Help (~906 tok)
 - `workload-assignment.html` — Make Workload Easy — TermPoint Help (~1413 tok)
 
+## src/SchedulingAssistant/Migration/
+
+- `Phase2Importer.cs` — Translates old-format JSON files (produced by <see cref="MigrationRunner"/> Phase 1) into the new Sc (~14202 tok)
+
+## src/SchedulingAssistant/Models/
+
+- `Campus.cs` — A physical or operational campus associated with rooms, section prefixes, and sections. First-class (~247 tok)
+- `Room.cs` — Optional foreign key to <c>Campuses.id</c>. Null when the room is not associated with a specific cam (~230 tok)
+
 ## src/SchedulingAssistant/Services/
 
 - `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~1989 tok)
+- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8095 tok)
+- `DebugTestDataGenerator.cs` — Debug-only utility for generating random test sections with realistic data. (~3070 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2464 tok)
-- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~16174 tok)
+- `GridData.cs` — Records for the grid rendering pipeline: `GridBlock` (abstract), `SectionMeetingBlock`, `CommitmentBlock`, `TileEntry`, `GridTile`, `GridDayColumn`, `GridData`, `TileTooltip`. (~2500 tok)
+- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each (~6412 tok)
+- `GridPipelineTypes.cs` — Aggregates all entity lookup dictionaries that the schedule grid pipeline needs to convert raw <see (~2570 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~16200 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~2272 tok)
 - `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1532 tok)
+- `RoomEditViewModel.cs` — ViewModel for the inline Add/Edit form in the Rooms management panel. Communicates results back to t (~818 tok)
+- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2541 tok)
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9518 tok)
+- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~2870 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~11559 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~5887 tok)
+- `SectionPrefixListViewModel.cs` — ViewModel for the Section Prefixes management flyout. Provides a list of section prefixes with inlin (~1647 tok)
+- `SectionPropertiesViewModel.cs` — Class: SectionPropertiesViewModel (~630 tok)
+- `SectionPropertyListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2744 tok)
+- `SectionPropertyTypes.cs` — Canonical type discriminator strings for the SectionPropertyValues.type column. (~138 tok)
+- `SettingsViewModel.cs` — ViewModel for the Settings flyout. Manages general scheduling preferences and all automated-backup c (~2465 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11365 tok)
+- `ScheduleGridView.axaml.cs` — Canvas-based schedule grid renderer. Builds tile borders, wires click/context-menu, calls `ToolTip.SetTip` with tile-styled tooltips. Key helpers: `BuildTileTooltipContent`, `GetGridlineOffset`, `TimeToY`, `ExportToPng`. (~11700 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `CampusListView.axaml` (~1113 tok)
+- `CampusListView.axaml.cs` — Class: CampusListView (~54 tok)
+- `RoomListView.axaml` (~1537 tok)
 - `SectionListView.axaml` (~18939 tok)
+- `SettingsView.axaml` (~2270 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

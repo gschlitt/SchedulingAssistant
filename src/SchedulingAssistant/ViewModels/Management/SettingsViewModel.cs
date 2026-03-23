@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 
@@ -14,6 +15,11 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly BackupService _backupService;
     private readonly IDialogService _dialogService;
+
+    // ── Institution settings ──────────────────────────────────────────────────
+
+    /// <summary>Campus CRUD panel — embedded directly in Settings.</summary>
+    public CampusListViewModel CampusesVm { get; }
 
     // ── General settings ─────────────────────────────────────────────────────
 
@@ -59,10 +65,17 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <param name="backupService">Singleton backup service.</param>
     /// <param name="dialogService">Used for backup-now error reporting and restore confirmation.</param>
-    public SettingsViewModel(BackupService backupService, IDialogService dialogService)
+    /// <param name="campusRepo">Provides data for the embedded campus CRUD panel.</param>
+    /// <param name="lockService">Write lock service passed through to the campus panel.</param>
+    public SettingsViewModel(
+        BackupService backupService,
+        IDialogService dialogService,
+        ICampusRepository campusRepo,
+        WriteLockService lockService)
     {
         _backupService  = backupService;
         _dialogService  = dialogService;
+        CampusesVm      = new CampusListViewModel(campusRepo, dialogService, lockService);
 
         // Initialise fields from persisted settings.
         var s = AppSettings.Current;

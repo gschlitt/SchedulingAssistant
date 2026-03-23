@@ -341,7 +341,7 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="includeSaturday">Whether Saturday is shown as a meeting day.</param>
     /// <param name="sectionTypes">All section-type property values.</param>
     /// <param name="meetingTypes">All meeting-type property values.</param>
-    /// <param name="campuses">All campus property values (used to build prefix labels).</param>
+    /// <param name="campuses">All campus entities (used to build prefix picker labels).</param>
     /// <param name="allTags">All tag property values.</param>
     /// <param name="allResources">All resource property values.</param>
     /// <param name="allReserves">All reserve property values.</param>
@@ -364,7 +364,7 @@ public partial class SectionEditViewModel : ViewModelBase
         bool includeSaturday,
         IReadOnlyList<SectionPropertyValue> sectionTypes,
         IReadOnlyList<SectionPropertyValue> meetingTypes,
-        IReadOnlyList<SectionPropertyValue> campuses,
+        IReadOnlyList<Campus> campuses,
         IReadOnlyList<SectionPropertyValue> allTags,
         IReadOnlyList<SectionPropertyValue> allResources,
         IReadOnlyList<SectionPropertyValue> allReserves,

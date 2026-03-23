@@ -39,6 +39,7 @@ public class BackupService : IDisposable
     private readonly IRoomRepository _roomRepo;
     private readonly ISemesterRepository _semesterRepo;
     private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ICampusRepository _campusRepo;
     private readonly IAppLogger _logger;
 
     private Timer? _periodicTimer;
@@ -64,7 +65,8 @@ public class BackupService : IDisposable
     /// <param name="instructorRepo">Instructor names for CSV export.</param>
     /// <param name="roomRepo">Room names for CSV export.</param>
     /// <param name="semesterRepo">Semester names for CSV export.</param>
-    /// <param name="propertyRepo">Section property values (section type, campus) for CSV export.</param>
+    /// <param name="propertyRepo">Section property values (section type, tags, etc.) for CSV export.</param>
+    /// <param name="campusRepo">Campus names for CSV export.</param>
     /// <param name="logger">App-wide logger.</param>
     public BackupService(
         IDatabaseContext db,
@@ -75,6 +77,7 @@ public class BackupService : IDisposable
         IRoomRepository roomRepo,
         ISemesterRepository semesterRepo,
         ISectionPropertyRepository propertyRepo,
+        ICampusRepository campusRepo,
         IAppLogger logger)
     {
         _db             = db;
@@ -85,6 +88,7 @@ public class BackupService : IDisposable
         _roomRepo       = roomRepo;
         _semesterRepo   = semesterRepo;
         _propertyRepo   = propertyRepo;
+        _campusRepo     = campusRepo;
         _logger         = logger;
     }
 
@@ -325,8 +329,8 @@ public class BackupService : IDisposable
         var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
         var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType)
                                         .ToDictionary(p => p.Id, p => p.Name);
-        var campuses     = _propertyRepo.GetAll(SectionPropertyTypes.Campus)
-                                        .ToDictionary(p => p.Id, p => p.Name);
+        var campuses     = _campusRepo.GetAll()
+                                        .ToDictionary(c => c.Id, c => c.Name);
         var tags         = _propertyRepo.GetAll(SectionPropertyTypes.Tag)
                                         .ToDictionary(p => p.Id, p => p.Name);
         var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType)

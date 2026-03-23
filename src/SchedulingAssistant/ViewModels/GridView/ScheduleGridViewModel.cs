@@ -23,6 +23,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly IRoomRepository _roomRepo;
     private readonly ISubjectRepository _subjectRepo;
     private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ICampusRepository _campusRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
     private readonly SectionStore _sectionStore;
@@ -74,6 +75,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IRoomRepository roomRepo,
         ISubjectRepository subjectRepo,
         ISectionPropertyRepository propertyRepo,
+        ICampusRepository campusRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
         SectionStore sectionStore,
@@ -87,6 +89,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _roomRepo = roomRepo;
         _subjectRepo = subjectRepo;
         _propertyRepo = propertyRepo;
+        _campusRepo = campusRepo;
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
         _sectionStore = sectionStore;
@@ -328,7 +331,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var rooms         = _roomRepo.GetAll().ToDictionary(r => r.Id);
         var subjects      = _subjectRepo.GetAll().ToDictionary(s => s.Id);
 
-        var campuses     = _propertyRepo.GetAll(SectionPropertyTypes.Campus).ToDictionary(v => v.Id);
+        var campuses     = _campusRepo.GetAll().ToDictionary(c => c.Id);
         var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
         var tags         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
         var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);

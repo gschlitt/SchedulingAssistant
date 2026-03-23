@@ -147,6 +147,7 @@ public partial class App : Application
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
         services.AddSingleton<ISectionPrefixRepository, SectionPrefixRepository>();
+        services.AddSingleton<ICampusRepository, CampusRepository>();
 
         // ViewModels
         services.AddSingleton<SectionStore>();
@@ -160,6 +161,7 @@ public partial class App : Application
             sp.GetRequiredService<IRoomRepository>(),
             sp.GetRequiredService<ISubjectRepository>(),
             sp.GetRequiredService<ISectionPropertyRepository>(),
+            sp.GetRequiredService<ICampusRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>(),
             sp.GetRequiredService<SectionStore>(),

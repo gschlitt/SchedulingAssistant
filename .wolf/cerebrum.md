@@ -34,6 +34,19 @@
 - **OpenDropDownOnFocusBehavior**: Use on `AutoCompleteBox` with `MinimumPrefixLength="0"` and `FilterMode="None"` to give it ComboBox-like click-to-open behaviour. Opens dropdown only on `NavigationMethod.Pointer` focus (not Tab). Owns Tab key entirely via tunnel handler — see Do-Not-Repeat above.
 - **SectionMeetingViewModel reverse lookup**: Start time is now chosen first; block lengths are populated by `RefreshBlockLengths()` (reverse lookup: finds all `LegalStartTime` rows where `StartTimes.Contains(selectedStart)`). Falls back to all known block lengths when the chosen start time is not in the table (custom time). Helpers `FormatTime`, `FormatBlockLength`, `ParseTime`, `ParseBlockLength` are `internal static` for testability.
 
+- **Avalonia ToolTip background**: When you pass arbitrary content to `ToolTip.SetTip`, Avalonia wraps it in its own default `ToolTip` control (white background). To control the tooltip's background/border/padding, instantiate a `ToolTip` directly and set its properties, then pass that instance to `ToolTip.SetTip`. The `ToolTip` class extends `ContentControl`; set `Content` for the inner display.
+- **TileTooltip pattern**: `TileTooltip(IReadOnlyList<string> Lines)` record in `GridData.cs`. `ScheduleGridViewModel.BuildTileTooltip(GridTile)` builds it (static, testable). `ScheduleGridView.axaml.cs.BuildTileTooltipContent(TileTooltip)` renders it as a `ToolTip` with tile styling. Adding new tooltip lines only requires a change to `BuildTileTooltip`.
+
+## Do-Not-Repeat (continued)
+
+- [2026-03-22] When adding a new constructor parameter to a ViewModel (e.g. `ICampusRepository`), search for ALL call sites — including non-DI instantiation points like `SectionPropertiesViewModel` (which manually `new`s its child VMs) and `SectionListViewModel.GenerateRandomSections()` (which manually `new`s `DebugTestDataGenerator`). DI-registered types auto-resolve but manual `new` calls will silently break at compile time (CS7036).
+
+## Key Learnings (continued)
+
+- **Campus is now a first-class entity**: `Campus` model, `Campuses` table, `ICampusRepository`/`CampusRepository`. No longer a `SectionPropertyValue` row with `type='campus'`. `SeedData.FindOrCreateCampus` is `public static` and targets the `Campuses` table. `SectionPropertyTypes.Campus` constant has been removed.
+- **RoomRow display pattern**: `Room` has no `CampusName` string. A `record RoomRow(Room Room, string CampusName)` wraps it for DataGrid display. DataGrid bindings use `Room.Building`, `Room.Name`, `CampusName` etc. (same as `SectionPrefixRow` pattern).
+- **CampusListView**: Campus CRUD lives under Settings (not Section Properties flyout). `CampusListViewModel` + `CampusEditViewModel` follow the same inline-edit pattern as `SectionPropertyListViewModel`.
+
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->

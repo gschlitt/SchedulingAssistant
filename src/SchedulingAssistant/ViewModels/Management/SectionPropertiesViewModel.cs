@@ -16,6 +16,7 @@ public partial class SectionPropertiesViewModel : ViewModelBase
     public SectionPropertiesViewModel(
         ISectionPropertyRepository repo,
         IRoomRepository roomRepo,
+        ICampusRepository campusRepo,
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,
         IInstructorRepository instructorRepo,
@@ -30,11 +31,10 @@ public partial class SectionPropertiesViewModel : ViewModelBase
             new SectionPropertyListViewModel(SectionPropertyTypes.SectionType, "Section Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService),
             new SectionPropertyListViewModel(SectionPropertyTypes.MeetingType, "Meeting Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService),
             new SectionPropertyListViewModel(SectionPropertyTypes.StaffType,   "Staff Type",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService),
-            new SectionPropertyListViewModel(SectionPropertyTypes.Campus,      "Campus",        repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, showAbbreviation: true),
             new SectionPropertyListViewModel(SectionPropertyTypes.Tag,         "Tags",          repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService),
             new SectionPropertyListViewModel(SectionPropertyTypes.Resource,    "Resources",     repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService),
             new SectionPropertyListViewModel(SectionPropertyTypes.Reserve,     "Reserve Codes", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService),
-            new RoomListViewModel(roomRepo, sectionRepo, sectionListVm, db, dialog, lockService),
+            new RoomListViewModel(roomRepo, campusRepo, sectionRepo, sectionListVm, db, dialog, lockService),
         };
         SelectedCategory = Categories[0];
     }

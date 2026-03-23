@@ -143,6 +143,12 @@ public class DatabaseContext : IDatabaseContext
                 prefix TEXT NOT NULL,
                 data   TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS Campuses (
+                id   TEXT PRIMARY KEY,
+                name TEXT,
+                data TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }

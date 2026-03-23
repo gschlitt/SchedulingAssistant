@@ -1,12 +1,24 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             xmlns:views="using:SchedulingAssistant.Views.Management"
              x:Class="SchedulingAssistant.Views.Management.SettingsView"
              x:DataType="vm:SettingsViewModel"
              x:CompileBindings="False">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="24" MaxWidth="540" Margin="0,0,16,16" HorizontalAlignment="Left">
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 SECTION — Campuses
+                 ═════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Campuses" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock TextWrapping="Wrap" FontSize="11"
+                           Foreground="{StaticResource TextDimLabel}"
+                           Text="Campuses are associated with rooms and section prefixes. Add one campus per physical or operational location." />
+                <views:CampusListView DataContext="{Binding CampusesVm}" />
+            </StackPanel>
 
             <!-- ══════════════════════════════════════════════════════════════
                  SECTION — Scheduling

@@ -256,6 +256,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-22T22:11:47.983Z"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-03-22T23:14:54.052Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/SeedData.cs",
+      "root_cause": "38 lines replaced/restructured",
+      "fix": "Rewrote 71→34 lines (38 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T23:14:54.052Z"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-03-22T23:16:13.108Z",
+      "error_message": "Wrong reference: SectionPropertyValue should be Campus",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "root_cause": "Used \"SectionPropertyValue\" instead of \"Campus\"",
+      "fix": "Changed SectionPropertyValue → Campus",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T23:16:13.108Z"
+    },
+    {
+      "id": "bug-019",
+      "timestamp": "2026-03-22T23:16:53.555Z",
+      "error_message": "Wrong reference: SectionPropertyValue should be Campus",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Used \"SectionPropertyValue\" instead of \"Campus\"",
+      "fix": "Changed SectionPropertyValue → Campus",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-22T23:16:57.022Z"
+    },
+    {
+      "id": "bug-020",
+      "timestamp": "2026-03-22T23:17:11.279Z",
+      "error_message": "Wrong reference: SectionPropertyValue should be Campus",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "Used \"SectionPropertyValue\" instead of \"Campus\"",
+      "fix": "Changed SectionPropertyValue → Campus",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T23:17:11.279Z"
+    },
+    {
+      "id": "bug-021",
+      "timestamp": "2026-03-22T23:17:35.425Z",
+      "error_message": "Wrong reference: SectionPropertyValue should be Campus",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs",
+      "root_cause": "Used \"SectionPropertyValue\" instead of \"Campus\"",
+      "fix": "Changed SectionPropertyValue → Campus",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T23:17:35.425Z"
+    },
+    {
+      "id": "bug-022",
+      "timestamp": "2026-03-22T23:22:50.373Z",
+      "error_message": "Wrong reference: _propertyRepo should be _campusRepo",
+      "file": "src/SchedulingAssistant/Services/DebugTestDataGenerator.cs",
+      "root_cause": "Used \"_propertyRepo\" instead of \"_campusRepo\"",
+      "fix": "Changed _propertyRepo → _campusRepo",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-22T23:22:50.373Z"
     }
   ]
 }

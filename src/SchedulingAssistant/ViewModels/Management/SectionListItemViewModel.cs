@@ -66,7 +66,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, Instructor> instructorLookup,
         Dictionary<string, Room> roomLookup,
         Dictionary<string, SectionPropertyValue> sectionTypeLookup,
-        Dictionary<string, SectionPropertyValue> campusLookup,
+        Dictionary<string, Campus> campusLookup,
         Dictionary<string, SectionPropertyValue> tagLookup,
         Dictionary<string, SectionPropertyValue> resourceLookup,
         Dictionary<string, SectionPropertyValue> reserveLookup,

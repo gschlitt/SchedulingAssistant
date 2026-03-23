@@ -14,7 +14,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class SectionPrefixListViewModel : ViewModelBase
 {
     private readonly ISectionPrefixRepository _repo;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ICampusRepository _campusRepo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -36,17 +36,17 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     private bool CanWrite() => _lockService.IsWriter;
 
     /// <param name="repo">Repository for section prefix CRUD operations.</param>
-    /// <param name="propertyRepo">Repository used to load campus options for the dropdown.</param>
+    /// <param name="campusRepo">Repository used to load campus options for the dropdown.</param>
     /// <param name="dialog">Service for confirmation and error dialogs.</param>
     /// <param name="lockService">Write lock service; gates edit operations in read-only mode.</param>
     public SectionPrefixListViewModel(
         ISectionPrefixRepository repo,
-        ISectionPropertyRepository propertyRepo,
+        ICampusRepository campusRepo,
         IDialogService dialog,
         WriteLockService lockService)
     {
         _repo = repo;
-        _propertyRepo = propertyRepo;
+        _campusRepo = campusRepo;
         _dialog = dialog;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
@@ -59,8 +59,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     public void Load()
     {
         var prefixes = _repo.GetAll();
-        var campuses = _propertyRepo.GetAll(SectionPropertyTypes.Campus)
-                                    .ToDictionary(c => c.Id, c => c.Name);
+        var campuses = _campusRepo.GetAll().ToDictionary(c => c.Id, c => c.Name);
 
         Items = new ObservableCollection<SectionPrefixRow>(
             prefixes.Select(p => new SectionPrefixRow(p, ResolveCampusName(p.CampusId, campuses))));
@@ -81,7 +80,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// <summary>Builds the campus option list for the edit form dropdown.</summary>
     private List<CampusOption> BuildCampusOptions()
     {
-        var campuses = _propertyRepo.GetAll(SectionPropertyTypes.Campus);
+        var campuses = _campusRepo.GetAll();
         var options = new List<CampusOption> { new(null, "(none)") };
         options.AddRange(campuses.Select(c => new CampusOption(c.Id, c.Name)));
         return options;

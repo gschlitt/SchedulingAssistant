@@ -40,8 +40,8 @@ internal record GridLookups(
     /// <summary>All subjects, keyed by subject ID.</summary>
     IReadOnlyDictionary<string, Subject> Subjects,
 
-    /// <summary>Campus property values, keyed by value ID.</summary>
-    IReadOnlyDictionary<string, SectionPropertyValue> Campuses,
+    /// <summary>Campuses, keyed by campus ID.</summary>
+    IReadOnlyDictionary<string, Campus> Campuses,
 
     /// <summary>Section-type property values, keyed by value ID.</summary>
     IReadOnlyDictionary<string, SectionPropertyValue> SectionTypes,

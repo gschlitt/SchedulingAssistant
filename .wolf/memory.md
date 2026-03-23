@@ -105,3 +105,97 @@
 | 15:12 | Session end: 5 writes across 3 files (GridData.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs) | 3 reads | ~30599 tok |
 | 15:15 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified BuildTileTooltipContent() | ~311 |
 | 15:15 | Session end: 6 writes across 3 files (GridData.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs) | 3 reads | ~31073 tok |
+| 15:20 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~331 |
+| 15:21 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 7→8 lines | ~174 |
+| 15:21 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 6→5 lines | ~218 |
+| 15:21 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+7 lines) | ~293 |
+| 15:36 | SESSION END: Tooltip tile-styling fix — pass ToolTip instance directly to ToolTip.SetTip (not arbitrary content) to override Avalonia default white background | ScheduleGridView.axaml.cs | Build clean | ~200 |
+| 15:36 | Updated cerebrum (ToolTip pattern), anatomy (GridData/ScheduleGridViewModel/ScheduleGridView), MEMORY.md (status, GridBlock hierarchy, meeting time entry, future enhancements) | .wolf/*, memory/MEMORY.md | complete | ~400 |
+| 15:36 | Session end: 10 writes across 4 files (GridData.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, MEMORY.md) | 4 reads | ~32160 tok |
+
+## Session: 2026-03-22 15:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-22 15:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:13 | Created src/SchedulingAssistant/Models/Campus.cs | — | ~247 |
+| 16:13 | Created src/SchedulingAssistant/Data/Repositories/ICampusRepository.cs | — | ~300 |
+| 16:14 | Created src/SchedulingAssistant/Data/Repositories/CampusRepository.cs | — | ~886 |
+| 16:14 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | expanded (+6 lines) | ~106 |
+| 16:14 | Edited src/SchedulingAssistant/Data/SeedData.cs | modified EnsureDefaultSectionPrefixes() | ~455 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPropertyTypes.cs | — | ~0 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPropertiesViewModel.cs | — | ~0 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | 4→4 lines | ~54 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | modified SectionPrefixListViewModel() | ~163 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | 3→2 lines | ~32 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | modified BuildCampusOptions() | ~98 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | 6→7 lines | ~67 |
+| 16:15 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | 7→6 lines | ~62 |
+| 16:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~42 |
+| 16:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | inline fix | ~26 |
+| 16:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→3 lines | ~44 |
+| 16:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 17→19 lines | ~186 |
+| 16:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 3→3 lines | ~35 |
+| 16:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | inline fix | ~15 |
+| 16:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | inline fix | ~21 |
+| 16:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | inline fix | ~13 |
+| 16:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→2 lines | ~28 |
+| 16:17 | Edited src/SchedulingAssistant/ViewModels/GridView/GridPipelineTypes.cs | 2→2 lines | ~29 |
+| 16:17 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | inline fix | ~16 |
+| 16:18 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 4→5 lines | ~73 |
+| 16:18 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 15→17 lines | ~174 |
+| 16:18 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | inline fix | ~20 |
+| 16:18 | Edited src/SchedulingAssistant/Models/Room.cs | expanded (+6 lines) | ~134 |
+| 16:18 | Created src/SchedulingAssistant/ViewModels/Management/RoomEditViewModel.cs | — | ~818 |
+| 16:19 | Created src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs | — | ~2541 |
+| 16:19 | Created src/SchedulingAssistant/Views/Management/RoomListView.axaml | — | ~1537 |
+| 16:20 | Created src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs | — | ~2272 |
+| 16:20 | Created src/SchedulingAssistant/Views/Management/CampusListView.axaml | — | ~1113 |
+| 16:21 | Created src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs | — | ~54 |
+| 16:21 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 2→7 lines | ~84 |
+| 16:21 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | modified SettingsViewModel() | ~193 |
+| 16:21 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 4→5 lines | ~52 |
+| 16:21 | Edited src/SchedulingAssistant/Views/Management/SettingsView.axaml | expanded (+12 lines) | ~391 |
+| 16:22 | Edited src/SchedulingAssistant/App.axaml.cs | 1→2 lines | ~41 |
+| 16:22 | Edited src/SchedulingAssistant/App.axaml.cs | 13→14 lines | ~224 |
+| 16:22 | Edited src/SchedulingAssistant/Services/DebugTestDataGenerator.cs | modified DebugTestDataGenerator() | ~273 |
+| 16:22 | Edited src/SchedulingAssistant/Services/DebugTestDataGenerator.cs | inline fix | ~12 |
+| 16:22 | Edited src/SchedulingAssistant/Services/DebugTestDataGenerator.cs | 5→5 lines | ~48 |
+| 16:23 | Edited src/SchedulingAssistant/Migration/Phase2Importer.cs | 2→3 lines | ~47 |
+| 16:23 | Edited src/SchedulingAssistant/Migration/Phase2Importer.cs | 2→3 lines | ~38 |
+| 16:23 | Edited src/SchedulingAssistant/Migration/Phase2Importer.cs | inline fix | ~30 |
+| 16:23 | Edited src/SchedulingAssistant/Migration/Phase2Importer.cs | added 1 condition(s) | ~82 |
+| 16:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPropertyListViewModel.cs | — | ~0 |
+
+## Session: 2026-03-22 16:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:25 | Edited src/SchedulingAssistant/Services/BackupService.cs | 2→3 lines | ~42 |
+| 16:25 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified BackupService() | ~277 |
+| 16:25 | Edited src/SchedulingAssistant/Services/BackupService.cs | 2→2 lines | ~34 |
+| 16:26 | Campus refactor complete — BackupService updated to use ICampusRepository; all SectionPropertyTypes.Campus references removed | BackupService.cs | success | ~200 |
+| 16:26 | Session end: 3 writes across 1 files (BackupService.cs) | 1 reads | ~377 tok |
+| 16:27 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPropertiesViewModel.cs | modified SectionPropertiesViewModel() | ~484 |
+| 16:27 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 3→3 lines | ~61 |
+| 16:28 | Session end: 5 writes across 3 files (BackupService.cs, SectionPropertiesViewModel.cs, SectionListViewModel.cs) | 4 reads | ~15672 tok |
+
+## Session: 2026-03-22 (new session — campus refactor fix-up)
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| — | Fixed CS7036: SectionPropertiesViewModel constructor missing ICampusRepository param; added to signature and passed to RoomListViewModel | SectionPropertiesViewModel.cs | build error resolved | ~300 |
+| — | Fixed CS7036: DebugTestDataGenerator instantiation in SectionListViewModel missing _campusRepo argument | SectionListViewModel.cs | build error resolved | ~200 |
+| — | Session end: 2 fixes across 2 files (SectionPropertiesViewModel.cs, SectionListViewModel.cs) | 4 reads | ~3000 tok |
+
+## Session: 2026-03-23 17:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:19 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~358 |
+| 19:19 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+12 lines) | ~550 |
+| 19:20 | Session end: 2 writes across 1 files (MEMORY.md) | 1 reads | ~973 tok |
