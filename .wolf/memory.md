@@ -199,3 +199,28 @@
 | 19:19 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~358 |
 | 19:19 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+12 lines) | ~550 |
 | 19:20 | Session end: 2 writes across 1 files (MEMORY.md) | 1 reads | ~973 tok |
+
+## Session: 2026-03-23 19:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:02 | Created src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | — | ~2504 |
+| 20:03 | Created src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | — | ~952 |
+| 20:03 | Created src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml.cs | — | ~56 |
+| 20:03 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | expanded (+6 lines) | ~133 |
+| 20:03 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | expanded (+6 lines) | ~147 |
+| 20:03 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | added optional chaining | ~192 |
+| 20:04 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 6→5 lines | ~44 |
+| 20:04 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | added 1 condition(s) | ~483 |
+| 20:04 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | removed 13 lines | ~1 |
+| 20:04 | Created src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml | — | ~1236 |
+| 20:04 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | modified OnDataContextChanged() | ~102 |
+| 20:05 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | added 1 condition(s) | ~441 |
+| 20:05 | Edited src/SchedulingAssistant/App.axaml.cs | 3→2 lines | ~30 |
+| 20:05 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | removed 4 lines | ~5 |
+| 20:06 | Session end: 14 writes across 8 files (SemesterManagerViewModel.cs, SemesterManagerView.axaml, SemesterManagerView.axaml.cs, AcademicYearListViewModel.cs, AcademicYearListView.axaml) | 17 reads | ~14358 tok |
+
+## Session: 2026-03-23 20:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

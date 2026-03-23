@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-23T02:19:49.401Z
-> Files: 541 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-23T03:05:30.444Z
+> Files: 548 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -570,7 +570,7 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1038 tok)
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3014 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~2999 tok)
 - `app.manifest` (~250 tok)
 - `AppColors.axaml` (~2155 tok)
 - `AssemblyInfo.cs` — Class: AssemblyInfo (~52 tok)
@@ -677,6 +677,10 @@
 - `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8095 tok)
 - `DebugTestDataGenerator.cs` — Debug-only utility for generating random test sections with realistic data. (~3070 tok)
 
+## src/SchedulingAssistant/ViewModels/
+
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5364 tok)
+
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 - `GridData.cs` — Records for the grid rendering pipeline: `GridBlock` (abstract), `SectionMeetingBlock`, `CommitmentBlock`, `TileEntry`, `GridTile`, `GridDayColumn`, `GridData`, `TileTooltip`. (~2500 tok)
@@ -686,6 +690,7 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2692 tok)
 - `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~2272 tok)
 - `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1532 tok)
 - `RoomEditViewModel.cs` — ViewModel for the inline Add/Edit form in the Rooms management panel. Communicates results back to t (~818 tok)
@@ -698,6 +703,7 @@
 - `SectionPropertiesViewModel.cs` — Class: SectionPropertiesViewModel (~630 tok)
 - `SectionPropertyListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2744 tok)
 - `SectionPropertyTypes.cs` — Canonical type discriminator strings for the SectionPropertyValues.type column. (~138 tok)
+- `SemesterManagerViewModel.cs` — Portable ViewModel for managing the semesters within a single academic year. Scoped to one year by < (~2504 tok)
 - `SettingsViewModel.cs` — ViewModel for the Settings flyout. Manages general scheduling preferences and all automated-backup c (~2465 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
@@ -706,10 +712,14 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `AcademicYearListView.axaml` (~1236 tok)
+- `AcademicYearListView.axaml.cs` — Class: AcademicYearListView (~1886 tok)
 - `CampusListView.axaml` (~1113 tok)
 - `CampusListView.axaml.cs` — Class: CampusListView (~54 tok)
 - `RoomListView.axaml` (~1537 tok)
 - `SectionListView.axaml` (~18939 tok)
+- `SemesterManagerView.axaml` (~952 tok)
+- `SemesterManagerView.axaml.cs` — Class: SemesterManagerView (~56 tok)
 - `SettingsView.axaml` (~2270 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/

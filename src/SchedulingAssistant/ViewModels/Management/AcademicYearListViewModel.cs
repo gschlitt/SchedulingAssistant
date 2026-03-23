@@ -32,6 +32,12 @@ public partial class AcademicYearListViewModel : ViewModelBase
     [ObservableProperty] private AcademicYearEditViewModel? _editVm;
 
     /// <summary>
+    /// The semester manager panel scoped to the currently selected academic year.
+    /// Rebuilt whenever <see cref="SelectedAcademicYear"/> changes.
+    /// </summary>
+    [ObservableProperty] private SemesterManagerViewModel? _semesterManager;
+
+    /// <summary>
     /// Set by the view. Called when adding a new academic year to ask if the user
     /// wants to copy the start-time/block-length setup from the previous year.
     /// Returns the source AY ID to copy from, or null to skip.
@@ -43,6 +49,12 @@ public partial class AcademicYearListViewModel : ViewModelBase
     /// Returns true to import, false to skip.
     /// </summary>
     public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
+
+    /// <summary>
+    /// Set by the view. Called when adding a new academic year (not the first) to ask whether
+    /// semester names should be copied from the previous year. Returns true to copy.
+    /// </summary>
+    public Func<string, Task<bool>>? ConfirmCopySemesters { get; set; }
 
     public AcademicYearListViewModel(
         IAcademicYearRepository ayRepo,
@@ -70,6 +82,19 @@ public partial class AcademicYearListViewModel : ViewModelBase
     {
         AcademicYears = new ObservableCollection<AcademicYear>(_ayRepo.GetAll());
         SelectedAcademicYear = AcademicYears.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Rebuilds <see cref="SemesterManager"/> whenever the selected academic year changes,
+    /// disposing the previous instance to release its WriteLockService subscription.
+    /// </summary>
+    partial void OnSelectedAcademicYearChanged(AcademicYear? value)
+    {
+        SemesterManager?.Dispose();
+        SemesterManager = value is null ? null
+            : new SemesterManagerViewModel(
+                value.Id, _ayRepo, _semRepo, _sectionRepo,
+                _semesterContext, _dialog, _lockService);
     }
 
     /// <summary>
@@ -110,7 +135,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
                 try
                 {
                     _ayRepo.Insert(saved);
-                    CreateDefaultSemesters(saved.Id);
 
                     var allAYs = _ayRepo.GetAll().OrderBy(a => a.Name).ToList();
                     var savedIndex = allAYs.FindIndex(a => a.Id == saved.Id);
@@ -137,6 +161,27 @@ public partial class AcademicYearListViewModel : ViewModelBase
                     else if (savedIndex > 0)
                     {
                         var prevAY = allAYs[savedIndex - 1];
+
+                        // Ask whether to copy semester names from the previous year.
+                        bool copySemesters = ConfirmCopySemesters is not null
+                            && await ConfirmCopySemesters(prevAY.Name);
+
+                        if (copySemesters)
+                        {
+                            var prevSemesters = _semRepo.GetByAcademicYear(prevAY.Id);
+                            for (int i = 0; i < prevSemesters.Count; i++)
+                            {
+                                _semRepo.Insert(new Semester
+                                {
+                                    AcademicYearId = saved.Id,
+                                    Name           = prevSemesters[i].Name,
+                                    SortOrder      = prevSemesters[i].SortOrder
+                                });
+                            }
+                        }
+                        // else: new year starts with no semesters; user adds them via the panel.
+
+                        // Separately ask whether to copy block length / start time setup.
                         string? fromAyId = null;
                         if (ConfirmCopyStartTimes is not null)
                             fromAyId = await ConfirmCopyStartTimes(prevAY.Name, prevAY.Id);
@@ -186,16 +231,4 @@ public partial class AcademicYearListViewModel : ViewModelBase
         }
     }
 
-    private void CreateDefaultSemesters(string academicYearId)
-    {
-        for (int i = 0; i < Semester.DefaultNames.Length; i++)
-        {
-            _semRepo.Insert(new Semester
-            {
-                AcademicYearId = academicYearId,
-                Name = Semester.DefaultNames[i],
-                SortOrder = i
-            });
-        }
-    }
 }

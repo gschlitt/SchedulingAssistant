@@ -352,6 +352,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-22T23:22:50.373Z"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-03-23T03:03:55.792Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-23T03:03:55.792Z"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-03-23T03:05:09.170Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: owner is null",
+      "fix": "Added guard clause: if (owner is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-23T03:05:09.170Z"
+    },
+    {
+      "id": "bug-025",
+      "timestamp": "2026-03-23T03:05:26.014Z",
+      "error_message": "Wrong reference: SemesterListViewModel should be AcademicYearListViewModel",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Used \"SemesterListViewModel\" instead of \"AcademicYearListViewModel\"",
+      "fix": "Changed SemesterListViewModel → AcademicYearListViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-23T03:05:26.014Z"
     }
   ]
 }

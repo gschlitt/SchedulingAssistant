@@ -1,32 +1,11 @@
 {
-  "session_id": "session-2026-03-23-1720",
-  "started": "2026-03-23T00:20:26.453Z",
-  "files_read": {
-    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-23T02:19:10.919Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
-      "action": "edit",
-      "tokens": 384,
-      "at": "2026-03-23T02:19:28.093Z"
-    },
-    {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
-      "action": "edit",
-      "tokens": 589,
-      "at": "2026-03-23T02:19:49.449Z"
-    }
-  ],
-  "edit_counts": {
-    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": 2
-  },
+  "session_id": "session-2026-03-23-2019",
+  "started": "2026-03-23T03:19:47.988Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
   "anatomy_hits": 0,
-  "anatomy_misses": 1,
+  "anatomy_misses": 0,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
   "stop_count": 1

@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace SchedulingAssistant.Views.Management;
 
-public partial class SemesterListView : UserControl
+public partial class SemesterManagerView : UserControl
 {
-    public SemesterListView()
+    public SemesterManagerView()
     {
         InitializeComponent();
     }

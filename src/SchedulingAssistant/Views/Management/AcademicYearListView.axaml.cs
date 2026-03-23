@@ -19,8 +19,9 @@ public partial class AcademicYearListView : UserControl
     {
         if (DataContext is AcademicYearListViewModel vm)
         {
-            vm.ConfirmCopyStartTimes = ShowCopyStartTimesConfirmAsync;
+            vm.ConfirmCopyStartTimes      = ShowCopyStartTimesConfirmAsync;
             vm.ConfirmImportPersistedData = ShowImportPersistedDataAsync;
+            vm.ConfirmCopySemesters       = ShowCopySemestersConfirmAsync;
         }
     }
 
@@ -150,6 +151,54 @@ public partial class AcademicYearListView : UserControl
         panel.Children.Add(body);
         panel.Children.Add(separator);
         panel.Children.Add(summaryBox);
+        panel.Children.Add(buttons);
+        msg.Content = panel;
+
+        await msg.ShowDialog(owner);
+        return result;
+    }
+
+    private async Task<bool> ShowCopySemestersConfirmAsync(string prevAyName)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return false;
+
+        bool result = false;
+
+        var msg = new Window
+        {
+            Title = "Copy Semesters",
+            Width = 420,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ShowInTaskbar = false
+        };
+
+        var body = new TextBlock
+        {
+            Text = $"Would you like to copy the semester names from {prevAyName}?\n\nClick \"Yes\" to copy, or \"No\" to start with an empty semester list.",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            FontSize = 13
+        };
+
+        var yesBtn = new Button { Content = "Yes" };
+        var noBtn  = new Button { Content = "No" };
+
+        yesBtn.Click += (_, _) => { result = true;  msg.Close(); };
+        noBtn.Click  += (_, _) => { result = false; msg.Close(); };
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        buttons.Children.Add(yesBtn);
+        buttons.Children.Add(noBtn);
+
+        var panel = new StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 16 };
+        panel.Children.Add(body);
         panel.Children.Add(buttons);
         msg.Content = panel;
 

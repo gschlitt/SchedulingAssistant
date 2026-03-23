@@ -192,7 +192,6 @@ public partial class App : Application
                 sp.GetRequiredService<WriteLockService>()));
 
         services.AddTransient<RoomListViewModel>();
-        services.AddTransient<SemesterListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();
         services.AddTransient<CopySemesterViewModel>();
         services.AddTransient<EmptySemesterViewModel>();
