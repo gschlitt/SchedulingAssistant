@@ -36,6 +36,29 @@ public partial class SectionPrefixEditViewModel : ViewModelBase
     [ObservableProperty] private CampusOption? _selectedCampus;
 
     /// <summary>
+    /// Whether the section designator that follows this prefix is a number or a letter.
+    /// Drives the two radio buttons in the edit form.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNumberDesignator))]
+    [NotifyPropertyChangedFor(nameof(IsLetterDesignator))]
+    private DesignatorType _designatorType = DesignatorType.Number;
+
+    /// <summary>True when the designator type is Number; bound to the "Number" radio button.</summary>
+    public bool IsNumberDesignator
+    {
+        get => DesignatorType == DesignatorType.Number;
+        set { if (value) DesignatorType = DesignatorType.Number; }
+    }
+
+    /// <summary>True when the designator type is Letter; bound to the "Letter" radio button.</summary>
+    public bool IsLetterDesignator
+    {
+        get => DesignatorType == DesignatorType.Letter;
+        set { if (value) DesignatorType = DesignatorType.Letter; }
+    }
+
+    /// <summary>
     /// Validation error message to display beneath the Prefix field,
     /// or null when the input is valid.
     /// </summary>
@@ -81,6 +104,7 @@ public partial class SectionPrefixEditViewModel : ViewModelBase
         _prefixExists = prefixExists;
 
         Prefix = target.Prefix;
+        DesignatorType = target.DesignatorType;
         SelectedCampus = campusOptions.FirstOrDefault(c => c.Id == target.CampusId)
                          ?? campusOptions[0]; // fall back to "(none)"
     }
@@ -90,6 +114,7 @@ public partial class SectionPrefixEditViewModel : ViewModelBase
     private void Save()
     {
         _target.Prefix = Prefix.Trim();
+        _target.DesignatorType = DesignatorType;
         _target.CampusId = SelectedCampus?.Id; // null when "(none)" is selected
         _onSave(_target);
     }

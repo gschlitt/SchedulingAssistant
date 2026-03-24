@@ -43,6 +43,25 @@
                             IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                             Text="{Binding ValidationError}" />
 
+                        <!--  Designator type  -->
+                        <TextBlock
+                            FontSize="{DynamicResource FontSizeNormal}"
+                            Foreground="{StaticResource TextSecondary}"
+                            Text="[Explanatory text about designator types goes here.]"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock Text="Section designator" />
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <RadioButton
+                                Content="Number (e.g. 1, 17)"
+                                GroupName="DesignatorType"
+                                IsChecked="{Binding IsNumberDesignator}" />
+                            <RadioButton
+                                Content="Letter (e.g. A, C)"
+                                GroupName="DesignatorType"
+                                IsChecked="{Binding IsLetterDesignator}" />
+                        </StackPanel>
+
                         <TextBlock Text="Campus (optional)" />
                         <ComboBox
                             HorizontalAlignment="Stretch"
@@ -83,6 +102,10 @@
                     Width="120"
                     Binding="{Binding Prefix.Prefix}"
                     Header="Prefix" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding DesignatorTypeDisplay}"
+                    Header="Designator" />
                 <DataGridTextColumn
                     Width="*"
                     Binding="{Binding CampusName}"

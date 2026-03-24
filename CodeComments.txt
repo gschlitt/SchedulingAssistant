@@ -1,17 +1,15 @@
 Bugs:
 
-A user could enter an early start time before 0830 in the start-time/blocklength selector. What happens then?
-
-
-
-Fontsize seems hardcoded in a number of places, should be able to adjust from app.axaml
-
-Migration utility needs to handle campus and generate a level for the courses and sections.
-
 Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
 
-Width of courses menu should be dynamic.
 
+Next step in institution setups. During the startup wizard, the user should name the semesters or terms that they will schedule in. They may even wish to revise later after they've started using the app. It's unusual to add or delete semesters, but no unheard of. So first of all we need a revision to data types: instead of being a top level class, semesters will belong to an academic year, and have their existence and names edite in the Academic Year CRUD panel.  Include an ordering facility for the semesters within a year. Recall that we need this same Semester CRUD panel to work in the wizard eventually so make it portable.
+
+That is, a year will have a list or collection of semesters, which could vary from year to year. We need the following behaviors: when a new academic year is created, the user is asked to confirm if they wish to use the same list of semesters as last year. If no, the are led to the AcademicYear panel to revise as they please. 
+
+If a user wishes to revise the name of an existing semester in an existing acad year, no problem. If a user wishes to add a semester to an existing academic year, no problem, it just starts as an empty semester like any other. Deletion from an existing year is tricky: the user should be advised they need to empty it of courses first (which they can do via empty semester) which provides a moment's pause. If the semester is empty it can be deleted.
+
+So there's some serious refactoring to do here. Semesters touch a lot of places let me point out  they shown up in Course History and Workload History for an instructor. Rephrase first, so I can check your understanding and revise.
 
 
 

@@ -1,4 +1,69 @@
 {
   "version": 1,
-  "bugs": []
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-03-24T20:10:56.998Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-24T20:10:56.998Z"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-03-24T20:43:46.772Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/SectionPrefixHelper.cs",
+      "root_cause": "No early return/throw for edge case: string.IsNullOrEmpty(sectionCode",
+      "fix": "Added guard clause: if (string.IsNullOrEmpty(sectionCode)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-24T20:43:46.772Z"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-03-24T20:43:59.878Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/SectionPrefixHelper.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 21→41 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-24T20:43:59.878Z"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-03-24T20:44:17.879Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/SectionPrefixHelperTests.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-24T20:44:17.879Z"
+    }
+  ]
 }

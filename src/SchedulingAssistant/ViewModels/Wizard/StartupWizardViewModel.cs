@@ -431,9 +431,54 @@ public partial class StartupWizardViewModel : ViewModelBase
         var ay = new AcademicYear { Name = s9.ExpandedAcademicYearName };
         ayRepo.Insert(ay);
 
-        // Seed legal start times — use wizard step 6 data if configured, otherwise defaults.
+        // Resolve the imported config (null on the manual path).
+        TpConfigData? importedCfg = null;
+        if (_isImportPath && _stepCache.TryGetValue(4, out var s4CfgVm) && s4CfgVm is Step3TpConfigViewModel s4Cfg)
+            importedCfg = s4Cfg.ImportedConfig;
+
+        // --- Import path: campuses and section prefixes from .tpconfig ---
+        if (importedCfg is not null)
+        {
+            var campusRepo = App.Services.GetRequiredService<ICampusRepository>();
+            var prefixRepo = App.Services.GetRequiredService<ISectionPrefixRepository>();
+
+            // Insert campuses in order; build name→ID map for prefix resolution.
+            var campusNameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            int campusSortOrder = 0;
+            foreach (var campusName in importedCfg.Campuses)
+            {
+                if (string.IsNullOrWhiteSpace(campusName)) continue;
+                var campus = new Campus { Name = campusName.Trim(), SortOrder = campusSortOrder++ };
+                campusRepo.Insert(campus);
+                campusNameToId[campus.Name] = campus.Id;
+            }
+
+            // Insert section prefixes, resolving campus name → ID.
+            foreach (var spDef in importedCfg.SectionPrefixes)
+            {
+                if (string.IsNullOrWhiteSpace(spDef.Prefix)) continue;
+                var prefix = new SectionPrefix
+                {
+                    Prefix   = spDef.Prefix.Trim(),
+                    CampusId = spDef.CampusName is not null
+                               && campusNameToId.TryGetValue(spDef.CampusName, out var cid) ? cid : null
+                };
+                prefixRepo.Insert(prefix);
+            }
+        }
+
+        // Seed legal start times:
+        //   import path  → block lengths from .tpconfig
+        //   manual path  → wizard step 6 data (or hardcoded defaults if step was skipped)
         var db = App.Services.GetRequiredService<IDatabaseContext>();
-        if (_stepCache.TryGetValue(6, out var s6lstVm) && s6lstVm is Step5LegalStartTimesViewModel s6lst)
+        if (importedCfg?.BlockLengths is { Count: > 0 } importBlockLengths)
+        {
+            var seedData = importBlockLengths
+                .Select(bl => (bl.Hours, bl.StartTimes))
+                .ToList();
+            SchedulingAssistant.Data.SeedData.SeedWizardLegalStartTimes(db.Connection, ay.Id, seedData);
+        }
+        else if (_stepCache.TryGetValue(6, out var s6lstVm) && s6lstVm is Step5LegalStartTimesViewModel s6lst)
         {
             var seedData = s6lst.GetSeedData();
             if (seedData.Count > 0)
@@ -483,6 +528,9 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     /// <summary>
     /// Writes the .tpconfig file (manual path only). Non-fatal on failure.
+    /// Collects semester defs from steps 9+10, block lengths from step 6,
+    /// and campuses/section-prefixes from their repositories (already written
+    /// to the DB by the embedded management VMs during steps 5 and 8).
     /// </summary>
     private void WriteTpConfig()
     {
@@ -491,11 +539,44 @@ public partial class StartupWizardViewModel : ViewModelBase
         if (!_stepCache.TryGetValue(10, out var s10vm) || s10vm is not Step6SemesterColorsViewModel s10) return;
         if (!_stepCache.TryGetValue(9,  out var s9vm)  || s9vm  is not Step5AcademicYearViewModel  s9)  return;
 
+        // Semester defs (name + color) from steps 9 and 10.
         var semDefs = s9.Semesters.Zip(s10.Rows, (sem, row) =>
             new TpConfigSemesterDef { Name = sem.Name, Color = row.HexColor }
         ).ToList();
 
-        var config = new TpConfigData { SemesterDefs = semDefs };
+        // Block lengths and start times from step 6 (wizard-configured data, already seeded to DB).
+        var blockLengths = new List<TpConfigBlockLength>();
+        if (_stepCache.TryGetValue(6, out var s6lstVm) && s6lstVm is Step5LegalStartTimesViewModel s6lst)
+        {
+            blockLengths = s6lst.BlockLengths
+                .Select(b => new TpConfigBlockLength { Hours = b.BlockLengthHours, StartTimes = b.GetStartMinutes() })
+                .Where(bl => bl.StartTimes.Count > 0)
+                .ToList();
+        }
+
+        // Campuses and section prefixes — read from repos (written to DB by the management VMs).
+        var campusRepo = App.Services.GetRequiredService<ICampusRepository>();
+        var campuses   = campusRepo.GetAll();
+        var campusNames    = campuses.Select(c => c.Name).ToList();
+        var campusIdToName = campuses.ToDictionary(c => c.Id, c => c.Name);
+
+        var prefixRepo      = App.Services.GetRequiredService<ISectionPrefixRepository>();
+        var sectionPrefixes = prefixRepo.GetAll()
+            .Select(p => new TpConfigSectionPrefix
+            {
+                Prefix     = p.Prefix,
+                CampusName = p.CampusId is not null
+                             && campusIdToName.TryGetValue(p.CampusId, out var cn) ? cn : null
+            })
+            .ToList();
+
+        var config = new TpConfigData
+        {
+            SemesterDefs    = semDefs,
+            BlockLengths    = blockLengths,
+            Campuses        = campusNames,
+            SectionPrefixes = sectionPrefixes
+        };
         TpConfigService.Write(_dbFolder, config, _acUnitAbbrev);
     }
 }

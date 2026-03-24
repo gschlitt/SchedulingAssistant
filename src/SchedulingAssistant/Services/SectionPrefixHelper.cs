@@ -17,14 +17,16 @@ public static class SectionPrefixHelper
     /// <summary>
     /// Returns the longest-matching <see cref="SectionPrefix"/> whose
     /// <see cref="SectionPrefix.Prefix"/> text appears at the start of
-    /// <paramref name="sectionCode"/>, immediately followed by at least one digit.
+    /// <paramref name="sectionCode"/>, immediately followed by a character
+    /// appropriate to that prefix's <see cref="DesignatorType"/>
+    /// (a digit for <c>Number</c>; a letter for <c>Letter</c>).
     /// Returns <c>null</c> if no prefix matches.
     ///
     /// Longest-match semantics: if both "A" and "AB" are configured and the code
     /// is "AB1", "AB" is returned rather than "A".
     /// Matching is case-insensitive.
     /// </summary>
-    /// <param name="sectionCode">The section code to inspect (e.g. "AB1", "A#3").</param>
+    /// <param name="sectionCode">The section code to inspect (e.g. "AB1", "A#C").</param>
     /// <param name="prefixes">All configured section prefixes.</param>
     /// <returns>The best-matching <see cref="SectionPrefix"/>, or <c>null</c>.</returns>
     public static SectionPrefix? MatchPrefix(string sectionCode, IReadOnlyList<SectionPrefix> prefixes)
@@ -43,10 +45,18 @@ public static class SectionPrefixHelper
             if (!sectionCode.StartsWith(p.Prefix, StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            // …and the very next character must be a digit (ensures we matched a
-            // prefix-integer code, not a code that merely shares a leading substring).
+            // …and the very next character must match the prefix's designator type:
+            // a digit for Number prefixes, a letter for Letter prefixes.
             int afterPrefix = p.Prefix.Length;
-            if (afterPrefix >= sectionCode.Length || !char.IsDigit(sectionCode[afterPrefix]))
+            if (afterPrefix >= sectionCode.Length)
+                continue;
+
+            char designator = sectionCode[afterPrefix];
+            bool suffixMatches = p.DesignatorType == DesignatorType.Letter
+                ? char.IsLetter(designator)
+                : char.IsDigit(designator);
+
+            if (!suffixMatches)
                 continue;
 
             // Keep the longest match.
@@ -58,18 +68,39 @@ public static class SectionPrefixHelper
     }
 
     /// <summary>
-    /// Finds the first available section code of the form <c>{prefix}{n}</c>
-    /// (n = 1, 2, … 999) by scanning for gaps in the existing sequence.
-    /// Returns <c>null</c> if every slot from 1 to 999 is already taken.
+    /// Finds the first available section code of the form <c>{prefix}{designator}</c>
+    /// by scanning for gaps in the existing sequence.
+    /// For <see cref="DesignatorType.Number"/>, scans 1–999.
+    /// For <see cref="DesignatorType.Letter"/>, scans A–Z then AA–ZZ then AAA–ZZZ
+    /// (lexicographic order), providing 18,278 unique designators before returning null.
+    /// Returns <c>null</c> if every slot in the range is already taken.
     /// </summary>
-    /// <param name="prefix">The prefix string (e.g. "AB", "A#", "CH").</param>
+    /// <param name="prefix">The prefix string (e.g. "AB", "A#", "TUT").</param>
     /// <param name="codeExists">
     /// A delegate that returns <c>true</c> when the candidate code is already in use.
     /// The caller is responsible for scoping this to the correct course and semester.
     /// </param>
+    /// <param name="designatorType">
+    /// Whether to generate numeric or alphabetic designators.
+    /// Defaults to <see cref="DesignatorType.Number"/>.
+    /// </param>
     /// <returns>The first available code string, or <c>null</c>.</returns>
-    public static string? FindNextAvailableCode(string prefix, Func<string, bool> codeExists)
+    public static string? FindNextAvailableCode(
+        string prefix,
+        Func<string, bool> codeExists,
+        DesignatorType designatorType = DesignatorType.Number)
     {
+        if (designatorType == DesignatorType.Letter)
+        {
+            foreach (var designator in LetterDesignatorSequence())
+            {
+                var candidate = $"{prefix}{designator}";
+                if (!codeExists(candidate))
+                    return candidate;
+            }
+            return null;
+        }
+
         for (int n = 1; n <= 999; n++)
         {
             var candidate = $"{prefix}{n}";
@@ -120,7 +151,7 @@ public static class SectionPrefixHelper
         var matched = MatchPrefix(sourceCode, prefixes);
         if (matched is not null)
         {
-            var next = FindNextAvailableCode(matched.Prefix, codeExists);
+            var next = FindNextAvailableCode(matched.Prefix, codeExists, matched.DesignatorType);
             return (next, matched.CampusId);
         }
 
@@ -135,5 +166,31 @@ public static class SectionPrefixHelper
 
         // Only return the candidate if it is actually available.
         return codeExists(candidate) ? (null, null) : (candidate, null);
+    }
+
+    /// <summary>
+    /// Yields letter designators in lexicographic order: A, B, …, Z, AA, AB, …, ZZ, AAA, …
+    /// up to three characters in length (26 + 676 + 17,576 = 18,278 total).
+    /// Used by <see cref="FindNextAvailableCode"/> when the designator type is
+    /// <see cref="DesignatorType.Letter"/>.
+    /// </summary>
+    private static IEnumerable<string> LetterDesignatorSequence()
+    {
+        const string Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        // Single letters: A–Z
+        foreach (char c in Letters)
+            yield return c.ToString();
+
+        // Two-letter combos: AA–ZZ
+        foreach (char c1 in Letters)
+            foreach (char c2 in Letters)
+                yield return $"{c1}{c2}";
+
+        // Three-letter combos: AAA–ZZZ
+        foreach (char c1 in Letters)
+            foreach (char c2 in Letters)
+                foreach (char c3 in Letters)
+                    yield return $"{c1}{c2}{c3}";
     }
 }

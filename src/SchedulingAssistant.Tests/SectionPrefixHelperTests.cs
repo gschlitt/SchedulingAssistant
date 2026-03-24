@@ -16,8 +16,11 @@ public class SectionPrefixHelperTests
     // ─── Helper ───────────────────────────────────────────────────────────────
 
     /// <summary>Shorthand factory for a <see cref="SectionPrefix"/>.</summary>
-    private static SectionPrefix P(string prefix, string? campusId = null) =>
-        new() { Prefix = prefix, CampusId = campusId };
+    private static SectionPrefix P(
+        string prefix,
+        string? campusId = null,
+        DesignatorType designatorType = DesignatorType.Number) =>
+        new() { Prefix = prefix, CampusId = campusId, DesignatorType = designatorType };
 
     // ═════════════════════════════════════════════════════════════════════════
     // MatchPrefix
@@ -149,6 +152,88 @@ public class SectionPrefixHelperTests
         Assert.Null(result);
     }
 
+    // ── Letter designator ─────────────────────────────────────────────────
+
+    [Fact]
+    public void MatchPrefix_LetterDesignator_MatchesWhenSuffixIsLetter()
+    {
+        var tut = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.MatchPrefix("TUTA", new[] { tut });
+        Assert.Same(tut, result);
+    }
+
+    [Fact]
+    public void MatchPrefix_LetterDesignator_DoesNotMatchWhenSuffixIsDigit()
+    {
+        // A Letter-type prefix should NOT match a code whose suffix is a number.
+        var tut = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.MatchPrefix("TUT1", new[] { tut });
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void MatchPrefix_NumberDesignator_DoesNotMatchWhenSuffixIsLetter()
+    {
+        // A Number-type prefix should NOT match a code whose suffix is a letter.
+        var ab = P("AB", designatorType: DesignatorType.Number);
+        var result = SectionPrefixHelper.MatchPrefix("ABA", new[] { ab });
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void MatchPrefix_SpecialCharPrefix_LetterDesignator_Matches()
+    {
+        // "A#" with Letter designator should match "A#C".
+        var ahash = P("A#", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.MatchPrefix("A#C", new[] { ahash });
+        Assert.Same(ahash, result);
+    }
+
+    [Fact]
+    public void MatchPrefix_LetterDesignator_LowercaseSuffix_StillMatches()
+    {
+        // char.IsLetter is case-insensitive, so "tuta" must still resolve to the "TUT" prefix.
+        var tut = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.MatchPrefix("tuta", new[] { tut });
+        Assert.Same(tut, result);
+    }
+
+    [Fact]
+    public void MatchPrefix_LetterDesignator_CodeEqualsPrefix_NoSuffix_ReturnsNull()
+    {
+        // "TUT" with no designator character — afterPrefix == sectionCode.Length, so no match.
+        var tut = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.MatchPrefix("TUT", new[] { tut });
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void MatchPrefix_MixedList_LetterAndNumberPrefixes_EachMatchesOwnSuffixType()
+    {
+        // "AB" is a Number prefix; "TUT" is a Letter prefix.
+        // Neither should match the other's code style.
+        var ab  = P("AB",  designatorType: DesignatorType.Number);
+        var tut = P("TUT", designatorType: DesignatorType.Letter);
+        var prefixes = new[] { ab, tut };
+
+        Assert.Same(ab,  SectionPrefixHelper.MatchPrefix("AB1",   prefixes));
+        Assert.Same(tut, SectionPrefixHelper.MatchPrefix("TUTA",  prefixes));
+        Assert.Null(     SectionPrefixHelper.MatchPrefix("ABA",   prefixes)); // AB is Number, won't match letter suffix
+        Assert.Null(     SectionPrefixHelper.MatchPrefix("TUT1",  prefixes)); // TUT is Letter, won't match digit suffix
+    }
+
+    [Fact]
+    public void MatchPrefix_LetterDesignator_LongestMatchWins()
+    {
+        // Both "T" (Number) and "TUT" (Letter) could share a leading substring.
+        // "TUTA" — "T" is Number so 'U' (not a digit) is no match;
+        //          "TUT" is Letter so 'A' (a letter) is a match.
+        var t   = P("T",   designatorType: DesignatorType.Number);
+        var tut = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.MatchPrefix("TUTA", new[] { t, tut });
+        Assert.Same(tut, result);
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // FindNextAvailableCode
     // ═════════════════════════════════════════════════════════════════════════
@@ -190,6 +275,117 @@ public class SectionPrefixHelperTests
         // All 999 slots occupied — no slot available.
         var result = SectionPrefixHelper.FindNextAvailableCode("AB", _ => true);
         Assert.Null(result);
+    }
+
+    // ── Letter designator ─────────────────────────────────────────────────
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_NoSlotsTaken_ReturnsA()
+    {
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", _ => false, DesignatorType.Letter);
+        Assert.Equal("TUTA", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_FirstSlotTaken_ReturnsB()
+    {
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", code => code == "TUTA", DesignatorType.Letter);
+        Assert.Equal("TUTB", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_FillsGap_ReturnsLowestAvailableLetter()
+    {
+        // A and C are taken; the gap at B should be filled first.
+        var taken = new HashSet<string> { "TUTA", "TUTC" };
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", code => taken.Contains(code), DesignatorType.Letter);
+        Assert.Equal("TUTB", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_AllSlotsTaken_ReturnsNull()
+    {
+        // All 18,278 (A–Z + AA–ZZ + AAA–ZZZ) slots occupied — no slot available.
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", _ => true, DesignatorType.Letter);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_AllSingleLettersTaken_ReturnsDoubleLetterCode()
+    {
+        // Once A–Z are exhausted the sequence must continue with AA, AB, …
+        var taken = new HashSet<string>("ABCDEFGHIJKLMNOPQRSTUVWXYZ".Select(c => $"TUT{c}"));
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", code => taken.Contains(code), DesignatorType.Letter);
+        Assert.Equal("TUTAA", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_DoubleLetterGap_FillsGapBeforeAdvancing()
+    {
+        // AA and AC are taken; AB is the gap — must be returned before AD.
+        var taken = new HashSet<string> { "TUTAA", "TUTAC" };
+        // Assume all single-letter slots are also taken so we enter double-letter territory.
+        var allSingle = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".Select(c => $"TUT{c}");
+        taken.UnionWith(allSingle);
+
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", code => taken.Contains(code), DesignatorType.Letter);
+        Assert.Equal("TUTAB", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_SpecialCharPrefix_ReturnsLetterSuffix()
+    {
+        // "A#" is a valid prefix; should generate "A#A", not "A#1".
+        var result = SectionPrefixHelper.FindNextAvailableCode("A#", _ => false, DesignatorType.Letter);
+        Assert.Equal("A#A", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_GeneratesUppercase()
+    {
+        // The designator portion of generated codes must be uppercase.
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", _ => false, DesignatorType.Letter);
+        Assert.Equal("TUTA", result);
+        // Every character in the result that is a letter must be uppercase.
+        Assert.True(result!.All(c => !char.IsLetter(c) || char.IsUpper(c)));
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_Letter_DoubleLetterResult_IsUppercase()
+    {
+        // Multi-character designators must also be uppercase.
+        var allSingle = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".Select(c => $"TUT{c}").ToHashSet();
+        var result = SectionPrefixHelper.FindNextAvailableCode("TUT", code => allSingle.Contains(code), DesignatorType.Letter);
+        Assert.Equal("TUTAA", result);
+        Assert.True(result!.All(c => !char.IsLetter(c) || char.IsUpper(c)));
+    }
+
+    // ── Bug regression: FindNextAvailableCode defaults to Number ──────────
+    // SectionEditViewModel.OnSelectedPrefixOptionChanged calls FindNextAvailableCode
+    // without passing DesignatorType.  For a Letter-designated prefix this generates
+    // a numeric code ("TUT1") instead of a letter code ("TUTA").
+    // The following test documents the CORRECT call pattern (with DesignatorType passed)
+    // and the WRONG call pattern (without it), so the discrepancy is visible.
+
+    [Fact]
+    public void FindNextAvailableCode_WithDesignatorType_LetterPrefixGivesLetterCode()
+    {
+        // CORRECT: caller supplies the prefix's DesignatorType.
+        var prefix = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.FindNextAvailableCode(prefix.Prefix, _ => false, prefix.DesignatorType);
+        Assert.Equal("TUTA", result);
+    }
+
+    [Fact]
+    public void FindNextAvailableCode_WithoutDesignatorType_LetterPrefixGivesNumericCode()
+    {
+        // WRONG call pattern (no DesignatorType): replicates the bug in
+        // SectionEditViewModel.OnSelectedPrefixOptionChanged where the prefix's
+        // DesignatorType is not forwarded.  The default is Number, so the result
+        // is "TUT1" rather than "TUTA".
+        var prefix = P("TUT", designatorType: DesignatorType.Letter);
+        var result = SectionPrefixHelper.FindNextAvailableCode(prefix.Prefix, _ => false);
+        Assert.Equal("TUT1", result); // numeric — the bug in action
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -293,5 +489,69 @@ public class SectionPrefixHelperTests
         var (code, _) = SectionPrefixHelper.AdvanceSectionCode(
             "123", Array.Empty<SectionPrefix>(), _ => false);
         Assert.Equal("124", code);
+    }
+
+    // ── Letter designator ─────────────────────────────────────────────────
+
+    [Fact]
+    public void AdvanceSectionCode_LetterPrefix_GapFill_ReturnsFirstAvailableLetter()
+    {
+        // Source is "TUTB"; TUTA is free — gap-fill returns TUTA not TUTC.
+        var prefixes = new[] { P("TUT", designatorType: DesignatorType.Letter) };
+        var taken = new HashSet<string> { "TUTB" };
+        var (code, _) = SectionPrefixHelper.AdvanceSectionCode(
+            "TUTB", prefixes, c => taken.Contains(c));
+        Assert.Equal("TUTA", code);
+    }
+
+    [Fact]
+    public void AdvanceSectionCode_LetterPrefix_ReturnsCampusId()
+    {
+        var prefixes = new[] { P("TUT", campusId: "campus-xyz", designatorType: DesignatorType.Letter) };
+        var (_, campus) = SectionPrefixHelper.AdvanceSectionCode(
+            "TUTA", prefixes, _ => false);
+        Assert.Equal("campus-xyz", campus);
+    }
+
+    [Fact]
+    public void AdvanceSectionCode_LetterPrefix_AllSlotsTaken_ReturnsNullCode()
+    {
+        var prefixes = new[] { P("TUT", campusId: "campus-xyz", designatorType: DesignatorType.Letter) };
+        var (code, campus) = SectionPrefixHelper.AdvanceSectionCode(
+            "TUTA", prefixes, _ => true);
+        Assert.Null(code);
+        Assert.Equal("campus-xyz", campus);
+    }
+
+    [Fact]
+    public void AdvanceSectionCode_LetterPrefix_SpecialChar_GapFill()
+    {
+        // "A#" Letter prefix: "A#C" source, "A#A" and "A#B" free — returns "A#A".
+        var prefixes = new[] { P("A#", designatorType: DesignatorType.Letter) };
+        var taken = new HashSet<string> { "A#C", "A#D" };
+        var (code, _) = SectionPrefixHelper.AdvanceSectionCode(
+            "A#C", prefixes, c => taken.Contains(c));
+        Assert.Equal("A#A", code);
+    }
+
+    [Fact]
+    public void AdvanceSectionCode_LetterSuffixCode_NoPrefixConfigured_FallbackReturnsNull()
+    {
+        // "TUTA" has no trailing digit and no configured prefix — fallback cannot advance it.
+        var (code, campus) = SectionPrefixHelper.AdvanceSectionCode(
+            "TUTA", Array.Empty<SectionPrefix>(), _ => false);
+        Assert.Null(code);
+        Assert.Null(campus);
+    }
+
+    [Fact]
+    public void AdvanceSectionCode_LetterSuffixCode_PrefixListHasOnlyNumberPrefixes_FallbackReturnsNull()
+    {
+        // "TUTA" — the list has "TUT" but as a Number prefix, so MatchPrefix won't match
+        // ("A" is not a digit).  Fallback looks for trailing digits and finds none → null.
+        var prefixes = new[] { P("TUT", designatorType: DesignatorType.Number) };
+        var (code, _) = SectionPrefixHelper.AdvanceSectionCode(
+            "TUTA", prefixes, _ => false);
+        Assert.Null(code);
     }
 }

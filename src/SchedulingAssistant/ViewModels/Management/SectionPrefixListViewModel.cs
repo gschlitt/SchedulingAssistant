@@ -112,9 +112,10 @@ public partial class SectionPrefixListViewModel : ViewModelBase
         // Work on a copy so the grid row is not mutated until save.
         var copy = new SectionPrefix
         {
-            Id       = SelectedItem.Prefix.Id,
-            Prefix   = SelectedItem.Prefix.Prefix,
-            CampusId = SelectedItem.Prefix.CampusId,
+            Id            = SelectedItem.Prefix.Id,
+            Prefix        = SelectedItem.Prefix.Prefix,
+            CampusId      = SelectedItem.Prefix.CampusId,
+            DesignatorType = SelectedItem.Prefix.DesignatorType,
         };
 
         EditVm = new SectionPrefixEditViewModel(
@@ -149,4 +150,9 @@ public partial class SectionPrefixListViewModel : ViewModelBase
 /// </summary>
 /// <param name="Prefix">The underlying model object.</param>
 /// <param name="CampusName">Campus display name, or empty string if no campus is associated.</param>
-public record SectionPrefixRow(SectionPrefix Prefix, string CampusName);
+public record SectionPrefixRow(SectionPrefix Prefix, string CampusName)
+{
+    /// <summary>Human-readable designator type for the data grid ("Number" or "Letter").</summary>
+    public string DesignatorTypeDisplay =>
+        Prefix.DesignatorType == DesignatorType.Letter ? "Letter" : "Number";
+}

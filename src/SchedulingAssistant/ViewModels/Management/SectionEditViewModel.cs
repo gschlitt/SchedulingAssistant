@@ -277,9 +277,12 @@ public partial class SectionEditViewModel : ViewModelBase
             return;
 
         // Find the first available code for this prefix in the current course+semester.
+        // DesignatorType must be forwarded so Letter prefixes generate letter codes (e.g.
+        // "TUTA") and Number prefixes generate numeric codes (e.g. "AB1").
         var next = SectionPrefixHelper.FindNextAvailableCode(
             value.Prefix.Prefix,
-            code => _isSectionCodeDuplicate(SelectedCourseId, code));
+            code => _isSectionCodeDuplicate(SelectedCourseId, code),
+            value.Prefix.DesignatorType);
 
         if (next is null) return; // all 1-999 slots taken
 

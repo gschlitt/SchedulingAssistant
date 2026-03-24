@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-24T17:29:19.895Z
-> Files: 517 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-24T21:01:23.157Z
+> Files: 524 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -558,6 +558,10 @@
 
 - `manual.html` — Scheduling Assistant — User Manual (~10841 tok)
 
+## src/SchedulingAssistant.Tests/
+
+- `SectionPrefixHelperTests.cs` — Unit tests for <see cref="SectionPrefixHelper"/>. Tests are organized by method: MatchPrefix, FindNe (~5961 tok)
+
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1065 tok)
@@ -632,15 +636,33 @@
 - `RoomRepository.cs` — Returns all rooms ordered by <see cref="Room.SortOrder"/> ascending, then by building and room number as a tiebreaker. Sorting is done in C# after ... (~772 tok)
 - `SectionPrefixRepository.cs` — CRUD repository for <see cref="SectionPrefix"/> records stored in the <c>SectionPrefixes</c> table. (~1050 tok)
 
+## src/SchedulingAssistant/Models/
+
+- `SectionPrefix.cs` — Specifies whether the section designator that follows a prefix is a number or a letter. (~418 tok)
+
+## src/SchedulingAssistant/Services/
+
+- `SectionPrefixHelper.cs` — Static utility methods for matching and advancing section codes based on the configured list of <see (~2187 tok)
+
+## src/SchedulingAssistant/ViewModels/Management/
+
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9575 tok)
+- `SectionPrefixEditViewModel.cs` — ViewModel for the inline Add/Edit form in the Section Prefixes flyout. Communicates results back to (~1426 tok)
+- `SectionPrefixListViewModel.cs` — ViewModel for the Section Prefixes management flyout. Provides a list of section prefixes with inlin (~1729 tok)
+
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
-- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~4917 tok)
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5968 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
 - `Step10ClosingViewModel.cs` — Step 10 — closing/congratulations panel shown after all configuration is complete. Clicking Finish h (~132 tok)
 - `Step1aExistingDbViewModel.cs` — Step 1a — asks whether the user already has a TermPoint database set up by a colleague. "Yes" path: (~1088 tok)
 - `Step2DatabaseViewModel.cs` — Step 2 — choose the database folder, confirm/edit the database filename, and choose the backup folde (~1408 tok)
+
+## src/SchedulingAssistant/Views/Management/
+
+- `SectionPrefixListView.axaml` (~1573 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
