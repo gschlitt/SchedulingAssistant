@@ -12,7 +12,7 @@
         <TextBlock
             Grid.Row="0"
             Margin="0,0,0,12"
-            FontSize="12"
+            FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{StaticResource TextSecondary}"
             Text="Section Prefixes (the initial symbols of a typical section code e.g 'AB' or 'A#' in 'AB1' or 'A#1')"
             TextWrapping="Wrap" />
@@ -30,7 +30,7 @@
                         Spacing="10">
 
                         <TextBlock
-                            FontSize="14"
+                            FontSize="{DynamicResource FontSizeLarge}"
                             FontWeight="SemiBold"
                             Text="{Binding Title}" />
 
@@ -38,7 +38,7 @@
                         <TextBox Text="{Binding Prefix}" />
 
                         <TextBlock
-                            FontSize="12"
+                            FontSize="{DynamicResource FontSizeNormal}"
                             Foreground="{StaticResource TextError}"
                             IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                             Text="{Binding ValidationError}" />

@@ -1,26 +1,32 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mgmt="using:SchedulingAssistant.Views.Management"
-             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step6BlockPatternsView"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step6BlockPatternsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mgmt="using:SchedulingAssistant.Views.Management"
+    x:CompileBindings="False">
 
-    <StackPanel Spacing="16" MaxWidth="600">
+    <StackPanel MaxWidth="900" Spacing="16">
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
-                   Foreground="{DynamicResource ForegroundMuted}">
-            Block patterns define which days of the week a class meets for each block length.
-            For example, a 1.5-hour block typically meets Monday/Wednesday/Friday (MWF)
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Block patterns define which days of the week a class typically meets.
+            For example, a 1.5-hour block may typically meet Monday/Wednesday/Friday (MWF)
             or Tuesday/Thursday (TR).
         </TextBlock>
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
-                   Foreground="{DynamicResource ForegroundMuted}">
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
             TermPoint uses these patterns to suggest meeting day combinations when you add a section.
             You can define multiple patterns per block length to cover all the day combinations
-            used at your institution. Block patterns can be changed later in Settings.
+            used at your institution. Block patterns can be changed later in Settings, and you are not
+            confined to use them when scheduling.
         </TextBlock>
 
-        <mgmt:BlockPatternListView DataContext="{Binding BlockPatterns}"/>
+        <mgmt:BlockPatternListView DataContext="{Binding BlockPatterns}" />
 
     </StackPanel>
 </UserControl>

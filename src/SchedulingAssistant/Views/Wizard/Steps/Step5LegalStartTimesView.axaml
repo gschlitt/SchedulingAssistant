@@ -5,15 +5,15 @@
     xmlns:local="using:SchedulingAssistant.ViewModels.Wizard.Steps"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="600" Spacing="14">
+    <StackPanel MaxWidth="900" Spacing="14">
 
         <TextBlock
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ForegroundMuted}"
             TextWrapping="Wrap">
             Block lengths are the standard class durations at your institution (e.g. 1.5 hours, 3 hours).
-            For each block length, specify the valid start times — these are the only times that will
-            appear in the section editor's start-time picker. (Often these are specified by your registrar.)<LineBreak /><LineBreak />
+            For each block length, specify the valid start times. (Often these are specified by your registrar.) If you do not wish to supply these
+            now, you can do so later in the application, but specifying them now will speed up data entry.<LineBreak /><LineBreak />
             Two example blocks are provided below. Edit or delete them and add your own.
             Times use 24-hour HHMM format (<Italic>0800</Italic>
             = 8:00 AM,<Italic>1330</Italic>
@@ -47,7 +47,7 @@
                                     Command="{Binding $parent[UserControl].DataContext.RemoveBlockLengthCommand}"
                                     CommandParameter="{Binding}"
                                     Content="Remove block"
-                                    FontSize="11" />
+                                    FontSize="{DynamicResource FontSizeSmall}" />
                             </Grid>
 
                             <!--  Start time chips — each has a × remove button  -->
@@ -70,7 +70,7 @@
                                                 <TextBlock
                                                     VerticalAlignment="Center"
                                                     FontFamily="Consolas"
-                                                    FontSize="11"
+                                                    FontSize="{DynamicResource FontSizeSmall}"
                                                     Text="{Binding Hhmm}" />
                                                 <Button
                                                     Padding="2,0"
@@ -78,7 +78,7 @@
                                                     Command="{Binding $parent[ItemsControl].DataContext.RemoveTimeCommand}"
                                                     CommandParameter="{Binding}"
                                                     Content="×"
-                                                    FontSize="10" />
+                                                    FontSize="{DynamicResource FontSizeSmall}" />
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
@@ -91,16 +91,16 @@
                                     <TextBox
                                         Width="80"
                                         FontFamily="Consolas"
-                                        FontSize="11"
+                                        FontSize="{DynamicResource FontSizeSmall}"
                                         Text="{Binding NewTimeInput}"
                                         Watermark="HHMM" />
                                     <Button
                                         Command="{Binding AddTimeCommand}"
                                         Content="Add time"
-                                        FontSize="11" />
+                                        FontSize="{DynamicResource FontSizeSmall}" />
                                 </StackPanel>
                                 <TextBlock
-                                    FontSize="11"
+                                    FontSize="{DynamicResource FontSizeSmall}"
                                     Foreground="{DynamicResource ErrorForeground}"
                                     IsVisible="{Binding AddTimeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                     Text="{Binding AddTimeError}" />
@@ -131,17 +131,17 @@
                     <TextBox
                         Width="72"
                         FontFamily="Consolas"
-                        FontSize="11"
+                        FontSize="{DynamicResource FontSizeSmall}"
                         Text="{Binding NewBlockLengthInput}"
                         Watermark="e.g. 1.5" />
                     <TextBlock
                         VerticalAlignment="Center"
-                        FontSize="11"
+                        FontSize="{DynamicResource FontSizeSmall}"
                         Text="hours" />
                     <Button
                         Command="{Binding AddBlockLengthCommand}"
                         Content="Add block length"
-                        FontSize="11" />
+                        FontSize="{DynamicResource FontSizeSmall}" />
                 </StackPanel>
             </StackPanel>
         </Border>

@@ -5,7 +5,7 @@
     xmlns:vm="using:SchedulingAssistant.ViewModels.Wizard.Steps"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="560" Spacing="20">
+    <StackPanel MaxWidth="840" Spacing="20">
 
         <!--  Guidance + Reset button  -->
         <Grid ColumnDefinitions="*,Auto">
@@ -15,7 +15,7 @@
                 FontSize="{DynamicResource FontSizeNormal}"
                 Foreground="{DynamicResource ForegroundMuted}"
                 TextWrapping="Wrap">
-                Each semester is shown in a distinct color on the schedule grid.
+                Each semester is shown in a distinct color on the schedule grid, which is especially useful when scheduling courses in overlapping semesters.
                 Expand any row to open the color picker and choose your own.
             </TextBlock>
             <Button

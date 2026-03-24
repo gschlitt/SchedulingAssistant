@@ -4,30 +4,30 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="560" Spacing="16">
+    <StackPanel MaxWidth="840" Spacing="16">
         <TextBlock
-            FontSize="22"
+            FontSize="{DynamicResource FontSizeXLarge}"
             FontWeight="Bold"
             Text="Welcome to TermPoint!" />
 
-        <TextBlock FontSize="13" TextWrapping="Wrap">
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
             TermPoint helps university administrators visualize and manage how course sections
             fit together across a weekly schedule.
         </TextBlock>
 
-        <TextBlock FontSize="13" TextWrapping="Wrap">
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
             This short setup wizard will guide you through:
         </TextBlock>
 
         <StackPanel Margin="16,0,0,0" Spacing="6">
-            <TextBlock FontSize="13" Text="• Your institution and academic unit name" />
-            <TextBlock FontSize="13" Text="• Where to store your database and backups" />
-            <TextBlock FontSize="13" Text="• Block lengths, start times, and section prefixes" />
-            <TextBlock FontSize="13" Text="• Your first academic year and its semesters" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Your institution and academic unit name" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Where to store your database and backups" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Block lengths, start times, and section prefixes" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Your first academic year and its semesters" />
         </StackPanel>
 
         <TextBlock
-            FontSize="12"
+            FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ForegroundMuted}"
             TextWrapping="Wrap">
             Click Next to begin.

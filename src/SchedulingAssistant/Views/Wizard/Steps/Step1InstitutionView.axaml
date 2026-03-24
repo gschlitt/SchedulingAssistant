@@ -3,9 +3,9 @@
              x:Class="SchedulingAssistant.Views.Wizard.Steps.Step1InstitutionView"
              x:CompileBindings="False">
 
-    <StackPanel Spacing="20" MaxWidth="540">
+    <StackPanel Spacing="20" MaxWidth="820">
 
-        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ForegroundMuted}">
+        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}" Foreground="{DynamicResource ForegroundMuted}">
             Enter your institution's full name and a short abbreviation.
             The abbreviation is used to suggest a database filename.
         </TextBlock>
@@ -14,7 +14,7 @@
         <Border BorderBrush="{DynamicResource SeparatorLine}" BorderThickness="0,0,0,1" Padding="0,0,0,16">
             <Grid ColumnDefinitions="*,12,140" RowDefinitions="Auto,8,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
-                           Text="Institution" FontWeight="SemiBold" FontSize="12"/>
+                           Text="Institution" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeNormal}"/>
                 <TextBox Grid.Row="2" Grid.Column="0"
                          Watermark="e.g. Greendale Community College"
                          Text="{Binding InstitutionName}"/>
@@ -27,9 +27,9 @@
         <!-- Academic Unit row -->
         <Grid ColumnDefinitions="*,12,140" RowDefinitions="Auto,8,Auto,8,Auto">
             <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
-                       Text="Academic Unit" FontWeight="SemiBold" FontSize="12"/>
+                       Text="Academic Unit" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeNormal}"/>
             <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
-                       TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ForegroundMuted}">
+                       TextWrapping="Wrap" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource ForegroundMuted}">
                 The department or faculty using this schedule (e.g. "School of Arts", "Computer Science").
             </TextBlock>
             <TextBox Grid.Row="4" Grid.Column="0"

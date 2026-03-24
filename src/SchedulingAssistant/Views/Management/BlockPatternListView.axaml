@@ -7,9 +7,9 @@
 
     <StackPanel Spacing="16" MaxWidth="500">
 
-        <TextBlock Text="Block Patterns" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="Block Patterns" FontSize="{DynamicResource FontSizeXLarge}" FontWeight="SemiBold" />
 
-        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextLabel}" FontSize="12">
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextLabel}" FontSize="{DynamicResource FontSizeNormal}">
             Save up to five favourite day patterns (e.g. "Mon/Wed") and apply them with one click when building a section schedule.
         </TextBlock>
 
@@ -25,11 +25,11 @@
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                         <Button Content="Clear"
                                 Command="{Binding ClearCommand}"
                                 IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                     </StackPanel>
                     <TextBlock Text="{Binding DisplayName}"
                                Foreground="{StaticResource TextSubtle}" VerticalAlignment="Center" Margin="8,0" />
@@ -41,11 +41,11 @@
                         <DataTemplate DataType="{x:Type vm:BlockPatternEditViewModel}">
                             <StackPanel Spacing="8">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Name" FontSize="11" Foreground="{StaticResource TextLabel}" />
-                                    <TextBox Text="{Binding Name}" FontSize="12" Width="200" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Name" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
+                                    <TextBox Text="{Binding Name}" FontSize="{DynamicResource FontSizeNormal}" Width="200" HorizontalAlignment="Left" />
                                 </StackPanel>
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Days" FontSize="11" Foreground="{StaticResource TextLabel}" />
+                                    <TextBlock Text="Days" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
                                     <ItemsControl ItemsSource="{Binding Days}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -56,13 +56,13 @@
                                             <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
                                                 <CheckBox IsChecked="{Binding IsChecked}"
                                                           Content="{Binding DayName}"
-                                                          FontSize="12" />
+                                                          FontSize="{DynamicResource FontSizeNormal}" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ValidationError}"
-                                           Foreground="{StaticResource TextValidationError}" FontSize="11"
+                                           Foreground="{StaticResource TextValidationError}" FontSize="{DynamicResource FontSizeSmall}"
                                            IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Content="Save"   Command="{Binding SaveCommand}"   Padding="10,4" />
@@ -88,11 +88,11 @@
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                         <Button Content="Clear"
                                 Command="{Binding ClearCommand}"
                                 IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                     </StackPanel>
                     <TextBlock Text="{Binding DisplayName}"
                                Foreground="{StaticResource TextSubtle}" VerticalAlignment="Center" Margin="8,0" />
@@ -104,11 +104,11 @@
                         <DataTemplate DataType="{x:Type vm:BlockPatternEditViewModel}">
                             <StackPanel Spacing="8">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Name" FontSize="11" Foreground="{StaticResource TextLabel}" />
-                                    <TextBox Text="{Binding Name}" FontSize="12" Width="200" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Name" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
+                                    <TextBox Text="{Binding Name}" FontSize="{DynamicResource FontSizeNormal}" Width="200" HorizontalAlignment="Left" />
                                 </StackPanel>
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Days" FontSize="11" Foreground="{StaticResource TextLabel}" />
+                                    <TextBlock Text="Days" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
                                     <ItemsControl ItemsSource="{Binding Days}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -119,13 +119,13 @@
                                             <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
                                                 <CheckBox IsChecked="{Binding IsChecked}"
                                                           Content="{Binding DayName}"
-                                                          FontSize="12" />
+                                                          FontSize="{DynamicResource FontSizeNormal}" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ValidationError}"
-                                           Foreground="{StaticResource TextValidationError}" FontSize="11"
+                                           Foreground="{StaticResource TextValidationError}" FontSize="{DynamicResource FontSizeSmall}"
                                            IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Content="Save"   Command="{Binding SaveCommand}"   Padding="10,4" />
@@ -151,11 +151,11 @@
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                         <Button Content="Clear"
                                 Command="{Binding ClearCommand}"
                                 IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                     </StackPanel>
                     <TextBlock Text="{Binding DisplayName}"
                                Foreground="{StaticResource TextSubtle}" VerticalAlignment="Center" Margin="8,0" />
@@ -167,11 +167,11 @@
                         <DataTemplate DataType="{x:Type vm:BlockPatternEditViewModel}">
                             <StackPanel Spacing="8">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Name" FontSize="11" Foreground="{StaticResource TextLabel}" />
-                                    <TextBox Text="{Binding Name}" FontSize="12" Width="200" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Name" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
+                                    <TextBox Text="{Binding Name}" FontSize="{DynamicResource FontSizeNormal}" Width="200" HorizontalAlignment="Left" />
                                 </StackPanel>
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Days" FontSize="11" Foreground="{StaticResource TextLabel}" />
+                                    <TextBlock Text="Days" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
                                     <ItemsControl ItemsSource="{Binding Days}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -182,13 +182,13 @@
                                             <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
                                                 <CheckBox IsChecked="{Binding IsChecked}"
                                                           Content="{Binding DayName}"
-                                                          FontSize="12" />
+                                                          FontSize="{DynamicResource FontSizeNormal}" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ValidationError}"
-                                           Foreground="{StaticResource TextValidationError}" FontSize="11"
+                                           Foreground="{StaticResource TextValidationError}" FontSize="{DynamicResource FontSizeSmall}"
                                            IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Content="Save"   Command="{Binding SaveCommand}"   Padding="10,4" />
@@ -214,11 +214,11 @@
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                         <Button Content="Clear"
                                 Command="{Binding ClearCommand}"
                                 IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                     </StackPanel>
                     <TextBlock Text="{Binding DisplayName}"
                                Foreground="{StaticResource TextSubtle}" VerticalAlignment="Center" Margin="8,0" />
@@ -230,11 +230,11 @@
                         <DataTemplate DataType="{x:Type vm:BlockPatternEditViewModel}">
                             <StackPanel Spacing="8">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Name" FontSize="11" Foreground="{StaticResource TextLabel}" />
-                                    <TextBox Text="{Binding Name}" FontSize="12" Width="200" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Name" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
+                                    <TextBox Text="{Binding Name}" FontSize="{DynamicResource FontSizeNormal}" Width="200" HorizontalAlignment="Left" />
                                 </StackPanel>
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Days" FontSize="11" Foreground="{StaticResource TextLabel}" />
+                                    <TextBlock Text="Days" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
                                     <ItemsControl ItemsSource="{Binding Days}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -245,13 +245,13 @@
                                             <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
                                                 <CheckBox IsChecked="{Binding IsChecked}"
                                                           Content="{Binding DayName}"
-                                                          FontSize="12" />
+                                                          FontSize="{DynamicResource FontSizeNormal}" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ValidationError}"
-                                           Foreground="{StaticResource TextValidationError}" FontSize="11"
+                                           Foreground="{StaticResource TextValidationError}" FontSize="{DynamicResource FontSizeSmall}"
                                            IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Content="Save"   Command="{Binding SaveCommand}"   Padding="10,4" />
@@ -277,11 +277,11 @@
                         <Button Content="Edit"
                                 Command="{Binding EditCommand}"
                                 IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                         <Button Content="Clear"
                                 Command="{Binding ClearCommand}"
                                 IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Padding="8,3" FontSize="12" />
+                                Padding="8,3" FontSize="{DynamicResource FontSizeNormal}" />
                     </StackPanel>
                     <TextBlock Text="{Binding DisplayName}"
                                Foreground="{StaticResource TextSubtle}" VerticalAlignment="Center" Margin="8,0" />
@@ -293,11 +293,11 @@
                         <DataTemplate DataType="{x:Type vm:BlockPatternEditViewModel}">
                             <StackPanel Spacing="8">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Name" FontSize="11" Foreground="{StaticResource TextLabel}" />
-                                    <TextBox Text="{Binding Name}" FontSize="12" Width="200" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Name" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
+                                    <TextBox Text="{Binding Name}" FontSize="{DynamicResource FontSizeNormal}" Width="200" HorizontalAlignment="Left" />
                                 </StackPanel>
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Days" FontSize="11" Foreground="{StaticResource TextLabel}" />
+                                    <TextBlock Text="Days" FontSize="{DynamicResource FontSizeSmall}" Foreground="{StaticResource TextLabel}" />
                                     <ItemsControl ItemsSource="{Binding Days}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -308,13 +308,13 @@
                                             <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
                                                 <CheckBox IsChecked="{Binding IsChecked}"
                                                           Content="{Binding DayName}"
-                                                          FontSize="12" />
+                                                          FontSize="{DynamicResource FontSizeNormal}" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
                                 <TextBlock Text="{Binding ValidationError}"
-                                           Foreground="{StaticResource TextValidationError}" FontSize="11"
+                                           Foreground="{StaticResource TextValidationError}" FontSize="{DynamicResource FontSizeSmall}"
                                            IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Content="Save"   Command="{Binding SaveCommand}"   Padding="10,4" />

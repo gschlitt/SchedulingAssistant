@@ -125,11 +125,14 @@ public partial class MainWindow : Window
         if (!settings.IsInitialSetupComplete)
         {
             var wizard = new StartupWizardWindow();
+            WindowState = WindowState.Minimized;
             wizard.Show(this);
 
             var tcs = new TaskCompletionSource();
             wizard.Closed += (_, _) => tcs.TrySetResult();
             await tcs.Task;
+
+            WindowState = WindowState.Normal;
 
             // Reload settings — the wizard saves DatabasePath and sets IsInitialSetupComplete.
             AppSettings.Load();

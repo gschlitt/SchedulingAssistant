@@ -1,0 +1,42 @@
+{
+  "session_id": "session-2026-03-24-1027",
+  "started": "2026-03-24T17:27:26.514Z",
+  "files_read": {},
+  "files_written": [
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step1aExistingDbViewModel.cs",
+      "action": "create",
+      "tokens": 1165,
+      "at": "2026-03-24T17:27:44.443Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml",
+      "action": "create",
+      "tokens": 1104,
+      "at": "2026-03-24T17:27:58.751Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml.cs",
+      "action": "create",
+      "tokens": 57,
+      "at": "2026-03-24T17:28:02.355Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "action": "create",
+      "tokens": 5268,
+      "at": "2026-03-24T17:29:19.917Z"
+    }
+  ],
+  "edit_counts": {
+    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step1aExistingDbViewModel.cs": 1,
+    "src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml": 1,
+    "src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 1
+  },
+  "anatomy_hits": 0,
+  "anatomy_misses": 0,
+  "repeated_reads_warned": 0,
+  "cerebrum_warnings": 0,
+  "stop_count": 1
+}

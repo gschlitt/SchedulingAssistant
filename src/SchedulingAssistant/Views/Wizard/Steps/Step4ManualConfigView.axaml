@@ -4,7 +4,7 @@
              x:Class="SchedulingAssistant.Views.Wizard.Steps.Step4CampusesView"
              x:CompileBindings="False">
 
-    <StackPanel Spacing="16" MaxWidth="600">
+    <StackPanel Spacing="16" MaxWidth="900">
 
         <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
                    Foreground="{DynamicResource ForegroundMuted}">

@@ -1,84 +1,114 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step2DatabaseView"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step2DatabaseView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False">
 
-    <StackPanel Spacing="20" MaxWidth="580">
+    <StackPanel MaxWidth="860" Spacing="20">
 
-        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ForegroundMuted}">
-            Choose where your database file and automated backups will be stored.
-            Both locations are required.
-        </TextBlock>
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            Text="Choose where your database file and automated backups will be stored. Both locations are required. "
+            TextWrapping="Wrap" />
 
-        <!-- Database folder -->
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            Text="If you share scheduling duties with someone else (perhaps a department head or assistant) place the database in a shared network location. "
+            TextWrapping="Wrap" />
+
+        <!--  Database folder  -->
         <StackPanel Spacing="6">
-            <TextBlock Text="Database folder" FontWeight="SemiBold" FontSize="12"/>
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Database folder" />
             <Grid ColumnDefinitions="*,8,Auto">
-                <TextBox Grid.Column="0"
-                         Text="{Binding DbFolder}"
-                         Watermark="Choose a folder…"
-                         IsReadOnly="True"/>
-                <Button Grid.Column="2"
-                        Content="Browse…"
-                        Command="{Binding BrowseDbFolderCommand}"/>
+                <TextBox
+                    Grid.Column="0"
+                    IsReadOnly="True"
+                    Text="{Binding DbFolder}"
+                    Watermark="Choose a folder…" />
+                <Button
+                    Grid.Column="2"
+                    Command="{Binding BrowseDbFolderCommand}"
+                    Content="Browse…" />
             </Grid>
         </StackPanel>
 
-        <!-- Database filename — shown once a folder is chosen -->
-        <StackPanel Spacing="6"
-                    IsVisible="{Binding DbFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="Database filename" FontWeight="SemiBold" FontSize="12"/>
-            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ForegroundMuted}">
+        <!--  Database filename — shown once a folder is chosen  -->
+        <StackPanel IsVisible="{Binding DbFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Spacing="6">
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Database filename" />
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{DynamicResource ForegroundMuted}"
+                TextWrapping="Wrap">
                 This filename was suggested from your abbreviation. You may edit it before continuing.
             </TextBlock>
-            <TextBox Text="{Binding DbFilename}"
-                     Watermark="e.g. CS-TT.db"/>
-            <!-- Inline validation error -->
-            <TextBlock FontSize="11"
-                       Foreground="{DynamicResource NotificationErrorText}"
-                       IsVisible="{Binding DbFilenameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Text="{Binding DbFilenameError}"/>
-            <!-- Full path confirmation -->
-            <TextBlock FontSize="11" Foreground="{DynamicResource ForegroundMuted}"
-                       IsVisible="{Binding DbFullPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <Run Text="Full path: "/>
-                <Run Text="{Binding DbFullPath}" FontWeight="SemiBold"/>
+            <TextBox Text="{Binding DbFilename}" Watermark="e.g. CS-TT.db" />
+            <!--  Inline validation error  -->
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{DynamicResource NotificationErrorText}"
+                IsVisible="{Binding DbFilenameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Text="{Binding DbFilenameError}" />
+            <!--  Full path confirmation  -->
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{DynamicResource ForegroundMuted}"
+                IsVisible="{Binding DbFullPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <Run Text="Full path: " />
+                <Run FontWeight="SemiBold" Text="{Binding DbFullPath}" />
             </TextBlock>
         </StackPanel>
 
-        <!-- Backup folder -->
-        <StackPanel Spacing="6">
-            <TextBlock Text="Backup folder" FontWeight="SemiBold" FontSize="12"/>
-            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ForegroundMuted}">
-                TermPoint saves automatic backups here. Ideally choose a different drive or a cloud-synced folder for safety.
+        <!--  Backup folder — revealed only after a valid DB folder + filename are confirmed  -->
+        <StackPanel
+            Margin="0,80"
+            IsVisible="{Binding IsFilenameReady}"
+            Spacing="6">
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Backup folder" />
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{DynamicResource ForegroundMuted}"
+                TextWrapping="Wrap">
+                TermPoint saves automatic backups here. Ideally choose a different drive for safety.
             </TextBlock>
             <Grid ColumnDefinitions="*,8,Auto">
-                <TextBox Grid.Column="0"
-                         Text="{Binding BackupFolder}"
-                         Watermark="Choose a folder…"
-                         IsReadOnly="True"/>
-                <Button Grid.Column="2"
-                        Content="Browse…"
-                        Command="{Binding BrowseBackupFolderCommand}"/>
+                <TextBox
+                    Grid.Column="0"
+                    IsReadOnly="True"
+                    Text="{Binding BackupFolder}"
+                    Watermark="Choose a folder…" />
+                <Button
+                    Grid.Column="2"
+                    Command="{Binding BrowseBackupFolderCommand}"
+                    Content="Browse…" />
             </Grid>
 
-            <!-- Same-folder recommendation — appears only when both folders are the same path -->
-            <Border IsVisible="{Binding SameFolderWarning}"
-                    Background="{DynamicResource NotificationWarningBackground}"
-                    BorderBrush="{DynamicResource NotificationWarningBorder}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Padding="12,8">
-                <TextBlock TextWrapping="Wrap"
-                           FontSize="12"
-                           Foreground="{DynamicResource NotificationWarningText}">
+            <!--  Same-folder recommendation — appears only when both folders are the same path  -->
+            <Border
+                Padding="12,8"
+                Background="{DynamicResource NotificationWarningBackground}"
+                BorderBrush="{DynamicResource NotificationWarningBorder}"
+                BorderThickness="1"
+                CornerRadius="4"
+                IsVisible="{Binding SameFolderWarning}">
+                <TextBlock
+                    FontSize="{DynamicResource FontSizeNormal}"
+                    Foreground="{DynamicResource NotificationWarningText}"
+                    TextWrapping="Wrap">
                     <Bold>⚠ Recommendation:</Bold>
                     Your backup folder is the same as your database folder.
-                    For best data protection, choose a backup location on a <Bold>different drive</Bold>
-                    — or a cloud-synced folder such as OneDrive or Dropbox.
-                    If your primary drive fails, backups stored alongside the database would be lost too.
-                    <LineBreak/>
-                    You may continue with the same folder if you prefer.
+                    For best data protection, choose a backup location on a<Bold>different drive.</Bold>
+                    If your primary drive fails, backups stored alongside the database would be lost too.<LineBreak />
                 </TextBlock>
             </Border>
 

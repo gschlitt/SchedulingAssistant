@@ -6,7 +6,7 @@
     xmlns:vm="using:SchedulingAssistant.ViewModels.Wizard.Steps"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="560" Spacing="20">
+    <StackPanel MaxWidth="840" Spacing="20">
 
         <!--  Semester list — shown first  -->
         <StackPanel Spacing="8">
@@ -33,7 +33,7 @@
                     Grid.Column="1"
                     Command="{Binding AddSemesterCommand}"
                     Content="+ Add semester"
-                    FontSize="11" />
+                    FontSize="{DynamicResource FontSizeSmall}" />
             </Grid>
 
             <!--  Semester rows  -->
@@ -43,7 +43,7 @@
                         <Grid Margin="0,0,0,4" ColumnDefinitions="*,8,Auto">
                             <TextBox
                                 Grid.Column="0"
-                                FontSize="12"
+                                FontSize="{DynamicResource FontSizeNormal}"
                                 Text="{Binding Name}"
                                 Watermark="Semester name (e.g. Fall)" />
                             <Button
@@ -52,7 +52,7 @@
                                 Command="{Binding $parent[ItemsControl].DataContext.RemoveSemesterCommand}"
                                 CommandParameter="{Binding}"
                                 Content="✕"
-                                FontSize="11" />
+                                FontSize="{DynamicResource FontSizeSmall}" />
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -60,7 +60,7 @@
 
             <!--  Shown only when the user has removed all semesters  -->
             <TextBlock
-                FontSize="11"
+                FontSize="{DynamicResource FontSizeSmall}"
                 Foreground="{DynamicResource NotificationWarningText}"
                 IsVisible="{Binding !Semesters.Count}">
                 ⚠ Add at least one semester to continue.
@@ -74,20 +74,26 @@
                 FontSize="{DynamicResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="First Academic Year" />
-            <TextBlock FontSize="11" Foreground="{DynamicResource ForegroundMuted}">
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                Foreground="{DynamicResource ForegroundMuted}"
+                TextWrapping="Wrap">
                 Add the first academic year which you anticipate scheduling.
-                Type just the start year (e.g. <Italic>2025</Italic>) and it will expand
-                to <Italic>2025-2026</Italic> automatically when you leave the field.
-            </TextBlock>
-            <TextBox Watermark="e.g. 2025  or  2025-2026"
-                     Text="{Binding AcademicYearName}"
-                     b:LostFocusCommandBehavior.Command="{Binding CommitAcademicYearNameCommand}"/>
-            <!-- Validation hint — only visible when there is an error message -->
-            <TextBlock FontSize="11"
-                       Foreground="{DynamicResource NotificationWarningText}"
-                       TextWrapping="Wrap"
-                       Text="{Binding AcademicYearNameError}"
-                       IsVisible="{Binding AcademicYearNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                Type just the start year (e.g.<Italic>2025</Italic>
+                ) and it will expand
+                to<Italic>2025-2026</Italic>
+                automatically when you leave the field.</TextBlock>
+            <TextBox
+                b:LostFocusCommandBehavior.Command="{Binding CommitAcademicYearNameCommand}"
+                Text="{Binding AcademicYearName}"
+                Watermark="e.g. 2025  or  2025-2026" />
+            <!--  Validation hint — only visible when there is an error message  -->
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{DynamicResource NotificationWarningText}"
+                IsVisible="{Binding AcademicYearNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Text="{Binding AcademicYearNameError}"
+                TextWrapping="Wrap" />
         </StackPanel>
 
     </StackPanel>

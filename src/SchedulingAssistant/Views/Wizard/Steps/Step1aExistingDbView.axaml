@@ -1,0 +1,90 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step1aExistingDbView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False">
+
+    <StackPanel MaxWidth="860" Spacing="20">
+
+        <!-- Radio: fresh install -->
+        <RadioButton
+            Content="This is a fresh install. I need to set up my own database."
+            FontSize="{DynamicResource FontSizeNormal}"
+            IsChecked="{Binding IsNewSetupChoice}" />
+
+        <!-- Radio: existing database -->
+        <StackPanel Spacing="12">
+            <RadioButton
+                Content="I already have a database. A colleague has completed setup and I want to connect to their database."
+                FontSize="{DynamicResource FontSizeNormal}"
+                IsChecked="{Binding IsExistingDbChoice}" />
+
+            <!-- Detail pane — revealed when existing DB is chosen -->
+            <StackPanel
+                IsVisible="{Binding IsExistingDbChoice}"
+                Margin="28,0,0,0"
+                Spacing="16">
+
+                <!-- Placeholder text — user will supply -->
+                <TextBlock
+                    FontSize="{DynamicResource FontSizeNormal}"
+                    Foreground="{DynamicResource ForegroundMuted}"
+                    TextWrapping="Wrap"
+                    Text="[Placeholder — instructions for connecting to a shared database.]" />
+
+                <!-- Database file -->
+                <StackPanel Spacing="6">
+                    <TextBlock
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontWeight="SemiBold"
+                        Text="Database file" />
+                    <Grid ColumnDefinitions="*,8,Auto">
+                        <TextBox
+                            Grid.Column="0"
+                            IsReadOnly="True"
+                            Text="{Binding DbPath}"
+                            Watermark="Choose the .db file…" />
+                        <Button
+                            Grid.Column="2"
+                            Command="{Binding BrowseDbFileCommand}"
+                            Content="Browse…" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Backup folder -->
+                <StackPanel Spacing="6">
+                    <TextBlock
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontWeight="SemiBold"
+                        Text="Backup folder" />
+                    <TextBlock
+                        FontSize="{DynamicResource FontSizeSmall}"
+                        Foreground="{DynamicResource ForegroundMuted}"
+                        TextWrapping="Wrap"
+                        Text="[Placeholder — backup location guidance.]" />
+                    <Grid ColumnDefinitions="*,8,Auto">
+                        <TextBox
+                            Grid.Column="0"
+                            IsReadOnly="True"
+                            Text="{Binding BackupFolder}"
+                            Watermark="Choose a folder…" />
+                        <Button
+                            Grid.Column="2"
+                            Command="{Binding BrowseBackupFolderCommand}"
+                            Content="Browse…" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Error message -->
+                <TextBlock
+                    FontSize="{DynamicResource FontSizeSmall}"
+                    Foreground="{DynamicResource NotificationErrorText}"
+                    IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Text="{Binding ErrorMessage}"
+                    TextWrapping="Wrap" />
+
+            </StackPanel>
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

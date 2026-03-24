@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
 using SchedulingAssistant.ViewModels.Wizard;
 
 namespace SchedulingAssistant.Views.Wizard;
@@ -26,7 +27,7 @@ public partial class StartupWizardWindow : Window
             DataContext = _vm;
         };
 
-        Closing += (_, e) =>
+        Closing += (_, _2) =>
         {
             // If the user manually closes the window before finishing, shut down the app.
             // Guard against re-entry: Shutdown() closes all windows, which re-fires Closing.
@@ -38,5 +39,15 @@ public partial class StartupWizardWindow : Window
                     ?.Shutdown();
             }
         };
+    }
+
+    /// <summary>
+    /// Allows the window to be dragged by its custom header bar.
+    /// Required because <see cref="SystemDecorations.BorderOnly"/> hides the OS title bar.
+    /// </summary>
+    private void OnHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            BeginMoveDrag(e);
     }
 }

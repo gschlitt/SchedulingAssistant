@@ -20,6 +20,7 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
     [NotifyPropertyChangedFor(nameof(CanAdvance))]
     [NotifyPropertyChangedFor(nameof(DbFullPath))]
     [NotifyPropertyChangedFor(nameof(SameFolderWarning))]
+    [NotifyPropertyChangedFor(nameof(IsFilenameReady))]
     private string _dbFolder = string.Empty;
 
     /// <summary>
@@ -30,6 +31,7 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
     [NotifyPropertyChangedFor(nameof(CanAdvance))]
     [NotifyPropertyChangedFor(nameof(DbFullPath))]
     [NotifyPropertyChangedFor(nameof(DbFilenameError))]
+    [NotifyPropertyChangedFor(nameof(IsFilenameReady))]
     private string _dbFilename = string.Empty;
 
     [ObservableProperty]
@@ -44,6 +46,14 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
         !string.IsNullOrWhiteSpace(DbFolder) &&
         !string.IsNullOrWhiteSpace(BackupFolder) &&
         DbFilenameError is null;
+
+    /// <summary>
+    /// True when the database folder is set and the filename is valid.
+    /// Controls visibility of the backup-folder section so the user sees it only
+    /// after they have confirmed the filename — creating a natural top-to-bottom flow.
+    /// </summary>
+    public bool IsFilenameReady =>
+        !string.IsNullOrWhiteSpace(DbFolder) && DbFilenameError is null;
 
     /// <summary>
     /// Validation error for the filename field, or null when the filename is acceptable.

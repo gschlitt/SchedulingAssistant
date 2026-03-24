@@ -4,10 +4,25 @@
         x:Class="SchedulingAssistant.Views.Wizard.StartupWizardWindow"
         x:CompileBindings="False"
         Title="TermPoint — Setup"
-        Width="680" Height="540"
+        Width="960" Height="720"
         CanResize="False"
+        SystemDecorations="BorderOnly"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource AppBackground}">
+
+    <!-- ── Wizard-scoped font size overrides ────────────────────────────────
+         Each key is shifted one step up from the app-level values defined in
+         App.axaml.  Because DynamicResource resolves by walking up the logical
+         tree, every control inside this window uses these larger values.
+         Controls that appear in Settings (outside this window) continue to use
+         the app-level values unchanged. ──────────────────────────────────── -->
+    <Window.Resources>
+        <x:Double x:Key="FontSizeSmall">13</x:Double>
+        <x:Double x:Key="FontSizeNormal">16</x:Double>
+        <x:Double x:Key="FontSizeMedium">18</x:Double>
+        <x:Double x:Key="FontSizeLarge">20</x:Double>
+        <x:Double x:Key="FontSizeXLarge">22</x:Double>
+    </Window.Resources>
 
     <Window.DataContext>
         <!-- DataContext is set in code-behind after construction -->
@@ -17,12 +32,13 @@
          which is required for vertical scrolling to work in Avalonia. -->
     <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- Row 0: Header bar -->
+        <!-- Row 0: Header bar — PointerPressed enables drag-to-move since the OS title bar is hidden -->
         <Border Grid.Row="0"
                 Background="{DynamicResource MenuBarBackground}"
                 BorderBrush="{DynamicResource MenuBarBorder}"
                 BorderThickness="0,0,0,1"
-                Padding="20,12">
+                Padding="20,12"
+                PointerPressed="OnHeaderPointerPressed">
             <StackPanel Spacing="4">
                 <TextBlock Text="TermPoint Setup"
                            FontSize="{DynamicResource FontSizeSmall}"

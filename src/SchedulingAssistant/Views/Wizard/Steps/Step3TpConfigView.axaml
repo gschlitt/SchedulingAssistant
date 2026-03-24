@@ -4,30 +4,41 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="560" Spacing="20">
+    <StackPanel MaxWidth="840" Spacing="20">
 
         <TextBlock
-            FontSize="12"
+            FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ForegroundMuted}"
             TextWrapping="Wrap">
-            The next few steps of the wizard allow you to configure the application to your institution's scheduling particulars, and to set up
+            The next few steps of the wizard allow you to configure the application to your institution's scheduling patterns, and to set up
             some tools that will greatly speed up your scheduling work. You can choose to exit the setup process now and to configure later, but
-            the wizard makes it easier to do now.<LineBreak />
+            the wizard makes it easier to do now.
+        </TextBlock>
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
             If you have a .tpconfig file (perhaps from a colleague at your institution) you can choose to use that now, and import all the
-            configuration settings automatically.<LineBreak />
-            Otherwise, you can proceed through the wizard. Any of the steps can be passed over if you wish to take care of them later.</TextBlock>
+            configuration settings automatically.
+        </TextBlock>
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Otherwise, you can proceed through the wizard. Any of the steps can be passed over if you wish to take care of them later, but are easier to set now.
+        </TextBlock>
 
         <!--  Radio: Manual setup  -->
         <RadioButton
             Content="I'll continue with the wizard"
-            FontSize="13"
+            FontSize="{DynamicResource FontSizeMedium}"
             IsChecked="{Binding IsManualChoice}" />
 
         <!--  Radio: Import .tpconfig  -->
         <StackPanel Spacing="10">
             <RadioButton
                 Content="I have a .tpconfig file from a colleague or previous setup"
-                FontSize="13"
+                FontSize="{DynamicResource FontSizeMedium}"
                 IsChecked="{Binding IsImportChoice}" />
 
             <!--  File picker — visible only when Import is selected  -->
@@ -49,17 +60,14 @@
 
         <!--  Radio: Exit now  -->
         <StackPanel Spacing="4">
-            <RadioButton
-                
-                FontSize="13"
-                IsChecked="{Binding IsExitNowChoice}">
-              <RadioButton.Content>
-                <TextBlock TextWrapping="Wrap" Text="I'd like to exit the wizard now. I will configure that application later (under Settings), in the application."/>
-              </RadioButton.Content>
-              </RadioButton>
+            <RadioButton FontSize="{DynamicResource FontSizeMedium}" IsChecked="{Binding IsExitNowChoice}">
+                <RadioButton.Content>
+                    <TextBlock Text="I'd like to exit the wizard now. I will configure settings later (under Settings), in the application." TextWrapping="Wrap" />
+                </RadioButton.Content>
+            </RadioButton>
             <TextBlock
                 Margin="24,0,0,0"
-                FontSize="11"
+                FontSize="{DynamicResource FontSizeSmall}"
                 Foreground="{DynamicResource ForegroundMuted}"
                 IsVisible="{Binding IsExitNowChoice}"
                 TextWrapping="Wrap">
