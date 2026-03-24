@@ -1,38 +1,71 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step3TpConfigView"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step3TpConfigView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False">
 
-    <StackPanel Spacing="20" MaxWidth="560">
+    <StackPanel MaxWidth="560" Spacing="20">
 
-        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ForegroundMuted}">
-            A .tpconfig file contains block length, prefix, and semester settings that can be
-            shared between colleagues or reused when creating a new database.
-        </TextBlock>
+        <TextBlock
+            FontSize="12"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            The next few steps of the wizard allow you to configure the application to your institution's scheduling particulars, and to set up
+            some tools that will greatly speed up your scheduling work. You can choose to exit the setup process now and to configure later, but
+            the wizard makes it easier to do now.<LineBreak />
+            If you have a .tpconfig file (perhaps from a colleague at your institution) you can choose to use that now, and import all the
+            configuration settings automatically.<LineBreak />
+            Otherwise, you can proceed through the wizard. Any of the steps can be passed over if you wish to take care of them later.</TextBlock>
 
-        <!-- Radio: No .tpconfig -->
-        <RadioButton Content="I'll set everything up manually (recommended for first use)"
-                     IsChecked="{Binding HasTpConfig, Converter={x:Static BoolConverters.Not}}"
-                     FontSize="13"/>
+        <!--  Radio: Manual setup  -->
+        <RadioButton
+            Content="I'll continue with the wizard"
+            FontSize="13"
+            IsChecked="{Binding IsManualChoice}" />
 
-        <!-- Radio: Yes .tpconfig -->
+        <!--  Radio: Import .tpconfig  -->
         <StackPanel Spacing="10">
-            <RadioButton Content="I have a .tpconfig file from a colleague or previous setup"
-                         IsChecked="{Binding HasTpConfig}"
-                         FontSize="13"/>
+            <RadioButton
+                Content="I have a .tpconfig file from a colleague or previous setup"
+                FontSize="13"
+                IsChecked="{Binding IsImportChoice}" />
 
-            <!-- File picker — visible only when "Yes" is selected -->
-            <Grid ColumnDefinitions="*,8,Auto"
-                  IsVisible="{Binding HasTpConfig}"
-                  Margin="24,0,0,0">
-                <TextBox Grid.Column="0"
-                         Text="{Binding TpConfigPath}"
-                         Watermark="Path to .tpconfig file…"
-                         IsReadOnly="True"/>
-                <Button Grid.Column="2"
-                        Content="Browse…"
-                        Command="{Binding BrowseTpConfigCommand}"/>
+            <!--  File picker — visible only when Import is selected  -->
+            <Grid
+                Margin="24,0,0,0"
+                ColumnDefinitions="*,8,Auto"
+                IsVisible="{Binding IsImportChoice}">
+                <TextBox
+                    Grid.Column="0"
+                    IsReadOnly="True"
+                    Text="{Binding TpConfigPath}"
+                    Watermark="Path to .tpconfig file…" />
+                <Button
+                    Grid.Column="2"
+                    Command="{Binding BrowseTpConfigCommand}"
+                    Content="Browse…" />
             </Grid>
+        </StackPanel>
+
+        <!--  Radio: Exit now  -->
+        <StackPanel Spacing="4">
+            <RadioButton
+                
+                FontSize="13"
+                IsChecked="{Binding IsExitNowChoice}">
+              <RadioButton.Content>
+                <TextBlock TextWrapping="Wrap" Text="I'd like to exit the wizard now. I will configure that application later (under Settings), in the application."/>
+              </RadioButton.Content>
+              </RadioButton>
+            <TextBlock
+                Margin="24,0,0,0"
+                FontSize="11"
+                Foreground="{DynamicResource ForegroundMuted}"
+                IsVisible="{Binding IsExitNowChoice}"
+                TextWrapping="Wrap">
+                The database has been created. You can configure block patterns, semesters, and
+                other settings from within the application at any time.
+            </TextBlock>
         </StackPanel>
 
     </StackPanel>

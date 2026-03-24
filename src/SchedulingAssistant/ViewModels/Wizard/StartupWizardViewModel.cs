@@ -14,7 +14,9 @@ namespace SchedulingAssistant.ViewModels.Wizard;
 /// Orchestrates the multi-step startup wizard.
 ///
 /// Steps 0–2 run before DI is initialized (before App.InitializeServices is called).
-/// Step 2 creates the database, sets IsInitialSetupComplete = true, and calls InitializeServices.
+/// Step 2 creates the database and calls InitializeServices (IsInitialSetupComplete is NOT set here).
+/// Step 3 either exits early (ExitNow) or routes to the manual/import config path.
+/// IsInitialSetupComplete is set to true only when the wizard is fully finished (or ExitNow is chosen).
 /// Steps 3–6 use App.Services to resolve existing management ViewModels.
 ///
 /// The window hosting this VM should close when <see cref="IsComplete"/> becomes true.
@@ -156,6 +158,9 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     private bool IsLastStep()
     {
+        // ExitNow at step 3 terminates the wizard immediately
+        if (_stepIndex == 3 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
+            return true;
         // Import path ends at step 8 (Academic Year); manual path ends at step 9 (Semester Colors)
         return (_isImportPath && _stepIndex == 8) || (!_isImportPath && _stepIndex == 9);
     }
@@ -184,7 +189,9 @@ public partial class StartupWizardViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Step 2 validation: creates the database, calls InitializeServices, sets the flag.
+    /// Step 2 validation: creates the database and calls InitializeServices.
+    /// Persists the database and backup paths but does NOT yet set IsInitialSetupComplete —
+    /// that flag is deferred to a later step so the wizard can be exited cleanly at step 3.
     /// On failure, sets the step's ErrorMessage and returns false.
     /// </summary>
     private async Task<bool> ValidateStep2()
@@ -208,11 +215,12 @@ public partial class StartupWizardViewModel : ViewModelBase
             // InitializeServices creates the SQLite file and applies the schema
             App.InitializeServices(dbPath);
 
-            // Persist settings
+            // Persist the paths so a subsequent launch can find the database.
+            // IsInitialSetupComplete is intentionally left false here — it is set
+            // either when the user chooses ExitNow in step 3, or at FinishAsync.
             var settings = AppSettings.Current;
-            settings.DatabasePath      = dbPath;
-            settings.BackupFolderPath  = _backupFolder;
-            settings.IsInitialSetupComplete = true;
+            settings.DatabasePath     = dbPath;
+            settings.BackupFolderPath = _backupFolder;
             settings.Save();
 
             return true;
@@ -254,11 +262,23 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     /// <summary>
     /// Called when the user clicks Finish on the last step.
-    /// Writes DB records, persists semester colors, and writes the .tpconfig.
+    /// If the user chose ExitNow at step 3, just sets the completion flag and closes.
+    /// Otherwise writes DB records, persists semester colors, and writes the .tpconfig.
     /// Closes the wizard window on success.
     /// </summary>
     private async Task FinishAsync()
     {
+        // ExitNow path — DB is created but wizard configuration is skipped.
+        // Mark setup complete so the next launch opens the main window directly.
+        if (_stepIndex == 3 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
+        {
+            AppSettings.Current.IsInitialSetupComplete = true;
+            AppSettings.Current.Save();
+            IsComplete = true;
+            _window.Close();
+            return;
+        }
+
         try
         {
             await WriteDbRecordsAsync();
@@ -267,9 +287,11 @@ public partial class StartupWizardViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "StartupWizard: FinishAsync failed");
-            // Non-fatal: app is already set up (DB created, flag set). Log and proceed.
+            // Non-fatal: DB is created and paths are saved. Log and proceed.
         }
 
+        AppSettings.Current.IsInitialSetupComplete = true;
+        AppSettings.Current.Save();
         IsComplete = true;
         _window.Close();
     }

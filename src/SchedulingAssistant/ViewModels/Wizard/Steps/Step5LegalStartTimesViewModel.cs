@@ -47,6 +47,9 @@ public partial class WizardBlockLengthEntry : ViewModelBase
     /// <summary>Bound to the "add time" text box. Cleared after each successful add.</summary>
     [ObservableProperty] private string _newTimeInput = string.Empty;
 
+    /// <summary>Validation error shown beneath the add-time row; null when no error is present.</summary>
+    [ObservableProperty] private string? _addTimeError;
+
     /// <param name="blockLengthHours">Block length in hours.</param>
     /// <param name="label">Display label.</param>
     /// <param name="initialTimes">Initial HHMM strings to populate the list.</param>
@@ -60,17 +63,59 @@ public partial class WizardBlockLengthEntry : ViewModelBase
 
     /// <summary>
     /// Adds the current <see cref="NewTimeInput"/> as a new start time entry.
-    /// Clears the input field on success.
+    /// Validates that the value is a 4-digit military time (0000–2359) before adding.
+    /// Sets <see cref="AddTimeError"/> on failure; clears the input field on success.
     /// </summary>
     [RelayCommand]
     private void AddTime()
     {
         var trimmed = NewTimeInput.Trim();
-        if (!string.IsNullOrEmpty(trimmed))
+        if (string.IsNullOrEmpty(trimmed)) return;
+
+        if (!IsValidMilitaryTime(trimmed, out var errorMsg))
         {
-            StartTimes.Add(new WizardStartTimeEntry(trimmed));
-            NewTimeInput = string.Empty;
+            AddTimeError = errorMsg;
+            return;
         }
+
+        // Reject duplicates within this block
+        if (StartTimes.Any(e => e.Hhmm == trimmed))
+        {
+            AddTimeError = $"{trimmed} is already in this block.";
+            return;
+        }
+
+        StartTimes.Add(new WizardStartTimeEntry(trimmed));
+        NewTimeInput  = string.Empty;
+        AddTimeError  = null;
+    }
+
+    /// <summary>
+    /// Returns true when <paramref name="value"/> is a valid 4-digit military time (0000–2359).
+    /// Sets <paramref name="error"/> to a user-facing message on failure.
+    /// </summary>
+    /// <param name="value">Raw input string to validate.</param>
+    /// <param name="error">Error message if validation fails; null on success.</param>
+    /// <returns>True when valid; false otherwise.</returns>
+    public static bool IsValidMilitaryTime(string value, out string? error)
+    {
+        if (value.Length != 4 || !int.TryParse(value, out var n))
+        {
+            error = "Enter exactly 4 digits (e.g. 0800).";
+            return false;
+        }
+
+        var hh = n / 100;
+        var mm = n % 100;
+
+        if (hh > 23 || mm > 59)
+        {
+            error = $"{value} is not a valid time — hours must be 00–23, minutes 00–59.";
+            return false;
+        }
+
+        error = null;
+        return true;
     }
 
     /// <summary>Removes the given start time entry from the list.</summary>

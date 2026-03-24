@@ -13,10 +13,12 @@
         <!-- DataContext is set in code-behind after construction -->
     </Window.DataContext>
 
-    <DockPanel>
+    <!-- Grid layout guarantees the ScrollViewer gets a hard bounded height (the * row),
+         which is required for vertical scrolling to work in Avalonia. -->
+    <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- Header bar: step title -->
-        <Border DockPanel.Dock="Top"
+        <!-- Row 0: Header bar -->
+        <Border Grid.Row="0"
                 Background="{DynamicResource MenuBarBackground}"
                 BorderBrush="{DynamicResource MenuBarBorder}"
                 BorderThickness="0,0,0,1"
@@ -32,8 +34,19 @@
             </StackPanel>
         </Border>
 
-        <!-- Footer: Back / Next buttons -->
-        <Border DockPanel.Dock="Bottom"
+        <!-- Row 1: Step content — the * row gives the ScrollViewer a bounded height.
+             Padding lives on the inner content so it doesn't interfere with
+             the ScrollViewer's extent-vs-viewport calculation. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Visible">
+            <ContentControl Content="{Binding CurrentStep}"
+                            VerticalAlignment="Top"
+                            Margin="24,16"/>
+        </ScrollViewer>
+
+        <!-- Row 2: Footer — Back / Next buttons -->
+        <Border Grid.Row="2"
                 BorderBrush="{DynamicResource SeparatorLine}"
                 BorderThickness="0,1,0,0"
                 Padding="20,12">
@@ -60,10 +73,5 @@
             </Grid>
         </Border>
 
-        <!-- Step content — resolved via ViewLocator -->
-        <ScrollViewer Padding="24,16" VerticalScrollBarVisibility="Auto">
-            <ContentControl Content="{Binding CurrentStep}"/>
-        </ScrollViewer>
-
-    </DockPanel>
+    </Grid>
 </Window>

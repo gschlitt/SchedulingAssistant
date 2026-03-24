@@ -1,27 +1,266 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mgmt="using:SchedulingAssistant.Views.Management"
-             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step7SectionPrefixesView"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step7SectionPrefixesView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mgmt="using:SchedulingAssistant.Views.Management"
+    x:CompileBindings="False">
 
-    <StackPanel Spacing="16" MaxWidth="600">
+    <StackPanel MaxWidth="600" Spacing="16">
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
-                   Foreground="{DynamicResource ForegroundMuted}">
-            Section prefixes are short letter codes prepended to section codes.
-            For example, a prefix of "AB" produces section codes like "AB1", "AB2", "AB3".
-            When you add a new section, TermPoint automatically advances to the next
-            available code for the selected prefix.
-        </TextBlock>
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="LightBlue">
+                <TextBlock Padding="2,0" Text="The" />
+            </Border>
+            <Border Background="LightGreen">
+                <TextBlock Padding="2,0" Text="dog" />
+            </Border>
+            <Border Background="LightYellow">
+                <TextBlock Padding="2,0" Text="ran" />
+            </Border>
+            <Border Background="LightSalmon">
+                <TextBlock Padding="2,0" Text="quickly" />
+            </Border>
+        </StackPanel>
+        <Grid
+            ColumnDefinitions="Auto,Auto"
+            RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+            ShowGridLines="False">
+            <StackPanel
+                Grid.Row="0"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <Border
+                    Padding="5,2"
+                    Background="#BBDEFB"
+                    CornerRadius="2,0,0,2">
+                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                </Border>
+                <Border
+                    Padding="0"
+                    Background="#C8E6C9"
+                    CornerRadius="0">
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="LS-" />
+                </Border>
+                <Border
+                    Padding="0,0,1,0"
+                    Background="#FFCDD2"
+                    CornerRadius="0,2,2,0">
+                    <TextBlock
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="1" />
+                </Border>
+            </StackPanel>
+            <StackPanel
+                Grid.Row="1"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <Border
+                    Padding="5,2"
+                    Background="#BBDEFB"
+                    CornerRadius="2,0,0,2">
+                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                </Border>
+                <Border
+                    Padding="0"
+                    Background="#C8E6C9"
+                    CornerRadius="0">
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="LS-" />
+                </Border>
+                <Border
+                    Padding="0,0,1,0"
+                    Background="#FFCDD2"
+                    CornerRadius="0,2,2,0">
+                    <TextBlock
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="2" />
+                </Border>
+            </StackPanel>
+            <TextBlock
+                Grid.RowSpan="2"
+                Grid.Column="1"
+                Margin="10,10"
+                Text="Two different sections with same section prefix" />
+            <StackPanel
+                Grid.Row="2"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <Border
+                    Padding="5,2"
+                    Background="#BBDEFB"
+                    CornerRadius="2,0,0,2">
+                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                </Border>
+                <Border
+                    Padding="0"
+                    Background="#C8E6C9"
+                    CornerRadius="0">
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="TUT" />
+                </Border>
+                <Border
+                    Padding="0,0,1,0"
+                    Background="#FFCDD2"
+                    CornerRadius="0,2,2,0">
+                    <TextBlock
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="A" />
+                </Border>
+            </StackPanel>
+            <StackPanel
+                Grid.Row="3"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <Border
+                    Padding="5,2"
+                    Background="#BBDEFB"
+                    CornerRadius="2,0,0,2">
+                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                </Border>
+                <Border
+                    Padding="0"
+                    Background="#C8E6C9"
+                    CornerRadius="0">
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="TUT" />
+                </Border>
+                <Border
+                    Padding="0,0,1,0"
+                    Background="#FFCDD2"
+                    CornerRadius="0,2,2,0">
+                    <TextBlock
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="B" />
+                </Border>
+            </StackPanel>
+            <TextBlock
+                Grid.RowSpan="2"
+                Grid.Column="1"
+                Margin="10,10"
+                Text="Two different sections with same section prefix" />
+            <StackPanel
+                Grid.Row="4"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <Border
+                    Padding="5,2"
+                    Background="#BBDEFB"
+                    CornerRadius="2,0,0,2">
+                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                </Border>
+                <Border
+                    Padding="0"
+                    Background="#C8E6C9"
+                    CornerRadius="0">
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="A#" />
+                </Border>
+                <Border
+                    Padding="0,0,1,0"
+                    Background="#FFCDD2"
+                    CornerRadius="0,2,2,0">
+                    <TextBlock
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="4" />
+                </Border>
+            </StackPanel>
+            <StackPanel
+                Grid.Row="5"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <Border
+                    Padding="5,2"
+                    Background="#BBDEFB"
+                    CornerRadius="2,0,0,2">
+                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                </Border>
+                <Border
+                    Padding="0"
+                    Background="#C8E6C9"
+                    CornerRadius="0">
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="A#" />
+                </Border>
+                <Border
+                    Padding="0,0,1,0"
+                    Background="#FFCDD2"
+                    CornerRadius="0,2,2,0">
+                    <TextBlock
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Text="5" />
+                </Border>
+            </StackPanel>
+            <TextBlock
+                Grid.RowSpan="2"
+                Grid.Column="1"
+                Margin="10,10"
+                Text="Two different sections with same section prefix" />
+        </Grid>
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
-                   Foreground="{DynamicResource ForegroundMuted}">
+
+
+
+
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
             Each prefix can be linked to a campus — useful when different campuses use
             distinct coding schemes. If you set up campuses in the previous step,
             you can assign them here. Section prefixes can be added or changed later in Settings.
         </TextBlock>
 
-        <mgmt:SectionPrefixListView DataContext="{Binding SectionPrefixes}"/>
+        <mgmt:SectionPrefixListView DataContext="{Binding SectionPrefixes}" />
+
+
 
     </StackPanel>
 </UserControl>
