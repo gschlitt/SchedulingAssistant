@@ -24,6 +24,7 @@ using System.Linq;
 using System.Reflection;
 using SchedulingAssistant.Exceptions;
 using Microsoft.Extensions.DependencyInjection;
+using SchedulingAssistant.Views.Wizard;
 
 namespace SchedulingAssistant;
 
@@ -116,7 +117,52 @@ public partial class MainWindow : Window
     private async Task RunStartupAsync()
     {
         var settings = AppSettings.Current;
-        string? dbPath = null;
+
+        // ── First-run wizard ──────────────────────────────────────────────────
+        // When IsInitialSetupComplete is false, show the wizard instead of the normal
+        // DB-path dialog. The wizard calls App.InitializeServices() internally (step 2),
+        // so we must NOT call it again below.
+        if (!settings.IsInitialSetupComplete)
+        {
+            var wizard = new StartupWizardWindow();
+            wizard.Show(this);
+
+            var tcs = new TaskCompletionSource();
+            wizard.Closed += (_, _) => tcs.TrySetResult();
+            await tcs.Task;
+
+            // Reload settings — the wizard saves DatabasePath and sets IsInitialSetupComplete.
+            AppSettings.Load();
+            settings = AppSettings.Current;
+
+            if (!settings.IsInitialSetupComplete)
+            {
+                // User closed the wizard before finishing — exit the app.
+                (Avalonia.Application.Current?.ApplicationLifetime as
+                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                    ?.Shutdown();
+                return;
+            }
+
+            // Wizard completed and App.Services is already initialized.
+            // Skip straight to wiring up the main window.
+            var dbPath = settings.DatabasePath!;
+            settings.AddRecentDatabase(dbPath);
+            await SetupMainWindowAsync(dbPath);
+            return;
+        }
+
+        // ── Returning user ────────────────────────────────────────────────────
+        await RunReturningUserStartupAsync(settings);
+    }
+
+    /// <summary>
+    /// Normal startup path for a returning user who already has a database configured.
+    /// Resolves the database path, calls App.InitializeServices, and shows the main window.
+    /// </summary>
+    private async Task RunReturningUserStartupAsync(AppSettings settings)
+    {
+        string? dbPath;
 
         if (!string.IsNullOrWhiteSpace(settings.DatabasePath) && File.Exists(settings.DatabasePath))
         {
@@ -171,6 +217,24 @@ public partial class MainWindow : Window
             vm = App.InitializeServices(dbPath);
         }
 
+        await SetupMainWindowAsync(dbPath, vm);
+    }
+
+    /// <summary>
+    /// Final step of startup: wires the main window VM and makes the window visible.
+    /// Used by both the first-run (wizard) path and the returning-user path.
+    /// When called from the wizard path, <paramref name="vm"/> is resolved from App.Services
+    /// (it was already initialized); otherwise it is provided directly.
+    /// </summary>
+    private async Task SetupMainWindowAsync(string dbPath, MainWindowViewModel? vm = null)
+    {
+        if (vm is null)
+        {
+            // Wizard path — App.Services was already initialized; just resolve the root VM.
+            vm = App.Services.GetRequiredService<MainWindowViewModel>();
+            vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath));
+        }
+
         // Start the automated backup session if this instance acquired the write lock.
         // Fire-and-forget: the first backup runs asynchronously in the background.
         if (App.Services.GetService(typeof(BackupService)) is BackupService backup
@@ -192,6 +256,8 @@ public partial class MainWindow : Window
 
         IsVisible = true;
         Activate();
+
+        await Task.CompletedTask;
     }
 
     /// <summary>

@@ -29,6 +29,7 @@
     <Application.Styles>
         <SimpleTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
+        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
         <Style Selector="Button">
             <Setter Property="Background" Value="{StaticResource ButtonBackground}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />

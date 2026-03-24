@@ -109,6 +109,41 @@ public static class SeedData
     }
 
     /// <summary>
+    /// Seeds legal start times from wizard-configured data into the given academic year.
+    /// Uses INSERT OR IGNORE, so it is safe to call even if some rows already exist.
+    /// Called by the startup wizard after the first academic year is created, in place of
+    /// <see cref="SeedDefaultLegalStartTimes"/> when the user supplied their own configuration.
+    /// </summary>
+    /// <param name="conn">Open SQLite connection.</param>
+    /// <param name="academicYearId">ID of the academic year to seed.</param>
+    /// <param name="data">
+    /// Sequence of (block length in hours, list of start times in minutes from midnight).
+    /// Rows whose start-time list is empty are skipped.
+    /// </param>
+    public static void SeedWizardLegalStartTimes(
+        DbConnection conn,
+        string academicYearId,
+        IEnumerable<(double BlockLengthHours, List<int> StartMinutes)> data)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText =
+            "INSERT OR IGNORE INTO LegalStartTimes (academic_year_id, block_length, start_times) " +
+            "VALUES ($ay, $bl, $st)";
+        var ayParam = cmd.CreateParameter(); ayParam.ParameterName = "$ay"; cmd.Parameters.Add(ayParam);
+        var blParam = cmd.CreateParameter(); blParam.ParameterName = "$bl"; cmd.Parameters.Add(blParam);
+        var stParam = cmd.CreateParameter(); stParam.ParameterName = "$st"; cmd.Parameters.Add(stParam);
+
+        ayParam.Value = academicYearId;
+        foreach (var (blockLengthHours, startMinutes) in data)
+        {
+            if (startMinutes.Count == 0) continue;
+            blParam.Value = blockLengthHours;
+            stParam.Value = JsonHelpers.Serialize(startMinutes);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
     /// Import persisted start times data for a specific academic year.
     /// Used when a user creates a new academic year and chooses to import from persisted config.
     /// </summary>

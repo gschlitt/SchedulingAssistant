@@ -113,7 +113,7 @@ public class GridPipelineTests
             Instructors:      instructors ?? new(),
             Rooms:            new Dictionary<string, Room>(),
             Subjects:         new Dictionary<string, Subject>(),
-            Campuses:         new Dictionary<string, SectionPropertyValue>(),
+            Campuses:         new Dictionary<string, Campus>(),
             SectionTypes:     new Dictionary<string, SectionPropertyValue>(),
             Tags:             new Dictionary<string, SectionPropertyValue>(),
             MeetingTypes:     new Dictionary<string, SectionPropertyValue>(),

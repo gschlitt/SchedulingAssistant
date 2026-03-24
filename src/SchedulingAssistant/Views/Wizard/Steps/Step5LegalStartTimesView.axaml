@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:SchedulingAssistant.ViewModels.Wizard.Steps"
+             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step5LegalStartTimesView"
+             x:CompileBindings="False">
+
+    <StackPanel MaxWidth="600" Spacing="14">
+
+        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
+                   Foreground="{DynamicResource ForegroundMuted}">
+            Block lengths are the standard class durations at your institution (e.g. 1.5 hours, 3 hours).
+            For each block length, specify the valid start times — these are the only times that will
+            appear in the section editor's start-time picker. (Often these are specified by your registrar.)
+            <LineBreak/><LineBreak/>
+            Two example blocks are provided below. Edit or delete them and add your own.
+            Times use 24-hour HHMM format (<Italic>0800</Italic> = 8:00 AM, <Italic>1330</Italic> = 1:30 PM).
+            All of this can be adjusted later in <Italic>Settings → Block Lengths &amp; Start Times</Italic>.
+        </TextBlock>
+
+        <!-- One card per block length -->
+        <ItemsControl ItemsSource="{Binding BlockLengths}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="local:WizardBlockLengthEntry">
+
+                    <Border BorderBrush="{DynamicResource SeparatorLine}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="14,10"
+                            Margin="0,0,0,8">
+                        <StackPanel Spacing="8">
+
+                            <!-- Card header: label + remove button -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Label}"
+                                           FontSize="{DynamicResource FontSizeNormal}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Content="Remove block"
+                                        FontSize="11"
+                                        Padding="8,3"
+                                        Command="{Binding $parent[UserControl].DataContext.RemoveBlockLengthCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </Grid>
+
+                            <!-- Start time chips — each has a × remove button -->
+                            <ItemsControl ItemsSource="{Binding StartTimes}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="local:WizardStartTimeEntry">
+                                        <Border Background="{DynamicResource ChromeBackground}"
+                                                BorderBrush="{DynamicResource ChromeBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="3"
+                                                Padding="6,2"
+                                                Margin="0,0,5,5">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{Binding Hhmm}"
+                                                           FontFamily="Consolas"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center"/>
+                                                <Button Content="×"
+                                                        FontSize="10"
+                                                        Padding="2,0"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding $parent[ItemsControl].DataContext.RemoveTimeCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Add time row -->
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBox Text="{Binding NewTimeInput}"
+                                         Watermark="HHMM"
+                                         Width="80"
+                                         FontSize="11"
+                                         FontFamily="Consolas"/>
+                                <Button Content="Add time"
+                                        FontSize="11"
+                                        Command="{Binding AddTimeCommand}"/>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Border>
+
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Add a new block length -->
+        <Border BorderBrush="{DynamicResource SubduedBorder}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="14,10">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Add a block length"
+                           FontSize="{DynamicResource FontSizeNormal}"
+                           FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBox Text="{Binding NewBlockLengthInput}"
+                             Watermark="e.g. 1.5"
+                             Width="72"
+                             FontSize="11"
+                             FontFamily="Consolas"/>
+                    <TextBlock Text="hours"
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <Button Content="Add block length"
+                            FontSize="11"
+                            Command="{Binding AddBlockLengthCommand}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+    </StackPanel>
+</UserControl>

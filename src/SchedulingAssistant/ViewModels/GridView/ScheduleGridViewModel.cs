@@ -974,14 +974,21 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Resolves the semester border brush from AppColors using the semester name.
-    /// Uses the same color-key mapping as SemesterBannerViewModel so that semester colors
-    /// throughout the app are visually consistent.
+    /// Resolves the semester border brush using either a stored hex color or a name-based
+    /// AppColors lookup. The hex color takes precedence when non-empty.
     /// Returns null if the resource cannot be found (renderer will use default styling).
     /// Used by ScheduleGridView to color meeting card borders in multi-semester mode.
     /// </summary>
-    public static Avalonia.Media.IBrush? ResolveSemesterBorderBrush(string semesterName)
+    /// <param name="semesterName">Semester name (used as fallback key).</param>
+    /// <param name="hexColor">Optional hex color string stored on the Semester model (e.g. "#C65D1E").</param>
+    public static Avalonia.Media.IBrush? ResolveSemesterBorderBrush(string semesterName, string hexColor = "")
     {
+        if (!string.IsNullOrWhiteSpace(hexColor))
+        {
+            try { return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(hexColor)); }
+            catch { /* fall through to name-based lookup */ }
+        }
+
         var firstWord = semesterName.Split(' ')[0];
         string key = firstWord switch
         {
@@ -1216,7 +1223,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
             foreach (var sem in semesters)
             {
-                var (bg, bd) = GetSemesterBrushes(sem.Semester.Name);
+                var (bg, bd) = GetSemesterBrushes(sem.Semester.Name, sem.Semester.Color);
                 segments.Add(new SemesterLineSegment(sem.Semester.Name, bg, bd));
             }
         }
@@ -1225,19 +1232,33 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets the background and border brushes for a semester from AppColors.
+    /// Gets the background and border brushes for a semester.
+    /// When a hex color is stored on the semester, it is used for both background and border.
+    /// Otherwise falls back to name-based AppColors lookup.
     /// </summary>
-    private static (IBrush? bg, IBrush? bd) GetSemesterBrushes(string semesterName)
+    /// <param name="semesterName">Semester name (used as fallback key).</param>
+    /// <param name="hexColor">Optional hex color string stored on the Semester model.</param>
+    private static (IBrush? bg, IBrush? bd) GetSemesterBrushes(string semesterName, string hexColor = "")
     {
+        if (!string.IsNullOrWhiteSpace(hexColor))
+        {
+            try
+            {
+                var brush = new SolidColorBrush(Color.Parse(hexColor));
+                return (brush, brush);
+            }
+            catch { /* fall through */ }
+        }
+
         var firstWord = semesterName.Split(' ')[0];
         var (bgKey, bdKey) = firstWord switch
         {
-            "Fall" => ("FallBackground", "FallBorder"),
+            "Fall"   => ("FallBackground", "FallBorder"),
             "Winter" => ("WinterBackground", "WinterBorder"),
-            "Early" => ("EarlySummerBackground", "EarlySummerBorder"),
+            "Early"  => ("EarlySummerBackground", "EarlySummerBorder"),
             "Summer" => ("SummerBackground", "SummerBorder"),
-            "Late" => ("LateSummerBackground", "LateSummerBorder"),
-            _ => ("FallBackground", "FallBorder")
+            "Late"   => ("LateSummerBackground", "LateSummerBorder"),
+            _        => ("FallBackground", "FallBorder")
         };
 
         var bg = Application.Current?.Resources.TryGetResource(bgKey, null, out var bgObj) ?? false

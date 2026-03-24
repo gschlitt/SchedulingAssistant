@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mgmt="using:SchedulingAssistant.Views.Management"
+             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step7SectionPrefixesView"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="16" MaxWidth="600">
+
+        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
+                   Foreground="{DynamicResource ForegroundMuted}">
+            Section prefixes are short letter codes prepended to section codes.
+            For example, a prefix of "AB" produces section codes like "AB1", "AB2", "AB3".
+            When you add a new section, TermPoint automatically advances to the next
+            available code for the selected prefix.
+        </TextBlock>
+
+        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
+                   Foreground="{DynamicResource ForegroundMuted}">
+            Each prefix can be linked to a campus — useful when different campuses use
+            distinct coding schemes. If you set up campuses in the previous step,
+            you can assign them here. Section prefixes can be added or changed later in Settings.
+        </TextBlock>
+
+        <mgmt:SectionPrefixListView DataContext="{Binding SectionPrefixes}"/>
+
+    </StackPanel>
+</UserControl>

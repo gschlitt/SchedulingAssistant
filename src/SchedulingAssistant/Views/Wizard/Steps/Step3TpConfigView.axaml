@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step3TpConfigView"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="20" MaxWidth="560">
+
+        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ForegroundMuted}">
+            A .tpconfig file contains block length, prefix, and semester settings that can be
+            shared between colleagues or reused when creating a new database.
+        </TextBlock>
+
+        <!-- Radio: No .tpconfig -->
+        <RadioButton Content="I'll set everything up manually (recommended for first use)"
+                     IsChecked="{Binding HasTpConfig, Converter={x:Static BoolConverters.Not}}"
+                     FontSize="13"/>
+
+        <!-- Radio: Yes .tpconfig -->
+        <StackPanel Spacing="10">
+            <RadioButton Content="I have a .tpconfig file from a colleague or previous setup"
+                         IsChecked="{Binding HasTpConfig}"
+                         FontSize="13"/>
+
+            <!-- File picker — visible only when "Yes" is selected -->
+            <Grid ColumnDefinitions="*,8,Auto"
+                  IsVisible="{Binding HasTpConfig}"
+                  Margin="24,0,0,0">
+                <TextBox Grid.Column="0"
+                         Text="{Binding TpConfigPath}"
+                         Watermark="Path to .tpconfig file…"
+                         IsReadOnly="True"/>
+                <Button Grid.Column="2"
+                        Content="Browse…"
+                        Command="{Binding BrowseTpConfigCommand}"/>
+            </Grid>
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

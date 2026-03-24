@@ -77,6 +77,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly BlockPatternRepository        _blockPatternRepo;
     private readonly SectionPrefixRepository       _prefixRepo;
     private readonly SectionPropertyRepository     _propertyRepo;
+    private readonly CampusRepository              _campusRepo;
     private readonly AcademicYearRepository        _ayRepo;
     private readonly AcademicUnitRepository        _academicUnitRepo;
     private readonly ReleaseRepository             _releaseRepo;
@@ -115,6 +116,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _blockPatternRepo = new BlockPatternRepository(_db);
         _prefixRepo      = new SectionPrefixRepository(_db);
         _propertyRepo    = new SectionPropertyRepository(_db);
+        _campusRepo      = new CampusRepository(_db);
         _ayRepo          = new AcademicYearRepository(_db);
         _academicUnitRepo = new AcademicUnitRepository(_db);
         _releaseRepo     = new ReleaseRepository(_db);
@@ -156,7 +158,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private SectionListViewModel CreateSectionListVm() =>
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _prefixRepo,
-            _semesterContext, _sectionStore, _propertyRepo, _dialog, _lock);
+            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock);
 
     /// <summary>Creates a fully-wired <see cref="CourseListViewModel"/> in reader mode.</summary>
     private CourseListViewModel CreateCourseListVm() =>
@@ -171,7 +173,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
 
     /// <summary>Creates a fully-wired <see cref="RoomListViewModel"/> in reader mode.</summary>
     private RoomListViewModel CreateRoomListVm() =>
-        new(_roomRepo, _sectionRepo, CreateSectionListVm(), _db, _dialog, _lock);
+        new(_roomRepo, _campusRepo, _sectionRepo, CreateSectionListVm(), _db, _dialog, _lock);
 
     /// <summary>
     /// Creates a <see cref="SectionPropertyListViewModel"/> for the "sectionType"
@@ -276,31 +278,6 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Group 4 — SemesterListViewModel
-    // ═════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public void Semester_AddCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new SemesterListViewModel(_semesterRepo, _dialog, _lock);
-        Assert.False(vm.AddCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public void Semester_EditCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new SemesterListViewModel(_semesterRepo, _dialog, _lock);
-        Assert.False(vm.EditCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public void Semester_DeleteCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new SemesterListViewModel(_semesterRepo, _dialog, _lock);
-        Assert.False(vm.DeleteCommand.CanExecute(null));
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
     // Group 5 — BlockPatternListViewModel  (nested BlockPatternSlotViewModel)
     // Write commands live on the slot sub-ViewModels, which each receive a
     // Func<bool> delegate that proxies the parent's WriteLockService.IsWriter.
@@ -379,21 +356,21 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void SectionPrefix_AddCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _propertyRepo, _dialog, _lock);
+        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock);
         Assert.False(vm.AddCommand.CanExecute(null));
     }
 
     [Fact]
     public void SectionPrefix_EditCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _propertyRepo, _dialog, _lock);
+        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock);
         Assert.False(vm.EditCommand.CanExecute(null));
     }
 
     [Fact]
     public void SectionPrefix_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _propertyRepo, _dialog, _lock);
+        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock);
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 

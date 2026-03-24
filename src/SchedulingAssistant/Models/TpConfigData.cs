@@ -1,0 +1,48 @@
+namespace SchedulingAssistant.Models;
+
+/// <summary>
+/// Portable configuration file (.tpconfig) written to the database folder after first-run setup.
+/// Contains institution-level defaults that can be shared between colleagues or reused when
+/// creating a new database at the same institution.
+/// Does NOT contain institution name, abbreviation, or academic unit — those are per-DB.
+/// </summary>
+public class TpConfigData
+{
+    /// <summary>Block length definitions with their legal start times.</summary>
+    public List<TpConfigBlockLength> BlockLengths { get; set; } = [];
+
+    /// <summary>Section prefix definitions (e.g. "AB", "CH").</summary>
+    public List<TpConfigSectionPrefix> SectionPrefixes { get; set; } = [];
+
+    /// <summary>Campus name definitions.</summary>
+    public List<string> Campuses { get; set; } = [];
+
+    /// <summary>Semester template definitions, in display order.</summary>
+    public List<TpConfigSemesterDef> SemesterDefs { get; set; } = [];
+}
+
+/// <summary>A block length entry with its legal start times.</summary>
+public class TpConfigBlockLength
+{
+    /// <summary>Duration in fractional hours (e.g. 1.5, 2.0, 3.0).</summary>
+    public double Hours { get; set; }
+
+    /// <summary>Valid start times as minutes-from-midnight (e.g. 510 = 08:30).</summary>
+    public List<int> StartTimes { get; set; } = [];
+}
+
+/// <summary>A section prefix entry.</summary>
+public class TpConfigSectionPrefix
+{
+    public string Prefix { get; set; } = string.Empty;
+    public string? CampusName { get; set; }
+}
+
+/// <summary>A semester template entry with a name and default display color.</summary>
+public class TpConfigSemesterDef
+{
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Hex color string (e.g. "#C65D1E"). Empty = use position-based default.</summary>
+    public string Color { get; set; } = string.Empty;
+}

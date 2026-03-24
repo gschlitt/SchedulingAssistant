@@ -1,0 +1,69 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SchedulingAssistant.ViewModels.Wizard"
+        x:Class="SchedulingAssistant.Views.Wizard.StartupWizardWindow"
+        x:CompileBindings="False"
+        Title="TermPoint — Setup"
+        Width="680" Height="540"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBackground}">
+
+    <Window.DataContext>
+        <!-- DataContext is set in code-behind after construction -->
+    </Window.DataContext>
+
+    <DockPanel>
+
+        <!-- Header bar: step title -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource MenuBarBackground}"
+                BorderBrush="{DynamicResource MenuBarBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="20,12">
+            <StackPanel Spacing="4">
+                <TextBlock Text="TermPoint Setup"
+                           FontSize="{DynamicResource FontSizeSmall}"
+                           Foreground="{DynamicResource ForegroundMuted}"
+                           FontWeight="Normal"/>
+                <TextBlock Text="{Binding CurrentStep.StepTitle}"
+                           FontSize="{DynamicResource FontSizeLarge}"
+                           FontWeight="SemiBold"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Footer: Back / Next buttons -->
+        <Border DockPanel.Dock="Bottom"
+                BorderBrush="{DynamicResource SeparatorLine}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <!-- Error / hint area -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding CurrentStep.ErrorMessage}"
+                           Foreground="{DynamicResource ErrorForeground}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           FontSize="{DynamicResource FontSizeSmall}"/>
+
+                <Button Grid.Column="1"
+                        Content="Back"
+                        Margin="0,0,8,0"
+                        IsEnabled="{Binding CanGoBack}"
+                        Command="{Binding BackCommand}"/>
+
+                <Button Grid.Column="2"
+                        Content="{Binding NextButtonText}"
+                        IsEnabled="{Binding CurrentStep.CanAdvance}"
+                        Command="{Binding NextCommand}"
+                        FontWeight="SemiBold"/>
+            </Grid>
+        </Border>
+
+        <!-- Step content — resolved via ViewLocator -->
+        <ScrollViewer Padding="24,16" VerticalScrollBarVisibility="Auto">
+            <ContentControl Content="{Binding CurrentStep}"/>
+        </ScrollViewer>
+
+    </DockPanel>
+</Window>

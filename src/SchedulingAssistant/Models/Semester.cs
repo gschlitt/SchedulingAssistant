@@ -8,6 +8,12 @@ public class Semester
     public int SortOrder { get; set; }
 
     /// <summary>
+    /// Hex color string (e.g. "#C65D1E") assigned to this semester for grid display.
+    /// Empty string falls back to the name-based color lookup in ScheduleGridViewModel.
+    /// </summary>
+    public string Color { get; set; } = string.Empty;
+
+    /// <summary>
     /// The fixed set of semester names auto-created for each Academic Year.
     /// </summary>
     public static readonly string[] DefaultNames =

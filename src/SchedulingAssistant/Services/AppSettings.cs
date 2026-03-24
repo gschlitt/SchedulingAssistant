@@ -31,6 +31,18 @@ public class AppSettings
     /// </summary>
     public static AppSettings Current => _instance ??= Load();
 
+    /// <summary>
+    /// True after the first-run wizard has successfully created a database.
+    /// When false, the app routes to the startup wizard instead of the main window.
+    /// </summary>
+    public bool IsInitialSetupComplete { get; set; } = false;
+
+    /// <summary>Name of the institution (e.g. "Greendale Community College").</summary>
+    public string InstitutionName { get; set; } = string.Empty;
+
+    /// <summary>Short abbreviation for the institution (e.g. "GCC").</summary>
+    public string InstitutionAbbrev { get; set; } = string.Empty;
+
     public string? DatabasePath { get; set; }
     public bool IncludeSaturday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;

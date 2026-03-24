@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mgmt="using:SchedulingAssistant.Views.Management"
+             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step4CampusesView"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="16" MaxWidth="600">
+
+        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
+                   Foreground="{DynamicResource ForegroundMuted}">
+            If your department schedules across more than one physical campus, add each one here.
+            Rooms and section prefixes can be linked to a campus to help filter and organize the schedule grid.
+        </TextBlock>
+
+        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
+                   Foreground="{DynamicResource ForegroundMuted}">
+            If you only have one location, you can add a single entry or skip this step entirely.
+            Campuses can be added or changed at any time in Settings.
+        </TextBlock>
+
+        <mgmt:CampusListView DataContext="{Binding Campuses}"/>
+
+    </StackPanel>
+</UserControl>

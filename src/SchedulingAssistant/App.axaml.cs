@@ -207,6 +207,7 @@ public partial class App : Application
         services.AddTransient<WorkloadReportViewModel>();
         services.AddTransient<WorkloadMailerViewModel>();
         services.AddTransient<SectionPrefixListViewModel>();
+        services.AddTransient<CampusListViewModel>();
         services.AddTransient<HelpViewModel>();
 
         // Views

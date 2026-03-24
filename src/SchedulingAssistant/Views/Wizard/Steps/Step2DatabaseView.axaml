@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SchedulingAssistant.Views.Wizard.Steps.Step2DatabaseView"
+             x:CompileBindings="False">
+
+    <StackPanel Spacing="20" MaxWidth="580">
+
+        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ForegroundMuted}">
+            Choose where your database file and automated backups will be stored.
+            Both locations are required.
+        </TextBlock>
+
+        <!-- Database folder -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="Database folder" FontWeight="SemiBold" FontSize="12"/>
+            <Grid ColumnDefinitions="*,8,Auto">
+                <TextBox Grid.Column="0"
+                         Text="{Binding DbFolder}"
+                         Watermark="Choose a folder…"
+                         IsReadOnly="True"/>
+                <Button Grid.Column="2"
+                        Content="Browse…"
+                        Command="{Binding BrowseDbFolderCommand}"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- Database filename — shown once a folder is chosen -->
+        <StackPanel Spacing="6"
+                    IsVisible="{Binding DbFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="Database filename" FontWeight="SemiBold" FontSize="12"/>
+            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ForegroundMuted}">
+                This filename was suggested from your abbreviation. You may edit it before continuing.
+            </TextBlock>
+            <TextBox Text="{Binding DbFilename}"
+                     Watermark="e.g. CS-TT.db"/>
+            <!-- Inline validation error -->
+            <TextBlock FontSize="11"
+                       Foreground="{DynamicResource NotificationErrorText}"
+                       IsVisible="{Binding DbFilenameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Text="{Binding DbFilenameError}"/>
+            <!-- Full path confirmation -->
+            <TextBlock FontSize="11" Foreground="{DynamicResource ForegroundMuted}"
+                       IsVisible="{Binding DbFullPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <Run Text="Full path: "/>
+                <Run Text="{Binding DbFullPath}" FontWeight="SemiBold"/>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Backup folder -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="Backup folder" FontWeight="SemiBold" FontSize="12"/>
+            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ForegroundMuted}">
+                TermPoint saves automatic backups here. Ideally choose a different drive or a cloud-synced folder for safety.
+            </TextBlock>
+            <Grid ColumnDefinitions="*,8,Auto">
+                <TextBox Grid.Column="0"
+                         Text="{Binding BackupFolder}"
+                         Watermark="Choose a folder…"
+                         IsReadOnly="True"/>
+                <Button Grid.Column="2"
+                        Content="Browse…"
+                        Command="{Binding BrowseBackupFolderCommand}"/>
+            </Grid>
+
+            <!-- Same-folder recommendation — appears only when both folders are the same path -->
+            <Border IsVisible="{Binding SameFolderWarning}"
+                    Background="{DynamicResource NotificationWarningBackground}"
+                    BorderBrush="{DynamicResource NotificationWarningBorder}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12,8">
+                <TextBlock TextWrapping="Wrap"
+                           FontSize="12"
+                           Foreground="{DynamicResource NotificationWarningText}">
+                    <Bold>⚠ Recommendation:</Bold>
+                    Your backup folder is the same as your database folder.
+                    For best data protection, choose a backup location on a <Bold>different drive</Bold>
+                    — or a cloud-synced folder such as OneDrive or Dropbox.
+                    If your primary drive fails, backups stored alongside the database would be lost too.
+                    <LineBreak/>
+                    You may continue with the same folder if you prefer.
+                </TextBlock>
+            </Border>
+
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>
