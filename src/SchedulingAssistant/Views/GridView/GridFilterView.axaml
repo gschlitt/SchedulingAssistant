@@ -447,7 +447,7 @@
 
                     <!--  Separator between filter and overlay panels  -->
                     <Border
-                        Width="3"
+                        Width="1"
                         Margin="4,4"
                         Background="{StaticResource SeparatorLine}" />
 

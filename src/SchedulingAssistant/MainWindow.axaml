@@ -399,16 +399,19 @@
                 <Grid Grid.Column="0" RowDefinitions="*,4,200">
 
                     <!--  Section View (fixed panel — not detachable)  -->
+                    <!--  Outer shell: soft shadow + 1 px light edge; matches DetachablePanel treatment  -->
                     <Border
                         Grid.Row="0"
                         BorderBrush="{StaticResource ChromeBorder}"
-                        BorderThickness="1">
+                        BorderThickness="1"
+                        BoxShadow="0 1 6 0 #1A000000"
+                        CornerRadius="2">
                         <Grid RowDefinitions="Auto,*">
 
                             <!--  Header  -->
                             <Border
                                 Grid.Row="0"
-                                Padding="8,4"
+                                Padding="10,6"
                                 Background="{StaticResource ChromeBackground}"
                                 BorderBrush="{StaticResource ChromeBorder}"
                                 BorderThickness="0,0,0,1"

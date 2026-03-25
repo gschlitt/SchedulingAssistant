@@ -20,11 +20,13 @@
     <!--  Overlay Color, Section View Selected Colors, Filter Color  -->
     <!--  ── Primary chrome (menu bar, panel headers, grid day headers) ──  -->
     <SolidColorBrush x:Key="ChromeBackground" Color="#dde5f0" />
-    <SolidColorBrush x:Key="ChromeBorder" Color="#7AAAD4" />
+    <!--  Panel/header separator — very light 1 px line replacing the old saturated blue border  -->
+    <SolidColorBrush x:Key="ChromeBorder" Color="#D4DFE8" />
 
     <!--  ── Buttons ─────────────────────────────────────────────────────  -->
     <SolidColorBrush x:Key="ButtonBackground" Color="#AECBF0" />
-    <SolidColorBrush x:Key="ButtonBorder" Color="#7AAAD4" />
+    <!--  Borderless-style: buttons rely on background fill; border kept for subtle definition  -->
+    <SolidColorBrush x:Key="ButtonBorder" Color="#C5D8EC" />
     <SolidColorBrush x:Key="ButtonHover" Color="#C5DAEF" />
     <SolidColorBrush x:Key="ButtonPressed" Color="#90B8E8" />
 
@@ -114,10 +116,13 @@
     <SolidColorBrush x:Key="LateSummerBorder" Color="#F2C94C" />
 
     <!--  ── General UI structure ─────────────────────────────────────────  -->
-    <SolidColorBrush x:Key="SeparatorLine" Color="#7AAAD4" />
-    <SolidColorBrush x:Key="GridSplitterColor" Color="#DDDDDD" />
+    <!--  Thin vertical/horizontal separator rules inside the menu bar  -->
+    <SolidColorBrush x:Key="SeparatorLine" Color="#C4D3E0" />
+    <SolidColorBrush x:Key="GridSplitterColor" Color="#E0E8F0" />
     <SolidColorBrush x:Key="SubduedBorder" Color="#BBBBBB" />
     <SolidColorBrush x:Key="ItemSeparator" Color="#DDDDDD" />
+    <!--  Soft panel shadow — used on DetachablePanel and Section View outer container  -->
+    <BoxShadows x:Key="PanelBoxShadow">0 1 6 0 #1A000000</BoxShadows>
 
     <!--  ── Text roles ───────────────────────────────────────────────────  -->
     <SolidColorBrush x:Key="TextPrimary" Color="Black" />

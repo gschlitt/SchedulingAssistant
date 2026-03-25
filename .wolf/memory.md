@@ -2,6 +2,26 @@
 
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
+
+## Session: 2026-03-25 — visual-improvements branch
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Created branch `visual-improvements` | — | New branch |
+| Lightened `ChromeBorder` #7AAAD4 → #D4DFE8 | AppColors.axaml | Removes heavy blue border on all panels |
+| Lightened `ButtonBorder` #7AAAD4 → #C5D8EC | AppColors.axaml | Softer button definition |
+| Lightened `SeparatorLine` → #C4D3E0, `GridSplitterColor` → #E0E8F0 | AppColors.axaml | Lighter structural lines |
+| Added `PanelBoxShadow` resource | AppColors.axaml | Reusable shadow key |
+| Added BoxShadow + CornerRadius to DetachablePanel outer border | DetachablePanel.axaml | Soft shadow replaces inset border |
+| Added BoxShadow + CornerRadius to Section View outer border | MainWindow.axaml | Consistent with DetachablePanel |
+| Increased Section View header padding 8,4 → 10,6 | MainWindow.axaml | Breathing room |
+| Removed button border (BorderThickness 1 → 0) | App.axaml | Flat fill-only buttons |
+| Filter bar separator Width 3 → 1 | GridFilterView.axaml | Thinner rule |
+| Section card separator BorderThickness 0,0,0,2 → 0,0,0,1 | SectionListView.axaml | Lighter separator |
+| Semester banner bottom border 2 → 1 | SectionListView.axaml | Consistent |
+| Summary row margin 2,3,6,2 → 2,4,6,3 | SectionListView.axaml | 1px breathing room |
+| Inline editor left accent 3,0,0,0 → 2,0,0,0 | SectionListView.axaml | Less heavy accent |
+| Workload semester frame border 2 → 1 | WorkloadPanelView.axaml | Lighter grouping |
 | 09:25 | Edited src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml | 7→7 lines | ~86 |
 
 ## Session: 2026-03-24 09:41
@@ -97,3 +117,21 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-03-25 10:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:43 | Edited src/SchedulingAssistant/AppColors.axaml | 3→4 lines | ~82 |
+| 10:43 | Edited src/SchedulingAssistant/AppColors.axaml | 5→6 lines | ~114 |
+| 10:43 | Edited src/SchedulingAssistant/AppColors.axaml | 5→8 lines | ~152 |
+| 10:43 | Edited src/SchedulingAssistant/Controls/DetachablePanel.axaml | 1→6 lines | ~69 |
+| 10:43 | Edited src/SchedulingAssistant/MainWindow.axaml | 5→8 lines | ~122 |
+| 10:43 | Edited src/SchedulingAssistant/MainWindow.axaml | 8→8 lines | ~126 |
+| 10:43 | Edited src/SchedulingAssistant/App.axaml | 7→7 lines | ~108 |
+| 10:44 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 5→5 lines | ~66 |
+| 10:44 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→7 lines | ~115 |
+| 10:44 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 2→3 lines | ~106 |
+| 10:45 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 4→4 lines | ~80 |
+| 12:10 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 2→2 lines | ~45 |
+| 12:10 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→7 lines | ~156 |

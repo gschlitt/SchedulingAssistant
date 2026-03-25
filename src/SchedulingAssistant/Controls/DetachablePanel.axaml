@@ -4,7 +4,12 @@
              x:Class="SchedulingAssistant.Controls.DetachablePanel"
              x:Name="Root">
 
-    <Border BorderBrush="{StaticResource ChromeBorder}" BorderThickness="1">
+    <!--  Outer panel shell: soft shadow replaces the heavy border; 1 px light edge for crispness  -->
+    <Border
+        BorderBrush="{StaticResource ChromeBorder}"
+        BorderThickness="1"
+        BoxShadow="0 1 6 0 #1A000000"
+        CornerRadius="2">
         <Grid RowDefinitions="Auto,*">
 
             <!-- Panel header bar (two rows: title + extra controls).

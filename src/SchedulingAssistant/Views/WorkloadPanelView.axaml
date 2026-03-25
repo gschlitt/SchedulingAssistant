@@ -162,7 +162,7 @@
                                                     Padding="3,2"
                                                     CornerRadius="2"
                                                     BorderBrush="{Binding SemesterColorBrush}"
-                                                    BorderThickness="2">
+                                                    BorderThickness="1">
                                                     <!--  Inner grid: chips fill *, semester total right-aligned 58px  -->
                                                     <Grid ColumnDefinitions="*,58">
                                                         <!--  Chips WrapPanel in col 0  -->

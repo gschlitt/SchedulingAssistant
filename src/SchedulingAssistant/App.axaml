@@ -30,11 +30,11 @@
         <SimpleTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
         <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
+        <!--  Flat buttons: no border, fill-based depth only.  -->
         <Style Selector="Button">
             <Setter Property="Background" Value="{StaticResource ButtonBackground}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{StaticResource ButtonBorder}" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="4" />
         </Style>
         <Style Selector="Button:pointerover /template/ ContentPresenter">
