@@ -137,7 +137,7 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Panel>
-                                                        <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
+                                                        <Border Background="{StaticResource FilterSentinelBackground}" IsVisible="{Binding IsSentinel}" />
                                                         <CheckBox
                                                             Content="{Binding Name}"
                                                             IsChecked="{Binding IsSelected}"
@@ -179,7 +179,7 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Panel>
-                                                        <Border Background="#E8EEF8" IsVisible="{Binding IsSentinel}" />
+                                                        <Border Background="{StaticResource FilterSentinelBackground}" IsVisible="{Binding IsSentinel}" />
                                                         <CheckBox
                                                             Content="{Binding Name}"
                                                             IsChecked="{Binding IsSelected}"

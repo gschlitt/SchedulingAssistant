@@ -57,13 +57,13 @@
         <TextBlock Text="{Binding StatusMessage}"
                    TextWrapping="Wrap"
                    FontSize="12"
-                   Foreground="#333333" />
+                   Foreground="{StaticResource TextFaint}" />
 
         <TextBlock IsVisible="{Binding IsGenerating}"
                    Text="Processing..."
                    TextAlignment="Center"
                    FontSize="12"
-                   Foreground="#666666" />
+                   Foreground="{StaticResource TextMuted}" />
     </StackPanel>
 
 </UserControl>

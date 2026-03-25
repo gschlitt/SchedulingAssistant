@@ -28,7 +28,7 @@
                     <!--  Advisory message when no subjects exist  -->
                     <TextBlock
                         FontSize="13"
-                        Foreground="#888888"
+                        Foreground="{StaticResource TextMuted}"
                         IsVisible="{Binding HasSubjects, Converter={x:Static BoolConverters.Not}}"
                         Text="Create at least one subject first" />
 
@@ -67,11 +67,11 @@
 
                                     <TextBlock
                                         FontSize="12"
-                                        Foreground="#666"
+                                        Foreground="{StaticResource TextMuted}"
                                         Text="Calendar Code (computed)" />
                                     <TextBlock
                                         Padding="8,4"
-                                        Background="#F5F5F5"
+                                        Background="{StaticResource SubtleBackground}"
                                         Text="{Binding ComputedCalendarCode}" />
 
                                     <TextBlock
@@ -272,7 +272,7 @@
             <!--  VERTICAL SEPARATOR  -->
             <!--  ═══════════════════════════════════════════════════════════  -->
 
-            <Border Grid.Column="1" Background="#CCCCCC" />
+            <Border Grid.Column="1" Background="{StaticResource InlineListBorder}" />
 
             <!--  ═══════════════════════════════════════════════════════════  -->
             <!--  RIGHT COLUMN: COURSE HISTORY  -->
@@ -290,7 +290,7 @@
 
                 <TextBlock
                     FontSize="12"
-                    Foreground="#888888"
+                    Foreground="{StaticResource TextMuted}"
                     IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNull}}"
                     Text="Select a course to view its history" />
 

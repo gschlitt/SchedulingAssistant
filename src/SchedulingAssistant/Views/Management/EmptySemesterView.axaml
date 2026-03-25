@@ -43,7 +43,7 @@
         <!-- Status/advisory message -->
         <TextBlock Grid.Row="4" Text="{Binding StatusMessage}"
                    IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                   TextWrapping="Wrap" FontSize="12" Foreground="#C44"
+                   TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextValidationError}"
                    Margin="0,0,0,12" />
 
         <!-- Buttons -->

@@ -17,11 +17,11 @@
 
             <WrapPanel VerticalAlignment="Center">
                 <TextBlock Text="The following examples of sections of the " />
-                <Border Padding="2,0" Background="#BBDEFB">
+                <Border Padding="2,0" Background="{StaticResource PrefixCampusABackground}">
                     <TextBlock Text="course" />
                 </Border>
                 <TextBlock Text=" PSYC 101 show various forms of " />
-                <Border Padding="2,0" Background="#C8E6C9">
+                <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
                     <TextBlock Text="section prefix" />
                 </Border>
                 <TextBlock Text=" and " />
@@ -47,13 +47,13 @@
                 Spacing="0">
                 <Border
                     Padding="5,2"
-                    Background="#BBDEFB"
+                    Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
                     <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
-                    Background="#C8E6C9"
+                    Background="{StaticResource PrefixCampusBBackground}"
                     CornerRadius="0">
                     <TextBlock
                         HorizontalAlignment="Right"
@@ -82,13 +82,13 @@
                 Spacing="0">
                 <Border
                     Padding="5,2"
-                    Background="#BBDEFB"
+                    Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
                     <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
-                    Background="#C8E6C9"
+                    Background="{StaticResource PrefixCampusBBackground}"
                     CornerRadius="0">
                     <TextBlock
                         HorizontalAlignment="Right"
@@ -116,7 +116,7 @@
                 Margin="20,0"
                 VerticalAlignment="Center">
                 <TextBlock Text="The" />
-                <Border Padding="2,0" Background="#C8E6C9">
+                <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
                     <TextBlock Text="section prefix" />
                 </Border>
                 <TextBlock Text=" designates campus. The" />
@@ -137,13 +137,13 @@
                 Spacing="0">
                 <Border
                     Padding="5,2"
-                    Background="#BBDEFB"
+                    Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
                     <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
-                    Background="#C8E6C9"
+                    Background="{StaticResource PrefixCampusBBackground}"
                     CornerRadius="0">
                     <TextBlock
                         HorizontalAlignment="Right"
@@ -171,13 +171,13 @@
                 Spacing="0">
                 <Border
                     Padding="5,2"
-                    Background="#BBDEFB"
+                    Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
                     <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
-                    Background="#C8E6C9"
+                    Background="{StaticResource PrefixCampusBBackground}"
                     CornerRadius="0">
                     <TextBlock
                         HorizontalAlignment="Right"
@@ -205,7 +205,7 @@
                 Width="400"
                 VerticalAlignment="Center">
                 <TextBlock Text="The" />
-                <Border Padding="2,0" Background="#C8E6C9">
+                <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
                     <TextBlock Text="section prefix" />
                 </Border>
                 <TextBlock Text=" designates a tutorial. The" />
@@ -225,13 +225,13 @@
                 Spacing="0">
                 <Border
                     Padding="5,2"
-                    Background="#BBDEFB"
+                    Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
                     <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
-                    Background="#C8E6C9"
+                    Background="{StaticResource PrefixCampusBBackground}"
                     CornerRadius="0">
                     <TextBlock
                         HorizontalAlignment="Right"
@@ -259,13 +259,13 @@
                 Spacing="0">
                 <Border
                     Padding="5,2"
-                    Background="#BBDEFB"
+                    Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
                     <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
-                    Background="#C8E6C9"
+                    Background="{StaticResource PrefixCampusBBackground}"
                     CornerRadius="0">
                     <TextBlock
                         HorizontalAlignment="Right"
@@ -293,7 +293,7 @@
                 Width="400"
                 VerticalAlignment="Center">
                 <TextBlock Text="The" />
-                <Border Padding="2,0" Background="#C8E6C9">
+                <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
                     <TextBlock Text="section prefix" />
                 </Border>
                 <TextBlock Text=" designates another section aspect. The" />

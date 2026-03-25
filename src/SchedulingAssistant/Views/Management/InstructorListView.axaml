@@ -26,8 +26,7 @@
             Grid.Row="0"
             Grid.Column="0"
             Padding="8,12"
-            Background="White"
-            BorderBrush="#CCCCCC"
+            Background="{StaticResource SurfaceBackground}"
             BorderThickness="0,0,0,0">
             <StackPanel
                 IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -36,7 +35,7 @@
                 <TextBlock
                     VerticalAlignment="Center"
                     FontSize="18"
-                    Foreground="#666666"
+                    Foreground="{StaticResource TextMuted}"
                     Text="Selected:" />
                 <TextBlock
                     VerticalAlignment="Center"
@@ -181,7 +180,7 @@
             <DataGrid
                 MaxHeight="250"
                 AutoGenerateColumns="False"
-                BorderBrush="#CCCCCC"
+                BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1"
                 CanUserSortColumns="True"
                 IsReadOnly="True"
@@ -276,7 +275,7 @@
                 Width="1"
                 Margin="4,2"
                 VerticalAlignment="Stretch"
-                Background="#CCCCCC" />
+                Background="{StaticResource InlineListBorder}" />
             <!--  Activity summary for the selected semester  -->
             <TextBlock
                 VerticalAlignment="Center"
@@ -300,8 +299,8 @@
             <Border
                 Grid.Column="0"
                 Padding="8"
-                Background="White"
-                BorderBrush="#CCCCCC"
+                Background="{StaticResource SurfaceBackground}"
+                BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1">
                 <ScrollViewer>
                     <StackPanel DataContext="{Binding WorkloadVm}" Spacing="8">
@@ -315,7 +314,7 @@
                             Margin="0,4,0,0"
                             FontSize="11"
                             FontWeight="SemiBold"
-                            Foreground="#333333"
+                            Foreground="{StaticResource TextFaint}"
                             Text="Sections" />
 
                         <!--  Assigned sections list  -->
@@ -344,7 +343,7 @@
                             Margin="0,2,0,0"
                             FontSize="8"
                             FontStyle="Italic"
-                            Foreground="#666666"
+                            Foreground="{StaticResource TextMuted}"
                             Text="⚠ Instructional workload is edited in Section Editor"
                             TextWrapping="Wrap" />
                     </StackPanel>
@@ -352,14 +351,14 @@
             </Border>
 
             <!--  Splitter  -->
-            <Border Grid.Column="1" Background="#CCCCCC" />
+            <Border Grid.Column="1" Background="{StaticResource InlineListBorder}" />
 
             <!--  Non-instructional Workload Panel  -->
             <Border
                 Grid.Column="2"
                 Padding="8"
-                Background="White"
-                BorderBrush="#CCCCCC"
+                Background="{StaticResource SurfaceBackground}"
+                BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1">
                 <StackPanel DataContext="{Binding ReleaseVm}" Spacing="8">
                     <TextBlock
@@ -415,7 +414,7 @@
                         <DataGrid
                             MaxHeight="280"
                             AutoGenerateColumns="False"
-                            BorderBrush="#CCCCCC"
+                            BorderBrush="{StaticResource InlineListBorder}"
                             BorderThickness="1"
                             CanUserSortColumns="False"
                             IsReadOnly="True"
@@ -471,14 +470,14 @@
             </Border>
 
             <!--  Splitter  -->
-            <Border Grid.Column="3" Background="#CCCCCC" />
+            <Border Grid.Column="3" Background="{StaticResource InlineListBorder}" />
 
             <!--  Commitments Panel  -->
             <Border
                 Grid.Column="4"
                 Padding="8"
-                Background="White"
-                BorderBrush="#CCCCCC"
+                Background="{StaticResource SurfaceBackground}"
+                BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1">
                 <ScrollViewer>
                     <StackPanel DataContext="{Binding CommitmentsVm}" Spacing="8">
@@ -561,7 +560,7 @@
                             <DataGrid
                                 MaxHeight="280"
                                 AutoGenerateColumns="False"
-                                BorderBrush="#CCCCCC"
+                                BorderBrush="{StaticResource InlineListBorder}"
                                 BorderThickness="1"
                                 CanUserSortColumns="False"
                                 IsReadOnly="True"
@@ -628,13 +627,13 @@
             Grid.Row="0"
             Grid.Column="1"
             Padding="8,12"
-            Background="White"
+            Background="{StaticResource SurfaceBackground}"
             IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
             <TextBlock
                 VerticalAlignment="Center"
                 FontSize="18"
                 FontWeight="Bold"
-                Foreground="#666666"
+                Foreground="{StaticResource TextMuted}"
                 Text="Workload History" />
         </Border>
 
@@ -642,7 +641,7 @@
         <Border
             Grid.Row="1"
             Grid.Column="1"
-            Background="White"
+            Background="{StaticResource SurfaceBackground}"
             IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
             <v:WorkloadHistoryView DataContext="{Binding WorkloadHistoryVm}" />
         </Border>

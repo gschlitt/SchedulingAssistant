@@ -19,20 +19,12 @@ So there's some serious refactoring to do here. Semesters touch a lot of places 
 
 Agenda.
 
-Section prefix wizard:
+Startup. What about generating a new db? How does system handle missing recent db? 
+(Takes us back to old dialog. Should use the wizard)
 
-Setting you commonly used section prefixes can save a lot of time. 
+Wizard is duplicating section properties as they end up in the Settings.
 
-Typically sections of a course mention  The Course + A prefix + An instance number of letter
-
-Examples of two different sections of the same course
-PSYC 101 1   PSYC 101 2
-PSYC 101 AB1  PSYC 101 AB2 
-PSYC 101 TUT-1 PSYC 101 TUT-2 (two different tutorial sections)
-PSYC 101 HAM-A  PSYC 101 HAM-B (two different sections on the Hamilton campus)
-
-If your institution's patterns fall within these scopes 
-PSYC 101    PREFIX    VARIABLE (numeric or alphabetic)
+Use a package for error logging e.g. Sentry, Firebase Crashlytics, Bugsnag
 
 Improve human-readability of db.
 

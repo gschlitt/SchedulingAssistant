@@ -121,7 +121,9 @@ public partial class SectionListViewModel : ViewModelBase
         if (value is SectionListItemViewModel svm)
             _lastSelectedIndex = SectionItems.IndexOf(svm);
 
-        _sectionStore.SetSelection((value as SectionListItemViewModel)?.Section.Id);
+        var selectedId = (value as SectionListItemViewModel)?.Section.Id;
+        _sectionStore.SetSelection(selectedId);
+        ApplySelectionHighlight(selectedId);
     }
 
     // ── Constructor ────────────────────────────────────────────────────────────
@@ -366,6 +368,18 @@ public partial class SectionListViewModel : ViewModelBase
         var ids = _sectionStore.FilteredSectionIds;
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
             item.IsFilterHighlighted = ids is not null && ids.Contains(item.Section.Id);
+    }
+
+    /// <summary>
+    /// Updates <see cref="SectionListItemViewModel.IsSelected"/> on every section card to match
+    /// <paramref name="selectedSectionId"/>. Called whenever the selection changes from any view
+    /// (Schedule Grid, Workload panel, or Section List itself) so the accent border appears on the
+    /// correct card regardless of which panel drove the change.
+    /// </summary>
+    private void ApplySelectionHighlight(string? selectedSectionId)
+    {
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            item.IsSelected = item.Section.Id == selectedSectionId;
     }
 
     // ── Sorting ────────────────────────────────────────────────────────────────

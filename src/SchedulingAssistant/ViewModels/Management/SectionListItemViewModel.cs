@@ -33,10 +33,28 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     /// <summary>
     /// True when the Schedule Grid has an active filter and this section's ID is in the
-    /// passing set. Drives a 3 pt <c>FilterColor</c> border around the card in the section list.
+    /// passing set. Drives the accent border via <see cref="IsBorderHighlighted"/>.
     /// Set externally by <see cref="SectionListViewModel.ApplyFilterHighlights"/>.
     /// </summary>
-    [ObservableProperty] private bool _isFilterHighlighted;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBorderHighlighted))]
+    private bool _isFilterHighlighted;
+
+    /// <summary>
+    /// True when this section is the currently selected section (from any view — Section List,
+    /// Schedule Grid, or Workload panel). Drives the accent border via <see cref="IsBorderHighlighted"/>.
+    /// Set externally by <see cref="SectionListViewModel.ApplySelectionHighlight"/>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBorderHighlighted))]
+    private bool _isSelected;
+
+    /// <summary>
+    /// True when this card should show the 3 pt accent border — either because it matches the
+    /// active Schedule Grid filter (<see cref="IsFilterHighlighted"/>) or because it is the
+    /// cross-view selected section (<see cref="IsSelected"/>).
+    /// </summary>
+    public bool IsBorderHighlighted => IsFilterHighlighted || IsSelected;
 
     /// <summary>
     /// True when at least one meeting in this section has a non-default (non-weekly) frequency.

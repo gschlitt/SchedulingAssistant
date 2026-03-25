@@ -135,3 +135,79 @@
 | 10:45 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 4→4 lines | ~80 |
 | 12:10 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 2→2 lines | ~45 |
 | 12:10 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→7 lines | ~156 |
+| 12:11 | Session end: 13 writes across 7 files (AppColors.axaml, DetachablePanel.axaml, MainWindow.axaml, App.axaml, GridFilterView.axaml) | 8 reads | ~20399 tok |
+| 12:16 | Edited src/SchedulingAssistant/App.axaml | 2→7 lines | ~135 |
+
+## Session: 2026-03-25 12:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:21 | Edited src/SchedulingAssistant/App.axaml | 6→3 lines | ~64 |
+| 12:21 | Session end: 1 writes across 1 files (App.axaml) | 0 reads | ~68 tok |
+
+## Session: 2026-03-25 12:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:28 | Created src/SchedulingAssistant/AppColors.axaml | — | ~2619 |
+| 12:29 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 12→11 lines | ~135 |
+| 12:29 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | "#CCCCCC" → "{StaticResource InlineLis" | ~13 |
+| 12:29 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | "#CCCCCC" → "{StaticResource InlineLis" | ~13 |
+| 12:29 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | "#666666" → "{StaticResource TextMuted" | ~11 |
+| 12:29 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 2→2 lines | ~31 |
+| 12:30 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | "White" → "{StaticResource SurfaceBa" | ~13 |
+| 12:30 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 2→2 lines | ~44 |
+| 12:30 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 8→8 lines | ~140 |
+| 12:30 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | inline fix | ~23 |
+| 12:30 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 2→2 lines | ~44 |
+| 12:30 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 3→3 lines | ~42 |
+| 12:30 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 7→7 lines | ~105 |
+| 12:30 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | "#E8E8E8" → "{StaticResource ItemSepar" | ~29 |
+| 12:31 | Edited src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml | "#666666" → "{StaticResource TextMuted" | ~20 |
+| 12:31 | Edited src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml | "#555555" → "{StaticResource TextSecon" | ~12 |
+| 12:31 | Edited src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml | "#777777" → "{StaticResource TextMuted" | ~11 |
+| 12:31 | Edited src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml | "#555555" → "{StaticResource TextSecon" | ~12 |
+| 12:31 | Edited src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml | "#777777" → "{StaticResource TextMuted" | ~11 |
+| 12:31 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | "#E8EEF8" → "{StaticResource FilterSen" | ~24 |
+| 12:31 | Edited src/SchedulingAssistant/Views/Management/ConfirmDialog.axaml | "#999999" → "{StaticResource SubduedBo" | ~21 |
+| 12:31 | Edited src/SchedulingAssistant/Views/DebugTestDataView.axaml | "#333333" → "{StaticResource TextFaint" | ~17 |
+| 12:31 | Edited src/SchedulingAssistant/Views/DebugTestDataView.axaml | "#666666" → "{StaticResource TextMuted" | ~17 |
+| 12:32 | Edited src/SchedulingAssistant/Views/Management/CopySemesterView.axaml | inline fix | ~30 |
+| 12:32 | Edited src/SchedulingAssistant/Views/Management/EmptySemesterView.axaml | inline fix | ~28 |
+| 12:32 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml | "#BBDEFB" → "{StaticResource PrefixCam" | ~15 |
+| 12:32 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml | "#C8E6C9" → "{StaticResource PrefixCam" | ~15 |
+| 12:33 | Session end: 27 writes across 12 files (AppColors.axaml, InstructorListView.axaml, CourseListView.axaml, WorkloadPanelView.axaml, CourseHistoryView.axaml) | 11 reads | ~17351 tok |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 3→3 lines | ~39 |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 14→16 lines | ~241 |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+7 lines) | ~336 |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→6 lines | ~59 |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 4→4 lines | ~80 |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 3→3 lines | ~56 |
+| 12:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 4→4 lines | ~75 |
+| 12:43 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→7 lines | ~117 |
+| 12:43 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→6 lines | ~124 |
+| 12:44 | Session end: 36 writes across 13 files (AppColors.axaml, InstructorListView.axaml, CourseListView.axaml, WorkloadPanelView.axaml, CourseHistoryView.axaml) | 12 reads | ~37553 tok |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 8→12 lines | ~222 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 8→10 lines | ~237 |
+| 12:49 | Session end: 38 writes across 13 files (AppColors.axaml, InstructorListView.axaml, CourseListView.axaml, WorkloadPanelView.axaml, CourseHistoryView.axaml) | 12 reads | ~38196 tok |
+| 12:53 | Session end: 38 writes across 13 files (AppColors.axaml, InstructorListView.axaml, CourseListView.axaml, WorkloadPanelView.axaml, CourseHistoryView.axaml) | 12 reads | ~38196 tok |
+| 12:56 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | expanded (+18 lines) | ~327 |
+| 12:56 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified OnSelectedItemChanged() | ~120 |
+| 12:56 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified ApplyFilterHighlights() | ~239 |
+| 12:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→7 lines | ~148 |
+| 12:58 | Session end: 42 writes across 15 files (AppColors.axaml, InstructorListView.axaml, CourseListView.axaml, WorkloadPanelView.axaml, CourseHistoryView.axaml) | 15 reads | ~39090 tok |
+
+## Session: 2026-03-25 14:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-25 14:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-25 15:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

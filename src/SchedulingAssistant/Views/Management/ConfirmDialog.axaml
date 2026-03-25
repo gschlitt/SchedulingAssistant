@@ -16,7 +16,7 @@
     WindowStartupLocation="CenterOwner"
     mc:Ignorable="d">
 
-    <Border BorderBrush="#999999" BorderThickness="1">
+    <Border BorderBrush="{StaticResource SubduedBorder}" BorderThickness="1">
     <StackPanel Orientation="Vertical" Margin="24" Spacing="16">
 
         <TextBlock

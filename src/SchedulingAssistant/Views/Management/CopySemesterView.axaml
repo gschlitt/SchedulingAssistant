@@ -115,7 +115,7 @@
         <StackPanel Grid.Row="3" Spacing="8" Margin="0,0,0,12"
                     IsVisible="{Binding IsFlaggedWarning}">
             <TextBlock Text="The following sections have meeting times incompatible with the destination academic year's start time configuration. Their schedules will be removed during copy."
-                       TextWrapping="Wrap" FontSize="12" Foreground="#C44" />
+                       TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextValidationError}" />
 
             <ItemsControl ItemsSource="{Binding FlaggedDescriptions}" Margin="8,0,0,0">
                 <ItemsControl.ItemTemplate>

@@ -18,7 +18,7 @@
                                     <TextBlock>
                                         <Run Text="{Binding Display}" />
                                         <Run Text="{Binding SectionCount, StringFormat=' ({0} sections)'}"
-                                             Foreground="#666666" FontSize="10" FontWeight="Normal" />
+                                             Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Normal" />
                                     </TextBlock>
                                 </Expander.Header>
                                 <!-- Semesters -->
@@ -27,14 +27,14 @@
                                         <DataTemplate DataType="{x:Type vm:CourseHistoryItemViewModel}">
                                             <StackPanel Spacing="2">
                                                 <!-- Semester -->
-                                                <TextBlock Text="{Binding Display}" FontSize="10" FontWeight="SemiBold" Foreground="#555555" Margin="0,2,0,0" />
+                                                <TextBlock Text="{Binding Display}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
 
                                                 <!-- Sections -->
                                                 <ItemsControl ItemsSource="{Binding Children}" Margin="12,0,0,0">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type vm:CourseHistoryItemViewModel}">
                                                             <TextBlock Text="{Binding Display}" FontSize="9"
-                                                                       Foreground="#777777" />
+                                                                       Foreground="{StaticResource TextMuted}" />
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>

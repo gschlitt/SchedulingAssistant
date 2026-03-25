@@ -64,6 +64,310 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-24T20:44:17.879Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-03-25T17:43:30.035Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T17:43:30.035Z"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-03-25T17:44:56.984Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"0,0,0,2\"",
+      "fix": "Changed to \"0,0,0,1\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T17:44:56.984Z"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-03-25T19:21:56.030Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:21:56.030Z"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-03-25T19:29:43.048Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "root_cause": "Had \"#CCCCCC\"",
+      "fix": "Changed to \"{StaticResource InlineListBorder}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-03-25T19:30:01.734Z"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-03-25T19:30:07.984Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml",
+      "root_cause": "Had \"#888888\"",
+      "fix": "Changed to \"{StaticResource TextMuted}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:30:25.736Z"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-03-25T19:30:19.384Z",
+      "error_message": "Wrong reference: CCCCCC should be StaticResource",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml",
+      "root_cause": "Used \"CCCCCC\" instead of \"StaticResource\"",
+      "fix": "Changed CCCCCC → StaticResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:30:19.384Z"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-03-25T19:30:44.930Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"#E8EEF5\"",
+      "fix": "Changed to \"{StaticResource ChromeBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:30:59.242Z"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-03-25T19:31:04.061Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml",
+      "root_cause": "Had \"#666666\"",
+      "fix": "Changed to \"{StaticResource TextMuted}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-03-25T19:31:13.292Z"
+    },
+    {
+      "id": "bug-013",
+      "timestamp": "2026-03-25T19:31:19.971Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml",
+      "root_cause": "Had \"#555555\"",
+      "fix": "Changed to \"{StaticResource TextSecondary}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:31:24.345Z"
+    },
+    {
+      "id": "bug-014",
+      "timestamp": "2026-03-25T19:31:29.161Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"#E8EEF8\"",
+      "fix": "Changed to \"{StaticResource FilterSentinelBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:31:29.161Z"
+    },
+    {
+      "id": "bug-015",
+      "timestamp": "2026-03-25T19:31:39.597Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/ConfirmDialog.axaml",
+      "root_cause": "Had \"#999999\"",
+      "fix": "Changed to \"{StaticResource SubduedBorder}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:31:39.597Z"
+    },
+    {
+      "id": "bug-016",
+      "timestamp": "2026-03-25T19:31:54.626Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/DebugTestDataView.axaml",
+      "root_cause": "Had \"#333333\"",
+      "fix": "Changed to \"{StaticResource TextFaint}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:31:57.803Z"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-03-25T19:32:01.062Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/CopySemesterView.axaml",
+      "root_cause": "Had \"#C44\"",
+      "fix": "Changed to \"{StaticResource TextValidationError}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:32:01.062Z"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-03-25T19:32:04.266Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/EmptySemesterView.axaml",
+      "root_cause": "Had \"#C44\"",
+      "fix": "Changed to \"{StaticResource TextValidationError}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:32:04.266Z"
+    },
+    {
+      "id": "bug-019",
+      "timestamp": "2026-03-25T19:32:12.790Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml",
+      "root_cause": "Had \"#BBDEFB\"",
+      "fix": "Changed to \"{StaticResource PrefixCampusABackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:32:16.361Z"
+    },
+    {
+      "id": "bug-020",
+      "timestamp": "2026-03-25T19:42:13.712Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"Transparent\"",
+      "fix": "Changed to \"{StaticResource AppBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:42:50.774Z"
+    },
+    {
+      "id": "bug-021",
+      "timestamp": "2026-03-25T19:42:34.547Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 8→15 lines (6 removed) | Also: BorderBrush=\"{StaticResource SubduedBorder}\"; BorderThickness=\"1\"",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-25T19:43:03.163Z"
+    },
+    {
+      "id": "bug-022",
+      "timestamp": "2026-03-25T19:48:30.430Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→12 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:48:30.430Z"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-03-25T19:56:00.933Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→24 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-25T19:56:00.933Z"
     }
   ]
 }

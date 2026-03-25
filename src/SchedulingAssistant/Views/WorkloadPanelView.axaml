@@ -41,8 +41,8 @@
         <!--  Column headers  -->
         <Border
             Grid.Row="0"
-            Background="#E8EEF5"
-            BorderBrush="#CCCCCC"
+            Background="{StaticResource ChromeBackground}"
+            BorderBrush="{StaticResource InlineListBorder}"
             BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="100,32,*,58,58">
                 <TextBlock
@@ -87,11 +87,11 @@
                 <!--  Error banner  -->
                 <Border
                     Padding="6,3"
-                    Background="#FFF3CD"
+                    Background="{StaticResource NotificationWarningBackground}"
                     IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <TextBlock
                         FontSize="10"
-                        Foreground="#856404"
+                        Foreground="{StaticResource NotificationWarningText}"
                         Text="{Binding LastErrorMessage}"
                         TextWrapping="Wrap" />
                 </Border>
@@ -100,7 +100,7 @@
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="#E8E8E8" BorderThickness="0,0,0,1">
+                            <Border BorderBrush="{StaticResource ItemSeparator}" BorderThickness="0,0,0,1">
                                 <Grid Margin="0,3" ColumnDefinitions="100,32,*,58,58">
 
                                     <!--  Name  -->
