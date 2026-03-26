@@ -1,0 +1,268 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SchedulingAssistant.ViewModels"
+        x:Class="SchedulingAssistant.Views.DatabaseRecoveryWindow"
+        x:CompileBindings="False"
+        x:DataType="vm:DatabaseRecoveryViewModel"
+        Title="TermPoint — Database Recovery"
+        Width="620"
+        SizeToContent="Height"
+        MinHeight="300"
+        CanResize="False"
+        SystemDecorations="BorderOnly"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBackground}">
+
+    <!--  Slightly larger font scale than the main app, matching the wizard  -->
+    <Window.Resources>
+        <x:Double x:Key="FontSizeSmall">12</x:Double>
+        <x:Double x:Key="FontSizeNormal">14</x:Double>
+        <x:Double x:Key="FontSizeMedium">15</x:Double>
+        <x:Double x:Key="FontSizeLarge">17</x:Double>
+    </Window.Resources>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!--  Row 0: Header bar — PointerPressed enables drag since OS title bar is hidden  -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource ChromeBackground}"
+                BorderBrush="{DynamicResource ChromeBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="20,12"
+                PointerPressed="OnHeaderPointerPressed">
+            <StackPanel Spacing="4">
+                <TextBlock Text="TermPoint"
+                           FontSize="{DynamicResource FontSizeSmall}"
+                           Foreground="{DynamicResource TextMuted}" />
+                <TextBlock Text="Database Recovery"
+                           FontSize="{DynamicResource FontSizeLarge}"
+                           FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+
+        <!--  Row 1: Scrollable content  -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,20,24,8" Spacing="14">
+
+                <!--  Problem description  -->
+                <TextBlock Text="{Binding ProblemDescription}"
+                           FontSize="{DynamicResource FontSizeNormal}"
+                           TextWrapping="Wrap" />
+
+                <!--  Last-known path (highlighted as an error)  -->
+                <Border Background="{DynamicResource SubtleBackground}"
+                        BorderBrush="{DynamicResource SubduedBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,7">
+                    <TextBlock Text="{Binding LastKnownPath}"
+                               FontSize="{DynamicResource FontSizeSmall}"
+                               Foreground="{DynamicResource TextError}"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <TextBlock Text="How would you like to proceed?"
+                           FontSize="{DynamicResource FontSizeMedium}"
+                           FontWeight="SemiBold" />
+
+                <!--  ── Option A: Browse for the database ──────────────────────  -->
+                <Border BorderBrush="{DynamicResource SubduedBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Background="{DynamicResource SurfaceBackground}">
+                    <StackPanel>
+                        <!--  Clickable header row  -->
+                        <Button Background="Transparent"
+                                Command="{Binding SelectOptionACommand}"
+                                Padding="12,10"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <RadioButton IsChecked="{Binding IsOptionASelected, Mode=OneWay}"
+                                             GroupName="RecoveryOption"
+                                             IsHitTestVisible="False"
+                                             VerticalAlignment="Center" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Browse for your database"
+                                               FontSize="{DynamicResource FontSizeNormal}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Point TermPoint to the file wherever it now lives."
+                                               FontSize="{DynamicResource FontSizeSmall}"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Button>
+
+                        <!--  Expanded detail panel  -->
+                        <StackPanel IsVisible="{Binding IsOptionAExpanded}"
+                                    Margin="12,0,12,12"
+                                    Spacing="8">
+                            <Border Height="1" Background="{DynamicResource SeparatorLine}" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding BrowsedPath}"
+                                         IsReadOnly="True"
+                                         Watermark="No file selected"
+                                         VerticalAlignment="Center" />
+                                <Button Grid.Column="1"
+                                        Content="Browse…"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding BrowseForDatabaseCommand}" />
+                            </Grid>
+                            <TextBlock Text="{Binding BrowseError}"
+                                       IsVisible="{Binding BrowseError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Foreground="{DynamicResource TextError}"
+                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--  ── Option B: Restore from a backup ──────────────────────────  -->
+                <Border BorderBrush="{DynamicResource SubduedBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Background="{DynamicResource SurfaceBackground}">
+                    <StackPanel>
+                        <!--  Clickable header row  -->
+                        <Button Background="Transparent"
+                                Command="{Binding SelectOptionBCommand}"
+                                Padding="12,10"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <RadioButton IsChecked="{Binding IsOptionBSelected, Mode=OneWay}"
+                                             GroupName="RecoveryOption"
+                                             IsHitTestVisible="False"
+                                             VerticalAlignment="Center" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Restore from a backup"
+                                               FontSize="{DynamicResource FontSizeNormal}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Choose a backup file and pick where to restore it."
+                                               FontSize="{DynamicResource FontSizeSmall}"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Button>
+
+                        <!--  Expanded detail panel  -->
+                        <StackPanel IsVisible="{Binding IsOptionBExpanded}"
+                                    Margin="12,0,12,12"
+                                    Spacing="10">
+                            <Border Height="1" Background="{DynamicResource SeparatorLine}" />
+
+                            <!--  Step 1  -->
+                            <TextBlock Text="Step 1 — Select a backup file"
+                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding BackupPath}"
+                                         IsReadOnly="True"
+                                         Watermark="No backup selected"
+                                         VerticalAlignment="Center" />
+                                <Button Grid.Column="1"
+                                        Content="Browse…"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding BrowseForBackupCommand}" />
+                            </Grid>
+
+                            <!--  Step 2 — only visible after a valid backup is chosen  -->
+                            <StackPanel IsVisible="{Binding IsBackupStepTwoVisible}" Spacing="8">
+                                <TextBlock Text="Step 2 — Confirm restore destination"
+                                           FontSize="{DynamicResource FontSizeSmall}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding RestorePath}"
+                                             IsReadOnly="True"
+                                             VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            Content="Change folder…"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding ChangeRestoreFolderCommand}" />
+                                </Grid>
+                                <TextBlock Text="The backup will be copied to this location. Your backup file will not be modified."
+                                           FontSize="{DynamicResource FontSizeSmall}"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding RestoreError}"
+                                       IsVisible="{Binding RestoreError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Foreground="{DynamicResource TextError}"
+                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--  ── Option C: Start over ─────────────────────────────────────  -->
+                <Border BorderBrush="{DynamicResource SubduedBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Background="{DynamicResource SurfaceBackground}">
+                    <StackPanel>
+                        <!--  Clickable header row  -->
+                        <Button Background="Transparent"
+                                Command="{Binding SelectOptionCCommand}"
+                                Padding="12,10"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <RadioButton IsChecked="{Binding IsOptionCSelected, Mode=OneWay}"
+                                             GroupName="RecoveryOption"
+                                             IsHitTestVisible="False"
+                                             VerticalAlignment="Center" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Start over with a new database"
+                                               FontSize="{DynamicResource FontSizeNormal}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Launch the setup wizard to create a fresh database from scratch."
+                                               FontSize="{DynamicResource FontSizeSmall}"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Button>
+
+                        <!--  Expanded detail panel  -->
+                        <StackPanel IsVisible="{Binding IsOptionCExpanded}"
+                                    Margin="12,0,12,12"
+                                    Spacing="8">
+                            <Border Height="1" Background="{DynamicResource SeparatorLine}" />
+                            <TextBlock FontSize="{DynamicResource FontSizeSmall}"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       TextWrapping="Wrap"
+                                       Text="The setup wizard will open and guide you through creating a new database. Your existing database file (if it still exists) will not be deleted — TermPoint will simply stop referencing it." />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!--  Row 2: Footer with Exit and Continue  -->
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource SeparatorLine}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <Button Grid.Column="1"
+                        Content="Exit TermPoint"
+                        Margin="0,0,8,0"
+                        Command="{Binding ExitCommand}" />
+                <Button Grid.Column="2"
+                        Content="{Binding ContinueButtonText}"
+                        IsEnabled="{Binding CanContinue}"
+                        FontWeight="SemiBold"
+                        Command="{Binding ContinueCommand}" />
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

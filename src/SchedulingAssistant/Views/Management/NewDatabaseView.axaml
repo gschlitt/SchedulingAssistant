@@ -7,7 +7,7 @@
     x:DataType="vm:NewDatabaseViewModel">
 
     <StackPanel
-        MaxWidth="500"
+        MaxWidth="700"
         Margin="10,0"
         HorizontalAlignment="Left"
         Spacing="14">
@@ -19,13 +19,19 @@
 
         <TextBlock
             FontSize="{StaticResource FontSizeNormal}"
-            Text="[PLACEHOLDER: brief intro — e.g. creates a fresh database on this machine. You can optionally copy your current configuration into it so you don't have to set it up from scratch.]"
+            Text="This facility creates a new database. It does not copy an existing database. You can however choose to copy your current configuration into the new database, so you don't have to set it up from scratch."
             TextWrapping="Wrap" />
 
         <!--  Database name  -->
         <StackPanel Spacing="4">
-            <TextBlock FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold" Text="Database name" />
-            <TextBlock FontSize="{StaticResource FontSizeSmall}" Text="A short label used as the filename (e.g. CS → CS-TT.db)." TextWrapping="Wrap" />
+            <TextBlock
+                FontSize="{StaticResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Database name" />
+            <TextBlock
+                FontSize="{StaticResource FontSizeSmall}"
+                Text="A short label used as the filename (e.g. CS → CS-TT.db)."
+                TextWrapping="Wrap" />
             <TextBox Text="{Binding DbName}" Watermark="e.g. CS" />
             <TextBlock
                 FontSize="{StaticResource FontSizeSmall}"
@@ -36,28 +42,43 @@
 
         <!--  Database folder  -->
         <StackPanel Spacing="4">
-            <TextBlock FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold" Text="Database folder" />
+            <TextBlock
+                FontSize="{StaticResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Database folder" />
             <DockPanel>
                 <Button
                     Margin="6,0,0,0"
                     Command="{Binding BrowseDbFolderCommand}"
                     Content="Browse…"
                     DockPanel.Dock="Right" />
-                <TextBox IsReadOnly="True" Text="{Binding DbFolder}" Watermark="Choose a folder…" />
+                <TextBox
+                    IsReadOnly="True"
+                    Text="{Binding DbFolder}"
+                    Watermark="Choose a folder…" />
             </DockPanel>
         </StackPanel>
 
         <!--  Backup folder  -->
         <StackPanel Spacing="4">
-            <TextBlock FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold" Text="Backup folder" />
-            <TextBlock FontSize="{StaticResource FontSizeSmall}" Text="Automatic backups are saved here." TextWrapping="Wrap" />
+            <TextBlock
+                FontSize="{StaticResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Backup folder" />
+            <TextBlock
+                FontSize="{StaticResource FontSizeSmall}"
+                Text="Automatic backups are saved here."
+                TextWrapping="Wrap" />
             <DockPanel>
                 <Button
                     Margin="6,0,0,0"
                     Command="{Binding BrowseBackupFolderCommand}"
                     Content="Browse…"
                     DockPanel.Dock="Right" />
-                <TextBox IsReadOnly="True" Text="{Binding BackupFolder}" Watermark="Choose a folder…" />
+                <TextBox
+                    IsReadOnly="True"
+                    Text="{Binding BackupFolder}"
+                    Watermark="Choose a folder…" />
             </DockPanel>
             <TextBlock
                 FontSize="{StaticResource FontSizeSmall}"
@@ -83,21 +104,26 @@
 
                     <!--  Source notice — names the AY so the user can verify it is the right one  -->
                     <TextBlock
-                        FontSize="{StaticResource FontSizeSmall}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         FontWeight="SemiBold"
                         Foreground="#1A5276"
                         Text="{Binding ConfigSourceLabel}"
                         TextWrapping="Wrap" />
 
                     <TextBlock
-                        FontSize="{StaticResource FontSizeSmall}"
-                        Text="[PLACEHOLDER: describe what transfers — campuses, section prefixes/designators, block patterns (meeting-day patterns), block lengths and legal start times, and semester templates (names and colors).]"
+                        FontSize="{StaticResource FontSizeNormal}"
+                        Text="Transferring your configuration copies campuses, section prefixes/designators, block patterns, block lengths and legal start times, and semester templates (names and colors). It does not copy courses, instructors, sections or any other scheduling data. A configuration source year is used because block lengths/start times and semester names can vary with academic year."
                         TextWrapping="Wrap" />
-
-                    <!--  First AY name — only applicable when transferring  -->
-                    <StackPanel Spacing="4">
-                        <TextBlock FontSize="{StaticResource FontSizeSmall}" FontWeight="SemiBold" Text="First academic year name" />
-                        <TextBlock FontSize="{StaticResource FontSizeSmall}" Text="Semester templates will be created under this academic year." TextWrapping="Wrap" />
+                    <!--  First AY name — only shown when there is no config source to copy from  -->
+                    <StackPanel IsVisible="{Binding ShowFirstAcademicYearField}" Spacing="4">
+                        <TextBlock
+                            FontSize="{StaticResource FontSizeSmall}"
+                            FontWeight="SemiBold"
+                            Text="First academic year name" />
+                        <TextBlock
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Semester templates will be created under this academic year."
+                            TextWrapping="Wrap" />
                         <TextBox
                             IsEnabled="{Binding HasConfigSource}"
                             Text="{Binding FirstAcademicYearName}"

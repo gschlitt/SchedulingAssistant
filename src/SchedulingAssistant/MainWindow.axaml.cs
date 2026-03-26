@@ -161,37 +161,54 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Normal startup path for a returning user who already has a database configured.
-    /// Resolves the database path, calls App.InitializeServices, and shows the main window.
+    /// Validates the saved database path, shows the recovery window if needed, then
+    /// calls App.InitializeServices and shows the main window.
     /// </summary>
     private async Task RunReturningUserStartupAsync(AppSettings settings)
     {
-        string? dbPath;
+        string dbPath;
 
-        if (!string.IsNullOrWhiteSpace(settings.DatabasePath) && File.Exists(settings.DatabasePath))
+        var validation = DatabaseValidator.Validate(settings.DatabasePath);
+
+        if (validation == DatabaseValidationResult.Ok)
         {
-            // Happy path — saved path exists and file is there.
-            dbPath = settings.DatabasePath;
+            // Happy path — file exists and passes integrity check.
+            dbPath = settings.DatabasePath!;
         }
         else
         {
-            var mode = string.IsNullOrWhiteSpace(settings.DatabasePath)
-                ? DatabaseLocationMode.FirstRun
-                : DatabaseLocationMode.NotFound;
+            // File is missing or corrupt — show the recovery window.
+            var reason = validation == DatabaseValidationResult.Corrupt
+                ? RecoveryReason.Corrupt
+                : RecoveryReason.NotFound;
 
-            dbPath = await ShowLocationDialogAsync(mode);
+            var recovery = new DatabaseRecoveryWindow(reason, settings.DatabasePath);
+            await recovery.ShowDialog(this);
 
-            if (dbPath is null)
+            switch (recovery.Vm.Outcome)
             {
-                // User cancelled — inform and exit.
-                await ShowCancelMessageAsync();
-                (Avalonia.Application.Current?.ApplicationLifetime as
-                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
-                    ?.Shutdown();
-                return;
-            }
+                case RecoveryOutcome.Resolved:
+                    dbPath = recovery.Vm.ResolvedPath!;
+                    settings.DatabasePath = dbPath;
+                    settings.Save();
+                    break;
 
-            settings.DatabasePath = dbPath;
-            settings.Save();
+                case RecoveryOutcome.StartWizard:
+                    // User wants a fresh start — clear the saved path and re-run
+                    // startup so the wizard is shown in the normal first-run path.
+                    settings.IsInitialSetupComplete = false;
+                    settings.DatabasePath           = null;
+                    settings.Save();
+                    await RunStartupAsync();
+                    return;
+
+                default: // RecoveryOutcome.None — user exited
+                    await ShowCancelMessageAsync();
+                    (Avalonia.Application.Current?.ApplicationLifetime as
+                        Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                        ?.Shutdown();
+                    return;
+            }
         }
 
         // Record this database in recent list

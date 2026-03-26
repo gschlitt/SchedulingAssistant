@@ -464,6 +464,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-26T00:05:52.740Z"
+    },
+    {
+      "id": "bug-030",
+      "timestamp": "2026-03-26T03:02:56.037Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/DatabaseValidatorTests.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 12→16 lines (3 removed) | Also: using var cmd = conn.CreateCommand();; cmd.CommandText =",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-26T03:03:03.286Z"
+    },
+    {
+      "id": "bug-031",
+      "timestamp": "2026-03-26T03:15:44.647Z",
+      "error_message": "Wrong operator: && should be ==",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Used \"&&\" instead of \"==\"",
+      "fix": "Changed operator && → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-26T03:15:44.647Z"
+    },
+    {
+      "id": "bug-032",
+      "timestamp": "2026-03-26T03:58:24.383Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-26T03:58:24.383Z"
     }
   ]
 }

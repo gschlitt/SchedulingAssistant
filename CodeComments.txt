@@ -19,8 +19,7 @@ So there's some serious refactoring to do here. Semesters touch a lot of places 
 
 Agenda.
 
-Startup. What about generating a new db? How does system handle missing recent db? 
-(Takes us back to old dialog. Should use the wizard)
+Should be a campus display and picker in section cards
 
 Wizard is duplicating section properties as they end up in the Settings.
 

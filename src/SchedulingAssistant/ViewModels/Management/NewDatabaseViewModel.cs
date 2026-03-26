@@ -119,6 +119,12 @@ public partial class NewDatabaseViewModel : ViewModelBase
     /// <summary>True when the currently selected academic year is available for transfer.</summary>
     public bool HasConfigSource => _semesterContext.SelectedAcademicYear is not null;
 
+    /// <summary>
+    /// True when the user must manually supply a first academic year name — i.e. transfer is
+    /// requested but there is no source AY to copy the name from.
+    /// </summary>
+    public bool ShowFirstAcademicYearField => TransferConfig && !HasConfigSource;
+
     /// <summary>True when all required inputs are valid and the Create button may be clicked.</summary>
     public bool CanCreate
     {
@@ -131,8 +137,9 @@ public partial class NewDatabaseViewModel : ViewModelBase
             if (string.IsNullOrWhiteSpace(BackupFolder)) return false;
             if (TransferConfig)
             {
-                if (!HasConfigSource) return false;
-                if (string.IsNullOrWhiteSpace(FirstAcademicYearName.Trim())) return false;
+                // When there is no source AY, the user must supply a name for the first AY.
+                // When a source AY exists, its name is carried over automatically.
+                if (!HasConfigSource && string.IsNullOrWhiteSpace(FirstAcademicYearName.Trim())) return false;
             }
             return true;
         }
@@ -161,7 +168,11 @@ public partial class NewDatabaseViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanCreate));
     }
 
-    partial void OnTransferConfigChanged(bool value)     => OnPropertyChanged(nameof(CanCreate));
+    partial void OnTransferConfigChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanCreate));
+        OnPropertyChanged(nameof(ShowFirstAcademicYearField));
+    }
     partial void OnFirstAcademicYearNameChanged(string value) => OnPropertyChanged(nameof(CanCreate));
     partial void OnIsCreatingChanged(bool value)         => OnPropertyChanged(nameof(CanCreate));
 

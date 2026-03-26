@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T00:53:25.307Z
-> Files: 13 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T03:58:39.422Z
+> Files: 19 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -142,11 +142,13 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `DatabaseValidatorTests.cs` — Unit tests for <see cref="DatabaseValidator"/>. <para>Each test operates on a fresh temporary direct (~2054 tok)
 
 ## src/SchedulingAssistant/
 
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3042 tok)
 - `MainWindow.axaml` — Declares applied (~10206 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. All shut (~9002 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -169,14 +171,16 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `DatabaseValidator.cs` — The result of a database file validation check. (~501 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `DatabaseRecoveryViewModel.cs` — Indicates why the database recovery window was shown. (~3544 tok)
 - `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5480 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3739 tok)
+- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3873 tok)
 - `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1908 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -188,13 +192,15 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `DatabaseRecoveryWindow.axaml` (~4091 tok)
+- `DatabaseRecoveryWindow.axaml.cs` — Shown at startup when the configured database is missing or corrupt. Presents three options: browse (~1000 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `NewDatabaseView.axaml` (~1541 tok)
+- `NewDatabaseView.axaml` (~1762 tok)
 - `NewDatabaseView.axaml.cs` — Code-behind for <see cref="NewDatabaseView"/>. (~83 tok)
 - `ShareView.axaml` (~614 tok)
 - `ShareView.axaml.cs` — Code-behind for <see cref="ShareView"/>. (~78 tok)
