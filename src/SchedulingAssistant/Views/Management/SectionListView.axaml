@@ -563,12 +563,12 @@
 
                     </Grid>
 
-                    <!--  Reserve Codes + Resources side by side  -->
+                    <!--  Reserve Codes + Resources + Campus  -->
                     <Grid
-                        MaxWidth="400"
+                        MaxWidth="600"
                         Margin="0,4,0,0"
                         HorizontalAlignment="Left"
-                        ColumnDefinitions="*,4,*">
+                        ColumnDefinitions="*,4,*,4,*">
 
                         <!--  Left: Reserve Codes popup  -->
                         <StackPanel Grid.Column="0">
@@ -630,7 +630,7 @@
                             </Panel>
                         </StackPanel>
 
-                        <!--  Right: Resources popup  -->
+                        <!--  Middle: Resources popup  -->
                         <StackPanel Grid.Column="2">
                             <TextBlock
                                 Margin="0,0,0,1"
@@ -673,6 +673,24 @@
                                     </Border>
                                 </Popup>
                             </Panel>
+                        </StackPanel>
+
+                        <!--  Right: Campus dropdown  -->
+                        <StackPanel Grid.Column="4">
+                            <TextBlock
+                                Margin="0,0,0,1"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextLabel}"
+                                Text="Campus" />
+                            <ComboBox
+                                HorizontalAlignment="Stretch"
+                                CornerRadius="4"
+                                DisplayMemberBinding="{Binding Name}"
+                                FontSize="11"
+                                ItemsSource="{Binding Campuses}"
+                                SelectedValue="{Binding SelectedCampusId}"
+                                SelectedValueBinding="{Binding Id}" />
                         </StackPanel>
 
                     </Grid>

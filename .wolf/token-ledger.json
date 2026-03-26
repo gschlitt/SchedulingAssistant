@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 982318,
-    "total_reads": 657,
-    "total_writes": 679,
-    "total_sessions": 24,
-    "anatomy_hits": 133,
-    "anatomy_misses": 521,
-    "repeated_reads_blocked": 232,
-    "estimated_savings_vs_bare_cli": 1800979
+    "total_tokens_estimated": 1013319,
+    "total_reads": 662,
+    "total_writes": 683,
+    "total_sessions": 27,
+    "anatomy_hits": 135,
+    "anatomy_misses": 524,
+    "repeated_reads_blocked": 241,
+    "estimated_savings_vs_bare_cli": 1929437
   },
   "sessions": [
     {
@@ -8342,6 +8342,73 @@
         "writes_count": 25,
         "repeated_reads_blocked": 14,
         "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-03-26-1253",
+      "started": "2026-03-26T19:53:59.455Z",
+      "ended": "2026-03-26T19:57:28.916Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/SectionEditViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Section.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+          "tokens_estimated": 9918,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 19617,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+          "tokens_estimated": 136,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+          "tokens_estimated": 162,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 80,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 1088,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 29535,
+        "output_tokens_estimated": 1466,
+        "reads_count": 5,
+        "writes_count": 4,
+        "repeated_reads_blocked": 9,
+        "anatomy_lookups": 2
       }
     }
   ],

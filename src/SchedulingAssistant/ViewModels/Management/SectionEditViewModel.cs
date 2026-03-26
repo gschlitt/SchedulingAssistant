@@ -76,6 +76,7 @@ public partial class SectionEditViewModel : ViewModelBase
 
     // Section-level single-select property collections (include a leading "(none)" sentinel)
     [ObservableProperty] private ObservableCollection<SectionPropertyValue> _sectionTypes = new();
+    [ObservableProperty] private ObservableCollection<Campus> _campuses = new();
 
     // Section-level single-select selections (empty string = null / none)
     [ObservableProperty] private string? _selectedSectionTypeId;
@@ -475,6 +476,12 @@ public partial class SectionEditViewModel : ViewModelBase
 
         // Build single-select lists with a leading "(none)" sentinel
         SectionTypes = BuildSentinelList(sectionTypes);
+
+        // Build campuses list sorted by SortOrder, with a "(none)" sentinel prepended
+        var campusList = new List<Campus>
+            { new Campus { Id = "", Name = "(none)" } };
+        campusList.AddRange(campuses.OrderBy(c => c.SortOrder));
+        Campuses = new ObservableCollection<Campus>(campusList);
 
         SelectedSectionTypeId = section.SectionTypeId ?? "";
         SelectedCampusId      = section.CampusId      ?? "";

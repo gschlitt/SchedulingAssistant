@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T17:33:49.264Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T19:55:10.143Z
 > Files: 27 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
@@ -183,7 +183,7 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3873 tok)
-- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9810 tok)
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9918 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12008 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~6447 tok)
 - `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1908 tok)
@@ -209,7 +209,7 @@
 
 - `NewDatabaseView.axaml` (~1762 tok)
 - `NewDatabaseView.axaml.cs` — Code-behind for <see cref="NewDatabaseView"/>. (~83 tok)
-- `SectionListView.axaml` (~19363 tok)
+- `SectionListView.axaml` (~19617 tok)
 - `ShareView.axaml` (~614 tok)
 - `ShareView.axaml.cs` — Code-behind for <see cref="ShareView"/>. (~78 tok)
 

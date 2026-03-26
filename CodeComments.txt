@@ -2,6 +2,7 @@ Bugs:
 
 Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
 
+Filter selection border in Section View should be a a different color than manual selection.
 
 Next step in institution setups. During the startup wizard, the user should name the semesters or terms that they will schedule in. They may even wish to revise later after they've started using the app. It's unusual to add or delete semesters, but no unheard of. So first of all we need a revision to data types: instead of being a top level class, semesters will belong to an academic year, and have their existence and names edite in the Academic Year CRUD panel.  Include an ordering facility for the semesters within a year. Recall that we need this same Semester CRUD panel to work in the wizard eventually so make it portable.
 
@@ -20,6 +21,11 @@ So there's some serious refactoring to do here. Semesters touch a lot of places 
 Agenda.
 
 Should be a campus display and picker in section cards
+
+After a new db possibly other times, Academic Unit is default. Setting it does not revise the display 
+in Schedule View. 
+
+On a db new should pick an initial academic year. Otherwise end up with semesters but no year, which is weird.
 
 Wizard is duplicating section properties as they end up in the Settings.
 
