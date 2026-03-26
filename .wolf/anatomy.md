@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T03:58:39.422Z
-> Files: 19 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T04:53:30.577Z
+> Files: 22 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -147,8 +147,8 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3042 tok)
-- `MainWindow.axaml` — Declares applied (~10206 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. All shut (~9002 tok)
+- `MainWindow.axaml` — Declares applied (~10071 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. All shut (~8711 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -181,6 +181,7 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3873 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~11932 tok)
 - `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1908 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -197,6 +198,8 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml` (~3288 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11408 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

@@ -505,6 +505,9 @@ public partial class ScheduleGridView : UserControl
             }
         }
 
+        // Closing vertical line on the right edge of the last day column.
+        AddLine(_canvas, totalWidth, 0, totalWidth, totalHeight, HeaderBorder, 1);
+
         // ── Time rows + horizontal rules (with adjusted Y-coordinates) ───────
         for (int mins = data.FirstRowMinutes; mins <= data.LastRowMinutes; mins += 30)
         {

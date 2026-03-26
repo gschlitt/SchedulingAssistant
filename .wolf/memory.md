@@ -297,3 +297,47 @@
 | 20:58 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | modified OnTransferConfigChanged() | ~47 |
 | 20:58 | Edited src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml | 7→6 lines | ~167 |
 | 20:58 | Session end: 4 writes across 2 files (NewDatabaseViewModel.cs, NewDatabaseView.axaml) | 2 reads | ~5743 tok |
+
+## Session: 2026-03-26 21:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-26 21:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:20 | Edited src/SchedulingAssistant/MainWindow.axaml | 8→10 lines | ~191 |
+| 21:20 | Session end: 1 writes across 1 files (MainWindow.axaml) | 5 reads | ~10411 tok |
+| 21:23 | Edited src/SchedulingAssistant/MainWindow.axaml | "10,9" → "10,6,0,12" | ~14 |
+| 21:23 | Session end: 2 writes across 1 files (MainWindow.axaml) | 5 reads | ~10426 tok |
+
+## Session: 2026-03-26 21:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:41 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | inline fix | ~16 |
+| 21:41 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→7 lines | ~79 |
+| 21:41 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | UpdateSortModeLabel() → SortModeToIndex() | ~32 |
+| 21:42 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added 1 condition(s) | ~184 |
+| 21:42 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified SetSortMode() | ~114 |
+| 21:42 | Edited src/SchedulingAssistant/MainWindow.axaml | 7→6 lines | ~91 |
+| 21:42 | Edited src/SchedulingAssistant/MainWindow.axaml | reduced (-9 lines) | ~265 |
+| 21:42 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | removed 32 lines | ~22 |
+| 21:44 | Edited src/SchedulingAssistant/MainWindow.axaml | 10→12 lines | ~234 |
+| 21:44 | Session end: 9 writes across 3 files (SectionListViewModel.cs, MainWindow.axaml, MainWindow.axaml.cs) | 5 reads | ~20096 tok |
+| 21:46 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→6 lines | ~106 |
+| 21:46 | Edited src/SchedulingAssistant/MainWindow.axaml | 12→9 lines | ~176 |
+| 21:46 | Session end: 11 writes across 3 files (SectionListViewModel.cs, MainWindow.axaml, MainWindow.axaml.cs) | 5 reads | ~32265 tok |
+| 21:48 | Edited src/SchedulingAssistant/MainWindow.axaml | 5→6 lines | ~129 |
+| 21:48 | Session end: 12 writes across 3 files (SectionListViewModel.cs, MainWindow.axaml, MainWindow.axaml.cs) | 5 reads | ~32403 tok |
+| 21:49 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml | inline fix | ~19 |
+| 21:50 | Session end: 13 writes across 4 files (SectionListViewModel.cs, MainWindow.axaml, MainWindow.axaml.cs, ScheduleGridView.axaml) | 6 reads | ~32423 tok |
+| 21:53 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→6 lines | ~67 |
+| 21:53 | Session end: 14 writes across 5 files (SectionListViewModel.cs, MainWindow.axaml, MainWindow.axaml.cs, ScheduleGridView.axaml, ScheduleGridView.axaml.cs) | 7 reads | ~32495 tok |
+| 22:10 | Session end: 14 writes across 5 files (SectionListViewModel.cs, MainWindow.axaml, MainWindow.axaml.cs, ScheduleGridView.axaml, ScheduleGridView.axaml.cs) | 9 reads | ~37975 tok |
+
+## Session: 2026-03-26 09:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

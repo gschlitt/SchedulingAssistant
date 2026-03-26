@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 550017,
-    "total_reads": 567,
-    "total_writes": 498,
-    "total_sessions": 17,
-    "anatomy_hits": 103,
-    "anatomy_misses": 461,
-    "repeated_reads_blocked": 145,
-    "estimated_savings_vs_bare_cli": 948769
+    "total_tokens_estimated": 758511,
+    "total_reads": 614,
+    "total_writes": 574,
+    "total_sessions": 21,
+    "anatomy_hits": 118,
+    "anatomy_misses": 493,
+    "repeated_reads_blocked": 183,
+    "estimated_savings_vs_bare_cli": 1267267
   },
   "sessions": [
     {
@@ -6591,6 +6591,804 @@
         "writes_count": 4,
         "repeated_reads_blocked": 1,
         "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-03-26-2117",
+      "started": "2026-03-26T04:17:08.721Z",
+      "ended": "2026-03-26T04:20:39.065Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10206,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Controls/DetachablePanel.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 205,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 10206,
+        "output_tokens_estimated": 205,
+        "reads_count": 5,
+        "writes_count": 1,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-03-26-2117",
+      "started": "2026-03-26T04:17:08.721Z",
+      "ended": "2026-03-26T04:23:20.122Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10206,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Controls/DetachablePanel.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 205,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 15,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 10206,
+        "output_tokens_estimated": 220,
+        "reads_count": 5,
+        "writes_count": 2,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-03-26-2140",
+      "started": "2026-03-26T04:40:21.824Z",
+      "ended": "2026-03-26T04:44:10.752Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionSortMode.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10273,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 8711,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 197,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 284,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 251,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 18984,
+        "output_tokens_estimated": 1112,
+        "reads_count": 5,
+        "writes_count": 9,
+        "repeated_reads_blocked": 3,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-03-26-2140",
+      "started": "2026-03-26T04:40:21.824Z",
+      "ended": "2026-03-26T04:46:39.147Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionSortMode.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 11867,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10273,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 8711,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 197,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 284,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 251,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 188,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 30851,
+        "output_tokens_estimated": 1414,
+        "reads_count": 5,
+        "writes_count": 11,
+        "repeated_reads_blocked": 5,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-03-26-2140",
+      "started": "2026-03-26T04:40:21.824Z",
+      "ended": "2026-03-26T04:48:06.057Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionSortMode.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 11867,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10273,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 8711,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 197,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 284,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 251,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 188,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 138,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 30851,
+        "output_tokens_estimated": 1552,
+        "reads_count": 5,
+        "writes_count": 12,
+        "repeated_reads_blocked": 5,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-03-26-2140",
+      "started": "2026-03-26T04:40:21.824Z",
+      "ended": "2026-03-26T04:50:07.102Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionSortMode.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 11867,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10273,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 8711,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 197,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 284,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 251,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 188,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 138,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 20,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 30851,
+        "output_tokens_estimated": 1572,
+        "reads_count": 6,
+        "writes_count": 13,
+        "repeated_reads_blocked": 6,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-03-26-2140",
+      "started": "2026-03-26T04:40:21.824Z",
+      "ended": "2026-03-26T04:53:34.505Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionSortMode.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 11867,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10273,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 8711,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 197,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 284,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 251,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 188,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 138,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 20,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 72,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 30851,
+        "output_tokens_estimated": 1644,
+        "reads_count": 7,
+        "writes_count": 14,
+        "repeated_reads_blocked": 8,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-03-26-2140",
+      "started": "2026-03-26T04:40:21.824Z",
+      "ended": "2026-03-26T05:10:31.794Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionSortMode.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 11867,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 10273,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 8711,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 5480,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 197,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 284,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 251,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 188,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 138,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 20,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 72,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 36331,
+        "output_tokens_estimated": 1644,
+        "reads_count": 9,
+        "writes_count": 14,
+        "repeated_reads_blocked": 9,
+        "anatomy_lookups": 3
       }
     }
   ],

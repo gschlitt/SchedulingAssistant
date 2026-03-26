@@ -46,7 +46,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" ShowGridLines="True">
 
         <!--  Top menu bar  -->
         <Border
@@ -349,9 +349,9 @@
             Grid.Row="2"
             Padding="12,4"
             BorderThickness="0,0,0,1"
+            Classes.notification_error="{Binding NotificationIsError}"
             Classes.notification_info="{Binding NotificationIsInfo}"
             Classes.notification_warning="{Binding NotificationIsWarning}"
-            Classes.notification_error="{Binding NotificationIsError}"
             IsVisible="{Binding HasNotification}">
             <DockPanel>
                 <!--  Dismiss button — rightmost, only when dismissable  -->
@@ -411,13 +411,16 @@
                         <Grid RowDefinitions="Auto,*">
 
                             <!--  Header  -->
+                            <!--
+                                MinHeight matches the combined height of the Schedule Grid's DetachablePanel header
+                                + GridFilterView so both panel headers share the same bottom edge at full window width.
+                            -->
                             <Border
                                 Grid.Row="0"
                                 Padding="10,6"
                                 Background="{StaticResource ChromeBackground}"
                                 BorderBrush="{StaticResource ChromeBorder}"
-                                BorderThickness="0,0,0,1"
-                                PointerPressed="OnSectionViewHeaderPointerPressed">
+                                BorderThickness="0,0,0,1">
                                 <Grid RowDefinitions="Auto,Auto">
 
                                     <!--  Title + sort-mode context (right-click to change sort)  -->
@@ -436,7 +439,7 @@
                                     -->
                                     <StackPanel
                                         Grid.Row="1"
-                                        Margin="0,4,0,0"
+                                        Margin="0,12,0,0"
                                         VerticalAlignment="Top"
                                         DataContext="{Binding SectionListVm}"
                                         IsEnabled="{Binding DataContext.IsWriteEnabled, ElementName=RootWindow}"
@@ -497,29 +500,20 @@
                                             Content="Delete"
                                             FontSize="10"
                                             IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                        <Border
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontSize="{StaticResource FontSizeNormal}"
+                                            Text="Sort:" />
+                                        <ComboBox
+                                            MinHeight="0"
                                             Padding="5,1"
-                                            HorizontalAlignment="Left"
                                             VerticalAlignment="Center"
                                             Background="{StaticResource ButtonBackground}"
-                                            BorderBrush="{StaticResource ButtonBorder}"
-                                            BorderThickness="1"
+                                            BorderThickness="0"
                                             CornerRadius="4"
-                                            ToolTip.Tip="Right-click to set sorting mode">
-                                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <TextBlock
-                                                    FontSize="{StaticResource FontSizeNormal}"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource TextPrimary}"
-                                                    Text="Sorted by:" />
-                                                <TextBlock
-                                                    VerticalAlignment="Center"
-                                                    FontSize="{StaticResource FontSizeNormal}"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource TextPrimary}"
-                                                    Text="{Binding SortModeLabel}" />
-                                            </StackPanel>
-                                        </Border>
+                                            FontSize="{StaticResource FontSizeNormal}"
+                                            ItemsSource="{Binding SortModeOptions}"
+                                            SelectedIndex="{Binding SelectedSortModeIndex}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>

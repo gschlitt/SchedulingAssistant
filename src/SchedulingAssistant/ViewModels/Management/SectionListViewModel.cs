@@ -46,7 +46,7 @@ public partial class SectionListViewModel : ViewModelBase
     [ObservableProperty] private SectionListItemViewModel? _expandedItem;
     [ObservableProperty] private SectionEditViewModel? _editVm;
     [ObservableProperty] private string? _lastErrorMessage;
-    [ObservableProperty] private string _sortModeLabel = "";
+    [ObservableProperty] private int _selectedSortModeIndex;
 
     /// <summary>
     /// Whether the "Add to which semester?" inline prompt is visible.
@@ -93,8 +93,17 @@ public partial class SectionListViewModel : ViewModelBase
     /// <summary>Expose SemesterContext for debug view access.</summary>
     public SemesterContext SemesterContext => _semesterContext;
 
-    /// <summary>Current sort mode; used by context menu to show checkmarks.</summary>
-    public SectionSortMode CurrentSortMode => _sortMode;
+    /// <summary>Display labels for the Sort ComboBox, ordered to match <see cref="SortModeToIndex"/>.</summary>
+    public static IReadOnlyList<string> SortModeOptions { get; } =
+        ["Subject / Course", "Instructor", "Section Type"];
+
+    /// <summary>Maps a <see cref="SectionSortMode"/> to its ComboBox index.</summary>
+    private static int SortModeToIndex(SectionSortMode m) => m switch
+    {
+        SectionSortMode.Instructor  => 1,
+        SectionSortMode.SectionType => 2,
+        _                           => 0,
+    };
 
     /// <summary>True when the current user holds the write lock; controls whether CRUD commands are enabled.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -175,7 +184,7 @@ public partial class SectionListViewModel : ViewModelBase
         _sectionStore.FilteredIdsChanged += ApplyFilterHighlights;
 
         _sortMode = AppSettings.Current.SectionSortMode;
-        UpdateSortModeLabel();
+        _selectedSortModeIndex = SortModeToIndex(_sortMode);
 
         Load();
     }
@@ -384,13 +393,21 @@ public partial class SectionListViewModel : ViewModelBase
 
     // ── Sorting ────────────────────────────────────────────────────────────────
 
-    private void UpdateSortModeLabel() =>
-        SortModeLabel = _sortMode switch
+    /// <summary>
+    /// Called when the Sort ComboBox selection changes.
+    /// Converts the index to a <see cref="SectionSortMode"/> and delegates to <see cref="SetSortMode"/>.
+    /// Guard prevents re-entry when <see cref="SetSortMode"/> itself updates the index.
+    /// </summary>
+    partial void OnSelectedSortModeIndexChanged(int value)
+    {
+        var mode = value switch
         {
-            SectionSortMode.Instructor  => "Instructor",
-            SectionSortMode.SectionType => "Section Type",
-            _                           => "Subject/Course",
+            1 => SectionSortMode.Instructor,
+            2 => SectionSortMode.SectionType,
+            _ => SectionSortMode.SubjectCourseCode,
         };
+        if (_sortMode != mode) SetSortMode(mode);
+    }
 
     /// <summary>
     /// Returns <paramref name="items"/> sorted according to the current sort mode.
@@ -461,19 +478,14 @@ public partial class SectionListViewModel : ViewModelBase
                 .FirstOrDefault(i => i.Section.Id == expandedId);
     }
 
-    [RelayCommand]
-    private void SortBySubjectCourseCode() => SetSortMode(SectionSortMode.SubjectCourseCode);
-
-    [RelayCommand]
-    private void SortByInstructor() => SetSortMode(SectionSortMode.Instructor);
-
-    [RelayCommand]
-    private void SortBySectionType() => SetSortMode(SectionSortMode.SectionType);
-
+    /// <summary>
+    /// Applies <paramref name="mode"/>, persists it to settings, and re-sorts the list.
+    /// Also updates <see cref="SelectedSortModeIndex"/> so the ComboBox stays in sync.
+    /// </summary>
     private void SetSortMode(SectionSortMode mode)
     {
         _sortMode = mode;
-        UpdateSortModeLabel();
+        SelectedSortModeIndex = SortModeToIndex(mode);
         var s = AppSettings.Current; s.SectionSortMode = mode; s.Save();
         ApplySort();
     }

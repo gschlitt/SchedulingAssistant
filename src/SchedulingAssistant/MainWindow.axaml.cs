@@ -610,37 +610,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnSectionViewHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
-            return;
-
-        var vm = Vm.SectionListVm;
-        var cur = vm.CurrentSortMode;
-        string Mark(SectionSortMode m) => cur == m ? "✓  " : "    ";
-
-        var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem
-        {
-            Header  = Mark(SectionSortMode.SubjectCourseCode) + "Sort by Subject / Course Code",
-            Command = vm.SortBySubjectCourseCodeCommand,
-        });
-        menu.Items.Add(new MenuItem
-        {
-            Header  = Mark(SectionSortMode.Instructor) + "Sort by Instructor",
-            Command = vm.SortByInstructorCommand,
-        });
-        menu.Items.Add(new MenuItem
-        {
-            Header  = Mark(SectionSortMode.SectionType) + "Sort by Section Type",
-            Command = vm.SortBySectionTypeCommand,
-        });
-
-        if (sender is Control ctrl)
-            menu.Open(ctrl);
-        e.Handled = true;
-    }
-
     // ── Detach handlers ─────────────────────────────────────────────────────
 
     private void OnWorkloadDetach(object? sender, EventArgs e)

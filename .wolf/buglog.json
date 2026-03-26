@@ -512,6 +512,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-26T03:58:24.383Z"
+    },
+    {
+      "id": "bug-033",
+      "timestamp": "2026-03-26T04:23:17.204Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Had \"10,9\"",
+      "fix": "Changed to \"10,6,0,12\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-26T04:23:17.204Z"
+    },
+    {
+      "id": "bug-034",
+      "timestamp": "2026-03-26T04:41:58.040Z",
+      "error_message": "Wrong reference: UpdateSortModeLabel should be _selectedSortModeIndex",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Used \"UpdateSortModeLabel\" instead of \"_selectedSortModeIndex\"",
+      "fix": "Changed UpdateSortModeLabel → _selectedSortModeIndex",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-26T04:41:58.040Z"
+    },
+    {
+      "id": "bug-035",
+      "timestamp": "2026-03-26T04:42:04.817Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→17 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-26T04:42:04.817Z"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-03-26T04:42:27.047Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 23→14 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-26T04:42:27.047Z"
     }
   ]
 }
