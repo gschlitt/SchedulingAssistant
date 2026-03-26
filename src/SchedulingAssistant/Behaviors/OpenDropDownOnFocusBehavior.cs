@@ -11,9 +11,11 @@ namespace SchedulingAssistant.Behaviors;
 /// <see cref="Avalonia.Controls.ItemsControl"/>.
 ///
 /// <b>1. Open on click</b><br/>
-/// When the control receives focus via mouse/touch, <see cref="AutoCompleteBox.IsDropDownOpen"/>
-/// is set to true so the full preset list appears immediately — no keystroke required. Tab
-/// navigation intentionally does NOT trigger this; see behaviour 2.
+/// A <see cref="RoutingStrategies.Tunnel"/> <c>PointerPressed</c> handler sets
+/// <see cref="AutoCompleteBox.IsDropDownOpen"/> to true whenever the user clicks the control,
+/// whether or not it already has focus — so the full preset list appears immediately with no
+/// keystroke required. Tab navigation does not generate <c>PointerPressed</c> events, so it
+/// naturally avoids triggering the dropdown; see behaviour 2.
 ///
 /// <b>2. Tab-through (manual sibling navigation)</b><br/>
 /// Two Avalonia quirks combine to make Tab navigation unreliable for AutoCompleteBox inside a
@@ -61,22 +63,23 @@ public static class OpenDropDownOnFocusBehavior
 
     private static void OnIsEnabledChanged(AutoCompleteBox c, AvaloniaPropertyChangedEventArgs e)
     {
-        c.RemoveHandler(InputElement.GotFocusEvent, OnGotFocus);
+        c.RemoveHandler(InputElement.PointerPressedEvent, OnPointerPressed);
         c.RemoveHandler(InputElement.KeyDownEvent, OnKeyDown);
 
         if (e.NewValue is true)
         {
-            c.AddHandler(InputElement.GotFocusEvent, OnGotFocus, RoutingStrategies.Bubble);
+            // Tunnel so we run before the inner TextBox marks the event Handled.
+            c.AddHandler(InputElement.PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
             // Tunnel so we run before the AutoCompleteBox's own Tab handler.
             c.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         }
     }
 
-    private static void OnGotFocus(object? sender, GotFocusEventArgs e)
+    private static void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Only open on pointer (mouse/touch) focus. Tab navigation should move through
-        // fields cleanly without triggering the dropdown.
-        if (sender is AutoCompleteBox acb && e.NavigationMethod == NavigationMethod.Pointer)
+        // Open the dropdown on any click. Works whether the control already has focus or not.
+        // Skip if already open — let the AutoCompleteBox handle that click normally.
+        if (sender is AutoCompleteBox acb && !acb.IsDropDownOpen)
             acb.IsDropDownOpen = true;
     }
 

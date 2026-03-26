@@ -108,7 +108,8 @@
     <SolidColorBrush x:Key="NotificationErrorText" Color="#7A0000" />
 
     <!--  ── Inline section editor highlight  ─────────────────────────────  -->
-    <SolidColorBrush x:Key="EditorBackground" Color="#EEF5FF" />
+    <!--  No background; the left border alone indicates active editor state  -->
+    <SolidColorBrush x:Key="EditorBackground" Color="#FFFFFF" />
     <!--  Editor left-border uses the accent color  -->
     <SolidColorBrush x:Key="EditorBorder" Color="{StaticResource FilterColor}" />
 

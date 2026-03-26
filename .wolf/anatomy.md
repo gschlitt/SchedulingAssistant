@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T16:35:21.898Z
-> Files: 24 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T17:33:49.264Z
+> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -147,11 +147,13 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3042 tok)
+- `AppColors.axaml` (~2686 tok)
 - `MainWindow.axaml` — Declares applied (~10071 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. All shut (~8711 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `OpenDropDownOnFocusBehavior.cs` — Attached behavior for <see cref="AutoCompleteBox"/> that provides two UX improvements needed when th (~1449 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -181,9 +183,9 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3873 tok)
-- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9580 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~11932 tok)
-- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~6146 tok)
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9810 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12008 tok)
+- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~6447 tok)
 - `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1908 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -207,6 +209,7 @@
 
 - `NewDatabaseView.axaml` (~1762 tok)
 - `NewDatabaseView.axaml.cs` — Code-behind for <see cref="NewDatabaseView"/>. (~83 tok)
+- `SectionListView.axaml` (~19363 tok)
 - `ShareView.axaml` (~614 tok)
 - `ShareView.axaml.cs` — Code-behind for <see cref="ShareView"/>. (~78 tok)
 

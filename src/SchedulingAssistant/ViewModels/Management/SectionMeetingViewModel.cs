@@ -259,26 +259,40 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <summary>
     /// When the committed start time changes (via user commit or pattern propagation):
     /// keeps <see cref="StartTimeText"/> in sync, refreshes the block-length suggestion list,
-    /// clears any previously-set block length, and auto-fills the preferred block length
-    /// when it is valid for the new start time.
+    /// clears any previously-set block length that is no longer valid, and auto-fills the
+    /// preferred block length when none is set.
     /// </summary>
     partial void OnSelectedStartTimeChanged(int? value)
     {
-        // Keep the text field in sync so that pattern-propagated values are visible.
-        _startTimeText = value.HasValue ? FormatTime(value.Value) : "";
-        OnPropertyChanged(nameof(StartTimeText));
+        // Sync the text field only when the value was set programmatically (e.g. pattern
+        // coupling). Skip the write-back when the text already matches — the AutoCompleteBox
+        // just set it via the two-way binding, and a spurious OnPropertyChanged would cause
+        // Avalonia's internal TextUpdated path to set IsDropDownOpen = true, which prevents
+        // the user from immediately reopening the dropdown after making a selection.
+        string newText = value.HasValue ? FormatTime(value.Value) : "";
+        if (_startTimeText != newText)
+        {
+            _startTimeText = newText;
+            OnPropertyChanged(nameof(StartTimeText));
+        }
 
         StartTimeError = null;
         RefreshBlockLengths();
 
-        // Clear block length when start time changes so the user re-confirms the length
-        // for the new start time. Custom values are cleared too — re-enter if needed.
         if (SelectedBlockLength.HasValue)
-            SelectedBlockLength = null;
+        {
+            // Keep the current block length when it is still valid for the new start time.
+            // This preserves a coupling-propagated value without redundantly re-setting it
+            // (which would otherwise open the AutoCompleteBox dropdown on follower meetings).
+            // Clear it only when the length is no longer in the valid list, or is a custom value.
+            string current = FormatBlockLength(SelectedBlockLength.Value);
+            if (!AvailableBlockLengthStrings.Contains(current))
+                SelectedBlockLength = null;
+        }
 
-        // Auto-fill the preferred block length when it is valid for the chosen start time.
+        // Auto-fill the preferred block length only when no block length is already set.
         // OnBlockLengthTextChanged will auto-commit it since it matches a preset value.
-        if (value.HasValue && _defaultBlockLength.HasValue)
+        if (!SelectedBlockLength.HasValue && value.HasValue && _defaultBlockLength.HasValue)
         {
             string preferred = FormatBlockLength(_defaultBlockLength.Value);
             if (AvailableBlockLengthStrings.Contains(preferred))
@@ -292,9 +306,15 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// </summary>
     partial void OnSelectedBlockLengthChanged(double? value)
     {
-        // Keep the text field in sync so that pattern-propagated values are visible.
-        _blockLengthText = value.HasValue ? FormatBlockLength(value.Value) : "";
-        OnPropertyChanged(nameof(BlockLengthText));
+        // Sync the text field only when the value differs — same reasoning as
+        // OnSelectedStartTimeChanged: skip spurious write-backs to avoid triggering
+        // Avalonia's AutoCompleteBox TextUpdated path after a user selection.
+        string newText = value.HasValue ? FormatBlockLength(value.Value) : "";
+        if (_blockLengthText != newText)
+        {
+            _blockLengthText = newText;
+            OnPropertyChanged(nameof(BlockLengthText));
+        }
 
         BlockLengthError = null;
     }

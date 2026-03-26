@@ -69,6 +69,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private string? _validatedSectionCode;
 
     private readonly Func<string, string, bool> _isSectionCodeDuplicate;
+    private readonly Func<string, Task> _onValidationError;
 
     // Instructor multi-select
     [ObservableProperty] private ObservableCollection<InstructorSelectionViewModel> _instructorSelections = new();
@@ -373,6 +374,7 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SectionPropertyValue> allReserves,
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
+        Func<string, Task> onValidationError,
         IBlockPatternRepository blockPatternRepository,
         ISectionPrefixRepository prefixRepository,
         double? defaultBlockLength = null)
@@ -380,6 +382,7 @@ public partial class SectionEditViewModel : ViewModelBase
         _section = section;
         IsNew = isNew;
         _onSave = onSave;
+        _onValidationError = onValidationError;
         _legalStartTimes = legalStartTimes;
         _meetingTypes = meetingTypes;
         _rooms = rooms;
@@ -732,6 +735,20 @@ public partial class SectionEditViewModel : ViewModelBase
         if (_isSectionCodeDuplicate(SelectedCourseId, trimmedCode))
         {
             SectionCodeError = "A section with this code already exists for this course in the selected semester.";
+            return;
+        }
+
+        // Guard: validate all meetings have both start time and block length
+        var incomplete = Meetings
+            .Where(m => (m.SelectedStartTime.HasValue && !m.SelectedBlockLength.HasValue) ||
+                        (!m.SelectedStartTime.HasValue && m.SelectedBlockLength.HasValue))
+            .ToList();
+        if (incomplete.Any())
+        {
+            var msg = incomplete.Count == 1
+                ? "One meeting has a start time but no block length. Please complete it or delete it."
+                : $"{incomplete.Count} meetings are incomplete. Each needs both a start time and block length.";
+            await _onValidationError(msg);
             return;
         }
 

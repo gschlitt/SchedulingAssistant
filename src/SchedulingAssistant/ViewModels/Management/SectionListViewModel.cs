@@ -723,6 +723,7 @@ public partial class SectionListViewModel : ViewModelBase
                     await _dialog.ShowError("The save could not be completed. Please try again.");
                 }
             },
+            onValidationError: msg => _dialog.ShowError(msg),
             _blockPatternRepo,
             _prefixRepo,
             defaultBlockLength: ctx.DefaultBlockLength);
@@ -751,6 +752,7 @@ public partial class SectionListViewModel : ViewModelBase
             CollapseEditor();
         };
 
+        SelectedItem = null; // Clear selection; the new editor should have focus, not the old selected item
         ExpandedItem = placeholder;
         placeholder.IsExpanded = true;
         EditVm = editVm;
@@ -878,6 +880,7 @@ public partial class SectionListViewModel : ViewModelBase
             CollapseEditor();
         };
 
+        SelectedItem = null; // Clear selection; the new editor should have focus, not the old selected item
         ExpandedItem = placeholder;
         placeholder.IsExpanded = true;
         EditVm = editVm;
