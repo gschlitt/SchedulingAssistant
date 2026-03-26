@@ -1,11 +1,51 @@
 {
-  "session_id": "session-2026-03-25-1513",
-  "started": "2026-03-25T22:13:47.228Z",
-  "files_read": {},
-  "files_written": [],
-  "edit_counts": {},
-  "anatomy_hits": 0,
-  "anatomy_misses": 0,
+  "session_id": "session-2026-03-26-1729",
+  "started": "2026-03-26T00:29:19.360Z",
+  "files_read": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/TpConfigData.cs": {
+      "count": 1,
+      "tokens": 643,
+      "first_read": "2026-03-26T00:52:34.473Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/TpConfigService.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-26T00:52:34.740Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step3TpConfigViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-26T00:52:40.362Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
+      "count": 1,
+      "tokens": 5435,
+      "first_read": "2026-03-26T00:52:47.853Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/IBlockPatternRepository.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-26T00:53:01.317Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/BlockPattern.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-26T00:53:05.973Z"
+    }
+  },
+  "files_written": [
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "action": "edit",
+      "tokens": 284,
+      "at": "2026-03-26T00:53:25.344Z"
+    }
+  ],
+  "edit_counts": {
+    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 1
+  },
+  "anatomy_hits": 2,
+  "anatomy_misses": 4,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
   "stop_count": 1

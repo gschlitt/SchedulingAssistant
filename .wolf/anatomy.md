@@ -1,7 +1,12 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-25T19:56:22.098Z
-> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T00:53:25.307Z
+> Files: 13 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
+
+- `MEMORY.md` — SchedulingAssistant Project Memory (~5120 tok)
+- `startup_db_flow_decisions.md` — (1) .tpconfig — colleague sharing only (~830 tok)
 
 ## ./
 
@@ -140,16 +145,14 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1107 tok)
-- `AppColors.axaml` (~2619 tok)
-- `MainWindow.axaml` — Declares applied (~10168 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3042 tok)
+- `MainWindow.axaml` — Declares applied (~10206 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
-- `DetachablePanel.axaml` (~838 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -162,47 +165,45 @@
 
 ## src/SchedulingAssistant/Models/
 
+- `TpConfigData.cs` — Portable configuration file (.tpconfig) written to the database folder after first-run setup. Contai (~643 tok)
 
 ## src/SchedulingAssistant/Services/
 
 
+## src/SchedulingAssistant/ViewModels/
+
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5480 tok)
+
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3103 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~11751 tok)
+- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3739 tok)
+- `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1908 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5547 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
 
 ## src/SchedulingAssistant/Views/
 
-- `DebugTestDataView.axaml` (~857 tok)
-- `WorkloadPanelView.axaml` (~3518 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~10147 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `ConfirmDialog.axaml` (~326 tok)
-- `CopySemesterView.axaml` — Declares assignments (~2195 tok)
-- `CourseHistoryView.axaml` (~887 tok)
-- `CourseListView.axaml` (~4551 tok)
-- `EmptySemesterView.axaml` (~751 tok)
-- `InstructorListView.axaml` (~8570 tok)
-- `SectionListView.axaml` (~19274 tok)
-- `WorkloadHistoryView.axaml` (~753 tok)
+- `NewDatabaseView.axaml` (~1541 tok)
+- `NewDatabaseView.axaml.cs` — Code-behind for <see cref="NewDatabaseView"/>. (~83 tok)
+- `ShareView.axaml` (~614 tok)
+- `ShareView.axaml.cs` — Code-behind for <see cref="ShareView"/>. (~78 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 
-- `Step7SectionPrefixesView.axaml` (~3647 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

@@ -290,13 +290,12 @@
                 Grid.Row="4"
                 Grid.RowSpan="2"
                 Grid.Column="1"
-                Width="400"
-                VerticalAlignment="Center">
+                Width="400">
                 <TextBlock Text="The" />
                 <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
                     <TextBlock Text="section prefix" />
                 </Border>
-                <TextBlock Text=" designates another section aspect. The" />
+                <TextBlock Text=" designates some other section aspect. The" />
                 <Border Padding="2,0" Background="LightSalmon">
                     <TextBlock Text="section designator " />
                 </Border>

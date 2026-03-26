@@ -9,6 +9,7 @@ using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using Avalonia.Platform.Storage;
 
 namespace SchedulingAssistant.ViewModels;
 
@@ -350,6 +351,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
+    [RelayCommand]
+    private void NavigateToShare() => OpenFlyout<ShareViewModel>("Share");
+
     /// <summary>
     /// Opens the Settings flyout and wires the restore callback so that
     /// <see cref="SettingsViewModel"/> can trigger a database restore + app restart
@@ -459,18 +463,27 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task NewDatabase()
+    private void NewDatabase()
     {
         if (MainWindowReference is null) return;
 
-        var dialog = new DatabaseLocationDialog(DatabaseLocationMode.FirstRun);
-        dialog.Title = "Create New Database";
-        await dialog.ShowDialog(MainWindowReference);
+        var vm = _services.GetRequiredService<NewDatabaseViewModel>();
 
-        if (dialog.ChosenPath is not null)
+        vm.PickFolderAsync = async title =>
         {
-            await MainWindowReference.SwitchDatabaseAsync(dialog.ChosenPath);
-        }
+            var result = await MainWindowReference.StorageProvider.OpenFolderPickerAsync(
+                new FolderPickerOpenOptions
+                {
+                    Title       = title,
+                    AllowMultiple = false
+                });
+            return result.Count > 0 ? result[0].TryGetLocalPath() : null;
+        };
+
+        vm.SwitchDatabaseAsync = path => MainWindowReference.SwitchDatabaseAsync(path);
+
+        FlyoutPage  = vm;
+        FlyoutTitle = "New Database";
     }
 
     [RelayCommand]

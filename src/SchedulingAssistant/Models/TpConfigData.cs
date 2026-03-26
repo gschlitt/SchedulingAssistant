@@ -19,6 +19,9 @@ public class TpConfigData
 
     /// <summary>Semester template definitions, in display order.</summary>
     public List<TpConfigSemesterDef> SemesterDefs { get; set; } = [];
+
+    /// <summary>Day-pattern definitions (e.g. MWF, TR).</summary>
+    public List<TpConfigBlockPattern> BlockPatterns { get; set; } = [];
 }
 
 /// <summary>A block length entry with its legal start times.</summary>
@@ -36,6 +39,16 @@ public class TpConfigSectionPrefix
 {
     public string Prefix { get; set; } = string.Empty;
     public string? CampusName { get; set; }
+}
+
+/// <summary>A named day-pattern entry (e.g. "MWF" with days [1,3,5]).</summary>
+public class TpConfigBlockPattern
+{
+    /// <summary>User-facing label (e.g. "MWF").</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Day numbers (1=Mon … 6=Sat).</summary>
+    public List<int> Days { get; set; } = [];
 }
 
 /// <summary>A semester template entry with a name and default display color.</summary>

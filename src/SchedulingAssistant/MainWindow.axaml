@@ -171,6 +171,8 @@
                                 </MenuItem.ItemTemplate>
                             </MenuItem>
                             <Separator />
+                            <MenuItem Command="{Binding NavigateToShareCommand}" Header="Share…" />
+                            <Separator />
                             <MenuItem Command="{Binding ExitCommand}" Header="Exit" />
                         </MenuItem>
                     </Menu>

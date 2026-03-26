@@ -1,0 +1,127 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.NewDatabaseView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:NewDatabaseViewModel">
+
+    <StackPanel
+        MaxWidth="500"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="14">
+
+        <TextBlock
+            FontSize="{StaticResource FontSizeLarge}"
+            FontWeight="SemiBold"
+            Text="Create New Database" />
+
+        <TextBlock
+            FontSize="{StaticResource FontSizeNormal}"
+            Text="[PLACEHOLDER: brief intro — e.g. creates a fresh database on this machine. You can optionally copy your current configuration into it so you don't have to set it up from scratch.]"
+            TextWrapping="Wrap" />
+
+        <!--  Database name  -->
+        <StackPanel Spacing="4">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold" Text="Database name" />
+            <TextBlock FontSize="{StaticResource FontSizeSmall}" Text="A short label used as the filename (e.g. CS → CS-TT.db)." TextWrapping="Wrap" />
+            <TextBox Text="{Binding DbName}" Watermark="e.g. CS" />
+            <TextBlock
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="{StaticResource MutedText}"
+                IsVisible="{Binding DbFullPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Text="{Binding DbFullPath, StringFormat='Will save as: {0}'}" />
+        </StackPanel>
+
+        <!--  Database folder  -->
+        <StackPanel Spacing="4">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold" Text="Database folder" />
+            <DockPanel>
+                <Button
+                    Margin="6,0,0,0"
+                    Command="{Binding BrowseDbFolderCommand}"
+                    Content="Browse…"
+                    DockPanel.Dock="Right" />
+                <TextBox IsReadOnly="True" Text="{Binding DbFolder}" Watermark="Choose a folder…" />
+            </DockPanel>
+        </StackPanel>
+
+        <!--  Backup folder  -->
+        <StackPanel Spacing="4">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold" Text="Backup folder" />
+            <TextBlock FontSize="{StaticResource FontSizeSmall}" Text="Automatic backups are saved here." TextWrapping="Wrap" />
+            <DockPanel>
+                <Button
+                    Margin="6,0,0,0"
+                    Command="{Binding BrowseBackupFolderCommand}"
+                    Content="Browse…"
+                    DockPanel.Dock="Right" />
+                <TextBox IsReadOnly="True" Text="{Binding BackupFolder}" Watermark="Choose a folder…" />
+            </DockPanel>
+            <TextBlock
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="#C0392B"
+                IsVisible="{Binding SameFolderWarning}"
+                Text="Recommendation: choose a different folder for backups than the database itself."
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Separator />
+
+        <!--  Transfer configuration  -->
+        <StackPanel Spacing="6">
+            <CheckBox Content="Transfer configuration from current database" IsChecked="{Binding TransferConfig}" />
+
+            <Border
+                Margin="20,0,0,0"
+                Padding="10"
+                Background="{StaticResource FilterBarBackground}"
+                CornerRadius="4"
+                IsVisible="{Binding TransferConfig}">
+                <StackPanel Spacing="8">
+
+                    <!--  Source notice — names the AY so the user can verify it is the right one  -->
+                    <TextBlock
+                        FontSize="{StaticResource FontSizeSmall}"
+                        FontWeight="SemiBold"
+                        Foreground="#1A5276"
+                        Text="{Binding ConfigSourceLabel}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="[PLACEHOLDER: describe what transfers — campuses, section prefixes/designators, block patterns (meeting-day patterns), block lengths and legal start times, and semester templates (names and colors).]"
+                        TextWrapping="Wrap" />
+
+                    <!--  First AY name — only applicable when transferring  -->
+                    <StackPanel Spacing="4">
+                        <TextBlock FontSize="{StaticResource FontSizeSmall}" FontWeight="SemiBold" Text="First academic year name" />
+                        <TextBlock FontSize="{StaticResource FontSizeSmall}" Text="Semester templates will be created under this academic year." TextWrapping="Wrap" />
+                        <TextBox
+                            IsEnabled="{Binding HasConfigSource}"
+                            Text="{Binding FirstAcademicYearName}"
+                            Watermark="e.g. 2025-2026" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!--  Error message  -->
+        <TextBlock
+            FontSize="{StaticResource FontSizeSmall}"
+            Foreground="#C0392B"
+            IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+            Text="{Binding ErrorMessage}"
+            TextWrapping="Wrap" />
+
+        <!--  Create button  -->
+        <Button
+            Command="{Binding CreateDatabaseCommand}"
+            Content="Create"
+            IsEnabled="{Binding CanCreate}" />
+
+    </StackPanel>
+
+</UserControl>

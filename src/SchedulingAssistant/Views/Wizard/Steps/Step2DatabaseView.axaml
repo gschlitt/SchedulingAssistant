@@ -107,7 +107,7 @@
                     TextWrapping="Wrap">
                     <Bold>⚠ Recommendation:</Bold>
                     Your backup folder is the same as your database folder.
-                    For best data protection, choose a backup location on a<Bold>different drive.</Bold>
+                    For best data protection, choose a backup location on a <Bold>different drive.</Bold>
                     If your primary drive fails, backups stored alongside the database would be lost too.<LineBreak />
                 </TextBlock>
             </Border>

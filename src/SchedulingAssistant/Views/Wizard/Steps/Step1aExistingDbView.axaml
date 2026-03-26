@@ -15,7 +15,7 @@
         <!-- Radio: existing database -->
         <StackPanel Spacing="12">
             <RadioButton
-                Content="I already have a database. A colleague has completed setup and I want to connect to their database."
+                Content="I already have a database."
                 FontSize="{DynamicResource FontSizeNormal}"
                 IsChecked="{Binding IsExistingDbChoice}" />
 

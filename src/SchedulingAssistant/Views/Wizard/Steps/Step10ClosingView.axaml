@@ -6,12 +6,16 @@
     x:CompileBindings="False"
     x:DataType="vm:Step10ClosingViewModel">
 
-    <StackPanel MaxWidth="540" Spacing="20">
+    <StackPanel
+        MaxWidth="540"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="20">
 
 
         <!--  Body paragraph 1  -->
         <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
-            You've finished configuring TermPoint. If you skipped a step, or wish to revise the configuration later, you can do so under "Settings" in the application.
+            You've finished configuring TermPoint. If you skipped a step and wish to revise the configuration later, you can do so under "Settings" in the application.
         </TextBlock>
 
         <!--  Body paragraph 2  -->

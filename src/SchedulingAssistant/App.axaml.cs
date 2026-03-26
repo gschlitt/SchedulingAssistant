@@ -209,6 +209,8 @@ public partial class App : Application
         services.AddTransient<SectionPrefixListViewModel>();
         services.AddTransient<CampusListViewModel>();
         services.AddTransient<HelpViewModel>();
+        services.AddTransient<ShareViewModel>();
+        services.AddTransient<NewDatabaseViewModel>();
 
         // Views
         services.AddTransient<CourseHistoryView>();

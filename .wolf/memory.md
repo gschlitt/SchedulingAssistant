@@ -211,3 +211,56 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 15:43 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/startup_db_flow_decisions.md | — | ~885 |
+| 15:43 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~47 |
+| 15:43 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | ".json" → "startup_db_flow_decisions" | ~81 |
+| 15:43 | Session end: 3 writes across 2 files (startup_db_flow_decisions.md, MEMORY.md) | 1 reads | ~1084 tok |
+
+## Session: 2026-03-25 15:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified catch() | ~94 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | removed 54 lines | ~1 |
+| 15:52 | Created src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | — | ~1692 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | inline fix | ~13 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | inline fix | ~24 |
+| 15:52 | Created src/SchedulingAssistant/Views/Management/ShareView.axaml | — | ~495 |
+| 15:52 | Created src/SchedulingAssistant/Views/Management/ShareView.axaml | — | ~614 |
+| 15:52 | Created src/SchedulingAssistant/Views/Management/ShareView.axaml.cs | — | ~98 |
+| 15:53 | Created src/SchedulingAssistant/Views/Management/ShareView.axaml.cs | — | ~78 |
+| 15:53 | Edited src/SchedulingAssistant/App.axaml.cs | 1→2 lines | ~26 |
+| 15:53 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 2→5 lines | ~50 |
+| 15:53 | Edited src/SchedulingAssistant/MainWindow.axaml | 2→4 lines | ~72 |
+| 15:53 | Session end: 12 writes across 7 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 13 reads | ~3489 tok |
+| 16:07 | Session end: 12 writes across 7 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 13 reads | ~3489 tok |
+| 16:07 | Session end: 12 writes across 7 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 13 reads | ~3489 tok |
+| 16:10 | Session end: 12 writes across 7 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 13 reads | ~3489 tok |
+| 16:17 | Session end: 12 writes across 7 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 13 reads | ~3489 tok |
+| 16:34 | Edited src/SchedulingAssistant/Models/TpConfigData.cs | 3→6 lines | ~77 |
+| 16:34 | Edited src/SchedulingAssistant/Models/TpConfigData.cs | expanded (+10 lines) | ~113 |
+| 16:34 | Created src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | — | ~1908 |
+| 16:35 | Created src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | — | ~3598 |
+| 16:36 | Created src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml | — | ~1565 |
+| 16:36 | Created src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml.cs | — | ~83 |
+| 16:36 | Edited src/SchedulingAssistant/App.axaml.cs | 1→2 lines | ~28 |
+| 16:36 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified NewDatabase() | ~202 |
+| 16:38 | Session end: 20 writes across 11 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 20 reads | ~13290 tok |
+| 17:02 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | reduced (-16 lines) | ~297 |
+| 17:02 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | modified OnDbNameChanged() | ~309 |
+| 17:02 | Session end: 22 writes across 11 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 21 reads | ~17537 tok |
+| 17:03 | Edited src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml | inline fix | ~41 |
+| 17:03 | Edited src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml | removed 1 lines | ~12 |
+| 17:03 | Session end: 24 writes across 11 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 22 reads | ~19159 tok |
+| 17:04 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | "Configuration source: aca" → "Configuration source: aca" | ~18 |
+| 17:04 | Session end: 25 writes across 11 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 22 reads | ~19318 tok |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 2→3 lines | ~24 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | inline fix | ~12 |
+| 17:05 | Session end: 27 writes across 11 files (StartupWizardViewModel.cs, ShareViewModel.cs, ShareView.axaml, ShareView.axaml.cs, App.axaml.cs) | 22 reads | ~24834 tok |
+
+## Session: 2026-03-26 17:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:53 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | added 1 condition(s) | ~265 |
+| 17:53 | Session end: 1 writes across 1 files (StartupWizardViewModel.cs) | 6 reads | ~6362 tok |

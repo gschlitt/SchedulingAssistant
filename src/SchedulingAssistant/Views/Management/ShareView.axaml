@@ -1,0 +1,75 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.ShareView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:ShareViewModel">
+
+    <StackPanel
+        MaxWidth="480"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="16">
+
+        <TextBlock
+            FontSize="{StaticResource FontSizeLarge}"
+            FontWeight="SemiBold"
+            Text="Share Your Configuration" />
+
+        <Border
+            Padding="12"
+            Background="{StaticResource FilterBarBackground}"
+            CornerRadius="4">
+            <StackPanel Spacing="8">
+                <TextBlock
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Text="If you have a colleague who is just starting to use TermPoint, it's easy to share your configuration and save them some startup work. If you create a `.tpconfg` file and pass it along, when they install TermPoint they'll be able to use the file to shortcut having to enter details and get straight to work"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    Margin="0,15,0,5"
+                    FontWeight="Bold"
+                    Text="What's in the file?" />
+
+                <TextBlock Text="The file contains configuration details likely common to all departments at your institution. It does not include any of your scheduling details like courses, instructors, sections and so on. Included are the Block Patterns, Section Prefix Patterns, Block Length and Start Time data and the names of the Semesters that you have set." TextWrapping="Wrap" />
+
+                <TextBlock
+                    Margin="0,15,0,5"
+                    FontWeight="Bold"
+                    Text="What should I do?" />
+
+                <TextBlock Text="Just click `Create` and a [your unit name].tpconfig file will be placed in your directory. Pass it along to you colleague in any way you wish. When they use the Setup Wizard for TermPoint, they will be asked if they have a .tpconfig file. That's the one they shoud use!" TextWrapping="Wrap" />
+
+                <Button
+                    Margin="0,4,0,0"
+                    Command="{Binding CreateTpConfigFileCommand}"
+                    Content="Create .tpconfig file" />
+            </StackPanel>
+        </Border>
+
+        <!--  Success feedback  -->
+        <TextBlock
+            FontSize="11"
+            Foreground="#1A7F37"
+            IsVisible="{Binding IsSuccess}"
+            Text="{Binding StatusMessage}"
+            TextWrapping="Wrap" />
+
+        <!--  Error feedback  -->
+        <TextBlock
+            FontSize="11"
+            Foreground="#C0392B"
+            Text="{Binding StatusMessage}"
+            TextWrapping="Wrap">
+            <TextBlock.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="HasStatus" />
+                    <Binding Path="!IsSuccess" />
+                </MultiBinding>
+            </TextBlock.IsVisible>
+        </TextBlock>
+
+    </StackPanel>
+
+</UserControl>
