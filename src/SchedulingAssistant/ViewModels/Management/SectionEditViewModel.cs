@@ -622,10 +622,10 @@ public partial class SectionEditViewModel : ViewModelBase
         var created = new List<SectionMeetingViewModel>();
         foreach (var day in pattern.Days.Order())
         {
-            // Pre-fill the preferred block length (if set in Settings) via the constructor's
-            // backing-field path, so no PropertyChanged fires and the SelectedBlockLength
-            // coupling slot is not consumed — the user can still change it on the leader
-            // and have it propagate to the other meetings.
+            // Pass the preferred block length so that when the user commits a start time on
+            // any meeting, the block length is auto-filled when valid. For the lead meeting,
+            // the auto-fill fires OnSelectedBlockLengthChanged and the coupling propagates
+            // it to all follower meetings just like a manual change would.
             var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms,
                 defaultBlockLength: _defaultBlockLength);
             meeting.SelectedDay = day;

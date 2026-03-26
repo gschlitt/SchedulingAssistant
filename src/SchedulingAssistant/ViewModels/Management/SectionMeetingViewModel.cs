@@ -80,12 +80,22 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
 
+    /// <summary>
+    /// The preferred block length from Settings. When the user commits a start time,
+    /// the block length is auto-filled with this value if it is valid for that start time.
+    /// Null means no preference is set.
+    /// </summary>
+    private readonly double? _defaultBlockLength;
+
     /// <param name="legalStartTimes">Academic-year legal start times — used for both the start-time suggestion list and the reverse block-length lookup.</param>
     /// <param name="includeSaturday">Whether Saturday should appear as a day option.</param>
     /// <param name="meetingTypes">Available meeting type property values.</param>
     /// <param name="rooms">Available rooms for selection.</param>
     /// <param name="existing">If non-null, the form is populated from this existing schedule entry.</param>
-    /// <param name="defaultBlockLength">Preferred block length hint; ignored in new flow since start time must be chosen first.</param>
+    /// <param name="defaultBlockLength">
+    /// Preferred block length from Settings. After the user commits a start time, the block
+    /// length is auto-filled with this value when it is valid for the chosen start time.
+    /// </param>
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
@@ -95,6 +105,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
         double? defaultBlockLength = null)
     {
         _legalStartTimes = legalStartTimes;
+        _defaultBlockLength = defaultBlockLength;
 
         // Build the start-time suggestion list from ALL distinct start times across every
         // block-length row, sorted chronologically.
@@ -248,7 +259,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <summary>
     /// When the committed start time changes (via user commit or pattern propagation):
     /// keeps <see cref="StartTimeText"/> in sync, refreshes the block-length suggestion list,
-    /// and clears the block length if it was a preset that no longer applies.
+    /// clears any previously-set block length, and auto-fills the preferred block length
+    /// when it is valid for the new start time.
     /// </summary>
     partial void OnSelectedStartTimeChanged(int? value)
     {
@@ -263,6 +275,15 @@ public partial class SectionMeetingViewModel : ViewModelBase
         // for the new start time. Custom values are cleared too — re-enter if needed.
         if (SelectedBlockLength.HasValue)
             SelectedBlockLength = null;
+
+        // Auto-fill the preferred block length when it is valid for the chosen start time.
+        // OnBlockLengthTextChanged will auto-commit it since it matches a preset value.
+        if (value.HasValue && _defaultBlockLength.HasValue)
+        {
+            string preferred = FormatBlockLength(_defaultBlockLength.Value);
+            if (AvailableBlockLengthStrings.Contains(preferred))
+                BlockLengthText = preferred;
+        }
     }
 
     /// <summary>

@@ -2,12 +2,12 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 758511,
-    "total_reads": 614,
-    "total_writes": 574,
-    "total_sessions": 21,
+    "total_tokens_estimated": 759502,
+    "total_reads": 616,
+    "total_writes": 577,
+    "total_sessions": 23,
     "anatomy_hits": 118,
-    "anatomy_misses": 493,
+    "anatomy_misses": 495,
     "repeated_reads_blocked": 183,
     "estimated_savings_vs_bare_cli": 1267267
   },
@@ -7389,6 +7389,50 @@
         "writes_count": 14,
         "repeated_reads_blocked": 9,
         "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-03-26-0933",
+      "started": "2026-03-26T16:33:07.766Z",
+      "ended": "2026-03-26T16:35:28.839Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+          "tokens_estimated": 439,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+          "tokens_estimated": 402,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+          "tokens_estimated": 150,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 991,
+        "reads_count": 2,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
       }
     }
   ],
