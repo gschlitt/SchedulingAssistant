@@ -415,3 +415,57 @@
 | 12:55 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→6 lines | ~74 |
 | 12:55 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+18 lines) | ~1015 |
 | 12:57 | Session end: 4 writes across 2 files (SectionEditViewModel.cs, SectionListView.axaml) | 5 reads | ~31001 tok |
+
+## Session: 2026-03-26 16:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-26 16:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:04 | Created src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs | — | ~924 |
+| 17:04 | Edited src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs | 2→2 lines | ~31 |
+| 17:04 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 3→4 lines | ~44 |
+| 17:04 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified StartupWizardViewModel() | ~102 |
+| 17:04 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified catch() | ~172 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 6→6 lines | ~47 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 2→2 lines | ~22 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 2→2 lines | ~25 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 2→2 lines | ~29 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | inline fix | ~17 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | inline fix | ~11 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 2→2 lines | ~29 |
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | — | ~0 |
+| 17:05 | Edited src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs | 5→6 lines | ~53 |
+| 17:05 | Edited src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs | 2→1 lines | ~12 |
+| 17:05 | Edited src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs | inline fix | ~21 |
+| 17:06 | Edited src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj | 2→3 lines | ~34 |
+| 17:07 | Created src/SchedulingAssistant.Tests/WizardStepValidationTests.cs | — | ~5109 |
+| 17:09 | Created src/SchedulingAssistant.Tests/WizardRoutingTests.cs | — | ~3007 |
+| 17:12 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | added optional chaining | ~8 |
+| 17:13 | Created src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | — | ~6754 |
+| 17:14 | Session end: 21 writes across 7 files (WizardServices.cs, StartupWizardViewModel.cs, StartupWizardWindow.axaml.cs, SchedulingAssistant.Tests.csproj, WizardStepValidationTests.cs) | 28 reads | ~26869 tok |
+| 17:42 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | added optional chaining | ~23 |
+| 17:43 | Session end: 22 writes across 7 files (WizardServices.cs, StartupWizardViewModel.cs, StartupWizardWindow.axaml.cs, SchedulingAssistant.Tests.csproj, WizardStepValidationTests.cs) | 28 reads | ~26893 tok |
+
+## Session: 2026-03-27 17:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:52 | Edited src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs | modified WizardServices() | ~1218 |
+| 17:52 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step4ManualConfigViewModel.cs | modified Step4CampusesViewModel() | ~251 |
+| 17:52 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6BlockPatternsViewModel.cs | modified Step6BlockPatternsViewModel() | ~292 |
+| 17:53 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step7SectionPrefixesViewModel.cs | modified Step7SectionPrefixesViewModel() | ~358 |
+| 17:53 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified steps() | ~86 |
+| 17:53 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 11→15 lines | ~252 |
+| 17:53 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | 11→15 lines | ~287 |
+| 17:54 | Created src/SchedulingAssistant.Tests/WizardManualPathTests.cs | — | ~2412 |
+| 18:39 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 11→14 lines | ~226 |
+| 18:40 | Session end: 9 writes across 8 files (WizardServices.cs, Step4ManualConfigViewModel.cs, Step6BlockPatternsViewModel.cs, Step7SectionPrefixesViewModel.cs, StartupWizardViewModel.cs) | 13 reads | ~19114 tok |
+
+## Session: 2026-03-27 22:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

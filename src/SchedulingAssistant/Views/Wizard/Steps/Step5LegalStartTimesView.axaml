@@ -12,13 +12,14 @@
             Foreground="{DynamicResource ForegroundMuted}"
             TextWrapping="Wrap">
             Block lengths are the standard class durations at your institution (e.g. 1.5 hours, 3 hours).
-            For each block length, specify the valid start times. (Often these are specified by your registrar.) If you do not wish to supply these
-            now, you can do so later in the application, but specifying them now will speed up data entry.<LineBreak /><LineBreak />
+            For each block length, specify the valid start times. (Often these are specified by your registrar.)<LineBreak /><LineBreak />
             Two example blocks are provided below. Edit or delete them and add your own.
             Times use 24-hour HHMM format (<Italic>0800</Italic>
             = 8:00 AM,<Italic>1330</Italic>
-            = 1:30 PM).
-            You can adjust these later in the application under Settings.</TextBlock>
+            = 1:30 PM).<LineBreak /><LineBreak />
+            You are not confined to these lengths and times when editing sections, but they make data entry much faster.
+            If you do not wish to supply these
+            now, you can do so later in the application.</TextBlock>
 
         <!--  One card per block length  -->
         <ItemsControl ItemsSource="{Binding BlockLengths}">

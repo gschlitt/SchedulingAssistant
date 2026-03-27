@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.ViewModels.Management;
 
 namespace SchedulingAssistant.ViewModels.Wizard.Steps;
@@ -17,8 +16,15 @@ public class Step7SectionPrefixesViewModel : WizardStepViewModel
     /// <summary>Embeds the section prefix management list.</summary>
     public SectionPrefixListViewModel SectionPrefixes { get; }
 
-    public Step7SectionPrefixesViewModel()
+    /// <param name="sectionPrefixes">
+    /// The section prefix management VM to embed. Injected by the wizard orchestrator so
+    /// tests can supply a version backed by a real or in-memory database without
+    /// requiring the live DI container. This VM must be constructed with the same
+    /// <see cref="ICampusRepository"/> that backs the Campuses step (step 4) so that
+    /// campuses added during that step appear in the prefix campus dropdown.
+    /// </param>
+    public Step7SectionPrefixesViewModel(SectionPrefixListViewModel sectionPrefixes)
     {
-        SectionPrefixes = App.Services.GetRequiredService<SectionPrefixListViewModel>();
+        SectionPrefixes = sectionPrefixes;
     }
 }

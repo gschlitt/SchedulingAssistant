@@ -27,7 +27,15 @@
         </StackPanel>
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
+            FontSize="{DynamicResource FontSizeMedium}"
+            Foreground="{DynamicResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Although most configuration can also be done later, it is easier when guided by this set-up wizard, and full configuration will greatly speed up your scheduling workflow.
+        </TextBlock>
+
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeMedium}"
             Foreground="{DynamicResource ForegroundMuted}"
             TextWrapping="Wrap">
             Click Next to begin.

@@ -9,13 +9,7 @@
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 
         <!--  Help text  -->
-        <TextBlock
-            Grid.Row="0"
-            Margin="0,0,0,12"
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{StaticResource TextSecondary}"
-            Text="Section Prefixes (the initial symbols of a typical section code e.g 'AB' or 'A#' in 'AB1' or 'A#1')"
-            TextWrapping="Wrap" />
+
 
         <!--  Edit form (shown when EditVm is not null)  -->
         <ContentControl
@@ -44,11 +38,7 @@
                             Text="{Binding ValidationError}" />
 
                         <!--  Designator type  -->
-                        <TextBlock
-                            FontSize="{DynamicResource FontSizeNormal}"
-                            Foreground="{StaticResource TextSecondary}"
-                            Text="[Explanatory text about designator types goes here.]"
-                            TextWrapping="Wrap" />
+
 
                         <TextBlock Text="Section designator" />
                         <StackPanel Orientation="Horizontal" Spacing="16">
@@ -117,8 +107,8 @@
         <StackPanel
             Grid.Row="3"
             Margin="0,12,0,0"
-            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
             IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
             Orientation="Horizontal"
             Spacing="8">
             <Button Command="{Binding AddCommand}" Content="Add" />

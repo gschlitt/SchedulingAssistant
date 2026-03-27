@@ -23,7 +23,7 @@ public partial class StartupWizardWindow : Window
         // Defer VM construction until after the window handle exists (needed for StorageProvider)
         Opened += (_, _) =>
         {
-            _vm = new StartupWizardViewModel(this);
+            _vm = new StartupWizardViewModel(this, WizardServices.FromApp());
             DataContext = _vm;
         };
 

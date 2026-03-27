@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.ViewModels.Management;
 
 namespace SchedulingAssistant.ViewModels.Wizard.Steps;
@@ -15,8 +14,13 @@ public class Step4CampusesViewModel : WizardStepViewModel
     /// <summary>Embeds the campus management list.</summary>
     public CampusListViewModel Campuses { get; }
 
-    public Step4CampusesViewModel()
+    /// <param name="campuses">
+    /// The campus management VM to embed. Injected by the wizard orchestrator so
+    /// tests can supply a version backed by a real or in-memory database without
+    /// requiring the live DI container.
+    /// </param>
+    public Step4CampusesViewModel(CampusListViewModel campuses)
     {
-        Campuses = App.Services.GetRequiredService<CampusListViewModel>();
+        Campuses = campuses;
     }
 }

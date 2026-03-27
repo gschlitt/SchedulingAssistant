@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-26T19:55:10.143Z
-> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T01:39:36.163Z
+> Files: 37 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -143,6 +143,11 @@
 ## src/SchedulingAssistant.Tests/
 
 - `DatabaseValidatorTests.cs` — Unit tests for <see cref="DatabaseValidator"/>. <para>Each test operates on a fresh temporary direct (~2054 tok)
+- `SchedulingAssistant.Tests.csproj` (~225 tok)
+- `WizardDataFlowTests.cs` — End-to-end data-flow tests for <see cref="StartupWizardViewModel"/>. These tests drive the wizard th (~6944 tok)
+- `WizardManualPathTests.cs` — Tests for the manual setup path through the startup wizard, focusing on data flowing correctly betwe (~2412 tok)
+- `WizardRoutingTests.cs` — Tests for <see cref="StartupWizardViewModel"/> navigation, routing logic, step caching, and button-l (~3114 tok)
+- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5109 tok)
 
 ## src/SchedulingAssistant/
 
@@ -190,10 +195,14 @@
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
-- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5547 tok)
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5580 tok)
+- `WizardServices.cs` — All external dependencies required by <see cref="StartupWizardViewModel"/> during its finish flow. E (~1218 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
+- `Step4ManualConfigViewModel.cs` — Step 4 (manual path only) — set up campuses. Campuses are physical locations that can be associated (~258 tok)
+- `Step6BlockPatternsViewModel.cs` — Step 6 (manual path only) — configure block patterns. Block patterns map each block length to its ty (~299 tok)
+- `Step7SectionPrefixesViewModel.cs` — Step 7 (manual path only) — configure section prefixes. Section prefixes are short letter codes prep (~366 tok)
 
 ## src/SchedulingAssistant/Views/
 
@@ -215,6 +224,7 @@
 
 ## src/SchedulingAssistant/Views/Wizard/
 
+- `StartupWizardWindow.axaml.cs` — The startup wizard window. Shown on first run (when IsInitialSetupComplete is false). The window set (~514 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 

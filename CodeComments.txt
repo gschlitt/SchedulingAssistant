@@ -4,23 +4,23 @@ Double-click to open section editor, but then go select something else, without 
 
 Filter selection border in Section View should be a a different color than manual selection.
 
-Next step in institution setups. During the startup wizard, the user should name the semesters or terms that they will schedule in. They may even wish to revise later after they've started using the app. It's unusual to add or delete semesters, but no unheard of. So first of all we need a revision to data types: instead of being a top level class, semesters will belong to an academic year, and have their existence and names edite in the Academic Year CRUD panel.  Include an ordering facility for the semesters within a year. Recall that we need this same Semester CRUD panel to work in the wizard eventually so make it portable.
 
-That is, a year will have a list or collection of semesters, which could vary from year to year. We need the following behaviors: when a new academic year is created, the user is asked to confirm if they wish to use the same list of semesters as last year. If no, the are led to the AcademicYear panel to revise as they please. 
+Flow Check:
+Brand new db, no .tpconfig. Check all configs migrate properly. 
 
-If a user wishes to revise the name of an existing semester in an existing acad year, no problem. If a user wishes to add a semester to an existing academic year, no problem, it just starts as an empty semester like any other. Deletion from an existing year is tricky: the user should be advised they need to empty it of courses first (which they can do via empty semester) which provides a moment's pause. If the semester is empty it can be deleted.
-
-So there's some serious refactoring to do here. Semesters touch a lot of places let me point out  they shown up in Course History and Workload History for an instructor. Rephrase first, so I can check your understanding and revise.
-
-
-
-
+-validate database filename. Accepts blanks right now. Validate to Windows standards?
+-BlockPatternView is very reptitive! Extract to a control.
+The campus selector in Section Prefixes is not being populated?
+Block patterns and campus not coming through to the db?
 
 
 
 Agenda.
 
-Should be a campus display and picker in section cards
+Key board shortcuts
+
+Double-click on a section editor to save???
+Make save/close button larger
 
 After a new db possibly other times, Academic Unit is default. Setting it does not revise the display 
 in Schedule View. 
@@ -39,7 +39,6 @@ Ordering on Section Prefixes,
 
 need a bit of margin on lefthand section list
 
-
 What happens if we modify legal start times while a semester is in use?
 
 Sort Section View by tag?
@@ -52,24 +51,6 @@ User can add fields to the right?
 
 Zoom to cursor? Via scroll wheel?
 
-
-
 Banner on sections header to show number of sections
 
-
-
-workload view disappears when detached and the "shutdown"
-logic for revisions and deletions of block lengths.
-
-
-
-
-
-
-
-
-
-
-Longer term: webhosting, error logging to website, multiuser. Multiple windows?
-
-Upload to Banner?
+Hover help in a lot of places

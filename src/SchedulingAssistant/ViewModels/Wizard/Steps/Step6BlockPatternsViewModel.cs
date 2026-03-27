@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.ViewModels.Management;
 
 namespace SchedulingAssistant.ViewModels.Wizard.Steps;
@@ -16,8 +15,13 @@ public class Step6BlockPatternsViewModel : WizardStepViewModel
     /// <summary>Embeds the block pattern management list.</summary>
     public BlockPatternListViewModel BlockPatterns { get; }
 
-    public Step6BlockPatternsViewModel()
+    /// <param name="blockPatterns">
+    /// The block pattern management VM to embed. Injected by the wizard orchestrator so
+    /// tests can supply a version backed by a real or in-memory database without
+    /// requiring the live DI container.
+    /// </param>
+    public Step6BlockPatternsViewModel(BlockPatternListViewModel blockPatterns)
     {
-        BlockPatterns = App.Services.GetRequiredService<BlockPatternListViewModel>();
+        BlockPatterns = blockPatterns;
     }
 }

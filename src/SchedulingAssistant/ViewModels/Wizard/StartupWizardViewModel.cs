@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
@@ -40,6 +39,7 @@ namespace SchedulingAssistant.ViewModels.Wizard;
 public partial class StartupWizardViewModel : ViewModelBase
 {
     private readonly Window _window;
+    private readonly WizardServices _services;
 
     // ── Step tracking ────────────────────────────────────────────────────────
 
@@ -78,9 +78,12 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     private readonly Dictionary<int, WizardStepViewModel> _stepCache = new();
 
-    public StartupWizardViewModel(Window window)
+    /// <param name="window">The wizard window; used for file-picker dialogs and to close on completion.</param>
+    /// <param name="services">Lazily-resolved dependencies; see <see cref="WizardServices"/>.</param>
+    public StartupWizardViewModel(Window window, WizardServices services)
     {
-        _window = window;
+        _window   = window;
+        _services = services;
         NavigateTo(0);
     }
 
@@ -148,10 +151,10 @@ public partial class StartupWizardViewModel : ViewModelBase
         3  => new Step2DatabaseViewModel(_acUnitAbbrev, _window),
         4  => BuildStep4(),                                         // TpConfig / ExitNow
         // Manual-path config steps (5–8):
-        5  => new Step4CampusesViewModel(),
+        5  => new Step4CampusesViewModel(_services.CampusListVm()),
         6  => new Step5LegalStartTimesViewModel(),
-        7  => new Step6BlockPatternsViewModel(),
-        8  => new Step7SectionPrefixesViewModel(),
+        7  => new Step6BlockPatternsViewModel(_services.BlockPatternListVm()),
+        8  => new Step7SectionPrefixesViewModel(_services.SectionPrefixListVm()),
         // Academic year + colors (9–10):
         9  => BuildStep9(),
         10 => BuildStep10(),
@@ -264,7 +267,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         try
         {
-            App.InitializeServices(dbPath);
+            _services.InitializeServices(dbPath);
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
@@ -308,7 +311,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             var folder = Path.GetDirectoryName(dbPath)!;
             Directory.CreateDirectory(folder);
 
-            App.InitializeServices(dbPath);
+            _services.InitializeServices(dbPath);
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
@@ -369,7 +372,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
             IsComplete = true;
-            _window.Close();
+            _window?.Close();
             return;
         }
 
@@ -379,7 +382,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
             IsComplete = true;
-            _window.Close();
+            _window?.Close();
             return;
         }
 
@@ -397,7 +400,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         AppSettings.Current.IsInitialSetupComplete = true;
         AppSettings.Current.Save();
         IsComplete = true;
-        _window.Close();
+        _window?.Close();
     }
 
     // ── Write records ─────────────────────────────────────────────────────────
@@ -408,7 +411,7 @@ public partial class StartupWizardViewModel : ViewModelBase
     private async Task WriteDbRecordsAsync()
     {
         // --- Academic Unit ---
-        var auRepo = App.Services.GetRequiredService<IAcademicUnitRepository>();
+        var auRepo = _services.AcademicUnits();
         var units  = auRepo.GetAll();
         var unit   = units.FirstOrDefault() ?? new AcademicUnit();
         unit.Name         = _acUnitName;
@@ -424,8 +427,8 @@ public partial class StartupWizardViewModel : ViewModelBase
         // --- First Academic Year ---
         if (!_stepCache.TryGetValue(9, out var s9vm) || s9vm is not Step5AcademicYearViewModel s9) return;
 
-        var ayRepo  = App.Services.GetRequiredService<IAcademicYearRepository>();
-        var semRepo = App.Services.GetRequiredService<ISemesterRepository>();
+        var ayRepo  = _services.AcademicYears();
+        var semRepo = _services.Semesters();
 
         var ay = new AcademicYear { Name = s9.ExpandedAcademicYearName };
         ayRepo.Insert(ay);
@@ -438,8 +441,8 @@ public partial class StartupWizardViewModel : ViewModelBase
         // --- Import path: campuses and section prefixes from .tpconfig ---
         if (importedCfg is not null)
         {
-            var campusRepo = App.Services.GetRequiredService<ICampusRepository>();
-            var prefixRepo = App.Services.GetRequiredService<ISectionPrefixRepository>();
+            var campusRepo = _services.Campuses();
+            var prefixRepo = _services.SectionPrefixes();
 
             // Insert campuses in order; build name→ID map for prefix resolution.
             var campusNameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -466,7 +469,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             }
 
             // Insert block patterns (e.g. MWF, TR) from .tpconfig.
-            var blockPatternRepo = App.Services.GetRequiredService<IBlockPatternRepository>();
+            var blockPatternRepo = _services.BlockPatterns();
             foreach (var bp in importedCfg.BlockPatterns)
             {
                 if (string.IsNullOrWhiteSpace(bp.Name)) continue;
@@ -477,7 +480,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         // Seed legal start times:
         //   import path  → block lengths from .tpconfig
         //   manual path  → wizard step 6 data (or hardcoded defaults if step was skipped)
-        var db = App.Services.GetRequiredService<IDatabaseContext>();
+        var db = _services.Database();
         if (importedCfg?.BlockLengths is { Count: > 0 } importBlockLengths)
         {
             var seedData = importBlockLengths
@@ -527,7 +530,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             semRepo.Insert(sem);
         }
 
-        var semesterContext = App.Services.GetRequiredService<SemesterContext>();
+        var semesterContext = _services.SemesterContext();
         semesterContext.Reload(ayRepo, semRepo);
 
         await Task.CompletedTask;

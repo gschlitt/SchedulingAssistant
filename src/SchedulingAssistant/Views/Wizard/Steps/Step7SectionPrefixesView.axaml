@@ -11,7 +11,7 @@
         <StackPanel Spacing="8">
             <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
                 Institutions often place a prefix on their section designators, to indicate
-                a campus, delivery mode, or other aspects of the section. Registering your institution's section prefixes and designators here can greatly speed
+                a campus, delivery mode, or other aspect of the section. Registering your institution's section prefixes and designators here can greatly speed
                 up editing of sections.
             </TextBlock>
 

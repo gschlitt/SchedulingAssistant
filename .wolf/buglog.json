@@ -640,6 +640,166 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-26T17:33:49.320Z"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-03-27T00:04:50.884Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:04:50.884Z"
+    },
+    {
+      "id": "bug-042",
+      "timestamp": "2026-03-27T00:06:06.308Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+      "root_cause": "Had \"xunit\"",
+      "fix": "Changed to \"Moq\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:06:06.308Z"
+    },
+    {
+      "id": "bug-043",
+      "timestamp": "2026-03-27T00:12:08.855Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:12:08.855Z"
+    },
+    {
+      "id": "bug-044",
+      "timestamp": "2026-03-27T00:42:42.267Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:42:42.267Z"
+    },
+    {
+      "id": "bug-045",
+      "timestamp": "2026-03-27T00:52:39.287Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 59→78 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:52:39.287Z"
+    },
+    {
+      "id": "bug-046",
+      "timestamp": "2026-03-27T00:53:09.911Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step7SectionPrefixesViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 24→30 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:53:09.911Z"
+    },
+    {
+      "id": "bug-047",
+      "timestamp": "2026-03-27T00:53:17.009Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:53:17.009Z"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-03-27T00:53:41.799Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/WizardDataFlowTests.cs",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:53:41.799Z"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-03-27T00:53:48.352Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/WizardRoutingTests.cs",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T00:53:48.352Z"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-03-27T01:39:36.218Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/WizardDataFlowTests.cs",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 11→14 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T01:39:36.218Z"
     }
   ]
 }
