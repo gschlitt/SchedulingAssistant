@@ -5,7 +5,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class ReserveSelectionViewModel : ObservableObject
 {
-    public SectionPropertyValue Value { get; }
+    public SchedulingEnvironmentValue Value { get; }
     [ObservableProperty] private bool _isSelected;
 
     /// <summary>
@@ -17,7 +17,7 @@ public partial class ReserveSelectionViewModel : ObservableObject
     public int? ParsedCode =>
         int.TryParse(CodeText?.Trim(), out var v) && v >= 1 ? v : null;
 
-    public ReserveSelectionViewModel(SectionPropertyValue value, int? existingCode)
+    public ReserveSelectionViewModel(SchedulingEnvironmentValue value, int? existingCode)
     {
         Value = value;
         _isSelected = existingCode.HasValue;

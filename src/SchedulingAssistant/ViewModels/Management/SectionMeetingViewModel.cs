@@ -60,7 +60,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     [ObservableProperty] private string? _selectedRoomId;
 
     public ObservableCollection<DayOption> AvailableDays { get; }
-    public ObservableCollection<SectionPropertyValue> MeetingTypes { get; }
+    public ObservableCollection<SchedulingEnvironmentValue> MeetingTypes { get; }
     public ObservableCollection<Room> Rooms { get; }
 
     /// <summary>
@@ -99,7 +99,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
-        IReadOnlyList<SectionPropertyValue> meetingTypes,
+        IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Room> rooms,
         SectionDaySchedule? existing = null,
         double? defaultBlockLength = null)
@@ -130,10 +130,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
         AvailableDays = new ObservableCollection<DayOption>(days);
 
         // Prepend a "(none)" sentinel so the user can clear the meeting type
-        var mtList = new List<SectionPropertyValue>
-            { new SectionPropertyValue { Id = "", Name = "(none)" } };
+        var mtList = new List<SchedulingEnvironmentValue>
+            { new SchedulingEnvironmentValue { Id = "", Name = "(none)" } };
         mtList.AddRange(meetingTypes);
-        MeetingTypes = new ObservableCollection<SectionPropertyValue>(mtList);
+        MeetingTypes = new ObservableCollection<SchedulingEnvironmentValue>(mtList);
 
         // Prepend a "(none)" sentinel for room
         var roomList = new List<Room> { new Room { Id = "", Building = "(none)", RoomNumber = "" } };

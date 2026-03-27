@@ -3,6 +3,25 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
+## Session: 2026-03-27 — SchedulingEnvironment branch
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Renamed SectionPropertyTypes → SchedulingEnvironmentTypes | SchedulingEnvironmentTypes.cs (new), SectionPropertyTypes.cs (deleted) | Clean rename |
+| Renamed SectionPropertyValue → SchedulingEnvironmentValue | SchedulingEnvironmentValue.cs (new), SectionPropertyValue.cs (deleted) | Clean rename |
+| Renamed ISectionPropertyRepository → ISchedulingEnvironmentRepository | ISchedulingEnvironmentRepository.cs (new), ISectionPropertyRepository.cs (deleted) | Clean rename |
+| Renamed SectionPropertyRepository → SchedulingEnvironmentRepository (SQL table: SchedulingEnvironmentValues) | SchedulingEnvironmentRepository.cs (new), SectionPropertyRepository.cs (deleted) | Clean rename |
+| Renamed SectionPropertyEditViewModel → SchedulingEnvironmentEditViewModel | SchedulingEnvironmentEditViewModel.cs (new) | Clean rename |
+| Renamed SectionPropertyListViewModel → SchedulingEnvironmentListViewModel | SchedulingEnvironmentListViewModel.cs (new) | Clean rename |
+| Renamed SectionPropertiesViewModel → SchedulingEnvironmentViewModel (added CampusListViewModel to categories) | SchedulingEnvironmentViewModel.cs (new) | Campus moved here from Settings |
+| Renamed SectionPropertiesView → SchedulingEnvironmentView | SchedulingEnvironmentView.axaml(.cs) (new) | Clean rename |
+| Renamed SectionPropertyListView → SchedulingEnvironmentListView | SchedulingEnvironmentListView.axaml(.cs) (new) | Clean rename |
+| DatabaseContext: CREATE TABLE now uses SchedulingEnvironmentValues; Migrate() renames old SectionPropertyValues if present | DatabaseContext.cs | DB migration handled |
+| Removed Campus from SettingsViewModel (moved to SchedulingEnvironmentViewModel) | SettingsViewModel.cs, SettingsView.axaml | Campus now lives in Scheduling Environment flyout |
+| Renamed NavigateToSectionProperties → NavigateToSchedulingEnvironment; title "Scheduling Environment" | MainWindowViewModel.cs | Flyout renamed |
+| Updated nav button label "Section Properties" → "Scheduling Environment" | MainWindow.axaml | UI label updated |
+| Updated all remaining references in 15+ files | All files in src/ | Build: 0 errors |
+
 ## Session: 2026-03-25 — visual-improvements branch
 
 | Action | Files | Outcome |
@@ -466,6 +485,52 @@
 | 18:40 | Session end: 9 writes across 8 files (WizardServices.cs, Step4ManualConfigViewModel.cs, Step6BlockPatternsViewModel.cs, Step7SectionPrefixesViewModel.cs, StartupWizardViewModel.cs) | 13 reads | ~19114 tok |
 
 ## Session: 2026-03-27 22:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-27 08:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-27 08:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:30 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentTypes.cs | — | ~138 |
+| 09:30 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SchedulingEnvironmentValue.cs | — | ~188 |
+| 09:31 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/ISchedulingEnvironmentRepository.cs | — | ~486 |
+| 09:31 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/SchedulingEnvironmentRepository.cs | — | ~1028 |
+| 09:31 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentEditViewModel.cs | — | ~627 |
+| 09:32 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | — | ~2711 |
+| 09:32 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentViewModel.cs | — | ~660 |
+| 09:33 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentView.axaml | — | ~402 |
+| 09:33 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentView.axaml.cs | — | ~60 |
+| 09:33 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | — | ~1276 |
+| 09:33 | Created ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs | — | ~62 |
+| 09:33 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs | SectionPropertyValues() → SchedulingEnvironmentValues() | ~63 |
+| 09:33 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs | added 1 condition(s) | ~199 |
+| 09:33 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs | "SectionPropertyValues" → "SchedulingEnvironmentValu" | ~23 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs | "UPDATE SectionPropertyVal" → "UPDATE SchedulingEnvironm" | ~29 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs | inline fix | ~27 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs | 7→7 lines | ~118 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs | 4→4 lines | ~64 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs | inline fix | ~18 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | NavigateToSectionProperties() → NavigateToSchedulingEnvironment() | ~38 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml | 2→2 lines | ~38 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 6→1 lines | ~22 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | modified SettingsViewModel() | ~99 |
+| 09:34 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 5→4 lines | ~40 |
+| 09:35 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SettingsView.axaml | removed 12 lines | ~22 |
+| 09:35 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SettingsView.axaml | 3→2 lines | ~39 |
+| 09:39 | Edited ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/memory.md | expanded (+19 lines) | ~607 |
+| 13:01 | Created src/SchedulingAssistant.Tests/AssemblyInfo.cs | — | ~91 |
+| 13:02 | Session end: 28 writes across 19 files (SchedulingEnvironmentTypes.cs, SchedulingEnvironmentValue.cs, ISchedulingEnvironmentRepository.cs, SchedulingEnvironmentRepository.cs, SchedulingEnvironmentEditViewModel.cs) | 50 reads | ~55830 tok |
+| 13:09 | Edited src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs | 2→5 lines | ~78 |
+| 13:09 | Session end: 29 writes across 20 files (SchedulingEnvironmentTypes.cs, SchedulingEnvironmentValue.cs, ISchedulingEnvironmentRepository.cs, SchedulingEnvironmentRepository.cs, SchedulingEnvironmentEditViewModel.cs) | 51 reads | ~55913 tok |
+
+## Session: 2026-03-27 13:29
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|

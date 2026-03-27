@@ -1,6 +1,6 @@
 namespace SchedulingAssistant.Models;
 
-public class SectionPropertyValue
+public class SchedulingEnvironmentValue
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;

@@ -17,6 +17,8 @@ Block patterns and campus not coming through to the db?
 
 Agenda.
 
+Hover over dbnames (filenames) shows full path
+
 Key board shortcuts
 
 Double-click on a section editor to save???
@@ -27,7 +29,7 @@ in Schedule View.
 
 On a db new should pick an initial academic year. Otherwise end up with semesters but no year, which is weird.
 
-Wizard is duplicating section properties as they end up in the Settings.
+Wizard is duplicating section properties as they end up in the Settings?
 
 Use a package for error logging e.g. Sentry, Firebase Crashlytics, Bugsnag
 

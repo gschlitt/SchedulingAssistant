@@ -22,7 +22,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly IInstructorRepository _instructorRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly ISubjectRepository _subjectRepo;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
@@ -74,7 +74,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IInstructorRepository instructorRepo,
         IRoomRepository roomRepo,
         ISubjectRepository subjectRepo,
-        ISectionPropertyRepository propertyRepo,
+        ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
@@ -153,7 +153,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         var instructors = _instructorRepo.GetAll();
         var rooms       = _roomRepo.GetAll();
-        var tags        = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
+        var tags        = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
 
         ContextMenu.Load(section, day, startMinutes, instructors, rooms, tags);
     }
@@ -332,9 +332,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var subjects      = _subjectRepo.GetAll().ToDictionary(s => s.Id);
 
         var campuses     = _campusRepo.GetAll().ToDictionary(c => c.Id);
-        var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
-        var tags         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
-        var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
+        var sectionTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).ToDictionary(v => v.Id);
+        var tags         = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id);
+        var meetingTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id);
 
         // The level "lookup" is a fixed dictionary of all ten level bands mapped to
         // themselves. Levels are now stored as integers-of-hundreds ("0", "100", …,

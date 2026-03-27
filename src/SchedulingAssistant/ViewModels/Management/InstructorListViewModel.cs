@@ -11,7 +11,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class InstructorListViewModel : ViewModelBase, IDisposable
 {
     private readonly IInstructorRepository _repo;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
     private readonly IReleaseRepository _releaseRepo;
@@ -69,7 +69,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
     public InstructorListViewModel(
         IInstructorRepository repo,
-        ISectionPropertyRepository propertyRepo,
+        ISchedulingEnvironmentRepository propertyRepo,
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,
         IReleaseRepository releaseRepo,
@@ -136,7 +136,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
     private void Load()
     {
-        var staffTypes = _propertyRepo.GetAll(SectionPropertyTypes.StaffType)
+        var staffTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.StaffType)
             .ToDictionary(s => s.Id, s => s.Name);
 
         var all = _repo.GetAll();
@@ -291,8 +291,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         WorkloadHistoryVm.LoadHistory(instructorId);
     }
 
-    private IReadOnlyList<SectionPropertyValue> GetStaffTypes() =>
-        _propertyRepo.GetAll(SectionPropertyTypes.StaffType);
+    private IReadOnlyList<SchedulingEnvironmentValue> GetStaffTypes() =>
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.StaffType);
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()

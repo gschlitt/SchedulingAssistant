@@ -4,7 +4,7 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SectionPropertyEditViewModel : ViewModelBase
+public partial class SchedulingEnvironmentEditViewModel : ViewModelBase
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValidationError))]
@@ -18,15 +18,14 @@ public partial class SectionPropertyEditViewModel : ViewModelBase
 
     /// <summary>
     /// When true, the "Section Code Abbreviation" field is shown in the edit form.
-    /// Currently only true for the Campus property type.
     /// </summary>
     public bool ShowAbbreviation { get; }
 
     public string Title => IsNew ? "Add" : "Edit";
     public bool IsNew { get; }
 
-    private readonly SectionPropertyValue _value;
-    private readonly Action<SectionPropertyValue> _onSave;
+    private readonly SchedulingEnvironmentValue _value;
+    private readonly Action<SchedulingEnvironmentValue> _onSave;
     private readonly Action _onCancel;
     private readonly Func<string, bool> _nameExists;
 
@@ -43,10 +42,10 @@ public partial class SectionPropertyEditViewModel : ViewModelBase
 
     private bool CanSave() => Name.Trim().Length > 0 && ValidationError is null;
 
-    public SectionPropertyEditViewModel(
-        SectionPropertyValue value,
+    public SchedulingEnvironmentEditViewModel(
+        SchedulingEnvironmentValue value,
         bool isNew,
-        Action<SectionPropertyValue> onSave,
+        Action<SchedulingEnvironmentValue> onSave,
         Action onCancel,
         Func<string, bool> nameExists,
         bool showAbbreviation = false)

@@ -75,7 +75,7 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<InstructorSelectionViewModel> _instructorSelections = new();
 
     // Section-level single-select property collections (include a leading "(none)" sentinel)
-    [ObservableProperty] private ObservableCollection<SectionPropertyValue> _sectionTypes = new();
+    [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _sectionTypes = new();
     [ObservableProperty] private ObservableCollection<Campus> _campuses = new();
 
     // Section-level single-select selections (empty string = null / none)
@@ -139,7 +139,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly Section _section;
     private readonly Func<Section, Task> _onSave;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
-    private readonly IReadOnlyList<SectionPropertyValue> _meetingTypes;
+    private readonly IReadOnlyList<SchedulingEnvironmentValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _rooms;
     private readonly bool _includeSaturday;
     private readonly double? _defaultBlockLength;
@@ -367,12 +367,12 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<Room> rooms,
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
-        IReadOnlyList<SectionPropertyValue> sectionTypes,
-        IReadOnlyList<SectionPropertyValue> meetingTypes,
+        IReadOnlyList<SchedulingEnvironmentValue> sectionTypes,
+        IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Campus> campuses,
-        IReadOnlyList<SectionPropertyValue> allTags,
-        IReadOnlyList<SectionPropertyValue> allResources,
-        IReadOnlyList<SectionPropertyValue> allReserves,
+        IReadOnlyList<SchedulingEnvironmentValue> allTags,
+        IReadOnlyList<SchedulingEnvironmentValue> allResources,
+        IReadOnlyList<SchedulingEnvironmentValue> allReserves,
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
         Func<string, Task> onValidationError,
@@ -570,13 +570,13 @@ public partial class SectionEditViewModel : ViewModelBase
         };
     }
 
-    private static ObservableCollection<SectionPropertyValue> BuildSentinelList(
-        IReadOnlyList<SectionPropertyValue> values)
+    private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
+        IReadOnlyList<SchedulingEnvironmentValue> values)
     {
-        var list = new List<SectionPropertyValue>
-            { new SectionPropertyValue { Id = "", Name = "(none)" } };
+        var list = new List<SchedulingEnvironmentValue>
+            { new SchedulingEnvironmentValue { Id = "", Name = "(none)" } };
         list.AddRange(values);
-        return new ObservableCollection<SectionPropertyValue>(list);
+        return new ObservableCollection<SchedulingEnvironmentValue>(list);
     }
 
     [RelayCommand]

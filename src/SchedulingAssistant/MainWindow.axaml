@@ -207,8 +207,8 @@
                     <Button
                         Margin="0,4,4,4"
                         Classes="nav"
-                        Command="{Binding NavigateToSectionPropertiesCommand}"
-                        Content="Section Properties" />
+                        Command="{Binding NavigateToSchedulingEnvironmentCommand}"
+                        Content="Scheduling Environment" />
 
                     <Border
                         Width="1"

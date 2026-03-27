@@ -128,7 +128,7 @@ public partial class SectionPrefixEditViewModel : ViewModelBase
 /// A campus choice item used in the campus ComboBox within the prefix edit form.
 /// </summary>
 /// <param name="Id">
-/// The campus SectionPropertyValue ID, or null for the "(none)" sentinel entry.
+/// The campus SchedulingEnvironmentValue ID, or null for the "(none)" sentinel entry.
 /// </param>
 /// <param name="DisplayName">The campus name shown in the dropdown.</param>
 public record CampusOption(string? Id, string DisplayName);

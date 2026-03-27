@@ -103,7 +103,7 @@ public class DatabaseContext : IDatabaseContext
                 data         TEXT NOT NULL DEFAULT '{}'
             );
 
-            CREATE TABLE IF NOT EXISTS SectionPropertyValues (
+            CREATE TABLE IF NOT EXISTS SchedulingEnvironmentValues (
                 id   TEXT PRIMARY KEY,
                 type TEXT NOT NULL,
                 name TEXT,
@@ -162,6 +162,15 @@ public class DatabaseContext : IDatabaseContext
     {
         using var cmd = _conn.CreateCommand();
 
+        // Rename SectionPropertyValues to SchedulingEnvironmentValues if the old table still exists
+        cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SectionPropertyValues'";
+        var oldTableExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        if (oldTableExists)
+        {
+            cmd.CommandText = "ALTER TABLE SectionPropertyValues RENAME TO SchedulingEnvironmentValues";
+            cmd.ExecuteNonQuery();
+        }
+
         // Purge invalid commitment records (missing instructor_id or semester_id)
         cmd.CommandText = "DELETE FROM InstructorCommitments WHERE instructor_id IS NULL OR instructor_id = '' OR semester_id IS NULL OR semester_id = ''";
         cmd.ExecuteNonQuery();
@@ -193,7 +202,7 @@ public class DatabaseContext : IDatabaseContext
         AddColumnIfMissing(_conn, "Courses",             "title",         "TEXT");
         AddColumnIfMissing(_conn, "Sections",            "section_code",  "TEXT");
         AddColumnIfMissing(_conn, "Sections",            "course_code",   "TEXT");
-        AddColumnIfMissing(_conn, "SectionPropertyValues", "name",        "TEXT");
+        AddColumnIfMissing(_conn, "SchedulingEnvironmentValues", "name",   "TEXT");
         AddColumnIfMissing(_conn, "AcademicUnits",       "name",          "TEXT");
         AddColumnIfMissing(_conn, "InstructorCommitments", "instructor_name", "TEXT");
         AddColumnIfMissing(_conn, "InstructorCommitments", "semester_name",   "TEXT");
@@ -254,7 +263,7 @@ public class DatabaseContext : IDatabaseContext
                                                 "FROM Courses c WHERE c.id = Sections.course_id) " +
             "WHERE section_code IS NULL",
 
-            "UPDATE SectionPropertyValues SET name = json_extract(data, '$.name') WHERE name IS NULL",
+            "UPDATE SchedulingEnvironmentValues SET name = json_extract(data, '$.name') WHERE name IS NULL",
 
             "UPDATE AcademicUnits SET name = json_extract(data, '$.name') WHERE name IS NULL",
 

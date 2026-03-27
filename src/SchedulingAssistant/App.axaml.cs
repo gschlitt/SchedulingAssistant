@@ -142,7 +142,7 @@ public partial class App : Application
         services.AddSingleton<ISubjectRepository, SubjectRepository>();
         services.AddSingleton<ICourseRepository, CourseRepository>();
         services.AddSingleton<ISectionRepository, SectionRepository>();
-        services.AddSingleton<ISectionPropertyRepository, SectionPropertyRepository>();
+        services.AddSingleton<ISchedulingEnvironmentRepository, SchedulingEnvironmentRepository>();
         services.AddSingleton<IAcademicUnitRepository, AcademicUnitRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
@@ -160,7 +160,7 @@ public partial class App : Application
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<IRoomRepository>(),
             sp.GetRequiredService<ISubjectRepository>(),
-            sp.GetRequiredService<ISectionPropertyRepository>(),
+            sp.GetRequiredService<ISchedulingEnvironmentRepository>(),
             sp.GetRequiredService<ICampusRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>(),
@@ -179,7 +179,7 @@ public partial class App : Application
         services.AddTransient<InstructorListViewModel>(sp =>
             new InstructorListViewModel(
                 sp.GetRequiredService<IInstructorRepository>(),
-                sp.GetRequiredService<ISectionPropertyRepository>(),
+                sp.GetRequiredService<ISchedulingEnvironmentRepository>(),
                 sp.GetRequiredService<ISectionRepository>(),
                 sp.GetRequiredService<ICourseRepository>(),
                 sp.GetRequiredService<IReleaseRepository>(),
@@ -200,7 +200,7 @@ public partial class App : Application
         services.AddTransient<CourseListViewModel>();
         services.AddTransient<CourseHistoryViewModel>();
         services.AddTransient<SettingsViewModel>();
-        services.AddTransient<SectionPropertiesViewModel>();
+        services.AddTransient<SchedulingEnvironmentViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();
         services.AddTransient<ExportViewModel>();

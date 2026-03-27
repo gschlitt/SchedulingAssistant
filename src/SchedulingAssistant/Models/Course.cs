@@ -10,7 +10,7 @@ public class Course
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// IDs of tags (from SectionPropertyValues of type "tag") associated with this course.
+    /// IDs of tags (from SchedulingEnvironmentValues of type "tag") associated with this course.
     /// These are automatically applied to new sections created for this course.
     /// </summary>
     public List<string> TagIds { get; set; } = new();

@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace SchedulingAssistant.Views.Management;
 
-public partial class SectionPropertyListView : UserControl
+public partial class SchedulingEnvironmentListView : UserControl
 {
-    public SectionPropertyListView()
+    public SchedulingEnvironmentListView()
     {
         InitializeComponent();
     }

@@ -1,7 +1,7 @@
 namespace SchedulingAssistant.ViewModels.Management;
 
-/// <summary>Canonical type discriminator strings for the SectionPropertyValues.type column.</summary>
-public static class SectionPropertyTypes
+/// <summary>Canonical type discriminator strings for the SchedulingEnvironmentValues.type column.</summary>
+public static class SchedulingEnvironmentTypes
 {
     public const string SectionType = "sectionType";
     public const string MeetingType = "meetingType";

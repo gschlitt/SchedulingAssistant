@@ -102,7 +102,7 @@ public partial class CourseEditViewModel : ViewModelBase
     public CourseEditViewModel(
         Course course,
         bool isNew,
-        IReadOnlyList<SectionPropertyValue> allTags,
+        IReadOnlyList<SchedulingEnvironmentValue> allTags,
         Func<Course, Task> onSave,
         Action onCancel,
         Func<string, bool> codeExists,

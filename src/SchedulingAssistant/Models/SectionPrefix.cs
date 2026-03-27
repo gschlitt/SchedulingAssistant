@@ -29,7 +29,7 @@ public class SectionPrefix
     public string Prefix { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional foreign key into <c>SectionPropertyValues</c> (type = "campus").
+    /// Optional foreign key into <c>SchedulingEnvironmentValues</c> (type = "campus").
     /// Null when the prefix is not associated with a specific campus.
     /// </summary>
     public string? CampusId { get; set; }

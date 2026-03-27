@@ -11,7 +11,7 @@ public partial class CourseListViewModel : ViewModelBase
 {
     private readonly ICourseRepository _courseRepo;
     private readonly ISubjectRepository _subjectRepo;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -38,7 +38,7 @@ public partial class CourseListViewModel : ViewModelBase
     public CourseListViewModel(
         ICourseRepository courseRepo,
         ISubjectRepository subjectRepo,
-        ISectionPropertyRepository propertyRepo,
+        ISchedulingEnvironmentRepository propertyRepo,
         IDialogService dialog,
         ISectionRepository sectionRepo,
         ISemesterRepository semesterRepo,
@@ -87,7 +87,7 @@ public partial class CourseListViewModel : ViewModelBase
     /// </summary>
     private void LoadCourses()
     {
-        var tagById = _propertyRepo.GetAll(SectionPropertyTypes.Tag)
+        var tagById = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag)
                                    .ToDictionary(t => t.Id, t => t.Name);
 
         // Respect the "show only active" toggle: inactive courses are hidden from the
@@ -106,8 +106,8 @@ public partial class CourseListViewModel : ViewModelBase
     /// Loads the full list of available tags from the property repository.
     /// Called by Add/Edit to pass current tags to the course editor.
     /// </summary>
-    private List<SectionPropertyValue> LoadAllTags() =>
-        _propertyRepo.GetAll(SectionPropertyTypes.Tag);
+    private List<SchedulingEnvironmentValue> LoadAllTags() =>
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()

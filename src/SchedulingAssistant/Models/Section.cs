@@ -18,7 +18,7 @@ public class Section
     [System.Text.Json.Serialization.JsonIgnore]
     public IEnumerable<string> InstructorIds => InstructorAssignments.Select(a => a.InstructorId);
 
-    // Section property assignments (stored as IDs into SectionPropertyValues)
+    // Section property assignments (stored as IDs into SchedulingEnvironmentValues)
     public string? SectionTypeId { get; set; }
     public string? CampusId { get; set; }
     public List<string> TagIds { get; set; } = new();

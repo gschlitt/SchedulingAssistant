@@ -38,7 +38,7 @@ public class BackupService : IDisposable
     private readonly IInstructorRepository _instructorRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly ISemesterRepository _semesterRepo;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
     private readonly IAppLogger _logger;
 
@@ -76,7 +76,7 @@ public class BackupService : IDisposable
         IInstructorRepository instructorRepo,
         IRoomRepository roomRepo,
         ISemesterRepository semesterRepo,
-        ISectionPropertyRepository propertyRepo,
+        ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
         IAppLogger logger)
     {
@@ -327,17 +327,17 @@ public class BackupService : IDisposable
         var courses     = _courseRepo.GetAll().ToDictionary(c => c.Id);
         var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType)
+        var sectionTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType)
                                         .ToDictionary(p => p.Id, p => p.Name);
         var campuses     = _campusRepo.GetAll()
                                         .ToDictionary(c => c.Id, c => c.Name);
-        var tags         = _propertyRepo.GetAll(SectionPropertyTypes.Tag)
+        var tags         = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag)
                                         .ToDictionary(p => p.Id, p => p.Name);
-        var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType)
+        var meetingTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType)
                                         .ToDictionary(p => p.Id, p => p.Name);
-        var resourceProps = _propertyRepo.GetAll(SectionPropertyTypes.Resource)
+        var resourceProps = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource)
                                          .ToDictionary(p => p.Id, p => p.Name);
-        var reserveProps  = _propertyRepo.GetAll(SectionPropertyTypes.Reserve)
+        var reserveProps  = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve)
                                          .ToDictionary(p => p.Id, p => p.Name);
 
         // Resolve the current academic year so we can label each row.

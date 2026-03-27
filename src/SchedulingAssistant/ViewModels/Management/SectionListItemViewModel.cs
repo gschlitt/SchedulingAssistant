@@ -83,12 +83,12 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, Course> courseLookup,
         Dictionary<string, Instructor> instructorLookup,
         Dictionary<string, Room> roomLookup,
-        Dictionary<string, SectionPropertyValue> sectionTypeLookup,
+        Dictionary<string, SchedulingEnvironmentValue> sectionTypeLookup,
         Dictionary<string, Campus> campusLookup,
-        Dictionary<string, SectionPropertyValue> tagLookup,
-        Dictionary<string, SectionPropertyValue> resourceLookup,
-        Dictionary<string, SectionPropertyValue> reserveLookup,
-        Dictionary<string, SectionPropertyValue> meetingTypeLookup,
+        Dictionary<string, SchedulingEnvironmentValue> tagLookup,
+        Dictionary<string, SchedulingEnvironmentValue> resourceLookup,
+        Dictionary<string, SchedulingEnvironmentValue> reserveLookup,
+        Dictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         string semesterName = "")
     {
         Section = section;

@@ -247,9 +247,9 @@ public partial class GridFilterViewModel : ViewModelBase
         IReadOnlyDictionary<string, Room>       roomLookup,
         IReadOnlyDictionary<string, Subject>    subjectLookup,
         IReadOnlyDictionary<string, Campus> campusLookup,
-        IReadOnlyDictionary<string, SectionPropertyValue> sectionTypeLookup,
-        IReadOnlyDictionary<string, SectionPropertyValue> tagLookup,
-        IReadOnlyDictionary<string, SectionPropertyValue> meetingTypeLookup,
+        IReadOnlyDictionary<string, SchedulingEnvironmentValue> sectionTypeLookup,
+        IReadOnlyDictionary<string, SchedulingEnvironmentValue> tagLookup,
+        IReadOnlyDictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         IReadOnlyDictionary<string, string> levelLookup,
         IReadOnlyDictionary<string, Course> courseLookup)
     {

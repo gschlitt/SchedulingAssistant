@@ -18,7 +18,7 @@ public class DebugTestDataGenerator
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
     private readonly ISemesterRepository _semesterRepo;
     private readonly IBlockPatternRepository _blockPatternRepo;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
 
     public DebugTestDataGenerator(
@@ -29,7 +29,7 @@ public class DebugTestDataGenerator
         ILegalStartTimeRepository legalStartTimeRepo,
         ISemesterRepository semesterRepo,
         IBlockPatternRepository blockPatternRepo,
-        ISectionPropertyRepository propertyRepo,
+        ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo)
     {
         _sectionRepo = sectionRepo;
@@ -65,12 +65,12 @@ public class DebugTestDataGenerator
         var rooms = _roomRepo.GetAll();
         var legalStartTimes = _legalStartTimeRepo.GetAll(semester.AcademicYearId);
         var blockPatterns = _blockPatternRepo.GetAll();
-        var sectionTypes = _propertyRepo.GetAll(SectionPropertyTypes.SectionType);
+        var sectionTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType);
         var campuses = _campusRepo.GetAll();
-        var tags = _propertyRepo.GetAll(SectionPropertyTypes.Tag);
-        var resources = _propertyRepo.GetAll(SectionPropertyTypes.Resource);
-        var reserves = _propertyRepo.GetAll(SectionPropertyTypes.Reserve);
-        var meetingTypes = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType);
+        var tags = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
+        var resources = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource);
+        var reserves = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve);
+        var meetingTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType);
 
         // Track codes generated in this batch to avoid duplicates within the batch
         var codesInBatch = new Dictionary<string, HashSet<string>>();
@@ -146,7 +146,7 @@ public class DebugTestDataGenerator
         BlockPattern pattern,
         int startMinutes,
         double blockLengthHours,
-        List<SectionPropertyValue> meetingTypes,
+        List<SchedulingEnvironmentValue> meetingTypes,
         List<Room> rooms)
     {
         var schedule = new List<SectionDaySchedule>();
@@ -170,7 +170,7 @@ public class DebugTestDataGenerator
 
     private List<SectionDaySchedule> GenerateRandomSchedule(
         List<LegalStartTime> legalStartTimes,
-        List<SectionPropertyValue> meetingTypes,
+        List<SchedulingEnvironmentValue> meetingTypes,
         List<Room> rooms)
     {
         var schedule = new List<SectionDaySchedule>();
@@ -201,11 +201,11 @@ public class DebugTestDataGenerator
     private void RandomizeProperties(
         Section section,
         List<Instructor> instructors,
-        List<SectionPropertyValue> sectionTypes,
+        List<SchedulingEnvironmentValue> sectionTypes,
         List<Campus> campuses,
-        List<SectionPropertyValue> tags,
-        List<SectionPropertyValue> resources,
-        List<SectionPropertyValue> reserves)
+        List<SchedulingEnvironmentValue> tags,
+        List<SchedulingEnvironmentValue> resources,
+        List<SchedulingEnvironmentValue> reserves)
     {
         // Instructors: 70% have 1-2, 30% have none
         if (_random.NextDouble() < 0.7 && instructors.Count > 0)

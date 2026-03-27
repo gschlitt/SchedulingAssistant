@@ -20,7 +20,7 @@ public partial class InstructorEditViewModel : ViewModelBase
     [ObservableProperty] private bool _isActive = true;
 
     // Staff Type single-select (includes a leading "(none)" sentinel with Id="")
-    [ObservableProperty] private ObservableCollection<SectionPropertyValue> _staffTypes = new();
+    [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _staffTypes = new();
     [ObservableProperty] private string? _selectedStaffTypeId;
 
     public string Title => IsNew ? "Add Instructor" : "Edit Instructor";
@@ -49,7 +49,7 @@ public partial class InstructorEditViewModel : ViewModelBase
     public InstructorEditViewModel(
         Instructor instructor,
         bool isNew,
-        IReadOnlyList<SectionPropertyValue> staffTypes,
+        IReadOnlyList<SchedulingEnvironmentValue> staffTypes,
         Action<Instructor> onSave,
         Action onCancel,
         Func<string, bool> initialsExist)
@@ -61,10 +61,10 @@ public partial class InstructorEditViewModel : ViewModelBase
         _initialsExist = initialsExist;
 
         // Build sentinel list: "(none)" first
-        var list = new List<SectionPropertyValue>
-            { new SectionPropertyValue { Id = "", Name = "(none)" } };
+        var list = new List<SchedulingEnvironmentValue>
+            { new SchedulingEnvironmentValue { Id = "", Name = "(none)" } };
         list.AddRange(staffTypes);
-        StaffTypes = new ObservableCollection<SectionPropertyValue>(list);
+        StaffTypes = new ObservableCollection<SchedulingEnvironmentValue>(list);
 
         FirstName = instructor.FirstName;
         LastName = instructor.LastName;

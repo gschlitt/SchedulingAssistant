@@ -800,6 +800,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-27T01:39:36.218Z"
+    },
+    {
+      "id": "bug-051",
+      "timestamp": "2026-03-27T16:33:59.780Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "Had \"SectionPropertyValues\"",
+      "fix": "Changed to \"SchedulingEnvironmentValues\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-27T16:34:06.858Z"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-03-27T16:34:24.723Z",
+      "error_message": "Wrong reference: SectionPropertiesViewModel should be SchedulingEnvironmentViewModel",
+      "file": "../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Used \"SectionPropertiesViewModel\" instead of \"SchedulingEnvironmentViewModel\"",
+      "fix": "Changed SectionPropertiesViewModel → SchedulingEnvironmentViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T16:34:24.723Z"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-03-27T16:34:30.914Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Had \"Section Properties\"",
+      "fix": "Changed to \"Scheduling Environment\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T16:34:30.914Z"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-03-27T16:34:34.375Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Had \"{Binding NavigateToSectionPropertiesCommand}\"",
+      "fix": "Changed to \"{Binding NavigateToSchedulingEnvironmentCommand}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T16:34:34.375Z"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-03-27T16:34:46.438Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 13→8 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T16:34:46.438Z"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-03-27T16:35:09.977Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SettingsView.axaml",
+      "root_cause": "Had \"using:SchedulingAssistant.Views.Management\"",
+      "fix": "Changed to \"SchedulingAssistant.Views.Management.SettingsView",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T16:35:09.977Z"
     }
   ]
 }

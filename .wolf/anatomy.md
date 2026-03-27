@@ -1,12 +1,34 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T01:39:36.163Z
-> Files: 37 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T20:09:01.450Z
+> Files: 2 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/
+
+
+## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/
+
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `MEMORY.md` — SchedulingAssistant Project Memory (~5120 tok)
-- `startup_db_flow_decisions.md` — (1) .tpconfig — colleague sharing only (~830 tok)
 
 ## ./
 
@@ -142,23 +164,13 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `DatabaseValidatorTests.cs` — Unit tests for <see cref="DatabaseValidator"/>. <para>Each test operates on a fresh temporary direct (~2054 tok)
-- `SchedulingAssistant.Tests.csproj` (~225 tok)
-- `WizardDataFlowTests.cs` — End-to-end data-flow tests for <see cref="StartupWizardViewModel"/>. These tests drive the wizard th (~6944 tok)
-- `WizardManualPathTests.cs` — Tests for the manual setup path through the startup wizard, focusing on data flowing correctly betwe (~2412 tok)
-- `WizardRoutingTests.cs` — Tests for <see cref="StartupWizardViewModel"/> navigation, routing logic, step caching, and button-l (~3114 tok)
-- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5109 tok)
+- `AssemblyInfo.cs` — Class: AssemblyInfo (~91 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3042 tok)
-- `AppColors.axaml` (~2686 tok)
-- `MainWindow.axaml` — Declares applied (~10071 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. All shut (~8711 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
-- `OpenDropDownOnFocusBehavior.cs` — Attached behavior for <see cref="AutoCompleteBox"/> that provides two UX improvements needed when th (~1449 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -174,57 +186,34 @@
 
 ## src/SchedulingAssistant/Models/
 
-- `TpConfigData.cs` — Portable configuration file (.tpconfig) written to the database folder after first-run setup. Contai (~643 tok)
 
 ## src/SchedulingAssistant/Services/
 
-- `DatabaseValidator.cs` — The result of a database file validation check. (~501 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `DatabaseRecoveryViewModel.cs` — Indicates why the database recovery window was shown. (~3544 tok)
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5480 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~3873 tok)
-- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~9918 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12008 tok)
-- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~6447 tok)
-- `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1908 tok)
+- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~2306 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
-- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5580 tok)
-- `WizardServices.cs` — All external dependencies required by <see cref="StartupWizardViewModel"/> during its finish flow. E (~1218 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
-- `Step4ManualConfigViewModel.cs` — Step 4 (manual path only) — set up campuses. Campuses are physical locations that can be associated (~258 tok)
-- `Step6BlockPatternsViewModel.cs` — Step 6 (manual path only) — configure block patterns. Block patterns map each block length to its ty (~299 tok)
-- `Step7SectionPrefixesViewModel.cs` — Step 7 (manual path only) — configure section prefixes. Section prefixes are short letter codes prep (~366 tok)
 
 ## src/SchedulingAssistant/Views/
 
-- `DatabaseRecoveryWindow.axaml` (~4091 tok)
-- `DatabaseRecoveryWindow.axaml.cs` — Shown at startup when the configured database is missing or corrupt. Presents three options: browse (~1000 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml` (~3288 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11408 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `NewDatabaseView.axaml` (~1762 tok)
-- `NewDatabaseView.axaml.cs` — Code-behind for <see cref="NewDatabaseView"/>. (~83 tok)
-- `SectionListView.axaml` (~19617 tok)
-- `ShareView.axaml` (~614 tok)
-- `ShareView.axaml.cs` — Code-behind for <see cref="ShareView"/>. (~78 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
-- `StartupWizardWindow.axaml.cs` — The startup wizard window. Shown on first run (when IsInitialSetupComplete is false). The window set (~514 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 

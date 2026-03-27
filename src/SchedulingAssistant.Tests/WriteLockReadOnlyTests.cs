@@ -42,7 +42,7 @@ namespace SchedulingAssistant.Tests;
 ///   <item>CourseListViewModel — Add, Edit, Delete, AddSubject, EditSubject, DeleteSubject</item>
 ///   <item>InstructorListViewModel — Add, Edit, Delete</item>
 ///   <item>RoomListViewModel — Add, Edit, Delete, MoveUp, MoveDown</item>
-///   <item>SectionPropertyListViewModel — Add, Edit, Delete, MoveUp, MoveDown</item>
+///   <item>SchedulingEnvironmentListViewModel — Add, Edit, Delete, MoveUp, MoveDown</item>
 /// </list>
 ///
 /// <para>
@@ -76,7 +76,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly SemesterRepository            _semesterRepo;
     private readonly BlockPatternRepository        _blockPatternRepo;
     private readonly SectionPrefixRepository       _prefixRepo;
-    private readonly SectionPropertyRepository     _propertyRepo;
+    private readonly SchedulingEnvironmentRepository     _propertyRepo;
     private readonly CampusRepository              _campusRepo;
     private readonly AcademicYearRepository        _ayRepo;
     private readonly AcademicUnitRepository        _academicUnitRepo;
@@ -115,7 +115,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _semesterRepo    = new SemesterRepository(_db);
         _blockPatternRepo = new BlockPatternRepository(_db);
         _prefixRepo      = new SectionPrefixRepository(_db);
-        _propertyRepo    = new SectionPropertyRepository(_db);
+        _propertyRepo    = new SchedulingEnvironmentRepository(_db);
         _campusRepo      = new CampusRepository(_db);
         _ayRepo          = new AcademicYearRepository(_db);
         _academicUnitRepo = new AcademicUnitRepository(_db);
@@ -176,11 +176,11 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         new(_roomRepo, _campusRepo, _sectionRepo, CreateSectionListVm(), _db, _dialog, _lock);
 
     /// <summary>
-    /// Creates a <see cref="SectionPropertyListViewModel"/> for the "sectionType"
+    /// Creates a <see cref="SchedulingEnvironmentListViewModel"/> for the "sectionType"
     /// property type. The guard code is shared across all types so one instance is
     /// sufficient to prove the lock is checked.
     /// </summary>
-    private SectionPropertyListViewModel CreateSectionPropertyVm() =>
+    private SchedulingEnvironmentListViewModel CreateSchedulingEnvironmentVm() =>
         new("sectionType", "Section Type", _propertyRepo, _sectionRepo, _courseRepo,
             _instructorRepo, _db, CreateSectionListVm(), _dialog, _lock);
 
@@ -553,44 +553,44 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Group 15 — SectionPropertyListViewModel
+    // Group 15 — SchedulingEnvironmentListViewModel
     // Covers all property types (section type, meeting type, tag, campus, etc.);
     // the lock guard is shared so one type representative is sufficient.
     // MoveUp/MoveDown are also blocked in reader mode.
     // ═════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void SectionProperty_AddCommand_CanExecuteIsFalseInReaderMode()
+    public void SchedulingEnvironment_AddCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = CreateSectionPropertyVm();
+        var vm = CreateSchedulingEnvironmentVm();
         Assert.False(vm.AddCommand.CanExecute(null));
     }
 
     [Fact]
-    public void SectionProperty_EditCommand_CanExecuteIsFalseInReaderMode()
+    public void SchedulingEnvironment_EditCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = CreateSectionPropertyVm();
+        var vm = CreateSchedulingEnvironmentVm();
         Assert.False(vm.EditCommand.CanExecute(null));
     }
 
     [Fact]
-    public void SectionProperty_DeleteCommand_CanExecuteIsFalseInReaderMode()
+    public void SchedulingEnvironment_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = CreateSectionPropertyVm();
+        var vm = CreateSchedulingEnvironmentVm();
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 
     [Fact]
-    public void SectionProperty_MoveUpCommand_CanExecuteIsFalseInReaderMode()
+    public void SchedulingEnvironment_MoveUpCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = CreateSectionPropertyVm();
+        var vm = CreateSchedulingEnvironmentVm();
         Assert.False(vm.MoveUpCommand.CanExecute(null));
     }
 
     [Fact]
-    public void SectionProperty_MoveDownCommand_CanExecuteIsFalseInReaderMode()
+    public void SchedulingEnvironment_MoveDownCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = CreateSectionPropertyVm();
+        var vm = CreateSchedulingEnvironmentVm();
         Assert.False(vm.MoveDownCommand.CanExecute(null));
     }
 }

@@ -4,13 +4,13 @@
         ══════════════════════════════════════════════════════════════════
         Application Colour Palette
         Change values here to retheme the entire application.
-
+        
         Design intent (modern SaaS / academic):
-          • Neutral light background (#F7F9FC family) — not pure white or gray
-          • Dark navy-gray text (#1A2433) — not pure black
-          • One calm accent: indigo-blue (#4A6FA5)
-          • Soft tinted tile fills — low saturation, strong text contrast
-          • Muted semester banner colors — still distinguishable, not garish
+        • Neutral light background (#F7F9FC family) — not pure white or gray
+        • Dark navy-gray text (#1A2433) — not pure black
+        • One calm accent: indigo-blue (#4A6FA5)
+        • Soft tinted tile fills — low saturation, strong text contrast
+        • Muted semester banner colors — still distinguishable, not garish
         ══════════════════════════════════════════════════════════════════
     -->
 
@@ -121,8 +121,10 @@
     <SolidColorBrush x:Key="FlyoutHeaderBorder" Color="#DDE6F0" />
     <SolidColorBrush x:Key="FlyoutShadow" Color="#50000000" />
 
-    <!--  ── Semester banners (Section List group headers)  ─────────────────
-          Muted, earthy tones — still distinguishable but not jarring.        -->
+    <!--
+        ── Semester banners (Section List group headers)  ─────────────────
+        Muted, earthy tones — still distinguishable but not jarring.
+    -->
     <SolidColorBrush x:Key="FallBackground" Color="#B06A3A" />
     <SolidColorBrush x:Key="FallBorder" Color="#B06A3A" />
     <SolidColorBrush x:Key="WinterBackground" Color="#607080" />
@@ -136,7 +138,7 @@
 
     <!--  ── General UI structure  ─────────────────────────────────────────  -->
     <!--  Thin separator rules inside the menu bar and chrome areas  -->
-    <SolidColorBrush x:Key="SeparatorLine" Color="#DDE6F0" />
+    <SolidColorBrush x:Key="SeparatorLine" Color="Black" />
     <SolidColorBrush x:Key="GridSplitterColor" Color="#E0E8F0" />
     <!--  Subdued border for dialogs, secondary containers  -->
     <SolidColorBrush x:Key="SubduedBorder" Color="#C8D5E4" />
@@ -147,8 +149,10 @@
     <!--  Soft panel shadow  -->
     <BoxShadows x:Key="PanelBoxShadow">0 1 6 0 #1A000000</BoxShadows>
 
-    <!--  ── Wizard: section-prefix campus badge colors  ────────────────────
-          Two distinct tints for campus A vs campus B prefix badges.           -->
+    <!--
+        ── Wizard: section-prefix campus badge colors  ────────────────────
+        Two distinct tints for campus A vs campus B prefix badges.
+    -->
     <SolidColorBrush x:Key="PrefixCampusABackground" Color="#DBEAFE" />
     <SolidColorBrush x:Key="PrefixCampusBBackground" Color="#D1FAE5" />
 

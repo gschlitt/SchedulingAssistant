@@ -37,7 +37,7 @@ public class Phase2Importer
     // ── Repositories ──────────────────────────────────────────────────────────
 
     private readonly IDatabaseContext            _db;
-    private readonly ISectionPropertyRepository _propRepo;
+    private readonly ISchedulingEnvironmentRepository _propRepo;
     private readonly ICampusRepository          _campusRepo;
     private readonly IInstructorRepository      _instructorRepo;
     private readonly IRoomRepository            _roomRepo;
@@ -139,7 +139,7 @@ public class Phase2Importer
     public Phase2Importer(IDatabaseContext db)
     {
         _db             = db;
-        _propRepo       = new SectionPropertyRepository(db);
+        _propRepo       = new SchedulingEnvironmentRepository(db);
         _campusRepo     = new CampusRepository(db);
         _instructorRepo = new InstructorRepository(db);
         _roomRepo       = new RoomRepository(db);
@@ -204,11 +204,11 @@ public class Phase2Importer
             var (refMap, root) = BuildRefMap(unitObj);
 
             ImportStaffTypes(root, refMap, dryRun);
-            ImportNamedPropertyValues(root, refMap, "UnitTags",     SectionPropertyTypes.Tag,         _tagByName,         dryRun);
-            ImportNamedPropertyValues(root, refMap, "SectionTypes", SectionPropertyTypes.SectionType, _sectionTypeByName, dryRun);
-            ImportNamedPropertyValues(root, refMap, "MeetingTypes", SectionPropertyTypes.MeetingType, _meetingTypeByName, dryRun);
-            ImportNamedPropertyValues(root, refMap, "Resources",    SectionPropertyTypes.Resource,    _resourceByName,    dryRun);
-            ImportNamedPropertyValues(root, refMap, "Reserves",     SectionPropertyTypes.Reserve,     _reserveByName,     dryRun);
+            ImportNamedPropertyValues(root, refMap, "UnitTags",     SchedulingEnvironmentTypes.Tag,         _tagByName,         dryRun);
+            ImportNamedPropertyValues(root, refMap, "SectionTypes", SchedulingEnvironmentTypes.SectionType, _sectionTypeByName, dryRun);
+            ImportNamedPropertyValues(root, refMap, "MeetingTypes", SchedulingEnvironmentTypes.MeetingType, _meetingTypeByName, dryRun);
+            ImportNamedPropertyValues(root, refMap, "Resources",    SchedulingEnvironmentTypes.Resource,    _resourceByName,    dryRun);
+            ImportNamedPropertyValues(root, refMap, "Reserves",     SchedulingEnvironmentTypes.Reserve,     _reserveByName,     dryRun);
             ImportRoomsFromUnit(root, refMap, dryRun);
             ImportSubjectsAndCoursesFromUnit(root, refMap, dryRun);
             ImportInstructorsFromUnit(root, refMap, dryRun);
@@ -396,12 +396,12 @@ public class Phase2Importer
     /// </summary>
     private void LoadExistingData()
     {
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.Tag))         _tagByName[v.Name]         = v.Id;
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.StaffType))   _staffTypeByName[v.Name]   = v.Id;
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.SectionType)) _sectionTypeByName[v.Name] = v.Id;
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.MeetingType)) _meetingTypeByName[v.Name] = v.Id;
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.Resource))    _resourceByName[v.Name]    = v.Id;
-        foreach (var v in _propRepo.GetAll(SectionPropertyTypes.Reserve))     _reserveByName[v.Name]     = v.Id;
+        foreach (var v in _propRepo.GetAll(SchedulingEnvironmentTypes.Tag))         _tagByName[v.Name]         = v.Id;
+        foreach (var v in _propRepo.GetAll(SchedulingEnvironmentTypes.StaffType))   _staffTypeByName[v.Name]   = v.Id;
+        foreach (var v in _propRepo.GetAll(SchedulingEnvironmentTypes.SectionType)) _sectionTypeByName[v.Name] = v.Id;
+        foreach (var v in _propRepo.GetAll(SchedulingEnvironmentTypes.MeetingType)) _meetingTypeByName[v.Name] = v.Id;
+        foreach (var v in _propRepo.GetAll(SchedulingEnvironmentTypes.Resource))    _resourceByName[v.Name]    = v.Id;
+        foreach (var v in _propRepo.GetAll(SchedulingEnvironmentTypes.Reserve))     _reserveByName[v.Name]     = v.Id;
         foreach (var c in _campusRepo.GetAll())                               _campusByName[c.Name]      = c.Id;
 
         foreach (var r in _roomRepo.GetAll())
@@ -478,7 +478,7 @@ public class Phase2Importer
                 : (item as JObject)?["Name"]?.Value<string>();
 
             if (string.IsNullOrWhiteSpace(name)) continue;
-            EnsurePropertyValue(SectionPropertyTypes.StaffType, name, _staffTypeByName, dryRun);
+            EnsurePropertyValue(SchedulingEnvironmentTypes.StaffType, name, _staffTypeByName, dryRun);
         }
     }
 
@@ -492,7 +492,7 @@ public class Phase2Importer
     ///   Property name on the unit that holds the array (e.g. "UnitTags").
     /// </param>
     /// <param name="propertyType">
-    ///   SectionPropertyTypes constant (e.g. <see cref="SectionPropertyTypes.Tag"/>).
+    ///   SchedulingEnvironmentTypes constant (e.g. <see cref="SchedulingEnvironmentTypes.Tag"/>).
     /// </param>
     /// <param name="cache">The name→id dict to check / update.</param>
     /// <param name="dryRun">When true, report only — do not write to DB.</param>
@@ -517,10 +517,10 @@ public class Phase2Importer
     }
 
     /// <summary>
-    /// Inserts a <see cref="SectionPropertyValue"/> if its name is not already
+    /// Inserts a <see cref="SchedulingEnvironmentValue"/> if its name is not already
     /// in <paramref name="cache"/>.  Updates the cache on insert.
     /// </summary>
-    /// <param name="type">SectionPropertyTypes constant.</param>
+    /// <param name="type">SchedulingEnvironmentTypes constant.</param>
     /// <param name="name">The display name to insert.</param>
     /// <param name="cache">The name→id dict to check / update.</param>
     /// <param name="dryRun">When true, build the cache but do not write to DB.</param>
@@ -532,7 +532,7 @@ public class Phase2Importer
     {
         if (cache.ContainsKey(name)) return;
 
-        var value = new SectionPropertyValue { Name = name, SortOrder = cache.Count };
+        var value = new SchedulingEnvironmentValue { Name = name, SortOrder = cache.Count };
         if (!dryRun)
             _propRepo.Insert(type, value);
 
@@ -651,7 +651,7 @@ public class Phase2Importer
                     var tagResolved = Resolve(tagToken, refMap);
                     var tagName     = tagResolved["Name"]?.Value<string>();
                     if (string.IsNullOrWhiteSpace(tagName)) continue;
-                    EnsurePropertyValue(SectionPropertyTypes.Tag, tagName, _tagByName, dryRun);
+                    EnsurePropertyValue(SchedulingEnvironmentTypes.Tag, tagName, _tagByName, dryRun);
                     if (_tagByName.TryGetValue(tagName, out var tid))
                         tagIds.Add(tid);
                 }
@@ -755,7 +755,7 @@ public class Phase2Importer
             string? staffTypeId = null;
             if (!string.IsNullOrWhiteSpace(contract))
             {
-                EnsurePropertyValue(SectionPropertyTypes.StaffType, contract, _staffTypeByName, dryRun);
+                EnsurePropertyValue(SchedulingEnvironmentTypes.StaffType, contract, _staffTypeByName, dryRun);
                 staffTypeId = _staffTypeByName.GetValueOrDefault(contract);
             }
 

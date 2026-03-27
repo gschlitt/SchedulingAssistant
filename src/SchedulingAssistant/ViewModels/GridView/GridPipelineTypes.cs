@@ -44,13 +44,13 @@ internal record GridLookups(
     IReadOnlyDictionary<string, Campus> Campuses,
 
     /// <summary>Section-type property values, keyed by value ID.</summary>
-    IReadOnlyDictionary<string, SectionPropertyValue> SectionTypes,
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue> SectionTypes,
 
     /// <summary>Tag property values, keyed by value ID.</summary>
-    IReadOnlyDictionary<string, SectionPropertyValue> Tags,
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue> Tags,
 
     /// <summary>Meeting-type property values, keyed by value ID.</summary>
-    IReadOnlyDictionary<string, SectionPropertyValue> MeetingTypes,
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue> MeetingTypes,
 
     /// <summary>
     /// Fixed set of course level strings ("0XX" through "5+XX"), keyed by those same

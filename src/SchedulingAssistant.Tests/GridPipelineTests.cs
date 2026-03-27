@@ -114,9 +114,9 @@ public class GridPipelineTests
             Rooms:            new Dictionary<string, Room>(),
             Subjects:         new Dictionary<string, Subject>(),
             Campuses:         new Dictionary<string, Campus>(),
-            SectionTypes:     new Dictionary<string, SectionPropertyValue>(),
-            Tags:             new Dictionary<string, SectionPropertyValue>(),
-            MeetingTypes:     new Dictionary<string, SectionPropertyValue>(),
+            SectionTypes:     new Dictionary<string, SchedulingEnvironmentValue>(),
+            Tags:             new Dictionary<string, SchedulingEnvironmentValue>(),
+            MeetingTypes:     new Dictionary<string, SchedulingEnvironmentValue>(),
             Levels:           new Dictionary<string, string>(),
             SemesterIdToName: semesterIdToName ?? new());
 

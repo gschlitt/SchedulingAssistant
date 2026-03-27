@@ -55,7 +55,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
         int meetingStart,
         IEnumerable<Instructor> instructors,
         IEnumerable<Room> rooms,
-        IEnumerable<SectionPropertyValue> tags)
+        IEnumerable<SchedulingEnvironmentValue> tags)
     {
         _section      = section;
         _meetingDay   = meetingDay;

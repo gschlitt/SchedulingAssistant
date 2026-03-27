@@ -22,7 +22,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly ISectionPrefixRepository _prefixRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
-    private readonly ISectionPropertyRepository _propertyRepo;
+    private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
     private readonly WriteLockService _lockService;
 
@@ -149,7 +149,7 @@ public partial class SectionListViewModel : ViewModelBase
         ISectionPrefixRepository prefixRepo,
         SemesterContext semesterContext,
         SectionStore sectionStore,
-        ISectionPropertyRepository propertyRepo,
+        ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
         IDialogService dialog,
         WriteLockService lockService)
@@ -308,12 +308,12 @@ public partial class SectionListViewModel : ViewModelBase
         var courseLookup      = _courseRepo.GetAll().ToDictionary(c => c.Id);
         var instructorLookup  = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var roomLookup        = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var sectionTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.SectionType).ToDictionary(v => v.Id);
+        var sectionTypeLookup = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).ToDictionary(v => v.Id);
         var campusLookup      = _campusRepo.GetAll().ToDictionary(c => c.Id);
-        var tagLookup         = _propertyRepo.GetAll(SectionPropertyTypes.Tag).ToDictionary(v => v.Id);
-        var resourceLookup    = _propertyRepo.GetAll(SectionPropertyTypes.Resource).ToDictionary(v => v.Id);
-        var reserveLookup     = _propertyRepo.GetAll(SectionPropertyTypes.Reserve).ToDictionary(v => v.Id);
-        var meetingTypeLookup = _propertyRepo.GetAll(SectionPropertyTypes.MeetingType).ToDictionary(v => v.Id);
+        var tagLookup         = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id);
+        var resourceLookup    = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource).ToDictionary(v => v.Id);
+        var reserveLookup     = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve).ToDictionary(v => v.Id);
+        var meetingTypeLookup = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id);
 
         // Snapshot collapsed state across all existing section items so it survives the rebuild
         var collapsedIds = SectionItems
@@ -616,12 +616,12 @@ public partial class SectionListViewModel : ViewModelBase
         List<LegalStartTime>       LegalStartTimes,
         bool                       IncludeSaturday,
         double?                    DefaultBlockLength,
-        List<SectionPropertyValue> SectionTypes,
-        List<SectionPropertyValue> MeetingTypes,
+        List<SchedulingEnvironmentValue> SectionTypes,
+        List<SchedulingEnvironmentValue> MeetingTypes,
         List<Campus> Campuses,
-        List<SectionPropertyValue> AllTags,
-        List<SectionPropertyValue> AllResources,
-        List<SectionPropertyValue> AllReserves);
+        List<SchedulingEnvironmentValue> AllTags,
+        List<SchedulingEnvironmentValue> AllResources,
+        List<SchedulingEnvironmentValue> AllReserves);
 
     /// <summary>
     /// Loads all data needed to open the inline editor and returns it as an
@@ -643,12 +643,12 @@ public partial class SectionListViewModel : ViewModelBase
             LegalStartTimes:    _legalStartTimeRepo.GetAll(ayId),
             IncludeSaturday:    settings.IncludeSaturday,
             DefaultBlockLength: settings.PreferredBlockLength,
-            SectionTypes:       _propertyRepo.GetAll(SectionPropertyTypes.SectionType),
-            MeetingTypes:       _propertyRepo.GetAll(SectionPropertyTypes.MeetingType),
+            SectionTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType),
+            MeetingTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType),
             Campuses:           _campusRepo.GetAll(),
-            AllTags:            _propertyRepo.GetAll(SectionPropertyTypes.Tag),
-            AllResources:       _propertyRepo.GetAll(SectionPropertyTypes.Resource),
-            AllReserves:        _propertyRepo.GetAll(SectionPropertyTypes.Reserve));
+            AllTags:            _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag),
+            AllResources:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource),
+            AllReserves:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve));
     }
 
     /// <summary>

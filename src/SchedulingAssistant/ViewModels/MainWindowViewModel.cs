@@ -328,7 +328,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Scheduling");
 
     [RelayCommand]
-    private void NavigateToSectionProperties() => OpenFlyout<SectionPropertiesViewModel>("Section Properties");
+    private void NavigateToSchedulingEnvironment() => OpenFlyout<SchedulingEnvironmentViewModel>("Scheduling Environment");
 
     [RelayCommand]
     private void NavigateToBlockPatterns() => OpenFlyout<BlockPatternListViewModel>("Block Patterns");

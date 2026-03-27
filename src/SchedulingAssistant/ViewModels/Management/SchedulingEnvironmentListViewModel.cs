@@ -8,9 +8,9 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SectionPropertyListViewModel : ViewModelBase
+public partial class SchedulingEnvironmentListViewModel : ViewModelBase
 {
-    private readonly ISectionPropertyRepository _repo;
+    private readonly ISchedulingEnvironmentRepository _repo;
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
     private readonly IInstructorRepository _instructorRepo;
@@ -34,14 +34,14 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     /// </summary>
     public bool ShowAbbreviation { get; }
 
-    [ObservableProperty] private ObservableCollection<SectionPropertyValue> _items = new();
-    [ObservableProperty] private SectionPropertyValue? _selectedItem;
-    [ObservableProperty] private SectionPropertyEditViewModel? _editVm;
+    [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _items = new();
+    [ObservableProperty] private SchedulingEnvironmentValue? _selectedItem;
+    [ObservableProperty] private SchedulingEnvironmentEditViewModel? _editVm;
 
-    public SectionPropertyListViewModel(
+    public SchedulingEnvironmentListViewModel(
         string propertyType,
         string displayName,
-        ISectionPropertyRepository repo,
+        ISchedulingEnvironmentRepository repo,
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,
         IInstructorRepository instructorRepo,
@@ -67,7 +67,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     }
 
     public void Load() =>
-        Items = new ObservableCollection<SectionPropertyValue>(_repo.GetAll(_type));
+        Items = new ObservableCollection<SchedulingEnvironmentValue>(_repo.GetAll(_type));
 
     /// <summary>
     /// Called when the write lock state changes. Notifies the UI to re-evaluate
@@ -86,7 +86,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     /// <summary>
     /// Re-evaluates the Move Up/Down button states whenever the selection changes.
     /// </summary>
-    partial void OnSelectedItemChanged(SectionPropertyValue? value)
+    partial void OnSelectedItemChanged(SchedulingEnvironmentValue? value)
     {
         MoveUpCommand.NotifyCanExecuteChanged();
         MoveDownCommand.NotifyCanExecuteChanged();
@@ -141,11 +141,11 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     private void Add()
     {
         // New items land at the end of the list.
-        var value = new SectionPropertyValue
+        var value = new SchedulingEnvironmentValue
         {
             SortOrder = Items.Count > 0 ? Items.Max(i => i.SortOrder) + 1 : 0
         };
-        EditVm = new SectionPropertyEditViewModel(value, isNew: true,
+        EditVm = new SchedulingEnvironmentEditViewModel(value, isNew: true,
             onSave: v => { _repo.Insert(_type, v); Load(); EditVm = null; },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(_type, name),
@@ -156,14 +156,14 @@ public partial class SectionPropertyListViewModel : ViewModelBase
     private void Edit()
     {
         if (SelectedItem is null) return;
-        var copy = new SectionPropertyValue
+        var copy = new SchedulingEnvironmentValue
         {
             Id = SelectedItem.Id,
             Name = SelectedItem.Name,
             SectionCodeAbbreviation = SelectedItem.SectionCodeAbbreviation,
             SortOrder = SelectedItem.SortOrder,
         };
-        EditVm = new SectionPropertyEditViewModel(copy, isNew: false,
+        EditVm = new SchedulingEnvironmentEditViewModel(copy, isNew: false,
             onSave: v => { _repo.Update(v); Load(); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(_type, name, excludeId: copy.Id),
@@ -177,9 +177,9 @@ public partial class SectionPropertyListViewModel : ViewModelBase
         var id = SelectedItem.Id;
         var name = SelectedItem.Name;
 
-        var affected = _type == SectionPropertyTypes.StaffType
+        var affected = _type == SchedulingEnvironmentTypes.StaffType
             ? "all instructors that reference it"
-            : _type == SectionPropertyTypes.Tag
+            : _type == SchedulingEnvironmentTypes.Tag
                 ? "all sections and courses that reference it"
                 : "all sections in all semesters that reference it";
 
@@ -195,21 +195,21 @@ public partial class SectionPropertyListViewModel : ViewModelBase
                 var changed = false;
                 switch (_type)
                 {
-                    case SectionPropertyTypes.Tag:
+                    case SchedulingEnvironmentTypes.Tag:
                         changed = section.TagIds.Remove(id);
                         break;
-                    case SectionPropertyTypes.Resource:
+                    case SchedulingEnvironmentTypes.Resource:
                         changed = section.ResourceIds.Remove(id);
                         break;
-                    case SectionPropertyTypes.SectionType:
+                    case SchedulingEnvironmentTypes.SectionType:
                         if (section.SectionTypeId == id) { section.SectionTypeId = null; changed = true; }
                         break;
-                    case SectionPropertyTypes.Reserve:
+                    case SchedulingEnvironmentTypes.Reserve:
                         var before = section.Reserves.Count;
                         section.Reserves.RemoveAll(r => r.ReserveId == id);
                         changed = section.Reserves.Count != before;
                         break;
-                    case SectionPropertyTypes.MeetingType:
+                    case SchedulingEnvironmentTypes.MeetingType:
                         foreach (var sched in section.Schedule.Where(s => s.MeetingTypeId == id))
                         {
                             sched.MeetingTypeId = null;
@@ -220,7 +220,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
                 if (changed) _sectionRepo.Update(section, tx);
             }
 
-            if (_type == SectionPropertyTypes.StaffType)
+            if (_type == SchedulingEnvironmentTypes.StaffType)
             {
                 var instructors = _instructorRepo.GetAll();
                 foreach (var inst in instructors.Where(i => i.StaffTypeId == id))
@@ -231,7 +231,7 @@ public partial class SectionPropertyListViewModel : ViewModelBase
             }
 
             // Tags: also remove the deleted tag from every course that references it.
-            if (_type == SectionPropertyTypes.Tag)
+            if (_type == SchedulingEnvironmentTypes.Tag)
             {
                 var courses = _courseRepo.GetAll();
                 foreach (var course in courses)

@@ -16,6 +16,9 @@ public partial class CampusListViewModel : ViewModelBase
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
+    /// <summary>Label shown in the Scheduling Environment sidebar nav.</summary>
+    public string DisplayName => "Campuses";
+
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
