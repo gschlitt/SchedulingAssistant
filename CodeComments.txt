@@ -31,7 +31,7 @@ Make save/close button larger
 After a new db possibly other times, Academic Unit is default. Setting it does not revise the display 
 in Schedule View. 
 
-On a db new should pick an initial academic year. Otherwise end up with semesters but no year, which is weird.
+
 
 Wizard is duplicating section properties as they end up in the Settings?
 
@@ -49,7 +49,7 @@ What happens if we modify legal start times while a semester is in use?
 
 Sort Section View by tag?
 
-turning off saturday should not affect sections which do have it, only the visibility of saturday.
+
 
 Show notes in closed card?
 

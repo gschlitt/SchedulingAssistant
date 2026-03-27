@@ -1072,6 +1072,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-27T22:31:49.073Z"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-03-27T22:49:11.393Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 8→9 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T22:49:11.393Z"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-03-27T22:49:23.236Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs",
+      "root_cause": "No early return/throw for edge case: trimmed.Length == 0",
+      "fix": "Added guard clause: if (trimmed.Length == 0)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T22:49:23.236Z"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-03-27T22:49:56.820Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T22:49:56.820Z"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-03-27T22:50:02.680Z",
+      "error_message": "Wrong reference: FirstAcademicYearName should be ayName",
+      "file": "src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs",
+      "root_cause": "Used \"FirstAcademicYearName\" instead of \"ayName\"",
+      "fix": "Changed FirstAcademicYearName → ayName",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T22:50:02.680Z"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-03-27T22:50:28.137Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 15→21 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T22:50:28.137Z"
     }
   ]
 }

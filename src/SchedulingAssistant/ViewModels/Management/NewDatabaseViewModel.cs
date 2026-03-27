@@ -5,6 +5,7 @@ using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
+using System.Text.RegularExpressions;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -27,6 +28,9 @@ public partial class NewDatabaseViewModel : ViewModelBase
 {
     private readonly ShareViewModel  _shareVm;         // reuses SnapshotConfig
     private readonly SemesterContext _semesterContext;
+
+    // Matches a bare 4-digit year such as "2024".
+    private static readonly Regex _yearPattern = new(@"^\d{4}$", RegexOptions.Compiled);
 
     // ── Callbacks set by MainWindowViewModel ─────────────────────────────────
 
@@ -108,22 +112,52 @@ public partial class NewDatabaseViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Name of the currently selected academic year, shown when Transfer Configuration is
-    /// checked so the user knows which year's data will be copied.
+    /// Describes the academic year situation shown inside the Transfer Configuration panel.
+    /// When an AY is selected, names it and explains it will be recreated.
+    /// When no AY is selected, prompts the user to enter one.
     /// </summary>
     public string ConfigSourceLabel =>
         _semesterContext.SelectedAcademicYear is { } ay
-            ? $"Configuration source: academic year \"{ay.Name}\""
-            : "No academic year is currently selected — configuration cannot be transferred.";
+            ? $"The academic year \"{ay.Name}\" and its semester configuration will be recreated in the new database."
+            : "No academic year is currently selected. Campuses, section prefixes, and block patterns will still be transferred. Enter the starting academic year for your new database below.";
 
     /// <summary>True when the currently selected academic year is available for transfer.</summary>
     public bool HasConfigSource => _semesterContext.SelectedAcademicYear is not null;
 
     /// <summary>
-    /// True when the user must manually supply a first academic year name — i.e. transfer is
-    /// requested but there is no source AY to copy the name from.
+    /// True when the user must manually supply a starting academic year name — i.e. transfer is
+    /// requested but there is no source AY whose name can be carried over automatically.
     /// </summary>
     public bool ShowFirstAcademicYearField => TransferConfig && !HasConfigSource;
+
+    /// <summary>
+    /// Validation message for <see cref="FirstAcademicYearName"/>.
+    /// Null when the field is empty (no error yet) or when the value is acceptable.
+    /// Mirrors the identical validation logic in <c>Step5AcademicYearViewModel</c>.
+    /// </summary>
+    public string? FirstAcademicYearNameError
+    {
+        get
+        {
+            var trimmed = FirstAcademicYearName.Trim();
+            if (trimmed.Length == 0)
+                return null; // no message while the field is still empty
+
+            // Accept a bare 4-digit year (expands on commit) or the full "YYYY-YYYY+1" form.
+            if (!_yearPattern.IsMatch(trimmed) && !(trimmed.Length == 9 && trimmed[4] == '-'))
+                return "Enter the start year (e.g. 2025) and it will expand automatically.";
+
+            if (trimmed.Length == 9)
+            {
+                if (!int.TryParse(trimmed[..4], out var y1) || !int.TryParse(trimmed[5..], out var y2))
+                    return "Use the format YYYY-YYYY (e.g. 2025-2026).";
+                if (y2 != y1 + 1)
+                    return $"The second year must be {y1 + 1}.";
+            }
+
+            return null;
+        }
+    }
 
     /// <summary>True when all required inputs are valid and the Create button may be clicked.</summary>
     public bool CanCreate
@@ -135,11 +169,11 @@ public partial class NewDatabaseViewModel : ViewModelBase
             if (DbName.Trim().IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return false;
             if (string.IsNullOrWhiteSpace(DbFolder)) return false;
             if (string.IsNullOrWhiteSpace(BackupFolder)) return false;
-            if (TransferConfig)
+            if (TransferConfig && !HasConfigSource)
             {
-                // When there is no source AY, the user must supply a name for the first AY.
-                // When a source AY exists, its name is carried over automatically.
-                if (!HasConfigSource && string.IsNullOrWhiteSpace(FirstAcademicYearName.Trim())) return false;
+                // No source AY — user must supply a valid starting academic year name.
+                if (string.IsNullOrWhiteSpace(FirstAcademicYearName.Trim())) return false;
+                if (FirstAcademicYearNameError is not null) return false;
             }
             return true;
         }
@@ -173,13 +207,36 @@ public partial class NewDatabaseViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanCreate));
         OnPropertyChanged(nameof(ShowFirstAcademicYearField));
     }
-    partial void OnFirstAcademicYearNameChanged(string value) => OnPropertyChanged(nameof(CanCreate));
+    partial void OnFirstAcademicYearNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(CanCreate));
+        OnPropertyChanged(nameof(FirstAcademicYearNameError));
+    }
     partial void OnIsCreatingChanged(bool value)         => OnPropertyChanged(nameof(CanCreate));
 
     public NewDatabaseViewModel(ShareViewModel shareVm, SemesterContext semesterContext)
     {
         _shareVm         = shareVm;
         _semesterContext = semesterContext;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Expands a bare 4-digit start year to the canonical "YYYY-YYYY+1" form.
+    /// Leaves the value unchanged if it is already in the full form or is unrecognised.
+    /// </summary>
+    /// <param name="raw">The raw text entered by the user.</param>
+    /// <returns>The expanded or unchanged name, trimmed of whitespace.</returns>
+    private static string ExpandAyName(string raw)
+    {
+        var trimmed = raw.Trim();
+        if (_yearPattern.IsMatch(trimmed))
+        {
+            var y1 = int.Parse(trimmed);
+            return $"{y1}-{y1 + 1}";
+        }
+        return trimmed;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
@@ -191,6 +248,13 @@ public partial class NewDatabaseViewModel : ViewModelBase
         var path = await PickFolderAsync!("Choose Database Folder");
         if (path is not null) DbFolder = path;
     }
+
+    /// <summary>
+    /// Called when the First Academic Year Name TextBox loses focus.
+    /// Expands a bare 4-digit year entry (e.g. "2025" → "2025-2026") in place.
+    /// </summary>
+    [RelayCommand]
+    private void CommitFirstAcademicYearName() => FirstAcademicYearName = ExpandAyName(FirstAcademicYearName);
 
     /// <summary>Opens a folder-picker to choose the backup location.</summary>
     [RelayCommand]
@@ -229,9 +293,18 @@ public partial class NewDatabaseViewModel : ViewModelBase
         try
         {
             // ── Step 1: snapshot config from current DB ───────────────────────
+            // When a source AY is selected, its name is carried into the new DB.
+            // When no AY is selected (edge case), institution-wide settings are still
+            // transferred; the user-supplied FirstAcademicYearName is used instead.
             TpConfigData? config = null;
-            if (TransferConfig && _semesterContext.SelectedAcademicYear is { } ay)
-                config = _shareVm.SnapshotConfig(ay.Id);
+            string ayName = string.Empty;
+            if (TransferConfig)
+            {
+                var sourceAy  = _semesterContext.SelectedAcademicYear;
+                var sourceAyId = sourceAy?.Id ?? string.Empty;
+                config = _shareVm.SnapshotConfig(sourceAyId);
+                ayName = sourceAy?.Name ?? ExpandAyName(FirstAcademicYearName.Trim());
+            }
 
             // ── Step 2: persist backup folder (SwitchDatabaseAsync will save) ─
             AppSettings.Current.BackupFolderPath = BackupFolder.Trim();
@@ -244,7 +317,7 @@ public partial class NewDatabaseViewModel : ViewModelBase
 
             // ── Step 4: apply config to the new DB ────────────────────────────
             if (config is not null)
-                ApplyConfig(config, FirstAcademicYearName.Trim());
+                ApplyConfig(config, ayName);
         }
         catch (Exception ex)
         {

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T22:32:03.298Z
-> Files: 26 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T22:50:28.111Z
+> Files: 28 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -211,6 +211,7 @@
 - `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1542 tok)
 - `LegalStartTimeEditViewModel.cs` — Class: LegalStartTimeEditViewModel (~1115 tok)
 - `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~2399 tok)
+- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~4719 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10025 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12069 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~7237 tok)
@@ -236,6 +237,7 @@
 ## src/SchedulingAssistant/Views/Management/
 
 - `LegalStartTimeListView.axaml` (~1870 tok)
+- `NewDatabaseView.axaml` (~1971 tok)
 - `SettingsView.axaml` (~1877 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

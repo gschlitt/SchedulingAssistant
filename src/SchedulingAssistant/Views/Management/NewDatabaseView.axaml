@@ -2,6 +2,7 @@
     x:Class="SchedulingAssistant.Views.Management.NewDatabaseView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
     x:DataType="vm:NewDatabaseViewModel">
@@ -19,7 +20,7 @@
 
         <TextBlock
             FontSize="{StaticResource FontSizeNormal}"
-            Text="This facility creates a new database. It does not copy an existing database. You can however choose to copy your current configuration into the new database, so you don't have to set it up from scratch."
+            Text="This facility creates a new database. It does not copy the scheduling data from an existing database. You can however choose to copy your current scheduling configuration (block lengths, start times, block patterns, semester names etc.) into the new database, so you don't have to set it up from scratch."
             TextWrapping="Wrap" />
 
         <!--  Database name  -->
@@ -119,15 +120,21 @@
                         <TextBlock
                             FontSize="{StaticResource FontSizeSmall}"
                             FontWeight="SemiBold"
-                            Text="First academic year name" />
+                            Text="Starting academic year" />
                         <TextBlock
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Semester templates will be created under this academic year."
+                            Text="Type just the start year (e.g. 2025) and it will expand to 2025-2026 automatically when you leave the field."
                             TextWrapping="Wrap" />
                         <TextBox
-                            IsEnabled="{Binding HasConfigSource}"
+                            b:LostFocusCommandBehavior.Command="{Binding CommitFirstAcademicYearNameCommand}"
                             Text="{Binding FirstAcademicYearName}"
-                            Watermark="e.g. 2025-2026" />
+                            Watermark="e.g. 2025  or  2025-2026" />
+                        <TextBlock
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Foreground="#C0392B"
+                            IsVisible="{Binding FirstAcademicYearNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Text="{Binding FirstAcademicYearNameError}"
+                            TextWrapping="Wrap" />
                     </StackPanel>
 
                 </StackPanel>
