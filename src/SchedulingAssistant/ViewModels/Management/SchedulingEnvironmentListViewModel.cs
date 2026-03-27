@@ -29,6 +29,12 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase
     public string DisplayName { get; }
 
     /// <summary>
+    /// Optional explanatory sentence shown below the title, above the list.
+    /// Null or empty means no description row is rendered.
+    /// </summary>
+    public string? Description { get; }
+
+    /// <summary>
     /// When true, the "Section Code Abbreviation" field is shown in the edit form and
     /// as a column in the list. Currently only true for the Campus property type.
     /// </summary>
@@ -49,10 +55,12 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase
         SectionListViewModel sectionListVm,
         IDialogService dialog,
         WriteLockService lockService,
-        bool showAbbreviation = false)
+        bool showAbbreviation = false,
+        string? description = null)
     {
         _type = propertyType;
         DisplayName = displayName;
+        Description = description;
         _repo = repo;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;

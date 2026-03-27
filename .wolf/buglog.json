@@ -1152,6 +1152,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-27T22:50:28.137Z"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-03-27T23:40:51.747Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentViewModel.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 6→12 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T23:40:51.747Z"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-03-27T23:41:00.976Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→16 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T23:41:00.976Z"
     }
   ]
 }

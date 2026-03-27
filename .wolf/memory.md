@@ -3,6 +3,15 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
+## Session: 2026-03-27 — HelpTip tooltip behavior
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Added HelpTip attached property class | Behaviors/HelpTip.cs (new) | Compiles clean |
+| Added HelpTipBackground + HelpTipBorder color resources | AppColors.axaml | Palette extended |
+
+---
+
 ## Session: 2026-03-27 — SchedulingEnvironment branch
 
 | Action | Files | Outcome |
@@ -641,3 +650,23 @@
 | 15:50 | Edited src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml | 7→8 lines | ~98 |
 | 15:50 | Edited src/SchedulingAssistant/Views/Management/NewDatabaseView.axaml | expanded (+6 lines) | ~383 |
 | 15:51 | Session end: 12 writes across 2 files (NewDatabaseViewModel.cs, NewDatabaseView.axaml) | 14 reads | ~20857 tok |
+
+## Session: 2026-03-27 16:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:08 | Created src/SchedulingAssistant/Behaviors/HelpTip.cs | — | ~1783 |
+| 16:08 | Edited src/SchedulingAssistant/AppColors.axaml | expanded (+6 lines) | ~120 |
+| 16:09 | Session end: 2 writes across 2 files (HelpTip.cs, AppColors.axaml) | 14 reads | ~32509 tok |
+| 16:32 | Session end: 2 writes across 2 files (HelpTip.cs, AppColors.axaml) | 16 reads | ~32509 tok |
+| 16:34 | Session end: 2 writes across 2 files (HelpTip.cs, AppColors.axaml) | 16 reads | ~32509 tok |
+| 16:40 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | expanded (+6 lines) | ~135 |
+| 16:40 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | 5→7 lines | ~59 |
+| 16:40 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentViewModel.cs | expanded (+6 lines) | ~517 |
+| 16:41 | Edited src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | expanded (+9 lines) | ~213 |
+| 16:41 | Edited src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | 2→2 lines | ~32 |
+| 16:41 | Edited src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | 2→2 lines | ~36 |
+| 16:42 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |
+| 16:43 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |
+| 16:46 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |
+| 16:51 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |

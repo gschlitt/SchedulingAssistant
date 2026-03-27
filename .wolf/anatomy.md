@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T22:50:28.111Z
-> Files: 28 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T23:41:11.106Z
+> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -169,11 +169,13 @@
 
 ## src/SchedulingAssistant/
 
+- `AppColors.axaml` (~2786 tok)
 - `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
 - `MainWindow.axaml` — Declares applied (~10054 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~1783 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -212,6 +214,8 @@
 - `LegalStartTimeEditViewModel.cs` — Class: LegalStartTimeEditViewModel (~1115 tok)
 - `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~2399 tok)
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~4719 tok)
+- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2858 tok)
+- `SchedulingEnvironmentViewModel.cs` — Class: SchedulingEnvironmentViewModel (~877 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10025 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12069 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~7237 tok)
@@ -238,6 +242,7 @@
 
 - `LegalStartTimeListView.axaml` (~1870 tok)
 - `NewDatabaseView.axaml` (~1971 tok)
+- `SchedulingEnvironmentListView.axaml` — Declares description (~1429 tok)
 - `SettingsView.axaml` (~1877 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

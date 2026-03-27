@@ -5,13 +5,22 @@
              x:DataType="vm:SchedulingEnvironmentListViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,*,Auto" MaxWidth="420">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" MaxWidth="420">
 
         <TextBlock Grid.Row="0" Text="{Binding DisplayName}"
-                   FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+                   FontSize="20" FontWeight="SemiBold" Margin="0,0,0,6" />
+
+        <!-- Per-type description — hidden when Description is null or empty -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding Description}"
+                   Foreground="{StaticResource TextSecondary}"
+                   FontSize="{StaticResource FontSizeNormal}"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,10"
+                   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
         <!-- Edit form (shown when EditVm is not null) -->
-        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+        <ContentControl Grid.Row="2" Content="{Binding EditVm}">
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="{x:Type vm:SchedulingEnvironmentEditViewModel}">
                     <StackPanel Spacing="10" MaxWidth="320" HorizontalAlignment="Left">
@@ -37,7 +46,7 @@
         </ContentControl>
 
         <!-- List + move buttons (shown when EditVm is null) -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto"
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto"
               IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
 
             <DataGrid Grid.Column="0"
@@ -71,7 +80,7 @@
         </Grid>
 
         <!-- Toolbar — IsEnabled gates the entire group in read-only mode -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
                     IsEnabled="{Binding IsWriteEnabled}">
             <Button Content="Add" Command="{Binding AddCommand}" />

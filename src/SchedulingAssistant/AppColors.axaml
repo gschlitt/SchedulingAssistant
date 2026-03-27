@@ -156,6 +156,12 @@
     <SolidColorBrush x:Key="PrefixCampusABackground" Color="#DBEAFE" />
     <SolidColorBrush x:Key="PrefixCampusBBackground" Color="#D1FAE5" />
 
+    <!--  ── Help tooltips  ──────────────────────────────────────────────────  -->
+    <!--  Light indigo-white fill — distinct from the cooler TileFill (#E2EDF8)  -->
+    <SolidColorBrush x:Key="HelpTipBackground" Color="#F2F6FF" />
+    <!--  Muted medium-blue border — pairs with the indigo accent  -->
+    <SolidColorBrush x:Key="HelpTipBorder" Color="#9ABED8" />
+
     <!--  ── Text roles  ───────────────────────────────────────────────────  -->
     <!--  Primary: dark navy-gray — not pure black, but still high contrast  -->
     <SolidColorBrush x:Key="TextPrimary" Color="#1A2433" />
