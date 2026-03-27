@@ -534,3 +534,92 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-03-27 13:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:21 | Edited src/SchedulingAssistant/Services/AppSettings.cs | — | ~0 |
+| 14:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | expanded (+16 lines) | ~292 |
+| 14:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified SectionMeetingViewModel() | ~259 |
+| 14:22 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added 2 condition(s) | ~471 |
+| 14:22 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added 1 condition(s) | ~527 |
+| 14:22 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~55 |
+| 14:22 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~52 |
+| 14:22 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~54 |
+| 14:22 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | settings() → Any() | ~127 |
+| 14:23 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs | 5→3 lines | ~56 |
+| 14:23 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 6→6 lines | ~75 |
+| 14:23 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 2→1 lines | ~6 |
+| 14:23 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs | 2→1 lines | ~9 |
+| 14:24 | Session end: 13 writes across 6 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 6 reads | ~6068 tok |
+| 14:29 | Session end: 13 writes across 6 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 8 reads | ~6068 tok |
+| 14:30 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeEditViewModel.cs | added 2 condition(s) | ~257 |
+| 14:30 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | 4→5 lines | ~52 |
+| 14:30 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | added 2 condition(s) | ~206 |
+| 14:31 | Session end: 16 writes across 8 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 8 reads | ~6620 tok |
+| 14:32 | Edited src/SchedulingAssistant.Tests/WizardStepValidationTests.cs | modified WizardBlockLength_AddTime_RejectsStartTimeBefore0730() | ~583 |
+| 14:32 | Created src/SchedulingAssistant.Tests/LegalStartTimeEditViewModelTests.cs | — | ~972 |
+| 14:33 | Session end: 18 writes across 10 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 9 reads | ~8285 tok |
+| 14:34 | Edited src/SchedulingAssistant/Constants.cs | 9→4 lines | ~35 |
+| 14:35 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified ValidateCustomWeeks() | ~320 |
+| 14:35 | Session end: 20 writes across 11 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 10 reads | ~15862 tok |
+| 14:37 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→3 lines | ~67 |
+| 14:37 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→2 lines | ~51 |
+| 14:37 | Session end: 22 writes across 12 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 11 reads | ~15989 tok |
+| 14:50 | Edited src/SchedulingAssistant/Views/Management/SettingsView.axaml | removed 14 lines | ~22 |
+| 14:50 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 6→1 lines | ~22 |
+| 14:50 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 4→3 lines | ~43 |
+| 14:51 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | reduced (-8 lines) | ~45 |
+| 14:51 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 5→5 lines | ~69 |
+| 14:52 | Session end: 27 writes across 14 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 14 reads | ~16203 tok |
+| 14:52 | Edited src/SchedulingAssistant/MainWindow.axaml | "Backup &amp; Settings" → "Backup" | ~4 |
+| 14:52 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | "Settings" → "Backup" | ~9 |
+| 14:52 | Session end: 29 writes across 16 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 16 reads | ~16217 tok |
+| 15:07 | Session end: 29 writes across 16 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 16 reads | ~16217 tok |
+| 15:09 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs | 4→5 lines | ~50 |
+| 15:09 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs | removed 9 lines | ~15 |
+| 15:09 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs | added 1 condition(s) | ~128 |
+| 15:10 | Session end: 32 writes across 16 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 16 reads | ~16415 tok |
+| 15:13 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 5→7 lines | ~98 |
+| 15:13 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | modified LegalStartTimeListViewModel() | ~180 |
+| 15:13 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 5→10 lines | ~104 |
+| 15:14 | Session end: 35 writes across 17 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, ScheduleGridViewModel.cs, CommitmentEditViewModel.cs) | 17 reads | ~16824 tok |
+
+## Session: 2026-03-27 15:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:23 | Edited src/SchedulingAssistant/Services/AppSettings.cs | 1→2 lines | ~29 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 21→23 lines | ~390 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added 1 condition(s) | ~55 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~36 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~68 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→4 lines | ~47 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~36 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | inline fix | ~46 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~56 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~58 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→3 lines | ~42 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→3 lines | ~47 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→2 lines | ~36 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | added 1 condition(s) | ~115 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternEditViewModel.cs | added 1 condition(s) | ~251 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 12→13 lines | ~311 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 2→3 lines | ~40 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | modified BlockPatternSlotViewModel() | ~124 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 5→6 lines | ~47 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs | added 1 condition(s) | ~58 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs | 13→14 lines | ~98 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | added 1 condition(s) | ~444 |
+| 15:25 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 2→4 lines | ~60 |
+| 15:26 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | 9→9 lines | ~152 |
+| 15:26 | Session end: 24 writes across 11 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, SectionListViewModel.cs, ScheduleGridViewModel.cs) | 9 reads | ~38550 tok |
+| 15:29 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | modified Step5LegalStartTimesViewModel() | ~358 |
+| 15:30 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml | expanded (+12 lines) | ~512 |
+| 15:30 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 8→12 lines | ~176 |
+| 15:31 | Edited src/SchedulingAssistant/Models/TpConfigData.cs | expanded (+6 lines) | ~108 |
+| 15:31 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | 8→12 lines | ~117 |
+| 15:31 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified if() | ~153 |
+| 15:32 | Edited src/SchedulingAssistant/Models/TpConfigData.cs | 2→2 lines | ~27 |
+| 15:32 | Session end: 31 writes across 16 files (AppSettings.cs, SectionMeetingViewModel.cs, SectionEditViewModel.cs, SectionListViewModel.cs, ScheduleGridViewModel.cs) | 15 reads | ~48221 tok |

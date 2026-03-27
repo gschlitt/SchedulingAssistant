@@ -22,6 +22,12 @@ public class TpConfigData
 
     /// <summary>Day-pattern definitions (e.g. MWF, TR).</summary>
     public List<TpConfigBlockPattern> BlockPatterns { get; set; } = [];
+
+    /// <summary>Whether Saturday is available as a scheduling day.</summary>
+    public bool IncludeSaturday { get; set; } = false;
+
+    /// <summary>Whether Sunday is available as a scheduling day.</summary>
+    public bool IncludeSunday { get; set; } = false;
 }
 
 /// <summary>A block length entry with its legal start times.</summary>
@@ -47,7 +53,7 @@ public class TpConfigBlockPattern
     /// <summary>User-facing label (e.g. "MWF").</summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Day numbers (1=Mon … 6=Sat).</summary>
+    /// <summary>Day numbers (1=Mon … 7=Sun).</summary>
     public List<int> Days { get; set; } = [];
 }
 

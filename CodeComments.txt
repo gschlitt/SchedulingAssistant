@@ -7,6 +7,7 @@ Filter selection border in Section View should be a a different color than manua
 
 Flow Check:
 Brand new db, no .tpconfig. Check all configs migrate properly. 
+Are the backups being configured properly? Check all paths.
 
 -validate database filename. Accepts blanks right now. Validate to Windows standards?
 -BlockPatternView is very reptitive! Extract to a control.
@@ -15,7 +16,10 @@ Block patterns and campus not coming through to the db?
 
 
 
+
 Agenda.
+
+UI design --> strengthen keyboard interaction
 
 Hover over dbnames (filenames) shows full path
 

@@ -1,12 +1,292 @@
 {
-  "session_id": "session-2026-03-27-1329",
-  "started": "2026-03-27T20:29:10.270Z",
-  "files_read": {},
-  "files_written": [],
-  "edit_counts": {},
-  "anatomy_hits": 0,
-  "anatomy_misses": 0,
-  "repeated_reads_warned": 0,
+  "session_id": "session-2026-03-27-1522",
+  "started": "2026-03-27T22:22:50.887Z",
+  "files_read": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs": {
+      "count": 1,
+      "tokens": 2003,
+      "first_read": "2026-03-27T22:22:58.866Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs": {
+      "count": 2,
+      "tokens": 7187,
+      "first_read": "2026-03-27T22:22:59.549Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs": {
+      "count": 1,
+      "tokens": 9959,
+      "first_read": "2026-03-27T22:23:53.337Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:24:24.441Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs": {
+      "count": 1,
+      "tokens": 16567,
+      "first_read": "2026-03-27T22:24:46.387Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternEditViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:24:54.069Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:24:54.706Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:25:35.026Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:25:56.777Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:29:24.466Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs": {
+      "count": 1,
+      "tokens": 2477,
+      "first_read": "2026-03-27T22:29:24.506Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
+      "count": 3,
+      "tokens": 5640,
+      "first_read": "2026-03-27T22:29:39.101Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/TpConfigData.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:31:25.783Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/TpConfigService.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:31:26.075Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-27T22:31:44.491Z"
+    }
+  },
+  "files_written": [
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+      "action": "edit",
+      "tokens": 31,
+      "at": "2026-03-27T22:23:33.335Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "action": "edit",
+      "tokens": 417,
+      "at": "2026-03-27T22:23:45.995Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "action": "edit",
+      "tokens": 59,
+      "at": "2026-03-27T22:23:50.591Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 39,
+      "at": "2026-03-27T22:23:57.697Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 72,
+      "at": "2026-03-27T22:24:01.485Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 51,
+      "at": "2026-03-27T22:24:04.793Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 38,
+      "at": "2026-03-27T22:24:07.782Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 49,
+      "at": "2026-03-27T22:24:13.065Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 60,
+      "at": "2026-03-27T22:24:16.528Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "action": "edit",
+      "tokens": 62,
+      "at": "2026-03-27T22:24:19.885Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "action": "edit",
+      "tokens": 45,
+      "at": "2026-03-27T22:24:28.848Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "action": "edit",
+      "tokens": 51,
+      "at": "2026-03-27T22:24:32.033Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "action": "edit",
+      "tokens": 39,
+      "at": "2026-03-27T22:24:35.093Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "action": "edit",
+      "tokens": 124,
+      "at": "2026-03-27T22:24:51.217Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternEditViewModel.cs",
+      "action": "edit",
+      "tokens": 269,
+      "at": "2026-03-27T22:25:06.722Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs",
+      "action": "edit",
+      "tokens": 334,
+      "at": "2026-03-27T22:25:16.641Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs",
+      "action": "edit",
+      "tokens": 43,
+      "at": "2026-03-27T22:25:20.315Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs",
+      "action": "edit",
+      "tokens": 132,
+      "at": "2026-03-27T22:25:25.091Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs",
+      "action": "edit",
+      "tokens": 50,
+      "at": "2026-03-27T22:25:28.352Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs",
+      "action": "edit",
+      "tokens": 62,
+      "at": "2026-03-27T22:25:32.726Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+      "action": "edit",
+      "tokens": 105,
+      "at": "2026-03-27T22:25:39.689Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs",
+      "action": "edit",
+      "tokens": 475,
+      "at": "2026-03-27T22:25:49.906Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs",
+      "action": "edit",
+      "tokens": 65,
+      "at": "2026-03-27T22:25:53.597Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml",
+      "action": "edit",
+      "tokens": 162,
+      "at": "2026-03-27T22:26:07.301Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs",
+      "action": "edit",
+      "tokens": 383,
+      "at": "2026-03-27T22:29:52.495Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml",
+      "action": "edit",
+      "tokens": 548,
+      "at": "2026-03-27T22:30:03.448Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "action": "edit",
+      "tokens": 189,
+      "at": "2026-03-27T22:30:13.151Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/TpConfigData.cs",
+      "action": "edit",
+      "tokens": 116,
+      "at": "2026-03-27T22:31:41.869Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs",
+      "action": "edit",
+      "tokens": 125,
+      "at": "2026-03-27T22:31:49.069Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "action": "edit",
+      "tokens": 164,
+      "at": "2026-03-27T22:31:58.016Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/TpConfigData.cs",
+      "action": "edit",
+      "tokens": 29,
+      "at": "2026-03-27T22:32:03.321Z"
+    }
+  ],
+  "edit_counts": {
+    "src/SchedulingAssistant/Services/AppSettings.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs": 2,
+    "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs": 7,
+    "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs": 3,
+    "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Management/BlockPatternEditViewModel.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs": 4,
+    "src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs": 2,
+    "src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml": 1,
+    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs": 1,
+    "src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml": 1,
+    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 2,
+    "src/SchedulingAssistant/Models/TpConfigData.cs": 2,
+    "src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs": 1
+  },
+  "anatomy_hits": 5,
+  "anatomy_misses": 10,
+  "repeated_reads_warned": 5,
   "cerebrum_warnings": 0,
-  "stop_count": 0
+  "stop_count": 2
 }

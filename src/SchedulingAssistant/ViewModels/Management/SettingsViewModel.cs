@@ -6,19 +6,14 @@ using SchedulingAssistant.Services;
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// ViewModel for the Settings flyout. Manages general scheduling preferences and
-/// all automated-backup configuration. Backup entries are loaded lazily and refreshed
-/// after every backup via subscription to <see cref="BackupService.BackupCompleted"/>.
+/// ViewModel for the Settings flyout. Manages automated-backup configuration and restore.
+/// Backup entries are loaded lazily and refreshed after every backup via subscription
+/// to <see cref="BackupService.BackupCompleted"/>.
 /// </summary>
 public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly BackupService _backupService;
     private readonly IDialogService _dialogService;
-
-    // ── General settings ─────────────────────────────────────────────────────
-
-    [ObservableProperty]
-    private bool _includeSaturday;
 
     // ── Backup settings ──────────────────────────────────────────────────────
 
@@ -68,7 +63,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         // Initialise fields from persisted settings.
         var s = AppSettings.Current;
-        _includeSaturday      = s.IncludeSaturday;
         _backupFolderPath     = s.BackupFolderPath ?? string.Empty;
         _backupIntervalMinutes = s.BackupIntervalMinutes;
         _maxBackupCount       = s.MaxBackupCount;
@@ -83,14 +77,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     // ── Change handlers (auto-save on every change) ──────────────────────────
-
-    /// <summary>Persists the Include Saturday flag immediately when toggled.</summary>
-    partial void OnIncludeSaturdayChanged(bool value)
-    {
-        var s = AppSettings.Current;
-        s.IncludeSaturday = value;
-        s.Save();
-    }
 
     /// <summary>Persists the backup folder path immediately when changed.</summary>
     partial void OnBackupFolderPathChanged(string value)

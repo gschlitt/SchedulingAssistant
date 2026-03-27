@@ -899,17 +899,22 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IReadOnlyList<SemesterDisplay> semesters,
         IReadOnlyList<GridBlock> allBlocks)
     {
-        // Grid time range from settings (defaults: 08:30–22:00).
-        int firstRow = AppSettings.Current.GridStartMinutes;
-        int lastRow  = AppSettings.Current.GridEndMinutes;
+        // Grid end is always 22:00. Grid start is 07:30 when any block starts before 08:00
+        // (to accommodate early meetings), otherwise 08:00 to avoid wasting vertical space.
+        const int earlyStart   = 7 * 60 + 30;  // 450 — 07:30
+        const int defaultStart = 8 * 60;        // 480 — 08:00
+        const int lastRow      = 22 * 60;       // 1320 — 22:00
 
-        var includeSaturday = AppSettings.Current.IncludeSaturday;
+        int firstRow = allBlocks.Any(b => b.StartMinutes < defaultStart) ? earlyStart : defaultStart;
+
+        var settings = AppSettings.Current;
         var dayNumbers = new List<int> { 1, 2, 3, 4, 5 };
-        if (includeSaturday) dayNumbers.Add(6);
+        if (settings.IncludeSaturday) dayNumbers.Add(6);
+        if (settings.IncludeSunday)   dayNumbers.Add(7);
         var dayNames = new Dictionary<int, string>
         {
             [1] = "Monday", [2] = "Tuesday",  [3] = "Wednesday",
-            [4] = "Thursday", [5] = "Friday", [6] = "Saturday"
+            [4] = "Thursday", [5] = "Friday", [6] = "Saturday", [7] = "Sunday"
         };
 
         // In single-semester mode: one column per day.

@@ -150,13 +150,17 @@ public partial class ShareViewModel : ViewModelBase
             .Select(bp => new TpConfigBlockPattern { Name = bp.Name, Days = bp.Days })
             .ToList();
 
+        var settings = AppSettings.Current;
+
         return new TpConfigData
         {
-            BlockLengths    = blockLengths,
-            SemesterDefs    = semesterDefs,
-            Campuses        = campusNames,
-            SectionPrefixes = sectionPrefixes,
-            BlockPatterns   = blockPatterns
+            BlockLengths     = blockLengths,
+            SemesterDefs     = semesterDefs,
+            Campuses         = campusNames,
+            SectionPrefixes  = sectionPrefixes,
+            BlockPatterns    = blockPatterns,
+            IncludeSaturday  = settings.IncludeSaturday,
+            IncludeSunday    = settings.IncludeSunday
         };
     }
 

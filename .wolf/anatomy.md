@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T20:09:01.450Z
-> Files: 2 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T22:32:03.298Z
+> Files: 26 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -164,10 +164,13 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `AssemblyInfo.cs` — Class: AssemblyInfo (~91 tok)
+- `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~972 tok)
+- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5672 tok)
 
 ## src/SchedulingAssistant/
 
+- `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
+- `MainWindow.axaml` — Declares applied (~10054 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -186,37 +189,61 @@
 
 ## src/SchedulingAssistant/Models/
 
+- `TpConfigData.cs` — Portable configuration file (.tpconfig) written to the database folder after first-run setup. Contai (~715 tok)
 
 ## src/SchedulingAssistant/Services/
 
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2017 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5483 tok)
+
+## src/SchedulingAssistant/ViewModels/GridView/
+
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2440 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~16583 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~2306 tok)
+- `BlockPatternEditViewModel.cs` — Class: BlockPatternEditViewModel (~615 tok)
+- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1820 tok)
+- `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1542 tok)
+- `LegalStartTimeEditViewModel.cs` — Class: LegalStartTimeEditViewModel (~1115 tok)
+- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~2399 tok)
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10025 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12069 tok)
+- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~7237 tok)
+- `SettingsViewModel.cs` — ViewModel for the Settings flyout. Manages automated-backup configuration and restore. Backup entrie (~2170 tok)
+- `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1951 tok)
+- `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5460 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5706 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
+- `Step5LegalStartTimesViewModel.cs` — An editable start time entry within a block length row. Stored in HHMM military format (e.g. "0800" (~2566 tok)
 
 ## src/SchedulingAssistant/Views/
 
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11447 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `LegalStartTimeListView.axaml` (~1870 tok)
+- `SettingsView.axaml` (~1877 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 
+- `Step5LegalStartTimesView.axaml` — Declares durations (~2328 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

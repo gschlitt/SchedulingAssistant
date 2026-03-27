@@ -78,6 +78,16 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// </summary>
     public ObservableCollection<string> AvailableBlockLengthStrings { get; } = new();
 
+    // ── Time bound constants ──────────────────────────────────────────────────
+
+    /// <summary>Absolute earliest a meeting may start: 07:30 (450 min from midnight).</summary>
+    public const int MinStartMinutes = 7 * 60 + 30;   // 450
+
+    /// <summary>Absolute latest a meeting may end: 22:00 (1320 min from midnight).</summary>
+    public const int MaxEndMinutes   = 22 * 60;        // 1320
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
 
     /// <summary>
@@ -87,8 +97,15 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// </summary>
     private readonly double? _defaultBlockLength;
 
+    /// <summary>
+    /// Optional callback invoked when a value is clamped to a hard bound.
+    /// Receives the message to show the user (e.g. in a popup dialog).
+    /// </summary>
+    private readonly Func<string, Task>? _onWarning;
+
     /// <param name="legalStartTimes">Academic-year legal start times — used for both the start-time suggestion list and the reverse block-length lookup.</param>
     /// <param name="includeSaturday">Whether Saturday should appear as a day option.</param>
+    /// <param name="includeSunday">Whether Sunday should appear as a day option.</param>
     /// <param name="meetingTypes">Available meeting type property values.</param>
     /// <param name="rooms">Available rooms for selection.</param>
     /// <param name="existing">If non-null, the form is populated from this existing schedule entry.</param>
@@ -96,16 +113,23 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// Preferred block length from Settings. After the user commits a start time, the block
     /// length is auto-filled with this value when it is valid for the chosen start time.
     /// </param>
+    /// <param name="onWarning">
+    /// Optional callback invoked when a start time or block length is silently clamped to a
+    /// hard bound (07:30 earliest, 22:00 latest end). Receives the message to display.
+    /// </param>
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
+        bool includeSunday,
         IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Room> rooms,
         SectionDaySchedule? existing = null,
-        double? defaultBlockLength = null)
+        double? defaultBlockLength = null,
+        Func<string, Task>? onWarning = null)
     {
-        _legalStartTimes = legalStartTimes;
+        _legalStartTimes    = legalStartTimes;
         _defaultBlockLength = defaultBlockLength;
+        _onWarning          = onWarning;
 
         // Build the start-time suggestion list from ALL distinct start times across every
         // block-length row, sorted chronologically.
@@ -127,6 +151,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
         };
         if (includeSaturday)
             days.Add(new(6, "Saturday"));
+        if (includeSunday)
+            days.Add(new(7, "Sunday"));
         AvailableDays = new ObservableCollection<DayOption>(days);
 
         // Prepend a "(none)" sentinel so the user can clear the meeting type
@@ -341,7 +367,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // ── Validation ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Validates <see cref="CustomWeeksText"/> against the allowed range 1..<see cref="Constants.NumWeeks"/>.
+    /// Validates <see cref="CustomWeeksText"/> as a comma-separated list of positive integers (≥ 1).
     /// Sets <see cref="CustomWeeksError"/> to a user-facing message on failure, or null on success.
     /// Does nothing when the Custom frequency option is not selected.
     /// </summary>
@@ -361,9 +387,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
         foreach (var token in tokens)
         {
-            if (!int.TryParse(token, out var week) || week < 1 || week > Constants.NumWeeks)
+            if (!int.TryParse(token, out var week) || week < 1)
             {
-                CustomWeeksError = $"Each week must be 1–{Constants.NumWeeks}";
+                CustomWeeksError = "Each week must be a whole number ≥ 1";
                 return;
             }
             if (!seen.Add(week))
@@ -379,18 +405,22 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // ── Commit commands ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// Parses and validates <see cref="StartTimeText"/>, then sets <see cref="SelectedStartTime"/>
-    /// if the value is valid. Called on LostFocus from the Start AutoCompleteBox and when
-    /// the text exactly matches a preset suggestion.
-    /// The time must fall within the configured grid range
-    /// (<see cref="AppSettings.GridStartMinutes"/>–<see cref="AppSettings.GridEndMinutes"/>).
+    /// Parses <see cref="StartTimeText"/> and commits it as <see cref="SelectedStartTime"/>.
+    /// Called on LostFocus from the Start AutoCompleteBox and when the text exactly matches
+    /// a preset suggestion.
+    /// <para>
+    /// Hard bounds: 07:30 (<see cref="MinStartMinutes"/>) to 21:59 (one minute before
+    /// <see cref="MaxEndMinutes"/>). If the entered time is earlier than 07:30 it is clamped
+    /// to 07:30 and the user is warned via <c>onWarning</c>. Times at or past 22:00 are
+    /// rejected as invalid.
+    /// </para>
     /// </summary>
     [RelayCommand]
-    public void CommitStartTime()
+    public async Task CommitStartTime()
     {
         if (string.IsNullOrWhiteSpace(StartTimeText))
         {
-            StartTimeError = null;
+            StartTimeError    = null;
             SelectedStartTime = null;
             return;
         }
@@ -402,31 +432,46 @@ public partial class SectionMeetingViewModel : ViewModelBase
             return;
         }
 
-        int gridStart = AppSettings.Current.GridStartMinutes;
-        int gridEnd   = AppSettings.Current.GridEndMinutes;
-        if (parsed.Value < gridStart || parsed.Value >= gridEnd)
+        int value = parsed.Value;
+
+        // Clamp to the earliest supported start time, warning the user.
+        if (value < MinStartMinutes)
         {
-            StartTimeError =
-                $"Must be between {FormatTime(gridStart)} and {FormatTime(gridEnd - 1)}";
+            if (_onWarning != null)
+                await _onWarning($"0730 is the earliest supported start time. The time has been set to 0730.");
+            value = MinStartMinutes;
+        }
+
+        // Reject times that leave no room for even the shortest meeting.
+        if (value >= MaxEndMinutes)
+        {
+            StartTimeError = $"Must be before {FormatTime(MaxEndMinutes)}";
             return;
         }
 
-        StartTimeError = null;
-        SelectedStartTime = parsed.Value;
+        StartTimeError    = null;
+        SelectedStartTime = value;
+
+        // Update the text box to show the (possibly clamped) committed value.
+        StartTimeText = FormatTime(value);
     }
 
     /// <summary>
-    /// Parses and validates <see cref="BlockLengthText"/>, then sets <see cref="SelectedBlockLength"/>
-    /// if the value is valid. Called on LostFocus from the Length AutoCompleteBox and when
-    /// the text exactly matches a preset suggestion.
-    /// Validates that the meeting ends within the configured grid range.
+    /// Parses <see cref="BlockLengthText"/> and commits it as <see cref="SelectedBlockLength"/>.
+    /// Called on LostFocus from the Length AutoCompleteBox and when the text exactly matches
+    /// a preset suggestion.
+    /// <para>
+    /// If a start time is already set and the requested duration would push the end past
+    /// 22:00 (<see cref="MaxEndMinutes"/>), the block length is silently clamped to whatever
+    /// brings the end exactly to 22:00 and the user is warned via <c>onWarning</c>.
+    /// </para>
     /// </summary>
     [RelayCommand]
-    public void CommitBlockLength()
+    public async Task CommitBlockLength()
     {
         if (string.IsNullOrWhiteSpace(BlockLengthText))
         {
-            BlockLengthError = null;
+            BlockLengthError    = null;
             SelectedBlockLength = null;
             return;
         }
@@ -438,21 +483,28 @@ public partial class SectionMeetingViewModel : ViewModelBase
             return;
         }
 
-        // Validate that the meeting ends within the grid.
+        double hours = parsed.Value;
+
+        // Clamp to the latest permitted end time when a start time is known.
         if (SelectedStartTime.HasValue)
         {
-            int endMinutes = SelectedStartTime.Value + (int)Math.Round(parsed.Value * 60);
-            int gridEnd    = AppSettings.Current.GridEndMinutes;
-            if (endMinutes > gridEnd)
+            int endMinutes = SelectedStartTime.Value + (int)Math.Round(hours * 60);
+            if (endMinutes > MaxEndMinutes)
             {
-                BlockLengthError =
-                    $"Meeting would end after {FormatTime(gridEnd)}";
-                return;
+                double maxHours = (MaxEndMinutes - SelectedStartTime.Value) / 60.0;
+                if (_onWarning != null)
+                    await _onWarning(
+                        $"That duration would end after 2200, which is the latest supported end time. " +
+                        $"The length has been set to {FormatBlockLength(maxHours)} so the meeting ends at 2200.");
+                hours = maxHours;
             }
         }
 
-        BlockLengthError = null;
-        SelectedBlockLength = parsed.Value;
+        BlockLengthError    = null;
+        SelectedBlockLength = hours;
+
+        // Update the text box to show the (possibly clamped) committed value.
+        BlockLengthText = FormatBlockLength(hours);
     }
 
     // ── Block-length refresh (reverse lookup) ─────────────────────────────────

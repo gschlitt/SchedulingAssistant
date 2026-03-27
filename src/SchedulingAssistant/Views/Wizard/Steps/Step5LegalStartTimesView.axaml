@@ -147,5 +147,17 @@
             </StackPanel>
         </Border>
 
+        <!--  Weekend day availability  -->
+        <StackPanel Spacing="6">
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Weekend days" />
+            <CheckBox Content="Include Saturday as an available scheduling day"
+                      IsChecked="{Binding IncludeSaturday}" />
+            <CheckBox Content="Include Sunday as an available scheduling day"
+                      IsChecked="{Binding IncludeSunday}" />
+        </StackPanel>
+
     </StackPanel>
 </UserControl>

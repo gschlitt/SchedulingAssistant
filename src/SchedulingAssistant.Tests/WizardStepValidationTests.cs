@@ -432,6 +432,57 @@ public class WizardStepValidationTests
         Assert.Equal(expected, result);
     }
 
+    // ── Time bound checks (0730 earliest, 2200 latest end) ───────────────────
+
+    [Theory]
+    [InlineData("0000")]   // midnight
+    [InlineData("0600")]   // well before 0730
+    [InlineData("0729")]   // one minute before the hard lower bound
+    public void WizardBlockLength_AddTime_RejectsStartTimeBefore0730(string hhmm)
+    {
+        var entry = new WizardBlockLengthEntry(2.0, "2 hours", []);
+        entry.NewTimeInput = hhmm;
+        entry.AddTimeCommand.Execute(null);
+        Assert.NotNull(entry.AddTimeError);
+        Assert.Empty(entry.StartTimes);
+    }
+
+    [Fact]
+    public void WizardBlockLength_AddTime_Accepts0730_AsEarliestValidStart()
+    {
+        var entry = new WizardBlockLengthEntry(2.0, "2 hours", []);
+        entry.NewTimeInput = "0730";
+        entry.AddTimeCommand.Execute(null);
+        Assert.Null(entry.AddTimeError);
+        Assert.Single(entry.StartTimes);
+    }
+
+    [Theory]
+    [InlineData("1900", 4.0)]   // 1900 + 4h = 2300 — over by 1h
+    [InlineData("2100", 2.0)]   // 2100 + 2h = 2300 — over by 1h
+    [InlineData("2001", 2.0)]   // 2001 + 2h = 2201 — just over
+    public void WizardBlockLength_AddTime_RejectsStartTimeThatExceedsMaxEnd(string hhmm, double blockHours)
+    {
+        var entry = new WizardBlockLengthEntry(blockHours, $"{blockHours} hours", []);
+        entry.NewTimeInput = hhmm;
+        entry.AddTimeCommand.Execute(null);
+        Assert.NotNull(entry.AddTimeError);
+        Assert.Empty(entry.StartTimes);
+    }
+
+    [Theory]
+    [InlineData("1800", 4.0)]   // 1800 + 4h = 2200 — exactly at the boundary
+    [InlineData("2000", 2.0)]   // 2000 + 2h = 2200 — exactly at the boundary
+    [InlineData("1930", 0.5)]   // 1930 + 0.5h = 2000 — well within bounds
+    public void WizardBlockLength_AddTime_AcceptsStartTimeThatEndsExactlyAt2200OrEarlier(string hhmm, double blockHours)
+    {
+        var entry = new WizardBlockLengthEntry(blockHours, $"{blockHours} hours", []);
+        entry.NewTimeInput = hhmm;
+        entry.AddTimeCommand.Execute(null);
+        Assert.Null(entry.AddTimeError);
+        Assert.Single(entry.StartTimes);
+    }
+
     [Fact]
     public void WizardBlockLength_AddTime_RejectsDuplicate()
     {

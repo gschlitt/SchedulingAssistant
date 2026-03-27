@@ -23,15 +23,7 @@ public partial class CommitmentEditViewModel : ViewModelBase
     [ObservableProperty] private int _selectedEndMinutes;
     [ObservableProperty] private string? _validationError;
 
-    public IReadOnlyList<DayOption> DayOptions { get; } = new[]
-    {
-        new DayOption(1, "Monday"),
-        new DayOption(2, "Tuesday"),
-        new DayOption(3, "Wednesday"),
-        new DayOption(4, "Thursday"),
-        new DayOption(5, "Friday"),
-        new DayOption(6, "Saturday")
-    };
+    public IReadOnlyList<DayOption> DayOptions { get; }
 
     public IReadOnlyList<TimeOption> AllTimeOptions { get; } = BuildTimeOptions();
 
@@ -46,6 +38,20 @@ public partial class CommitmentEditViewModel : ViewModelBase
         _onCancel = onCancel;
         _onSave = onSave;
         _originalCommitment = commitment;
+
+        var days = new List<DayOption>
+        {
+            new(1, "Monday"),
+            new(2, "Tuesday"),
+            new(3, "Wednesday"),
+            new(4, "Thursday"),
+            new(5, "Friday"),
+        };
+        if (AppSettings.Current.IncludeSaturday)
+            days.Add(new(6, "Saturday"));
+        if (AppSettings.Current.IncludeSunday)
+            days.Add(new(7, "Sunday"));
+        DayOptions = days.AsReadOnly();
 
         Name = commitment.Name;
         SelectedDayOption = DayOptions.First(d => d.Day == commitment.Day);
@@ -150,11 +156,9 @@ public partial class CommitmentEditViewModel : ViewModelBase
     private static IReadOnlyList<TimeOption> BuildTimeOptions()
     {
         var options = new List<TimeOption>();
-        // Use the configured grid time range, clamped to start no later than 08:00 so that
-        // common early-morning commitments (e.g. 08:00 office hours) are always available
-        // even if the grid starts at 08:30.
-        int start = Math.Min(AppSettings.Current.GridStartMinutes, 8 * 60);
-        int end   = AppSettings.Current.GridEndMinutes;
+        // Offer times from 07:30 (the earliest supported meeting start) through 22:00.
+        int start = SectionMeetingViewModel.MinStartMinutes;
+        int end   = SectionMeetingViewModel.MaxEndMinutes;
         for (int minutes = start; minutes <= end; minutes += 30)
         {
             var hours = minutes / 60;

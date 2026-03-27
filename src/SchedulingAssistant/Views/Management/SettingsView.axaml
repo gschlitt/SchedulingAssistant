@@ -9,19 +9,6 @@
         <StackPanel Spacing="24" MaxWidth="540" Margin="0,0,16,16" HorizontalAlignment="Left">
 
             <!-- ══════════════════════════════════════════════════════════════
-                 SECTION — Scheduling
-                 ═════════════════════════════════════════════════════════ -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Scheduling" FontWeight="SemiBold" FontSize="14" />
-
-                <CheckBox Content="Include Saturday as an available scheduling day"
-                          IsChecked="{Binding IncludeSaturday}" />
-
-                <TextBlock Text="Changes take effect the next time you open the section editor."
-                           FontSize="11" Foreground="{StaticResource TextDimLabel}" />
-            </StackPanel>
-
-            <!-- ══════════════════════════════════════════════════════════════
                  SECTION — Backup
                  ═════════════════════════════════════════════════════════ -->
             <StackPanel Spacing="10">

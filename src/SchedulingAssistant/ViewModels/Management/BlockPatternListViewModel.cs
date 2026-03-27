@@ -35,17 +35,18 @@ public partial class BlockPatternListViewModel : ViewModelBase
         _lockService.LockStateChanged += OnLockStateChanged;
 
         var includeSaturday = AppSettings.Current.IncludeSaturday;
+        var includeSunday   = AppSettings.Current.IncludeSunday;
 
         var allPatterns = _patternRepository.GetAll();
         var patterns = Enumerable.Range(0, MaxSlots)
             .Select(i => allPatterns.Count > i ? allPatterns[i] : null)
             .ToList();
 
-        Slot1 = new BlockPatternSlotViewModel(1, patterns[0], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot2 = new BlockPatternSlotViewModel(2, patterns[1], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot1 = new BlockPatternSlotViewModel(1, patterns[0], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot2 = new BlockPatternSlotViewModel(2, patterns[1], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
 
     }
 
@@ -89,6 +90,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
     public string DisplayName => Pattern?.Name is { Length: > 0 } n ? n : "(not set)";
 
     private readonly bool _includeSaturday;
+    private readonly bool _includeSunday;
     private readonly IBlockPatternRepository _patternRepository;
     private readonly Action _onEditingChanged;
     private readonly Func<bool> _canWrite;
@@ -97,6 +99,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
         int slotNumber,
         BlockPattern? pattern,
         bool includeSaturday,
+        bool includeSunday,
         IBlockPatternRepository patternRepository,
         Action onEditingChanged,
         Func<bool> canWrite)
@@ -104,6 +107,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
         SlotNumber = slotNumber;
         _pattern = pattern;
         _includeSaturday = includeSaturday;
+        _includeSunday = includeSunday;
         _patternRepository = patternRepository;
         _onEditingChanged = onEditingChanged;
         _canWrite = canWrite;
@@ -130,6 +134,7 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
             SlotNumber,
             Pattern,
             _includeSaturday,
+            _includeSunday,
             onSave: p =>
             {
                 if (Pattern?.Id is { } existingId)

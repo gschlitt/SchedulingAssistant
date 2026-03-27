@@ -240,7 +240,7 @@
                             <MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />
                             <MenuItem Command="{Binding NavigateToSectionPrefixesCommand}" Header="Section Prefixes" />
                             <Separator />
-                            <MenuItem Command="{Binding NavigateToSettingsCommand}" Header="Backup &amp; Settings" />
+                            <MenuItem Command="{Binding NavigateToSettingsCommand}" Header="Backup" />
                         </MenuItem>
                     </Menu>
 

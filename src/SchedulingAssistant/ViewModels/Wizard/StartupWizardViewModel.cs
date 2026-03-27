@@ -487,6 +487,10 @@ public partial class StartupWizardViewModel : ViewModelBase
                 .Select(bl => (bl.Hours, bl.StartTimes))
                 .ToList();
             SchedulingAssistant.Data.SeedData.SeedWizardLegalStartTimes(db.Connection, ay.Id, seedData);
+
+            // Persist weekend-day choices from the imported .tpconfig into settings.
+            AppSettings.Current.IncludeSaturday = importedCfg.IncludeSaturday;
+            AppSettings.Current.IncludeSunday   = importedCfg.IncludeSunday;
         }
         else if (_stepCache.TryGetValue(6, out var s6lstVm) && s6lstVm is Step5LegalStartTimesViewModel s6lst)
         {
@@ -495,6 +499,10 @@ public partial class StartupWizardViewModel : ViewModelBase
                 SchedulingAssistant.Data.SeedData.SeedWizardLegalStartTimes(db.Connection, ay.Id, seedData);
             else
                 SchedulingAssistant.Data.SeedData.SeedDefaultLegalStartTimes(db.Connection, ay.Id);
+
+            // Persist weekend-day choices from the wizard into settings.
+            AppSettings.Current.IncludeSaturday = s6lst.IncludeSaturday;
+            AppSettings.Current.IncludeSunday   = s6lst.IncludeSunday;
         }
         else
         {

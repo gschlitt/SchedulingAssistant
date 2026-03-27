@@ -365,7 +365,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var vm = _services.GetRequiredService<SettingsViewModel>();
         vm.RestoreCallback = RestoreFromBackupAsync;
         FlyoutPage  = vm;
-        FlyoutTitle = "Settings";
+        FlyoutTitle = "Backup";
     }
 
     /// <summary>

@@ -473,7 +473,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Converts a day-of-week integer (1=Monday … 6=Saturday) to its three-letter abbreviation.
+    /// Converts a day-of-week integer (1=Monday … 7=Sunday) to its three-letter abbreviation.
     /// </summary>
     private static string DayName(int day) => day switch
     {
@@ -483,6 +483,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
         4 => "Thu",
         5 => "Fri",
         6 => "Sat",
+        7 => "Sun",
         _ => $"Day{day}"
     };
 

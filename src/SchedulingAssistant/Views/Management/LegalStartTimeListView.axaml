@@ -103,14 +103,14 @@
                       Width="120" />
         </StackPanel>
 
-        <!-- Include Saturday setting -->
-        <StackPanel Grid.Row="4" Spacing="8" Margin="0,24,0,0"
+        <!-- Weekend day inclusion settings -->
+        <StackPanel Grid.Row="4" Spacing="6" Margin="0,24,0,0"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
                     IsEnabled="{Binding IsWriteEnabled}">
             <CheckBox Content="Include Saturday as an available scheduling day"
                       IsChecked="{Binding IncludeSaturday}" />
-            <TextBlock Text="Changes take effect the next time you open the section editor."
-                       FontSize="11" Foreground="{StaticResource TextDimLabel}" />
+            <CheckBox Content="Include Sunday as an available scheduling day"
+                      IsChecked="{Binding IncludeSunday}" />
         </StackPanel>
 
     </Grid>

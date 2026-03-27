@@ -1,5 +1,4 @@
 using Avalonia.Media;
-using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.ViewModels.GridView;
 
@@ -153,11 +152,11 @@ public record GridData(
     int SemesterCount = 1)
 {
     /// <summary>
-    /// A grid with no content, using the current configured time range.
-    /// Returned as a property (not a field) so it always reflects the live AppSettings values.
+    /// A grid with no content. Uses the default 08:00–22:00 range; the real range is
+    /// computed dynamically in <see cref="ScheduleGridViewModel"/> once data is loaded.
     /// </summary>
     public static GridData Empty =>
-        new(AppSettings.Current.GridStartMinutes, AppSettings.Current.GridEndMinutes, []);
+        new(8 * 60, 22 * 60, []);
 
     /// <summary>True when more than one semester's data is displayed side-by-side.</summary>
     public bool IsMultiSemester => SemesterCount > 1;

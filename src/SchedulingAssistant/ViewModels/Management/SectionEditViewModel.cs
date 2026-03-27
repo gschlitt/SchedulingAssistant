@@ -142,6 +142,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly IReadOnlyList<SchedulingEnvironmentValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _rooms;
     private readonly bool _includeSaturday;
+    private readonly bool _includeSunday;
     private readonly double? _defaultBlockLength;
     private readonly IReadOnlyList<Subject> _allSubjects;
 
@@ -344,6 +345,7 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="rooms">All rooms, passed to each meeting editor.</param>
     /// <param name="legalStartTimes">Valid start times for the academic year.</param>
     /// <param name="includeSaturday">Whether Saturday is shown as a meeting day.</param>
+    /// <param name="includeSunday">Whether Sunday is shown as a meeting day.</param>
     /// <param name="sectionTypes">All section-type property values.</param>
     /// <param name="meetingTypes">All meeting-type property values.</param>
     /// <param name="campuses">All campus entities (used to build prefix picker labels).</param>
@@ -367,6 +369,7 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<Room> rooms,
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
+        bool includeSunday,
         IReadOnlyList<SchedulingEnvironmentValue> sectionTypes,
         IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Campus> campuses,
@@ -388,6 +391,7 @@ public partial class SectionEditViewModel : ViewModelBase
         _meetingTypes = meetingTypes;
         _rooms = rooms;
         _includeSaturday = includeSaturday;
+        _includeSunday = includeSunday;
         _defaultBlockLength = defaultBlockLength;
         _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
@@ -506,7 +510,7 @@ public partial class SectionEditViewModel : ViewModelBase
         // Meetings — pass rooms down so each meeting can show its own room picker.
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
-            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, meetingTypes, rooms, entry, defaultBlockLength));
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, entry, defaultBlockLength, _onValidationError));
 
         // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
         _isConstructed = true;
@@ -582,8 +586,8 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void AddMeeting()
     {
-        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms,
-            defaultBlockLength: _defaultBlockLength));
+        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
+            defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError));
     }
 
     [RelayCommand]
@@ -636,8 +640,8 @@ public partial class SectionEditViewModel : ViewModelBase
             // any meeting, the block length is auto-filled when valid. For the lead meeting,
             // the auto-fill fires OnSelectedBlockLengthChanged and the coupling propagates
             // it to all follower meetings just like a manual change would.
-            var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _meetingTypes, _rooms,
-                defaultBlockLength: _defaultBlockLength);
+            var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
+                defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError);
             meeting.SelectedDay = day;
             created.Add(meeting);
             Meetings.Add(meeting);

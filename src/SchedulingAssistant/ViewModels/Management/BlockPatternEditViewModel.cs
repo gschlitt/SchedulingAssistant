@@ -20,6 +20,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
         int slot,
         BlockPattern? existing,
         bool includeSaturday,
+        bool includeSunday,
         Action<BlockPattern> onSave,
         Action onCancel)
     {
@@ -39,6 +40,8 @@ public partial class BlockPatternEditViewModel : ViewModelBase
         };
         if (includeSaturday)
             dayList.Add(new(6, "Sat", existing?.Days.Contains(6) ?? false));
+        if (includeSunday)
+            dayList.Add(new(7, "Sun", existing?.Days.Contains(7) ?? false));
 
         Days = new ObservableCollection<DayCheckViewModel>(dayList);
     }

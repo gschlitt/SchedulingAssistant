@@ -16,6 +16,8 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
+    private readonly SectionListViewModel _sectionListVm;
+    private readonly SectionChangeNotifier _changeNotifier;
     private string? _currentAcademicYearId;
 
     /// <summary>True when the current user holds the write lock; controls whether CRUD and settings controls are enabled.</summary>
@@ -28,7 +30,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private LegalStartTime? _selectedEntry;
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
 
-    // ── Include Saturday setting ──────────────────────────────────────────────
+    // ── Include Saturday / Sunday settings ───────────────────────────────────
 
     private bool _includeSaturday;
 
@@ -48,6 +50,37 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             var settings = AppSettings.Current;
             settings.IncludeSaturday = value;
             settings.Save();
+
+            // Immediately repaint both views so the Saturday column appears/disappears
+            // without requiring the user to close and reopen anything.
+            _sectionListVm.Reload();
+            _changeNotifier.NotifySectionChanged();
+        }
+    }
+
+    private bool _includeSunday;
+
+    /// <summary>
+    /// Whether Sunday is available as a scheduling day.
+    /// Writes through immediately to AppSettings on change.
+    /// </summary>
+    public bool IncludeSunday
+    {
+        get => _includeSunday;
+        set
+        {
+            if (_includeSunday == value) return;
+            _includeSunday = value;
+            OnPropertyChanged();
+
+            var settings = AppSettings.Current;
+            settings.IncludeSunday = value;
+            settings.Save();
+
+            // Immediately repaint both views so the Sunday column appears/disappears
+            // without requiring the user to close and reopen anything.
+            _sectionListVm.Reload();
+            _changeNotifier.NotifySectionChanged();
         }
     }
 
@@ -77,12 +110,20 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public LegalStartTimeListViewModel(ILegalStartTimeRepository repo, SemesterContext semesterContext, IDialogService dialog, WriteLockService lockService)
+    public LegalStartTimeListViewModel(
+        ILegalStartTimeRepository repo,
+        SemesterContext semesterContext,
+        IDialogService dialog,
+        WriteLockService lockService,
+        SectionListViewModel sectionListVm,
+        SectionChangeNotifier changeNotifier)
     {
-        _repo = repo;
+        _repo            = repo;
         _semesterContext = semesterContext;
-        _dialog = dialog;
-        _lockService = lockService;
+        _dialog          = dialog;
+        _lockService     = lockService;
+        _sectionListVm   = sectionListVm;
+        _changeNotifier  = changeNotifier;
         _lockService.LockStateChanged += OnLockStateChanged;
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Load();
@@ -116,6 +157,8 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         RebuildPreferredOptions();
         _includeSaturday = AppSettings.Current.IncludeSaturday;
         OnPropertyChanged(nameof(IncludeSaturday));
+        _includeSunday = AppSettings.Current.IncludeSunday;
+        OnPropertyChanged(nameof(IncludeSunday));
     }
 
     private void RebuildPreferredOptions()

@@ -45,6 +45,7 @@ public class AppSettings
 
     public string? DatabasePath { get; set; }
     public bool IncludeSaturday { get; set; } = false;
+    public bool IncludeSunday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;
     public bool ShowOnlyActiveInstructors { get; set; } = true;
 
@@ -58,19 +59,7 @@ public class AppSettings
     public SectionSortMode SectionSortMode { get; set; } = SectionSortMode.SubjectCourseCode;
     public InstructorSortMode InstructorSortMode { get; set; } = InstructorSortMode.LastName;
 
-    /// <summary>
-    /// Start of the schedulable day shown on the grid, in minutes from midnight.
-    /// Default: 510 (08:30 AM). Must be a multiple of 30.
-    /// </summary>
-    public int GridStartMinutes { get; set; } = 8 * 60 + 30;
-
-    /// <summary>
-    /// End of the schedulable day shown on the grid, in minutes from midnight.
-    /// Default: 1320 (10:00 PM). Must be a multiple of 30 and greater than GridStartMinutes.
-    /// </summary>
-    public int GridEndMinutes { get; set; } = 22 * 60;
-
-    /// <summary>Last path used for PNG schedule export.</summary>
+/// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 
     /// <summary>Last path used for workload report CSV export.</summary>

@@ -43,6 +43,17 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
             ValidationError = "Enter a time like 8:30 or 1430";
             return;
         }
+        if (minutes < SectionMeetingViewModel.MinStartMinutes)
+        {
+            ValidationError = "Start times cannot be earlier than 0730.";
+            return;
+        }
+        int endMinutes = minutes + (int)Math.Round(BlockLength * 60);
+        if (endMinutes > SectionMeetingViewModel.MaxEndMinutes)
+        {
+            ValidationError = $"A {BlockLength}h block starting then would end after 2200.";
+            return;
+        }
         if (StartTimeRows.Any(r => r.Minutes == minutes))
         {
             ValidationError = "That time is already in the list";

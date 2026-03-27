@@ -615,6 +615,7 @@ public partial class SectionListViewModel : ViewModelBase
         List<Room>                 Rooms,
         List<LegalStartTime>       LegalStartTimes,
         bool                       IncludeSaturday,
+        bool                       IncludeSunday,
         double?                    DefaultBlockLength,
         List<SchedulingEnvironmentValue> SectionTypes,
         List<SchedulingEnvironmentValue> MeetingTypes,
@@ -642,6 +643,7 @@ public partial class SectionListViewModel : ViewModelBase
             Rooms:              _roomRepo.GetAll(),
             LegalStartTimes:    _legalStartTimeRepo.GetAll(ayId),
             IncludeSaturday:    settings.IncludeSaturday,
+            IncludeSunday:      settings.IncludeSunday,
             DefaultBlockLength: settings.PreferredBlockLength,
             SectionTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType),
             MeetingTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType),
@@ -700,7 +702,7 @@ public partial class SectionListViewModel : ViewModelBase
         return new SectionEditViewModel(
             section, isNew,
             ctx.Courses, ctx.Subjects, ctx.Instructors, ctx.Rooms,
-            ctx.LegalStartTimes, ctx.IncludeSaturday,
+            ctx.LegalStartTimes, ctx.IncludeSaturday, ctx.IncludeSunday,
             ctx.SectionTypes, ctx.MeetingTypes, ctx.Campuses,
             ctx.AllTags, ctx.AllResources, ctx.AllReserves,
             isSectionCodeDuplicate: (courseId, code) =>

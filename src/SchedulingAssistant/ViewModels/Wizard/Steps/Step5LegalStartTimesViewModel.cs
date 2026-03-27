@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SchedulingAssistant.ViewModels.Management;
 using System.Collections.ObjectModel;
 using System.Globalization;
 
@@ -75,6 +76,19 @@ public partial class WizardBlockLengthEntry : ViewModelBase
         if (!IsValidMilitaryTime(trimmed, out var errorMsg))
         {
             AddTimeError = errorMsg;
+            return;
+        }
+
+        int minutes = (int.Parse(trimmed) / 100) * 60 + (int.Parse(trimmed) % 100);
+        if (minutes < SectionMeetingViewModel.MinStartMinutes)
+        {
+            AddTimeError = "Start times cannot be earlier than 0730.";
+            return;
+        }
+        int endMinutes = minutes + (int)Math.Round(BlockLengthHours * 60);
+        if (endMinutes > SectionMeetingViewModel.MaxEndMinutes)
+        {
+            AddTimeError = $"A {BlockLengthHours}h block starting then would end after 2200.";
             return;
         }
 
@@ -158,6 +172,12 @@ public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
     /// Accepts a decimal number; leading zeros and commas are tolerated.
     /// </summary>
     [ObservableProperty] private string _newBlockLengthInput = string.Empty;
+
+    /// <summary>Whether Saturday is available as a scheduling day. Saved to AppSettings on finish.</summary>
+    [ObservableProperty] private bool _includeSaturday;
+
+    /// <summary>Whether Sunday is available as a scheduling day. Saved to AppSettings on finish.</summary>
+    [ObservableProperty] private bool _includeSunday;
 
     public Step5LegalStartTimesViewModel()
     {

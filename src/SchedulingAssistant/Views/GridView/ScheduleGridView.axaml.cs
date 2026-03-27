@@ -29,6 +29,7 @@ public partial class ScheduleGridView : UserControl
     private const double SemesterBarHeight = 5;   // thin colored bar below day name in multi-semester mode
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double TilePadding      = 3;
+    private const double GridBottomPadding = 12;  // extra space below the last gridline so the label and rule aren't clipped
     
     /// <summary>
     /// Padding added to each side of a day header's text when computing the minimum
@@ -436,7 +437,7 @@ public partial class ScheduleGridView : UserControl
 
         // ── Phase 4: Redraw with adjusted height accounting for expansions ───
         double totalHeight = effectiveHeaderHeight + TimeToY(data.LastRowMinutes, data.FirstRowMinutes)
-                           + gridlineYOffsets[data.LastRowMinutes];
+                           + gridlineYOffsets[data.LastRowMinutes] + GridBottomPadding;
 
         _canvas.Width  = totalWidth;
         _canvas.Height = totalHeight;
