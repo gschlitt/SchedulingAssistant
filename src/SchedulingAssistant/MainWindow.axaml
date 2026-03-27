@@ -439,7 +439,7 @@
                                     -->
                                     <StackPanel
                                         Grid.Row="1"
-                                        Margin="0,12,0,0"
+                                        Margin="0,12,0,1"
                                         VerticalAlignment="Top"
                                         DataContext="{Binding SectionListVm}"
                                         IsEnabled="{Binding DataContext.IsWriteEnabled, ElementName=RootWindow}"
@@ -475,14 +475,14 @@
                                             Padding="5,1"
                                             Command="{Binding AddCommand}"
                                             Content="Add"
-                                            FontSize="10" />
+                                            FontSize="14" />
                                         <Button
                                             MinWidth="0"
                                             MinHeight="0"
                                             Padding="5,1"
                                             Command="{Binding EditCommand}"
                                             Content="Edit"
-                                            FontSize="10"
+                                            FontSize="14"
                                             IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                         <Button
                                             MinWidth="0"
@@ -490,7 +490,7 @@
                                             Padding="5,1"
                                             Command="{Binding CopyCommand}"
                                             Content="Copy"
-                                            FontSize="10"
+                                            FontSize="14"
                                             IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                         <Button
                                             MinWidth="0"
@@ -498,7 +498,7 @@
                                             Padding="5,1"
                                             Command="{Binding DeleteCommand}"
                                             Content="Delete"
-                                            FontSize="10"
+                                            FontSize="14"
                                             IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                         <TextBlock
                                             VerticalAlignment="Center"
@@ -511,7 +511,7 @@
                                             Background="{StaticResource ButtonBackground}"
                                             BorderThickness="0"
                                             CornerRadius="4"
-                                            FontSize="{StaticResource FontSizeNormal}"
+                                            FontSize="14"
                                             ItemsSource="{Binding SortModeOptions}"
                                             SelectedIndex="{Binding SelectedSortModeIndex}" />
                                     </StackPanel>
