@@ -1,10 +1,11 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
-             xmlns:local="using:SchedulingAssistant.Views.GridView"
-             x:Class="SchedulingAssistant.Views.GridView.ScheduleGridView"
-             x:DataType="vm:ScheduleGridViewModel"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.GridView.ScheduleGridView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SchedulingAssistant.Views.GridView"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
+    x:CompileBindings="False"
+    x:DataType="vm:ScheduleGridViewModel">
 
     <UserControl.Styles>
         <Style Selector="Button.CtxMenuItem">
@@ -38,35 +39,45 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid RowDefinitions="28,Auto,*,Auto">
 
-        <!-- Row 0: Filter bar - always visible -->
+        <!--  Row 0: Filter bar - always visible  -->
         <local:GridFilterView Grid.Row="0" DataContext="{Binding Filter}" />
 
-        <!-- Row 1: Error banner (only visible when LastErrorMessage is set) -->
-        <Border Grid.Row="1"
-                IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                Background="{StaticResource ErrorBannerBackground}" BorderBrush="{StaticResource ErrorBannerBorder}" BorderThickness="0,0,0,1"
-                Padding="8,4">
+        <!--  Row 1: Error banner (only visible when LastErrorMessage is set)  -->
+        <Border
+            Grid.Row="1"
+            Padding="8,4"
+            Background="{StaticResource ErrorBannerBackground}"
+            BorderBrush="{StaticResource ErrorBannerBorder}"
+            BorderThickness="0,0,0,1"
+            IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
             <DockPanel>
-                <Button DockPanel.Dock="Right"
-                        Content="✕"
-                        Command="{Binding DismissErrorCommand}"
-                        Background="Transparent" BorderThickness="0"
-                        Padding="4,1" FontSize="11"
-                        ToolTip.Tip="Dismiss" />
-                <TextBlock Text="{Binding LastErrorMessage}"
-                           FontSize="11" Foreground="{StaticResource ErrorBannerText}"
-                           VerticalAlignment="Center"
-                           TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis" />
+                <Button
+                    Padding="4,1"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding DismissErrorCommand}"
+                    Content="✕"
+                    DockPanel.Dock="Right"
+                    FontSize="11"
+                    ToolTip.Tip="Dismiss" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    Foreground="{StaticResource ErrorBannerText}"
+                    Text="{Binding LastErrorMessage}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap" />
             </DockPanel>
         </Border>
 
-        <!-- Row 2: Grid canvas with zoom transform -->
-        <ScrollViewer Grid.Row="2"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto">
+        <!--  Row 2: Grid canvas with zoom transform  -->
+        <ScrollViewer
+            Grid.Row="2"
+            VerticalAlignment="Center"
+            HorizontalScrollBarVisibility="Auto"
+            VerticalScrollBarVisibility="Auto">
             <Border x:Name="ZoomContainer" HorizontalAlignment="Left">
                 <Border.RenderTransform>
                     <ScaleTransform ScaleX="1.0" ScaleY="1.0" />
@@ -75,144 +86,174 @@
             </Border>
         </ScrollViewer>
 
-        <!-- Row 3: Zoom footer -->
-        <Border Grid.Row="3"
-                Background="{StaticResource ChromeBackground}"
-                BorderBrush="{StaticResource ChromeBorder}"
-                BorderThickness="0,1,0,0"
-                Padding="8,4">
+        <!--  Row 3: Zoom footer  -->
+        <Border
+            Grid.Row="3"
+            Padding="8,4"
+            Background="{StaticResource ChromeBackground}"
+            BorderBrush="{StaticResource ChromeBorder}"
+            BorderThickness="0,1,0,0">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Right"
-                           x:Name="ZoomPercentLabel"
-                           FontSize="10"
-                           Foreground="Black"
-                           VerticalAlignment="Center"
-                           Margin="8,0,0,0"
-                           Width="40"
-                           TextAlignment="Right" />
-                <Slider DockPanel.Dock="Right"
-                        x:Name="ZoomSlider"
-                        Minimum="0.5"
-                        Maximum="2.5"
-                        TickFrequency="0.1"
-                        TickPlacement="None"
-                        Width="120"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center" />
-                <TextBlock Text="Zoom:"
-                           FontSize="10"
-                           Foreground="Black"
-                           VerticalAlignment="Center" />
+                <TextBlock
+                    x:Name="ZoomPercentLabel"
+                    Width="40"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    FontSize="10"
+                    Foreground="Black"
+                    TextAlignment="Right" />
+                <Slider
+                    x:Name="ZoomSlider"
+                    Width="120"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    Maximum="2.5"
+                    Minimum="0.5"
+                    TickFrequency="0.1"
+                    TickPlacement="None" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="10"
+                    Foreground="Black"
+                    Text="Zoom:" />
             </DockPanel>
         </Border>
 
-        <!-- Tile right-click context menu popup -->
-        <Popup x:Name="TileContextPopup"
-               Placement="Pointer"
-               IsLightDismissEnabled="True"
-               IsOpen="{Binding ContextMenu.IsOpen, Mode=TwoWay}"
-               Grid.RowSpan="4">
-            <Border Background="White"
-                    BorderBrush="{StaticResource FilterExpanderBorder}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    BoxShadow="0 2 8 0 #33000000">
+        <!--  Tile right-click context menu popup  -->
+        <Popup
+            x:Name="TileContextPopup"
+            Grid.RowSpan="4"
+            IsLightDismissEnabled="True"
+            IsOpen="{Binding ContextMenu.IsOpen, Mode=TwoWay}"
+            Placement="Pointer">
+            <Border
+                Background="White"
+                BorderBrush="{StaticResource FilterExpanderBorder}"
+                BorderThickness="1"
+                BoxShadow="0 2 8 0 #33000000"
+                CornerRadius="4">
                 <StackPanel Orientation="Horizontal">
 
-                    <!-- Primary: 3 menu items -->
+                    <!--  Primary: 3 menu items  -->
                     <StackPanel MinWidth="210">
-                        <Button Classes="CtxMenuItem"
-                                Command="{Binding ContextMenu.ShowInstructorsCommand}">
+                        <Button Classes="CtxMenuItem" Command="{Binding ContextMenu.ShowInstructorsCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Assign Instructor to Section" VerticalAlignment="Center" />
-                                <TextBlock Text="▶" FontSize="9" VerticalAlignment="Center"
-                                           Foreground="Gray" Margin="0,1,0,0" />
+                                <TextBlock VerticalAlignment="Center" Text="Assign Instructor to Section" />
+                                <TextBlock
+                                    Margin="0,1,0,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="9"
+                                    Foreground="Gray"
+                                    Text="▶" />
                             </StackPanel>
                         </Button>
-                        <Button Classes="CtxMenuItem"
-                                Command="{Binding ContextMenu.ShowRoomCommand}">
+                        <Button Classes="CtxMenuItem" Command="{Binding ContextMenu.ShowRoomCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Assign Room to Section Booking" VerticalAlignment="Center" />
-                                <TextBlock Text="▶" FontSize="9" VerticalAlignment="Center"
-                                           Foreground="Gray" Margin="0,1,0,0" />
+                                <TextBlock VerticalAlignment="Center" Text="Assign Room to Section Booking" />
+                                <TextBlock
+                                    Margin="0,1,0,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="9"
+                                    Foreground="Gray"
+                                    Text="▶" />
                             </StackPanel>
                         </Button>
-                        <Button Classes="CtxMenuItem"
-                                Command="{Binding ContextMenu.ShowTagsCommand}">
+                        <Button Classes="CtxMenuItem" Command="{Binding ContextMenu.ShowTagsCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Assign Tag to Section" VerticalAlignment="Center" />
-                                <TextBlock Text="▶" FontSize="9" VerticalAlignment="Center"
-                                           Foreground="Gray" Margin="0,1,0,0" />
+                                <TextBlock VerticalAlignment="Center" Text="Assign Tag to Section" />
+                                <TextBlock
+                                    Margin="0,1,0,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="9"
+                                    Foreground="Gray"
+                                    Text="▶" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
 
-                    <!-- Sub-panel: appears when a menu item is chosen -->
-                    <Border IsVisible="{Binding ContextMenu.HasSubPanel}"
-                            BorderBrush="{StaticResource FilterExpanderBorder}"
-                            BorderThickness="1,0,0,0"
-                            MinWidth="180" MaxWidth="260">
+                    <!--  Sub-panel: appears when a menu item is chosen  -->
+                    <Border
+                        MinWidth="180"
+                        MaxWidth="260"
+                        BorderBrush="{StaticResource FilterExpanderBorder}"
+                        BorderThickness="1,0,0,0"
+                        IsVisible="{Binding ContextMenu.HasSubPanel}">
                         <DockPanel>
 
-                            <!-- OK / Cancel -->
-                            <StackPanel DockPanel.Dock="Bottom"
-                                        Orientation="Horizontal"
-                                        HorizontalAlignment="Right"
-                                        Spacing="4"
-                                        Margin="6,4">
-                                <Button Content="OK"
-                                        Command="{Binding ContextMenu.ConfirmCommand}"
-                                        Padding="12,3" FontSize="11"
-                                        MinHeight="0" MinWidth="0" />
-                                <Button Content="Cancel"
-                                        Command="{Binding ContextMenu.CancelCommand}"
-                                        Padding="12,3" FontSize="11"
-                                        MinHeight="0" MinWidth="0" />
+                            <!--  OK / Cancel  -->
+                            <StackPanel
+                                Margin="6,4"
+                                HorizontalAlignment="Right"
+                                DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                Spacing="4">
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="12,3"
+                                    Command="{Binding ContextMenu.ConfirmCommand}"
+                                    Content="OK"
+                                    FontSize="11" />
+                                <Button
+                                    MinWidth="0"
+                                    MinHeight="0"
+                                    Padding="12,3"
+                                    Command="{Binding ContextMenu.CancelCommand}"
+                                    Content="Cancel"
+                                    FontSize="11" />
                             </StackPanel>
 
-                            <!-- Lists -->
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="220">
+                            <!--  Lists  -->
+                            <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
                                 <Panel>
 
-                                    <!-- Instructors -->
-                                    <ListBox Classes="CtxList"
-                                             IsVisible="{Binding ContextMenu.IsInstructorPanelVisible}"
-                                             ItemsSource="{Binding ContextMenu.Instructors}"
-                                             SelectionMode="Multiple">
+                                    <!--  Instructors  -->
+                                    <ListBox
+                                        Classes="CtxList"
+                                        IsVisible="{Binding ContextMenu.IsInstructorPanelVisible}"
+                                        ItemsSource="{Binding ContextMenu.Instructors}"
+                                        SelectionMode="Multiple">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <CheckBox Classes="CtxCheck"
-                                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
-                                                          Content="{Binding Label}" />
+                                                <CheckBox
+                                                    Classes="CtxCheck"
+                                                    Content="{Binding Label}"
+                                                    IsChecked="{Binding IsChecked, Mode=TwoWay}" />
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
 
-                                    <!-- Room (single select) -->
-                                    <ListBox Classes="CtxList"
-                                             IsVisible="{Binding ContextMenu.IsRoomPanelVisible}"
-                                             ItemsSource="{Binding ContextMenu.Rooms}"
-                                             SelectedItem="{Binding ContextMenu.SelectedRoom, Mode=TwoWay}"
-                                             SelectionMode="Single">
+                                    <!--  Room (single select)  -->
+                                    <ListBox
+                                        Classes="CtxList"
+                                        IsVisible="{Binding ContextMenu.IsRoomPanelVisible}"
+                                        ItemsSource="{Binding ContextMenu.Rooms}"
+                                        SelectedItem="{Binding ContextMenu.SelectedRoom, Mode=TwoWay}"
+                                        SelectionMode="Single">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding Label}"
-                                                           FontSize="11"
-                                                           Padding="4,2" />
+                                                <TextBlock
+                                                    Padding="4,2"
+                                                    FontSize="11"
+                                                    Text="{Binding Label}" />
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
 
-                                    <!-- Tags -->
-                                    <ListBox Classes="CtxList"
-                                             IsVisible="{Binding ContextMenu.IsTagPanelVisible}"
-                                             ItemsSource="{Binding ContextMenu.Tags}"
-                                             SelectionMode="Multiple">
+                                    <!--  Tags  -->
+                                    <ListBox
+                                        Classes="CtxList"
+                                        IsVisible="{Binding ContextMenu.IsTagPanelVisible}"
+                                        ItemsSource="{Binding ContextMenu.Tags}"
+                                        SelectionMode="Multiple">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <CheckBox Classes="CtxCheck"
-                                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
-                                                          Content="{Binding Label}" />
+                                                <CheckBox
+                                                    Classes="CtxCheck"
+                                                    Content="{Binding Label}"
+                                                    IsChecked="{Binding IsChecked, Mode=TwoWay}" />
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>

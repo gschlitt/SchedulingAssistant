@@ -1,8 +1,9 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:b="using:SchedulingAssistant.Behaviors"
-             x:Class="SchedulingAssistant.Controls.DetachablePanel"
-             x:Name="Root">
+<UserControl
+    x:Class="SchedulingAssistant.Controls.DetachablePanel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
+    x:Name="Root">
 
     <!--  Outer panel shell: soft shadow replaces the heavy border; 1 px light edge for crispness  -->
     <Border
@@ -12,49 +13,55 @@
         CornerRadius="2">
         <Grid RowDefinitions="Auto,*">
 
-            <!-- Panel header bar (two rows: title + extra controls).
-                 RightClickCommandBehavior fires InternalHeaderRightClickCommand on right-click,
-                 which in turn raises the public HeaderRightClicked event for consumers. -->
-            <Border Grid.Row="0" x:Name="HeaderBorder"
-                    Background="{StaticResource ChromeBackground}"
-                    BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1"
-                    Padding="8,4"
-                    b:RightClickCommandBehavior.Command="{Binding #Root.InternalHeaderRightClickCommand}">
+            <!--
+                Panel header bar (two rows: title + extra controls).
+                RightClickCommandBehavior fires InternalHeaderRightClickCommand on right-click,
+                which in turn raises the public HeaderRightClicked event for consumers.
+            -->
+            <Border
+                x:Name="HeaderBorder"
+                Grid.Row="0"
+                Padding="8,2"
+                b:RightClickCommandBehavior.Command="{Binding #Root.InternalHeaderRightClickCommand}"
+                Background="{StaticResource ChromeBackground}"
+                BorderBrush="{StaticResource ChromeBorder}"
+                BorderThickness="0,0,0,0">
                 <Grid RowDefinitions="Auto,Auto">
-                    <!-- Row 0: Title row with detach button -->
+                    <!--  Row 0: Title row with detach button  -->
                     <DockPanel Grid.Row="0">
-                        <Button DockPanel.Dock="Right"
-                                Content="⧉"
-                                ToolTip.Tip="Pop out into window"
-                                Click="OnDetachClicked"
-                                Padding="4,2"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                FontSize="13"
-                                Cursor="Hand" />
-                        <!-- Panel title -->
-                        <TextBlock DockPanel.Dock="Left"
-                                   Text="{Binding #Root.Header}"
-                                   FontWeight="SemiBold"
-                                   FontSize="{StaticResource FontSizeLarge}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,12,0" />
-                        <!-- Context info (semester, stats, filter) — left-justified after title -->
-                        <ContentPresenter Content="{Binding #Root.HeaderContext}"
-                                          VerticalAlignment="Center" />
+                        <Button
+                            Padding="4,2"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="OnDetachClicked"
+                            Content="⧉"
+                            Cursor="Hand"
+                            DockPanel.Dock="Right"
+                            FontSize="13"
+                            ToolTip.Tip="Pop out into window" />
+                        <!--  Panel title  -->
+                        <TextBlock
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            DockPanel.Dock="Left"
+                            FontSize="{StaticResource FontSizeLarge}"
+                            FontWeight="SemiBold"
+                            Text="{Binding #Root.Header}" />
+                        <!--  Context info (semester, stats, filter) — left-justified after title  -->
+                        <ContentPresenter VerticalAlignment="Center" Content="{Binding #Root.HeaderContext}" />
                     </DockPanel>
 
-                    <!-- Row 1: Extra controls (buttons) -->
-                    <ContentPresenter Grid.Row="1"
-                                      Content="{Binding #Root.HeaderExtra}"
-                                      VerticalAlignment="Top"
-                                      Margin="0,4,0,0" />
+                    <!--  Row 1: Extra controls (buttons)  -->
+                    <ContentPresenter
+                        Grid.Row="1"
+                        Margin="0,4,0,0"
+                        VerticalAlignment="Top"
+                        Content="{Binding #Root.HeaderExtra}" />
                 </Grid>
             </Border>
 
-            <!-- Panel content -->
-            <ContentPresenter Grid.Row="1"
-                              Content="{Binding #Root.PanelContent}" />
+            <!--  Panel content  -->
+            <ContentPresenter Grid.Row="1" Content="{Binding #Root.PanelContent}" />
 
         </Grid>
     </Border>

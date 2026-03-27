@@ -46,7 +46,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" ShowGridLines="True">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
 
         <!--  Top menu bar  -->
         <Border
@@ -645,11 +645,6 @@
                                 Foreground="{StaticResource OverlayBadgeText}"
                                 IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                 Text="{Binding ScheduleGridVm.Filter.OverlaySummary}" />
-
-
-
-
-
                         </StackPanel>
                     </controls:DetachablePanel.HeaderContext>
                     <controls:DetachablePanel.PanelContent>
