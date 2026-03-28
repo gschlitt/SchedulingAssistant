@@ -109,7 +109,7 @@ public partial class App : Application
             semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
 
         var vm = Services.GetRequiredService<MainWindowViewModel>();
-        vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath));
+        vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath), dbPath);
         return vm;
     }
 

@@ -24,7 +24,7 @@
                         Spacing="10">
 
                         <TextBlock
-                            FontSize="{DynamicResource FontSizeLarge}"
+                            FontSize="{StaticResource FontSizeLarge}"
                             FontWeight="SemiBold"
                             Text="{Binding Title}" />
 
@@ -32,7 +32,7 @@
                         <TextBox Text="{Binding Prefix}" />
 
                         <TextBlock
-                            FontSize="{DynamicResource FontSizeNormal}"
+                            FontSize="{StaticResource FontSizeNormal}"
                             Foreground="{StaticResource TextError}"
                             IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                             Text="{Binding ValidationError}" />

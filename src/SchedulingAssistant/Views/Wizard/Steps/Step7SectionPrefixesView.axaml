@@ -9,7 +9,7 @@
 
         <!--  Intro paragraph  -->
         <StackPanel Spacing="8">
-            <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}" TextWrapping="Wrap">
                 Institutions often place a prefix on their section designators, to indicate
                 a campus, delivery mode, or other aspect of the section. Registering your institution's section prefixes and designators here can greatly speed
                 up editing of sections.
@@ -49,7 +49,7 @@
                     Padding="5,2"
                     Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
-                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                    <TextBlock FontSize="{StaticResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
@@ -58,7 +58,7 @@
                     <TextBlock
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="AB-" />
                 </Border>
                 <Border
@@ -68,7 +68,7 @@
                     <TextBlock
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="1" />
                 </Border>
             </StackPanel>
@@ -84,7 +84,7 @@
                     Padding="5,2"
                     Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
-                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                    <TextBlock FontSize="{StaticResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
@@ -93,7 +93,7 @@
                     <TextBlock
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="AB-" />
                 </Border>
                 <Border
@@ -103,7 +103,7 @@
                     <TextBlock
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="2" />
                 </Border>
             </StackPanel>
@@ -139,7 +139,7 @@
                     Padding="5,2"
                     Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
-                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                    <TextBlock FontSize="{StaticResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
@@ -148,7 +148,7 @@
                     <TextBlock
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="TUT" />
                 </Border>
                 <Border
@@ -158,7 +158,7 @@
                     <TextBlock
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="A" />
                 </Border>
             </StackPanel>
@@ -173,7 +173,7 @@
                     Padding="5,2"
                     Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
-                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                    <TextBlock FontSize="{StaticResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
@@ -182,7 +182,7 @@
                     <TextBlock
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="TUT" />
                 </Border>
                 <Border
@@ -192,7 +192,7 @@
                     <TextBlock
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="B" />
                 </Border>
             </StackPanel>
@@ -227,7 +227,7 @@
                     Padding="5,2"
                     Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
-                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                    <TextBlock FontSize="{StaticResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
@@ -236,7 +236,7 @@
                     <TextBlock
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="A#" />
                 </Border>
                 <Border
@@ -246,7 +246,7 @@
                     <TextBlock
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="4" />
                 </Border>
             </StackPanel>
@@ -261,7 +261,7 @@
                     Padding="5,2"
                     Background="{StaticResource PrefixCampusABackground}"
                     CornerRadius="2,0,0,2">
-                    <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
+                    <TextBlock FontSize="{StaticResource FontSizeNormal}" Text="PSYC 101 " />
                 </Border>
                 <Border
                     Padding="0"
@@ -270,7 +270,7 @@
                     <TextBlock
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="A#" />
                 </Border>
                 <Border
@@ -280,7 +280,7 @@
                     <TextBlock
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         Text="5" />
                 </Border>
             </StackPanel>
@@ -309,8 +309,8 @@
 
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ForegroundMuted}"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             Supply your institution's section prefixes below. Indicate also whether your designators are a number or a letter.
             If your insitution does not use section prefixes or uses a format that does not fit these patterns, leave the list empty and just choose the designator.

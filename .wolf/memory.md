@@ -670,3 +670,29 @@
 | 16:43 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |
 | 16:46 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |
 | 16:51 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 24 reads | ~33571 tok |
+| 16:55 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 26 reads | ~35391 tok |
+| 16:56 | Session end: 8 writes across 5 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 26 reads | ~35391 tok |
+| 16:57 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 8→5 lines | ~92 |
+| 16:57 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 5→3 lines | ~66 |
+| 16:57 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | modified foreach() | ~59 |
+| 16:57 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 2→5 lines | ~80 |
+| 16:58 | Edited src/SchedulingAssistant/Views/Management/BlockPatternListView.axaml | reduced (-386 lines) | ~1877 |
+| 16:58 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | modified BlockPattern_Slot1_ClearCommand_CanExecuteIsFalseInReaderMode() | ~213 |
+| 16:58 | Session end: 14 writes across 8 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 27 reads | ~37949 tok |
+| 17:02 | Session end: 14 writes across 8 files (HelpTip.cs, AppColors.axaml, SchedulingEnvironmentListViewModel.cs, SchedulingEnvironmentViewModel.cs, SchedulingEnvironmentListView.axaml) | 27 reads | ~37949 tok |
+
+## Session: 2026-03-28 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:10 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | expanded (+7 lines) | ~114 |
+| 17:10 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified SetDatabaseName() | ~112 |
+| 17:10 | Edited src/SchedulingAssistant/App.axaml.cs | inline fix | ~21 |
+| 17:10 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | inline fix | ~22 |
+| 17:10 | Edited src/SchedulingAssistant/MainWindow.axaml | 6→7 lines | ~87 |
+| 17:10 | Edited src/SchedulingAssistant/MainWindow.axaml | 4→5 lines | ~108 |
+| 17:11 | Session end: 6 writes across 4 files (MainWindowViewModel.cs, App.axaml.cs, MainWindow.axaml.cs, MainWindow.axaml) | 6 reads | ~16034 tok |
+| 17:25 | Session end: 6 writes across 4 files (MainWindowViewModel.cs, App.axaml.cs, MainWindow.axaml.cs, MainWindow.axaml) | 6 reads | ~16034 tok |
+| 17:25 | Session end: 6 writes across 4 files (MainWindowViewModel.cs, App.axaml.cs, MainWindow.axaml.cs, MainWindow.axaml) | 6 reads | ~16034 tok |
+| 17:26 | Created fix_dynamic_resource.ps1 | — | ~102 |
+| 17:26 | Session end: 7 writes across 5 files (MainWindowViewModel.cs, App.axaml.cs, MainWindow.axaml.cs, MainWindow.axaml, fix_dynamic_resource.ps1) | 6 reads | ~16143 tok |

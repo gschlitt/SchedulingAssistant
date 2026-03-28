@@ -8,8 +8,8 @@
     <StackPanel MaxWidth="900" Spacing="14">
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ForegroundMuted}"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             Block lengths are the standard class durations at your institution (e.g. 1.5 hours, 3 hours).
             For each block length, specify the valid start times. (Often these are specified by your registrar.)<LineBreak /><LineBreak />
@@ -29,7 +29,7 @@
                     <Border
                         Margin="0,0,0,8"
                         Padding="14,10"
-                        BorderBrush="{DynamicResource SeparatorLine}"
+                        BorderBrush="{StaticResource SeparatorLine}"
                         BorderThickness="1"
                         CornerRadius="4">
                         <StackPanel Spacing="8">
@@ -39,7 +39,7 @@
                                 <TextBlock
                                     Grid.Column="0"
                                     VerticalAlignment="Center"
-                                    FontSize="{DynamicResource FontSizeNormal}"
+                                    FontSize="{StaticResource FontSizeNormal}"
                                     FontWeight="SemiBold"
                                     Text="{Binding Label}" />
                                 <Button
@@ -48,7 +48,7 @@
                                     Command="{Binding $parent[UserControl].DataContext.RemoveBlockLengthCommand}"
                                     CommandParameter="{Binding}"
                                     Content="Remove block"
-                                    FontSize="{DynamicResource FontSizeSmall}" />
+                                    FontSize="{StaticResource FontSizeSmall}" />
                             </Grid>
 
                             <!--  Start time chips — each has a × remove button  -->
@@ -63,15 +63,15 @@
                                         <Border
                                             Margin="0,0,5,5"
                                             Padding="6,2"
-                                            Background="{DynamicResource ChromeBackground}"
-                                            BorderBrush="{DynamicResource ChromeBorder}"
+                                            Background="{StaticResource ChromeBackground}"
+                                            BorderBrush="{StaticResource ChromeBorder}"
                                             BorderThickness="1"
                                             CornerRadius="3">
                                             <StackPanel Orientation="Horizontal" Spacing="4">
                                                 <TextBlock
                                                     VerticalAlignment="Center"
                                                     FontFamily="Consolas"
-                                                    FontSize="{DynamicResource FontSizeSmall}"
+                                                    FontSize="{StaticResource FontSizeSmall}"
                                                     Text="{Binding Hhmm}" />
                                                 <Button
                                                     Padding="2,0"
@@ -79,7 +79,7 @@
                                                     Command="{Binding $parent[ItemsControl].DataContext.RemoveTimeCommand}"
                                                     CommandParameter="{Binding}"
                                                     Content="×"
-                                                    FontSize="{DynamicResource FontSizeSmall}" />
+                                                    FontSize="{StaticResource FontSizeSmall}" />
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
@@ -92,17 +92,17 @@
                                     <TextBox
                                         Width="80"
                                         FontFamily="Consolas"
-                                        FontSize="{DynamicResource FontSizeSmall}"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         Text="{Binding NewTimeInput}"
                                         Watermark="HHMM" />
                                     <Button
                                         Command="{Binding AddTimeCommand}"
                                         Content="Add time"
-                                        FontSize="{DynamicResource FontSizeSmall}" />
+                                        FontSize="{StaticResource FontSizeSmall}" />
                                 </StackPanel>
                                 <TextBlock
-                                    FontSize="{DynamicResource FontSizeSmall}"
-                                    Foreground="{DynamicResource ErrorForeground}"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Foreground="{StaticResource ErrorForeground}"
                                     IsVisible="{Binding AddTimeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                     Text="{Binding AddTimeError}" />
                             </StackPanel>
@@ -117,12 +117,12 @@
         <!--  Add a new block length  -->
         <Border
             Padding="14,10"
-            BorderBrush="{DynamicResource SubduedBorder}"
+            BorderBrush="{StaticResource SubduedBorder}"
             BorderThickness="1"
             CornerRadius="4">
             <StackPanel Spacing="6">
                 <TextBlock
-                    FontSize="{DynamicResource FontSizeNormal}"
+                    FontSize="{StaticResource FontSizeNormal}"
                     FontWeight="SemiBold"
                     Text="Add a block length" />
                 <StackPanel
@@ -132,17 +132,17 @@
                     <TextBox
                         Width="72"
                         FontFamily="Consolas"
-                        FontSize="{DynamicResource FontSizeSmall}"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="{Binding NewBlockLengthInput}"
                         Watermark="e.g. 1.5" />
                     <TextBlock
                         VerticalAlignment="Center"
-                        FontSize="{DynamicResource FontSizeSmall}"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="hours" />
                     <Button
                         Command="{Binding AddBlockLengthCommand}"
                         Content="Add block length"
-                        FontSize="{DynamicResource FontSizeSmall}" />
+                        FontSize="{StaticResource FontSizeSmall}" />
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -150,7 +150,7 @@
         <!--  Weekend day availability  -->
         <StackPanel Spacing="6">
             <TextBlock
-                FontSize="{DynamicResource FontSizeNormal}"
+                FontSize="{StaticResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="Weekend days" />
             <CheckBox Content="Include Saturday as an available scheduling day"

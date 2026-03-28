@@ -11,7 +11,7 @@
         CanResize="False"
         SystemDecorations="BorderOnly"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource AppBackground}">
+        Background="{StaticResource AppBackground}">
 
     <!--  Slightly larger font scale than the main app, matching the wizard  -->
     <Window.Resources>
@@ -25,17 +25,17 @@
 
         <!--  Row 0: Header bar — PointerPressed enables drag since OS title bar is hidden  -->
         <Border Grid.Row="0"
-                Background="{DynamicResource ChromeBackground}"
-                BorderBrush="{DynamicResource ChromeBorder}"
+                Background="{StaticResource ChromeBackground}"
+                BorderBrush="{StaticResource ChromeBorder}"
                 BorderThickness="0,0,0,1"
                 Padding="20,12"
                 PointerPressed="OnHeaderPointerPressed">
             <StackPanel Spacing="4">
                 <TextBlock Text="TermPoint"
-                           FontSize="{DynamicResource FontSizeSmall}"
-                           Foreground="{DynamicResource TextMuted}" />
+                           FontSize="{StaticResource FontSizeSmall}"
+                           Foreground="{StaticResource TextMuted}" />
                 <TextBlock Text="Database Recovery"
-                           FontSize="{DynamicResource FontSizeLarge}"
+                           FontSize="{StaticResource FontSizeLarge}"
                            FontWeight="SemiBold" />
             </StackPanel>
         </Border>
@@ -48,30 +48,30 @@
 
                 <!--  Problem description  -->
                 <TextBlock Text="{Binding ProblemDescription}"
-                           FontSize="{DynamicResource FontSizeNormal}"
+                           FontSize="{StaticResource FontSizeNormal}"
                            TextWrapping="Wrap" />
 
                 <!--  Last-known path (highlighted as an error)  -->
-                <Border Background="{DynamicResource SubtleBackground}"
-                        BorderBrush="{DynamicResource SubduedBorder}"
+                <Border Background="{StaticResource SubtleBackground}"
+                        BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="10,7">
                     <TextBlock Text="{Binding LastKnownPath}"
-                               FontSize="{DynamicResource FontSizeSmall}"
-                               Foreground="{DynamicResource TextError}"
+                               FontSize="{StaticResource FontSizeSmall}"
+                               Foreground="{StaticResource TextError}"
                                TextWrapping="Wrap" />
                 </Border>
 
                 <TextBlock Text="How would you like to proceed?"
-                           FontSize="{DynamicResource FontSizeMedium}"
+                           FontSize="{StaticResource FontSizeMedium}"
                            FontWeight="SemiBold" />
 
                 <!--  ── Option A: Browse for the database ──────────────────────  -->
-                <Border BorderBrush="{DynamicResource SubduedBorder}"
+                <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Background="{DynamicResource SurfaceBackground}">
+                        Background="{StaticResource SurfaceBackground}">
                     <StackPanel>
                         <!--  Clickable header row  -->
                         <Button Background="Transparent"
@@ -86,11 +86,11 @@
                                              VerticalAlignment="Center" />
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="Browse for your database"
-                                               FontSize="{DynamicResource FontSizeNormal}"
+                                               FontSize="{StaticResource FontSizeNormal}"
                                                FontWeight="SemiBold" />
                                     <TextBlock Text="Point TermPoint to the file wherever it now lives."
-                                               FontSize="{DynamicResource FontSizeSmall}"
-                                               Foreground="{DynamicResource TextMuted}" />
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}" />
                                 </StackPanel>
                             </StackPanel>
                         </Button>
@@ -99,7 +99,7 @@
                         <StackPanel IsVisible="{Binding IsOptionAExpanded}"
                                     Margin="12,0,12,12"
                                     Spacing="8">
-                            <Border Height="1" Background="{DynamicResource SeparatorLine}" />
+                            <Border Height="1" Background="{StaticResource SeparatorLine}" />
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBox Grid.Column="0"
                                          Text="{Binding BrowsedPath}"
@@ -113,18 +113,18 @@
                             </Grid>
                             <TextBlock Text="{Binding BrowseError}"
                                        IsVisible="{Binding BrowseError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                       Foreground="{DynamicResource TextError}"
-                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       Foreground="{StaticResource TextError}"
+                                       FontSize="{StaticResource FontSizeSmall}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!--  ── Option B: Restore from a backup ──────────────────────────  -->
-                <Border BorderBrush="{DynamicResource SubduedBorder}"
+                <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Background="{DynamicResource SurfaceBackground}">
+                        Background="{StaticResource SurfaceBackground}">
                     <StackPanel>
                         <!--  Clickable header row  -->
                         <Button Background="Transparent"
@@ -139,11 +139,11 @@
                                              VerticalAlignment="Center" />
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="Restore from a backup"
-                                               FontSize="{DynamicResource FontSizeNormal}"
+                                               FontSize="{StaticResource FontSizeNormal}"
                                                FontWeight="SemiBold" />
                                     <TextBlock Text="Choose a backup file and pick where to restore it."
-                                               FontSize="{DynamicResource FontSizeSmall}"
-                                               Foreground="{DynamicResource TextMuted}" />
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}" />
                                 </StackPanel>
                             </StackPanel>
                         </Button>
@@ -152,13 +152,13 @@
                         <StackPanel IsVisible="{Binding IsOptionBExpanded}"
                                     Margin="12,0,12,12"
                                     Spacing="10">
-                            <Border Height="1" Background="{DynamicResource SeparatorLine}" />
+                            <Border Height="1" Background="{StaticResource SeparatorLine}" />
 
                             <!--  Step 1  -->
                             <TextBlock Text="Step 1 — Select a backup file"
-                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       FontSize="{StaticResource FontSizeSmall}"
                                        FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextSecondary}" />
+                                       Foreground="{StaticResource TextSecondary}" />
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBox Grid.Column="0"
                                          Text="{Binding BackupPath}"
@@ -174,9 +174,9 @@
                             <!--  Step 2 — only visible after a valid backup is chosen  -->
                             <StackPanel IsVisible="{Binding IsBackupStepTwoVisible}" Spacing="8">
                                 <TextBlock Text="Step 2 — Confirm restore destination"
-                                           FontSize="{DynamicResource FontSizeSmall}"
+                                           FontSize="{StaticResource FontSizeSmall}"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextSecondary}" />
+                                           Foreground="{StaticResource TextSecondary}" />
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBox Grid.Column="0"
                                              Text="{Binding RestorePath}"
@@ -188,25 +188,25 @@
                                             Command="{Binding ChangeRestoreFolderCommand}" />
                                 </Grid>
                                 <TextBlock Text="The backup will be copied to this location. Your backup file will not be modified."
-                                           FontSize="{DynamicResource FontSizeSmall}"
-                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="{StaticResource FontSizeSmall}"
+                                           Foreground="{StaticResource TextMuted}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
 
                             <TextBlock Text="{Binding RestoreError}"
                                        IsVisible="{Binding RestoreError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                       Foreground="{DynamicResource TextError}"
-                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       Foreground="{StaticResource TextError}"
+                                       FontSize="{StaticResource FontSizeSmall}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!--  ── Option C: Start over ─────────────────────────────────────  -->
-                <Border BorderBrush="{DynamicResource SubduedBorder}"
+                <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Background="{DynamicResource SurfaceBackground}">
+                        Background="{StaticResource SurfaceBackground}">
                     <StackPanel>
                         <!--  Clickable header row  -->
                         <Button Background="Transparent"
@@ -221,11 +221,11 @@
                                              VerticalAlignment="Center" />
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="Start over with a new database"
-                                               FontSize="{DynamicResource FontSizeNormal}"
+                                               FontSize="{StaticResource FontSizeNormal}"
                                                FontWeight="SemiBold" />
                                     <TextBlock Text="Launch the setup wizard to create a fresh database from scratch."
-                                               FontSize="{DynamicResource FontSizeSmall}"
-                                               Foreground="{DynamicResource TextMuted}" />
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}" />
                                 </StackPanel>
                             </StackPanel>
                         </Button>
@@ -234,9 +234,9 @@
                         <StackPanel IsVisible="{Binding IsOptionCExpanded}"
                                     Margin="12,0,12,12"
                                     Spacing="8">
-                            <Border Height="1" Background="{DynamicResource SeparatorLine}" />
-                            <TextBlock FontSize="{DynamicResource FontSizeSmall}"
-                                       Foreground="{DynamicResource TextMuted}"
+                            <Border Height="1" Background="{StaticResource SeparatorLine}" />
+                            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                                       Foreground="{StaticResource TextMuted}"
                                        TextWrapping="Wrap"
                                        Text="The setup wizard will open and guide you through creating a new database. Your existing database file (if it still exists) will not be deleted — TermPoint will simply stop referencing it." />
                         </StackPanel>
@@ -248,7 +248,7 @@
 
         <!--  Row 2: Footer with Exit and Continue  -->
         <Border Grid.Row="2"
-                BorderBrush="{DynamicResource SeparatorLine}"
+                BorderBrush="{StaticResource SeparatorLine}"
                 BorderThickness="0,1,0,0"
                 Padding="20,12">
             <Grid ColumnDefinitions="*,Auto,Auto">

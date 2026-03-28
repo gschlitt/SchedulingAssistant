@@ -12,12 +12,12 @@
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="{x:Type vm:CampusEditViewModel}">
                     <StackPanel Spacing="10" MaxWidth="320" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding Title}" FontSize="{DynamicResource FontSizeLarge}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Title}" FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold" />
 
                         <TextBlock Text="Name" />
                         <TextBox Text="{Binding Name}" />
                         <TextBlock Text="{Binding ValidationError}"
-                                   Foreground="{StaticResource TextError}" FontSize="{DynamicResource FontSizeNormal}"
+                                   Foreground="{StaticResource TextError}" FontSize="{StaticResource FontSizeNormal}"
                                    IsVisible="{Binding ValidationError,
                                        Converter={x:Static ObjectConverters.IsNotNull}}" />
 

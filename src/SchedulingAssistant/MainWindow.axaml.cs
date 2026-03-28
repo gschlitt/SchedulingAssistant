@@ -252,7 +252,7 @@ public partial class MainWindow : Window
         {
             // Wizard path — App.Services was already initialized; just resolve the root VM.
             vm = App.Services.GetRequiredService<MainWindowViewModel>();
-            vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath));
+            vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath), dbPath);
         }
 
         // Start the automated backup session if this instance acquired the write lock.

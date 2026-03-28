@@ -1184,6 +1184,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-27T23:41:00.976Z"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-03-27T23:57:31.922Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (5 removed) | Also: Slot1.EditCommand.NotifyCanExecuteChanged();; Slot1.ClearCommand.NotifyCanExecuteChanged();",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-27T23:57:36.371Z"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-03-27T23:58:32.833Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/BlockPatternListView.axaml",
+      "root_cause": "20 lines replaced/restructured",
+      "fix": "Rewrote 494→108 lines (20 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-27T23:58:32.833Z"
     }
   ]
 }

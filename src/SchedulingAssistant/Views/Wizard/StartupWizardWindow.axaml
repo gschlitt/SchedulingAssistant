@@ -8,11 +8,11 @@
         CanResize="False"
         SystemDecorations="BorderOnly"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource AppBackground}">
+        Background="{StaticResource AppBackground}">
 
     <!-- ── Wizard-scoped font size overrides ────────────────────────────────
          Each key is shifted one step up from the app-level values defined in
-         App.axaml.  Because DynamicResource resolves by walking up the logical
+         App.axaml.  Because StaticResource resolves by walking up the logical
          tree, every control inside this window uses these larger values.
          Controls that appear in Settings (outside this window) continue to use
          the app-level values unchanged. ──────────────────────────────────── -->
@@ -34,18 +34,18 @@
 
         <!-- Row 0: Header bar — PointerPressed enables drag-to-move since the OS title bar is hidden -->
         <Border Grid.Row="0"
-                Background="{DynamicResource MenuBarBackground}"
-                BorderBrush="{DynamicResource MenuBarBorder}"
+                Background="{StaticResource MenuBarBackground}"
+                BorderBrush="{StaticResource MenuBarBorder}"
                 BorderThickness="0,0,0,1"
                 Padding="20,12"
                 PointerPressed="OnHeaderPointerPressed">
             <StackPanel Spacing="4">
                 <TextBlock Text="TermPoint Setup"
-                           FontSize="{DynamicResource FontSizeSmall}"
-                           Foreground="{DynamicResource ForegroundMuted}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           Foreground="{StaticResource ForegroundMuted}"
                            FontWeight="Normal"/>
                 <TextBlock Text="{Binding CurrentStep.StepTitle}"
-                           FontSize="{DynamicResource FontSizeLarge}"
+                           FontSize="{StaticResource FontSizeLarge}"
                            FontWeight="SemiBold"/>
             </StackPanel>
         </Border>
@@ -63,17 +63,17 @@
 
         <!-- Row 2: Footer — Back / Next buttons -->
         <Border Grid.Row="2"
-                BorderBrush="{DynamicResource SeparatorLine}"
+                BorderBrush="{StaticResource SeparatorLine}"
                 BorderThickness="0,1,0,0"
                 Padding="20,12">
             <Grid ColumnDefinitions="*,Auto,Auto">
                 <!-- Error / hint area -->
                 <TextBlock Grid.Column="0"
                            Text="{Binding CurrentStep.ErrorMessage}"
-                           Foreground="{DynamicResource ErrorForeground}"
+                           Foreground="{StaticResource ErrorForeground}"
                            VerticalAlignment="Center"
                            TextWrapping="Wrap"
-                           FontSize="{DynamicResource FontSizeSmall}"/>
+                           FontSize="{StaticResource FontSizeSmall}"/>
 
                 <Button Grid.Column="1"
                         Content="Back"

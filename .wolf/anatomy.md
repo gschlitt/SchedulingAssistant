@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-27T23:41:11.106Z
-> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-28T00:26:41.263Z
+> Files: 38 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -32,6 +32,7 @@
 
 ## ./
 
+- `fix_dynamic_resource.ps1` (~102 tok)
 
 ## .claude/
 
@@ -166,12 +167,15 @@
 
 - `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~972 tok)
 - `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5672 tok)
+- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~6585 tok)
 
 ## src/SchedulingAssistant/
 
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3051 tok)
 - `AppColors.axaml` (~2786 tok)
 - `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
-- `MainWindow.axaml` — Declares applied (~10054 tok)
+- `MainWindow.axaml` — Declares applied (~10090 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. All shut (~8713 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -199,7 +203,7 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5483 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~5644 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
@@ -209,7 +213,7 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `BlockPatternEditViewModel.cs` — Class: BlockPatternEditViewModel (~615 tok)
-- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1820 tok)
+- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1561 tok)
 - `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1542 tok)
 - `LegalStartTimeEditViewModel.cs` — Class: LegalStartTimeEditViewModel (~1115 tok)
 - `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~2399 tok)
@@ -240,6 +244,7 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `BlockPatternListView.axaml` (~2148 tok)
 - `LegalStartTimeListView.axaml` (~1870 tok)
 - `NewDatabaseView.axaml` (~1971 tok)
 - `SchedulingEnvironmentListView.axaml` — Declares description (~1429 tok)

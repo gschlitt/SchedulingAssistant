@@ -16,14 +16,11 @@ public partial class BlockPatternListViewModel : ViewModelBase
     private readonly WriteLockService _lockService;
     private const int MaxSlots = 5;
 
-    public BlockPatternSlotViewModel Slot1 { get; }
-    public BlockPatternSlotViewModel Slot2 { get; }
-    public BlockPatternSlotViewModel Slot3 { get; }
-    public BlockPatternSlotViewModel Slot4 { get; }
-    public BlockPatternSlotViewModel Slot5 { get; }
+    /// <summary>All pattern slots, indexed 0–(MaxSlots-1). Increase <see cref="MaxSlots"/> to add more.</summary>
+    public IReadOnlyList<BlockPatternSlotViewModel> Slots { get; }
 
-    /// <summary>True while any slot is being edited; used to disable other slot's buttons.</summary>
-    public bool IsEditingAny => Slot1.IsEditing || Slot2.IsEditing || Slot3.IsEditing || Slot4.IsEditing || Slot5.IsEditing;
+    /// <summary>True while any slot is being edited; used to disable other slots' buttons.</summary>
+    public bool IsEditingAny => Slots.Any(s => s.IsEditing);
 
     /// <summary>True when the current user holds the write lock; controls whether Edit/Clear buttons are enabled.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -42,11 +39,9 @@ public partial class BlockPatternListViewModel : ViewModelBase
             .Select(i => allPatterns.Count > i ? allPatterns[i] : null)
             .ToList();
 
-        Slot1 = new BlockPatternSlotViewModel(1, patterns[0], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot2 = new BlockPatternSlotViewModel(2, patterns[1], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot3 = new BlockPatternSlotViewModel(3, patterns[2], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot4 = new BlockPatternSlotViewModel(4, patterns[3], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
-        Slot5 = new BlockPatternSlotViewModel(5, patterns[4], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter);
+        Slots = Enumerable.Range(0, MaxSlots)
+            .Select(i => new BlockPatternSlotViewModel(i + 1, patterns[i], includeSaturday, includeSunday, _patternRepository, OnSlotEditingChanged, () => _lockService.IsWriter))
+            .ToList();
 
     }
 
@@ -59,16 +54,11 @@ public partial class BlockPatternListViewModel : ViewModelBase
     private void OnLockStateChanged()
     {
         OnPropertyChanged(nameof(IsWriteEnabled));
-        Slot1.EditCommand.NotifyCanExecuteChanged();
-        Slot1.ClearCommand.NotifyCanExecuteChanged();
-        Slot2.EditCommand.NotifyCanExecuteChanged();
-        Slot2.ClearCommand.NotifyCanExecuteChanged();
-        Slot3.EditCommand.NotifyCanExecuteChanged();
-        Slot3.ClearCommand.NotifyCanExecuteChanged();
-        Slot4.EditCommand.NotifyCanExecuteChanged();
-        Slot4.ClearCommand.NotifyCanExecuteChanged();
-        Slot5.EditCommand.NotifyCanExecuteChanged();
-        Slot5.ClearCommand.NotifyCanExecuteChanged();
+        foreach (var slot in Slots)
+        {
+            slot.EditCommand.NotifyCanExecuteChanged();
+            slot.ClearCommand.NotifyCanExecuteChanged();
+        }
     }
 }
 
@@ -85,6 +75,9 @@ public partial class BlockPatternSlotViewModel : ViewModelBase
 
     /// <summary>True while the inline editor is open for this slot.</summary>
     public bool IsEditing => EditVm is not null;
+
+    /// <summary>Heading label for this slot, e.g. "Pattern 1".</summary>
+    public string Label => $"Pattern {SlotNumber}";
 
     /// <summary>Display name: the pattern name, or "(not set)" when empty.</summary>
     public string DisplayName => Pattern?.Name is { Length: > 0 } n ? n : "(not set)";

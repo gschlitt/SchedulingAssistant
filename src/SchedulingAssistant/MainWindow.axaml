@@ -166,7 +166,8 @@
                                         <MenuItem
                                             Command="{Binding DataContext.OpenRecentDatabaseCommand, ElementName=RootWindow}"
                                             CommandParameter="{Binding Path}"
-                                            Header="{Binding DisplayName}" />
+                                            Header="{Binding DisplayName}"
+                                            ToolTip.Tip="{Binding Path}" />
                                     </DataTemplate>
                                 </MenuItem.ItemTemplate>
                             </MenuItem>
@@ -187,7 +188,8 @@
                         VerticalAlignment="Center"
                         FontSize="13"
                         FontWeight="SemiBold"
-                        Text="{Binding DatabaseName}" />
+                        Text="{Binding DatabaseName}"
+                        ToolTip.Tip="{Binding DatabasePath}" />
 
                     <Border
                         Width="1"

@@ -7,21 +7,21 @@
     <StackPanel MaxWidth="860" Spacing="20">
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ForegroundMuted}"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
             Text="Choose where your database file and automated backups will be stored. Both locations are required. "
             TextWrapping="Wrap" />
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ForegroundMuted}"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
             Text="If you share scheduling duties with someone else (perhaps a department head or assistant) place the database in a shared network location. "
             TextWrapping="Wrap" />
 
         <!--  Database folder  -->
         <StackPanel Spacing="6">
             <TextBlock
-                FontSize="{DynamicResource FontSizeNormal}"
+                FontSize="{StaticResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="Database folder" />
             <Grid ColumnDefinitions="*,8,Auto">
@@ -40,26 +40,26 @@
         <!--  Database filename — shown once a folder is chosen  -->
         <StackPanel IsVisible="{Binding DbFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Spacing="6">
             <TextBlock
-                FontSize="{DynamicResource FontSizeNormal}"
+                FontSize="{StaticResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="Database filename" />
             <TextBlock
-                FontSize="{DynamicResource FontSizeSmall}"
-                Foreground="{DynamicResource ForegroundMuted}"
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="{StaticResource ForegroundMuted}"
                 TextWrapping="Wrap">
                 This filename was suggested from your abbreviation. You may edit it before continuing.
             </TextBlock>
             <TextBox Text="{Binding DbFilename}" Watermark="e.g. CS-TT.db" />
             <!--  Inline validation error  -->
             <TextBlock
-                FontSize="{DynamicResource FontSizeSmall}"
-                Foreground="{DynamicResource NotificationErrorText}"
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="{StaticResource NotificationErrorText}"
                 IsVisible="{Binding DbFilenameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                 Text="{Binding DbFilenameError}" />
             <!--  Full path confirmation  -->
             <TextBlock
-                FontSize="{DynamicResource FontSizeSmall}"
-                Foreground="{DynamicResource ForegroundMuted}"
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="{StaticResource ForegroundMuted}"
                 IsVisible="{Binding DbFullPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                 <Run Text="Full path: " />
                 <Run FontWeight="SemiBold" Text="{Binding DbFullPath}" />
@@ -72,12 +72,12 @@
             IsVisible="{Binding IsFilenameReady}"
             Spacing="6">
             <TextBlock
-                FontSize="{DynamicResource FontSizeNormal}"
+                FontSize="{StaticResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="Backup folder" />
             <TextBlock
-                FontSize="{DynamicResource FontSizeSmall}"
-                Foreground="{DynamicResource ForegroundMuted}"
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="{StaticResource ForegroundMuted}"
                 TextWrapping="Wrap">
                 TermPoint saves automatic backups here. Ideally choose a different drive for safety.
             </TextBlock>
@@ -96,14 +96,14 @@
             <!--  Same-folder recommendation — appears only when both folders are the same path  -->
             <Border
                 Padding="12,8"
-                Background="{DynamicResource NotificationWarningBackground}"
-                BorderBrush="{DynamicResource NotificationWarningBorder}"
+                Background="{StaticResource NotificationWarningBackground}"
+                BorderBrush="{StaticResource NotificationWarningBorder}"
                 BorderThickness="1"
                 CornerRadius="4"
                 IsVisible="{Binding SameFolderWarning}">
                 <TextBlock
-                    FontSize="{DynamicResource FontSizeNormal}"
-                    Foreground="{DynamicResource NotificationWarningText}"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Foreground="{StaticResource NotificationWarningText}"
                     TextWrapping="Wrap">
                     <Bold>⚠ Recommendation:</Bold>
                     Your backup folder is the same as your database folder.

@@ -8,8 +8,8 @@
     <StackPanel MaxWidth="900" Spacing="16">
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ForegroundMuted}"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             Block patterns define which days of the week a class typically meets.
             For example, a 1.5-hour block may typically meet Monday/Wednesday/Friday (MWF)
@@ -17,8 +17,8 @@
         </TextBlock>
 
         <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ForegroundMuted}"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             TermPoint uses these patterns to make data entry faster when you add a section.
             You can define multiple patterns per block length to cover all the day combinations

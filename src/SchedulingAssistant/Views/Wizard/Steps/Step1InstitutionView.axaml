@@ -5,16 +5,16 @@
 
     <StackPanel Spacing="20" MaxWidth="820">
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}" Foreground="{DynamicResource ForegroundMuted}">
+        <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSizeNormal}" Foreground="{StaticResource ForegroundMuted}">
             Enter your institution's full name and a short abbreviation.
             The abbreviation is used to suggest a database filename.
         </TextBlock>
 
         <!-- Institution row -->
-        <Border BorderBrush="{DynamicResource SeparatorLine}" BorderThickness="0,0,0,1" Padding="0,0,0,16">
+        <Border BorderBrush="{StaticResource SeparatorLine}" BorderThickness="0,0,0,1" Padding="0,0,0,16">
             <Grid ColumnDefinitions="*,12,140" RowDefinitions="Auto,8,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
-                           Text="Institution" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeNormal}"/>
+                           Text="Institution" FontWeight="SemiBold" FontSize="{StaticResource FontSizeNormal}"/>
                 <TextBox Grid.Row="2" Grid.Column="0"
                          Watermark="e.g. Greendale Community College"
                          Text="{Binding InstitutionName}"/>
@@ -27,9 +27,9 @@
         <!-- Academic Unit row -->
         <Grid ColumnDefinitions="*,12,140" RowDefinitions="Auto,8,Auto,8,Auto">
             <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
-                       Text="Academic Unit" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeNormal}"/>
+                       Text="Academic Unit" FontWeight="SemiBold" FontSize="{StaticResource FontSizeNormal}"/>
             <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
-                       TextWrapping="Wrap" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource ForegroundMuted}">
+                       TextWrapping="Wrap" FontSize="{StaticResource FontSizeSmall}" Foreground="{StaticResource ForegroundMuted}">
                 The department or faculty using this schedule (e.g. "School of Arts", "Computer Science").
             </TextBlock>
             <TextBox Grid.Row="4" Grid.Column="0"

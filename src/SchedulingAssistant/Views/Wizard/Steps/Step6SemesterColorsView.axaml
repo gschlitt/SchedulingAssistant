@@ -12,8 +12,8 @@
             <TextBlock
                 Grid.Column="0"
                 VerticalAlignment="Center"
-                FontSize="{DynamicResource FontSizeNormal}"
-                Foreground="{DynamicResource ForegroundMuted}"
+                FontSize="{StaticResource FontSizeNormal}"
+                Foreground="{StaticResource ForegroundMuted}"
                 TextWrapping="Wrap">
                 Each semester is shown in a distinct color on the schedule grid, which is especially useful when scheduling courses in overlapping semesters.
                 Expand any row to open the color picker and choose your own.
@@ -42,13 +42,13 @@
                                 <TextBlock
                                     Width="160"
                                     VerticalAlignment="Center"
-                                    FontSize="{DynamicResource FontSizeNormal}"
+                                    FontSize="{StaticResource FontSizeNormal}"
                                     Text="{Binding Name}" />
                                 <Border
                                     Width="72"
                                     Height="24"
                                     VerticalAlignment="Center"
-                                    BorderBrush="{DynamicResource SeparatorLine}"
+                                    BorderBrush="{StaticResource SeparatorLine}"
                                     BorderThickness="1"
                                     CornerRadius="3">
                                     <Border.Background>

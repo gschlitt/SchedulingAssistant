@@ -61,6 +61,13 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _databaseName = string.Empty;
 
     /// <summary>
+    /// The full file-system path of the open database. Used as a tooltip on the
+    /// database name label in the menu bar.
+    /// </summary>
+    [ObservableProperty]
+    private string _databasePath = string.Empty;
+
+    /// <summary>
     /// Observable list of recent database files for the Files menu.
     /// </summary>
     [ObservableProperty]
@@ -173,7 +180,16 @@ public partial class MainWindowViewModel : ViewModelBase
         catch { /* non-critical — link open failure should not crash the app */ }
     }
 
-    internal void SetDatabaseName(string name) => DatabaseName = name;
+    /// <summary>
+    /// Sets the database display name and full path shown in the menu bar.
+    /// </summary>
+    /// <param name="name">Filename without extension, shown as the label.</param>
+    /// <param name="fullPath">Full file-system path, shown as a tooltip.</param>
+    internal void SetDatabaseName(string name, string fullPath = "")
+    {
+        DatabaseName = name;
+        DatabasePath = fullPath;
+    }
 
     /// <summary>
     /// Populate the recent databases list from AppSettings.

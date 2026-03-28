@@ -8,7 +8,7 @@
     <StackPanel Spacing="16" Margin="20">
 
         <!-- Exception behaviour toggle -->
-        <Border BorderBrush="{DynamicResource MenuBorderBrush}"
+        <Border BorderBrush="{StaticResource MenuBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="4"
                 Padding="10,8">
@@ -26,7 +26,7 @@
                 <TextBlock Text="When checked, any call to LogError re-throws after writing, so exceptions surface in the debugger instead of being silently swallowed."
                            TextWrapping="Wrap"
                            FontSize="11"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                           Foreground="{StaticResource SystemControlForegroundBaseMediumBrush}" />
             </StackPanel>
         </Border>
 

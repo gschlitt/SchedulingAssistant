@@ -288,28 +288,28 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void BlockPattern_Slot1_EditCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new BlockPatternListViewModel(_blockPatternRepo, _lock);
-        Assert.False(vm.Slot1.EditCommand.CanExecute(null));
+        Assert.False(vm.Slots[0].EditCommand.CanExecute(null));
     }
 
     [Fact]
     public void BlockPattern_Slot1_ClearCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new BlockPatternListViewModel(_blockPatternRepo, _lock);
-        Assert.False(vm.Slot1.ClearCommand.CanExecute(null));
+        Assert.False(vm.Slots[0].ClearCommand.CanExecute(null));
     }
 
     [Fact]
     public void BlockPattern_Slot5_EditCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new BlockPatternListViewModel(_blockPatternRepo, _lock);
-        Assert.False(vm.Slot5.EditCommand.CanExecute(null));
+        Assert.False(vm.Slots[4].EditCommand.CanExecute(null));
     }
 
     [Fact]
     public void BlockPattern_Slot5_ClearCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new BlockPatternListViewModel(_blockPatternRepo, _lock);
-        Assert.False(vm.Slot5.ClearCommand.CanExecute(null));
+        Assert.False(vm.Slots[4].ClearCommand.CanExecute(null));
     }
 
     // ═════════════════════════════════════════════════════════════════════════

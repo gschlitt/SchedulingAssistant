@@ -6,14 +6,14 @@
 
     <StackPanel Spacing="16" MaxWidth="900">
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
-                   Foreground="{DynamicResource ForegroundMuted}">
+        <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSizeNormal}"
+                   Foreground="{StaticResource ForegroundMuted}">
             If your department schedules across more than one physical campus, add each one here.
             Rooms and section prefixes can be linked to a campus to help filter and organize the schedule grid.
         </TextBlock>
 
-        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource FontSizeNormal}"
-                   Foreground="{DynamicResource ForegroundMuted}">
+        <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSizeNormal}"
+                   Foreground="{StaticResource ForegroundMuted}">
             If you only have one location, you can add a single entry or skip this step entirely.
             Campuses can be added or changed at any time in Settings.
         </TextBlock>

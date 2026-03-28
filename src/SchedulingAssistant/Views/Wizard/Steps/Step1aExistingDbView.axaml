@@ -9,14 +9,14 @@
         <!-- Radio: fresh install -->
         <RadioButton
             Content="This is a fresh install. I need to set up my own database."
-            FontSize="{DynamicResource FontSizeNormal}"
+            FontSize="{StaticResource FontSizeNormal}"
             IsChecked="{Binding IsNewSetupChoice}" />
 
         <!-- Radio: existing database -->
         <StackPanel Spacing="12">
             <RadioButton
                 Content="I already have a database."
-                FontSize="{DynamicResource FontSizeNormal}"
+                FontSize="{StaticResource FontSizeNormal}"
                 IsChecked="{Binding IsExistingDbChoice}" />
 
             <!-- Detail pane — revealed when existing DB is chosen -->
@@ -27,15 +27,15 @@
 
                 <!-- Placeholder text — user will supply -->
                 <TextBlock
-                    FontSize="{DynamicResource FontSizeNormal}"
-                    Foreground="{DynamicResource ForegroundMuted}"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Foreground="{StaticResource ForegroundMuted}"
                     TextWrapping="Wrap"
                     Text="[Placeholder — instructions for connecting to a shared database.]" />
 
                 <!-- Database file -->
                 <StackPanel Spacing="6">
                     <TextBlock
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         FontWeight="SemiBold"
                         Text="Database file" />
                     <Grid ColumnDefinitions="*,8,Auto">
@@ -54,12 +54,12 @@
                 <!-- Backup folder -->
                 <StackPanel Spacing="6">
                     <TextBlock
-                        FontSize="{DynamicResource FontSizeNormal}"
+                        FontSize="{StaticResource FontSizeNormal}"
                         FontWeight="SemiBold"
                         Text="Backup folder" />
                     <TextBlock
-                        FontSize="{DynamicResource FontSizeSmall}"
-                        Foreground="{DynamicResource ForegroundMuted}"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Foreground="{StaticResource ForegroundMuted}"
                         TextWrapping="Wrap"
                         Text="[Placeholder — backup location guidance.]" />
                     <Grid ColumnDefinitions="*,8,Auto">
@@ -77,8 +77,8 @@
 
                 <!-- Error message -->
                 <TextBlock
-                    FontSize="{DynamicResource FontSizeSmall}"
-                    Foreground="{DynamicResource NotificationErrorText}"
+                    FontSize="{StaticResource FontSizeSmall}"
+                    Foreground="{StaticResource NotificationErrorText}"
                     IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                     Text="{Binding ErrorMessage}"
                     TextWrapping="Wrap" />
