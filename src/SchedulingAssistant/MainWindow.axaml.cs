@@ -241,6 +241,13 @@ public partial class MainWindow : Window
         dbPath = await RunCheckoutAsync(dbPath);
         // ─────────────────────────────────────────────────────────────────────
 
+        // Resolve the canonical source path D (not D') for the title bar and backup
+        // service.  RunCheckoutAsync returns D' in write mode, so we must look at
+        // SourcePath to get the path the user actually opened.
+        var canonicalPath = App.Checkout.Mode == CheckoutMode.WriteAccess
+            ? App.Checkout.SourcePath
+            : dbPath;
+
         // Initialize DI and DB, wire up the view model, then reveal the window.
         // DatabaseCorruptException is thrown when integrity_check fails; we handle
         // it by offering a restore dialog before the app opens normally.
@@ -264,7 +271,8 @@ public partial class MainWindow : Window
             vm = App.InitializeServices(dbPath);
         }
 
-        await SetupMainWindowAsync(dbPath, vm);
+        vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
+        await SetupMainWindowAsync(canonicalPath, vm);
     }
 
     /// <summary>

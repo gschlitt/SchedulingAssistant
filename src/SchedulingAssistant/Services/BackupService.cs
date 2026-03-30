@@ -301,6 +301,16 @@ public class BackupService : IDisposable
         {
             return false;
         }
+        finally
+        {
+            // Microsoft.Data.Sqlite pools connections by default: conn.Dispose() returns the
+            // connection to the pool rather than closing it, leaving the OS file handle on
+            // dbPath open. ClearAllPools() destroys every pooled entry so the handle is
+            // released before CheckoutService copies or replaces dbPath. Without this,
+            // File.Move(D.tmp → D) in CheckoutService.SaveAsync fails on Windows with
+            // "Access to the path is denied" because the pooled handle lacks FILE_SHARE_DELETE.
+            SqliteConnection.ClearAllPools();
+        }
     }
 
     // ── Internal helpers ─────────────────────────────────────────────────────

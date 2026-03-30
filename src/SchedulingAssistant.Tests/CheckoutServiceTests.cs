@@ -1138,4 +1138,117 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.Success, saveOutcome);
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 8 — Startup from most-recent database + menu bar name + save
+    //
+    // Simulates the app's startup path when a prior session exists:
+    //   AppSettings.RecentDatabases[0] holds the most-recently opened file.
+    //   CheckoutAsync is called with that path; SourcePath is then used by
+    //   MainWindow to set DatabaseName = Path.GetFileNameWithoutExtension(SourcePath).
+    //   After checkout, the user edits, presses Save, and D is updated.
+    //
+    // These tests do NOT touch AppSettings.Current (a process-wide singleton)
+    // to avoid cross-test contamination; instead they drive CheckoutService
+    // directly, which is the exact code called by SwitchDatabaseAsync after
+    // the most-recent path is retrieved from settings.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// After checking out the most-recent database, SourcePath equals the path
+    /// that was passed to CheckoutAsync.  MainWindow derives the menu-bar label
+    /// as <c>Path.GetFileNameWithoutExtension(SourcePath)</c>, so this verifies
+    /// that the correct name would be displayed.
+    /// </summary>
+    [Fact]
+    public async Task MostRecentDatabase_SourcePathMatchesMostRecentEntry()
+    {
+        // Arrange: two files exist; recentDatabases is ordered most-recent first,
+        // exactly as AppSettings.AddRecentDatabase inserts them.
+        var older  = DbPath("OlderSchedule");
+        var recent = DbPath("FallSchedule");
+        CreateFile(older,  "older-content");
+        CreateFile(recent, "recent-content");
+
+        var recentDatabases = new[] { recent, older }; // index 0 = most recent
+
+        var (svc, _) = CreateService();
+
+        // Act: open the most-recent database (mirrors SwitchDatabaseAsync reading
+        // AppSettings.RecentDatabases[0] and calling RunCheckoutAsync with that path).
+        var mostRecentPath = recentDatabases[0];
+        var outcome = await svc.CheckoutAsync(mostRecentPath);
+
+        // Assert: checkout succeeded and SourcePath is the file that was opened.
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(Path.GetFullPath(mostRecentPath), Path.GetFullPath(svc.SourcePath));
+
+        // The string bound to DatabaseName in the menu bar is derived here:
+        var displayName = Path.GetFileNameWithoutExtension(svc.SourcePath);
+        Assert.Equal("FallSchedule", displayName);
+    }
+
+    /// <summary>
+    /// When the most-recent database is opened and the user presses Save,
+    /// SaveAsync returns Success and the source file D is updated with the
+    /// content written to the working copy D'.
+    /// </summary>
+    [Fact]
+    public async Task MostRecentDatabase_AfterEdit_SaveUpdatesSourceFile()
+    {
+        // Arrange: simulate a database that was used in a prior session.
+        var db = DbPath("SpringSchedule");
+        CreateFile(db, "prior-session-content");
+
+        // AppSettings.RecentDatabases[0] would be this path; the app passes it
+        // to CheckoutAsync via SwitchDatabaseAsync / RunCheckoutAsync.
+        var (svc, _) = CreateService();
+        var outcome = await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+
+        // Simulate the app writing new data to D' (e.g. via DatabaseContext).
+        const string editedContent = "spring-schedule-edited";
+        File.WriteAllText(svc.WorkingPath, editedContent);
+
+        // Act: user presses the Save button → MainWindowViewModel.SaveCommand →
+        // CheckoutService.SaveAsync().
+        var saveOutcome = await svc.SaveAsync();
+
+        // Assert: save succeeded and D now contains the edited content.
+        Assert.Equal(SaveOutcome.Success, saveOutcome);
+        Assert.Equal(editedContent, File.ReadAllText(svc.SourcePath));
+    }
+
+    /// <summary>
+    /// Opening the most-recent database correctly sets SourcePath (not WorkingPath)
+    /// as the canonical path for the menu bar.  In write mode the two paths differ;
+    /// the title bar must show SourcePath (D), not the hidden working copy D'.
+    /// </summary>
+    [Fact]
+    public async Task MostRecentDatabase_MenuBarUsesSourcePathNotWorkingPath()
+    {
+        var db = DbPath("WinterSchedule");
+        CreateFile(db, "winter-content");
+
+        var (svc, _) = CreateService();
+        await svc.CheckoutAsync(db);
+
+        // D and D' must be distinct in normal (non-degenerate) mode.
+        Assert.NotEqual(svc.SourcePath, svc.WorkingPath);
+
+        // The canonical path for the menu bar is SourcePath (mirrors the
+        // guard in SwitchDatabaseAsync: canonicalPath = App.Checkout.SourcePath
+        // when Mode == WriteAccess).
+        var canonicalPath = svc.Mode == CheckoutMode.WriteAccess
+            ? svc.SourcePath
+            : db;
+
+        // The display name the user sees in the menu bar.
+        var displayName = Path.GetFileNameWithoutExtension(canonicalPath);
+        Assert.Equal("WinterSchedule", displayName);
+
+        // Must NOT be the working-copy name (which contains a session-GUID suffix).
+        var workingName = Path.GetFileNameWithoutExtension(svc.WorkingPath);
+        Assert.NotEqual("WinterSchedule", workingName);
+    }
 }
