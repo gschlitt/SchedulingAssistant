@@ -202,40 +202,104 @@ public sealed class WriteLockServiceTests : IDisposable
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Group 2 — Stale lock reclaim
+    // Group 2 — Stale lock detection and ForceAcquire
+    //
+    // The service no longer auto-reclaims a stale lock. Instead it sets
+    // IsStaleLock = true so the caller can prompt the user for confirmation
+    // before calling ForceAcquire().
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
     /// When the existing lock file's heartbeat is older than
-    /// <see cref="WriteLockService.StaleLockThresholdSeconds"/>, a new instance
-    /// reclaims it and becomes the writer.
+    /// <see cref="WriteLockService.StaleLockThresholdSeconds"/>, TryAcquire
+    /// sets <see cref="WriteLockService.IsStaleLock"/> to true instead of
+    /// auto-reclaiming — caller must confirm and then call ForceAcquire.
     /// </summary>
     [Fact]
-    public void TryAcquire_StaleLockExists_ReclaimsAndBecomesWriter()
+    public void TryAcquire_StaleLockExists_SetsIsStaleLock()
     {
-        var db   = DbPath();
+        var db    = DbPath();
         var lock_ = LockPath(db);
         WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
 
         using var svc = new WriteLockService();
         svc.TryAcquire(db);
 
-        Assert.True(svc.IsWriter);
+        Assert.True(svc.IsStaleLock);
     }
 
     /// <summary>
-    /// After a stale reclaim the lock file contains the new instance's
-    /// credentials, not the old holder's.
+    /// When <see cref="WriteLockService.IsStaleLock"/> is true, the instance is
+    /// NOT the writer — it has not taken the lock yet.
     /// </summary>
     [Fact]
-    public void TryAcquire_StaleLockExists_OverwritesLockFileWithNewData()
+    public void TryAcquire_StaleLockExists_IsWriterIsFalse()
     {
-        var db   = DbPath();
+        var db    = DbPath();
         var lock_ = LockPath(db);
         WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
 
         using var svc = new WriteLockService();
         svc.TryAcquire(db);
+
+        Assert.False(svc.IsWriter);
+    }
+
+    /// <summary>
+    /// When <see cref="WriteLockService.IsStaleLock"/> is true, the stale
+    /// holder's data is still available in <see cref="WriteLockService.CurrentHolder"/>.
+    /// The caller needs this to display the holder's name in the prompt.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_StaleLockExists_CurrentHolderPopulatedWithOldData()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+
+        Assert.NotNull(svc.CurrentHolder);
+        Assert.Equal("external_user", svc.CurrentHolder!.Username);
+        Assert.Equal("REMOTE-PC",     svc.CurrentHolder.Machine);
+    }
+
+    /// <summary>
+    /// After the user confirms via <see cref="WriteLockService.ForceAcquire"/>,
+    /// the instance becomes the writer.
+    /// </summary>
+    [Fact]
+    public void ForceAcquire_AfterStaleLock_BecomesWriter()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        Assert.True(svc.IsStaleLock); // precondition
+
+        svc.ForceAcquire();
+
+        Assert.True(svc.IsWriter);
+        Assert.False(svc.IsStaleLock);
+    }
+
+    /// <summary>
+    /// After <see cref="WriteLockService.ForceAcquire"/>, the lock file is
+    /// overwritten with this instance's credentials.
+    /// </summary>
+    [Fact]
+    public void ForceAcquire_AfterStaleLock_OverwritesLockFileWithNewData()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        svc.ForceAcquire();
 
         var data = ReadLockFile(lock_);
         Assert.Equal(Environment.UserName,    data.Username);
@@ -260,6 +324,7 @@ public sealed class WriteLockServiceTests : IDisposable
         svc.TryAcquire(db);
 
         Assert.False(svc.IsWriter);
+        Assert.False(svc.IsStaleLock);
     }
 
     // ═════════════════════════════════════════════════════════════════════════

@@ -9,14 +9,26 @@
         <StackPanel Spacing="24" MaxWidth="540" Margin="0,0,16,16" HorizontalAlignment="Left">
 
             <!-- ══════════════════════════════════════════════════════════════
-                 SECTION — Backup
+                 SECTION — Save & Backup
                  ═════════════════════════════════════════════════════════ -->
             <StackPanel Spacing="10">
-                <TextBlock Text="Automated Backup" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock Text="Save &amp; Backup" FontWeight="SemiBold" FontSize="14" />
 
+                <!-- Autosave interval -->
+                <TextBlock Text="Auto-save interval (minutes)" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
                 <TextBlock TextWrapping="Wrap" FontSize="11"
                            Foreground="{StaticResource TextDimLabel}"
-                           Text="Backups are taken at the start of each write session and periodically thereafter. Each backup consists of a SQLite database file and a human-readable sections CSV." />
+                           Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval." />
+                <NumericUpDown Value="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}"
+                               Minimum="1" Maximum="120" Increment="5"
+                               FormatString="0"
+                               FontSize="11"
+                               MaxWidth="140"
+                               HorizontalAlignment="Left" />
+
+                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0"
+                           Foreground="{StaticResource TextDimLabel}"
+                           Text="Backups are taken immediately before each save and at the interval below. Each backup is a SQLite database file." />
 
                 <!-- Backup folder -->
                 <TextBlock Text="Backup Folder" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />

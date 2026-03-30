@@ -382,7 +382,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void LegalStartTime_AddCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new LegalStartTimeListViewModel(_legalStartTimeRepo, _semesterContext,
-            _dialog, _lock);
+            _dialog, _lock, CreateSectionListVm(), _changeNotifier);
         Assert.False(vm.AddCommand.CanExecute(null));
     }
 
@@ -390,7 +390,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void LegalStartTime_EditCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new LegalStartTimeListViewModel(_legalStartTimeRepo, _semesterContext,
-            _dialog, _lock);
+            _dialog, _lock, CreateSectionListVm(), _changeNotifier);
         Assert.False(vm.EditCommand.CanExecute(null));
     }
 
@@ -398,7 +398,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void LegalStartTime_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new LegalStartTimeListViewModel(_legalStartTimeRepo, _semesterContext,
-            _dialog, _lock);
+            _dialog, _lock, CreateSectionListVm(), _changeNotifier);
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 

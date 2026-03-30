@@ -108,6 +108,18 @@ public class AppSettings
     public string? LastAcknowledgedVersion { get; set; }
 
     /// <summary>
+    /// When true, the app automatically saves D' to D on a timer while in write mode.
+    /// The interval is controlled by <see cref="AutoSaveIntervalMinutes"/>.
+    /// </summary>
+    public bool AutoSaveEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Interval in minutes between automatic saves when <see cref="AutoSaveEnabled"/> is true.
+    /// Minimum effective value is 1.
+    /// </summary>
+    public int AutoSaveIntervalMinutes { get; set; } = 10;
+
+    /// <summary>
     /// Email subject template for the Workload Mailer.
     /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}.
     /// </summary>

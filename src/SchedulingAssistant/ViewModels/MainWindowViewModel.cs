@@ -79,6 +79,59 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public MainWindow? MainWindowReference { get; set; }
 
+    // ── Save / checkout properties ────────────────────────────────────────────
+
+    /// <summary>
+    /// Human-readable description of a save error, or null when no error is active.
+    /// Shown in the save-error banner below the menu bar.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSaveError))]
+    private string? _saveErrorMessage;
+
+    /// <summary>True when the save-error banner should be visible.</summary>
+    public bool ShowSaveError => !string.IsNullOrEmpty(SaveErrorMessage);
+
+    /// <summary>
+    /// Whether the autosave timer is enabled. Persisted to <see cref="AppSettings"/>.
+    /// Setting this starts or stops the timer in <see cref="CheckoutService"/> immediately.
+    /// </summary>
+    public bool AutoSaveEnabled
+    {
+        get => AppSettings.Current.AutoSaveEnabled;
+        set
+        {
+            if (AppSettings.Current.AutoSaveEnabled == value) return;
+            AppSettings.Current.AutoSaveEnabled = value;
+            AppSettings.Current.Save();
+            if (value) App.Checkout.StartAutoSave();
+            else        App.Checkout.StopAutoSave();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Saves D' back to D. Delegates to <see cref="CheckoutService.SaveAsync"/>.
+    /// Outcome feedback is delivered through <see cref="SaveErrorMessage"/>.
+    /// </summary>
+    [RelayCommand]
+    private async Task Save()
+    {
+        await App.Checkout.SaveAsync();
+        // SaveCompleted / SaveFailed events update SaveErrorMessage via MainWindow handlers.
+    }
+
+    /// <summary>Dismisses the save-error banner.</summary>
+    [RelayCommand]
+    private void DismissSaveError() => SaveErrorMessage = null;
+
+    /// <summary>Called by MainWindow when a save succeeds.</summary>
+    internal void ClearSaveError() => SaveErrorMessage = null;
+
+    /// <summary>Called by MainWindow when a save fails.</summary>
+    /// <param name="message">Human-readable error message.</param>
+    internal void SetSaveError(string message) => SaveErrorMessage = message;
+
     // ── Write-lock properties ─────────────────────────────────────────────────
 
     /// <summary>
@@ -267,17 +320,31 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Attempts to re-acquire the write lock. Called when the user clicks the
-    /// "Switch to edit mode" button in the read-only banner after the polling
-    /// timer has signalled that the lock is no longer held.
+    /// Switches from read-only mode to write mode by running a full checkout
+    /// (acquires lock, copies D → D'). Called when the user clicks the
+    /// "Switch to edit mode" button after the polling timer signals the lock is free.
     /// </summary>
     [RelayCommand]
-    private void AcquireWriteLock()
+    private async Task AcquireWriteLock()
     {
-        var path = AppSettings.Current.DatabasePath;
-        if (path is null) return;
-        _lockService.TryAcquire(path);
-        OnLockStateChanged();
+        if (MainWindowReference is null) return;
+
+        var sourcePath = App.Checkout.SourcePath;
+        if (string.IsNullOrEmpty(sourcePath))
+            sourcePath = AppSettings.Current.DatabasePath;
+        if (sourcePath is null) return;
+
+        var outcome = await App.Checkout.CheckoutAsync(sourcePath);
+        if (outcome == CheckoutOutcome.WriteAccess)
+        {
+            // Re-initialize DI against the new working copy D'.
+            await MainWindowReference.SwitchDatabaseAsync(App.Checkout.WorkingPath);
+        }
+        else
+        {
+            // Someone else got there first — refresh the lock banner.
+            OnLockStateChanged();
+        }
     }
 
     /// <summary>
@@ -381,7 +448,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var vm = _services.GetRequiredService<SettingsViewModel>();
         vm.RestoreCallback = RestoreFromBackupAsync;
         FlyoutPage  = vm;
-        FlyoutTitle = "Backup";
+        FlyoutTitle = "Save & Backup";
     }
 
     /// <summary>

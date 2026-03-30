@@ -72,7 +72,16 @@ public sealed class WriteLockService : IDisposable
     private string? _lockFilePath;
     private Timer? _heartbeatTimer;
     private Timer? _pollTimer;
+    private Timer? _wakeDetectionTimer;
+    private DateTime _lastWakeTick = DateTime.UtcNow;
     private bool _disposed;
+
+    /// <summary>
+    /// A stable GUID generated once per app session. Written to the lock file so that
+    /// wake-checks and crash recovery can distinguish this exact session from another
+    /// by the same user on the same machine.
+    /// </summary>
+    public string SessionGuid { get; } = Guid.NewGuid().ToString();
 
     /// <summary>
     /// True when this instance currently holds the write lock.
@@ -95,6 +104,14 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     public bool WriteLockBecameAvailable { get; private set; }
 
+    /// <summary>
+    /// True when <see cref="TryAcquire"/> found an existing lock whose heartbeat was
+    /// stale, but did not auto-reclaim it. The caller should prompt the user for
+    /// confirmation, then call <see cref="ForceAcquire"/> if they agree.
+    /// Reset to false at the start of each <see cref="TryAcquire"/> call.
+    /// </summary>
+    public bool IsStaleLock { get; private set; }
+
     // ── Events ─────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -104,6 +121,13 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="WriteLockBecameAvailable"/> to update their state.
     /// </summary>
     public event Action? LockStateChanged;
+
+    /// <summary>
+    /// Raised on the UI thread when the gap-detection timer observes that the
+    /// machine likely resumed from sleep (elapsed time between ticks exceeded the
+    /// expected interval by a significant margin).
+    /// </summary>
+    public event Action? WakeDetected;
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -122,13 +146,20 @@ public sealed class WriteLockService : IDisposable
         Release();
 
         WriteLockBecameAvailable = false;
+        IsStaleLock = false;
         _lockFilePath = Path.ChangeExtension(dbPath, ".lock");
 
         if (TryCreateLockFile())
         {
             IsWriter = true;
             StartHeartbeat();
+            StartWakeDetection();
             App.Logger.LogInfo($"[WriteLockService] Acquired write lock: {_lockFilePath}");
+        }
+        else if (IsStaleLock)
+        {
+            IsWriter = false;
+            App.Logger.LogInfo($"[WriteLockService] Stale lock detected for {CurrentHolder?.Username}@{CurrentHolder?.Machine} — awaiting user confirmation to take over.");
         }
         else
         {
@@ -154,6 +185,8 @@ public sealed class WriteLockService : IDisposable
         _heartbeatTimer = null;
         _pollTimer?.Dispose();
         _pollTimer = null;
+        _wakeDetectionTimer?.Dispose();
+        _wakeDetectionTimer = null;
 
         if (IsWriter && _lockFilePath is not null)
         {
@@ -187,17 +220,59 @@ public sealed class WriteLockService : IDisposable
     // ── Lock file helpers ──────────────────────────────────────────────────────
 
     /// <summary>
+    /// Breaks a stale lock and acquires write access. Call only after the user has
+    /// confirmed they wish to take over a stale session (i.e., <see cref="IsStaleLock"/>
+    /// is true following a <see cref="TryAcquire"/> call).
+    /// </summary>
+    public void ForceAcquire()
+    {
+        if (_lockFilePath is null) return;
+        try { File.Delete(_lockFilePath); } catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[WriteLockService] ForceAcquire: could not delete stale lock: {ex.Message}");
+        }
+
+        IsStaleLock = false;
+        CurrentHolder = null;
+
+        if (TryCreateOnce())
+        {
+            IsWriter = true;
+            StartHeartbeat();
+            StartWakeDetection();
+            App.Logger.LogInfo($"[WriteLockService] ForceAcquire: lock acquired after breaking stale lock.");
+        }
+        else
+        {
+            // Another instance beat us to it.
+            IsWriter = false;
+            StartPolling();
+            App.Logger.LogInfo($"[WriteLockService] ForceAcquire: lost race — another instance acquired the lock.");
+        }
+
+        Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+    }
+
+    /// <summary>
+    /// Forces an immediate heartbeat renewal. Used by <see cref="CheckoutService"/>
+    /// after wake-from-sleep detection to refresh the lock file without waiting for
+    /// the next scheduled heartbeat tick.
+    /// </summary>
+    internal void ForceRenewHeartbeat() => RenewHeartbeat();
+
+    /// <summary>
     /// Top-level lock acquisition attempt. First tries to create the file
-    /// atomically; if the file exists and its heartbeat is stale, deletes it and
-    /// tries once more. Populates <see cref="CurrentHolder"/> on failure.
+    /// atomically; if the file exists and its heartbeat is stale, sets
+    /// <see cref="IsStaleLock"/> and returns false so the caller can prompt the user.
+    /// Populates <see cref="CurrentHolder"/> on failure.
     /// </summary>
     /// <returns>
     /// True if this instance successfully created the lock file and became the
-    /// writer; false if another instance holds a fresh lock.
+    /// writer; false if another instance holds a lock (fresh or stale).
     /// </returns>
     private bool TryCreateLockFile()
     {
-        return TryCreateOnce() || TryReclaimStaleAndCreate();
+        return TryCreateOnce() || DetectStaleLock();
     }
 
     /// <summary>
@@ -222,32 +297,21 @@ public sealed class WriteLockService : IDisposable
     }
 
     /// <summary>
-    /// If the lock held by <see cref="CurrentHolder"/> is older than
-    /// <see cref="StaleLockThresholdSeconds"/>, deletes the stale lock file and
-    /// retries <see cref="TryCreateOnce"/>. If two instances attempt this
-    /// simultaneously, only one will win the subsequent <see cref="FileMode.CreateNew"/>;
-    /// the other falls back to read-only mode.
+    /// Checks whether the existing lock is stale (heartbeat older than
+    /// <see cref="StaleLockThresholdSeconds"/>). If so, sets <see cref="IsStaleLock"/>
+    /// to true so the caller can prompt the user before calling <see cref="ForceAcquire"/>.
+    /// Does NOT auto-reclaim the lock.
     /// </summary>
-    /// <returns>True if the stale reclaim and subsequent creation both succeeded.</returns>
-    private bool TryReclaimStaleAndCreate()
+    /// <returns>Always false — stale detection is not the same as acquisition.</returns>
+    private bool DetectStaleLock()
     {
         if (CurrentHolder is null) return false;
         var age = (DateTime.UtcNow - CurrentHolder.Heartbeat).TotalSeconds;
         if (age <= StaleLockThresholdSeconds) return false;
 
-        App.Logger.LogInfo($"[WriteLockService] Stale lock detected (age {age:F0}s). Reclaiming.");
-
-        try
-        {
-            File.Delete(_lockFilePath!);
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogInfo($"[WriteLockService] Could not delete stale lock: {ex.Message}");
-        }
-
-        CurrentHolder = null;
-        return TryCreateOnce();
+        App.Logger.LogInfo($"[WriteLockService] Stale lock detected (age {age:F0}s) — setting IsStaleLock for caller to handle.");
+        IsStaleLock = true;
+        return false;
     }
 
     /// <summary>
@@ -272,17 +336,19 @@ public sealed class WriteLockService : IDisposable
     /// <summary>
     /// Serializes a new <see cref="LockFileData"/> payload to the provided stream.
     /// Both <c>Acquired</c> and <c>Heartbeat</c> are set to the current UTC time.
+    /// <see cref="SessionGuid"/> is included so wake-checks can identify this exact session.
     /// </summary>
     /// <param name="fs">An open, writable file stream positioned at the start.</param>
-    private static void WriteLockData(Stream fs)
+    private void WriteLockData(Stream fs)
     {
         var now = DateTime.UtcNow;
         var data = new LockFileData
         {
-            Username  = Environment.UserName,
-            Machine   = Environment.MachineName,
-            Acquired  = now,
-            Heartbeat = now
+            Username    = Environment.UserName,
+            Machine     = Environment.MachineName,
+            SessionGuid = SessionGuid,
+            Acquired    = now,
+            Heartbeat   = now
         };
         JsonSerializer.Serialize(fs, data);
     }
@@ -338,6 +404,34 @@ public sealed class WriteLockService : IDisposable
     {
         var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
         _pollTimer = new Timer(_ => Dispatcher.UIThread.Post(PollLockFile), null, interval, interval);
+    }
+
+    /// <summary>
+    /// Starts the wake-detection timer. Fires every 30 seconds and compares the
+    /// elapsed time to the expected interval. If the gap significantly exceeds 30s
+    /// (indicating the machine was asleep), raises <see cref="WakeDetected"/> on
+    /// the UI thread. Only started when this instance holds the write lock.
+    /// </summary>
+    private void StartWakeDetection()
+    {
+        const int checkIntervalSeconds = 30;
+        const int wakeThresholdSeconds = 90; // 3× expected — must have been asleep
+
+        _lastWakeTick = DateTime.UtcNow;
+        var interval = TimeSpan.FromSeconds(checkIntervalSeconds);
+
+        _wakeDetectionTimer = new Timer(_ =>
+        {
+            var now     = DateTime.UtcNow;
+            var elapsed = (now - _lastWakeTick).TotalSeconds;
+            _lastWakeTick = now;
+
+            if (elapsed > wakeThresholdSeconds)
+            {
+                App.Logger.LogInfo($"[WriteLockService] Wake detected — gap was {elapsed:F0}s.");
+                Dispatcher.UIThread.Post(() => WakeDetected?.Invoke());
+            }
+        }, null, interval, interval);
     }
 
     /// <summary>

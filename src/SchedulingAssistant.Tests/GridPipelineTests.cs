@@ -635,4 +635,103 @@ public class GridPipelineTests
         Assert.Single(result.OfType<SectionMeetingBlock>());
         Assert.Single(result.OfType<CommitmentBlock>());
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Multiple meetings per day (single section, multiple same-day slots)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A section that meets twice on the same day (e.g. a split lab/lecture on Monday)
+    /// must produce two separate blocks — one per meeting slot.
+    /// </summary>
+    [Fact]
+    public void BuildFilteredBlocks_SectionWithTwoMeetingsSameDay_BothBlocksProduced()
+    {
+        // Monday 8:30 AM and Monday 11:00 AM — non-overlapping meetings on the same day.
+        var section = Sec(schedule: [Slot(1, 510), Slot(1, 660)]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([section], Snap(), Lookups(), []);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, b => Assert.Equal(1, ((SectionMeetingBlock)b).Day));
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).StartMinutes == 510);
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).StartMinutes == 660);
+    }
+
+    /// <summary>
+    /// When a room filter is active and a section has two same-day meetings in
+    /// different rooms, only the meeting in the filtered room should pass.
+    /// The other meeting is excluded even though the section itself is not.
+    /// </summary>
+    [Fact]
+    public void BuildFilteredBlocks_RoomFilter_TwoSameDayMeetingsDifferentRooms_OnlyMatchingMeetingPasses()
+    {
+        var section = Sec(schedule: [
+            Slot(1, 510, roomId: "r1"),  // passes room filter
+            Slot(1, 660, roomId: "r2")   // excluded
+        ]);
+        var snap = Snap(rooms: ["r1"]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([section], snap, Lookups(), []);
+
+        Assert.Single(result);
+        Assert.Equal(510, ((SectionMeetingBlock)result[0]).StartMinutes);
+    }
+
+    /// <summary>
+    /// A section meeting Monday through Friday at the same time must produce
+    /// exactly five blocks — one per day — with no merging across days.
+    /// </summary>
+    [Fact]
+    public void BuildFilteredBlocks_SectionMeetsEveryWeekday_FiveSeparateBlocksProduced()
+    {
+        var section = Sec(schedule: [
+            Slot(1, 510), Slot(2, 510), Slot(3, 510), Slot(4, 510), Slot(5, 510)
+        ]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([section], Snap(), Lookups(), []);
+
+        Assert.Equal(5, result.Count);
+        for (int day = 1; day <= 5; day++)
+            Assert.Single(result, b => ((SectionMeetingBlock)b).Day == day);
+    }
+
+    /// <summary>
+    /// Two different sections scheduled at the same time on the same day must each
+    /// produce their own block. Merging co-scheduled blocks into one tile is
+    /// ComputeTiles' responsibility, not BuildFilteredBlocks'.
+    /// </summary>
+    [Fact]
+    public void BuildFilteredBlocks_TwoSectionsAtSameTime_ProduceSeparateBlocks()
+    {
+        var s1 = Sec("s1", schedule: [Slot(1, 510)]);
+        var s2 = Sec("s2", schedule: [Slot(1, 510)]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([s1, s2], Snap(), Lookups(), []);
+
+        Assert.Equal(2, result.Count);
+        Assert.Single(result, b => ((SectionMeetingBlock)b).SectionId == "s1");
+        Assert.Single(result, b => ((SectionMeetingBlock)b).SectionId == "s2");
+    }
+
+    /// <summary>
+    /// A section with two overlapping meetings on the same day (e.g. a short meeting
+    /// that runs inside a longer one) must still produce two separate blocks.
+    /// Layout is determined later by ComputeTiles.
+    /// </summary>
+    [Fact]
+    public void BuildFilteredBlocks_SectionWithTwoOverlappingSameDayMeetings_BothBlocksProduced()
+    {
+        // Meeting A: 8:30–10:00 (90 min). Meeting B: 9:30–11:00 (90 min) — overlaps A.
+        var section = Sec(schedule: [
+            Slot(1, 510, durationMinutes: 90),
+            Slot(1, 570, durationMinutes: 90)
+        ]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([section], Snap(), Lookups(), []);
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).StartMinutes == 510);
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).StartMinutes == 570);
+    }
 }

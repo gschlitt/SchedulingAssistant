@@ -148,7 +148,7 @@
                             <Button
                                 Padding="6,3"
                                 Command="{Binding SaveCommand}"
-                                Content="Save"
+                                Content="Done"
                                 FontSize="10" />
                             <Button
                                 Padding="6,3"
@@ -396,7 +396,7 @@
                                         <Button
                                             Padding="6,3"
                                             Command="{Binding SaveCommand}"
-                                            Content="Save"
+                                            Content="Done"
                                             FontSize="10" />
                                         <Button
                                             Padding="6,3"
@@ -542,7 +542,7 @@
                                             <Button
                                                 Padding="6,3"
                                                 Command="{Binding SaveCommand}"
-                                                Content="Save"
+                                                Content="Done"
                                                 FontSize="10" />
                                             <Button
                                                 Padding="6,3"

@@ -46,7 +46,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!--  Top menu bar  -->
         <Border
@@ -242,7 +242,7 @@
                             <MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />
                             <MenuItem Command="{Binding NavigateToSectionPrefixesCommand}" Header="Section Prefixes" />
                             <Separator />
-                            <MenuItem Command="{Binding NavigateToSettingsCommand}" Header="Backup" />
+                            <MenuItem Command="{Binding NavigateToSettingsCommand}" Header="Save &amp; Backup" />
                         </MenuItem>
                     </Menu>
 
@@ -278,6 +278,32 @@
                         Classes="nav"
                         Command="{Binding NavigateToHelpCommand}"
                         Content="Help" />
+
+                    <Border
+                        Width="1"
+                        Margin="4,10"
+                        Background="{StaticResource SeparatorLine}" />
+
+                    <!--  Save button + autosave checkbox — always visible in write mode  -->
+                    <StackPanel
+                        Margin="0,4"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding IsWriteEnabled}"
+                        Orientation="Horizontal"
+                        Spacing="6">
+                        <Button
+                            Padding="14,8"
+                            Classes="nav"
+                            Command="{Binding SaveCommand}"
+                            Content="Save"
+                            ToolTip.Tip="Save changes to the database" />
+                        <CheckBox
+                            VerticalAlignment="Center"
+                            Content="Auto-save"
+                            FontSize="{StaticResource FontSizeNormal}"
+                            IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
+                            ToolTip.Tip="Automatically save at the interval configured under Settings → Save &amp; Backup" />
+                    </StackPanel>
 
                     <!--  Debug menu (added in code-behind in DEBUG mode)  -->
                     <Menu
@@ -343,12 +369,41 @@
         </Border>
 
         <!--
-            Notification banner — shown between the lock banner and the content area.
+            Save-error banner — shown when an explicit save or autosave fails.
+            Uses the warning colour scheme. Dismissed by the user or cleared automatically
+            on the next successful save.
+        -->
+        <Border
+            Grid.Row="2"
+            Padding="12,4"
+            Background="{StaticResource NotificationWarningBackground}"
+            BorderBrush="{StaticResource NotificationWarningBorder}"
+            BorderThickness="0,0,0,1"
+            IsVisible="{Binding ShowSaveError}">
+            <DockPanel>
+                <Button
+                    Margin="8,0,0,0"
+                    Padding="8,2"
+                    Command="{Binding DismissSaveErrorCommand}"
+                    Content="Dismiss"
+                    DockPanel.Dock="Right"
+                    FontSize="{StaticResource FontSizeNormal}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Foreground="{StaticResource NotificationWarningText}"
+                    Text="{Binding SaveErrorMessage}"
+                    TextWrapping="NoWrap" />
+            </DockPanel>
+        </Border>
+
+        <!--
+            Notification banner — shown between the save-error banner and the content area.
             The CSS class on the Border is set by NotificationSeverityClass and drives
             the colour scheme via the Window.Styles block above.
         -->
         <Border
-            Grid.Row="2"
+            Grid.Row="3"
             Padding="12,4"
             BorderThickness="0,0,0,1"
             Classes.notification_error="{Binding NotificationIsError}"
@@ -383,7 +438,7 @@
         </Border>
 
         <!--  Main body: layered panel (permanent grid beneath, flyout overlay above)  -->
-        <Panel Grid.Row="3">
+        <Panel Grid.Row="4">
 
             <!--
                 Layer 0: permanent three-panel grid.

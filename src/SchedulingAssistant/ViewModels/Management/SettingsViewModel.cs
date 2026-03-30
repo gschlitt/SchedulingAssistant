@@ -15,6 +15,27 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     private readonly BackupService _backupService;
     private readonly IDialogService _dialogService;
 
+    // ── Autosave settings ────────────────────────────────────────────────────
+
+    /// <summary>Interval in minutes between automatic saves when autosave is enabled.</summary>
+    [ObservableProperty]
+    private int _autoSaveIntervalMinutes;
+
+    /// <summary>Persists the autosave interval immediately when changed, and restarts the timer if running.</summary>
+    partial void OnAutoSaveIntervalMinutesChanged(int value)
+    {
+        var s = AppSettings.Current;
+        s.AutoSaveIntervalMinutes = Math.Max(value, 1);
+        s.Save();
+
+        // Restart the timer so the new interval takes effect immediately.
+        if (s.AutoSaveEnabled)
+        {
+            App.Checkout.StopAutoSave();
+            App.Checkout.StartAutoSave();
+        }
+    }
+
     // ── Backup settings ──────────────────────────────────────────────────────
 
     /// <summary>Folder path where automated backups are written. Empty string = not configured.</summary>
@@ -63,9 +84,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         // Initialise fields from persisted settings.
         var s = AppSettings.Current;
-        _backupFolderPath     = s.BackupFolderPath ?? string.Empty;
-        _backupIntervalMinutes = s.BackupIntervalMinutes;
-        _maxBackupCount       = s.MaxBackupCount;
+        _autoSaveIntervalMinutes = s.AutoSaveIntervalMinutes;
+        _backupFolderPath        = s.BackupFolderPath ?? string.Empty;
+        _backupIntervalMinutes   = s.BackupIntervalMinutes;
+        _maxBackupCount          = s.MaxBackupCount;
 
         // Reflect the most recent backup result from this session (if any).
         UpdateLastBackupStatus();

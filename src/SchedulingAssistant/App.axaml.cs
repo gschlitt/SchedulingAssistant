@@ -26,6 +26,21 @@ public partial class App : Application
     /// </summary>
     public static IAppLogger Logger { get; private set; } = new FileAppLogger();
 
+    /// <summary>
+    /// Write-lock service, created once at app startup and shared across all DI containers.
+    /// Registered into DI as a pre-existing instance so the container does not dispose it
+    /// when the container is rebuilt on a database switch.
+    /// </summary>
+    public static WriteLockService LockService { get; } = new WriteLockService();
+
+    /// <summary>
+    /// Checkout service, created once at app startup. Manages the D → D' copy,
+    /// write lock acquisition, save-back, autosave, and crash recovery for every
+    /// database the app opens. Lives outside DI because checkout must complete
+    /// before <see cref="InitializeServices"/> is called.
+    /// </summary>
+    public static CheckoutService Checkout { get; } = new CheckoutService(LockService, Logger);
+
     public override void Initialize()
     {
 #if DEBUG
@@ -81,11 +96,10 @@ public partial class App : Application
             throw new DatabaseCorruptException(dbPath);
         }
 
-        // Acquire the write lock before touching the database file.
-        // This must happen before DatabaseContext is initialized so that if two
-        // instances open the same file simultaneously, the loser enters read-only
-        // mode before any writes occur.
-        Services.GetRequiredService<WriteLockService>().TryAcquire(dbPath);
+        // The write lock was already acquired by App.Checkout.CheckoutAsync() before
+        // this method was called.  App.LockService is the pre-DI singleton registered
+        // into the container, so all code that resolves WriteLockService from DI gets
+        // the instance that already has the correct IsWriter / CurrentHolder state.
 
         // Eagerly initialize the database (schema creation + seeding).
         Services.GetRequiredService<IDatabaseContext>();
@@ -121,7 +135,10 @@ public partial class App : Application
 
         // Services
         services.AddSingleton<SemesterContext>();
-        services.AddSingleton<WriteLockService>();
+        // Register the pre-DI WriteLockService instance. Using the overload that
+        // takes an existing instance means the container will NOT dispose it when
+        // the container is rebuilt on a database switch.
+        services.AddSingleton(App.LockService);
         services.AddSingleton<BackupService>();
         services.AddSingleton<AppNotificationService>();
         // These services are stateless wrappers; singletons match their actual lifetime.

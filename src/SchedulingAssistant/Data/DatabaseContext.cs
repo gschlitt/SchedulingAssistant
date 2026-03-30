@@ -287,5 +287,13 @@ public class DatabaseContext : IDatabaseContext
     public void Dispose()
     {
         _conn.Dispose();
+
+        // Microsoft.Data.Sqlite pools connections by default: Dispose() returns
+        // the connection to the pool rather than closing it, so the OS file handle
+        // on D is retained. ClearAllPools() destroys every pooled entry, releasing
+        // all file handles immediately. Without this, File.Move(D.tmp → D) in
+        // CheckoutService.SaveAsync fails on Windows with "Access to the path is
+        // denied" because the pool still holds D open without FILE_SHARE_DELETE.
+        SqliteConnection.ClearAllPools();
     }
 }

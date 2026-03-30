@@ -11,16 +11,18 @@ public interface IAppLogger
 {
     /// <summary>
     /// When true, <see cref="LogError"/> re-throws the original exception (preserving its
-    /// stack trace) after writing to the log. Intended for development use only — never
-    /// enable in production. Defaults to false.
+    /// stack trace) instead of firing the notification event. Intended for development use
+    /// only — keeps the debugger break signal clean and avoids a confusing banner alongside
+    /// the exception. Defaults to false.
     /// </summary>
     bool ThrowOnError { get; set; }
 
     /// <summary>
-    /// Fired after every <see cref="LogError"/> call with a short user-readable message
-    /// (the <c>context</c> if provided, otherwise the exception message).
-    /// <see cref="AppNotificationService"/> subscribes to this so logged errors are
-    /// automatically surfaced in the main-window notification banner.
+    /// Fired after every <see cref="LogError"/> call (when <see cref="ThrowOnError"/> is
+    /// false) with a short user-readable message (the <c>context</c> if provided, otherwise
+    /// the exception message). <see cref="AppNotificationService"/> subscribes to this so
+    /// logged errors are automatically surfaced in the main-window notification banner.
+    /// Not fired when <see cref="ThrowOnError"/> is true — the re-throw is the signal.
     /// </summary>
     event EventHandler<string>? ErrorLogged;
 

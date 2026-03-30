@@ -15,6 +15,12 @@ public class LockFileData
     /// <summary>The machine name of the process that holds the lock (e.g., "LAPTOP-42").</summary>
     public string Machine { get; set; } = string.Empty;
 
+    /// <summary>
+    /// A GUID generated fresh for each app session. Used to distinguish this session
+    /// from another by the same user on the same machine (e.g., after a crash and restart).
+    /// </summary>
+    public string SessionGuid { get; set; } = string.Empty;
+
     /// <summary>UTC timestamp when the lock was first acquired in this session.</summary>
     public DateTime Acquired { get; set; }
 

@@ -11,8 +11,9 @@ namespace SchedulingAssistant.Services;
 /// IAppLogger differently and updating the DI registration in App.axaml.cs.
 ///
 /// All public methods are non-throwing in production. When <see cref="ThrowOnError"/>
-/// is true, <see cref="LogError"/> re-throws the original exception after writing so
-/// it surfaces immediately in the debugger. This flag is intended for development only.
+/// is true, <see cref="LogError"/> re-throws the original exception instead of firing
+/// the notification event, so exceptions surface immediately in the debugger with a
+/// full stack trace. This flag is intended for development only.
 /// </summary>
 public sealed class FileAppLogger : IAppLogger
 {
@@ -35,17 +36,21 @@ public sealed class FileAppLogger : IAppLogger
     {
         Write("ERROR", context, ex);
 
-        // Surface to the notification banner — use the context string when provided
-        // (it is more user-readable than a raw exception message).
+        // In dev mode, re-throw immediately so exceptions surface with a full stack
+        // trace rather than being silently swallowed and shown as a notification banner.
+        // ExceptionDispatchInfo preserves the original stack trace. The re-throw exits
+        // this method, so the ErrorLogged event is intentionally NOT fired — a banner
+        // alongside a debugger break is confusing noise.
+        if (ThrowOnError && ex is not null)
+            ExceptionDispatchInfo.Capture(ex).Throw();
+
+        // Production path: surface the error as a notification banner.
+        // Use the context string when provided; it is more user-readable than the
+        // raw exception message.
         var notificationMessage = !string.IsNullOrWhiteSpace(context)
             ? context
             : ex?.Message ?? "An error occurred.";
         ErrorLogged?.Invoke(this, notificationMessage);
-
-        // In dev mode, re-throw so exceptions are never silently swallowed.
-        // ExceptionDispatchInfo preserves the original stack trace.
-        if (ThrowOnError && ex is not null)
-            ExceptionDispatchInfo.Capture(ex).Throw();
     }
 
     public void LogWarning(string message, string? context = null)

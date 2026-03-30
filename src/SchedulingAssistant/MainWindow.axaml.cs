@@ -70,22 +70,36 @@ public partial class MainWindow : Window
 #endif
     }
 
+    // Prevents double-close when OnClosing cancels itself to run async shutdown.
+    private bool _shuttingDown;
+
     /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
-    /// All shutdown logic (e.g. backup, save-state) belongs here so both paths are handled identically.
+    /// Cancels the first close event to run async shutdown (save to D, release lock), then
+    /// re-triggers Close() once that work is done.
     /// </summary>
-    /// <param name="e">Closing event args; set <c>e.Cancel = true</c> to abort the close.</param>
-    protected override void OnClosing(WindowClosingEventArgs e)
+    /// <param name="e">Closing event args; set <c>e.Cancel = true</c> to defer the close.</param>
+    protected override async void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
 
-        // Stop the periodic backup timer before disposing the container so the timer
-        // callback cannot fire against a half-torn-down DI graph.
+        if (_shuttingDown) return; // Second pass — let it close.
+
+        e.Cancel = true; // Defer: run async save first.
+        _shuttingDown = true;
+
+        // Stop the periodic backup timer before disposing the container.
         if (App.Services?.GetService(typeof(BackupService)) is BackupService bs)
             bs.StopSession();
 
+        // Stop autosave and save D' → D (releases lock on success).
+        App.Checkout.StopAutoSave();
+        await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
+
         // Dispose the DI container, which closes the SQLite connection cleanly.
         (App.Services as IDisposable)?.Dispose();
+
+        Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
     }
     //debug
     
@@ -147,11 +161,11 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Wizard completed and App.Services is already initialized.
-            // Skip straight to wiring up the main window.
-            var dbPath = settings.DatabasePath!;
-            settings.AddRecentDatabase(dbPath);
-            await SetupMainWindowAsync(dbPath);
+            // Wizard completed. App.Services was initialized against D (the real DB file)
+            // by the wizard. Now run the full checkout flow: acquire the write lock, copy D
+            // to D', and reinitialize services against D'. SwitchDatabaseAsync handles the
+            // no-op release (nothing held yet) + checkout + re-InitializeServices + SetupMainWindowAsync.
+            await SwitchDatabaseAsync(settings.DatabasePath!);
             return;
         }
 
@@ -214,6 +228,19 @@ public partial class MainWindow : Window
         // Record this database in recent list
         settings.AddRecentDatabase(dbPath);
 
+        // ── Checkout flow ─────────────────────────────────────────────────────
+        // Clean up any orphaned .tmp from a previous crashed save, then check for
+        // an orphaned working copy (crash recovery), then acquire the write lock
+        // and copy D → D'.  The result determines which path is passed to
+        // InitializeServices (D' for write mode, D for read-only mode).
+        App.Checkout.CleanupOrphanedTmp(dbPath);
+
+        if (App.Checkout.DetectCrashRecovery(dbPath))
+            dbPath = await HandleCrashRecoveryAsync(dbPath) ?? dbPath;
+
+        dbPath = await RunCheckoutAsync(dbPath);
+        // ─────────────────────────────────────────────────────────────────────
+
         // Initialize DI and DB, wire up the view model, then reveal the window.
         // DatabaseCorruptException is thrown when integrity_check fails; we handle
         // it by offering a restore dialog before the app opens normally.
@@ -266,6 +293,20 @@ public partial class MainWindow : Window
 
         DataContext = vm;
 
+        // Wire CheckoutService events so the VM and window can react to save
+        // results and session timeouts. Unsubscribe any previous handlers first
+        // to avoid accumulation across database switches.
+        App.Checkout.SaveCompleted  -= OnCheckoutSaveCompleted;
+        App.Checkout.SaveFailed     -= OnCheckoutSaveFailed;
+        App.Checkout.SessionTimedOut -= OnSessionTimedOut;
+        App.Checkout.SaveCompleted  += OnCheckoutSaveCompleted;
+        App.Checkout.SaveFailed     += OnCheckoutSaveFailed;
+        App.Checkout.SessionTimedOut += OnSessionTimedOut;
+
+        // Start autosave if it was enabled in settings.
+        if (AppSettings.Current.AutoSaveEnabled)
+            App.Checkout.StartAutoSave();
+
         // Set the main window reference and load recent databases
         vm.MainWindowReference = this;
         vm.LoadRecentDatabases();
@@ -295,23 +336,44 @@ public partial class MainWindow : Window
             settings.Save();
             settings.AddRecentDatabase(newDatabasePath);
 
+            // Release the current checkout (saves if dirty) before opening the new DB.
+            App.Checkout.StopAutoSave();
+            await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
+
+            // Close the old DatabaseContext (and all other DI singletons) NOW, before
+            // CheckoutAsync copies D to D'.  InitializeServices also calls Dispose on
+            // App.Services, but that runs after the copy — too late on Windows, where
+            // SqliteConnection.Dispose() uses sqlite3_close_v2() which can defer the OS
+            // file-handle release.  File.Move(D.tmp → D) in SaveAsync would then fail
+            // with "Access to the path is denied" because D still has an open handle
+            // without FILE_SHARE_DELETE.  Disposing here guarantees D is fully closed
+            // before RunCheckoutAsync establishes D as the save target.
+            (App.Services as IDisposable)?.Dispose();
+
+            // Run crash recovery + checkout for the new path.
+            App.Checkout.CleanupOrphanedTmp(newDatabasePath);
+            if (App.Checkout.DetectCrashRecovery(newDatabasePath))
+                newDatabasePath = await HandleCrashRecoveryAsync(newDatabasePath) ?? newDatabasePath;
+
+            newDatabasePath = await RunCheckoutAsync(newDatabasePath);
+
             // Reinitialize DI and set new data context.
             // DatabaseContext will create the file if it doesn't exist.
             var vm = App.InitializeServices(newDatabasePath);
 
-            // Start backup session for the new database if we are the writer.
-            if (App.Services.GetService(typeof(BackupService)) is BackupService switchBackup
-                && App.Services.GetService(typeof(WriteLockService)) is WriteLockService switchWl
-                && switchWl.IsWriter)
-            {
-                _ = switchBackup.StartSessionAsync(newDatabasePath);
-            }
+            // Resolve the canonical source path D (not D') for the title bar and
+            // backup service.  In write mode CheckoutService.SourcePath is D; in
+            // read-only mode newDatabasePath already equals D.
+            var canonicalPath = App.Checkout.Mode == CheckoutMode.WriteAccess
+                ? App.Checkout.SourcePath
+                : newDatabasePath;
 
-            DataContext = vm;
+            vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
 
-            // Reload recent databases in the menu
-            vm.MainWindowReference = this;
-            vm.LoadRecentDatabases();
+            // Delegate the rest of window wiring (backup session, DataContext,
+            // checkout event (re-)subscription, autosave restart, etc.) to the
+            // shared helper used by every startup path.
+            await SetupMainWindowAsync(canonicalPath, vm);
         }
         catch (Exception ex)
         {
@@ -544,6 +606,154 @@ public partial class MainWindow : Window
 
         ok.Click += (_, _) => msg.Close();
         await msg.ShowDialog(this);
+    }
+
+    // ── CheckoutService helpers ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Runs the full checkout sequence for <paramref name="sourcePath"/> and returns
+    /// the path that should be passed to <c>App.InitializeServices</c>.
+    /// Handles stale-lock prompting inline.
+    /// </summary>
+    /// <param name="sourcePath">The database path D chosen by the user.</param>
+    /// <returns>D' (write mode) or D (read-only mode).</returns>
+    private async Task<string> RunCheckoutAsync(string sourcePath)
+    {
+        var outcome = await App.Checkout.CheckoutAsync(sourcePath);
+
+        switch (outcome)
+        {
+            case CheckoutOutcome.WriteAccess:
+                return App.Checkout.WorkingPath;
+
+            case CheckoutOutcome.ReadOnly:
+                return sourcePath; // Read D directly.
+
+            case CheckoutOutcome.StaleHolder:
+            {
+                var holder = App.Checkout.CurrentHolder;
+                var age    = holder is not null
+                    ? (int)(DateTime.UtcNow - holder.Heartbeat).TotalMinutes
+                    : 0;
+                var who    = holder is not null
+                    ? $"{holder.Username} on {holder.Machine}"
+                    : "an unknown user";
+
+                var take = await ShowYesNoAsync(
+                    "Lock Is Inactive",
+                    $"{who}'s lock is {age} minute(s) old and appears to have been abandoned. " +
+                    "Take over write access?");
+
+                if (take)
+                {
+                    var forceOutcome = await App.Checkout.ForceCheckoutAsync();
+                    return forceOutcome == CheckoutOutcome.WriteAccess
+                        ? App.Checkout.WorkingPath
+                        : sourcePath; // Lost the race — go readonly.
+                }
+
+                // User declined — open read-only.
+                return sourcePath;
+            }
+
+            default: // Failed
+                await ShowMessageAsync("Checkout Failed",
+                    "Could not open the database for editing. " +
+                    "The application will open in read-only mode.");
+                return sourcePath;
+        }
+    }
+
+    /// <summary>
+    /// Handles crash recovery for <paramref name="sourcePath"/>: prompts the user,
+    /// then either saves the orphaned working copy back to D or discards it.
+    /// </summary>
+    /// <param name="sourcePath">The database path with an orphaned working copy.</param>
+    /// <returns>
+    /// The source path to continue with (unchanged — crash recovery doesn't alter
+    /// which D the user wants to open; <see cref="RunCheckoutAsync"/> follows).
+    /// Returns null to indicate the caller should use its existing value unchanged.
+    /// </returns>
+    private async Task<string?> HandleCrashRecoveryAsync(string sourcePath)
+    {
+        var save = await ShowYesNoAsync(
+            "Unsaved Changes",
+            "You have unsaved local changes from a previous session. " +
+            "Save them to the database now?");
+
+        if (save)
+        {
+            var result = await App.Checkout.ResumeFromCrashAsync(sourcePath);
+            if (result != SaveOutcome.Success)
+                await ShowMessageAsync("Recovery Failed",
+                    "Could not save your previous changes. They have been discarded.");
+        }
+        else
+        {
+            App.Checkout.DiscardCrash(sourcePath);
+        }
+
+        return null; // Tell caller to use its existing sourcePath.
+    }
+
+    // ── CheckoutService event handlers ───────────────────────────────────────
+
+    private void OnCheckoutSaveCompleted()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ClearSaveError();
+    }
+
+    private void OnCheckoutSaveFailed(string message)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.SetSaveError(message);
+    }
+
+    private async void OnSessionTimedOut()
+    {
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            if (DataContext is MainWindowViewModel vm)
+                vm.SetSaveError(
+                    "Your editing session timed out and another user has taken over. " +
+                    "Unsaved changes have been lost. You are now in read-only mode.");
+
+            // Re-open the source database in read-only mode.
+            var sourcePath = App.Checkout.SourcePath;
+            if (!string.IsNullOrEmpty(sourcePath))
+                await SwitchDatabaseAsync(sourcePath);
+        });
+    }
+
+    private async Task<bool> ShowYesNoAsync(string title, string message)
+    {
+        var result = false;
+        var dlg = new Window
+        {
+            Title = title,
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true
+        };
+
+        var yes   = new Button { Content = "Yes", HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
+        var no    = new Button { Content = "No",  HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
+        var btns  = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
+        btns.Children.Add(no);
+        btns.Children.Add(yes);
+
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16 };
+        panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, FontSize = 13 });
+        panel.Children.Add(btns);
+        dlg.Content = panel;
+
+        yes.Click += (_, _) => { result = true;  dlg.Close(); };
+        no.Click  += (_, _) => { result = false; dlg.Close(); };
+        await dlg.ShowDialog(this);
+        return result;
     }
 
     private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;

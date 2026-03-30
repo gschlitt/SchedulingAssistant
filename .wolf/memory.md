@@ -3,6 +3,34 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
+## Session: 2026-03-28 — Shared DB architecture design
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Designed shared-network-DB strategy: local cache (D'), lock file, heartbeat, atomic rename write-back, hash verification | — (design only, no code) | Flow documented, vulnerabilities catalogued |
+
+### Key decisions
+- D' lives in %AppData%, invisible to user. All edits persist to D' immediately (no behavior change).
+- Lock file on network drive is source of truth for write access. Sidecar is a consequence, not the lock.
+- Heartbeat timer (30-60s) touches lock file; also serves as wake-from-sleep detector via timer gap.
+- Write-back: copy D' → D.tmp on network, hash-verify, then File.Move(overwrite:true) atomic rename.
+- Backup taken from D' immediately before network push.
+- If session times out during sleep and someone else takes lock: notify user, discard D', switch to readonly. No escape hatch / "save local copy as" — treated as user error.
+- Crash recovery: on next launch, detect orphaned D' + lock → offer to push to network.
+- Readonly users read D directly; Refresh button re-reads D.
+
+### Vulnerabilities identified
+1. Lock file TOCTOU race — two users simultaneously find no lock; FileMode.CreateNew helps but not atomic on all SMB filesystems
+2. D.tmp orphan on crash — must detect and clean up on next launch
+3. User identity collisions — lock must include machine name + session GUID, not just OS username
+4. Clock skew — use generous stale threshold (5-10 min) to avoid false stale-lock breaks
+5. SQLite WAL sidecars — issue PRAGMA wal_checkpoint(TRUNCATE) before hashing/copying D'
+6. Readonly users during rename — transient, handle gracefully (retry)
+7. Multiple app instances same machine — second instance must be refused write mode
+8. Crash recovery ambiguity — track whether D' is unsaved work vs. deliberately discarded
+
+---
+
 ## Session: 2026-03-27 — HelpTip tooltip behavior
 
 | Action | Files | Outcome |
@@ -696,3 +724,221 @@
 | 17:25 | Session end: 6 writes across 4 files (MainWindowViewModel.cs, App.axaml.cs, MainWindow.axaml.cs, MainWindow.axaml) | 6 reads | ~16034 tok |
 | 17:26 | Created fix_dynamic_resource.ps1 | — | ~102 |
 | 17:26 | Session end: 7 writes across 5 files (MainWindowViewModel.cs, App.axaml.cs, MainWindow.axaml.cs, MainWindow.axaml, fix_dynamic_resource.ps1) | 6 reads | ~16143 tok |
+
+## Session: 2026-03-28 17:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:19 | Edited src/SchedulingAssistant.Tests/ComputeTilesTests.cs | modified ComputeTiles_SectionMeetingBlock_EntryHasIsCommitmentFalse() | ~1598 |
+| 18:19 | Edited src/SchedulingAssistant.Tests/GridPipelineTests.cs | modified BuildFilteredBlocks_SectionWithTwoMeetingsSameDay_BothBlocksProduced() | ~1234 |
+| 18:21 | Edited src/SchedulingAssistant.Tests/ComputeTilesTests.cs | 4→4 lines | ~55 |
+| 18:21 | Edited src/SchedulingAssistant.Tests/ComputeTilesTests.cs | inline fix | ~31 |
+| 18:21 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 2→2 lines | ~42 |
+| 18:22 | Session end: 5 writes across 3 files (ComputeTilesTests.cs, GridPipelineTests.cs, WriteLockReadOnlyTests.cs) | 19 reads | ~32987 tok |
+| 18:24 | Session end: 5 writes across 3 files (ComputeTilesTests.cs, GridPipelineTests.cs, WriteLockReadOnlyTests.cs) | 19 reads | ~32987 tok |
+| 18:26 | Session end: 5 writes across 3 files (ComputeTilesTests.cs, GridPipelineTests.cs, WriteLockReadOnlyTests.cs) | 19 reads | ~32987 tok |
+
+## Session: 2026-03-28 22:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-28 10:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-28 11:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-28 13:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-28 13:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-28 14:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-28 14:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:42 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | — | ~1840 |
+| 14:42 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→4 lines | ~106 |
+| 14:42 | Session end: 2 writes across 2 files (project_network_db_writeback.md, MEMORY.md) | 1 reads | ~2086 tok |
+| 14:43 | Session end: 2 writes across 2 files (project_network_db_writeback.md, MEMORY.md) | 1 reads | ~2086 tok |
+| 14:48 | Session end: 2 writes across 2 files (project_network_db_writeback.md, MEMORY.md) | 1 reads | ~2086 tok |
+| 14:51 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | 12→11 lines | ~216 |
+| 14:51 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | removed 4 lines | ~14 |
+| 14:51 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | 7→7 lines | ~154 |
+| 14:51 | Session end: 5 writes across 2 files (project_network_db_writeback.md, MEMORY.md) | 2 reads | ~2495 tok |
+| 15:03 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | — | ~4881 |
+| 15:03 | Session end: 6 writes across 2 files (project_network_db_writeback.md, MEMORY.md) | 14 reads | ~47683 tok |
+
+## Session: 2026-03-28 16:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:03 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | — | ~4150 |
+| 17:03 | Session end: 1 writes across 1 files (project_network_db_writeback.md) | 1 reads | ~4446 tok |
+| 17:05 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | modified area() | ~559 |
+| 17:06 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_writeback.md | 10→13 lines | ~349 |
+| 17:06 | Session end: 3 writes across 1 files (project_network_db_writeback.md) | 1 reads | ~5418 tok |
+| 17:21 | Edited src/SchedulingAssistant/Models/LockFileData.cs | expanded (+6 lines) | ~110 |
+| 17:22 | Edited src/SchedulingAssistant/Services/AppSettings.cs | expanded (+12 lines) | ~150 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+9 lines) | ~169 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+8 lines) | ~218 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+7 lines) | ~204 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified TryAcquire() | ~73 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added 1 condition(s) | ~191 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified Release() | ~63 |
+| 17:22 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added error handling | ~567 |
+| 17:23 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified DetectStaleLock() | ~223 |
+| 17:23 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified WriteLockData() | ~207 |
+| 17:23 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added optional chaining | ~428 |
+| 17:25 | Created src/SchedulingAssistant/Services/CheckoutService.cs | — | ~7314 |
+| 17:25 | Edited src/SchedulingAssistant/App.axaml.cs | expanded (+15 lines) | ~315 |
+| 17:25 | Edited src/SchedulingAssistant/App.axaml.cs | TryAcquire() → CheckoutAsync() | ~92 |
+| 17:25 | Edited src/SchedulingAssistant/App.axaml.cs | 3→6 lines | ~91 |
+| 17:25 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~366 |
+| 17:25 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added nullish coalescing | ~306 |
+| 17:26 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added nullish coalescing | ~302 |
+| 17:26 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~241 |
+| 17:26 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 7 condition(s) | ~1584 |
+| 17:26 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 2 condition(s) | ~575 |
+| 17:26 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 3 condition(s) | ~272 |
+| 17:27 | Edited src/SchedulingAssistant/MainWindow.axaml | expanded (+26 lines) | ~361 |
+| 17:27 | Edited src/SchedulingAssistant/MainWindow.axaml | "Auto,Auto,Auto,*" → "Auto,Auto,Auto,Auto,*" | ~14 |
+| 17:27 | Edited src/SchedulingAssistant/MainWindow.axaml | expanded (+29 lines) | ~407 |
+| 17:27 | Edited src/SchedulingAssistant/MainWindow.axaml | 2→2 lines | ~32 |
+| 17:27 | Edited src/SchedulingAssistant/MainWindow.axaml | inline fix | ~31 |
+| 17:27 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | added 1 condition(s) | ~225 |
+| 17:27 | Edited src/SchedulingAssistant/ViewModels/Management/SettingsViewModel.cs | 5→6 lines | ~90 |
+| 17:27 | Edited src/SchedulingAssistant/Views/Management/SettingsView.axaml | expanded (+12 lines) | ~378 |
+| 17:28 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 2→2 lines | ~18 |
+
+## Session: 2026-03-29 17:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-29 12:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-29 12:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:49 | Created src/SchedulingAssistant/Services/CheckoutService.cs | — | ~7929 |
+| 12:49 | Edited src/SchedulingAssistant/App.axaml.cs | inline fix | ~26 |
+| 12:50 | Edited src/SchedulingAssistant.Tests/WriteLockServiceTests.cs | modified TryAcquire_StaleLockExists_SetsIsStaleLock() | ~1246 |
+| 12:51 | Created src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | — | ~7946 |
+| 12:53 | Session end: 4 writes across 4 files (CheckoutService.cs, App.axaml.cs, WriteLockServiceTests.cs, CheckoutServiceTests.cs) | 10 reads | ~46675 tok |
+| 12:58 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 6→6 lines | ~124 |
+| 13:03 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 17→17 lines | ~254 |
+| 13:03 | Session end: 6 writes across 5 files (CheckoutService.cs, App.axaml.cs, WriteLockServiceTests.cs, CheckoutServiceTests.cs, MainWindow.axaml.cs) | 11 reads | ~58141 tok |
+| 13:04 | Session end: 6 writes across 5 files (CheckoutService.cs, App.axaml.cs, WriteLockServiceTests.cs, CheckoutServiceTests.cs, MainWindow.axaml.cs) | 11 reads | ~58141 tok |
+| 13:14 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified ComputeHash() | ~484 |
+| 13:14 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | Copy() → CopyWithSharing() | ~183 |
+| 13:14 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | Copy() → CopyWithSharing() | ~58 |
+| 13:14 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | Copy() → CopyWithSharing() | ~72 |
+| 13:14 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | inline fix | ~13 |
+
+## Session: 2026-03-29 13:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:18 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified CheckoutAsync_WhileSourceHeldOpenWithWriteAccess_Succeeds() | ~2401 |
+| 13:18 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 10→11 lines | ~201 |
+| 13:19 | Edited src/SchedulingAssistant/Services/FileAppLogger.cs | modified LogError() | ~270 |
+| 13:19 | Edited src/SchedulingAssistant/Services/FileAppLogger.cs | 3→4 lines | ~87 |
+| 13:19 | Edited src/SchedulingAssistant/Services/IAppLogger.cs | 14→16 lines | ~247 |
+| 13:20 | Session end: 5 writes across 3 files (CheckoutServiceTests.cs, FileAppLogger.cs, IAppLogger.cs) | 4 reads | ~11379 tok |
+| 13:24 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+34 lines) | ~803 |
+| 13:24 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→2 lines | ~133 |
+
+## Session: 2026-03-29 — Checkout architecture unit tests + ThrowOnError fix
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Added Group 7 tests (7 tests): coexistence with open DB connections — FileStream(ReadWrite,ReadWrite) held during checkout+save | CheckoutServiceTests.cs | Build clean |
+| Tests cover: checkout while D open, save while D' open, full wizard-to-edit flow, full DB-switch flow, hash conflict detection with D open | CheckoutServiceTests.cs | 35→42 tests |
+| Fixed ThrowOnError: LogError now re-throws BEFORE firing ErrorLogged event (no banner noise in debug mode) | FileAppLogger.cs, IAppLogger.cs | Behavior correct |
+| Updated XML docs on IAppLogger.ThrowOnError and IAppLogger.ErrorLogged to document the skip-when-throw behavior | IAppLogger.cs | Doc updated |
+| Updated MEMORY.md: CheckoutService architecture section (implemented), Group 7 test note, ThrowOnError behavior correction | MEMORY.md | Memory current |
+
+### Key bugs documented
+- **Bug**: wizard completion bypassed CheckoutAsync entirely → read-only banner. **Fix**: route through SwitchDatabaseAsync (prior session).
+- **Bug**: SwitchDatabaseAsync passed D' (working copy) to BackupService/title bar instead of D (source). **Fix**: canonicalPath = App.Checkout.SourcePath (prior session).
+- **Bug**: File.Copy + File.OpenRead used FileShare.Read → ERROR_SHARING_VIOLATION when DatabaseContext held D open with GENERIC_READ|GENERIC_WRITE. **Fix**: CopyWithSharing helper + ComputeHash use FileShare.ReadWrite (prior session).
+- **Bug**: ThrowOnError still fired ErrorLogged notification banner before re-throwing. **Fix**: re-throw before event invocation.
+| 13:25 | Session end: 7 writes across 4 files (CheckoutServiceTests.cs, FileAppLogger.cs, IAppLogger.cs, MEMORY.md) | 5 reads | ~12382 tok |
+
+## Session: 2026-03-29 13:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-29 13:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-29 14:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:16 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 6→7 lines | ~44 |
+| 17:16 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_ConflictCheck_WhileSourceHeldOpen_DoesNotThrow() | ~1210 |
+| 17:17 | Session end: 2 writes across 1 files (CheckoutServiceTests.cs) | 3 reads | ~11696 tok |
+| 17:24 | Session end: 2 writes across 1 files (CheckoutServiceTests.cs) | 3 reads | ~11696 tok |
+| 17:33 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added optional chaining | ~292 |
+| 17:41 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | modified Dispose() | ~160 |
+| 17:41 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified WizardFlow_WithRealDatabaseContext_SaveSucceeds() | ~896 |
+| 17:44 | Session end: 5 writes across 3 files (CheckoutServiceTests.cs, MainWindow.axaml.cs, DatabaseContext.cs) | 4 reads | ~24251 tok |
+| 17:49 | Created ../../../.claude/plans/hazy-scribbling-pie.md | — | ~754 |
+| 17:52 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified WizardToEditFlow_WithOpenConnections_CompletesSuccessfully() | ~597 |
+
+## Session: 2026-03-30 17:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:53 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified connections() | ~136 |
+| 17:53 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 10→13 lines | ~149 |
+| 17:55 | Session end: 2 writes across 1 files (CheckoutServiceTests.cs) | 1 reads | ~11679 tok |
+
+## Session: 2026-03-30 18:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 18:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→5 lines | ~54 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→5 lines | ~54 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/SubjectListView.axaml | 4→4 lines | ~77 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/RoomListView.axaml | 4→4 lines | ~77 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | "Save" → "Done" | ~13 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | inline fix | ~26 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml | 4→4 lines | ~77 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/AcademicUnitListView.axaml | 4→4 lines | ~64 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/BlockPatternListView.axaml | 4→4 lines | ~74 |
+| 18:22 | Edited src/SchedulingAssistant/Views/Management/SectionPrefixListView.axaml | 7→7 lines | ~104 |
+| 18:23 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | 6→6 lines | ~114 |
+| 18:23 | Edited src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | 4→4 lines | ~77 |
+| 18:23 | Edited src/SchedulingAssistant/Views/Management/CampusListView.axaml | 4→4 lines | ~77 |
+| 18:23 | Edited src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | 4→4 lines | ~77 |
+| 22:11 | Session end: 14 writes across 13 files (SectionListView.axaml, SubjectListView.axaml, RoomListView.axaml, InstructorListView.axaml, CourseListView.axaml) | 15 reads | ~48189 tok |
