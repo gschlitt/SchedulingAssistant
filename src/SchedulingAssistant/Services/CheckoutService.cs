@@ -240,6 +240,8 @@ public sealed class CheckoutService : IDisposable
 
         if (_lockService.IsStaleLock)
         {
+            // Pre-compute D' so ForceCheckoutAsync can use WorkingPath immediately.
+            WorkingPath   = ComputeWorkingPath(sourcePath);
             CurrentHolder = _lockService.CurrentHolder;
             return CheckoutOutcome.StaleHolder;
         }

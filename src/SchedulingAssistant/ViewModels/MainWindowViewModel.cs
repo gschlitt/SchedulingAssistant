@@ -365,14 +365,16 @@ public partial class MainWindowViewModel : ViewModelBase
                 var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync();
 
                 // If D'' was updated, reconnect the DatabaseContext to the new file.
-                // After File.Move (atomic rename), the old file handle is stale; we need a fresh connection.
-                if (refreshOutcome == RefreshOutcome.Updated)
+                // After File.Move (atomic rename), the old connection's file handle still points to
+                // the OLD D'' inode. We must close and reopen against the new D'' so that subsequent
+                // queries see the updated content.
+                if (refreshOutcome == RefreshOutcome.Updated && App.Checkout.ReadOnlyWorkingPath is not null)
                 {
-                    var dbContext = App.Services?.GetService(typeof(IDatabaseContext)) as IDatabaseContext;
-                    if (dbContext is DatabaseContext dc && App.Checkout.ReadOnlyWorkingPath is not null)
-                    {
+                    // Use the injected _services (same container that created DatabaseContext) so the
+                    // lookup is guaranteed to resolve the same singleton that repositories hold.
+                    var dbContext = _services.GetRequiredService<IDatabaseContext>();
+                    if (dbContext is DatabaseContext dc)
                         dc.ReinitializeConnection(App.Checkout.ReadOnlyWorkingPath);
-                    }
                 }
 
                 // Log the refresh result for debugging.

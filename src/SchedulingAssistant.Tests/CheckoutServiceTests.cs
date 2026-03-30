@@ -1531,6 +1531,49 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(r1Path, r2Path);
     }
 
+    /// <summary>
+    /// End-to-end data flow: after RefreshReadOnlySnapshotAsync returns Updated,
+    /// a fresh connection to D'' can read the data that the writer wrote to D.
+    /// This is the critical test — it verifies that the file-level copy produces
+    /// a readable database with the updated content, not just a changed hash.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_FreshDataReadableFromDSnapshotAfterUpdate()
+    {
+        var db = DbPath("shared");
+
+        // Create D with initial data.
+        CreateSqliteDb(db);
+        InsertTestValue(db, "original");
+
+        // Writer opens.
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+
+        // Reader opens — creates D''.
+        var (reader, _) = CreateService();
+        await reader.CheckoutAsync(db);
+        var d2 = reader.ReadOnlyWorkingPath!;
+
+        // Confirm initial data is readable from D'' before any refresh.
+        var valueBefore = ReadTestValue(d2);
+        Assert.Equal("original", valueBefore);
+
+        // Simulate writer saving new data to D. In production this goes through
+        // BackupSqliteDatabase + File.Move; here we write directly to D to keep
+        // the test isolated from SaveAsync internals.
+        InsertTestValue(db, "updated");
+
+        // Reader calls refresh — D has changed.
+        var outcome = await reader.RefreshReadOnlySnapshotAsync();
+        Assert.Equal(RefreshOutcome.Updated, outcome);
+
+        // Open a fresh connection to D'' (simulating what ReinitializeConnection does)
+        // and verify the updated data is present.
+        var valueAfter = ReadTestValue(d2);
+        Assert.Equal("updated", valueAfter);
+    }
+
     // ── Helper for computing file hash ────────────────────────────────────
 
     private static string ComputeFileHash(string path)
