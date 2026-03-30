@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-30T16:12:54.103Z
-> Files: 62 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-30T21:19:49.360Z
+> Files: 64 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,6 +30,7 @@
 ## ../../../.claude/plans/
 
 - `hazy-scribbling-pie.md` — Fix Two Pre-existing Test Failures in CheckoutServiceTests (~707 tok)
+- `humble-swimming-walrus.md` — Fix for Issue 1.1: Extend D/D' Pattern to Read-Only Mode (~5524 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -39,6 +40,7 @@
 ## ./
 
 - `fix_dynamic_resource.ps1` (~102 tok)
+- `persistence-review.md` — Persistence Layer Review: Data Corruption, Loss, and UX Risks (~2798 tok)
 
 ## .claude/
 
@@ -171,7 +173,7 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~13472 tok)
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~15964 tok)
 - `ComputeTilesTests.cs` — Unit tests for <see cref="ScheduleGridViewModel.ComputeTiles"/>. ComputeTiles converts a flat list o (~4847 tok)
 - `GridPipelineTests.cs` — Unit tests for the internal static pipeline methods extracted from <see cref="ScheduleGridViewModel. (~8235 tok)
 - `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~972 tok)
@@ -185,7 +187,7 @@
 - `AppColors.axaml` (~2786 tok)
 - `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
 - `MainWindow.axaml` — Declares applied (~10787 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11437 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11545 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -199,7 +201,7 @@
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~3428 tok)
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~3865 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
@@ -213,14 +215,14 @@
 
 - `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2151 tok)
 - `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8277 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Core concept:</b> W (~8730 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Core concept:</b> W (~12196 tok)
 - `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\SchedulingAssistant\Logs\app-YYYY-MM- (~1334 tok)
 - `IAppLogger.cs` — Application-wide error logger. Implementations can write to a local file, a remote database, a cloud (~492 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~5378 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~6361 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~6840 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 

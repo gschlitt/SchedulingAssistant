@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using SchedulingAssistant.Data;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.Views;
@@ -348,14 +349,49 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Reloads all section data from the database while in read-only mode.
-    /// Triggers a full <see cref="SectionStore"/> reload, which cascades to the
-    /// schedule grid, section list, and workload panel via their <c>SectionsChanged</c>
-    /// subscriptions. Records the refresh time so the banner can show "Refreshed at X:XX".
+    /// Reloads all section data from the database. In read-only snapshot mode, first refreshes D'' from D,
+    /// then reloads the UI from the updated snapshot. In write mode, just reloads from the current D'.
+    /// Triggers a full <see cref="SectionStore"/> reload, which cascades to the schedule grid, section list,
+    /// and workload panel via their <c>SectionsChanged</c> subscriptions.
     /// </summary>
     [RelayCommand]
-    private void RefreshData()
+    private async Task RefreshData()
     {
+        // If in read-only snapshot mode, re-copy D → D'' to fetch latest data.
+        if (App.Checkout.IsReadOnlyMode)
+        {
+            try
+            {
+                var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync();
+
+                // If D'' was updated, reconnect the DatabaseContext to the new file.
+                // After File.Move (atomic rename), the old file handle is stale; we need a fresh connection.
+                if (refreshOutcome == RefreshOutcome.Updated)
+                {
+                    var dbContext = App.Services?.GetService(typeof(IDatabaseContext)) as IDatabaseContext;
+                    if (dbContext is DatabaseContext dc && App.Checkout.ReadOnlyWorkingPath is not null)
+                    {
+                        dc.ReinitializeConnection(App.Checkout.ReadOnlyWorkingPath);
+                    }
+                }
+
+                // Log the refresh result for debugging.
+                var msg = refreshOutcome switch
+                {
+                    RefreshOutcome.Updated => "Data refreshed from source.",
+                    RefreshOutcome.AlreadyCurrent => "Data is already current.",
+                    RefreshOutcome.SourceUnavailable => "Could not reach source — using cached data.",
+                    _ => "Refresh completed."
+                };
+                App.Logger.LogInfo($"MainWindowViewModel: {msg}");
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogError(ex, "MainWindowViewModel: refresh failed");
+                // Continue anyway — reload from the (possibly stale) D'' that's already open.
+            }
+        }
+
         // ReloadFromDatabase re-queries the DB and updates the SectionStore cache.
         // The SectionsChanged event then cascades automatically to the schedule grid
         // and workload panel — no additional calls required here.

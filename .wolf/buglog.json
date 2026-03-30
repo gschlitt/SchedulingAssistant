@@ -1718,6 +1718,118 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-30T16:07:15.487Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-03-30T20:58:28.522Z",
+      "error_message": "Missing error handling in Task",
+      "file": "../../../.claude/plans/humble-swimming-walrus.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-30T20:58:28.522Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-03-30T21:09:48.027Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: /// For read-only instances, re-copies D → D'' to fetch the ; /// Re-verifies the copy hash and updates <see cref=\"LastRef",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-30T21:10:01.577Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-03-30T21:14:44.459Z",
+      "error_message": "Missing error handling in Task",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-30T21:14:44.459Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-03-30T21:15:08.780Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-30T21:15:08.780Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-03-30T21:17:35.318Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-30T21:17:35.318Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-03-30T21:18:12.974Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-30T21:18:12.974Z"
+    },
+    {
+      "id": "bug-114",
+      "timestamp": "2026-03-30T21:19:12.103Z",
+      "error_message": "Wrong reference: ReadOnlyCheckout_ReusesCurrent should be ReadOnlyCheckout_ReusesCurrentDSnapshot",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Used \"ReadOnlyCheckout_ReusesCurrent\" instead of \"ReadOnlyCheckout_ReusesCurrentDSnapshot\"",
+      "fix": "Changed ReadOnlyCheckout_ReusesCurrent → ReadOnlyCheckout_ReusesCurrentDSnapshot",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-03-30T21:19:19.396Z"
     }
   ]
 }

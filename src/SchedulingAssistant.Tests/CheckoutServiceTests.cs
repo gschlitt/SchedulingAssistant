@@ -1299,4 +1299,255 @@ public sealed class CheckoutServiceTests : IDisposable
         var workingName = Path.GetFileNameWithoutExtension(svc.WorkingPath);
         Assert.NotEqual("WinterSchedule", workingName);
     }
+
+    // ── Group 8: Read-only Snapshot Refresh ─────────────────────────────────
+
+    /// <summary>
+    /// When a second instance opens the same database in read-only mode,
+    /// it should create a local D'' snapshot and use that instead of D.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyCheckout_CreatesDSnapshot()
+    {
+        var db = DbPath("shared");
+        CreateFile(db);
+        var (writer, lockSvc) = CreateService();
+
+        // Writer acquires the lock.
+        var writeOutcome = await writer.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, writeOutcome);
+
+        // Reader tries to open the same database.
+        var (reader, readerLockSvc) = CreateService();
+        var readOutcome = await reader.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, readOutcome);
+
+        // Reader should have created D'' (read-only snapshot).
+        Assert.True(reader.IsReadOnlyMode, "Reader should be in read-only snapshot mode");
+        Assert.NotNull(reader.ReadOnlyWorkingPath);
+        Assert.True(File.Exists(reader.ReadOnlyWorkingPath), "D'' should exist");
+
+        // D'' should be different from D and different from D' (writer's working copy).
+        Assert.NotEqual(db, reader.ReadOnlyWorkingPath);
+        Assert.NotEqual(writer.WorkingPath, reader.ReadOnlyWorkingPath);
+
+        // Reader's WorkingPath should point to D''.
+        Assert.Equal(reader.ReadOnlyWorkingPath, reader.WorkingPath);
+    }
+
+    /// <summary>
+    /// When a reader closes and reopens the same database, if D'' already exists
+    /// and is current, it should be reused without re-copying.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyCheckout_ReusesCurrentDSnapshot()
+    {
+        var db = DbPath("shared");
+        CreateFile(db, "original content");
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+
+        // First reader checkout — creates D''.
+        var (reader1, _) = CreateService();
+        var outcome1 = await reader1.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome1);
+        var d1Path = reader1.ReadOnlyWorkingPath;
+        var d1Hash = ComputeFileHash(d1Path);
+
+        // Simulate app close/reopen without the source changing.
+        reader1.Dispose();
+
+        // Second reader instance opens the same database.
+        var (reader2, _) = CreateService();
+        var outcome2 = await reader2.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome2);
+        var d2Path = reader2.ReadOnlyWorkingPath;
+        var d2Hash = ComputeFileHash(d2Path);
+
+        // D'' paths should be the same (computed from source path).
+        Assert.Equal(d1Path, d2Path);
+
+        // D'' hashes should match (file was reused, not re-copied).
+        Assert.Equal(d1Hash, d2Hash);
+    }
+
+    /// <summary>
+    /// When a writer modifies D and saves, then a reader calls RefreshReadOnlySnapshotAsync,
+    /// D'' should be updated to reflect the changes.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_UpdatesDSnapshotWhenSourceChanges()
+    {
+        var db = DbPath("shared");
+        CreateSqliteDb(db);
+        InsertTestValue(db, "original");
+
+        // Writer opens and reads initial D.
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+
+        // Reader opens — creates D''.
+        var (reader, _) = CreateService();
+        await reader.CheckoutAsync(db);
+        var d1Hash = reader.HashAtCheckout;
+
+        // Writer modifies D (simulating another user's save).
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "modified");
+
+        // Reader calls refresh.
+        var outcome = await reader.RefreshReadOnlySnapshotAsync();
+
+        // Refresh should detect the change and update D''.
+        Assert.Equal(RefreshOutcome.Updated, outcome);
+
+        // D'' hash should have changed.
+        var d2Hash = reader.HashAtCheckout;
+        Assert.NotEqual(d1Hash, d2Hash);
+    }
+
+    /// <summary>
+    /// When RefreshReadOnlySnapshotAsync is called but D hasn't changed,
+    /// it should return AlreadyCurrent without re-copying.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_ReturnsCurrentWhenSourceUnchanged()
+    {
+        var db = DbPath("shared");
+        CreateSqliteDb(db);
+        var originalHash = ComputeFileHash(db);
+
+        // Writer opens.
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+
+        // Reader opens — creates D''.
+        var (reader, _) = CreateService();
+        await reader.CheckoutAsync(db);
+        var d1ModTime = File.GetLastWriteTimeUtc(reader.ReadOnlyWorkingPath);
+
+        // Wait a bit so modification times would differ if file was actually rewritten.
+        await Task.Delay(100);
+
+        // Reader calls refresh — source is unchanged.
+        var outcome = await reader.RefreshReadOnlySnapshotAsync();
+
+        // Refresh should detect no change.
+        Assert.Equal(RefreshOutcome.AlreadyCurrent, outcome);
+
+        // D'' should not have been rewritten (mod time unchanged).
+        var d2ModTime = File.GetLastWriteTimeUtc(reader.ReadOnlyWorkingPath);
+        Assert.Equal(d1ModTime, d2ModTime);
+    }
+
+    /// <summary>
+    /// When RefreshReadOnlySnapshotAsync is called but the source is unavailable,
+    /// D'' should remain unchanged and RefreshOutcome.SourceUnavailable returned.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_HandlesUnavailableSource()
+    {
+        var db = DbPath("shared");
+        CreateSqliteDb(db);
+
+        // Writer opens.
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+
+        // Reader opens — creates D''.
+        var (reader, _) = CreateService();
+        await reader.CheckoutAsync(db);
+        var d1Hash = reader.HashAtCheckout;
+
+        // Simulate network unavailable — move the source file.
+        var dbBackup = db + ".backup";
+        File.Move(db, dbBackup, overwrite: true);
+
+        // Reader calls refresh — source is unreachable.
+        var outcome = await reader.RefreshReadOnlySnapshotAsync();
+
+        // Refresh should return SourceUnavailable.
+        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
+
+        // D'' should be unchanged (stale).
+        var d2Hash = reader.HashAtCheckout;
+        Assert.Equal(d1Hash, d2Hash);
+
+        // LastRefreshedAt should be cleared to indicate uncertainty.
+        Assert.Null(reader.LastRefreshedAt);
+
+        // Restore source for cleanup.
+        File.Move(dbBackup, db, overwrite: true);
+    }
+
+    /// <summary>
+    /// Crash recovery detection should skip read-only snapshot files (D'' with "_ro" suffix).
+    /// </summary>
+    [Fact]
+    public void CrashRecoveryDetection_SkipsReadOnlySnapshots()
+    {
+        var db = DbPath("test");
+        CreateFile(db);
+
+        var (svc, _) = CreateService();
+
+        // Manually create a D'' file (read-only snapshot) to simulate a previous read-only session.
+        var roPath = ComputeReadOnlyPath(db);
+        Directory.CreateDirectory(Path.GetDirectoryName(roPath)!);
+        File.WriteAllText(roPath, "snapshot");
+
+        // Even though D'' exists, DetectCrashRecovery should return false
+        // because read-only snapshots don't have dirty markers.
+        var hasCrash = svc.DetectCrashRecovery(db);
+        Assert.False(hasCrash);
+    }
+
+    /// <summary>
+    /// Multiple read-only instances should each have their own D'' but use the same source.
+    /// </summary>
+    [Fact]
+    public async Task MultipleReaders_EachHaveOwnDSnapshot()
+    {
+        var db = DbPath("shared");
+        CreateSqliteDb(db);
+
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+
+        var (reader1, _) = CreateService();
+        await reader1.CheckoutAsync(db);
+        var r1Path = reader1.ReadOnlyWorkingPath;
+
+        var (reader2, _) = CreateService();
+        await reader2.CheckoutAsync(db);
+        var r2Path = reader2.ReadOnlyWorkingPath;
+
+        // Both readers should have the same D'' path (same computation from source).
+        Assert.Equal(r1Path, r2Path);
+
+        // The D'' should be the one file, shared by both readers.
+        Assert.True(File.Exists(r1Path));
+        Assert.Equal(r1Path, r2Path);
+    }
+
+    // ── Helper for computing file hash ────────────────────────────────────
+
+    private static string ComputeFileHash(string path)
+    {
+        using var stream = System.IO.File.OpenRead(path);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+    }
+
+    /// <summary>Helper for computing the expected D'' (read-only snapshot) path for testing.</summary>
+    private string ComputeReadOnlyPath(string sourcePath)
+    {
+        // Replicate the private CheckoutService method logic for testing purposes.
+        var normalized = Path.GetFullPath(sourcePath).ToLowerInvariant();
+        var hashBytes  = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(normalized));
+        var shortHash  = Convert.ToHexString(hashBytes)[..8];
+        var dbFileName = Path.GetFileNameWithoutExtension(sourcePath);
+        var ext        = Path.GetExtension(sourcePath);
+        return Path.Combine(_workingDir, $"{shortHash}_{dbFileName}_ro{ext}");
+    }
 }

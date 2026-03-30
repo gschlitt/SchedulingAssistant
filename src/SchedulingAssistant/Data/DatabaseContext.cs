@@ -11,7 +11,8 @@ public class DatabaseContext : IDatabaseContext
 {
     // Stored as SqliteConnection so internal helpers (SeedData, schema migrations) can use it
     // directly without casting. Exposed publicly as the base DbConnection type.
-    private readonly SqliteConnection _conn;
+    // Not readonly because ReinitializeConnection needs to reassign it after a file refresh.
+    private SqliteConnection _conn;
 
     /// <inheritdoc/>
     public DbConnection Connection => _conn;
@@ -281,6 +282,40 @@ public class DatabaseContext : IDatabaseContext
             using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// Closes the current connection and opens a new one to the specified database path.
+    /// Used by read-only instances after <see cref="CheckoutService.RefreshReadOnlySnapshotAsync"/>
+    /// updates the D'' snapshot file — this reconnects to the new file content.
+    /// </summary>
+    /// <param name="newDbPath">
+    /// Absolute path to the database file. Typically this is the same path as before,
+    /// but the underlying file has been replaced via atomic rename (File.Move with overwrite).
+    /// </param>
+    /// <exception cref="InvalidOperationException">Thrown if the new database cannot be opened.</exception>
+    public void ReinitializeConnection(string newDbPath)
+    {
+        // Close and clear the old connection from the pool.
+        _conn.Dispose();
+        SqliteConnection.ClearAllPools();
+
+        // Open a new connection to the (possibly replaced) database file.
+        _conn = new SqliteConnection($"Data Source={newDbPath}");
+        try
+        {
+            _conn.Open();
+            // No need to call InitializeSchema or Migrate — the new file already has the schema
+            // (it was a copy of the old D'', which was a consistent snapshot).
+        }
+        catch (Exception ex)
+        {
+            _conn.Dispose();
+            throw new InvalidOperationException(
+                $"Failed to reopen the database at '{newDbPath}' after refresh. " +
+                "The file may be locked by another process.",
+                ex);
         }
     }
 

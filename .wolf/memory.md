@@ -1010,3 +1010,66 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 10:06 | Created persistence-review.md | — | ~3452 |
+| 10:06 | Session end: 1 writes across 1 files (persistence-review.md) | 17 reads | ~90438 tok |
+| 10:06 | Session end: 1 writes across 1 files (persistence-review.md) | 17 reads | ~90438 tok |
+| 10:09 | Session end: 1 writes across 1 files (persistence-review.md) | 17 reads | ~90438 tok |
+| 10:12 | Session end: 1 writes across 1 files (persistence-review.md) | 17 reads | ~90438 tok |
+| 10:14 | Session end: 1 writes across 1 files (persistence-review.md) | 17 reads | ~90438 tok |
+| 10:47 | Session end: 1 writes across 1 files (persistence-review.md) | 17 reads | ~90438 tok |
+
+## Session: 2026-03-30 13:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 13:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 13:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 13:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:09 | Created persistence-review.md | — | ~2984 |
+| 13:09 | Session end: 1 writes across 1 files (persistence-review.md) | 1 reads | ~6434 tok |
+
+## Session: 2026-03-30 13:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:56 | Created ../../../.claude/plans/humble-swimming-walrus.md | — | ~3236 |
+| 13:58 | Edited ../../../.claude/plans/humble-swimming-walrus.md | added error handling | ~2538 |
+| 13:58 | Edited ../../../.claude/plans/humble-swimming-walrus.md | expanded (+19 lines) | ~336 |
+| 14:07 | Session end: 3 writes across 1 files (humble-swimming-walrus.md) | 20 reads | ~103367 tok |
+| 14:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified ComputeWorkingPath() | ~573 |
+| 14:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+29 lines) | ~438 |
+| 14:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+11 lines) | ~285 |
+| 14:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added error handling | ~1105 |
+| 14:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added error handling | ~1282 |
+| 14:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added 1 condition(s) | ~198 |
+| 14:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified ReleaseAsync() | ~261 |
+| 14:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added 2 condition(s) | ~526 |
+| 14:10 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified RunCheckoutAsync() | ~158 |
+| 14:10 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 6→8 lines | ~151 |
+| 14:11 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 4→5 lines | ~94 |
+| 14:14 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added error handling | ~509 |
+| 14:15 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | added error handling | ~565 |
+| 14:15 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 2 condition(s) | ~673 |
+| 14:16 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 12→13 lines | ~123 |
+| 14:17 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified ReadOnlyCheckout_CreatesDSnapshot() | ~2610 |
+| 14:18 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 5→6 lines | ~95 |
+| 14:18 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added optional chaining | ~170 |
+| 14:18 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified if() | ~384 |
+| 14:18 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | LogError() → LogInfo() | ~72 |
+| 14:19 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | inline fix | ~17 |
+| 14:19 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | inline fix | ~20 |
+| 14:19 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | ComputeReadOnlyWorkingPath() → ComputeReadOnlyPath() | ~271 |
+| 14:19 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | ComputeReadOnlyWorkingPath() → ComputeReadOnlyPath() | ~179 |
+| 14:20 | Session end: 27 writes across 6 files (humble-swimming-walrus.md, CheckoutService.cs, MainWindow.axaml.cs, MainWindowViewModel.cs, DatabaseContext.cs) | 21 reads | ~135301 tok |

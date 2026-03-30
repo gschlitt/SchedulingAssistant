@@ -184,7 +184,7 @@
                         Background="{StaticResource SeparatorLine}" />
 
                     <TextBlock
-                        Margin="4,4,12,4"
+                        Margin="4,4,4,4"
                         VerticalAlignment="Center"
                         FontSize="13"
                         FontWeight="SemiBold"
