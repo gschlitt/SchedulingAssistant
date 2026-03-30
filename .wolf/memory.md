@@ -954,3 +954,59 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 23:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:03 | Edited src/SchedulingAssistant/MainWindow.axaml | expanded (+26 lines) | ~450 |
+| 23:03 | Edited src/SchedulingAssistant/MainWindow.axaml | removed 27 lines | ~67 |
+| 23:03 | Session end: 2 writes across 1 files (MainWindow.axaml) | 2 reads | ~11329 tok |
+| 23:03 | Edited src/SchedulingAssistant/MainWindow.axaml | 33→28 lines | ~384 |
+| 23:03 | Session end: 3 writes across 1 files (MainWindow.axaml) | 2 reads | ~11741 tok |
+| 23:13 | Edited src/SchedulingAssistant/MainWindow.axaml | 13→13 lines | ~187 |
+| 23:13 | Session end: 4 writes across 1 files (MainWindow.axaml) | 3 reads | ~14727 tok |
+| 23:14 | Session end: 4 writes across 1 files (MainWindow.axaml) | 4 reads | ~26164 tok |
+
+## Session: 2026-03-30 23:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 08:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-30 08:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:55 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 9→10 lines | ~68 |
+| 08:55 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | CopyWithSharing() → BackupSqliteDatabase() | ~212 |
+| 08:55 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | CopyWithSharing() → BackupSqliteDatabase() | ~35 |
+| 08:55 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified BackupSqliteDatabase() | ~404 |
+| 08:56 | Session end: 4 writes across 1 files (CheckoutService.cs) | 3 reads | ~23242 tok |
+| 09:03 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified BackupSqliteDatabase() | ~179 |
+| 09:04 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified CreateSqliteDb() | ~604 |
+| 09:04 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_ExistingDb_CopiesWorkingCopyToSource() | ~151 |
+| 09:04 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_ExistingDb_HashAtCheckoutRefreshed() | ~110 |
+| 09:04 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | CreateFile() → CreateSqliteDb() | ~75 |
+| 09:04 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | CreateFile() → CreateSqliteDb() | ~121 |
+| 09:05 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | CreateFile() → CreateSqliteDb() | ~56 |
+| 09:05 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | CreateFile() → CreateSqliteDb() | ~86 |
+| 09:05 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | CreateFile() → CreateSqliteDb() | ~64 |
+| 09:05 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | CreateFile() → CreateSqliteDb() | ~84 |
+| 09:07 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_WhileWorkingCopyHeldOpenWithWriteAccess_Succeeds() | ~230 |
+| 09:07 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_WhileWorkingCopyHeldOpen_SourceUpdatedWithNewContent() | ~225 |
+| 09:07 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified WizardToEditFlow_WithOpenConnections_CompletesSuccessfully() | ~411 |
+| 09:07 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SwitchDatabase_WithOpenConnections_CompletesSuccessfully() | ~460 |
+| 09:07 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified MostRecentDatabase_AfterEdit_SaveUpdatesSourceFile() | ~298 |
+| 09:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified catch() | ~304 |
+| 09:13 | Session end: 20 writes across 2 files (CheckoutService.cs, CheckoutServiceTests.cs) | 4 reads | ~40325 tok |
+| 09:18 | Session end: 20 writes across 2 files (CheckoutService.cs, CheckoutServiceTests.cs) | 4 reads | ~40325 tok |
+
+## Session: 2026-03-30 09:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

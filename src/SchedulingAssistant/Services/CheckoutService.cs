@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
 using System;
 using System.IO;
@@ -379,11 +380,15 @@ public sealed class CheckoutService : IDisposable
         // ── Step 3: Write pre-save backup of D' ───────────────────────────────
         TakePreSaveBackup();
 
-        // ── Step 4: Copy D' → D.tmp ───────────────────────────────────────────
+        // ── Step 4: Copy D' → D.tmp via the SQLite Online Backup API ────────
+        // BackupSqliteDatabase coordinates with the SQLite engine rather than
+        // copying raw bytes. This guarantees a consistent snapshot even if a
+        // write transaction is mid-commit on the DatabaseContext connection
+        // (something a raw File.Copy cannot guarantee).
         var tmpPath = SourcePath + ".tmp";
         try
         {
-            CopyWithSharing(WorkingPath, tmpPath);
+            BackupSqliteDatabase(WorkingPath, tmpPath);
         }
         catch (Exception ex)
         {
@@ -393,17 +398,13 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.CopyError;
         }
 
-        // ── Step 5: Verify D.tmp hash ─────────────────────────────────────────
-        var workingHash = ComputeHash(WorkingPath);
-        var tmpHash     = ComputeHash(tmpPath);
-        if (tmpHash != workingHash)
-        {
-            _logger.LogInfo("CheckoutService: D.tmp hash mismatch — deleting and aborting.");
-            try { File.Delete(tmpPath); } catch { }
-            const string msg = "Copy verification failed. Please try saving again.";
-            _dispatch(() => SaveFailed?.Invoke(msg));
-            return SaveOutcome.CopyError;
-        }
+        // ── Step 5: Hash D.tmp for post-save conflict detection ──────────────
+        // BackupDatabase produces a semantically identical but not byte-identical
+        // copy of D' (SQLite increments page-level counters in the destination).
+        // We therefore hash D.tmp itself — the file that will become the new D —
+        // so that HashAtCheckout matches D after the rename and conflict detection
+        // on the next save works correctly.
+        var newSourceHash = ComputeHash(tmpPath);
 
         // ── Step 6: Atomically rename D.tmp → D ──────────────────────────────
         try
@@ -420,7 +421,7 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Step 7 & 8: Update state ──────────────────────────────────────────
-        HashAtCheckout = workingHash;
+        HashAtCheckout = newSourceHash;
         SessionDirty   = false;
         DeleteDirtyMarker();
 
@@ -664,7 +665,7 @@ public sealed class CheckoutService : IDisposable
             var dbName    = Path.GetFileNameWithoutExtension(SourcePath);
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
             var dest      = Path.Combine(folder, $"{dbName}_{timestamp}.db");
-            CopyWithSharing(WorkingPath, dest);
+            BackupSqliteDatabase(WorkingPath, dest);
         }
         catch (Exception ex)
         {
@@ -716,6 +717,30 @@ public sealed class CheckoutService : IDisposable
         using var stream = new FileStream(
             filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    /// <summary>
+    /// Creates a consistent copy of a live SQLite database at <paramref name="sourcePath"/>
+    /// using the SQLite Online Backup API. Unlike a raw file copy, this coordinates with
+    /// the database engine and always produces a valid snapshot regardless of concurrent
+    /// write activity on the existing <c>DatabaseContext</c> connection.
+    /// Use this whenever D' is the source; use <see cref="CopyWithSharing"/> only when
+    /// copying an externally-closed file (e.g., D → D' at checkout time).
+    /// </summary>
+    /// <param name="sourcePath">Path to the source SQLite database (typically D').</param>
+    /// <param name="destPath">Path for the destination file (created or overwritten).</param>
+    /// <exception cref="Exception">Propagates any SQLite or I/O error to the caller.</exception>
+    private static void BackupSqliteDatabase(string sourcePath, string destPath)
+    {
+        // Pooling=False is essential: with the default connection pool, Dispose()
+        // returns connections to the pool rather than closing them, leaving the
+        // destination file (D.tmp) open. File.Move(D.tmp → D) then fails with
+        // "access denied" because the pool still holds the file handle.
+        using var source = new SqliteConnection($"Data Source={sourcePath};Pooling=False");
+        using var dest   = new SqliteConnection($"Data Source={destPath};Pooling=False");
+        source.Open();
+        dest.Open();
+        source.BackupDatabase(dest);
     }
 
     /// <summary>

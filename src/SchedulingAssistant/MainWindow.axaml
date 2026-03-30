@@ -184,12 +184,33 @@
                         Background="{StaticResource SeparatorLine}" />
 
                     <TextBlock
-                        Margin="4,4,8,4"
+                        Margin="4,4,12,4"
                         VerticalAlignment="Center"
                         FontSize="13"
                         FontWeight="SemiBold"
                         Text="{Binding DatabaseName}"
                         ToolTip.Tip="{Binding DatabasePath}" />
+
+                    <!--  Save button + autosave checkbox — positioned right after database name  -->
+                    <StackPanel
+                        Margin="0,4,8,4"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding IsWriteEnabled}"
+                        Orientation="Horizontal"
+                        Spacing="4">
+                        <Button
+                            Padding="10,6"
+                            Background="{StaticResource ButtonBackground}"
+                            Command="{Binding SaveCommand}"
+                            Content="Save"
+                            ToolTip.Tip="Save changes to the database" />
+                        <CheckBox
+                            VerticalAlignment="Center"
+                            Content="Auto-save"
+                            FontSize="{StaticResource FontSizeNormal}"
+                            IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
+                            ToolTip.Tip="Automatically save at the interval configured under Settings → Save &amp; Backup" />
+                    </StackPanel>
 
                     <Border
                         Width="1"
@@ -283,27 +304,6 @@
                         Width="1"
                         Margin="4,10"
                         Background="{StaticResource SeparatorLine}" />
-
-                    <!--  Save button + autosave checkbox — always visible in write mode  -->
-                    <StackPanel
-                        Margin="0,4"
-                        VerticalAlignment="Center"
-                        IsVisible="{Binding IsWriteEnabled}"
-                        Orientation="Horizontal"
-                        Spacing="6">
-                        <Button
-                            Padding="14,8"
-                            Classes="nav"
-                            Command="{Binding SaveCommand}"
-                            Content="Save"
-                            ToolTip.Tip="Save changes to the database" />
-                        <CheckBox
-                            VerticalAlignment="Center"
-                            Content="Auto-save"
-                            FontSize="{StaticResource FontSizeNormal}"
-                            IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
-                            ToolTip.Tip="Automatically save at the interval configured under Settings → Save &amp; Backup" />
-                    </StackPanel>
 
                     <!--  Debug menu (added in code-behind in DEBUG mode)  -->
                     <Menu

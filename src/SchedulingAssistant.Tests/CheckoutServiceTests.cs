@@ -69,6 +69,48 @@ public sealed class CheckoutServiceTests : IDisposable
         => File.WriteAllText(path, content);
 
     /// <summary>
+    /// Creates a minimal valid SQLite database file at <paramref name="path"/>.
+    /// Required for any test that exercises <see cref="CheckoutService.SaveAsync"/>,
+    /// because <c>BackupSqliteDatabase</c> uses the SQLite Online Backup API which
+    /// requires a well-formed SQLite file as its source.
+    /// <para><c>Pooling=False</c> ensures the connection is truly closed on Dispose
+    /// rather than returned to the pool, preventing stale OS file handles.</para>
+    /// </summary>
+    private static void CreateSqliteDb(string path)
+    {
+        using var conn = new SqliteConnection($"Data Source={path};Pooling=False");
+        conn.Open(); // SQLite creates a valid empty database on first open.
+    }
+
+    /// <summary>
+    /// Inserts a single value into a <c>_test</c> table in the SQLite database at
+    /// <paramref name="dbPath"/>. Used to write verifiable content to D' without
+    /// corrupting the SQLite file format.
+    /// </summary>
+    private static void InsertTestValue(string dbPath, string value)
+    {
+        using var conn = new SqliteConnection($"Data Source={dbPath};Pooling=False");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "CREATE TABLE IF NOT EXISTS _test(val TEXT); INSERT INTO _test VALUES(@v)";
+        cmd.Parameters.AddWithValue("@v", value);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Reads the first value from the <c>_test</c> table written by
+    /// <see cref="InsertTestValue"/>. Returns null if the table is empty or absent.
+    /// </summary>
+    private static string? ReadTestValue(string dbPath)
+    {
+        using var conn = new SqliteConnection($"Data Source={dbPath};Pooling=False");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT val FROM _test LIMIT 1";
+        return cmd.ExecuteScalar() as string;
+    }
+
+    /// <summary>
     /// Creates a <see cref="CheckoutService"/> with all dependencies injected from
     /// this fixture: isolated <see cref="WriteLockService"/>, null logger, synchronous
     /// dispatcher, and the per-test working directory.
@@ -462,18 +504,18 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db, "original-content");
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
 
-        // Simulate editing D' (the app writes to WorkingPath normally via SQLite).
+        // Simulate editing D' via SQLite (as DatabaseContext does in production).
         const string editedContent = "edited-content";
-        File.WriteAllText(svc.WorkingPath, editedContent);
+        InsertTestValue(svc.WorkingPath, editedContent);
 
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.Success, outcome);
-        Assert.Equal(editedContent, File.ReadAllText(db));
+        Assert.Equal(editedContent, ReadTestValue(db));
     }
 
     /// <summary>
@@ -485,12 +527,12 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
         var hashBefore = svc.HashAtCheckout;
 
-        File.WriteAllText(svc.WorkingPath, "changed-content");
+        InsertTestValue(svc.WorkingPath, "changed-content");
         await svc.SaveAsync();
 
         Assert.NotEqual(hashBefore, svc.HashAtCheckout);
@@ -504,7 +546,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
         await svc.SaveAsync();
@@ -521,7 +563,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "Dirty marker should exist before save.");
@@ -540,7 +582,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
 
@@ -615,7 +657,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
         Assert.True(lockSvc.IsWriter); // precondition
@@ -687,8 +729,8 @@ public sealed class CheckoutServiceTests : IDisposable
         var (svc, _) = CreateService();
         var db1 = DbPath("first");
         var db2 = DbPath("second");
-        CreateFile(db1);
-        CreateFile(db2);
+        CreateSqliteDb(db1);
+        CreateSqliteDb(db2);
 
         await svc.CheckoutAsync(db1);
         var oldWorkingPath = svc.WorkingPath;
@@ -767,7 +809,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
         // Save cleanly — this deletes the dirty marker.
@@ -919,15 +961,18 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db, "original");
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
 
-        // Write new content to D' through a separate handle (simulating a DB write),
-        // then hold it open to simulate DatabaseContext keeping the connection live.
-        File.WriteAllText(svc.WorkingPath, "edited-content");
-        using var workingHandle = new FileStream(
-            svc.WorkingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+        // Simulate DatabaseContext: insert a row and keep the connection open,
+        // mirroring the production scenario where SaveAsync fires while the
+        // app's DatabaseContext still holds D' open.
+        using var workingConn = new SqliteConnection($"Data Source={svc.WorkingPath};Pooling=False");
+        workingConn.Open();
+        using var cmd = workingConn.CreateCommand();
+        cmd.CommandText = "CREATE TABLE IF NOT EXISTS _test(val TEXT); INSERT INTO _test VALUES('edited')";
+        cmd.ExecuteNonQuery();
 
         var outcome = await svc.SaveAsync();
 
@@ -943,19 +988,22 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db, "original");
+        CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
 
-        File.WriteAllText(svc.WorkingPath, "edited-content");
-        using var workingHandle = new FileStream(
-            svc.WorkingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+        // Simulate DatabaseContext: insert a row and keep the connection open,
+        // then save. Verifies the inserted data propagates to D after save.
+        using var workingConn = new SqliteConnection($"Data Source={svc.WorkingPath};Pooling=False");
+        workingConn.Open();
+        using var cmd = workingConn.CreateCommand();
+        cmd.CommandText = "CREATE TABLE IF NOT EXISTS _test(val TEXT); INSERT INTO _test VALUES('edited-content')";
+        cmd.ExecuteNonQuery();
 
         await svc.SaveAsync();
 
-        // Close the handle before reading so the OS flushes any buffering.
-        workingHandle.Dispose();
-        Assert.Equal("edited-content", File.ReadAllText(db));
+        workingConn.Dispose();
+        Assert.Equal("edited-content", ReadTestValue(db));
     }
 
     /// <summary>
@@ -974,13 +1022,13 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath("wizard");
-        CreateFile(db, "schema-init-content");
+        CreateSqliteDb(db);
 
         // Step 2: wizard leaves D open (InitializeServices opens DatabaseContext).
         using var sourceHandle = new FileStream(
             db, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 
-        // Step 3: checkout — must succeed while D is open.
+        // Step 3: checkout — must succeed while D is open (CopyWithSharing handles it).
         var checkoutOutcome = await svc.CheckoutAsync(db);
         Assert.Equal(CheckoutOutcome.WriteAccess, checkoutOutcome);
 
@@ -989,19 +1037,19 @@ public sealed class CheckoutServiceTests : IDisposable
         // the user ever interacts with the app.
         sourceHandle.Dispose();
 
-        // Step 5: simulate user editing D', then open a handle to mimic the
-        // new DatabaseContext holding D' for the remainder of the session.
-        File.WriteAllText(svc.WorkingPath, "user-edited-content");
-        using var workingHandle = new FileStream(
-            svc.WorkingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+        // Step 5: simulate the new DatabaseContext editing D' and keeping the
+        // connection open (normal production state during an editing session).
+        InsertTestValue(svc.WorkingPath, "user-edited-content");
+        using var workingConn = new SqliteConnection($"Data Source={svc.WorkingPath};Pooling=False");
+        workingConn.Open();
 
         // Step 6: user hits Save — D' held open by DatabaseContext, D is closed.
         var saveOutcome = await svc.SaveAsync();
         Assert.Equal(SaveOutcome.Success, saveOutcome);
 
         // Step 7: verify D was updated.
-        workingHandle.Dispose();
-        Assert.Equal("user-edited-content", File.ReadAllText(db));
+        workingConn.Dispose();
+        Assert.Equal("user-edited-content", ReadTestValue(db));
     }
 
     /// <summary>
@@ -1019,8 +1067,8 @@ public sealed class CheckoutServiceTests : IDisposable
         var (svc, lockSvc) = CreateService();
         var db1 = DbPath("switch1");
         var db2 = DbPath("switch2");
-        CreateFile(db1, "db1-content");
-        CreateFile(db2, "db2-content");
+        CreateSqliteDb(db1);
+        CreateSqliteDb(db2);
 
         // ── DB1 session ──────────────────────────────────────────────────────
         using var db1Handle = new FileStream(
@@ -1033,15 +1081,15 @@ public sealed class CheckoutServiceTests : IDisposable
         // disposes the old DatabaseContext (closing D) before the user ever saves.
         db1Handle.Dispose();
 
-        // Edit and save with D1' open.
-        File.WriteAllText(svc.WorkingPath, "db1-edited");
-        using var work1Handle = new FileStream(
-            svc.WorkingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+        // Edit D1' and hold it open via SqliteConnection (mirrors production state).
+        InsertTestValue(svc.WorkingPath, "db1-edited");
+        using var work1Conn = new SqliteConnection($"Data Source={svc.WorkingPath};Pooling=False");
+        work1Conn.Open();
 
         var save1 = await svc.SaveAsync();
         Assert.Equal(SaveOutcome.Success, save1);
 
-        work1Handle.Dispose();
+        work1Conn.Dispose();
 
         // Release DB1.
         await svc.ReleaseAsync(saveFirst: false);
@@ -1198,7 +1246,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         // Arrange: simulate a database that was used in a prior session.
         var db = DbPath("SpringSchedule");
-        CreateFile(db, "prior-session-content");
+        CreateSqliteDb(db);
 
         // AppSettings.RecentDatabases[0] would be this path; the app passes it
         // to CheckoutAsync via SwitchDatabaseAsync / RunCheckoutAsync.
@@ -1206,9 +1254,9 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.CheckoutAsync(db);
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
 
-        // Simulate the app writing new data to D' (e.g. via DatabaseContext).
+        // Simulate the app writing new data to D' via SQLite (as DatabaseContext does).
         const string editedContent = "spring-schedule-edited";
-        File.WriteAllText(svc.WorkingPath, editedContent);
+        InsertTestValue(svc.WorkingPath, editedContent);
 
         // Act: user presses the Save button → MainWindowViewModel.SaveCommand →
         // CheckoutService.SaveAsync().
@@ -1216,7 +1264,7 @@ public sealed class CheckoutServiceTests : IDisposable
 
         // Assert: save succeeded and D now contains the edited content.
         Assert.Equal(SaveOutcome.Success, saveOutcome);
-        Assert.Equal(editedContent, File.ReadAllText(svc.SourcePath));
+        Assert.Equal(editedContent, ReadTestValue(svc.SourcePath));
     }
 
     /// <summary>
