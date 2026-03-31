@@ -64,7 +64,15 @@ internal record GridLookups(
     /// Used when constructing <see cref="GridBlock"/> objects so the renderer can look
     /// up semester colors by name without performing additional database calls per block.
     /// </summary>
-    IReadOnlyDictionary<string, string> SemesterIdToName);
+    IReadOnlyDictionary<string, string> SemesterIdToName,
+
+    /// <summary>
+    /// Maps semester database ID to its hex color string (e.g. "fall-2025" → "#C65D1E").
+    /// Used when constructing <see cref="GridBlock"/> objects so the renderer can apply
+    /// the user-chosen semester color. Empty string means the semester has no color and
+    /// should fall back to name-based color lookup.
+    /// </summary>
+    IReadOnlyDictionary<string, string> SemesterIdToColor);
 
 /// <summary>
 /// Immutable snapshot of the grid filter state, captured once at the start of each

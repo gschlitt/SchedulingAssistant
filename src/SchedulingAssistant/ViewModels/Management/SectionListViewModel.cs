@@ -344,7 +344,7 @@ public partial class SectionListViewModel : ViewModelBase
                     s, courseLookup, instructorLookup, roomLookup,
                     sectionTypeLookup, campusLookup,
                     tagLookup, resourceLookup, reserveLookup, meetingTypeLookup,
-                    semDisplay.Semester.Name);
+                    semDisplay.Semester.Name, semDisplay.Semester.Color ?? string.Empty);
                 if (collapsedIds.Contains(s.Id))
                     vm.IsCollapsed = true;
                 return vm;

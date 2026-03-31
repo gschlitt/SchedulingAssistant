@@ -31,8 +31,10 @@ namespace SchedulingAssistant.ViewModels.GridView;
 /// for single-semester mode.
 /// SemesterName is the display name of the semester (e.g. "Fall 2025") used by the renderer
 /// to look up the appropriate semester color. Empty string if not in multi-semester mode.
+/// SemesterColor is the hex color string (e.g. "#C65D1E") assigned to the semester.
+/// Empty string falls back to name-based color lookup in ScheduleGridViewModel.
 /// </summary>
-public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay, string SemesterId = "", string SemesterName = "");
+public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool IsOverlay, string SemesterId = "", string SemesterName = "", string SemesterColor = "");
 
 /// <summary>
 /// A single scheduled meeting for a section (one slot in section.Schedule).
@@ -50,10 +52,10 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
     string Label, string Initials, string SectionId,
-    string SemesterId = "", string SemesterName = "",
+    string SemesterId = "", string SemesterName = "", string SemesterColor = "",
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName);
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
 /// An instructor commitment (non-teaching obligation stored in InstructorCommitments table).
@@ -68,8 +70,8 @@ public record SectionMeetingBlock(
 /// </summary>
 public record CommitmentBlock(
     int Day, int StartMinutes, int EndMinutes,
-    string Name, string CommitmentId, string SemesterId = "", string SemesterName = ""
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId, SemesterName);
+    string Name, string CommitmentId, string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
 /// One row within a rendered tile. A tile can have multiple entries when two or
@@ -103,6 +105,8 @@ public record TileEntry(
 /// SemesterName is the display name of the semester this tile belongs to (all entries
 /// in a tile come from the same semester since they were tiled from semester-filtered blocks).
 /// Empty string if single-semester mode.
+/// SemesterColor is the hex color string assigned to the semester; empty string falls back
+/// to name-based color lookup in the renderer.
 /// </summary>
 public record GridTile(
     IReadOnlyList<TileEntry> Entries,
@@ -112,7 +116,8 @@ public record GridTile(
     int OverlapIndex,
     /// <summary>Total number of columns in the overlap cluster.</summary>
     int OverlapCount,
-    string SemesterName = "");
+    string SemesterName = "",
+    string SemesterColor = "");
 
 /// <summary>
 /// One day-semester column's worth of positioned tiles.
@@ -120,11 +125,14 @@ public record GridTile(
 /// In multi-semester mode, SemesterName identifies which semester this sub-column belongs to
 /// (e.g. "Fall 2025"). The renderer uses it to draw the colored semester indicator bar even
 /// when the column has no tiles.
+/// SemesterColor is the hex color string assigned to the semester; empty string falls back
+/// to name-based color lookup in the renderer.
 /// </summary>
 public record GridDayColumn(
     string Header,
     IReadOnlyList<GridTile> Tiles,
-    string SemesterName = "");
+    string SemesterName = "",
+    string SemesterColor = "");
 
 /// <summary>
 /// Data for a tooltip shown when the user hovers over a tile on the schedule grid.

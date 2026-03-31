@@ -498,7 +498,8 @@ public partial class ScheduleGridView : UserControl
                 {
                     int    flatCol   = firstCol + s;
                     string semName   = data.DayColumns[flatCol].SemesterName;
-                    IBrush barFill   = ScheduleGridViewModel.ResolveSemesterBorderBrush(semName)
+                    string semColor  = data.DayColumns[flatCol].SemesterColor;
+                    IBrush barFill   = ScheduleGridViewModel.ResolveSemesterBorderBrush(semName, semColor)
                                        ?? HeaderBorder;
                     AddRect(_canvas, dayXOffsets[flatCol], DayHeaderHeight,
                             dayColWidths[flatCol], SemesterBarHeight, barFill, null);
@@ -654,7 +655,7 @@ public partial class ScheduleGridView : UserControl
                 IBrush? semesterBrush = null;
                 if (isMultiSemester && !string.IsNullOrEmpty(tile.SemesterName))
                 {
-                    semesterBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(tile.SemesterName);
+                    semesterBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(tile.SemesterName, tile.SemesterColor);
                 }
 
                 Border border;

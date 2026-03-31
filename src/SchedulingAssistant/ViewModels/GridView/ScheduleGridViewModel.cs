@@ -347,9 +347,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // without the renderer needing to perform extra lookups.
         var semesterIdToName = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Name);
 
+        // Maps semester DB ID → hex color so GridBlocks carry the semester color
+        // chosen in the wizard. Empty string falls back to name-based color lookup.
+        var semesterIdToColor = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Color ?? string.Empty);
+
         return new GridLookups(
             sections, courses, activeCourses, instructors, rooms, subjects,
-            campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName);
+            campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName, semesterIdToColor);
     }
 
     /// <summary>
@@ -643,9 +647,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     isOverlay = slot.RoomId == snap.SelectedOverlayId;
 
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
+                var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 blocks.Add(new SectionMeetingBlock(
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
-                    isOverlay, label, initials, section.Id, section.SemesterId, semName,
+                    isOverlay, label, initials, section.Id, section.SemesterId, semName, semColor,
                     SectionDaySchedule.FormatFrequency(slot.Frequency),
                     IsDeemphasized: isDeemphasized));
             }
@@ -722,12 +727,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
                 var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
+                var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
 
                 foreach (var slot in section.Schedule)
                 {
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
-                        true, label, initials, section.Id, section.SemesterId, semName,
+                        true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency)));
                 }
             }
@@ -747,6 +753,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             {
                 var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
+                var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
 
                 foreach (var slot in section.Schedule)
                 {
@@ -755,7 +762,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
-                        true, label, initials, section.Id, section.SemesterId, semName,
+                        true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency)));
                 }
             }
@@ -804,7 +811,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var commitments = _commitmentRepo.GetByInstructor(sd.Semester.Id, overlayInstructorId);
             foreach (var c in commitments)
-                blocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id, sd.Semester.Name));
+                blocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndMinutes, c.Name, c.Id, sd.Semester.Id, sd.Semester.Name, sd.Semester.Color ?? string.Empty));
         }
         return blocks;
     }
@@ -941,7 +948,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
                         .ToList();
 
-                dayColumns.Add(new GridDayColumn(dayNames[dayNum], ComputeTiles(dayBlocks, sd.Semester.Name), sd.Semester.Name));
+                dayColumns.Add(new GridDayColumn(dayNames[dayNum], ComputeTiles(dayBlocks, sd.Semester.Name, sd.Semester.Color ?? string.Empty), sd.Semester.Name, sd.Semester.Color ?? string.Empty));
             }
         }
 
@@ -1044,7 +1051,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// All blocks in this call belong to the same semester, so semesterName is provided
     /// and propagated to each resulting GridTile for use by the renderer.
     /// </summary>
-    internal static List<GridTile> ComputeTiles(List<GridBlock> blocks, string semesterName = "")
+    internal static List<GridTile> ComputeTiles(List<GridBlock> blocks, string semesterName = "", string semesterColor = "")
     {
         var tiles = new List<GridTile>();
         if (blocks.Count == 0) return tiles;
@@ -1110,7 +1117,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (col == -1) { col = colEnds.Count; colEnds.Add(0); }
                 colEnds[col] = m.End;
 
-                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count, semesterName));
+                tiles.Add(new GridTile(m.Entries, m.Start, m.End, col, cluster.Count, semesterName, semesterColor));
             }
 
             // Fix OverlapCount to actual column count used
@@ -1118,7 +1125,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             for (int t = tiles.Count - cluster.Count; t < tiles.Count; t++)
             {
                 var old = tiles[t];
-                tiles[t] = old with { OverlapCount = actualCols, SemesterName = semesterName };
+                tiles[t] = old with { OverlapCount = actualCols, SemesterName = semesterName, SemesterColor = semesterColor };
             }
         }
 

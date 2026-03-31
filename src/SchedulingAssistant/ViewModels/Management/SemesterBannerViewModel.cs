@@ -1,6 +1,7 @@
 ﻿using Avalonia;
 using Avalonia.Media;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -39,17 +40,32 @@ public class SemesterBannerViewModel : ISectionListEntry
         SemesterId   = sem.Semester.Id;
         SemesterName = sem.Semester.Name;
 
-        // Colors are assigned by semester name (e.g., Fall, Winter, Summer),
-        // not by position, so they remain consistent regardless of which semesters are selected.
-        string bgKey = GetBannerColorKey(sem.Semester.Name);
-        string bdKey = GetBannerBorderKey(sem.Semester.Name);
+        // Use the semester's assigned hex color if available, otherwise fall back to name-based lookup
+        string semesterColor = sem.Semester.Color ?? string.Empty;
 
-        object? bg = null, bd = null;
-        Application.Current?.Resources.TryGetResource(bgKey, null, out bg);
-        Application.Current?.Resources.TryGetResource(bdKey, null, out bd);
+        // For background, we'll use a color derived from the border (same hex color)
+        IBrush? bgBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(sem.Semester.Name, semesterColor);
+        if (bgBrush is SolidColorBrush solidBrush)
+        {
+            // Convert the border color to a lighter version for the background
+            var color = solidBrush.Color;
+            var lighterColor = Color.FromArgb(
+                (byte)((color.A + 255) / 2),
+                (byte)((color.R + 255) / 2),
+                (byte)((color.G + 255) / 2),
+                (byte)((color.B + 255) / 2));
+            BannerBackground = new SolidColorBrush(lighterColor);
+        }
+        else
+        {
+            // Fallback to name-based lookup for background
+            string bgKey = GetBannerColorKey(sem.Semester.Name);
+            object? bg = null;
+            Application.Current?.Resources.TryGetResource(bgKey, null, out bg);
+            BannerBackground = bg as IBrush;
+        }
 
-        BannerBackground = bg as IBrush;
-        BannerBorder     = bd as IBrush;
+        BannerBorder = bgBrush;
     }
 
     /// <summary>

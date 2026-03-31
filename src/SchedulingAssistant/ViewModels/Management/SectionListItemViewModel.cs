@@ -3,6 +3,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -89,15 +90,13 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, SchedulingEnvironmentValue> resourceLookup,
         Dictionary<string, SchedulingEnvironmentValue> reserveLookup,
         Dictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
-        string semesterName = "")
+        string semesterName = "",
+        string semesterColor = "")
     {
         Section = section;
 
-        // Resolve semester color from AppColors by semester name
-        string borderKey = GetSemesterBorderKey(semesterName);
-        object? bd = null;
-        Application.Current?.Resources.TryGetResource(borderKey, null, out bd);
-        SemesterLeftBorderBrush = bd as IBrush;
+        // Resolve semester color: hex color takes precedence, fall back to name-based lookup
+        SemesterLeftBorderBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(semesterName, semesterColor);
 
         // Compute sort keys for instructor and section type
         var instructorNames = section.InstructorAssignments
