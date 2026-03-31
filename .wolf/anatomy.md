@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-31T18:33:54.718Z
-> Files: 67 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-31T18:58:04.754Z
+> Files: 71 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -34,8 +34,9 @@
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `MEMORY.md` — SchedulingAssistant Project Memory (~5964 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~5971 tok)
 - `project_network_db_writeback.md` — Plan Summary (~4427 tok)
+- `semester_color_fix.md` — Issue (~1033 tok)
 - `wizard_write_lock_fix.md` (~269 tok)
 
 ## ./
@@ -228,8 +229,9 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2440 tok)
-- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~16583 tok)
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2607 tok)
+- `GridPipelineTypes.cs` — Aggregates all entity lookup dictionaries that the schedule grid pipeline needs to convert raw <see (~2688 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~16818 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
@@ -242,8 +244,10 @@
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2858 tok)
 - `SchedulingEnvironmentViewModel.cs` — Class: SchedulingEnvironmentViewModel (~877 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10025 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12069 tok)
+- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3112 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12080 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~7237 tok)
+- `SemesterBannerViewModel.cs` — Represents a semester group header row in the Section List. Carries the semester identity and displa (~911 tok)
 - `SettingsViewModel.cs` — ViewModel for the Settings flyout. Manages automated-backup configuration and restore. Backup entrie (~2398 tok)
 - `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1951 tok)
 - `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5460 tok)
@@ -261,7 +265,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11447 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11476 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

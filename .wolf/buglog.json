@@ -2134,6 +2134,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-31T17:23:05.142Z"
+    },
+    {
+      "id": "bug-134",
+      "timestamp": "2026-03-31T18:46:15.017Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: blocks.Add(new CommitmentBlock(c.Day, c.StartMinutes, c.EndM | Also: dayColumns.Add(new GridDayColumn(dayNames[dayNum], ComputeTi",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-03-31T18:46:52.020Z"
+    },
+    {
+      "id": "bug-135",
+      "timestamp": "2026-03-31T18:48:07.144Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T18:48:07.144Z"
+    },
+    {
+      "id": "bug-136",
+      "timestamp": "2026-03-31T18:48:16.368Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterBannerViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T18:48:16.368Z"
+    },
+    {
+      "id": "bug-137",
+      "timestamp": "2026-03-31T18:57:26.070Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterBannerViewModel.cs",
+      "root_cause": "18 lines replaced/restructured",
+      "fix": "Rewrote 32→14 lines (18 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T18:57:26.070Z"
     }
   ]
 }
