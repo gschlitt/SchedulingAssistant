@@ -327,7 +327,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
-            settings.BackupFolderPath = _backupFolder;
+            settings.BackupFolderPath = s3.BackupFolder;
             settings.Save();
 
             return true;

@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-31T18:24:14.286Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-31T18:33:54.718Z
 > Files: 67 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/

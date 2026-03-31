@@ -1,98 +1,46 @@
 {
-  "session_id": "session-2026-03-31-1120",
-  "started": "2026-03-31T18:20:56.779Z",
+  "session_id": "session-2026-03-31-1133",
+  "started": "2026-03-31T18:33:11.336Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml": {
+    "src/SchedulingAssistant/Services/BackupService.cs": {
       "count": 1,
-      "tokens": 1150,
-      "first_read": "2026-03-31T18:21:03.098Z"
+      "tokens": 8277,
+      "first_read": "2026-03-31T18:33:33.582Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management": {
+    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step2DatabaseViewModel.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-03-31T18:21:03.331Z"
+      "first_read": "2026-03-31T18:33:33.782Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs": {
+    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
+      "count": 4,
+      "tokens": 5900,
+      "first_read": "2026-03-31T18:33:37.166Z"
+    },
+    "src/SchedulingAssistant.Tests/WizardDataFlowTests.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-03-31T18:21:06.335Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step4ManualConfigViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T18:21:26.520Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T18:21:28.139Z"
+      "first_read": "2026-03-31T18:35:04.737Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
-      "count": 3,
-      "tokens": 5706,
-      "first_read": "2026-03-31T18:21:30.708Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs": {
       "count": 1,
-      "tokens": 5378,
-      "first_read": "2026-03-31T18:21:52.125Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
-      "count": 2,
-      "tokens": 3340,
-      "first_read": "2026-03-31T18:21:58.994Z"
-    },
-    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T18:23:28.510Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WizardStepValidationTests.cs": {
-      "count": 1,
-      "tokens": 5672,
-      "first_read": "2026-03-31T18:24:05.648Z"
+      "tokens": 5900,
+      "first_read": "2026-03-31T18:35:14.449Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
       "action": "edit",
-      "tokens": 489,
-      "at": "2026-03-31T18:22:21.140Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
-      "action": "edit",
-      "tokens": 537,
-      "at": "2026-03-31T18:22:31.335Z"
-    },
-    {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wizard_write_lock_fix.md",
-      "action": "create",
-      "tokens": 307,
-      "at": "2026-03-31T18:23:26.903Z"
-    },
-    {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
-      "action": "edit",
-      "tokens": 120,
-      "at": "2026-03-31T18:23:33.050Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WizardWriteLockTests.cs",
-      "action": "create",
-      "tokens": 775,
-      "at": "2026-03-31T18:24:14.323Z"
+      "tokens": 490,
+      "at": "2026-03-31T18:33:54.758Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 2,
-    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wizard_write_lock_fix.md": 1,
-    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": 1,
-    "src/SchedulingAssistant.Tests/WizardWriteLockTests.cs": 1
+    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 1
   },
-  "anatomy_hits": 5,
-  "anatomy_misses": 5,
+  "anatomy_hits": 3,
+  "anatomy_misses": 1,
   "repeated_reads_warned": 3,
   "cerebrum_warnings": 0,
   "stop_count": 1

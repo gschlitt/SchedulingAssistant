@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 4793642,
-    "total_reads": 1991,
-    "total_writes": 1611,
-    "total_sessions": 77,
-    "anatomy_hits": 575,
-    "anatomy_misses": 1392,
-    "repeated_reads_blocked": 903,
-    "estimated_savings_vs_bare_cli": 6915630
+    "total_tokens_estimated": 4814209,
+    "total_reads": 1996,
+    "total_writes": 1612,
+    "total_sessions": 78,
+    "anatomy_hits": 578,
+    "anatomy_misses": 1393,
+    "repeated_reads_blocked": 906,
+    "estimated_savings_vs_bare_cli": 6933930
   },
   "sessions": [
     {
@@ -23048,6 +23048,58 @@
         "writes_count": 5,
         "repeated_reads_blocked": 3,
         "anatomy_lookups": 5
+      }
+    },
+    {
+      "id": "session-2026-03-31-1133",
+      "started": "2026-03-31T18:33:11.336Z",
+      "ended": "2026-03-31T18:35:34.717Z",
+      "reads": [
+        {
+          "file": "src/SchedulingAssistant/Services/BackupService.cs",
+          "tokens_estimated": 8277,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step2DatabaseViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+          "tokens_estimated": 5900,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "src/SchedulingAssistant.Tests/WizardDataFlowTests.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+          "tokens_estimated": 5900,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+          "tokens_estimated": 490,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 20077,
+        "output_tokens_estimated": 490,
+        "reads_count": 5,
+        "writes_count": 1,
+        "repeated_reads_blocked": 3,
+        "anatomy_lookups": 3
       }
     }
   ],
