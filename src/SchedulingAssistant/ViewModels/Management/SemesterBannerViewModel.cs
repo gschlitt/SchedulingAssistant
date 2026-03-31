@@ -43,29 +43,11 @@ public class SemesterBannerViewModel : ISectionListEntry
         // Use the semester's assigned hex color if available, otherwise fall back to name-based lookup
         string semesterColor = sem.Semester.Color ?? string.Empty;
 
-        // For background, we'll use a color derived from the border (same hex color)
-        IBrush? bgBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(sem.Semester.Name, semesterColor);
-        if (bgBrush is SolidColorBrush solidBrush)
-        {
-            // Convert the border color to a lighter version for the background
-            var color = solidBrush.Color;
-            var lighterColor = Color.FromArgb(
-                (byte)((color.A + 255) / 2),
-                (byte)((color.R + 255) / 2),
-                (byte)((color.G + 255) / 2),
-                (byte)((color.B + 255) / 2));
-            BannerBackground = new SolidColorBrush(lighterColor);
-        }
-        else
-        {
-            // Fallback to name-based lookup for background
-            string bgKey = GetBannerColorKey(sem.Semester.Name);
-            object? bg = null;
-            Application.Current?.Resources.TryGetResource(bgKey, null, out bg);
-            BannerBackground = bg as IBrush;
-        }
+        // Both background and border use the same color (full saturation, not lightened)
+        IBrush? colorBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(sem.Semester.Name, semesterColor);
 
-        BannerBorder = bgBrush;
+        BannerBackground = colorBrush;
+        BannerBorder = colorBrush;
     }
 
     /// <summary>
