@@ -203,6 +203,8 @@
                             Background="{StaticResource ButtonBackground}"
                             Command="{Binding SaveCommand}"
                             Content="Save"
+                            FontSize="13"
+                            FontWeight="SemiBold"
                             ToolTip.Tip="Save changes to the database" />
                         <CheckBox
                             VerticalAlignment="Center"

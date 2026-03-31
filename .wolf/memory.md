@@ -1077,3 +1077,116 @@
 | 14:39 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified ReadOnlyRefresh_FreshDataReadableFromDSnapshotAfterUpdate() | ~493 |
 | 14:42 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified if() | ~94 |
 | 14:43 | Session end: 30 writes across 6 files (humble-swimming-walrus.md, CheckoutService.cs, MainWindow.axaml.cs, MainWindowViewModel.cs, DatabaseContext.cs) | 22 reads | ~136223 tok |
+
+## Session: 2026-03-30 15:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:06 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified RefreshReadOnlySnapshotAsync() | ~311 |
+| 15:06 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added error handling | ~305 |
+| 15:07 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added optional chaining | ~488 |
+| 15:07 | Session end: 3 writes across 2 files (CheckoutService.cs, MainWindowViewModel.cs) | 2 reads | ~20332 tok |
+| 15:19 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified if() | ~759 |
+| 15:20 | Session end: 4 writes across 2 files (CheckoutService.cs, MainWindowViewModel.cs) | 2 reads | ~21324 tok |
+| 15:27 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified RefreshReadOnlySnapshotAsync() | ~1741 |
+| 21:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified ComputeReadOnlyWorkingPath() | ~479 |
+| 21:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 1→3 lines | ~51 |
+| 21:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 5→6 lines | ~37 |
+| 21:10 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified if() | ~481 |
+| 21:12 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 8→10 lines | ~140 |
+| 21:13 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | "SELECT val FROM _test LIM" → "SELECT val FROM _test ORD" | ~21 |
+| 21:13 | Session end: 11 writes across 3 files (CheckoutService.cs, MainWindowViewModel.cs, CheckoutServiceTests.cs) | 3 reads | ~41555 tok |
+| 21:18 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 3→6 lines | ~122 |
+| 21:19 | Session end: 12 writes across 3 files (CheckoutService.cs, MainWindowViewModel.cs, CheckoutServiceTests.cs) | 3 reads | ~42068 tok |
+
+## Session: 2026-03-31 22:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:06 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | expanded (+6 lines) | ~230 |
+| 22:06 | Session end: 1 writes across 1 files (MainWindow.axaml.cs) | 1 reads | ~11792 tok |
+| 22:09 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | inline fix | ~34 |
+| 22:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | removed 85 lines | ~92 |
+| 22:10 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added error handling | ~1096 |
+| 22:10 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added nullish coalescing | ~441 |
+| 22:11 | Session end: 5 writes across 2 files (MainWindow.axaml.cs, CheckoutService.cs) | 2 reads | ~26879 tok |
+| 22:20 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 6→4 lines | ~83 |
+| 22:20 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 6→4 lines | ~83 |
+| 22:21 | Session end: 7 writes across 2 files (MainWindow.axaml.cs, CheckoutService.cs) | 3 reads | ~30653 tok |
+| 22:27 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified switch() | ~265 |
+| 22:28 | Session end: 8 writes across 3 files (MainWindow.axaml.cs, CheckoutService.cs, MainWindowViewModel.cs) | 4 reads | ~37814 tok |
+| 22:33 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 12→14 lines | ~299 |
+| 22:33 | Session end: 9 writes across 3 files (MainWindow.axaml.cs, CheckoutService.cs, MainWindowViewModel.cs) | 4 reads | ~38293 tok |
+| 22:36 | Session end: 9 writes across 3 files (MainWindow.axaml.cs, CheckoutService.cs, MainWindowViewModel.cs) | 4 reads | ~38258 tok |
+| 22:37 | Edited src/SchedulingAssistant/App.axaml.cs | 6→6 lines | ~104 |
+| 22:38 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 7→8 lines | ~144 |
+| 22:38 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 5→7 lines | ~111 |
+| 22:38 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified SetupMainWindowAsync() | ~156 |
+| 22:39 | Session end: 13 writes across 4 files (MainWindow.axaml.cs, CheckoutService.cs, MainWindowViewModel.cs, App.axaml.cs) | 4 reads | ~38810 tok |
+
+## Session: 2026-03-31 22:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:59 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+9 lines) | ~598 |
+| 22:59 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 6→6 lines | ~88 |
+| 22:59 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 6→7 lines | ~116 |
+| 22:59 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 6→7 lines | ~111 |
+| 23:00 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 9→9 lines | ~114 |
+| 23:00 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 6→6 lines | ~91 |
+| 23:00 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 7→7 lines | ~122 |
+| 23:00 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 8→9 lines | ~166 |
+| 23:00 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 6→6 lines | ~100 |
+| 23:00 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 4→4 lines | ~55 |
+| 23:01 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 8→8 lines | ~175 |
+| 23:01 | Session end: 11 writes across 1 files (CheckoutService.cs) | 1 reads | ~15386 tok |
+
+## Session: 2026-03-31 09:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-31 10:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-31 10:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:22 | Edited src/SchedulingAssistant/Views/Management/CampusListView.axaml | 3→3 lines | ~67 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml | 3→3 lines | ~67 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/CopySemesterView.axaml | 3→3 lines | ~45 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/AcademicUnitListView.axaml | 3→3 lines | ~58 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/BlockPatternListView.axaml | 5→5 lines | ~99 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | 5→5 lines | ~104 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 3→3 lines | ~77 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 18→18 lines | ~216 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 18→18 lines | ~267 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 10→10 lines | ~180 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/SectionPrefixListView.axaml | 6→6 lines | ~94 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/SubjectListView.axaml | 10→10 lines | ~123 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | 10→10 lines | ~132 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/RoomListView.axaml | 10→10 lines | ~132 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 17→17 lines | ~183 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | 10→10 lines | ~132 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 16→16 lines | ~169 |
+| 10:23 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 10→10 lines | ~161 |
+| 10:23 | Session end: 18 writes across 14 files (CampusListView.axaml, AcademicYearListView.axaml, CopySemesterView.axaml, AcademicUnitListView.axaml, BlockPatternListView.axaml) | 15 reads | ~48402 tok |
+
+## Session: 2026-03-31 11:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-31 11:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:22 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified ValidateStep3() | ~457 |
+| 11:22 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified ValidateStep1a() | ~501 |
+| 11:23 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wizard_write_lock_fix.md | — | ~287 |
+| 11:23 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→5 lines | ~112 |
+| 11:24 | Created src/SchedulingAssistant.Tests/WizardWriteLockTests.cs | — | ~723 |
+| 11:25 | Session end: 5 writes across 4 files (StartupWizardViewModel.cs, wizard_write_lock_fix.md, MEMORY.md, WizardWriteLockTests.cs) | 10 reads | ~23474 tok |

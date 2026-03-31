@@ -247,8 +247,8 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     /// <summary>
     /// Step 1a validation: existing-DB path only.
-    /// Opens the chosen database with InitializeServices, saves paths, and sets
-    /// IsInitialSetupComplete = true so the wizard finishes immediately.
+    /// Opens the chosen database with InitializeServices, saves paths, and acquires the write lock
+    /// so the wizard finishes in write mode.
     /// Returns true on both the "Yes, I have a DB" and "No, fresh install" paths.
     /// </summary>
     private async Task<bool> ValidateStep1a()
@@ -268,6 +268,11 @@ public partial class StartupWizardViewModel : ViewModelBase
         try
         {
             _services.InitializeServices(dbPath);
+
+            // Acquire the write lock so the wizard has write access to the database.
+            // TryAcquire() is atomic; it will fail if another instance holds the lock
+            // (collision-detection handled by WriteLockService).
+            App.LockService.TryAcquire(dbPath);
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
@@ -292,6 +297,8 @@ public partial class StartupWizardViewModel : ViewModelBase
     /// <summary>
     /// Step 3 validation: creates the database and calls InitializeServices.
     /// Persists the database and backup paths but does NOT yet set IsInitialSetupComplete.
+    /// Acquires the write lock so subsequent wizard steps (Campuses, Block Patterns, etc.)
+    /// have write access to manage these entities.
     /// On failure, sets the step's ErrorMessage and returns false.
     /// </summary>
     private async Task<bool> ValidateStep3()
@@ -312,6 +319,11 @@ public partial class StartupWizardViewModel : ViewModelBase
             Directory.CreateDirectory(folder);
 
             _services.InitializeServices(dbPath);
+
+            // Acquire the write lock so wizard steps that manage entities (Campuses, Block Patterns, etc.)
+            // have write access. TryAcquire() is atomic; it succeeds here because no other instance
+            // holds the lock yet.
+            App.LockService.TryAcquire(dbPath);
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;

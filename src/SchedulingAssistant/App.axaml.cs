@@ -34,10 +34,10 @@ public partial class App : Application
     public static WriteLockService LockService { get; } = new WriteLockService();
 
     /// <summary>
-    /// Checkout service, created once at app startup. Manages the D → D' copy,
-    /// write lock acquisition, save-back, autosave, and crash recovery for every
-    /// database the app opens. Lives outside DI because checkout must complete
-    /// before <see cref="InitializeServices"/> is called.
+    /// Checkout service, created once at app startup. Manages the D → D' copy (write mode),
+    /// the D → D'' snapshot (read-only mode), write lock acquisition, save-back, autosave,
+    /// and crash recovery for every database the app opens. Lives outside DI because checkout
+    /// must complete before <see cref="InitializeServices"/> is called.
     /// </summary>
     public static CheckoutService Checkout { get; } = new CheckoutService(LockService, Logger);
 

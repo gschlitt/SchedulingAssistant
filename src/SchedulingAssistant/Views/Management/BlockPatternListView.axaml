@@ -112,7 +112,7 @@
                                                 <Button
                                                     Padding="10,4"
                                                     Command="{Binding SaveCommand}"
-                                                    Content="Done" />
+                                                    Content="Apply" />
                                                 <Button
                                                     Padding="10,4"
                                                     Command="{Binding CancelCommand}"

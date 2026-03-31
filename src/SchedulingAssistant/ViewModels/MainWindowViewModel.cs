@@ -336,15 +336,26 @@ public partial class MainWindowViewModel : ViewModelBase
         if (sourcePath is null) return;
 
         var outcome = await App.Checkout.CheckoutAsync(sourcePath);
-        if (outcome == CheckoutOutcome.WriteAccess)
+        switch (outcome)
         {
-            // Re-initialize DI against the new working copy D'.
-            await MainWindowReference.SwitchDatabaseAsync(App.Checkout.WorkingPath);
-        }
-        else
-        {
-            // Someone else got there first — refresh the lock banner.
-            OnLockStateChanged();
+            case CheckoutOutcome.WriteAccess:
+                // Re-initialize DI against the new working copy D'.
+                await MainWindowReference.SwitchDatabaseAsync(App.Checkout.WorkingPath);
+                break;
+
+            case CheckoutOutcome.ReadOnly:
+            case CheckoutOutcome.StaleHolder:
+                // Lock was free when polling signalled but someone else grabbed it first.
+                // Refresh the lock banner so the UI reflects current state.
+                OnLockStateChanged();
+                break;
+
+            case CheckoutOutcome.Failed:
+                // Checkout failed entirely (e.g. hash mismatch on D → D' copy).
+                // Ensure we still have a valid D'' snapshot so D is not held open.
+                await App.Checkout.SetupReadOnlySnapshotAsync();
+                OnLockStateChanged();
+                break;
         }
     }
 
@@ -360,28 +371,28 @@ public partial class MainWindowViewModel : ViewModelBase
         // If in read-only snapshot mode, re-copy D → D'' to fetch latest data.
         if (App.Checkout.IsReadOnlyMode)
         {
+            var dbContext = _services.GetRequiredService<IDatabaseContext>() as DatabaseContext;
+
             try
             {
-                var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync();
-
-                // If D'' was updated, reconnect the DatabaseContext to the new file.
-                // After File.Move (atomic rename), the old connection's file handle still points to
-                // the OLD D'' inode. We must close and reopen against the new D'' so that subsequent
-                // queries see the updated content.
-                if (refreshOutcome == RefreshOutcome.Updated && App.Checkout.ReadOnlyWorkingPath is not null)
+                // afterCopy: called by CheckoutService after the new snapshot has been committed
+                // to the alternate slot (ping-pong). We switch the DatabaseContext connection to
+                // the new slot here. The old slot is still intact on disk at this point, so
+                // there is no risk of reading a deleted/partially-written file.
+                // File.Move in CheckoutService targets the inactive slot, so no open-handle
+                // conflict is possible — this is a clean connection swap, not a workaround.
+                async Task AfterCopy(string newPath)
                 {
-                    // Use the injected _services (same container that created DatabaseContext) so the
-                    // lookup is guaranteed to resolve the same singleton that repositories hold.
-                    var dbContext = _services.GetRequiredService<IDatabaseContext>();
-                    if (dbContext is DatabaseContext dc)
-                        dc.ReinitializeConnection(App.Checkout.ReadOnlyWorkingPath);
+                    await Task.CompletedTask; // synchronous work; Task signature required by API
+                    dbContext?.ReinitializeConnection(newPath);
                 }
 
-                // Log the refresh result for debugging.
+                var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync(AfterCopy);
+
                 var msg = refreshOutcome switch
                 {
-                    RefreshOutcome.Updated => "Data refreshed from source.",
-                    RefreshOutcome.AlreadyCurrent => "Data is already current.",
+                    RefreshOutcome.Updated           => "Data refreshed from source.",
+                    RefreshOutcome.AlreadyCurrent    => "Data is already current.",
                     RefreshOutcome.SourceUnavailable => "Could not reach source — using cached data.",
                     _ => "Refresh completed."
                 };
@@ -390,7 +401,6 @@ public partial class MainWindowViewModel : ViewModelBase
             catch (Exception ex)
             {
                 App.Logger.LogError(ex, "MainWindowViewModel: refresh failed");
-                // Continue anyway — reload from the (possibly stale) D'' that's already open.
             }
         }
 

@@ -152,7 +152,7 @@
                     IsVisible="{Binding IsFlaggedWarning}" />
 
             <!-- Complete state button -->
-            <Button Content="Done" Command="{Binding DoneCommand}"
+            <Button Content="Apply" Command="{Binding DoneCommand}"
                     IsVisible="{Binding IsComplete}" />
         </StackPanel>
 

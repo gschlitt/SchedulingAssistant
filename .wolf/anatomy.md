@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-30T21:42:00.504Z
-> Files: 64 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-03-31T18:24:14.286Z
+> Files: 67 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -34,8 +34,9 @@
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `MEMORY.md` — SchedulingAssistant Project Memory (~5931 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~5964 tok)
 - `project_network_db_writeback.md` — Plan Summary (~4427 tok)
+- `wizard_write_lock_fix.md` (~269 tok)
 
 ## ./
 
@@ -173,21 +174,22 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~16420 tok)
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~16459 tok)
 - `ComputeTilesTests.cs` — Unit tests for <see cref="ScheduleGridViewModel.ComputeTiles"/>. ComputeTiles converts a flat list o (~4847 tok)
 - `GridPipelineTests.cs` — Unit tests for the internal static pipeline methods extracted from <see cref="ScheduleGridViewModel. (~8235 tok)
 - `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~972 tok)
 - `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5672 tok)
+- `WizardWriteLockTests.cs` — Tests that WriteLockService is properly acquired during wizard database creation, enabling write acc (~723 tok)
 - `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~6617 tok)
 - `WriteLockServiceTests.cs` — Unit tests for <see cref="WriteLockService"/>. <para>Each test fixture creates an isolated temporary (~5989 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3326 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3340 tok)
 - `AppColors.axaml` (~2786 tok)
 - `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
 - `MainWindow.axaml` — Declares applied (~10787 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11545 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11783 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -215,14 +217,14 @@
 
 - `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2151 tok)
 - `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8277 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Core concept:</b> W (~12235 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~13801 tok)
 - `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\SchedulingAssistant\Logs\app-YYYY-MM- (~1334 tok)
 - `IAppLogger.cs` — Application-wide error logger. Implementations can write to a local file, a remote database, a cloud (~492 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~5378 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~6915 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7031 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
@@ -248,7 +250,7 @@
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
-- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5706 tok)
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5900 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
@@ -263,21 +265,22 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `AcademicUnitListView.axaml` (~508 tok)
-- `AcademicYearListView.axaml` (~1265 tok)
+- `AcademicUnitListView.axaml` (~509 tok)
+- `AcademicYearListView.axaml` (~1266 tok)
 - `BlockPatternListView.axaml` (~2146 tok)
 - `CampusListView.axaml` (~1150 tok)
+- `CopySemesterView.axaml` — Declares assignments (~2195 tok)
 - `CourseListView.axaml` (~4551 tok)
-- `InstructorListView.axaml` (~8570 tok)
+- `InstructorListView.axaml` (~8571 tok)
 - `LegalStartTimeListView.axaml` (~1870 tok)
 - `NewDatabaseView.axaml` (~1971 tok)
-- `RoomListView.axaml` (~1537 tok)
-- `SchedulingEnvironmentListView.axaml` — Declares description (~1429 tok)
-- `SectionListView.axaml` (~19617 tok)
+- `RoomListView.axaml` (~1538 tok)
+- `SchedulingEnvironmentListView.axaml` — Declares description (~1430 tok)
+- `SectionListView.axaml` (~19618 tok)
 - `SectionPrefixListView.axaml` (~1431 tok)
 - `SemesterManagerView.axaml` (~971 tok)
 - `SettingsView.axaml` (~2083 tok)
-- `SubjectListView.axaml` (~888 tok)
+- `SubjectListView.axaml` (~889 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

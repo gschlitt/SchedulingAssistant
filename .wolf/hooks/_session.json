@@ -1,311 +1,99 @@
 {
-  "session_id": "session-2026-03-30-1348",
-  "started": "2026-03-30T20:48:26.544Z",
+  "session_id": "session-2026-03-31-1120",
+  "started": "2026-03-31T18:20:56.779Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/persistence-review.md": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml": {
       "count": 1,
-      "tokens": 2798,
-      "first_read": "2026-03-30T20:48:30.542Z"
+      "tokens": 1150,
+      "first_read": "2026-03-31T18:21:03.098Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs": {
-      "count": 3,
-      "tokens": 8730,
-      "first_read": "2026-03-30T20:53:27.356Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs": {
-      "count": 1,
-      "tokens": 3428,
-      "first_read": "2026-03-30T20:53:27.575Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/IDatabaseContext.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-03-30T20:53:27.726Z"
+      "first_read": "2026-03-31T18:21:03.331Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs": {
-      "count": 3,
-      "tokens": 11437,
-      "first_read": "2026-03-30T20:53:37.918Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs": {
       "count": 1,
-      "tokens": 13472,
-      "first_read": "2026-03-30T20:53:50.336Z"
+      "tokens": 0,
+      "first_read": "2026-03-31T18:21:06.335Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step4ManualConfigViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-31T18:21:26.520Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-03-31T18:21:28.139Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
+      "count": 3,
+      "tokens": 5706,
+      "first_read": "2026-03-31T18:21:30.708Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs": {
       "count": 1,
       "tokens": 5378,
-      "first_read": "2026-03-30T20:53:54.542Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs": {
-      "count": 8,
-      "tokens": 12196,
-      "first_read": "2026-03-30T20:54:45.853Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/SectionStore.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-30T20:54:46.051Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs": {
-      "count": 5,
-      "tokens": 6840,
-      "first_read": "2026-03-30T20:54:46.269Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs": {
-      "count": 5,
-      "tokens": 11529,
-      "first_read": "2026-03-30T20:54:49.113Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs": {
-      "count": 3,
-      "tokens": 12069,
-      "first_read": "2026-03-30T20:54:54.153Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs": {
-      "count": 4,
-      "tokens": 3865,
-      "first_read": "2026-03-30T20:54:54.424Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/Services/SemesterContext.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-30T20:55:03.531Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/SemesterContext.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-30T20:55:05.752Z"
+      "first_read": "2026-03-31T18:21:52.125Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
       "count": 2,
-      "tokens": 3326,
-      "first_read": "2026-03-30T20:55:09.110Z"
+      "tokens": 3340,
+      "first_read": "2026-03-31T18:21:58.994Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/MULTI_USER_STRATEGY.md": {
+    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-03-30T20:56:31.882Z"
+      "first_read": "2026-03-31T18:23:28.510Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/persistence-review.md": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WizardStepValidationTests.cs": {
       "count": 1,
-      "tokens": 2798,
-      "first_read": "2026-03-30T20:56:37.057Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/TEST_SCENARIO.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-30T20:56:37.115Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/.claude/worktrees/dazzling-bardeen/src/SchedulingAssistant/Data/DatabaseContext.cs": {
-      "count": 1,
-      "tokens": 3428,
-      "first_read": "2026-03-30T20:56:43.095Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs": {
-      "count": 7,
-      "tokens": 15964,
-      "first_read": "2026-03-30T21:17:08.563Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/SectionRepository.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-30T21:36:00.010Z"
+      "tokens": 5672,
+      "first_read": "2026-03-31T18:24:05.648Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/.claude/plans/humble-swimming-walrus.md",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "action": "edit",
+      "tokens": 489,
+      "at": "2026-03-31T18:22:21.140Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "action": "edit",
+      "tokens": 537,
+      "at": "2026-03-31T18:22:31.335Z"
+    },
+    {
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wizard_write_lock_fix.md",
       "action": "create",
-      "tokens": 3468,
-      "at": "2026-03-30T20:56:10.763Z"
+      "tokens": 307,
+      "at": "2026-03-31T18:23:26.903Z"
     },
     {
-      "file": "C:/Users/gregs/.claude/plans/humble-swimming-walrus.md",
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
       "action": "edit",
-      "tokens": 2719,
-      "at": "2026-03-30T20:58:28.518Z"
+      "tokens": 120,
+      "at": "2026-03-31T18:23:33.050Z"
     },
     {
-      "file": "C:/Users/gregs/.claude/plans/humble-swimming-walrus.md",
-      "action": "edit",
-      "tokens": 360,
-      "at": "2026-03-30T20:58:34.631Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 614,
-      "at": "2026-03-30T21:09:14.477Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 470,
-      "at": "2026-03-30T21:09:21.964Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 306,
-      "at": "2026-03-30T21:09:35.886Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 1184,
-      "at": "2026-03-30T21:09:48.022Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 1374,
-      "at": "2026-03-30T21:10:01.573Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 212,
-      "at": "2026-03-30T21:10:06.392Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 280,
-      "at": "2026-03-30T21:10:14.316Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 563,
-      "at": "2026-03-30T21:10:22.743Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
-      "action": "edit",
-      "tokens": 169,
-      "at": "2026-03-30T21:10:37.843Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
-      "action": "edit",
-      "tokens": 161,
-      "at": "2026-03-30T21:10:57.195Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
-      "action": "edit",
-      "tokens": 101,
-      "at": "2026-03-30T21:11:02.941Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
-      "action": "edit",
-      "tokens": 545,
-      "at": "2026-03-30T21:14:44.454Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
-      "action": "edit",
-      "tokens": 605,
-      "at": "2026-03-30T21:15:08.775Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
-      "action": "edit",
-      "tokens": 721,
-      "at": "2026-03-30T21:15:19.340Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
-      "action": "edit",
-      "tokens": 132,
-      "at": "2026-03-30T21:16:55.610Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
-      "action": "edit",
-      "tokens": 2796,
-      "at": "2026-03-30T21:17:35.314Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
-      "action": "edit",
-      "tokens": 102,
-      "at": "2026-03-30T21:18:05.370Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
-      "action": "edit",
-      "tokens": 182,
-      "at": "2026-03-30T21:18:12.964Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 411,
-      "at": "2026-03-30T21:18:27.250Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 78,
-      "at": "2026-03-30T21:18:45.296Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
-      "action": "edit",
-      "tokens": 18,
-      "at": "2026-03-30T21:19:12.100Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
-      "action": "edit",
-      "tokens": 21,
-      "at": "2026-03-30T21:19:19.391Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
-      "action": "edit",
-      "tokens": 290,
-      "at": "2026-03-30T21:19:44.007Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
-      "action": "edit",
-      "tokens": 192,
-      "at": "2026-03-30T21:19:49.381Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
-      "action": "edit",
-      "tokens": 262,
-      "at": "2026-03-30T21:39:04.818Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
-      "action": "edit",
-      "tokens": 528,
-      "at": "2026-03-30T21:39:43.087Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
-      "action": "edit",
-      "tokens": 101,
-      "at": "2026-03-30T21:42:00.524Z"
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WizardWriteLockTests.cs",
+      "action": "create",
+      "tokens": 775,
+      "at": "2026-03-31T18:24:14.323Z"
     }
   ],
   "edit_counts": {
-    "../../../.claude/plans/humble-swimming-walrus.md": 3,
-    "src/SchedulingAssistant/Services/CheckoutService.cs": 11,
-    "src/SchedulingAssistant/MainWindow.axaml.cs": 3,
-    "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs": 5,
-    "src/SchedulingAssistant/Data/DatabaseContext.cs": 2,
-    "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs": 6
+    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 2,
+    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wizard_write_lock_fix.md": 1,
+    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": 1,
+    "src/SchedulingAssistant.Tests/WizardWriteLockTests.cs": 1
   },
-  "anatomy_hits": 15,
-  "anatomy_misses": 7,
-  "repeated_reads_warned": 31,
+  "anatomy_hits": 5,
+  "anatomy_misses": 5,
+  "repeated_reads_warned": 3,
   "cerebrum_warnings": 0,
-  "stop_count": 4
+  "stop_count": 1
 }

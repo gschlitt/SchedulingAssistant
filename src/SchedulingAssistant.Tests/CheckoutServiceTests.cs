@@ -106,7 +106,7 @@ public sealed class CheckoutServiceTests : IDisposable
         using var conn = new SqliteConnection($"Data Source={dbPath};Pooling=False");
         conn.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT val FROM _test LIMIT 1";
+        cmd.CommandText = "SELECT val FROM _test ORDER BY rowid DESC LIMIT 1";
         return cmd.ExecuteScalar() as string;
     }
 
@@ -1568,9 +1568,11 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await reader.RefreshReadOnlySnapshotAsync();
         Assert.Equal(RefreshOutcome.Updated, outcome);
 
-        // Open a fresh connection to D'' (simulating what ReinitializeConnection does)
-        // and verify the updated data is present.
-        var valueAfter = ReadTestValue(d2);
+        // After a successful refresh the ping-pong swaps the active slot, so
+        // ReadOnlyWorkingPath now points to the new slot (not d2, which was deleted).
+        var newSlot    = reader.ReadOnlyWorkingPath!;
+        Assert.NotEqual(d2, newSlot);
+        var valueAfter = ReadTestValue(newSlot);
         Assert.Equal("updated", valueAfter);
     }
 

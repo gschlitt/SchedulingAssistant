@@ -1,28 +1,33 @@
 using Avalonia.Threading;
 using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Models;
-using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SchedulingAssistant.Services;
 
 /// <summary>
 /// Manages the checkout / save lifecycle for every database the app opens.
 ///
-/// <para><b>Core concept:</b> When a database D is opened, <see cref="CheckoutAsync"/>
-/// copies it to a local working copy D' under <c>%AppData%\TermPoint\working\</c>,
-/// acquires a write lock, and returns the path of D' so that <c>DatabaseContext</c>
-/// (and therefore all SQLite writes) target D' on the local drive — never D directly.
-/// An explicit <see cref="SaveAsync"/> call pushes D' back to D.</para>
+/// <para><b>Write-access mode:</b> When a database D is opened and the write lock is
+/// available, <see cref="CheckoutAsync"/> acquires the lock, copies D to a local working
+/// copy D' under <c>%AppData%\TermPoint\working\</c>, and returns
+/// <see cref="CheckoutOutcome.WriteAccess"/>. <c>DatabaseContext</c> targets D' — never
+/// D directly. An explicit <see cref="SaveAsync"/> call pushes D' back to D.</para>
 ///
-/// <para><b>Always-on:</b> This flow is active for every database, whether it is on a
-/// network drive or a local drive. Local-database users see a small overhead on open
-/// and save, but gain a consistent explicit-save model.</para>
+/// <para><b>Read-only mode:</b> When another instance already holds the write lock,
+/// <see cref="CheckoutAsync"/> copies D to a local read-only snapshot D'' (same working
+/// directory, "_ro" suffix) and returns <see cref="CheckoutOutcome.ReadOnly"/>.
+/// <c>DatabaseContext</c> targets D'' — again, never D directly. The user can call
+/// <see cref="RefreshReadOnlySnapshotAsync"/> to re-copy D → D'' and see the latest data.
+/// D'' persists between app restarts so Refresh is fast on reopen; stale snapshots older
+/// than 30 days are purged by <see cref="CleanupStaleReadOnlySnapshots"/>.</para>
+///
+/// <para><b>Always-on:</b> Both modes apply to every database, whether it is on a
+/// network drive or a local drive. The indirection through D' or D'' is what prevents any
+/// instance from ever holding D open, allowing the writer's atomic rename (D.tmp → D)
+/// to succeed.</para>
 ///
 /// <para><b>New databases:</b> When D does not yet exist, D' is set equal to D (degenerate
 /// mode). <c>DatabaseContext</c> creates the schema at that path normally. The first
@@ -52,9 +57,9 @@ public sealed class CheckoutService : IDisposable
     private readonly Action<Action> _dispatch;
 
     /// <summary>
-    /// Directory in which working copies D' are stored. Set at construction time.
-    /// Defaults to <c>%AppData%\TermPoint\working\</c>; overridden in tests to use
-    /// an isolated temporary directory.
+    /// Directory in which working copies D' (write-access) and D'' (read-only snapshots)
+    /// are stored. Set at construction time. Defaults to <c>%AppData%\TermPoint\working\</c>;
+    /// overridden in tests to use an isolated temporary directory.
     /// </summary>
     private readonly string _workingDir;
 
@@ -73,8 +78,9 @@ public sealed class CheckoutService : IDisposable
     public string SourcePath { get; private set; } = string.Empty;
 
     /// <summary>
-    /// Path to D' — the local working copy. All SQLite writes target this path.
-    /// Equals <see cref="SourcePath"/> for new databases (degenerate mode).
+    /// Path to the local working copy: D' in write-access mode, D'' in read-only mode.
+    /// All SQLite operations (reads and writes) target this path — D is never opened directly.
+    /// Equals <see cref="SourcePath"/> for new databases (degenerate write mode only).
     /// Empty until <see cref="CheckoutAsync"/> is called.
     /// </summary>
     public string WorkingPath { get; private set; } = string.Empty;
@@ -87,24 +93,25 @@ public sealed class CheckoutService : IDisposable
     public string? HashAtCheckout { get; private set; }
 
     /// <summary>
-    /// True when D' contains changes that have not yet been saved back to D.
-    /// Set to true immediately after a successful checkout. Cleared after each
-    /// successful <see cref="SaveAsync"/>.
+    /// True when D' (write-access mode) contains changes that have not yet been saved
+    /// back to D. Set to true immediately after a successful write-access checkout.
+    /// Cleared after each successful <see cref="SaveAsync"/>.
+    /// Always false in read-only mode — D'' is a read-only snapshot and is never written to.
     /// </summary>
     public bool SessionDirty { get; private set; }
 
     /// <summary>
-    /// Identity of the process holding the write lock when this instance is in
+    /// Identity of the process (user, machine) holding the write lock when this instance is in
     /// read-only mode. Null in write mode or before checkout.
     /// </summary>
     public LockFileData? CurrentHolder { get; private set; }
 
     /// <summary>
-    /// True when this instance is in read-only mode with a D'' (snapshot) working copy.
-    /// False for write-access mode or when in read-only mode reading D directly (legacy, before D'' refactor).
+    /// True when this instance is in read-only mode using a D'' (local snapshot) working copy.
+    /// False in write-access mode.
     /// <para>
-    /// This flag distinguishes the new read-only-snapshot behavior (where D'' is a local copy and Refresh
-    /// can re-copy D → D'') from older behavior where read-only instances opened D directly.
+    /// When true, <see cref="RefreshReadOnlySnapshotAsync"/> can be called to re-copy D → D''
+    /// and update <see cref="ReadOnlyWorkingPath"/> to the newly written slot.
     /// </para>
     /// </summary>
     public bool IsReadOnlyMode { get; private set; }
@@ -173,9 +180,9 @@ public sealed class CheckoutService : IDisposable
     /// handlers can be observed immediately.
     /// </param>
     /// <param name="workingDir">
-    /// Directory in which working copies D' are stored. Defaults to
-    /// <c>%AppData%\TermPoint\working\</c> when null. Override in unit tests
-    /// to use an isolated temporary directory and avoid polluting the real
+    /// Directory in which working copies D' (write-access) and read-only snapshots D''
+    /// are stored. Defaults to <c>%AppData%\TermPoint\working\</c> when null. Override
+    /// in unit tests to use an isolated temporary directory and avoid polluting the real
     /// working folder.
     /// </param>
     public CheckoutService(
@@ -196,16 +203,18 @@ public sealed class CheckoutService : IDisposable
     // ── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Opens a database for editing by acquiring the write lock and copying D to D'.
+    /// Opens a database session. In write mode, acquires the write lock and copies D → D'.
+    /// In read-only mode, copies D → D'' via <see cref="SetupReadOnlySnapshotAsync"/> so
+    /// that D is never held open directly.
     /// Must be called before <see cref="App.InitializeServices"/> so that the correct
-    /// path (D' for write mode, D for read-only mode) can be passed in.
+    /// working path (D' or D'') can be passed in.
     /// </summary>
     /// <param name="sourcePath">Full path to D — the database the user selected.</param>
     /// <returns>
-    /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> as dbPath.<br/>
-    /// <see cref="CheckoutOutcome.ReadOnly"/>    — a fresh lock exists; use <see cref="SourcePath"/> as dbPath.<br/>
-    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user then call <see cref="ForceCheckoutAsync"/>.<br/>
-    /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); do not proceed.
+    /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath.<br/>
+    /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists; use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
+    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, then call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
+    /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/>.
     /// </returns>
     public async Task<CheckoutOutcome> CheckoutAsync(string sourcePath)
     {
@@ -248,88 +257,10 @@ public sealed class CheckoutService : IDisposable
 
         if (!_lockService.IsWriter)
         {
-            // Read-only mode: copy D → D'' (a local read-only snapshot) so D has no open handles.
-            // This fixes the issue where a persistent connection to D blocks writer saves.
-            ReadOnlyWorkingPath = ComputeReadOnlyWorkingPath(sourcePath);
-            CurrentHolder       = _lockService.CurrentHolder;
-
-            // Check if D'' already exists and is current (fast path on re-open).
-            if (File.Exists(ReadOnlyWorkingPath))
-            {
-                try
-                {
-                    var roHash = ComputeHash(ReadOnlyWorkingPath);
-                    var dHash  = ComputeHash(sourcePath);
-                    if (roHash == dHash)
-                    {
-                        // D'' is up-to-date; reuse it.
-                        WorkingPath      = ReadOnlyWorkingPath;
-                        HashAtCheckout   = dHash;
-                        Mode             = CheckoutMode.ReadOnly;
-                        IsReadOnlyMode   = true;
-                        LastRefreshedAt  = File.GetLastWriteTimeUtc(ReadOnlyWorkingPath);
-                        _logger.LogInfo("CheckoutService: read-only checkout — reusing current D''.");
-                        return CheckoutOutcome.ReadOnly;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogInfo($"CheckoutService: could not verify D'': {ex.Message}. Will re-copy.");
-                    // Fall through to re-copy D''
-                }
-            }
-
-            // D'' doesn't exist or is stale; create/update it via atomic rename.
-            Directory.CreateDirectory(_workingDir);
-            var roTmpPath = ReadOnlyWorkingPath + ".tmp";
-            try
-            {
-                CopyWithSharing(sourcePath, roTmpPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "CheckoutService: failed to copy D to D'' (tmp)");
-                CurrentHolder = _lockService.CurrentHolder;
-                try { File.Delete(roTmpPath); } catch { }
-                return CheckoutOutcome.Failed;
-            }
-
-            // Verify the copy hash matches the source.
-            var roSourceHash = ComputeHash(sourcePath);
-            var roCopyHash   = ComputeHash(roTmpPath);
-            if (roCopyHash != roSourceHash)
-            {
-                _logger.LogInfo("CheckoutService: hash mismatch after D → D'' copy — retrying once.");
-                try { CopyWithSharing(sourcePath, roTmpPath); } catch { }
-                roCopyHash = ComputeHash(roTmpPath);
-
-                if (roCopyHash != roSourceHash)
-                {
-                    _logger.LogInfo("CheckoutService: hash mismatch on retry — aborting read-only checkout.");
-                    try { File.Delete(roTmpPath); } catch { }
-                    return CheckoutOutcome.Failed;
-                }
-            }
-
-            // Atomically rename D''.tmp → D''
-            try
-            {
-                File.Move(roTmpPath, ReadOnlyWorkingPath, overwrite: true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp to D''");
-                try { File.Delete(roTmpPath); } catch { }
-                return CheckoutOutcome.Failed;
-            }
-
-            WorkingPath      = ReadOnlyWorkingPath;
-            HashAtCheckout   = roSourceHash;
-            Mode             = CheckoutMode.ReadOnly;
-            IsReadOnlyMode   = true;
-            LastRefreshedAt  = DateTime.UtcNow;
-            _logger.LogInfo("CheckoutService: read-only checkout — created D''.");
-            return CheckoutOutcome.ReadOnly;
+            // Read-only mode: set up D'' via the shared helper so D is never held open.
+            CurrentHolder = _lockService.CurrentHolder;
+            var d2 = await SetupReadOnlySnapshotAsync();
+            return d2 is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
         }
 
         // Write-access path: copy D to D' (existing logic).
@@ -357,7 +288,7 @@ public sealed class CheckoutService : IDisposable
         if (copyHash != HashAtCheckout)
         {
             _logger.LogInfo("CheckoutService: hash mismatch after copy — retrying once.");
-            try { CopyWithSharing(sourcePath, WorkingPath); } catch { /* handled below */ }
+            try { CopyWithSharing(sourcePath, WorkingPath); } catch { /* hash check on next line catches this */ }
             copyHash = ComputeHash(WorkingPath);
 
             if (copyHash != HashAtCheckout)
@@ -548,14 +479,31 @@ public sealed class CheckoutService : IDisposable
     /// For read-only instances, re-copies D → D'' to fetch the latest data.
     /// Re-verifies the copy hash and updates <see cref="LastRefreshedAt"/> on success.
     /// Includes a 500ms delay before reading D to account for SMB client-side caching.
+    ///
+    /// <para><b>Ping-pong slots:</b> Each refresh writes to the slot that is <em>not</em> currently
+    /// active (either <c>_ro.db</c> or <c>_ro2.db</c>). This means <c>File.Move</c> never tries to
+    /// overwrite an open file — eliminating <c>ERROR_SHARING_VIOLATION</c> entirely. After a
+    /// successful commit, <see cref="ReadOnlyWorkingPath"/> is updated to the new slot and the old
+    /// slot is deleted.</para>
     /// </summary>
     /// <returns>
-    /// <see cref="RefreshOutcome.Updated"/> — D'' was re-copied (D has changed).<br/>
-    /// <see cref="RefreshOutcome.AlreadyCurrent"/> — D'' matches D; no re-copy needed.<br/>
-    /// <see cref="RefreshOutcome.SourceUnavailable"/> — D could not be reached; D'' remains unchanged.
+    /// <see cref="RefreshOutcome.Updated"/> — a new snapshot was written to the alternate slot.<br/>
+    /// <see cref="RefreshOutcome.AlreadyCurrent"/> — D hasn't changed; the active slot is still current.<br/>
+    /// <see cref="RefreshOutcome.SourceUnavailable"/> — D could not be reached or copy failed; active slot unchanged.
     /// </returns>
+    /// <param name="afterCopy">
+    /// Optional async callback invoked after the new snapshot has been atomically committed to the
+    /// alternate slot. The callback receives the path of the newly committed file.
+    /// <para>
+    /// Use this to switch the <c>DatabaseContext</c> connection to the new slot before
+    /// <see cref="ReadOnlyWorkingPath"/> is updated, e.g. by calling
+    /// <c>DatabaseContext.ReinitializeConnection(newPath)</c>. The callback is only called on
+    /// success; it is never called when <see cref="RefreshOutcome.AlreadyCurrent"/> or
+    /// <see cref="RefreshOutcome.SourceUnavailable"/> is returned.
+    /// </para>
+    /// </param>
     /// <exception cref="InvalidOperationException">Thrown when not in read-only mode or <see cref="ReadOnlyWorkingPath"/> is null.</exception>
-    public async Task<RefreshOutcome> RefreshReadOnlySnapshotAsync()
+    public async Task<RefreshOutcome> RefreshReadOnlySnapshotAsync(Func<string, Task>? afterCopy = null)
     {
         if (Mode != CheckoutMode.ReadOnly || !IsReadOnlyMode || ReadOnlyWorkingPath is null)
             throw new InvalidOperationException("RefreshReadOnlySnapshot called while not in read-only snapshot mode.");
@@ -563,10 +511,15 @@ public sealed class CheckoutService : IDisposable
         // Add SMB cache delay before reading D to ensure we get fresh data.
         const int baseDelayMs = 500;
         const int jitterMs    = 500;
-        var randomDelay       = Random.Shared.Next(0, jitterMs);
-        await Task.Delay(baseDelayMs + randomDelay);
+        await Task.Delay(baseDelayMs + Random.Shared.Next(0, jitterMs));
 
-        // Attempt to read the hash of D (up to 3 times if hash mismatches occur during copy).
+        // Write to the slot that is NOT currently active.
+        // This is the core of the ping-pong design: we never overwrite an open file.
+        // The active slot stays intact and readable until the new slot is fully committed.
+        var altPath    = GetAlternateReadOnlyPath();
+        var altTmpPath = altPath + ".tmp";
+
+        // Attempt up to 3 times in case D is modified mid-copy (hash mismatch).
         for (int attempt = 0; attempt < 3; attempt++)
         {
             string sourceHash;
@@ -574,63 +527,80 @@ public sealed class CheckoutService : IDisposable
             catch (Exception ex)
             {
                 _logger.LogInfo($"CheckoutService: could not read D for refresh: {ex.Message}");
-                LastRefreshedAt = null;  // Mark as uncertain
+                LastRefreshedAt = null;
                 return RefreshOutcome.SourceUnavailable;
             }
 
-            // If D hasn't changed, skip the re-copy.
+            // If D hasn't changed since the last refresh, no work needed.
             if (sourceHash == HashAtCheckout)
             {
                 _logger.LogInfo("CheckoutService: read-only refresh — D'' is already current.");
                 return RefreshOutcome.AlreadyCurrent;
             }
 
-            // D has changed or this is the first refresh; re-copy it.
-            var roTmpPath = ReadOnlyWorkingPath + ".tmp";
-            try
-            {
-                CopyWithSharing(SourcePath, roTmpPath);
-            }
+            try { CopyWithSharing(SourcePath, altTmpPath); }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp during refresh");
-                try { File.Delete(roTmpPath); } catch { }
+                _logger.LogError(ex, "CheckoutService: failed to copy D to alternate D''.tmp during refresh");
+                try { File.Delete(altTmpPath); } catch { }
                 return RefreshOutcome.SourceUnavailable;
             }
 
-            // Verify the copy hash matches the source (it may have changed during copy).
-            var copyHash = ComputeHash(roTmpPath);
+            var copyHash = ComputeHash(altTmpPath);
             if (copyHash == sourceHash)
             {
-                // Copy is valid; atomically rename to D''.
+                // Commit the temp file to the alternate slot.
+                // altPath is NOT currently open — no sharing violation possible.
                 try
                 {
-                    File.Move(roTmpPath, ReadOnlyWorkingPath, overwrite: true);
+                    File.Move(altTmpPath, altPath, overwrite: true);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp to D'' during refresh");
-                    try { File.Delete(roTmpPath); } catch { }
+                    _logger.LogError(ex, "CheckoutService: failed to rename alternate D''.tmp during refresh");
+                    try { File.Delete(altTmpPath); } catch { }
                     return RefreshOutcome.SourceUnavailable;
                 }
 
+                // Invoke the callback now that the new file is fully committed.
+                // Caller should switch the DatabaseContext connection to altPath here.
+                if (afterCopy is not null)
+                {
+                    try
+                    {
+                        await afterCopy(altPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "CheckoutService: afterCopy callback threw during refresh");
+                        // altPath is valid but caller couldn't open it. Clean up the new file
+                        // so the active slot remains unchanged for the next refresh attempt.
+                        try { File.Delete(altPath); } catch { }
+                        return RefreshOutcome.SourceUnavailable;
+                    }
+                }
+
+                // Switch the active slot and clean up the old one.
+                var oldPath     = ReadOnlyWorkingPath;
+                ReadOnlyWorkingPath = altPath;
                 HashAtCheckout  = sourceHash;
                 LastRefreshedAt = DateTime.UtcNow;
-                _logger.LogInfo("CheckoutService: read-only refresh — D'' updated.");
+                _logger.LogInfo($"CheckoutService: read-only refresh — switched active slot to {Path.GetFileName(altPath)}.");
+                try { File.Delete(oldPath); } catch { }
+
                 return RefreshOutcome.Updated;
             }
 
-            // Hash mismatch — D was likely modified during copy. Retry.
+            // Hash mismatch — D was likely being written during copy. Retry.
             _logger.LogInfo($"CheckoutService: refresh hash mismatch on attempt {attempt + 1}/3 — retrying.");
-            try { File.Delete(roTmpPath); } catch { }
+            try { File.Delete(altTmpPath); } catch { }
 
             if (attempt < 2)
-                await Task.Delay(100 * (attempt + 1));  // Exponential backoff: 100ms, 200ms
+                await Task.Delay(100 * (attempt + 1));
         }
 
-        // After 3 retries, still getting hash mismatch.
-        _logger.LogInfo("CheckoutService: refresh failed — hash mismatch after 3 retries. D'' is now stale.");
-        LastRefreshedAt = null;  // Mark as uncertain
+        _logger.LogInfo("CheckoutService: refresh failed — hash mismatch after 3 retries.");
+        LastRefreshedAt = null;
         return RefreshOutcome.SourceUnavailable;
     }
 
@@ -735,7 +705,12 @@ public sealed class CheckoutService : IDisposable
             return;
 
         var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
-        var roFiles       = Directory.GetFiles(_workingDir, "*_ro.db");
+        // Also clean up any orphaned .tmp files left by a crash during a refresh copy.
+        var roFiles = Directory.GetFiles(_workingDir, "*_ro.db")
+                               .Concat(Directory.GetFiles(_workingDir, "*_ro2.db"))
+                               .Concat(Directory.GetFiles(_workingDir, "*_ro.db.tmp"))
+                               .Concat(Directory.GetFiles(_workingDir, "*_ro2.db.tmp"))
+                               .ToArray();
 
         foreach (var roPath in roFiles)
         {
@@ -951,6 +926,97 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Creates or reuses the read-only snapshot D'' for the current <see cref="SourcePath"/>,
+    /// without touching the write lock. Sets <see cref="ReadOnlyWorkingPath"/>,
+    /// <see cref="WorkingPath"/>, <see cref="IsReadOnlyMode"/>, <see cref="HashAtCheckout"/>,
+    /// and <see cref="Mode"/> on success.
+    ///
+    /// <para>This method is the single place that performs the D → D'' copy. It is called by
+    /// <see cref="CheckoutAsync"/> when another writer holds the lock, and also by
+    /// <see cref="RunCheckoutAsync"/> (in <c>MainWindow.axaml.cs</c>) as a fallback when the
+    /// user declines a stale-lock takeover, when a force-checkout loses the race, or when the
+    /// initial checkout fails — ensuring D'' is always used instead of opening D directly.</para>
+    /// </summary>
+    /// <returns>
+    /// The path to D'' on success (same as <see cref="ReadOnlyWorkingPath"/>).
+    /// <c>null</c> if D'' cannot be created (e.g. D is inaccessible or the copy hash never
+    /// matches); the caller should fall back to opening <see cref="SourcePath"/> directly.
+    /// </returns>
+    public async Task<string?> SetupReadOnlySnapshotAsync()
+    {
+        ReadOnlyWorkingPath = ComputeReadOnlyWorkingPath(SourcePath);
+
+        // Fast path: D'' already exists and its hash matches D — reuse it.
+        if (File.Exists(ReadOnlyWorkingPath))
+        {
+            try
+            {
+                var roHash = ComputeHash(ReadOnlyWorkingPath);
+                var dHash  = ComputeHash(SourcePath);
+                if (roHash == dHash)
+                {
+                    WorkingPath     = ReadOnlyWorkingPath;
+                    HashAtCheckout  = dHash;
+                    Mode            = CheckoutMode.ReadOnly;
+                    IsReadOnlyMode  = true;
+                    LastRefreshedAt = File.GetLastWriteTimeUtc(ReadOnlyWorkingPath);
+                    _logger.LogInfo("CheckoutService: read-only setup — reusing current D''.");
+                    return ReadOnlyWorkingPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo($"CheckoutService: could not verify existing D'': {ex.Message}. Will re-copy.");
+                // Fall through to re-copy below.
+            }
+        }
+
+        // D'' doesn't exist or is stale — create it via copy + atomic rename.
+        Directory.CreateDirectory(_workingDir);
+        var roTmpPath = ReadOnlyWorkingPath + ".tmp";
+
+        try { CopyWithSharing(SourcePath, roTmpPath); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp");
+            try { File.Delete(roTmpPath); } catch { }
+            return null;
+        }
+
+        var roSourceHash = ComputeHash(SourcePath);
+        var roCopyHash   = ComputeHash(roTmpPath);
+        if (roCopyHash != roSourceHash)
+        {
+            _logger.LogInfo("CheckoutService: D'' copy hash mismatch — retrying once.");
+            try { CopyWithSharing(SourcePath, roTmpPath); } catch { }
+            roCopyHash = ComputeHash(roTmpPath);
+
+            if (roCopyHash != roSourceHash)
+            {
+                _logger.LogInfo("CheckoutService: D'' hash mismatch on retry — aborting.");
+                try { File.Delete(roTmpPath); } catch { }
+                return null;
+            }
+        }
+
+        try { File.Move(roTmpPath, ReadOnlyWorkingPath, overwrite: true); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp to D''");
+            try { File.Delete(roTmpPath); } catch { }
+            return null;
+        }
+
+        WorkingPath     = ReadOnlyWorkingPath;
+        HashAtCheckout  = roSourceHash;
+        Mode            = CheckoutMode.ReadOnly;
+        IsReadOnlyMode  = true;
+        LastRefreshedAt = DateTime.UtcNow;
+        _logger.LogInfo("CheckoutService: read-only setup — D'' created.");
+        return ReadOnlyWorkingPath;
+    }
+
+    /// <summary>
     /// Derives a stable, user-invisible path for D'' (read-only snapshot) from the source path.
     /// Similar to <see cref="ComputeWorkingPath"/>, but appends a "_ro" suffix before the file extension
     /// to distinguish read-only snapshots from write-access working copies in the same directory.
@@ -972,11 +1038,36 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Returns the alternate read-only snapshot slot for the ping-pong refresh strategy.
+    /// <para>
+    /// Two slots exist: <c>_ro.db</c> and <c>_ro2.db</c>. At any point in time one is
+    /// "active" (held open by <see cref="DatabaseContext"/>) and the other is "inactive"
+    /// (free to write). <see cref="RefreshReadOnlySnapshotAsync"/> always writes to the
+    /// inactive slot and then switches <see cref="ReadOnlyWorkingPath"/> to it. This
+    /// guarantees that <c>File.Move</c> never targets an open file, eliminating
+    /// <c>ERROR_SHARING_VIOLATION</c> permanently.
+    /// </para>
+    /// </summary>
+    /// <returns>The path of the slot that is currently <em>not</em> active.</returns>
+    private string GetAlternateReadOnlyPath()
+    {
+        var ext         = Path.GetExtension(ReadOnlyWorkingPath!);
+        var withoutExt  = ReadOnlyWorkingPath!.EndsWith($"_ro{ext}", StringComparison.OrdinalIgnoreCase)
+            ? ReadOnlyWorkingPath[..^($"_ro{ext}".Length)]
+            : ReadOnlyWorkingPath[..^($"_ro2{ext}".Length)];
+
+        // Toggle between _ro.db and _ro2.db
+        return ReadOnlyWorkingPath.EndsWith($"_ro{ext}", StringComparison.OrdinalIgnoreCase)
+            ? $"{withoutExt}_ro2{ext}"
+            : $"{withoutExt}_ro{ext}";
+    }
+
+    /// <summary>
     /// Computes the SHA-256 hash of a file and returns it as an uppercase hex string.
     /// Opens with <see cref="FileShare.ReadWrite"/> so the hash can be computed even
     /// while a <c>DatabaseContext</c> (or any other process) holds the file open for
-    /// writing — which is the normal state for both D (source) and D' (working copy)
-    /// throughout a checkout session.
+    /// writing — which is the normal state for D (source), D' (write-access working copy),
+    /// and D'' (read-only snapshot) throughout a checkout session.
     /// </summary>
     /// <param name="filePath">Absolute path to the file to hash.</param>
     /// <returns>Uppercase hex SHA-256 digest, e.g. "3A4B…".</returns>
@@ -993,8 +1084,9 @@ public sealed class CheckoutService : IDisposable
     /// using the SQLite Online Backup API. Unlike a raw file copy, this coordinates with
     /// the database engine and always produces a valid snapshot regardless of concurrent
     /// write activity on the existing <c>DatabaseContext</c> connection.
-    /// Use this whenever D' is the source; use <see cref="CopyWithSharing"/> only when
-    /// copying an externally-closed file (e.g., D → D' at checkout time).
+    /// Use this whenever D' is the source; use <see cref="CopyWithSharing"/> when
+    /// copying a file that is not being actively written by <c>DatabaseContext</c>
+    /// (e.g., D → D' at checkout time, or D → D'' at snapshot time).
     /// </summary>
     /// <param name="sourcePath">Path to the source SQLite database (typically D').</param>
     /// <param name="destPath">Path for the destination file (created or overwritten).</param>
@@ -1015,8 +1107,8 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// Copies <paramref name="source"/> to <paramref name="dest"/>, opening the
     /// source with <see cref="FileShare.ReadWrite"/> so the copy succeeds even while
-    /// a <c>DatabaseContext</c> holds the source file open — the common case for both
-    /// D (being checked out) and D' (being saved back to D).
+    /// a <c>DatabaseContext</c> holds the source file open — the common case for
+    /// D (being checked out to D' or snapshotted to D'') and D' (being saved back to D).
     /// </summary>
     /// <param name="source">Path of the file to read.</param>
     /// <param name="dest">Path of the file to create or overwrite.</param>
@@ -1036,20 +1128,20 @@ public enum CheckoutMode
 {
     /// <summary>Lock acquired; all edits go to D'.</summary>
     WriteAccess,
-    /// <summary>Another instance holds the lock; this instance reads D directly.</summary>
+    /// <summary>Another instance holds the lock; this instance reads D'' (a local read-only snapshot).</summary>
     ReadOnly
 }
 
 /// <summary>Result of a <see cref="CheckoutService.CheckoutAsync"/> call.</summary>
 public enum CheckoutOutcome
 {
-    /// <summary>Lock acquired and D' is ready. Pass <see cref="CheckoutService.WorkingPath"/> to <c>InitializeServices</c>.</summary>
+    /// <summary>Lock acquired and D' is ready. Pass <see cref="CheckoutService.WorkingPath"/> (= D') to <c>InitializeServices</c>.</summary>
     WriteAccess,
-    /// <summary>A fresh lock exists. Pass <see cref="CheckoutService.SourcePath"/> to <c>InitializeServices</c> (read-only).</summary>
+    /// <summary>A fresh lock exists; D'' was created. Pass <see cref="CheckoutService.WorkingPath"/> (= D'') to <c>InitializeServices</c>.</summary>
     ReadOnly,
     /// <summary>A stale lock exists. Prompt the user, then call <see cref="CheckoutService.ForceCheckoutAsync"/> if confirmed.</summary>
     StaleHolder,
-    /// <summary>Fatal error (hash mismatch or copy failure). Do not proceed.</summary>
+    /// <summary>Fatal error (hash mismatch or copy failure). Caller should attempt <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> as a fallback.</summary>
     Failed
 }
 

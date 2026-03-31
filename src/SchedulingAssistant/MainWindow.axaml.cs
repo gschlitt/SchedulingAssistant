@@ -100,20 +100,16 @@ public partial class MainWindow : Window
         (App.Services as IDisposable)?.Dispose();
 
         Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
-    }
-    //debug
+    }   
     
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-
         try
         {
             var splash = new SplashScreen();
             splash.Show();
-
             await Task.Delay(2000);
-
             splash.Close();
 
             await RunStartupAsync();
@@ -127,7 +123,11 @@ public partial class MainWindow : Window
                 ?.Shutdown();
         }
     }
-
+    /// <summary>
+    /// Startup with one of two paths: a brand-new user setting up for the first time
+    /// and a returning user
+    /// </summary>
+    /// <returns></returns>
     private async Task RunStartupAsync()
     {
         var settings = AppSettings.Current;
@@ -135,7 +135,7 @@ public partial class MainWindow : Window
         // ── First-run wizard ──────────────────────────────────────────────────
         // When IsInitialSetupComplete is false, show the wizard instead of the normal
         // DB-path dialog. The wizard calls App.InitializeServices() internally (step 2),
-        // so we must NOT call it again below.
+        // so we must not call it again below.
         if (!settings.IsInitialSetupComplete)
         {
             var wizard = new StartupWizardWindow();
@@ -175,15 +175,14 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Normal startup path for a returning user who already has a database configured.
+    /// Attempt to re-open the most recently accessed database.
     /// Validates the saved database path, shows the recovery window if needed, then
     /// calls App.InitializeServices and shows the main window.
     /// </summary>
     private async Task RunReturningUserStartupAsync(AppSettings settings)
     {
         string dbPath;
-
         var validation = DatabaseValidator.Validate(settings.DatabasePath);
-
         if (validation == DatabaseValidationResult.Ok)
         {
             // Happy path — file exists and passes integrity check.
@@ -243,12 +242,10 @@ public partial class MainWindow : Window
         dbPath = await RunCheckoutAsync(dbPath);
         // ─────────────────────────────────────────────────────────────────────
 
-        // Resolve the canonical source path D (not D') for the title bar and backup
-        // service.  RunCheckoutAsync returns D' in write mode, so we must look at
-        // SourcePath to get the path the user actually opened.
-        var canonicalPath = App.Checkout.Mode == CheckoutMode.WriteAccess
-            ? App.Checkout.SourcePath
-            : dbPath;
+        // Resolve the canonical source path D for the title bar and backup service.
+        // RunCheckoutAsync returns D' (write mode) or D'' (read-only mode), neither of
+        // which should be shown to the user. CheckoutService.SourcePath is always D.
+        var canonicalPath = App.Checkout.SourcePath;
 
         // Initialize DI and DB, wire up the view model, then reveal the window.
         // DatabaseCorruptException is thrown when integrity_check fails; we handle
@@ -278,20 +275,76 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Final step of startup: wires the main window VM and makes the window visible.
-    /// Used by both the first-run (wizard) path and the returning-user path.
-    /// When called from the wizard path, <paramref name="vm"/> is resolved from App.Services
-    /// (it was already initialized); otherwise it is provided directly.
+    /// Runs the full checkout sequence for <paramref name="sourcePath"/> and returns
+    /// the path that should be passed to <c>App.InitializeServices</c>.
+    /// Handles stale-lock prompting inline.
     /// </summary>
-    private async Task SetupMainWindowAsync(string dbPath, MainWindowViewModel? vm = null)
+    /// <param name="sourcePath">The database path D chosen by the user.</param>
+    /// <returns>
+    /// <list type="bullet">
+    /// <item><description><b>Write access:</b> D' (the local working copy).</description></item>
+    /// <item><description><b>Read-only:</b> D'' (the local read-only snapshot).</description></item>
+    /// <item><description><b>Stale lock — user declined takeover, force-checkout lost the race, or checkout failed:</b>
+    /// D'' via <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/>, or D as a last resort if that also fails.</description></item>
+    /// </list>
+    /// </returns>
+    private async Task<string> RunCheckoutAsync(string sourcePath)
     {
-        if (vm is null)
-        {
-            // Wizard path — App.Services was already initialized; just resolve the root VM.
-            vm = App.Services.GetRequiredService<MainWindowViewModel>();
-            vm.SetDatabaseName(Path.GetFileNameWithoutExtension(dbPath), dbPath);
-        }
+        var outcome = await App.Checkout.CheckoutAsync(sourcePath);
 
+        switch (outcome)
+        {
+            case CheckoutOutcome.WriteAccess:
+                return App.Checkout.WorkingPath;
+
+            case CheckoutOutcome.ReadOnly:                
+                return App.Checkout.WorkingPath;
+
+            case CheckoutOutcome.StaleHolder:
+                {
+                    var holder = App.Checkout.CurrentHolder;
+                    var age = holder is not null
+                        ? (int)(DateTime.UtcNow - holder.Heartbeat).TotalMinutes
+                        : 0;
+                    var who = holder is not null
+                        ? $"{holder.Username} on {holder.Machine}"
+                        : "an unknown user";
+
+                    var take = await ShowYesNoAsync(
+                        "Lock Is Inactive",
+                        $"{who}'s lock is {age} minute(s) old and appears to have been abandoned. " +
+                        "Take over write access?");
+
+                    if (take)
+                    {
+                        var forceOutcome = await App.Checkout.ForceCheckoutAsync();
+                        if (forceOutcome == CheckoutOutcome.WriteAccess)
+                            return App.Checkout.WorkingPath;
+                        // Lost the race to another instance — fall through to read-only setup.
+                    }
+
+                    // User declined, or force-checkout lost the race.
+                    // Set up D'' so we never hold D open directly.
+                    return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
+                }
+
+            default: // Failed
+                await ShowMessageAsync("Checkout Failed",
+                    "Could not open the database for editing. " +
+                    "The application will open in read-only mode.");
+                // Best-effort: try to set up D'' even after failure so D stays handle-free.
+                return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
+        }
+    }
+
+    /// <summary>
+    /// Final step of every startup path: wires the main window VM and makes the window visible.
+    /// Always receives a fully-initialized <paramref name="vm"/> from the caller — the wizard,
+    /// returning-user, and database-switch paths all call <see cref="SwitchDatabaseAsync"/> or
+    /// <see cref="App.InitializeServices"/> first and pass the result directly.
+    /// </summary>
+    private async Task SetupMainWindowAsync(string dbPath, MainWindowViewModel vm)
+    {
         // Start the automated backup session if this instance acquired the write lock.
         // Fire-and-forget: the first backup runs asynchronously in the background.
         if (App.Services.GetService(typeof(BackupService)) is BackupService backup
@@ -331,9 +384,13 @@ public partial class MainWindow : Window
         await Task.CompletedTask;
     }
 
+   
+    
     /// <summary>
-    /// Switch to a different database without restarting the app.
-    /// Call this from the Files menu to open a different database.
+    /// Switches to a different database without restarting the app. Handles the full
+    /// release → checkout → re-initialize cycle. Called from the Files menu, from the
+    /// startup wizard completion path, and from <c>AcquireWriteLock</c> in the ViewModel
+    /// when upgrading from read-only to write mode.
     /// The database file will be created if it doesn't exist.
     /// </summary>
     public async Task SwitchDatabaseAsync(string newDatabasePath)
@@ -372,12 +429,10 @@ public partial class MainWindow : Window
             // DatabaseContext will create the file if it doesn't exist.
             var vm = App.InitializeServices(newDatabasePath);
 
-            // Resolve the canonical source path D (not D') for the title bar and
-            // backup service.  In write mode CheckoutService.SourcePath is D; in
-            // read-only mode newDatabasePath already equals D.
-            var canonicalPath = App.Checkout.Mode == CheckoutMode.WriteAccess
-                ? App.Checkout.SourcePath
-                : newDatabasePath;
+            // Resolve the canonical source path D for the title bar and backup service.
+            // newDatabasePath is D' or D'' (the working copy), never the user-facing path.
+            // CheckoutService.SourcePath is always D regardless of mode.
+            var canonicalPath = App.Checkout.SourcePath;
 
             vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
 
@@ -392,6 +447,8 @@ public partial class MainWindow : Window
             await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
         }
     }
+
+
 
     private async Task<string?> ShowLocationDialogAsync(DatabaseLocationMode mode)
     {
@@ -621,61 +678,7 @@ public partial class MainWindow : Window
 
     // ── CheckoutService helpers ──────────────────────────────────────────────
 
-    /// <summary>
-    /// Runs the full checkout sequence for <paramref name="sourcePath"/> and returns
-    /// the path that should be passed to <c>App.InitializeServices</c>.
-    /// Handles stale-lock prompting inline.
-    /// </summary>
-    /// <param name="sourcePath">The database path D chosen by the user.</param>
-    /// <returns>D' (write mode) or D (read-only mode).</returns>
-    private async Task<string> RunCheckoutAsync(string sourcePath)
-    {
-        var outcome = await App.Checkout.CheckoutAsync(sourcePath);
-
-        switch (outcome)
-        {
-            case CheckoutOutcome.WriteAccess:
-                return App.Checkout.WorkingPath;
-
-            case CheckoutOutcome.ReadOnly:
-                // Use WorkingPath, which is now D'' (local read-only snapshot) for all read-only instances.
-                // This eliminates the persistent handle to D on the network share, allowing writer saves to succeed.
-                return App.Checkout.WorkingPath;
-
-            case CheckoutOutcome.StaleHolder:
-            {
-                var holder = App.Checkout.CurrentHolder;
-                var age    = holder is not null
-                    ? (int)(DateTime.UtcNow - holder.Heartbeat).TotalMinutes
-                    : 0;
-                var who    = holder is not null
-                    ? $"{holder.Username} on {holder.Machine}"
-                    : "an unknown user";
-
-                var take = await ShowYesNoAsync(
-                    "Lock Is Inactive",
-                    $"{who}'s lock is {age} minute(s) old and appears to have been abandoned. " +
-                    "Take over write access?");
-
-                if (take)
-                {
-                    var forceOutcome = await App.Checkout.ForceCheckoutAsync();
-                    return forceOutcome == CheckoutOutcome.WriteAccess
-                        ? App.Checkout.WorkingPath
-                        : sourcePath; // Lost the race — go readonly.
-                }
-
-                // User declined — open read-only.
-                return sourcePath;
-            }
-
-            default: // Failed
-                await ShowMessageAsync("Checkout Failed",
-                    "Could not open the database for editing. " +
-                    "The application will open in read-only mode.");
-                return sourcePath;
-        }
-    }
+  
 
     /// <summary>
     /// Handles crash recovery for <paramref name="sourcePath"/>: prompts the user,
