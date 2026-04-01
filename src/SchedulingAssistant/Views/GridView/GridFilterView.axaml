@@ -76,13 +76,22 @@
 
         <DockPanel>
 
-            <!--  Right side: Clear All button  -->
+            <!--  Right side: Show Meetings toggle + Clear All button  -->
             <StackPanel
                 Margin="6,0,0,0"
                 VerticalAlignment="Top"
                 DockPanel.Dock="Right"
                 Orientation="Horizontal"
                 Spacing="4">
+                <ToggleButton
+                    MinWidth="0"
+                    MinHeight="0"
+                    Padding="6,2"
+                    VerticalAlignment="Center"
+                    Content="Meetings"
+                    FontSize="{StaticResource FontSizeLarge}"
+                    IsChecked="{Binding ShowMeetings, Mode=TwoWay}"
+                    ToolTip.Tip="Show or hide meetings on the schedule grid" />
                 <Button
                     MinWidth="0"
                     MinHeight="0"

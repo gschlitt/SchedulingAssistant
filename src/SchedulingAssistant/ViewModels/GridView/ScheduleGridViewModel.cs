@@ -27,6 +27,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
     private readonly SectionStore _sectionStore;
+    private readonly MeetingStore _meetingStore;
+    private readonly IMeetingRepository _meetingRepo;
     private readonly SectionChangeNotifier _changeNotifier;
     private readonly IInstructorCommitmentRepository _commitmentRepo;
     private readonly WriteLockService _lockService;
@@ -79,6 +81,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
         SectionStore sectionStore,
+        MeetingStore meetingStore,
+        IMeetingRepository meetingRepo,
         SectionChangeNotifier changeNotifier,
         IInstructorCommitmentRepository commitmentRepo,
         WriteLockService lockService)
@@ -93,6 +97,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
         _sectionStore = sectionStore;
+        _meetingStore = meetingStore;
+        _meetingRepo = meetingRepo;
         _changeNotifier = changeNotifier;
         _commitmentRepo = commitmentRepo;
         _lockService = lockService;
@@ -109,8 +115,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         Filter.FilterChanged += Reload;
 
-        // Reload whenever sections change (inserts, updates, deletes from any source).
+        // Reload whenever sections or meetings change (inserts, updates, deletes from any source).
         _sectionStore.SectionsChanged += Reload;
+        _meetingStore.MeetingsChanged += Reload;
 
         // SectionChangeNotifier is now used exclusively for commitment CRUD reloads.
         // Commitment changes are not section-data changes and are not cached in SectionStore.
@@ -239,6 +246,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
             Filter.ClearAll();
             Filter.FilterChanged += Reload;
             _lastSemesterKey = semesterKey;
+
+            // Keep the meeting cache in sync when the semester selection changes.
+            // MeetingsChanged will fire, but this ReloadCore call is already in flight;
+            // the event subscription is suppressed during it so there is no double-load.
+            _meetingStore.MeetingsChanged -= Reload;
+            _meetingStore.Reload(_meetingRepo, semesters.Select(s => s.Semester.Id));
+            _meetingStore.MeetingsChanged += Reload;
         }
 
         var lookups = BuildLookups(semesters);
@@ -266,9 +280,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         string? overlayInstructorId = snap.HasOverlay && snap.OverlayType == "Instructor"
             ? snap.SelectedOverlayId : null;
-        var commitments = BuildCommitmentBlocks(semesters, overlayInstructorId);
+        var commitments   = BuildCommitmentBlocks(semesters, overlayInstructorId);
+        var meetingBlocks = Filter.ShowMeetings ? BuildMeetingBlocks(semesters) : [];
 
-        var allBlocks = DeduplicateBlocks(filtered.Concat(overlayOnly).Concat(commitments));
+        var allBlocks = DeduplicateBlocks(
+            filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks));
         UpdateDisplayProperties(semesters, allBlocks);
     }
 
@@ -817,6 +833,44 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Pass 4 of block collection: emits one <see cref="MeetingBlock"/> for every
+    /// scheduled slot across all meetings in the currently loaded <see cref="MeetingStore"/>
+    /// cache. Meeting blocks are always shown (no filter predicates apply to them in
+    /// this pass — they are never filtered out by the section-dimension filters).
+    /// Called only when <see cref="GridFilterViewModel.ShowMeetings"/> is true.
+    /// </summary>
+    /// <param name="semesters">The selected semesters; used to resolve semester name/color.</param>
+    /// <returns>A list of <see cref="MeetingBlock"/> objects for all meeting slots.</returns>
+    private List<GridBlock> BuildMeetingBlocks(IReadOnlyList<SemesterDisplay> semesters)
+    {
+        var blocks        = new List<GridBlock>();
+        var semIdToName   = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Name);
+        var semIdToColor  = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Color ?? string.Empty);
+        var instructors   = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+
+        foreach (var meeting in _meetingStore.Meetings)
+        {
+            // Build a space-joined attendee initials string (parallel to section "Initials").
+            var attendees = string.Join(" ", meeting.InstructorIds
+                .Where(id => instructors.ContainsKey(id))
+                .Select(id => instructors[id].Initials));
+
+            semIdToName.TryGetValue(meeting.SemesterId,  out var semName);
+            semIdToColor.TryGetValue(meeting.SemesterId, out var semColor);
+
+            foreach (var slot in meeting.Schedule)
+            {
+                blocks.Add(new MeetingBlock(
+                    slot.Day, slot.StartMinutes, slot.EndMinutes,
+                    IsOverlay: false,
+                    meeting.Title, attendees ?? string.Empty, meeting.Id,
+                    meeting.SemesterId, semName ?? string.Empty, semColor ?? string.Empty));
+            }
+        }
+        return blocks;
+    }
+
+    /// <summary>
     /// Removes duplicate blocks from the combined block list, keeping the first occurrence.
     ///
     /// A block is a duplicate when another block with the same
@@ -856,6 +910,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             SectionMeetingBlock s => s.SectionId,
             CommitmentBlock c     => c.CommitmentId,
+            MeetingBlock m        => m.MeetingId,
             _ => throw new InvalidOperationException($"Unknown GridBlock subtype: {b.GetType().Name}")
         };
 
@@ -1037,7 +1092,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
         SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized),
-        CommitmentBlock c     => new TileEntry(c.Name, string.Empty, string.Empty, true, true),
+        CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
+        // Meeting blocks: suppress click interactions (IsCommitment=true) and flag as IsMeeting=true
+        // so the renderer can apply a distinct visual treatment.
+        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  string.Empty, false, IsCommitment: true, IsMeeting: true),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };
 

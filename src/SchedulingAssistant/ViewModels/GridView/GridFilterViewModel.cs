@@ -80,6 +80,17 @@ public partial class GridFilterViewModel : ViewModelBase
     private static HashSet<string> SelectedIds(IEnumerable<FilterItemViewModel> items)
         => items.Where(i => i.IsSelected).Select(i => i.Id).ToHashSet();
 
+    // ── Meeting visibility toggle ─────────────────────────────────────────────
+
+    /// <summary>
+    /// When true (default), meeting blocks from <see cref="MeetingStore"/> are rendered
+    /// on the schedule grid alongside section blocks. Toggling fires
+    /// <see cref="FilterChanged"/> so the grid reloads immediately.
+    /// </summary>
+    [ObservableProperty] private bool _showMeetings = true;
+
+    partial void OnShowMeetingsChanged(bool value) => FilterChanged?.Invoke();
+
     // ── Active state ──────────────────────────────────────────────────────────
 
     [ObservableProperty] private bool _isActive;

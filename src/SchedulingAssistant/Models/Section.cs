@@ -1,33 +1,32 @@
 namespace SchedulingAssistant.Models;
 
-public class Section
+/// <summary>
+/// The core scheduling entity — a course section offered in a specific semester.
+/// Inherits all common scheduling fields (time slots, rooms, campus, tags, resources,
+/// instructor assignments) from <see cref="SchedulableBase"/>.
+/// </summary>
+public class Section : SchedulableBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string SemesterId { get; set; } = string.Empty;
+    /// <summary>FK into the Courses table. Set from the dedicated DB column, not from JSON.</summary>
     public string? CourseId { get; set; }
 
-    // Fields stored in the data JSON column
+    // ── Section-specific fields (stored in the JSON data column) ─────────────
+
+    /// <summary>Uniquely identifies this section within its course and semester (e.g. "A", "AB1").</summary>
     public string SectionCode { get; set; } = string.Empty;
+
+    /// <summary>Free-text notes about this section (visible only in the section editor).</summary>
     public string Notes { get; set; } = string.Empty;
-    public List<SectionDaySchedule> Schedule { get; set; } = new();
 
-    /// <summary>Multi-instructor support with workload. Stored in JSON data column.</summary>
-    public List<InstructorAssignment> InstructorAssignments { get; set; } = new();
-
-    /// <summary>Backward-compat accessor — returns just the IDs from InstructorAssignments.</summary>
-    [System.Text.Json.Serialization.JsonIgnore]
-    public IEnumerable<string> InstructorIds => InstructorAssignments.Select(a => a.InstructorId);
-
-    // Section property assignments (stored as IDs into SchedulingEnvironmentValues)
+    /// <summary>Section-type property-value ID (FK into SchedulingEnvironmentValues of type "sectionType").</summary>
     public string? SectionTypeId { get; set; }
-    public string? CampusId { get; set; }
-    public List<string> TagIds { get; set; } = new();
-    public List<string> ResourceIds { get; set; } = new();
+
+    /// <summary>Reserved-seat blocks for this section. Stored in JSON.</summary>
     public List<SectionReserve> Reserves { get; set; } = new();
 
     /// <summary>
-    /// The course level band, copied from the course at save time (e.g. "100", "300").
-    /// Stored here so level filtering does not require a course lookup at query time.
+    /// Course level band, copied from the course at save time (e.g. "100", "300").
+    /// Stored here so level filtering on the grid does not require a course lookup.
     /// Null or empty when the section's course has no level assigned.
     /// </summary>
     public string? Level { get; set; }

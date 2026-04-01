@@ -13,7 +13,7 @@
 
             <!--  Guidance text (user-editable placeholder)  -->
             <TextBlock
-                FontSize="{StaticResource FontSizeNormal}"
+                FontSize="{DynamicResource FontSizeNormal}"
                 Foreground="{StaticResource ForegroundMuted}"
                 TextWrapping="Wrap">
                 Add the semesters that make up your academic year, in the order they run. Semesters can overlap
@@ -26,14 +26,14 @@
                 <TextBlock
                     Grid.Column="0"
                     VerticalAlignment="Center"
-                    FontSize="{StaticResource FontSizeNormal}"
+                    FontSize="{DynamicResource FontSizeNormal}"
                     FontWeight="SemiBold"
                     Text="Semesters" />
                 <Button
                     Grid.Column="1"
                     Command="{Binding AddSemesterCommand}"
                     Content="+ Add semester"
-                    FontSize="{StaticResource FontSizeSmall}" />
+                    FontSize="{DynamicResource FontSizeSmall}" />
             </Grid>
 
             <!--  Semester rows  -->
@@ -43,7 +43,7 @@
                         <Grid Margin="0,0,0,4" ColumnDefinitions="*,8,Auto">
                             <TextBox
                                 Grid.Column="0"
-                                FontSize="{StaticResource FontSizeNormal}"
+                                FontSize="{DynamicResource FontSizeNormal}"
                                 Text="{Binding Name}"
                                 Watermark="Semester name (e.g. Fall)" />
                             <Button
@@ -52,7 +52,7 @@
                                 Command="{Binding $parent[ItemsControl].DataContext.RemoveSemesterCommand}"
                                 CommandParameter="{Binding}"
                                 Content="✕"
-                                FontSize="{StaticResource FontSizeSmall}" />
+                                FontSize="{DynamicResource FontSizeSmall}" />
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -60,7 +60,7 @@
 
             <!--  Shown only when the user has removed all semesters  -->
             <TextBlock
-                FontSize="{StaticResource FontSizeSmall}"
+                FontSize="{DynamicResource FontSizeSmall}"
                 Foreground="{StaticResource NotificationWarningText}"
                 IsVisible="{Binding !Semesters.Count}">
                 ⚠ Add at least one semester to continue.
@@ -71,11 +71,11 @@
         <!--  Academic year name — shown below semesters  -->
         <StackPanel Spacing="6">
             <TextBlock
-                FontSize="{StaticResource FontSizeNormal}"
+                FontSize="{DynamicResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="First Academic Year" />
             <TextBlock
-                FontSize="{StaticResource FontSizeNormal}"
+                FontSize="{DynamicResource FontSizeNormal}"
                 Foreground="{StaticResource ForegroundMuted}"
                 TextWrapping="Wrap">
                 Add the first academic year which you anticipate scheduling.
@@ -89,7 +89,7 @@
                 Watermark="e.g. 2025  or  2025-2026" />
             <!--  Validation hint — only visible when there is an error message  -->
             <TextBlock
-                FontSize="{StaticResource FontSizeSmall}"
+                FontSize="{DynamicResource FontSizeSmall}"
                 Foreground="{StaticResource NotificationWarningText}"
                 IsVisible="{Binding AcademicYearNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                 Text="{Binding AcademicYearNameError}"

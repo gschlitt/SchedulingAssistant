@@ -14,7 +14,7 @@
 
             <!--  Font sizes  -->
             <x:Double x:Key="FontSizeSmall">10</x:Double>
-            <x:Double x:Key="FontSizeNormal">12</x:Double>
+            <x:Double x:Key="FontSizeNormal">14</x:Double>
             <x:Double x:Key="FontSizeMedium">13</x:Double>
             <x:Double x:Key="FontSizeLarge">16</x:Double>
             <x:Double x:Key="FontSizeXLarge">18</x:Double>

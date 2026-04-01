@@ -1,91 +1,108 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:SchedulingAssistant.ViewModels.Wizard"
-        x:Class="SchedulingAssistant.Views.Wizard.StartupWizardWindow"
-        x:CompileBindings="False"
-        Title="TermPoint — Setup"
-        Width="960" Height="720"
-        CanResize="False"
-        SystemDecorations="BorderOnly"
-        WindowStartupLocation="CenterScreen"
-        Background="{StaticResource AppBackground}">
+<Window
+    x:Class="SchedulingAssistant.Views.Wizard.StartupWizardWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Wizard"
+    Title="TermPoint — Setup"
+    Width="960"
+    Height="720"
+    x:CompileBindings="False"
+    Background="{StaticResource AppBackground}"
+    CanResize="False"
+    SystemDecorations="BorderOnly"
+    WindowStartupLocation="CenterScreen">
 
-    <!-- ── Wizard-scoped font size overrides ────────────────────────────────
-         Each key is shifted one step up from the app-level values defined in
-         App.axaml.  Because StaticResource resolves by walking up the logical
-         tree, every control inside this window uses these larger values.
-         Controls that appear in Settings (outside this window) continue to use
-         the app-level values unchanged. ──────────────────────────────────── -->
+    <!--
+        ── Wizard-scoped font size overrides ────────────────────────────────
+        Each key is shifted one step up from the app-level values defined in
+        App.axaml.  Because StaticResource resolves by walking up the logical
+        tree, every control inside this window uses these larger values.
+        Controls that appear in Settings (outside this window) continue to use
+        the app-level values unchanged. ────────────────────────────────────
+    -->
     <Window.Resources>
-        <x:Double x:Key="FontSizeSmall">13</x:Double>
-        <x:Double x:Key="FontSizeNormal">16</x:Double>
+        <x:Double x:Key="FontSizeSmall">18</x:Double>
+        <x:Double x:Key="FontSizeNormal">18</x:Double>
         <x:Double x:Key="FontSizeMedium">18</x:Double>
         <x:Double x:Key="FontSizeLarge">20</x:Double>
         <x:Double x:Key="FontSizeXLarge">22</x:Double>
     </Window.Resources>
 
     <Window.DataContext>
-        <!-- DataContext is set in code-behind after construction -->
+        <!--  DataContext is set in code-behind after construction  -->
     </Window.DataContext>
 
-    <!-- Grid layout guarantees the ScrollViewer gets a hard bounded height (the * row),
-         which is required for vertical scrolling to work in Avalonia. -->
+    <!--
+        Grid layout guarantees the ScrollViewer gets a hard bounded height (the * row),
+        which is required for vertical scrolling to work in Avalonia.
+    -->
     <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- Row 0: Header bar — PointerPressed enables drag-to-move since the OS title bar is hidden -->
-        <Border Grid.Row="0"
-                Background="{StaticResource MenuBarBackground}"
-                BorderBrush="{StaticResource MenuBarBorder}"
-                BorderThickness="0,0,0,1"
-                Padding="20,12"
-                PointerPressed="OnHeaderPointerPressed">
+        <!--  Row 0: Header bar — PointerPressed enables drag-to-move since the OS title bar is hidden  -->
+        <Border
+            Grid.Row="0"
+            Padding="20,12"
+            Background="{StaticResource MenuBarBackground}"
+            BorderBrush="{StaticResource MenuBarBorder}"
+            BorderThickness="0,0,0,1"
+            PointerPressed="OnHeaderPointerPressed">
             <StackPanel Spacing="4">
-                <TextBlock Text="TermPoint Setup"
-                           FontSize="{StaticResource FontSizeSmall}"
-                           Foreground="{StaticResource ForegroundMuted}"
-                           FontWeight="Normal"/>
-                <TextBlock Text="{Binding CurrentStep.StepTitle}"
-                           FontSize="{StaticResource FontSizeLarge}"
-                           FontWeight="SemiBold"/>
+                <TextBlock
+                    FontSize="{StaticResource FontSizeSmall}"
+                    FontWeight="Normal"
+                    Foreground="{StaticResource ForegroundMuted}"
+                    Text="TermPoint Setup" />
+                <TextBlock
+                    FontSize="{StaticResource FontSizeLarge}"
+                    FontWeight="SemiBold"
+                    Text="{Binding CurrentStep.StepTitle}" />
             </StackPanel>
         </Border>
 
-        <!-- Row 1: Step content — the * row gives the ScrollViewer a bounded height.
-             Padding lives on the inner content so it doesn't interfere with
-             the ScrollViewer's extent-vs-viewport calculation. -->
-        <ScrollViewer Grid.Row="1"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Visible">
-            <ContentControl Content="{Binding CurrentStep}"
-                            VerticalAlignment="Top"
-                            Margin="24,16"/>
+        <!--
+            Row 1: Step content — the * row gives the ScrollViewer a bounded height.
+            Padding lives on the inner content so it doesn't interfere with
+            the ScrollViewer's extent-vs-viewport calculation.
+        -->
+        <ScrollViewer
+            Grid.Row="1"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Visible">
+            <ContentControl
+                Margin="24,16"
+                VerticalAlignment="Top"
+                Content="{Binding CurrentStep}" />
         </ScrollViewer>
 
-        <!-- Row 2: Footer — Back / Next buttons -->
-        <Border Grid.Row="2"
-                BorderBrush="{StaticResource SeparatorLine}"
-                BorderThickness="0,1,0,0"
-                Padding="20,12">
+        <!--  Row 2: Footer — Back / Next buttons  -->
+        <Border
+            Grid.Row="2"
+            Padding="20,12"
+            BorderBrush="{StaticResource SeparatorLine}"
+            BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="*,Auto,Auto">
-                <!-- Error / hint area -->
-                <TextBlock Grid.Column="0"
-                           Text="{Binding CurrentStep.ErrorMessage}"
-                           Foreground="{StaticResource ErrorForeground}"
-                           VerticalAlignment="Center"
-                           TextWrapping="Wrap"
-                           FontSize="{StaticResource FontSizeSmall}"/>
+                <!--  Error / hint area  -->
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="{StaticResource FontSizeSmall}"
+                    Foreground="{StaticResource ErrorForeground}"
+                    Text="{Binding CurrentStep.ErrorMessage}"
+                    TextWrapping="Wrap" />
 
-                <Button Grid.Column="1"
-                        Content="Back"
-                        Margin="0,0,8,0"
-                        IsEnabled="{Binding CanGoBack}"
-                        Command="{Binding BackCommand}"/>
+                <Button
+                    Grid.Column="1"
+                    Margin="0,0,8,0"
+                    Command="{Binding BackCommand}"
+                    Content="Back"
+                    IsEnabled="{Binding CanGoBack}" />
 
-                <Button Grid.Column="2"
-                        Content="{Binding NextButtonText}"
-                        IsEnabled="{Binding CurrentStep.CanAdvance}"
-                        Command="{Binding NextCommand}"
-                        FontWeight="SemiBold"/>
+                <Button
+                    Grid.Column="2"
+                    Command="{Binding NextCommand}"
+                    Content="{Binding NextButtonText}"
+                    FontWeight="SemiBold"
+                    IsEnabled="{Binding CurrentStep.CanAdvance}" />
             </Grid>
         </Border>
 

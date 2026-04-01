@@ -18,9 +18,9 @@ namespace SchedulingAssistant.ViewModels.GridView;
 // via ScheduleGridViewModel.ToEntry(). TileEntry carries the display text, overlay
 // flag, and the IsCommitment flag that suppresses click interactions.
 //
-// If you ever add a third kind of block (e.g., room reservations), derive it from
-// GridBlock, add a case to ToEntry(), and add a case to the BlockId() helper in
-// ReloadCore(). Everything else (layout, rendering, dedup) works automatically.
+// If you ever add a fourth kind of block, derive it from GridBlock, add a case to
+// ToEntry(), and add a case to the EntityId() helper in DeduplicateBlocks().
+// Everything else (layout, rendering, dedup) works automatically.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// <summary>
@@ -58,6 +58,20 @@ public record SectionMeetingBlock(
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
+/// A faculty/committee meeting from the Meetings table. Unlike section blocks, meeting
+/// blocks show a plain title rather than a course code. They render with a distinct
+/// visual treatment and do not support click-selection in this version.
+/// Title     = display text (e.g. "Faculty Meeting")
+/// Attendees = space-joined initials of assigned attendees (may be empty)
+/// MeetingId = database ID — kept for future edit-on-click support
+/// </summary>
+public record MeetingBlock(
+    int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
+    string Title, string Attendees, string MeetingId,
+    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
+
+/// <summary>
 /// An instructor commitment (non-teaching obligation stored in InstructorCommitments table).
 /// Commitments are independent of sections — they share the same grid but have no
 /// course code or section code. They are always rendered as overlay cards (red border,
@@ -89,6 +103,11 @@ public record CommitmentBlock(
 ///                       Empty string for weekly meetings and all commitments.
 /// IsDeemphasized      = true when "Emphasize Unstaffed" is active and this section is staffed.
 ///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
+/// IsMeeting           = true when this entry came from a <see cref="MeetingBlock"/>.
+///                       The renderer uses this to apply a distinct visual treatment
+///                       (e.g. a different tile background tint) without affecting overlay or
+///                       click-suppression logic. Click interactions are suppressed via
+///                       IsCommitment = true on meeting entries.
 /// </summary>
 public record TileEntry(
     string Label,
@@ -97,7 +116,8 @@ public record TileEntry(
     bool IsOverlay = false,
     bool IsCommitment = false,
     string FrequencyAnnotation = "",
-    bool IsDeemphasized = false);
+    bool IsDeemphasized = false,
+    bool IsMeeting = false);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

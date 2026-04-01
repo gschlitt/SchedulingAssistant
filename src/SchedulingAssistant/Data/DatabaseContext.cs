@@ -150,6 +150,13 @@ public class DatabaseContext : IDatabaseContext
                 name TEXT,
                 data TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS Meetings (
+                id          TEXT PRIMARY KEY,
+                semester_id TEXT NOT NULL,
+                title       TEXT,
+                data        TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }

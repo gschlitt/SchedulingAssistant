@@ -5,6 +5,48 @@
              x:DataType="vm:SemesterManagerViewModel"
              x:CompileBindings="False">
 
+    <UserControl.Resources>
+        <!-- Template for the color swatch cell: a bordered rectangle that opens a ColorView flyout when clicked -->
+        <DataTemplate x:Key="ColorSwatchTemplate" DataType="vm:SemesterRowViewModel">
+            <Button
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                ToolTip.Tip="Click to change color">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft">
+                        <ColorView
+                            Margin="4"
+                            IsAlphaEnabled="False"
+                            IsAlphaVisible="False"
+                            IsColorSpectrumVisible="False"
+                            IsColorSpectrumSliderVisible="False"
+                            IsComponentSliderVisible="False"
+                            IsColorPreviewVisible="False"
+                            IsColorComponentsVisible="False"
+                            IsColorModelVisible="False"
+                            IsHexInputVisible="False"
+                            IsAccentColorsVisible="False"
+                            IsColorPaletteVisible="True"
+                            Color="{Binding SelectedColor, Mode=TwoWay}" />
+                    </Flyout>
+                </Button.Flyout>
+                <Border
+                    Width="48"
+                    Height="18"
+                    CornerRadius="3"
+                    BorderBrush="{StaticResource SeparatorLine}"
+                    BorderThickness="1">
+                    <Border.Background>
+                        <SolidColorBrush Color="{Binding SelectedColor}" />
+                    </Border.Background>
+                </Border>
+            </Button>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Inline Add / Rename form (shown when EditVm is not null) -->
@@ -42,6 +84,7 @@
                 </DataGrid.Styles>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Semester" Binding="{Binding Name}" Width="*" />
+                    <DataGridTemplateColumn Header="Color" Width="60" CellTemplate="{StaticResource ColorSwatchTemplate}" />
                 </DataGrid.Columns>
             </DataGrid>
 

@@ -168,9 +168,12 @@ public partial class App : Application
 
         // ViewModels
         services.AddSingleton<SectionStore>();
+        services.AddSingleton<MeetingStore>();
+        services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<SectionChangeNotifier>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
+        services.AddSingleton<MeetingListViewModel>();
         services.AddSingleton<ScheduleGridViewModel>(sp => new ScheduleGridViewModel(
             sp.GetRequiredService<ISectionRepository>(),
             sp.GetRequiredService<ICourseRepository>(),
@@ -182,6 +185,8 @@ public partial class App : Application
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<AcademicUnitService>(),
             sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<MeetingStore>(),
+            sp.GetRequiredService<IMeetingRepository>(),
             sp.GetRequiredService<SectionChangeNotifier>(),
             sp.GetRequiredService<IInstructorCommitmentRepository>(),
             sp.GetRequiredService<WriteLockService>()));

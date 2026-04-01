@@ -1329,3 +1329,123 @@
 | 17:35 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs | modified AcceptDefaults() | ~274 |
 | 17:36 | Session end: 6 writes across 4 files (CheckoutServiceTests.cs, GridPipelineTests.cs, WriteLockReadOnlyTests.cs, Step6SemesterColorsViewModel.cs) | 11 reads | ~55321 tok |
 | 17:42 | Session end: 6 writes across 4 files (CheckoutServiceTests.cs, GridPipelineTests.cs, WriteLockReadOnlyTests.cs, Step6SemesterColorsViewModel.cs) | 11 reads | ~55321 tok |
+
+## Session: 2026-04-01 17:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step0WelcomeView.axaml | inline fix | ~10 |
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step10ClosingView.axaml | inline fix | ~10 |
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml | inline fix | ~10 |
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step1InstitutionView.axaml | inline fix | ~10 |
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step4ManualConfigView.axaml | inline fix | ~10 |
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step5AcademicYearView.axaml | inline fix | ~10 |
+| 17:51 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step6BlockPatternsView.axaml | inline fix | ~10 |
+| 17:52 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step2DatabaseView.axaml | inline fix | ~10 |
+| 17:52 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step3TpConfigView.axaml | inline fix | ~10 |
+| 17:52 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml | inline fix | ~10 |
+| 17:52 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml | inline fix | ~10 |
+| 17:52 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml | inline fix | ~10 |
+| 17:52 | Session end: 12 writes across 12 files (Step0WelcomeView.axaml, Step10ClosingView.axaml, Step1aExistingDbView.axaml, Step1InstitutionView.axaml, Step4ManualConfigView.axaml) | 13 reads | ~120 tok |
+
+## Session: 2026-04-01 18:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-01 18:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:21 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | 6→7 lines | ~68 |
+| 18:21 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | added 1 condition(s) | ~710 |
+| 18:21 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | 5→5 lines | ~101 |
+| 18:21 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | expanded (+6 lines) | ~142 |
+| 18:22 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | inline fix | ~19 |
+| 18:32 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | modified ApplyMove() | ~152 |
+| 18:32 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | inline fix | ~27 |
+| 18:32 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | 8→9 lines | ~117 |
+| 18:32 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | modified if() | ~152 |
+| 20:00 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | 1→2 lines | ~15 |
+| 20:00 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | added error handling | ~281 |
+| 20:00 | Edited src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | expanded (+42 lines) | ~622 |
+| 20:01 | Edited src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | 3→4 lines | ~78 |
+| 20:01 | Edited src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | inline fix | ~17 |
+| 20:03 | Session end: 14 writes across 2 files (SemesterManagerViewModel.cs, SemesterManagerView.axaml) | 17 reads | ~9689 tok |
+
+## Session: 2026-04-01 21:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-01 22:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-01 09:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-01 13:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-01 14:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:23 | Created src/SchedulingAssistant/Models/SchedulableBase.cs | — | ~645 |
+| 14:23 | Created src/SchedulingAssistant/Models/Section.cs | — | ~408 |
+| 14:24 | Created src/SchedulingAssistant/Models/Meeting.cs | — | ~269 |
+| 14:24 | Created src/SchedulingAssistant/Data/Repositories/IMeetingRepository.cs | — | ~321 |
+| 14:24 | Created src/SchedulingAssistant/Data/Repositories/MeetingRepository.cs | — | ~1161 |
+| 14:25 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | expanded (+7 lines) | ~118 |
+| 14:25 | Created src/SchedulingAssistant/Services/MeetingStore.cs | — | ~885 |
+| 14:25 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 3→3 lines | ~61 |
+| 14:25 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | modified MeetingBlock() | ~241 |
+| 14:26 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | expanded (+6 lines) | ~235 |
+| 14:26 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | added optional chaining | ~166 |
+| 14:26 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 13→15 lines | ~224 |
+| 14:26 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified ScheduleGridViewModel() | ~333 |
+| 14:26 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→3 lines | ~53 |
+| 14:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified if() | ~208 |
+| 14:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified BuildMeetingBlocks() | ~130 |
+| 14:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | added nullish coalescing | ~571 |
+| 14:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 6→9 lines | ~196 |
+| 14:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 6→7 lines | ~89 |
+| 14:28 | Created src/SchedulingAssistant/ViewModels/Management/MeetingListItemViewModel.cs | — | ~726 |
+| 14:29 | Created src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | — | ~2466 |
+| 14:38 | Created src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | — | ~2219 |
+| 14:39 | Created src/SchedulingAssistant/Views/Management/MeetingListView.axaml | — | ~4890 |
+
+## Session: 2026-04-01 14:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:43 | Created src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs | — | ~113 |
+| 14:44 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | expanded (+28 lines) | ~395 |
+| 14:44 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified MainWindowViewModel() | ~204 |
+| 14:44 | Edited src/SchedulingAssistant/MainWindow.axaml | expanded (+13 lines) | ~430 |
+| 14:44 | Edited src/SchedulingAssistant/MainWindow.axaml | 12→14 lines | ~277 |
+| 14:44 | Edited src/SchedulingAssistant/MainWindow.axaml | expanded (+38 lines) | ~956 |
+| 14:44 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | expanded (+9 lines) | ~316 |
+| 14:45 | Edited src/SchedulingAssistant/App.axaml.cs | 18→23 lines | ~358 |
+| 14:45 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | — | ~0 |
+| 14:46 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 6→6 lines | ~103 |
+| 14:46 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | inline fix | ~10 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 6→7 lines | ~70 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 3→3 lines | ~59 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | added 1 condition(s) | ~148 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | inline fix | ~16 |
+| 14:48 | Edited src/SchedulingAssistant/App.axaml.cs | 16→16 lines | ~255 |
+| 14:48 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 2→3 lines | ~44 |
+| 14:48 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 3→3 lines | ~68 |
+| 14:49 | Session end: 18 writes across 8 files (MeetingListView.axaml.cs, MainWindowViewModel.cs, MainWindow.axaml, GridFilterView.axaml, App.axaml.cs) | 12 reads | ~46727 tok |
+
+## Session: 2026-04-01 15:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

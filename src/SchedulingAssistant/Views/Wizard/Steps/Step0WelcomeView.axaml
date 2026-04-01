@@ -6,28 +6,28 @@
 
     <StackPanel MaxWidth="840" Spacing="16">
         <TextBlock
-            FontSize="{StaticResource FontSizeXLarge}"
+            FontSize="{DynamicResource FontSizeXLarge}"
             FontWeight="Bold"
             Text="Welcome to TermPoint!" />
 
-        <TextBlock FontSize="{StaticResource FontSizeMedium}" TextWrapping="Wrap">
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
             TermPoint helps university administrators visualize and manage how course sections
             fit together across a weekly schedule.
         </TextBlock>
 
-        <TextBlock FontSize="{StaticResource FontSizeMedium}" TextWrapping="Wrap">
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
             This short setup wizard will guide you through:
         </TextBlock>
 
         <StackPanel Margin="16,0,0,0" Spacing="6">
-            <TextBlock FontSize="{StaticResource FontSizeMedium}" Text="• Your institution and academic unit name" />
-            <TextBlock FontSize="{StaticResource FontSizeMedium}" Text="• Where to store your database and backups" />
-            <TextBlock FontSize="{StaticResource FontSizeMedium}" Text="• Block lengths, start times, and section prefixes" />
-            <TextBlock FontSize="{StaticResource FontSizeMedium}" Text="• Your first academic year and its semesters" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Your institution and academic unit name" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Where to store your database and backups" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Block lengths, start times, and section prefixes" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Your first academic year and its semesters" />
         </StackPanel>
 
         <TextBlock
-            FontSize="{StaticResource FontSizeMedium}"
+            FontSize="{DynamicResource FontSizeMedium}"
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             Although most configuration can also be done later, it is easier when guided by this set-up wizard, and full configuration will greatly speed up your scheduling workflow.
@@ -35,7 +35,7 @@
 
 
         <TextBlock
-            FontSize="{StaticResource FontSizeMedium}"
+            FontSize="{DynamicResource FontSizeMedium}"
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             Click Next to begin.

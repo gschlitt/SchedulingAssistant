@@ -14,12 +14,12 @@
 
 
         <!--  Body paragraph 1  -->
-        <TextBlock FontSize="{StaticResource FontSizeNormal}" TextWrapping="Wrap">
+        <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
             You've finished configuring TermPoint. If you skipped a step and wish to revise the configuration later, you can do so under "Settings" in the application.
         </TextBlock>
 
         <!--  Body paragraph 2  -->
-        <TextBlock FontSize="{StaticResource FontSizeNormal}" TextWrapping="Wrap">
+        <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
             Clicking "Finish" will startup TermPoint, with your first academic year setup and ready to go.
             At the very least you'll want to enter some Courses using the Course Editor before you start
             scheduling, and possibly some Instructors.
@@ -31,7 +31,7 @@
 
         <!--  Call-to-action note  -->
         <TextBlock
-            FontSize="{StaticResource FontSizeSmall}"
+            FontSize="{DynamicResource FontSizeSmall}"
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             [Footer note — e.g. "Click Finish to open the application."]

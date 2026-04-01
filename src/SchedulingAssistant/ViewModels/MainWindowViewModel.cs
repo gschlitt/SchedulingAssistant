@@ -27,6 +27,34 @@ public partial class MainWindowViewModel : ViewModelBase
     public SectionListViewModel SectionListVm { get; }
 
     /// <summary>
+    /// The permanent left-panel meeting list. Held for app lifetime.
+    /// Swaps with <see cref="SectionListVm"/> via <see cref="IsShowingMeetings"/>.
+    /// </summary>
+    public MeetingListViewModel MeetingListVm { get; }
+
+    /// <summary>
+    /// True when the left panel is showing the Meeting View; false for Section View (default).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LeftPanelTitle))]
+    [NotifyPropertyChangedFor(nameof(ToggleMeetingViewLabel))]
+    [NotifyPropertyChangedFor(nameof(IsShowingSections))]
+    private bool _isShowingMeetings;
+
+    /// <summary>True when the Section View is active in the left panel.</summary>
+    public bool IsShowingSections => !IsShowingMeetings;
+
+    /// <summary>Title shown in the left panel header — changes with the active view.</summary>
+    public string LeftPanelTitle => IsShowingMeetings ? "Meeting View" : "Section View";
+
+    /// <summary>Label on the view-toggle button — shows the inactive view name.</summary>
+    public string ToggleMeetingViewLabel => IsShowingMeetings ? "← Sections" : "Meetings →";
+
+    /// <summary>Toggles the left panel between Section View and Meeting View.</summary>
+    [RelayCommand]
+    private void ToggleMeetingView() => IsShowingMeetings = !IsShowingMeetings;
+
+    /// <summary>
     /// The permanent right-panel schedule grid. Held for app lifetime.
     /// </summary>
     public ScheduleGridViewModel ScheduleGridVm => _scheduleGridVm;
@@ -270,6 +298,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IServiceProvider services,
         SemesterContext semesterContext,
         SectionListViewModel sectionListVm,
+        MeetingListViewModel meetingListVm,
         ScheduleGridViewModel scheduleGridVm,
         WorkloadPanelViewModel workloadPanelVm,
         WriteLockService lockService,
@@ -278,6 +307,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _services             = services;
         SemesterContext       = semesterContext;
         SectionListVm         = sectionListVm;
+        MeetingListVm         = meetingListVm;
         _scheduleGridVm       = scheduleGridVm;
         WorkloadPanelVm       = workloadPanelVm;
         _lockService          = lockService;

@@ -9,7 +9,7 @@
 
         <!--  Guidance  -->
         <TextBlock
-            FontSize="{StaticResource FontSizeNormal}"
+            FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             Each semester is shown in a distinct color on the schedule grid, which is especially useful when scheduling courses in overlapping semesters.
@@ -32,7 +32,7 @@
                                 <TextBlock
                                     Width="160"
                                     VerticalAlignment="Center"
-                                    FontSize="{StaticResource FontSizeNormal}"
+                                    FontSize="{DynamicResource FontSizeNormal}"
                                     Text="{Binding Name}" />
                                 <Border
                                     Width="72"

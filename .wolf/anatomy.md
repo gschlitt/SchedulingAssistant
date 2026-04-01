@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-01T00:35:51.405Z
-> Files: 79 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-01T21:48:55.240Z
+> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,20 +29,12 @@
 
 ## ../../../.claude/plans/
 
-- `hazy-scribbling-pie.md` — Fix Two Pre-existing Test Failures in CheckoutServiceTests (~707 tok)
-- `humble-swimming-walrus.md` — Fix for Issue 1.1: Extend D/D' Pattern to Read-Only Mode (~5524 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `MEMORY.md` — SchedulingAssistant Project Memory (~5971 tok)
-- `project_network_db_writeback.md` — Plan Summary (~4427 tok)
-- `semester_color_fix.md` — Issue (~1033 tok)
-- `wizard_write_lock_fix.md` (~269 tok)
 
 ## ./
 
-- `fix_dynamic_resource.ps1` (~102 tok)
-- `persistence-review.md` — Persistence Layer Review: Data Corruption, Loss, and UX Risks (~2798 tok)
 
 ## .claude/
 
@@ -175,27 +167,14 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~15247 tok)
-- `ComputeTilesTests.cs` — Unit tests for <see cref="ScheduleGridViewModel.ComputeTiles"/>. ComputeTiles converts a flat list o (~4847 tok)
-- `GridPipelineTests.cs` — Unit tests for the internal static pipeline methods extracted from <see cref="ScheduleGridViewModel. (~8253 tok)
-- `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~972 tok)
-- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5672 tok)
-- `WizardWriteLockTests.cs` — Tests that WriteLockService is properly acquired during wizard database creation, enabling write acc (~723 tok)
-- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~6614 tok)
-- `WriteLockServiceTests.cs` — Unit tests for <see cref="WriteLockService"/>. <para>Each test fixture creates an isolated temporary (~5989 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3314 tok)
-- `AppColors.axaml` (~2786 tok)
-- `AppDefaults.cs` — Application-wide default values used to pre-populate the startup wizard. These are example values th (~725 tok)
-- `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
-- `MainWindow.axaml` — Declares applied (~10787 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11678 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3390 tok)
+- `MainWindow.axaml` — Declares applied (~11854 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
-- `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~1783 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -205,101 +184,76 @@
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~3994 tok)
-- `SeedData.cs` — Called by DatabaseContext after schema initialization. Ensures a baseline record exists, namely a De (~1346 tok)
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~4060 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
+- `IMeetingRepository.cs` — Data access contract for <see cref="Meeting"/> entities. (~321 tok)
+- `MeetingRepository.cs` — SQLite-backed implementation of <see cref="IMeetingRepository"/>. The <c>Meetings</c> table uses the (~1161 tok)
 
 ## src/SchedulingAssistant/Models/
 
-- `LockFileData.cs` — Data stored in the <c>.lock</c> file that sits alongside the database. Serialized as JSON. Any insta (~402 tok)
-- `TpConfigData.cs` — Portable configuration file (.tpconfig) written to the database folder after first-run setup. Contai (~715 tok)
+- `Meeting.cs` — A faculty, committee, or other recurring meeting that appears on the weekly schedule grid alongside (~269 tok)
+- `SchedulableBase.cs` — Abstract base for any entity that can be placed on the weekly schedule grid. Holds the fields that < (~645 tok)
+- `Section.cs` — The core scheduling entity — a course section offered in a specific semester. Inherits all common sc (~408 tok)
 
 ## src/SchedulingAssistant/Services/
 
-- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2151 tok)
-- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8277 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12138 tok)
-- `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\SchedulingAssistant\Logs\app-YYYY-MM- (~1334 tok)
-- `IAppLogger.cs` — Application-wide error logger. Implementations can write to a local file, a remote database, a cloud (~492 tok)
-- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~5378 tok)
+- `MeetingStore.cs` — Singleton service that holds the in-memory cache of meetings for the currently selected semester(s). (~885 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `DebugTestDataViewModel.cs` — When true, exceptions passed to <see cref="IAppLogger.LogError"/> are re-thrown after being written (~979 tok)
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~6949 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7334 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2607 tok)
-- `GridPipelineTypes.cs` — Aggregates all entity lookup dictionaries that the schedule grid pipeline needs to convert raw <see (~2688 tok)
-- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~16818 tok)
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2941 tok)
+- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each (~6550 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~17709 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2306 tok)
-- `BlockPatternEditViewModel.cs` — Class: BlockPatternEditViewModel (~615 tok)
-- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1561 tok)
-- `CommitmentEditViewModel.cs` — Class: CommitmentEditViewModel (~1542 tok)
-- `LegalStartTimeEditViewModel.cs` — Class: LegalStartTimeEditViewModel (~1115 tok)
-- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~2399 tok)
-- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~4735 tok)
-- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2858 tok)
-- `SchedulingEnvironmentViewModel.cs` — Class: SchedulingEnvironmentViewModel (~877 tok)
-- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10025 tok)
-- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3112 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12080 tok)
-- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~7237 tok)
-- `SemesterBannerViewModel.cs` — Represents a semester group header row in the Section List. Carries the semester identity and displa (~911 tok)
-- `SettingsViewModel.cs` — ViewModel for the Settings flyout. Manages automated-backup configuration and restore. Backup entrie (~2398 tok)
-- `ShareViewModel.cs` — ViewModel for the File → Share flyout. Generates a .tpconfig file from the current database so the u (~1951 tok)
-- `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5460 tok)
+- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~2351 tok)
+- `MeetingListItemViewModel.cs` — Display wrapper for a single meeting row in the meeting list panel. Holds pre-formatted strings so t (~726 tok)
+- `MeetingListViewModel.cs` — Drives the Meeting List left panel — the counterpart to <see cref="SectionListViewModel"/> when the (~2258 tok)
+- `SemesterManagerViewModel.cs` — Display wrapper for a single <see cref="Semester"/> row in the semester manager list. Exposes <see c (~3588 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
-- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — Existing-DB check (Step1 (~5882 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
-- `Step5AcademicYearViewModel.cs` — Editable row for a single semester in the step 5 semester list. (~1451 tok)
-- `Step5LegalStartTimesViewModel.cs` — An editable start time entry within a block length row. Stored in HHMM military format (e.g. "0800" (~2548 tok)
-- `Step6SemesterColorsViewModel.cs` — Editable color row for one semester in the Semester Colors step. Exposes both <see cref="SelectedCol (~1486 tok)
 
 ## src/SchedulingAssistant/Views/
 
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11476 tok)
+- `GridFilterView.axaml` (~9188 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `AcademicUnitListView.axaml` (~509 tok)
-- `AcademicYearListView.axaml` (~1266 tok)
-- `AcademicYearListView.axaml.cs` — Class: AcademicYearListView (~1081 tok)
-- `BlockPatternListView.axaml` (~2146 tok)
-- `CampusListView.axaml` (~1150 tok)
-- `CopySemesterView.axaml` — Declares assignments (~2195 tok)
-- `CourseListView.axaml` (~4551 tok)
-- `InstructorListView.axaml` (~8571 tok)
-- `LegalStartTimeListView.axaml` (~1870 tok)
-- `NewDatabaseView.axaml` (~1971 tok)
-- `RoomListView.axaml` (~1538 tok)
-- `SchedulingEnvironmentListView.axaml` — Declares description (~1430 tok)
-- `SectionListView.axaml` (~19618 tok)
-- `SectionPrefixListView.axaml` (~1431 tok)
-- `SemesterManagerView.axaml` (~971 tok)
-- `SettingsView.axaml` (~2083 tok)
-- `SubjectListView.axaml` (~889 tok)
+- `MeetingListView.axaml` (~4905 tok)
+- `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. No logic required here; the view is fully declarative (~113 tok)
+- `SemesterManagerView.axaml` (~1529 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 
-- `Step5LegalStartTimesView.axaml` — Declares durations (~2328 tok)
-- `Step6SemesterColorsView.axaml` (~940 tok)
+- `Step0WelcomeView.axaml` (~550 tok)
+- `Step10ClosingView.axaml` (~487 tok)
+- `Step1aExistingDbView.axaml` (~1035 tok)
+- `Step1InstitutionView.axaml` (~647 tok)
+- `Step2DatabaseView.axaml` (~1456 tok)
+- `Step3TpConfigView.axaml` (~992 tok)
+- `Step4ManualConfigView.axaml` (~320 tok)
+- `Step5AcademicYearView.axaml` (~1266 tok)
+- `Step5LegalStartTimesView.axaml` — Declares durations (~2327 tok)
+- `Step6BlockPatternsView.axaml` — Declares typically (~373 tok)
+- `Step6SemesterColorsView.axaml` (~941 tok)
+- `Step7SectionPrefixesView.axaml` (~3636 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

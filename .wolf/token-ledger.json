@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 5559777,
-    "total_reads": 2205,
-    "total_writes": 1831,
-    "total_sessions": 86,
-    "anatomy_hits": 677,
-    "anatomy_misses": 1501,
-    "repeated_reads_blocked": 1101,
-    "estimated_savings_vs_bare_cli": 8798652
+    "total_tokens_estimated": 5616313,
+    "total_reads": 2251,
+    "total_writes": 1875,
+    "total_sessions": 96,
+    "anatomy_hits": 683,
+    "anatomy_misses": 1539,
+    "repeated_reads_blocked": 1113,
+    "estimated_savings_vs_bare_cli": 8880103
   },
   "sessions": [
     {
@@ -25816,6 +25816,585 @@
         "writes_count": 6,
         "repeated_reads_blocked": 7,
         "anatomy_lookups": 8
+      }
+    },
+    {
+      "id": "session-2026-04-01-1750",
+      "started": "2026-04-01T00:50:02.952Z",
+      "ended": "2026-04-01T00:50:43.828Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step0WelcomeView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 0,
+        "reads_count": 2,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-04-01-1750",
+      "started": "2026-04-01T00:50:02.952Z",
+      "ended": "2026-04-01T00:52:16.732Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step0WelcomeView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step10ClosingView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step1InstitutionView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step4ManualConfigView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step5AcademicYearView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6BlockPatternsView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step3TpConfigView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step2DatabaseView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step0WelcomeView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step10ClosingView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step1InstitutionView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step4ManualConfigView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step5AcademicYearView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6BlockPatternsView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step2DatabaseView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step3TpConfigView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml",
+          "tokens_estimated": 10,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 120,
+        "reads_count": 13,
+        "writes_count": 12,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-04-01-1818",
+      "started": "2026-04-01T01:18:07.704Z",
+      "ended": "2026-04-01T03:03:14.052Z",
+      "reads": [
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearEditViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+          "tokens_estimated": 941,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppDefaults.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+          "tokens_estimated": 941,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 3588,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml",
+          "tokens_estimated": 1540,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Semester.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterEditViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 73,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 760,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 108,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 152,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 163,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 125,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 163,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml",
+          "tokens_estimated": 666,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml",
+          "tokens_estimated": 84,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml",
+          "tokens_estimated": 18,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 7010,
+        "output_tokens_estimated": 2679,
+        "reads_count": 17,
+        "writes_count": 14,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-04-01-1351",
+      "started": "2026-04-01T20:51:17.642Z",
+      "ended": "2026-04-01T20:52:49.115Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WriteLockServiceTests.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 0,
+        "reads_count": 2,
+        "writes_count": 0,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-04-01-1441",
+      "started": "2026-04-01T21:41:24.406Z",
+      "ended": "2026-04-01T21:49:48.510Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 11147,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs",
+          "tokens_estimated": 3390,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/MeetingStore.cs",
+          "tokens_estimated": 885,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/TagSelectionViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+          "tokens_estimated": 2351,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+          "tokens_estimated": 17709,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/ILegalStartTimeRepository.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 2260,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 4890,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 121,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 424,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 219,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 460,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 297,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 1024,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+          "tokens_estimated": 339,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs",
+          "tokens_estimated": 383,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 110,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+          "tokens_estimated": 11,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 64,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 159,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs",
+          "tokens_estimated": 273,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 47,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 72,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 42632,
+        "output_tokens_estimated": 4095,
+        "reads_count": 12,
+        "writes_count": 18,
+        "repeated_reads_blocked": 7,
+        "anatomy_lookups": 5
       }
     }
   ],

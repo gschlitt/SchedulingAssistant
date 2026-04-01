@@ -2326,6 +2326,374 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-01T00:19:23.334Z"
+    },
+    {
+      "id": "bug-146",
+      "timestamp": "2026-04-01T00:51:47.092Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step0WelcomeView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:47.092Z"
+    },
+    {
+      "id": "bug-147",
+      "timestamp": "2026-04-01T00:51:47.688Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step10ClosingView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:47.688Z"
+    },
+    {
+      "id": "bug-148",
+      "timestamp": "2026-04-01T00:51:48.975Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:48.976Z"
+    },
+    {
+      "id": "bug-149",
+      "timestamp": "2026-04-01T00:51:50.532Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step1InstitutionView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:50.532Z"
+    },
+    {
+      "id": "bug-150",
+      "timestamp": "2026-04-01T00:51:53.312Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step4ManualConfigView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:53.312Z"
+    },
+    {
+      "id": "bug-151",
+      "timestamp": "2026-04-01T00:51:53.889Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step5AcademicYearView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:53.889Z"
+    },
+    {
+      "id": "bug-152",
+      "timestamp": "2026-04-01T00:51:55.954Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step6BlockPatternsView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:51:55.954Z"
+    },
+    {
+      "id": "bug-153",
+      "timestamp": "2026-04-01T00:52:08.275Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step2DatabaseView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:52:08.275Z"
+    },
+    {
+      "id": "bug-154",
+      "timestamp": "2026-04-01T00:52:09.586Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step3TpConfigView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:52:09.586Z"
+    },
+    {
+      "id": "bug-155",
+      "timestamp": "2026-04-01T00:52:10.160Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:52:10.160Z"
+    },
+    {
+      "id": "bug-156",
+      "timestamp": "2026-04-01T00:52:11.498Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:52:11.498Z"
+    },
+    {
+      "id": "bug-157",
+      "timestamp": "2026-04-01T00:52:12.486Z",
+      "error_message": "Wrong reference: StaticResource should be DynamicResource",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step7SectionPrefixesView.axaml",
+      "root_cause": "Used \"StaticResource\" instead of \"DynamicResource\"",
+      "fix": "Changed StaticResource → DynamicResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T00:52:12.486Z"
+    },
+    {
+      "id": "bug-158",
+      "timestamp": "2026-04-01T01:21:42.958Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+      "root_cause": "No early return/throw for edge case: Semester.Color == hex",
+      "fix": "Added guard clause: if (Semester.Color == hex)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T01:21:42.959Z"
+    },
+    {
+      "id": "bug-159",
+      "timestamp": "2026-04-01T01:21:58.850Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T01:21:58.850Z"
+    },
+    {
+      "id": "bug-160",
+      "timestamp": "2026-04-01T01:22:11.018Z",
+      "error_message": "Wrong reference: Semester should be SemesterRowViewModel",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+      "root_cause": "Used \"Semester\" instead of \"SemesterRowViewModel\"",
+      "fix": "Changed Semester → SemesterRowViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T01:22:11.018Z"
+    },
+    {
+      "id": "bug-161",
+      "timestamp": "2026-04-01T03:00:43.741Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T03:00:43.741Z"
+    },
+    {
+      "id": "bug-162",
+      "timestamp": "2026-04-01T21:26:17.473Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T21:26:17.473Z"
+    },
+    {
+      "id": "bug-163",
+      "timestamp": "2026-04-01T21:27:12.198Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T21:27:12.198Z"
+    },
+    {
+      "id": "bug-164",
+      "timestamp": "2026-04-01T21:27:25.732Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T21:27:25.732Z"
+    },
+    {
+      "id": "bug-165",
+      "timestamp": "2026-04-01T21:44:21.295Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→23 lines (3 removed) | Also: <!--  Content  -->; <views:SectionListView Grid.Row=\"1\" DataContext=\"{",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-01T21:44:44.523Z"
+    },
+    {
+      "id": "bug-166",
+      "timestamp": "2026-04-01T21:46:13.050Z",
+      "error_message": "Wrong reference: Tag should be Value",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "Used \"Tag\" instead of \"Value\"",
+      "fix": "Changed Tag → Value",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T21:46:13.050Z"
+    },
+    {
+      "id": "bug-167",
+      "timestamp": "2026-04-01T21:47:57.658Z",
+      "error_message": "Wrong reference: GetByAcademicYear should be GetAll",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+      "root_cause": "Used \"GetByAcademicYear\" instead of \"GetAll\"",
+      "fix": "Changed GetByAcademicYear → GetAll",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-01T21:47:57.658Z"
+    },
+    {
+      "id": "bug-168",
+      "timestamp": "2026-04-01T21:48:51.430Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "Had \"using:SchedulingAssistant.ViewModels.Management\"",
+      "fix": "Changed to \"using:SchedulingAssistant.Models\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-01T21:48:55.264Z"
     }
   ]
 }

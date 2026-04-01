@@ -11,7 +11,7 @@ namespace SchedulingAssistant.ViewModels.Wizard.Steps;
 /// </summary>
 public class Step7SectionPrefixesViewModel : WizardStepViewModel
 {
-    public override string StepTitle => "Section Prefixes";
+    public override string StepTitle => "Section Prefixes and Designators";
 
     /// <summary>Embeds the section prefix management list.</summary>
     public SectionPrefixListViewModel SectionPrefixes { get; }

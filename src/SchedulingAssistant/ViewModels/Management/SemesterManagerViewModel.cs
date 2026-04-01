@@ -1,11 +1,70 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace SchedulingAssistant.ViewModels.Management;
+
+/// <summary>
+/// Display wrapper for a single <see cref="Semester"/> row in the semester manager list.
+/// Exposes <see cref="SelectedColor"/> (Avalonia <see cref="Color"/>) for two-way binding
+/// to the inline color picker. When the color changes, the underlying model is updated and
+/// persisted via the <paramref name="onColorChanged"/> callback.
+/// </summary>
+public partial class SemesterRowViewModel : ViewModelBase
+{
+    /// <summary>The underlying semester model; mutated when name or color changes.</summary>
+    public Semester Semester { get; }
+
+    /// <summary>Semester name for display in the list column.</summary>
+    public string Name => Semester.Name;
+
+    /// <summary>
+    /// Current semester color as an Avalonia <see cref="Color"/>.
+    /// Bound two-way to the inline <c>ColorView</c> in the flyout.
+    /// Changes are reflected in <see cref="Semester.Color"/> and persisted via the callback.
+    /// </summary>
+    [ObservableProperty] private Color _selectedColor;
+
+    private readonly Action<Semester> _onColorChanged;
+
+    /// <param name="semester">The semester to wrap.</param>
+    /// <param name="onColorChanged">Callback invoked after the color changes; responsible for persisting the update.</param>
+    public SemesterRowViewModel(Semester semester, Action<Semester> onColorChanged)
+    {
+        Semester        = semester;
+        _onColorChanged = onColorChanged;
+        _selectedColor  = ParseHex(semester.Color);  // set backing field directly — no callback on init
+    }
+
+    /// <summary>
+    /// Syncs the model's <see cref="Semester.Color"/> and fires the persist callback
+    /// whenever the user picks a new colour via the <c>ColorView</c>.
+    /// </summary>
+    partial void OnSelectedColorChanged(Color value)
+    {
+        var hex = ColorToHex(value);
+        if (Semester.Color == hex) return;
+        Semester.Color = hex;
+        _onColorChanged(Semester);
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses a hex color string (<c>#RRGGBB</c> or <c>RRGGBB</c>) into an Avalonia <see cref="Color"/>.
+    /// Falls back to mid-grey on parse failure or empty input.
+    /// </summary>
+    private static Color ParseHex(string hex) =>
+        Color.TryParse(hex, out var c) ? c : Colors.Gray;
+
+    /// <summary>Converts an Avalonia <see cref="Color"/> to an uppercase <c>#RRGGBB</c> string.</summary>
+    private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+}
 
 /// <summary>
 /// Portable ViewModel for managing the semesters within a single academic year.
@@ -28,11 +87,11 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
 
     private bool CanWrite() => _lockService.IsWriter;
 
-    /// <summary>Semesters belonging to the academic year, ordered by SortOrder.</summary>
-    [ObservableProperty] private ObservableCollection<Semester> _semesters = new();
+    /// <summary>Semesters belonging to the academic year, ordered by SortOrder; wrapped in row VMs for color-picker binding.</summary>
+    [ObservableProperty] private ObservableCollection<SemesterRowViewModel> _semesters = new();
 
-    /// <summary>Currently selected semester in the list.</summary>
-    [ObservableProperty] private Semester? _selectedSemester;
+    /// <summary>Currently selected semester row in the list.</summary>
+    [ObservableProperty] private SemesterRowViewModel? _selectedSemester;
 
     /// <summary>Non-null when the inline Add or Rename form is open.</summary>
     [ObservableProperty] private SemesterEditViewModel? _editVm;
@@ -64,9 +123,15 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         Load();
     }
 
-    /// <summary>Reloads the semester list from the database for this academic year.</summary>
+    /// <summary>
+    /// Reloads the semester list from the database for this academic year,
+    /// wrapping each <see cref="Semester"/> in a <see cref="SemesterRowViewModel"/>
+    /// whose color-change callback persists the new color and refreshes the semester context.
+    /// </summary>
     private void Load() =>
-        Semesters = new ObservableCollection<Semester>(_semRepo.GetByAcademicYear(_academicYearId));
+        Semesters = new ObservableCollection<SemesterRowViewModel>(
+            _semRepo.GetByAcademicYear(_academicYearId)
+                    .Select(s => new SemesterRowViewModel(s, OnSemesterColorChanged)));
 
     private void OnLockStateChanged()
     {
@@ -78,7 +143,25 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         MoveDownCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnSelectedSemesterChanged(Semester? value)
+    /// <summary>
+    /// Persists a semester's updated color to the database and reloads the semester context
+    /// so the top-bar dropdowns and schedule grid reflect the new color immediately.
+    /// Invoked by <see cref="SemesterRowViewModel"/> when the user picks a color.
+    /// </summary>
+    private void OnSemesterColorChanged(Semester semester)
+    {
+        try
+        {
+            _semRepo.Update(semester);
+            _semesterContext.Reload(_ayRepo, _semRepo);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SemesterManagerViewModel.OnSemesterColorChanged");
+        }
+    }
+
+    partial void OnSelectedSemesterChanged(SemesterRowViewModel? value)
     {
         MoveUpCommand.NotifyCanExecuteChanged();
         MoveDownCommand.NotifyCanExecuteChanged();
@@ -111,15 +194,15 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         list.Insert(index + delta, item);
 
         for (var i = 0; i < list.Count; i++)
-            list[i].SortOrder = i;
+            list[i].Semester.SortOrder = i;
 
-        foreach (var s in list)
-            _semRepo.Update(s);
+        foreach (var row in list)
+            _semRepo.Update(row.Semester);
 
-        var selectedId = item.Id;
+        var selectedId = item.Semester.Id;
         _semesterContext.Reload(_ayRepo, _semRepo);
         Load();
-        SelectedSemester = Semesters.FirstOrDefault(s => s.Id == selectedId);
+        SelectedSemester = Semesters.FirstOrDefault(s => s.Semester.Id == selectedId);
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -131,7 +214,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         var semester = new Semester
         {
             AcademicYearId = _academicYearId,
-            SortOrder      = Semesters.Count > 0 ? Semesters.Max(s => s.SortOrder) + 1 : 0
+            SortOrder      = Semesters.Count > 0 ? Semesters.Max(s => s.Semester.SortOrder) + 1 : 0
         };
         EditVm = new SemesterEditViewModel(semester, isNew: true,
             onSave: s =>
@@ -160,10 +243,11 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         // Work on a copy so Cancel leaves the original untouched.
         var copy = new Semester
         {
-            Id             = SelectedSemester.Id,
-            AcademicYearId = SelectedSemester.AcademicYearId,
-            Name           = SelectedSemester.Name,
-            SortOrder      = SelectedSemester.SortOrder
+            Id             = SelectedSemester.Semester.Id,
+            AcademicYearId = SelectedSemester.Semester.AcademicYearId,
+            Name           = SelectedSemester.Semester.Name,
+            SortOrder      = SelectedSemester.Semester.SortOrder,
+            Color          = SelectedSemester.Semester.Color
         };
         EditVm = new SemesterEditViewModel(copy, isNew: false,
             onSave: s =>
@@ -193,7 +277,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     {
         if (SelectedSemester is null) return;
 
-        var count = _sectionRepo.CountBySemesterId(SelectedSemester.Id);
+        var count = _sectionRepo.CountBySemesterId(SelectedSemester.Semester.Id);
         if (count > 0)
         {
             await _dialog.ShowError(
@@ -207,7 +291,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
 
         try
         {
-            _semRepo.Delete(SelectedSemester.Id);
+            _semRepo.Delete(SelectedSemester.Semester.Id);
             _semesterContext.Reload(_ayRepo, _semRepo);
             Load();
         }

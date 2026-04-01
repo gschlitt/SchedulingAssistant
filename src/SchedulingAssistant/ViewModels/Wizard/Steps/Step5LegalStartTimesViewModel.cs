@@ -162,7 +162,7 @@ public partial class WizardBlockLengthEntry : ViewModelBase
 /// </summary>
 public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
 {
-    public override string StepTitle => "Block Lengths & Start Times";
+    public override string StepTitle => "Block Length, Start Times and Schedule Days";
 
     /// <summary>The editable list of block lengths and their start times.</summary>
     public ObservableCollection<WizardBlockLengthEntry> BlockLengths { get; } = [];

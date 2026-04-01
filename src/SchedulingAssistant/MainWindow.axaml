@@ -482,19 +482,33 @@
                                 BorderThickness="0,0,0,1">
                                 <Grid RowDefinitions="Auto,Auto">
 
-                                    <!--  Title + sort-mode context (right-click to change sort)  -->
-
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Margin="1,0,0,0"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Center"
-                                        FontSize="{StaticResource FontSizeLarge}"
-                                        FontWeight="SemiBold"
-                                        Text="Section View" />
+                                    <!--  Title row: panel title (left) + view-toggle (right)  -->
+                                    <DockPanel Grid.Row="0">
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="4,1"
+                                            VerticalAlignment="Center"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Command="{Binding ToggleMeetingViewCommand}"
+                                            Content="{Binding ToggleMeetingViewLabel}"
+                                            DockPanel.Dock="Right"
+                                            FontSize="10"
+                                            Foreground="{StaticResource TextFaint}"
+                                            ToolTip.Tip="Switch between Section View and Meeting View" />
+                                        <TextBlock
+                                            Margin="1,0,0,0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            FontSize="{StaticResource FontSizeLarge}"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding LeftPanelTitle}" />
+                                    </DockPanel>
                                     <!--
                                         Action buttons — the entire group is disabled in read-only mode
                                         via a single IsEnabled binding on the container.
+                                        Visibility swaps with the Meeting action buttons based on IsShowingMeetings.
                                     -->
                                     <StackPanel
                                         Grid.Row="1"
@@ -502,6 +516,7 @@
                                         VerticalAlignment="Top"
                                         DataContext="{Binding SectionListVm}"
                                         IsEnabled="{Binding DataContext.IsWriteEnabled, ElementName=RootWindow}"
+                                        IsVisible="{Binding DataContext.IsShowingSections, ElementName=RootWindow}"
                                         Orientation="Horizontal"
                                         Spacing="3">
                                         <Button
@@ -574,11 +589,49 @@
                                             ItemsSource="{Binding SortModeOptions}"
                                             SelectedIndex="{Binding SelectedSortModeIndex}" />
                                     </StackPanel>
+
+                                    <!--  Meeting action buttons — shown when Meeting View is active  -->
+                                    <StackPanel
+                                        Grid.Row="1"
+                                        Margin="0,12,0,1"
+                                        VerticalAlignment="Top"
+                                        DataContext="{Binding MeetingListVm}"
+                                        IsEnabled="{Binding DataContext.IsWriteEnabled, ElementName=RootWindow}"
+                                        IsVisible="{Binding DataContext.IsShowingMeetings, ElementName=RootWindow}"
+                                        Orientation="Horizontal"
+                                        Spacing="3">
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding AddCommand}"
+                                            Content="Add"
+                                            FontSize="14" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding EditCommand}"
+                                            Content="Edit"
+                                            FontSize="14"
+                                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <Button
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            Padding="5,1"
+                                            Command="{Binding DeleteCommand}"
+                                            Content="Delete"
+                                            FontSize="14"
+                                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    </StackPanel>
                                 </Grid>
                             </Border>
 
-                            <!--  Content  -->
-                            <views:SectionListView Grid.Row="1" DataContext="{Binding SectionListVm}" />
+                            <!--  Content: swaps between Section View and Meeting View  -->
+                            <Panel Grid.Row="1">
+                                <views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding IsShowingSections}" />
+                                <views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding IsShowingMeetings}" />
+                            </Panel>
 
                         </Grid>
                     </Border>

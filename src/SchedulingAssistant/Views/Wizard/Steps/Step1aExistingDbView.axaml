@@ -9,14 +9,14 @@
         <!-- Radio: fresh install -->
         <RadioButton
             Content="This is a fresh install. I need to set up my own database."
-            FontSize="{StaticResource FontSizeNormal}"
+            FontSize="{DynamicResource FontSizeNormal}"
             IsChecked="{Binding IsNewSetupChoice}" />
 
         <!-- Radio: existing database -->
         <StackPanel Spacing="12">
             <RadioButton
                 Content="I already have a database."
-                FontSize="{StaticResource FontSizeNormal}"
+                FontSize="{DynamicResource FontSizeNormal}"
                 IsChecked="{Binding IsExistingDbChoice}" />
 
             <!-- Detail pane — revealed when existing DB is chosen -->
@@ -27,7 +27,7 @@
 
                 <!-- Placeholder text — user will supply -->
                 <TextBlock
-                    FontSize="{StaticResource FontSizeNormal}"
+                    FontSize="{DynamicResource FontSizeNormal}"
                     Foreground="{StaticResource ForegroundMuted}"
                     TextWrapping="Wrap"
                     Text="[Placeholder — instructions for connecting to a shared database.]" />
@@ -35,7 +35,7 @@
                 <!-- Database file -->
                 <StackPanel Spacing="6">
                     <TextBlock
-                        FontSize="{StaticResource FontSizeNormal}"
+                        FontSize="{DynamicResource FontSizeNormal}"
                         FontWeight="SemiBold"
                         Text="Database file" />
                     <Grid ColumnDefinitions="*,8,Auto">
@@ -54,11 +54,11 @@
                 <!-- Backup folder -->
                 <StackPanel Spacing="6">
                     <TextBlock
-                        FontSize="{StaticResource FontSizeNormal}"
+                        FontSize="{DynamicResource FontSizeNormal}"
                         FontWeight="SemiBold"
                         Text="Backup folder" />
                     <TextBlock
-                        FontSize="{StaticResource FontSizeSmall}"
+                        FontSize="{DynamicResource FontSizeSmall}"
                         Foreground="{StaticResource ForegroundMuted}"
                         TextWrapping="Wrap"
                         Text="[Placeholder — backup location guidance.]" />
@@ -77,7 +77,7 @@
 
                 <!-- Error message -->
                 <TextBlock
-                    FontSize="{StaticResource FontSizeSmall}"
+                    FontSize="{DynamicResource FontSizeSmall}"
                     Foreground="{StaticResource NotificationErrorText}"
                     IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                     Text="{Binding ErrorMessage}"
