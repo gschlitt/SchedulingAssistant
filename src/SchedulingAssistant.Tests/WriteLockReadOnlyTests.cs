@@ -412,7 +412,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void AcademicYear_AddCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new AcademicYearListViewModel(_ayRepo, _semesterRepo, _sectionRepo,
-            _semesterContext, _legalStartTimeRepo, _db, _dialog, _lock);
+            _semesterContext, _legalStartTimeRepo, _dialog, _lock);
         Assert.False(vm.AddCommand.CanExecute(null));
     }
 
@@ -420,7 +420,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void AcademicYear_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new AcademicYearListViewModel(_ayRepo, _semesterRepo, _sectionRepo,
-            _semesterContext, _legalStartTimeRepo, _db, _dialog, _lock);
+            _semesterContext, _legalStartTimeRepo, _dialog, _lock);
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 

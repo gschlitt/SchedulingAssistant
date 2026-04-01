@@ -375,25 +375,26 @@ public partial class MainWindowViewModel : ViewModelBase
 
             try
             {
-                // afterCopy: called by CheckoutService after the new snapshot has been committed
-                // to the alternate slot (ping-pong). We switch the DatabaseContext connection to
-                // the new slot here. The old slot is still intact on disk at this point, so
-                // there is no risk of reading a deleted/partially-written file.
-                // File.Move in CheckoutService targets the inactive slot, so no open-handle
-                // conflict is possible — this is a clean connection swap, not a workaround.
-                async Task AfterCopy(string newPath)
+                // beforeOverwrite: close the connection so CheckoutService can overwrite D''.
+                // afterOverwrite: reopen the connection to the now-refreshed D''.
+                async Task BeforeOverwrite()
                 {
-                    await Task.CompletedTask; // synchronous work; Task signature required by API
-                    dbContext?.ReinitializeConnection(newPath);
+                    await Task.CompletedTask;
+                    dbContext?.CloseConnection();
                 }
 
-                var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync(AfterCopy);
+                async Task AfterOverwrite()
+                {
+                    await Task.CompletedTask;
+                    dbContext?.ReinitializeConnection(App.Checkout.WorkingPath);
+                }
+
+                var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync(BeforeOverwrite, AfterOverwrite);
 
                 var msg = refreshOutcome switch
                 {
                     RefreshOutcome.Updated           => "Data refreshed from source.",
-                    RefreshOutcome.AlreadyCurrent    => "Data is already current.",
-                    RefreshOutcome.SourceUnavailable => "Could not reach source — using cached data.",
+                    RefreshOutcome.SourceUnavailable => "Could not reach source — view may be stale.",
                     _ => "Refresh completed."
                 };
                 App.Logger.LogInfo($"MainWindowViewModel: {msg}");

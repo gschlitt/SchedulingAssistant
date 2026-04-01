@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-03-31T23:59:12.682Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-01T00:35:51.405Z
 > Files: 79 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -175,13 +175,13 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~16459 tok)
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~15247 tok)
 - `ComputeTilesTests.cs` — Unit tests for <see cref="ScheduleGridViewModel.ComputeTiles"/>. ComputeTiles converts a flat list o (~4847 tok)
-- `GridPipelineTests.cs` — Unit tests for the internal static pipeline methods extracted from <see cref="ScheduleGridViewModel. (~8235 tok)
+- `GridPipelineTests.cs` — Unit tests for the internal static pipeline methods extracted from <see cref="ScheduleGridViewModel. (~8253 tok)
 - `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~972 tok)
 - `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5672 tok)
 - `WizardWriteLockTests.cs` — Tests that WriteLockService is properly acquired during wizard database creation, enabling write acc (~723 tok)
-- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~6617 tok)
+- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~6614 tok)
 - `WriteLockServiceTests.cs` — Unit tests for <see cref="WriteLockService"/>. <para>Each test fixture creates an isolated temporary (~5989 tok)
 
 ## src/SchedulingAssistant/
@@ -191,7 +191,7 @@
 - `AppDefaults.cs` — Application-wide default values used to pre-populate the startup wizard. These are example values th (~725 tok)
 - `Constants.cs` — Application-wide constants for domain rules shared across the codebase. (~45 tok)
 - `MainWindow.axaml` — Declares applied (~10787 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11783 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11678 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -205,7 +205,7 @@
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~3865 tok)
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~3994 tok)
 - `SeedData.cs` — Called by DatabaseContext after schema initialization. Ensures a baseline record exists, namely a De (~1346 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
@@ -220,15 +220,15 @@
 
 - `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2151 tok)
 - `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8277 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~13801 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12138 tok)
 - `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\SchedulingAssistant\Logs\app-YYYY-MM- (~1334 tok)
 - `IAppLogger.cs` — Application-wide error logger. Implementations can write to a local file, a remote database, a cloud (~492 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~5378 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `DebugTestDataViewModel.cs` — When true, exceptions passed to <see cref="IAppLogger.LogError"/> are re-thrown after being written  (~979 tok)
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7031 tok)
+- `DebugTestDataViewModel.cs` — When true, exceptions passed to <see cref="IAppLogger.LogError"/> are re-thrown after being written (~979 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~6949 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
@@ -264,7 +264,7 @@
 
 - `Step5AcademicYearViewModel.cs` — Editable row for a single semester in the step 5 semester list. (~1451 tok)
 - `Step5LegalStartTimesViewModel.cs` — An editable start time entry within a block length row. Stored in HHMM military format (e.g. "0800" (~2548 tok)
-- `Step6SemesterColorsViewModel.cs` — Editable color row for one semester in the Semester Colors step. Exposes both <see cref="SelectedCol (~1262 tok)
+- `Step6SemesterColorsViewModel.cs` — Editable color row for one semester in the Semester Colors step. Exposes both <see cref="SelectedCol (~1486 tok)
 
 ## src/SchedulingAssistant/Views/
 

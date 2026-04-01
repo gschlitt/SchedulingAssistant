@@ -228,12 +228,10 @@ public partial class MainWindow : Window
         settings.AddRecentDatabase(dbPath);
 
         // ── Checkout flow ─────────────────────────────────────────────────────
-        // Clean up stale read-only snapshots (D'' files >30 days old), then clean up
-        // any orphaned .tmp from a previous crashed save, then check for
+        // Clean up any orphaned .tmp from a previous crashed save, then check for
         // an orphaned working copy (crash recovery), then acquire the write lock
         // and copy D → D' (or D → D'' for read-only mode).
         // The result determines which path is passed to InitializeServices.
-        App.Checkout.CleanupStaleReadOnlySnapshots();
         App.Checkout.CleanupOrphanedTmp(dbPath);
 
         if (App.Checkout.DetectCrashRecovery(dbPath))
@@ -418,7 +416,6 @@ public partial class MainWindow : Window
             (App.Services as IDisposable)?.Dispose();
 
             // Run crash recovery + checkout for the new path.
-            App.Checkout.CleanupStaleReadOnlySnapshots();
             App.Checkout.CleanupOrphanedTmp(newDatabasePath);
             if (App.Checkout.DetectCrashRecovery(newDatabasePath))
                 newDatabasePath = await HandleCrashRecoveryAsync(newDatabasePath) ?? newDatabasePath;

@@ -118,7 +118,8 @@ public class GridPipelineTests
             Tags:             new Dictionary<string, SchedulingEnvironmentValue>(),
             MeetingTypes:     new Dictionary<string, SchedulingEnvironmentValue>(),
             Levels:           new Dictionary<string, string>(),
-            SemesterIdToName: semesterIdToName ?? new());
+            SemesterIdToName: semesterIdToName ?? new(),
+            SemesterIdToColor: new Dictionary<string, string>());
 
     // ═════════════════════════════════════════════════════════════════════════
     // BuildSectionLabel

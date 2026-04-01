@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Wizard.Steps;
@@ -83,6 +84,25 @@ public partial class Step6SemesterColorsViewModel : WizardStepViewModel
 
     /// <summary>One row per semester, in the order they were defined in the previous step.</summary>
     public ObservableCollection<SemesterColorRowViewModel> Rows { get; } = [];
+
+    /// <summary>
+    /// The default hex colors, by position, sourced from <see cref="AppDefaults.Semesters"/>.
+    /// Used by <see cref="AcceptDefaultsCommand"/> and by tests to verify position-based assignment.
+    /// </summary>
+    public static IReadOnlyList<string> DefaultColors =>
+        AppDefaults.Semesters.Select(s => s.HexColor).ToList();
+
+    /// <summary>
+    /// Resets every row's color to the position-based default from <see cref="DefaultColors"/>,
+    /// clamped to the last entry for any rows beyond the defaults list.
+    /// </summary>
+    [RelayCommand]
+    private void AcceptDefaults()
+    {
+        var defaults = DefaultColors;
+        for (int i = 0; i < Rows.Count; i++)
+            Rows[i].HexColor = defaults[Math.Min(i, defaults.Count - 1)];
+    }
 
     /// <summary>
     /// Populates the color rows from the semester list built in the Academic Year step.

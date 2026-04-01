@@ -23,9 +23,9 @@ public static class AppDefaults
     /// </summary>
     public static readonly IReadOnlyList<(string Name, string HexColor)> Semesters =
     [
-        ("Fall",   "#C65D1E"),   // amber / brown
-        ("Winter", "#8F8E8C"),   // grey
-        ("Spring", "#7ED957"),   // green
+        ("Fall",   "#B06A3A"),   // amber / brown
+        ("Winter", "#607080"),   // grey
+        ("Spring", "#4A9660"),   // green
     ];
 
     /// <summary>

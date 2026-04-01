@@ -286,13 +286,25 @@ public class DatabaseContext : IDatabaseContext
     }
 
     /// <summary>
+    /// Closes the current database connection and clears the connection pool.
+    /// Call this before <see cref="CheckoutService.RefreshReadOnlySnapshotAsync"/> overwrites D''
+    /// so that the file is not held open during the rename. Follow with
+    /// <see cref="ReinitializeConnection"/> to reopen after the overwrite.
+    /// </summary>
+    public void CloseConnection()
+    {
+        _conn.Dispose();
+        SqliteConnection.ClearAllPools();
+    }
+
+    /// <summary>
     /// Closes the current connection and opens a new one to the specified database path.
     /// Used by read-only instances after <see cref="CheckoutService.RefreshReadOnlySnapshotAsync"/>
-    /// updates the D'' snapshot file — this reconnects to the new file content.
+    /// updates the D'' snapshot file — this reconnects to the refreshed file content.
     /// </summary>
     /// <param name="newDbPath">
-    /// Absolute path to the database file. Typically this is the same path as before,
-    /// but the underlying file has been replaced via atomic rename (File.Move with overwrite).
+    /// Absolute path to the database file. Typically this is the same path as before (D''),
+    /// but the underlying file has been replaced with a fresh copy from D.
     /// </param>
     /// <exception cref="InvalidOperationException">Thrown if the new database cannot be opened.</exception>
     public void ReinitializeConnection(string newDbPath)

@@ -1,292 +1,110 @@
 {
-  "session_id": "session-2026-03-31-1625",
-  "started": "2026-03-31T23:25:48.978Z",
+  "session_id": "session-2026-04-01-1727",
+  "started": "2026-04-01T00:27:37.239Z",
   "files_read": {
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/LegalStartTimesDataStore.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:38:11.864Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/LegalStartTimesDataExporter.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:38:11.991Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/SeedData.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:38:12.292Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs": {
       "count": 2,
-      "tokens": 2857,
-      "first_read": "2026-03-31T23:38:14.813Z"
+      "tokens": 15247,
+      "first_read": "2026-04-01T00:28:02.706Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs": {
-      "count": 1,
-      "tokens": 3865,
-      "first_read": "2026-03-31T23:38:15.075Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/GridLookups.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-03-31T23:38:17.432Z"
+      "first_read": "2026-04-01T00:32:13.982Z"
     },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
-      "count": 3,
-      "tokens": 5900,
-      "first_read": "2026-03-31T23:38:19.846Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs": {
-      "count": 2,
-      "tokens": 4719,
-      "first_read": "2026-03-31T23:38:20.095Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs": {
-      "count": 2,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:38:30.028Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Step6SemesterColorsViewModel.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-03-31T23:38:30.484Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
-      "count": 1,
-      "tokens": 3340,
-      "first_read": "2026-03-31T23:38:32.925Z"
-    },
-    "/c/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MigrationViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:38:35.150Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/LegalStartTimesDataExporter.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:46:09.872Z"
+      "first_read": "2026-04-01T00:32:14.388Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs": {
-      "count": 4,
-      "tokens": 2328,
-      "first_read": "2026-03-31T23:46:10.699Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs": {
-      "count": 2,
-      "tokens": 1081,
-      "first_read": "2026-03-31T23:46:13.781Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": {
-      "count": 2,
-      "tokens": 5900,
-      "first_read": "2026-03-31T23:46:15.894Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs": {
       "count": 1,
-      "tokens": 4719,
-      "first_read": "2026-03-31T23:46:20.162Z"
+      "tokens": 2306,
+      "first_read": "2026-04-01T00:32:14.593Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs": {
-      "count": 1,
-      "tokens": 2566,
-      "first_read": "2026-03-31T23:46:32.638Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/SeedData.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/GridPipelineTests.cs": {
       "count": 3,
-      "tokens": 1786,
-      "first_read": "2026-03-31T23:48:49.101Z"
+      "tokens": 8235,
+      "first_read": "2026-04-01T00:32:15.210Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WizardStepValidationTests.cs": {
+      "count": 3,
+      "tokens": 5672,
+      "first_read": "2026-04-01T00:32:15.359Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs": {
+      "count": 2,
+      "tokens": 6617,
+      "first_read": "2026-04-01T00:32:15.861Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs": {
-      "count": 1,
-      "tokens": 1271,
-      "first_read": "2026-03-31T23:50:23.733Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs": {
       "count": 2,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:54:36.502Z"
+      "tokens": 1262,
+      "first_read": "2026-04-01T00:32:19.648Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/GridPipelineTypes.cs": {
       "count": 1,
-      "tokens": 3340,
-      "first_read": "2026-03-31T23:55:14.622Z"
+      "tokens": 2688,
+      "first_read": "2026-04-01T00:33:39.256Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppDefaults.cs": {
       "count": 1,
-      "tokens": 0,
-      "first_read": "2026-03-31T23:56:24.491Z"
+      "tokens": 725,
+      "first_read": "2026-04-01T00:34:20.056Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs": {
+      "count": 1,
+      "tokens": 12138,
+      "first_read": "2026-04-01T00:36:28.921Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppDefaults.cs",
-      "action": "create",
-      "tokens": 776,
-      "at": "2026-03-31T23:48:25.255Z"
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "action": "edit",
+      "tokens": 11,
+      "at": "2026-04-01T00:27:43.604Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/SeedData.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
       "action": "edit",
-      "tokens": 5,
-      "at": "2026-03-31T23:48:57.633Z"
+      "tokens": 12,
+      "at": "2026-04-01T00:27:56.952Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/SeedData.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/GridPipelineTests.cs",
       "action": "edit",
-      "tokens": 0,
-      "at": "2026-03-31T23:49:08.210Z"
+      "tokens": 54,
+      "at": "2026-04-01T00:34:49.720Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs",
       "action": "edit",
-      "tokens": 126,
-      "at": "2026-03-31T23:49:25.497Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5AcademicYearViewModel.cs",
-      "action": "edit",
-      "tokens": 118,
-      "at": "2026-03-31T23:49:38.791Z"
+      "tokens": 20,
+      "at": "2026-04-01T00:34:55.239Z"
     },
     {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs",
       "action": "edit",
-      "tokens": 506,
-      "at": "2026-03-31T23:50:04.949Z"
+      "tokens": 40,
+      "at": "2026-04-01T00:35:00.918Z"
     },
     {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs",
       "action": "edit",
-      "tokens": 0,
-      "at": "2026-03-31T23:50:26.829Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
-      "action": "edit",
-      "tokens": 5,
-      "at": "2026-03-31T23:50:42.019Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
-      "action": "edit",
-      "tokens": 598,
-      "at": "2026-03-31T23:51:20.890Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
-      "action": "edit",
-      "tokens": 32,
-      "at": "2026-03-31T23:51:36.169Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
-      "action": "edit",
-      "tokens": 24,
-      "at": "2026-03-31T23:51:43.241Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
-      "action": "edit",
-      "tokens": 22,
-      "at": "2026-03-31T23:51:46.298Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
-      "action": "edit",
-      "tokens": 13,
-      "at": "2026-03-31T23:51:54.777Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs",
-      "action": "edit",
-      "tokens": 85,
-      "at": "2026-03-31T23:52:20.391Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs",
-      "action": "edit",
-      "tokens": 17,
-      "at": "2026-03-31T23:53:33.590Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
-      "action": "edit",
-      "tokens": 434,
-      "at": "2026-03-31T23:54:03.558Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs",
-      "action": "edit",
-      "tokens": 149,
-      "at": "2026-03-31T23:54:19.509Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs",
-      "action": "edit",
-      "tokens": 129,
-      "at": "2026-03-31T23:54:52.208Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs",
-      "action": "edit",
-      "tokens": 6,
-      "at": "2026-03-31T23:54:59.114Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs",
-      "action": "edit",
-      "tokens": 0,
-      "at": "2026-03-31T23:55:02.630Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs",
-      "action": "edit",
-      "tokens": 3,
-      "at": "2026-03-31T23:55:18.319Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/SeedData.cs",
-      "action": "edit",
-      "tokens": 251,
-      "at": "2026-03-31T23:56:07.114Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/SeedData.cs",
-      "action": "edit",
-      "tokens": 96,
-      "at": "2026-03-31T23:56:14.068Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
-      "action": "edit",
-      "tokens": 126,
-      "at": "2026-03-31T23:56:30.789Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs",
-      "action": "edit",
-      "tokens": 47,
-      "at": "2026-03-31T23:59:12.719Z"
+      "tokens": 294,
+      "at": "2026-04-01T00:35:51.426Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/AppDefaults.cs": 1,
-    "src/SchedulingAssistant/Data/SeedData.cs": 4,
-    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs": 1,
-    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5AcademicYearViewModel.cs": 1,
-    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs": 2,
-    "src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs": 6,
-    "src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs": 2,
-    "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs": 1,
-    "src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs": 1,
-    "src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs": 4,
-    "src/SchedulingAssistant/App.axaml.cs": 1,
-    "src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml": 1
+    "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs": 2,
+    "src/SchedulingAssistant.Tests/GridPipelineTests.cs": 1,
+    "src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs": 2
   },
-  "anatomy_hits": 11,
-  "anatomy_misses": 12,
-  "repeated_reads_warned": 13,
+  "anatomy_hits": 8,
+  "anatomy_misses": 2,
+  "repeated_reads_warned": 7,
   "cerebrum_warnings": 0,
-  "stop_count": 6
+  "stop_count": 4
 }

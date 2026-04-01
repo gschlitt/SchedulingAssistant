@@ -1336,42 +1336,6 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// When a reader closes and reopens the same database, if D'' already exists
-    /// and is current, it should be reused without re-copying.
-    /// </summary>
-    [Fact]
-    public async Task ReadOnlyCheckout_ReusesCurrentDSnapshot()
-    {
-        var db = DbPath("shared");
-        CreateFile(db, "original content");
-        var (writer, _) = CreateService();
-        await writer.CheckoutAsync(db);
-
-        // First reader checkout — creates D''.
-        var (reader1, _) = CreateService();
-        var outcome1 = await reader1.CheckoutAsync(db);
-        Assert.Equal(CheckoutOutcome.ReadOnly, outcome1);
-        var d1Path = reader1.ReadOnlyWorkingPath;
-        var d1Hash = ComputeFileHash(d1Path);
-
-        // Simulate app close/reopen without the source changing.
-        reader1.Dispose();
-
-        // Second reader instance opens the same database.
-        var (reader2, _) = CreateService();
-        var outcome2 = await reader2.CheckoutAsync(db);
-        Assert.Equal(CheckoutOutcome.ReadOnly, outcome2);
-        var d2Path = reader2.ReadOnlyWorkingPath;
-        var d2Hash = ComputeFileHash(d2Path);
-
-        // D'' paths should be the same (computed from source path).
-        Assert.Equal(d1Path, d2Path);
-
-        // D'' hashes should match (file was reused, not re-copied).
-        Assert.Equal(d1Hash, d2Hash);
-    }
-
-    /// <summary>
     /// When a writer modifies D and saves, then a reader calls RefreshReadOnlySnapshotAsync,
     /// D'' should be updated to reflect the changes.
     /// </summary>
@@ -1408,40 +1372,6 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// When RefreshReadOnlySnapshotAsync is called but D hasn't changed,
-    /// it should return AlreadyCurrent without re-copying.
-    /// </summary>
-    [Fact]
-    public async Task ReadOnlyRefresh_ReturnsCurrentWhenSourceUnchanged()
-    {
-        var db = DbPath("shared");
-        CreateSqliteDb(db);
-        var originalHash = ComputeFileHash(db);
-
-        // Writer opens.
-        var (writer, _) = CreateService();
-        await writer.CheckoutAsync(db);
-
-        // Reader opens — creates D''.
-        var (reader, _) = CreateService();
-        await reader.CheckoutAsync(db);
-        var d1ModTime = File.GetLastWriteTimeUtc(reader.ReadOnlyWorkingPath);
-
-        // Wait a bit so modification times would differ if file was actually rewritten.
-        await Task.Delay(100);
-
-        // Reader calls refresh — source is unchanged.
-        var outcome = await reader.RefreshReadOnlySnapshotAsync();
-
-        // Refresh should detect no change.
-        Assert.Equal(RefreshOutcome.AlreadyCurrent, outcome);
-
-        // D'' should not have been rewritten (mod time unchanged).
-        var d2ModTime = File.GetLastWriteTimeUtc(reader.ReadOnlyWorkingPath);
-        Assert.Equal(d1ModTime, d2ModTime);
-    }
-
-    /// <summary>
     /// When RefreshReadOnlySnapshotAsync is called but the source is unavailable,
     /// D'' should remain unchanged and RefreshOutcome.SourceUnavailable returned.
     /// </summary>
@@ -1473,9 +1403,6 @@ public sealed class CheckoutServiceTests : IDisposable
         // D'' should be unchanged (stale).
         var d2Hash = reader.HashAtCheckout;
         Assert.Equal(d1Hash, d2Hash);
-
-        // LastRefreshedAt should be cleared to indicate uncertainty.
-        Assert.Null(reader.LastRefreshedAt);
 
         // Restore source for cleanup.
         File.Move(dbBackup, db, overwrite: true);
@@ -1529,51 +1456,6 @@ public sealed class CheckoutServiceTests : IDisposable
         // The D'' should be the one file, shared by both readers.
         Assert.True(File.Exists(r1Path));
         Assert.Equal(r1Path, r2Path);
-    }
-
-    /// <summary>
-    /// End-to-end data flow: after RefreshReadOnlySnapshotAsync returns Updated,
-    /// a fresh connection to D'' can read the data that the writer wrote to D.
-    /// This is the critical test — it verifies that the file-level copy produces
-    /// a readable database with the updated content, not just a changed hash.
-    /// </summary>
-    [Fact]
-    public async Task ReadOnlyRefresh_FreshDataReadableFromDSnapshotAfterUpdate()
-    {
-        var db = DbPath("shared");
-
-        // Create D with initial data.
-        CreateSqliteDb(db);
-        InsertTestValue(db, "original");
-
-        // Writer opens.
-        var (writer, _) = CreateService();
-        await writer.CheckoutAsync(db);
-
-        // Reader opens — creates D''.
-        var (reader, _) = CreateService();
-        await reader.CheckoutAsync(db);
-        var d2 = reader.ReadOnlyWorkingPath!;
-
-        // Confirm initial data is readable from D'' before any refresh.
-        var valueBefore = ReadTestValue(d2);
-        Assert.Equal("original", valueBefore);
-
-        // Simulate writer saving new data to D. In production this goes through
-        // BackupSqliteDatabase + File.Move; here we write directly to D to keep
-        // the test isolated from SaveAsync internals.
-        InsertTestValue(db, "updated");
-
-        // Reader calls refresh — D has changed.
-        var outcome = await reader.RefreshReadOnlySnapshotAsync();
-        Assert.Equal(RefreshOutcome.Updated, outcome);
-
-        // After a successful refresh the ping-pong swaps the active slot, so
-        // ReadOnlyWorkingPath now points to the new slot (not d2, which was deleted).
-        var newSlot    = reader.ReadOnlyWorkingPath!;
-        Assert.NotEqual(d2, newSlot);
-        var valueAfter = ReadTestValue(newSlot);
-        Assert.Equal("updated", valueAfter);
     }
 
     // ── Helper for computing file hash ────────────────────────────────────
