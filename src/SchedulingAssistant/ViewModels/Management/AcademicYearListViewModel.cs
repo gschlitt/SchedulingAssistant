@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
-using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
@@ -17,7 +16,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
     private readonly ISectionRepository _sectionRepo;
     private readonly SemesterContext _semesterContext;
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
-    private readonly IDatabaseContext _db;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
 
@@ -45,12 +43,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
     public Func<string, string, Task<string?>>? ConfirmCopyStartTimes { get; set; }
 
     /// <summary>
-    /// Set by the view. Called when creating the first academic year if persisted data exists.
-    /// Returns true to import, false to skip.
-    /// </summary>
-    public Func<string, Task<bool>>? ConfirmImportPersistedData { get; set; }
-
-    /// <summary>
     /// Set by the view. Called when adding a new academic year (not the first) to ask whether
     /// semester names should be copied from the previous year. Returns true to copy.
     /// </summary>
@@ -62,7 +54,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
         ISectionRepository sectionRepo,
         SemesterContext semesterContext,
         ILegalStartTimeRepository legalStartTimeRepo,
-        IDatabaseContext db,
         IDialogService dialog,
         WriteLockService lockService)
     {
@@ -71,7 +62,6 @@ public partial class AcademicYearListViewModel : ViewModelBase
         _sectionRepo = sectionRepo;
         _semesterContext = semesterContext;
         _legalStartTimeRepo = legalStartTimeRepo;
-        _db = db;
         _dialog = dialog;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
@@ -136,29 +126,12 @@ public partial class AcademicYearListViewModel : ViewModelBase
                 {
                     _ayRepo.Insert(saved);
 
+                    // Find the new year's position in the sorted list to identify the
+                    // adjacent predecessor (if any) to offer copying semesters/start times from.
                     var allAYs = _ayRepo.GetAll().OrderBy(a => a.Name).ToList();
                     var savedIndex = allAYs.FindIndex(a => a.Id == saved.Id);
 
-                    if (savedIndex == 0)
-                    {
-                        bool dataImported = false;
-                        var persistedSummary = LegalStartTimesDataStore.GetPersistedDataSummary();
-                        if (!string.IsNullOrEmpty(persistedSummary) && ConfirmImportPersistedData is not null)
-                        {
-                            var shouldImport = await ConfirmImportPersistedData(persistedSummary);
-                            if (shouldImport)
-                            {
-                                var dbContext = App.Services.GetRequiredService<DatabaseContext>();
-                                SeedData.ImportPersistedStartTimes(dbContext.Connection, saved.Id);
-                                dataImported = true;
-                            }
-                        }
-
-                        // If no persisted data was imported, seed institution defaults
-                        if (!dataImported)
-                            SeedData.SeedDefaultLegalStartTimes(_db.Connection, saved.Id);
-                    }
-                    else if (savedIndex > 0)
+                    if (savedIndex > 0)
                     {
                         var prevAY = allAYs[savedIndex - 1];
 
@@ -181,16 +154,14 @@ public partial class AcademicYearListViewModel : ViewModelBase
                         }
                         // else: new year starts with no semesters; user adds them via the panel.
 
-                        // Separately ask whether to copy block length / start time setup.
+                        // Ask whether to copy block length / start time setup.
                         string? fromAyId = null;
                         if (ConfirmCopyStartTimes is not null)
                             fromAyId = await ConfirmCopyStartTimes(prevAY.Name, prevAY.Id);
 
                         if (fromAyId is not null)
                             _legalStartTimeRepo.CopyFromPreviousYear(saved.Id, fromAyId);
-                        else
-                            // If user declines to copy from previous year, seed institution defaults
-                            SeedData.SeedDefaultLegalStartTimes(_db.Connection, saved.Id);
+                        // else: user declines — new year has no start times configured yet.
                     }
 
                     _semesterContext.Reload(_ayRepo, _semRepo);

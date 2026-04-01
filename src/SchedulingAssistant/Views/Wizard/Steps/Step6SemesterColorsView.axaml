@@ -7,24 +7,14 @@
 
     <StackPanel MaxWidth="840" Spacing="20">
 
-        <!--  Guidance + Reset button  -->
-        <Grid ColumnDefinitions="*,Auto">
-            <TextBlock
-                Grid.Column="0"
-                VerticalAlignment="Center"
-                FontSize="{StaticResource FontSizeNormal}"
-                Foreground="{StaticResource ForegroundMuted}"
-                TextWrapping="Wrap">
-                Each semester is shown in a distinct color on the schedule grid, which is especially useful when scheduling courses in overlapping semesters.
-                Expand any row to open the color picker and choose your own.
-            </TextBlock>
-            <Button
-                Grid.Column="1"
-                Margin="12,0,0,0"
-                VerticalAlignment="Top"
-                Command="{Binding AcceptDefaultsCommand}"
-                Content="Reset defaults" />
-        </Grid>
+        <!--  Guidance  -->
+        <TextBlock
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Each semester is shown in a distinct color on the schedule grid, which is especially useful when scheduling courses in overlapping semesters.
+            Expand any row to open the color picker and choose your own.
+        </TextBlock>
 
         <!--  One Expander per semester  -->
         <ItemsControl ItemsSource="{Binding Rows}">

@@ -2198,6 +2198,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-03-31T18:57:26.070Z"
+    },
+    {
+      "id": "bug-138",
+      "timestamp": "2026-03-31T23:51:20.895Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
+      "root_cause": "21 lines replaced/restructured",
+      "fix": "Rewrote 65→41 lines (21 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T23:51:20.895Z"
+    },
+    {
+      "id": "bug-139",
+      "timestamp": "2026-03-31T23:51:54.783Z",
+      "error_message": "Wrong reference: using should be Repositories",
+      "file": "src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
+      "root_cause": "Used \"using\" instead of \"Repositories\"",
+      "fix": "Changed using → Repositories",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T23:51:54.783Z"
+    },
+    {
+      "id": "bug-140",
+      "timestamp": "2026-03-31T23:54:52.213Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 21→12 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T23:54:52.214Z"
+    },
+    {
+      "id": "bug-141",
+      "timestamp": "2026-03-31T23:56:07.120Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/SeedData.cs",
+      "root_cause": "30 lines replaced/restructured",
+      "fix": "Rewrote 42→15 lines (30 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T23:56:07.120Z"
+    },
+    {
+      "id": "bug-142",
+      "timestamp": "2026-03-31T23:56:30.796Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 18→8 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-03-31T23:56:30.796Z"
     }
   ]
 }

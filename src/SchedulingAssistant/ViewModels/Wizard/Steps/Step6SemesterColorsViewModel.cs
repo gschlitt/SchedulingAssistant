@@ -1,6 +1,5 @@
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Wizard.Steps;
@@ -75,26 +74,11 @@ public partial class SemesterColorRowViewModel : ViewModelBase
 
 /// <summary>
 /// Step 9 (manual path only) — assign display colors to each semester.
-/// Colors are pre-populated with position-based defaults; the user can change
-/// any of them via the color picker flyout on each row.
+/// Colors are pre-populated from <see cref="AppDefaults.Semesters"/> by position;
+/// the user can change any of them via the color picker flyout on each row.
 /// </summary>
 public partial class Step6SemesterColorsViewModel : WizardStepViewModel
 {
-    /// <summary>
-    /// Position-based default semester colors.
-    /// Semester 1 receives color index 0, semester 2 receives index 1, and so on,
-    /// wrapping if there are more semesters than defaults.
-    /// </summary>
-    public static readonly string[] DefaultColors =
-    [
-        "#C65D1E",  // 1 — amber/brown  (Fall)
-        "#8F8E8C",  // 2 — grey         (Winter)
-        "#7ED957",  // 3 — green        (Spring/Early Summer)
-        "#4FB6F7",  // 4 — blue         (Summer)
-        "#F2C94C",  // 5 — yellow       (Late Summer)
-        "#9B59B6",  // 6 — purple       (fallback)
-    ];
-
     public override string StepTitle => "Semester Colors";
 
     /// <summary>One row per semester, in the order they were defined in the previous step.</summary>
@@ -102,7 +86,9 @@ public partial class Step6SemesterColorsViewModel : WizardStepViewModel
 
     /// <summary>
     /// Populates the color rows from the semester list built in the Academic Year step.
-    /// Pre-assigns position-based default colors. Called by the wizard orchestrator.
+    /// Pre-assigns colors from <see cref="AppDefaults.Semesters"/> by position; falls back
+    /// to the last AppDefaults entry's color for any semesters beyond the defaults list.
+    /// Called by the wizard orchestrator.
     /// </summary>
     /// <param name="semesters">Ordered semester definitions from the preceding step.</param>
     public void LoadFromSemesters(IEnumerable<SemesterDefViewModel> semesters)
@@ -111,24 +97,17 @@ public partial class Step6SemesterColorsViewModel : WizardStepViewModel
         int idx = 0;
         foreach (var sem in semesters)
         {
-            var color = !string.IsNullOrWhiteSpace(sem.Color)
-                ? sem.Color
-                : DefaultColors[idx % DefaultColors.Length];
+            // Use a color already on the SemesterDef (e.g. from a .tpconfig import),
+            // then fall back to AppDefaults by position, clamped to the last entry.
+            string color;
+            if (!string.IsNullOrWhiteSpace(sem.Color))
+                color = sem.Color;
+            else
+            {
+                var defaults = AppDefaults.Semesters;
+                color = defaults[Math.Min(idx, defaults.Count - 1)].HexColor;
+            }
             Rows.Add(new SemesterColorRowViewModel(sem.Name, color));
-            idx++;
-        }
-    }
-
-    /// <summary>
-    /// Resets all rows to the position-based default colors.
-    /// </summary>
-    [RelayCommand]
-    private void AcceptDefaults()
-    {
-        int idx = 0;
-        foreach (var row in Rows)
-        {
-            row.HexColor = DefaultColors[idx % DefaultColors.Length];
             idx++;
         }
     }

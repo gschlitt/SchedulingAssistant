@@ -235,9 +235,6 @@ public partial class App : Application
         //Dialogs
 
 
-        // Data export utilities
-        services.AddTransient<LegalStartTimesDataExporter>();
-
 #if DEBUG
         services.AddTransient<DebugTestDataGenerator>();
         services.AddTransient<DebugTestDataViewModel>();

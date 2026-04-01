@@ -491,7 +491,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         // Seed legal start times:
         //   import path  → block lengths from .tpconfig
-        //   manual path  → wizard step 6 data (or hardcoded defaults if step was skipped)
+        //   manual path  → wizard step 6 data (pre-populated from AppDefaults, user-editable)
         var db = _services.Database();
         if (importedCfg?.BlockLengths is { Count: > 0 } importBlockLengths)
         {
@@ -509,17 +509,13 @@ public partial class StartupWizardViewModel : ViewModelBase
             var seedData = s6lst.GetSeedData();
             if (seedData.Count > 0)
                 SchedulingAssistant.Data.SeedData.SeedWizardLegalStartTimes(db.Connection, ay.Id, seedData);
-            else
-                SchedulingAssistant.Data.SeedData.SeedDefaultLegalStartTimes(db.Connection, ay.Id);
+            // else: user intentionally cleared all block lengths — seed nothing.
 
             // Persist weekend-day choices from the wizard into settings.
             AppSettings.Current.IncludeSaturday = s6lst.IncludeSaturday;
             AppSettings.Current.IncludeSunday   = s6lst.IncludeSunday;
         }
-        else
-        {
-            SchedulingAssistant.Data.SeedData.SeedDefaultLegalStartTimes(db.Connection, ay.Id);
-        }
+        // else: step 6 was not visited (should not happen on the manual path) — seed nothing.
 
         // --- Semesters with colors ---
         // Manual path: colors from step 10.  Import path: colors from step 4 (.tpconfig).

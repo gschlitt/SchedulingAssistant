@@ -101,14 +101,11 @@ public partial class Step5AcademicYearViewModel : WizardStepViewModel
 
     /// <summary>
     /// Semesters in this academic year, in display order.
-    /// Pre-seeded with Fall, Winter, and Spring on the manual path;
+    /// Pre-seeded from <see cref="AppDefaults.Semesters"/> on the manual path;
     /// replaced by <see cref="LoadFromConfig"/> on the import path.
     /// </summary>
-    public ObservableCollection<SemesterDefViewModel> Semesters { get; } = [
-        new SemesterDefViewModel { Name = "Fall"   },
-        new SemesterDefViewModel { Name = "Winter" },
-        new SemesterDefViewModel { Name = "Spring" },
-    ];
+    public ObservableCollection<SemesterDefViewModel> Semesters { get; } =
+        new(AppDefaults.Semesters.Select(s => new SemesterDefViewModel { Name = s.Name }));
 
     /// <summary>
     /// Pre-populates the semester list from imported .tpconfig data.

@@ -1233,3 +1233,56 @@
 | 11:57 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterBannerViewModel.cs | modified SemesterBannerViewModel() | ~163 |
 | 11:58 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/semester_color_fix.md | expanded (+7 lines) | ~208 |
 | 11:58 | Session end: 27 writes across 9 files (GridData.cs, GridPipelineTypes.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, SectionListItemViewModel.cs) | 14 reads | ~71594 tok |
+
+## Session: 2026-03-31 12:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-31 12:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-03-31 14:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:27 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | expanded (+8 lines) | ~228 |
+| 15:27 | Session end: 1 writes across 1 files (AcademicYearListViewModel.cs) | 1 reads | ~244 tok |
+| 15:35 | Session end: 1 writes across 1 files (AcademicYearListViewModel.cs) | 2 reads | ~244 tok |
+| 16:01 | Session end: 1 writes across 1 files (AcademicYearListViewModel.cs) | 2 reads | ~244 tok |
+
+## Session: 2026-03-31 16:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:48 | Created src/SchedulingAssistant/AppDefaults.cs | — | ~725 |
+| 16:48 | Edited src/SchedulingAssistant/Data/SeedData.cs | removed 31 lines | ~5 |
+| 16:49 | Edited src/SchedulingAssistant/Data/SeedData.cs | — | ~0 |
+| 16:49 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | modified Step5LegalStartTimesViewModel() | ~118 |
+| 16:49 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5AcademicYearViewModel.cs | 10→7 lines | ~110 |
+| 16:50 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs | added 1 condition(s) | ~472 |
+| 16:50 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step6SemesterColorsViewModel.cs | — | ~0 |
+| 16:50 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | removed 7 lines | ~5 |
+| 16:51 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | modified if() | ~558 |
+| 16:51 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 3→2 lines | ~30 |
+| 16:51 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 3→2 lines | ~23 |
+| 16:51 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 3→2 lines | ~20 |
+| 16:51 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 2→1 lines | ~12 |
+| 16:52 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | modified OnDataContextChanged() | ~79 |
+| 16:53 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | removed 86 lines | ~16 |
+| 16:54 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | SeedDefaultLegalStartTimes() → visited() | ~406 |
+| 16:54 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | SeedDefaultLegalStartTimes() → transferred() | ~139 |
+| 16:54 | Edited src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs | modified DebugTestDataViewModel() | ~120 |
+| 16:54 | Edited src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs | removed 33 lines | ~5 |
+| 16:55 | Edited src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs | — | ~0 |
+| 16:55 | Edited src/SchedulingAssistant/App.axaml.cs | removed 4 lines | ~3 |
+| 16:56 | Edited src/SchedulingAssistant/Data/SeedData.cs | modified SeedDefaultLegalStartTimes() | ~235 |
+| 16:56 | Edited src/SchedulingAssistant/Data/SeedData.cs | 6→6 lines | ~90 |
+| 16:56 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml | reduced (-10 lines) | ~118 |
+| 16:56 | Session end: 24 writes across 12 files (AppDefaults.cs, SeedData.cs, Step5LegalStartTimesViewModel.cs, Step5AcademicYearViewModel.cs, Step6SemesterColorsViewModel.cs) | 23 reads | ~47193 tok |
+| 16:58 | Session end: 24 writes across 12 files (AppDefaults.cs, SeedData.cs, Step5LegalStartTimesViewModel.cs, Step5AcademicYearViewModel.cs, Step6SemesterColorsViewModel.cs) | 23 reads | ~47193 tok |
+| 16:59 | Edited src/SchedulingAssistant/ViewModels/DebugTestDataViewModel.cs | 3→4 lines | ~44 |
+| 16:59 | Session end: 25 writes across 12 files (AppDefaults.cs, SeedData.cs, Step5LegalStartTimesViewModel.cs, Step5AcademicYearViewModel.cs, Step6SemesterColorsViewModel.cs) | 23 reads | ~47240 tok |
+| 17:00 | Session end: 25 writes across 12 files (AppDefaults.cs, SeedData.cs, Step5LegalStartTimesViewModel.cs, Step5AcademicYearViewModel.cs, Step6SemesterColorsViewModel.cs) | 23 reads | ~47240 tok |

@@ -181,16 +181,13 @@ public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
 
     public Step5LegalStartTimesViewModel()
     {
-        // Example block lengths. Times are in HHMM military format.
-        // The user can delete these and add their own before proceeding.
-        BlockLengths.Add(new WizardBlockLengthEntry(
-            2.0, "2 hours",
-            ["0800", "1000", "1200", "1400", "1600", "1700", "1800", "1900"]
-        ));
-        BlockLengths.Add(new WizardBlockLengthEntry(
-            3.0, "3 hours",
-            ["0900", "1200", "1500", "1800"]
-        ));
+        // Pre-populate from AppDefaults. The user can edit, delete, or add entries freely.
+        foreach (var (hours, startMinutes) in AppDefaults.LegalStartTimes)
+        {
+            var hhmm = startMinutes.Select(AppDefaults.MinutesToHhmm);
+            BlockLengths.Add(new WizardBlockLengthEntry(
+                hours, WizardBlockLengthEntry.LabelFor(hours), hhmm));
+        }
     }
 
     /// <summary>

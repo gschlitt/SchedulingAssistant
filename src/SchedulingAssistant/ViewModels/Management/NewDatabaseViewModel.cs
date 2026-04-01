@@ -384,16 +384,14 @@ public partial class NewDatabaseViewModel : ViewModelBase
         ayRepo.Insert(ay);
 
         // ── Legal start times (block lengths) ────────────────────────────────
+        // Only seed if the transferred config contained block lengths.
+        // If none were transferred (B2 path: no transfer), the new year starts unconfigured.
         if (config.BlockLengths.Count > 0)
         {
             var seedData = config.BlockLengths
                 .Select(bl => (bl.Hours, bl.StartTimes))
                 .ToList();
             SeedData.SeedWizardLegalStartTimes(db.Connection, ay.Id, seedData);
-        }
-        else
-        {
-            SeedData.SeedDefaultLegalStartTimes(db.Connection, ay.Id);
         }
 
         // ── Semesters ─────────────────────────────────────────────────────────
