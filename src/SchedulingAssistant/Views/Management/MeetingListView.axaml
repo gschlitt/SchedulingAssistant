@@ -206,68 +206,165 @@
                 <Button
                     Padding="4,1"
                     Command="{Binding AddSlotCommand}"
-                    Content="+ Add slot"
+                    Content="+ Add meeting"
                     FontSize="10" />
 
-                <!--  Attendees  -->
-                <TextBlock
-                    Margin="0,6,0,0"
-                    FontSize="10"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource TextLabel}"
-                    Text="Attendees" />
-                <ItemsControl ItemsSource="{Binding AttendeeSelections}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
-                            <CheckBox
-                                Content="{Binding DisplayName}"
-                                FontSize="11"
-                                IsChecked="{Binding IsSelected}"
-                                Padding="4,1" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!--  Campus + Tags side by side  -->
+                <!--  Attendees / Tags / Resources popup pickers  -->
                 <Grid
                     Margin="0,6,0,0"
-                    ColumnDefinitions="*,*">
+                    ColumnDefinitions="*,4,*,4,*">
 
-                    <!--  Campus  -->
-                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                    <!--  Attendees popup  -->
+                    <StackPanel Grid.Column="0">
                         <TextBlock
+                            Margin="0,0,0,1"
                             FontSize="10"
+                            FontWeight="SemiBold"
                             Foreground="{StaticResource TextLabel}"
-                            Text="Campus" />
-                        <ComboBox
-                            HorizontalAlignment="Stretch"
-                            CornerRadius="4"
-                            DisplayMemberBinding="{Binding Name}"
-                            FontSize="11"
-                            ItemsSource="{Binding Campuses}"
-                            SelectedValue="{Binding SelectedCampusId}"
-                            SelectedValueBinding="{Binding Id}" />
+                            Text="Attendees" />
+                        <Panel>
+                            <ToggleButton
+                                x:Name="AttendeesToggle"
+                                Classes="EditorPopupTrigger"
+                                Content="{Binding AttendeeSummary}" />
+                            <Popup
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #AttendeesToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #AttendeesToggle}">
+                                <Border
+                                    MinWidth="160"
+                                    MaxHeight="160"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource SubduedBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl Margin="2" ItemsSource="{Binding AttendeeSelections}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
+                                                    <CheckBox
+                                                        Margin="2,0,0,1"
+                                                        Padding="2,1"
+                                                        Content="{Binding DisplayName}"
+                                                        FontSize="11"
+                                                        IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
 
-                    <!--  Tags  -->
-                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                    <!--  Tags popup  -->
+                    <StackPanel Grid.Column="2">
                         <TextBlock
+                            Margin="0,0,0,1"
                             FontSize="10"
+                            FontWeight="SemiBold"
                             Foreground="{StaticResource TextLabel}"
                             Text="Tags" />
-                        <ItemsControl ItemsSource="{Binding TagSelections}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
-                                    <CheckBox
-                                        Content="{Binding Value.Name}"
-                                        FontSize="11"
-                                        IsChecked="{Binding IsSelected}"
-                                        Padding="4,1" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <Panel>
+                            <ToggleButton
+                                x:Name="TagsToggle"
+                                Classes="EditorPopupTrigger"
+                                Content="{Binding TagSummary}" />
+                            <Popup
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #TagsToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #TagsToggle}">
+                                <Border
+                                    MinWidth="140"
+                                    MaxHeight="160"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource SubduedBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl Margin="2" ItemsSource="{Binding TagSelections}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
+                                                    <CheckBox
+                                                        Margin="2,0,0,1"
+                                                        Padding="2,1"
+                                                        Content="{Binding Value.Name}"
+                                                        FontSize="11"
+                                                        IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
+                    </StackPanel>
+
+                    <!--  Resources popup  -->
+                    <StackPanel Grid.Column="4">
+                        <TextBlock
+                            Margin="0,0,0,1"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Resources" />
+                        <Panel>
+                            <ToggleButton
+                                x:Name="ResourcesToggle"
+                                Classes="EditorPopupTrigger"
+                                Content="{Binding ResourceSummary}" />
+                            <Popup
+                                IsLightDismissEnabled="True"
+                                IsOpen="{Binding #ResourcesToggle.IsChecked, Mode=TwoWay}"
+                                Placement="Bottom"
+                                PlacementTarget="{Binding #ResourcesToggle}">
+                                <Border
+                                    MinWidth="140"
+                                    MaxHeight="160"
+                                    Padding="2"
+                                    Background="{StaticResource FilterExpanderContent}"
+                                    BorderBrush="{StaticResource SubduedBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl Margin="2" ItemsSource="{Binding ResourceSelections}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ResourceSelectionViewModel}">
+                                                    <CheckBox
+                                                        Margin="2,0,0,1"
+                                                        Padding="2,1"
+                                                        Content="{Binding Value.Name}"
+                                                        FontSize="11"
+                                                        IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Panel>
                     </StackPanel>
                 </Grid>
+
+                <!--  Campus  -->
+                <StackPanel Margin="0,6,0,0">
+                    <TextBlock
+                        FontSize="10"
+                        Foreground="{StaticResource TextLabel}"
+                        Text="Campus" />
+                    <ComboBox
+                        HorizontalAlignment="Stretch"
+                        CornerRadius="4"
+                        DisplayMemberBinding="{Binding Name}"
+                        FontSize="11"
+                        ItemsSource="{Binding Campuses}"
+                        SelectedValue="{Binding SelectedCampusId}"
+                        SelectedValueBinding="{Binding Id}" />
+                </StackPanel>
 
                 <!--  Notes  -->
                 <StackPanel Margin="0,6,0,0" Spacing="1">

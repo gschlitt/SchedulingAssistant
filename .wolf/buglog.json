@@ -2694,6 +2694,166 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-04-01T21:48:55.264Z"
+    },
+    {
+      "id": "bug-169",
+      "timestamp": "2026-04-02T01:05:05.199Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Had \"{Binding IsShowingSections}\"",
+      "fix": "Changed to \"{Binding DataContext.IsShowingSections, ElementNa",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:05:05.199Z"
+    },
+    {
+      "id": "bug-170",
+      "timestamp": "2026-04-02T01:12:15.683Z",
+      "error_message": "Wrong operator: != should be &&",
+      "file": "src/SchedulingAssistant.Tests/EditorFlowTests.cs",
+      "root_cause": "Used \"!=\" instead of \"&&\"",
+      "fix": "Changed operator != → &&",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:12:15.683Z"
+    },
+    {
+      "id": "bug-171",
+      "timestamp": "2026-04-02T01:46:55.258Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→19 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:46:55.258Z"
+    },
+    {
+      "id": "bug-172",
+      "timestamp": "2026-04-02T01:47:26.169Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:47:26.169Z"
+    },
+    {
+      "id": "bug-173",
+      "timestamp": "2026-04-02T01:47:50.401Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: item is null",
+      "fix": "Added guard clause: if (item is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:47:50.401Z"
+    },
+    {
+      "id": "bug-174",
+      "timestamp": "2026-04-02T01:54:09.519Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:54:09.519Z"
+    },
+    {
+      "id": "bug-175",
+      "timestamp": "2026-04-02T01:54:13.231Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "Had \"{Binding EditVm.IsNew}\"",
+      "fix": "Changed to \"{Binding IsAddingMeeting}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T01:54:13.231Z"
+    },
+    {
+      "id": "bug-176",
+      "timestamp": "2026-04-02T02:59:07.901Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T02:59:07.901Z"
+    },
+    {
+      "id": "bug-177",
+      "timestamp": "2026-04-02T03:15:13.814Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 56→80 lines (2 removed) | Also: IReadOnlyList<SchedulingEnvironmentValue> allTags); // Populate title and notes from the existing meet",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-02T03:15:41.467Z"
+    },
+    {
+      "id": "bug-178",
+      "timestamp": "2026-04-02T03:16:34.557Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 65→162 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T03:16:34.557Z"
     }
   ]
 }

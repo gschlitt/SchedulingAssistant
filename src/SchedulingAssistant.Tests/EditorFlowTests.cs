@@ -117,7 +117,8 @@ public class EditorFlowTests
             meetingTypes:    new List<SchedulingEnvironmentValue>(),
             allRooms:        new List<Room>(),
             campuses:        new List<Campus>(),
-            allTags:         new List<SchedulingEnvironmentValue>());
+            allTags:         new List<SchedulingEnvironmentValue>(),
+            allResources:    new List<SchedulingEnvironmentValue>());
 
         return (vm, repo, store);
     }

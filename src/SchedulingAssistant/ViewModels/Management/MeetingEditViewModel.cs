@@ -4,6 +4,7 @@ using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -41,8 +42,15 @@ public partial class MeetingEditViewModel : ViewModelBase
     // ── Attendees ──────────────────────────────────────────────────────────────
 
     /// <summary>All instructors as checkboxes; those with IsSelected=true are saved as attendees.</summary>
-    [ObservableProperty]
-    private ObservableCollection<InstructorSelectionViewModel> _attendeeSelections = new();
+    public ObservableCollection<InstructorSelectionViewModel> AttendeeSelections { get; } = new();
+
+    /// <summary>
+    /// Comma-joined display names of selected attendees, shown in the collapsed popup trigger.
+    /// </summary>
+    public string AttendeeSummary =>
+        AttendeeSelections.Where(a => a.IsSelected).Select(a => a.DisplayName) is var names && names.Any()
+            ? string.Join(", ", names)
+            : "(none)";
 
     // ── Campus ────────────────────────────────────────────────────────────────
 
@@ -52,8 +60,24 @@ public partial class MeetingEditViewModel : ViewModelBase
     // ── Tags ──────────────────────────────────────────────────────────────────
 
     /// <summary>All available tags as checkboxes; selected ones are saved onto the meeting.</summary>
-    [ObservableProperty]
-    private ObservableCollection<TagSelectionViewModel> _tagSelections = new();
+    public ObservableCollection<TagSelectionViewModel> TagSelections { get; } = new();
+
+    /// <summary>Comma-joined names of selected tags, shown in the collapsed popup trigger.</summary>
+    public string TagSummary =>
+        TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Name) is var names && names.Any()
+            ? string.Join(", ", names)
+            : "(none)";
+
+    // ── Resources ─────────────────────────────────────────────────────────────
+
+    /// <summary>All available resources as checkboxes; selected ones are saved onto the meeting.</summary>
+    public ObservableCollection<ResourceSelectionViewModel> ResourceSelections { get; } = new();
+
+    /// <summary>Comma-joined names of selected resources, shown in the collapsed popup trigger.</summary>
+    public string ResourceSummary =>
+        ResourceSelections.Where(r => r.IsSelected).Select(r => r.Value.Name) is var names && names.Any()
+            ? string.Join(", ", names)
+            : "(none)";
 
     // ── Meta ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +105,7 @@ public partial class MeetingEditViewModel : ViewModelBase
     /// <param name="allRooms">Available rooms for the slot dropdowns.</param>
     /// <param name="campuses">Available campuses for the campus picker.</param>
     /// <param name="allTags">Available tags — those already on the meeting are pre-checked.</param>
+    /// <param name="allResources">Available resources — those already on the meeting are pre-checked.</param>
     public MeetingEditViewModel(
         Meeting meeting,
         bool isNew,
@@ -91,7 +116,8 @@ public partial class MeetingEditViewModel : ViewModelBase
         IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Room> allRooms,
         IReadOnlyList<Campus> campuses,
-        IReadOnlyList<SchedulingEnvironmentValue> allTags)
+        IReadOnlyList<SchedulingEnvironmentValue> allTags,
+        IReadOnlyList<SchedulingEnvironmentValue> allResources)
     {
         _meeting         = meeting;
         _meetingRepo     = meetingRepo;
@@ -101,32 +127,60 @@ public partial class MeetingEditViewModel : ViewModelBase
         _allRooms        = allRooms;
         IsNew            = isNew;
 
-        // Populate title and notes from the existing meeting
+        // Populate title and notes from the existing meeting.
         _title = meeting.Title;
         _notes = meeting.Notes;
 
-        // Populate schedule slots from existing schedule
+        // Populate schedule slots from existing schedule.
         foreach (var slot in meeting.Schedule)
             _slots.Add(CreateSlotVm(slot));
 
-        // Populate attendees (all instructors listed; assigned ones pre-checked)
+        // Populate attendees (all instructors listed; assigned ones pre-checked).
+        // No workload concept for meetings — IsSelected is all that matters.
         var assignedIds = meeting.InstructorAssignments.ToDictionary(a => a.InstructorId, a => a.Workload);
         foreach (var instr in allInstructors.OrderBy(i => i.LastName).ThenBy(i => i.FirstName))
         {
             bool selected = assignedIds.TryGetValue(instr.Id, out var w);
-            _attendeeSelections.Add(new InstructorSelectionViewModel(instr, selected, w));
+            AttendeeSelections.Add(new InstructorSelectionViewModel(instr, selected, w));
         }
+        WireSelectionSummary(AttendeeSelections, nameof(AttendeeSummary));
 
-        // Populate campuses with a leading "(none)" sentinel
+        // Populate campuses with a leading "(none)" sentinel.
         _campuses.Add(new Campus { Id = "", Name = "(none)" });
         foreach (var c in campuses.OrderBy(c => c.Name))
             _campuses.Add(c);
         _selectedCampusId = meeting.CampusId ?? "";
 
-        // Populate tags (all available tags; meeting's tags pre-checked)
+        // Populate tags (all available tags; meeting's tags pre-checked).
         var meetingTagSet = meeting.TagIds.ToHashSet();
         foreach (var tag in allTags.OrderBy(t => t.Name))
-            _tagSelections.Add(new TagSelectionViewModel(tag, meetingTagSet.Contains(tag.Id)));
+            TagSelections.Add(new TagSelectionViewModel(tag, meetingTagSet.Contains(tag.Id)));
+        WireSelectionSummary(TagSelections, nameof(TagSummary));
+
+        // Populate resources (all available resources; meeting's resources pre-checked).
+        var meetingResourceSet = meeting.ResourceIds.ToHashSet();
+        foreach (var resource in allResources.OrderBy(r => r.Name))
+            ResourceSelections.Add(new ResourceSelectionViewModel(resource, meetingResourceSet.Contains(resource.Id)));
+        WireSelectionSummary(ResourceSelections, nameof(ResourceSummary));
+    }
+
+    /// <summary>
+    /// Subscribes to <see cref="INotifyPropertyChanged.PropertyChanged"/> on each item in
+    /// <paramref name="collection"/> so that the named summary property fires
+    /// <see cref="ObservableObject.OnPropertyChanged(string)"/> whenever <c>IsSelected</c> changes.
+    /// </summary>
+    /// <typeparam name="T">Item type; must implement <see cref="INotifyPropertyChanged"/>.</typeparam>
+    /// <param name="collection">The observable collection to watch.</param>
+    /// <param name="summaryPropertyName">The name of the summary property to notify.</param>
+    private void WireSelectionSummary<T>(ObservableCollection<T> collection, string summaryPropertyName)
+        where T : INotifyPropertyChanged
+    {
+        foreach (var item in collection)
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == "IsSelected")
+                    OnPropertyChanged(summaryPropertyName);
+            };
     }
 
     // ── Slot management ───────────────────────────────────────────────────────
@@ -160,14 +214,10 @@ public partial class MeetingEditViewModel : ViewModelBase
             .Cast<SectionDaySchedule>()
             .ToList();
 
-        // Collect selected attendees with workload
+        // Collect selected attendees (meetings have no workload concept).
         _meeting.InstructorAssignments = AttendeeSelections
             .Where(a => a.IsSelected)
-            .Select(a => new InstructorAssignment
-            {
-                InstructorId = a.Value.Id,
-                Workload     = a.ParsedWorkload
-            })
+            .Select(a => new InstructorAssignment { InstructorId = a.Value.Id })
             .ToList();
 
         _meeting.CampusId = string.IsNullOrEmpty(SelectedCampusId) ? null : SelectedCampusId;
@@ -175,6 +225,11 @@ public partial class MeetingEditViewModel : ViewModelBase
         _meeting.TagIds = TagSelections
             .Where(t => t.IsSelected)
             .Select(t => t.Value.Id)
+            .ToList();
+
+        _meeting.ResourceIds = ResourceSelections
+            .Where(r => r.IsSelected)
+            .Select(r => r.Value.Id)
             .ToList();
 
         if (IsNew)
