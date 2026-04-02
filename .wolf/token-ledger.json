@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 5914831,
-    "total_reads": 2381,
-    "total_writes": 1980,
-    "total_sessions": 99,
-    "anatomy_hits": 714,
-    "anatomy_misses": 1637,
-    "repeated_reads_blocked": 1217,
-    "estimated_savings_vs_bare_cli": 9108604
+    "total_tokens_estimated": 5997994,
+    "total_reads": 2397,
+    "total_writes": 1999,
+    "total_sessions": 101,
+    "anatomy_hits": 723,
+    "anatomy_misses": 1644,
+    "repeated_reads_blocked": 1227,
+    "estimated_savings_vs_bare_cli": 9259294
   },
   "sessions": [
     {
@@ -27904,6 +27904,231 @@
         "writes_count": 14,
         "repeated_reads_blocked": 4,
         "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-04-02-0839",
+      "started": "2026-04-02T15:39:07.512Z",
+      "ended": "2026-04-02T15:44:10.953Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 6951,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 11872,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 3304,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 7333,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 2840,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 27,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 29460,
+        "output_tokens_estimated": 2988,
+        "reads_count": 4,
+        "writes_count": 8,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-04-02-0839",
+      "started": "2026-04-02T15:39:07.512Z",
+      "ended": "2026-04-02T15:54:02.069Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 6951,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 11872,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 3304,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 7333,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+          "tokens_estimated": 17878,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/GridData.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/MeetingStore.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SectionDaySchedule.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Section.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SchedulableBase.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Meeting.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Course.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 2840,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 27,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/GridData.cs",
+          "tokens_estimated": 199,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+          "tokens_estimated": 50,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 47338,
+        "output_tokens_estimated": 3377,
+        "reads_count": 12,
+        "writes_count": 11,
+        "repeated_reads_blocked": 9,
+        "anatomy_lookups": 5
       }
     }
   ],

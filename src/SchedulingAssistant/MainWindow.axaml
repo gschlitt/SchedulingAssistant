@@ -590,7 +590,7 @@
                                             SelectedIndex="{Binding SelectedSortModeIndex}" />
                                     </StackPanel>
 
-                                    <!--  Meeting action buttons — shown when Meeting View is active  -->
+                                    <!--  Event action buttons — shown when Events View is active  -->
                                     <StackPanel
                                         Grid.Row="1"
                                         Margin="0,12,0,1"
@@ -627,7 +627,7 @@
                                 </Grid>
                             </Border>
 
-                            <!--  Content: swaps between Section View and Meeting View  -->
+                            <!--  Content: swaps between Section View and Events View  -->
                             <Panel Grid.Row="1">
                                 <views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, ElementName=RootWindow}" />
                                 <views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding DataContext.IsShowingMeetings, ElementName=RootWindow}" />

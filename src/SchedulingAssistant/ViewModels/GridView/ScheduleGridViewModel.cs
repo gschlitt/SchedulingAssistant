@@ -874,7 +874,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
                     IsOverlay: false,
                     meeting.Title, attendees ?? string.Empty, meeting.Id,
-                    meeting.SemesterId, semName ?? string.Empty, semColor ?? string.Empty));
+                    meeting.SemesterId, semName ?? string.Empty, semColor ?? string.Empty,
+                    FrequencyAnnotation: SectionDaySchedule.FormatFrequency(slot.Frequency)));
             }
         }
         return blocks;
@@ -1107,7 +1108,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // IsCommitment=true is kept so the right-click context menu (section-only) is
         // suppressed; IsMeeting=true lets the pointer handler distinguish meetings from
         // plain commitments and allow double-click through.
-        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true),
+        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true, FrequencyAnnotation: m.FrequencyAnnotation),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };
 

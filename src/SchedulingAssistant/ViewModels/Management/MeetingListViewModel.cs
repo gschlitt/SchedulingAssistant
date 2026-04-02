@@ -10,7 +10,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
 /// Drives the Meeting List left panel — the counterpart to <see cref="SectionListViewModel"/>
-/// when the user has toggled to Meeting View.
+/// when the user has toggled to Events View.
 ///
 /// <para>
 /// Displays a list of <see cref="MeetingListItemViewModel"/> cards for the currently

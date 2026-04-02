@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T03:35:38.515Z
-> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T15:51:50.669Z
+> Files: 13 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -172,7 +172,7 @@
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml` — Declares applied (~11872 tok)
+- `MainWindow.axaml` — Declares applied (~11871 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11704 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -198,11 +198,12 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7333 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7332 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~17878 tok)
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2999 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~17915 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
@@ -226,7 +227,7 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `MeetingListView.axaml` (~6951 tok)
+- `MeetingListView.axaml` (~7726 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

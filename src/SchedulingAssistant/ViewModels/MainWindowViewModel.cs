@@ -33,7 +33,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public MeetingListViewModel MeetingListVm { get; }
 
     /// <summary>
-    /// True when the left panel is showing the Meeting View; false for Section View (default).
+    /// True when the left panel is showing the Events View; false for Section View (default).
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LeftPanelTitle))]
@@ -50,7 +50,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Label on the view-toggle button — shows the inactive view name.</summary>
     public string ToggleMeetingViewLabel => IsShowingMeetings ? "← Sections" : "Events →";
 
-    /// <summary>Toggles the left panel between Section View and Meeting View.</summary>
+    /// <summary>Toggles the left panel between Section View and Events View.</summary>
     [RelayCommand]
     private void ToggleMeetingView() => IsShowingMeetings = !IsShowingMeetings;
 

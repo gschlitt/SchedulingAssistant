@@ -62,13 +62,16 @@ public record SectionMeetingBlock(
 /// blocks show a plain title rather than a course code. They render with a distinct
 /// visual treatment and do not support click-selection in this version.
 /// Title     = display text (e.g. "Faculty Meeting")
-/// Attendees = space-joined initials of assigned attendees (may be empty)
-/// MeetingId = database ID — kept for future edit-on-click support
+/// Attendees           = space-joined initials of assigned attendees (may be empty)
+/// MeetingId           = database ID — kept for future edit-on-click support
+/// FrequencyAnnotation = parenthesised frequency annotation, e.g. "(odd)", "(1,6,7)".
+///                       Empty string when the event meets every week.
 /// </summary>
 public record MeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
     string Title, string Attendees, string MeetingId,
-    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+    string SemesterId = "", string SemesterName = "", string SemesterColor = "",
+    string FrequencyAnnotation = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>

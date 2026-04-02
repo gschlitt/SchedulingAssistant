@@ -2886,6 +2886,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-02T03:35:38.548Z"
+    },
+    {
+      "id": "bug-181",
+      "timestamp": "2026-04-02T15:42:38.247Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 108→151 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T15:42:38.247Z"
+    },
+    {
+      "id": "bug-182",
+      "timestamp": "2026-04-02T15:42:43.334Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "Had \"+ Add meeting\"",
+      "fix": "Changed to \"+ Add time slot\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-02T15:42:47.881Z"
+    },
+    {
+      "id": "bug-183",
+      "timestamp": "2026-04-02T15:43:00.904Z",
+      "error_message": "Wrong reference: Meeting should be Events",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Used \"Meeting\" instead of \"Events\"",
+      "fix": "Changed Meeting → Events",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T15:43:00.904Z"
+    },
+    {
+      "id": "bug-184",
+      "timestamp": "2026-04-02T15:43:08.295Z",
+      "error_message": "Wrong reference: Meeting should be Events",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+      "root_cause": "Used \"Meeting\" instead of \"Events\"",
+      "fix": "Changed Meeting → Events",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T15:43:08.295Z"
+    },
+    {
+      "id": "bug-185",
+      "timestamp": "2026-04-02T15:43:17.503Z",
+      "error_message": "Wrong reference: Meeting should be Events",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Used \"Meeting\" instead of \"Events\"",
+      "fix": "Changed Meeting → Events",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-02T15:43:21.642Z"
+    },
+    {
+      "id": "bug-186",
+      "timestamp": "2026-04-02T15:51:39.822Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridData.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→11 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T15:51:39.822Z"
     }
   ]
 }
