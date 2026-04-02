@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T03:21:52.644Z
-> Files: 10 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T03:35:38.515Z
+> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -172,7 +172,7 @@
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml` — Declares applied (~11873 tok)
+- `MainWindow.axaml` — Declares applied (~11872 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11704 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -198,6 +198,7 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7333 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
@@ -220,6 +221,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~9355 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11638 tok)
 
 ## src/SchedulingAssistant/Views/Management/

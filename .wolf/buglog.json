@@ -2854,6 +2854,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-02T03:16:34.557Z"
+    },
+    {
+      "id": "bug-179",
+      "timestamp": "2026-04-02T03:35:34.515Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Had \"Switch between Section View and Meeting View\"",
+      "fix": "Changed to \"Switch between Section View and Events View\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T03:35:34.515Z"
+    },
+    {
+      "id": "bug-180",
+      "timestamp": "2026-04-02T03:35:38.548Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"Meetings\"",
+      "fix": "Changed to \"Events\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T03:35:38.548Z"
     }
   ]
 }

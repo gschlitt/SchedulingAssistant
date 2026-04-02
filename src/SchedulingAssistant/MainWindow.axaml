@@ -496,7 +496,7 @@
                                             DockPanel.Dock="Right"
                                             FontSize="10"
                                             Foreground="{StaticResource TextFaint}"
-                                            ToolTip.Tip="Switch between Section View and Meeting View" />
+                                            ToolTip.Tip="Switch between Section View and Events View" />
                                         <TextBlock
                                             Margin="1,0,0,0"
                                             HorizontalAlignment="Left"

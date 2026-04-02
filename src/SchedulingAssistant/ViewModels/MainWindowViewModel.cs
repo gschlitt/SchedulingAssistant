@@ -45,10 +45,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsShowingSections => !IsShowingMeetings;
 
     /// <summary>Title shown in the left panel header — changes with the active view.</summary>
-    public string LeftPanelTitle => IsShowingMeetings ? "Meeting View" : "Section View";
+    public string LeftPanelTitle => IsShowingMeetings ? "Events View" : "Section View";
 
     /// <summary>Label on the view-toggle button — shows the inactive view name.</summary>
-    public string ToggleMeetingViewLabel => IsShowingMeetings ? "← Sections" : "Meetings →";
+    public string ToggleMeetingViewLabel => IsShowingMeetings ? "← Sections" : "Events →";
 
     /// <summary>Toggles the left panel between Section View and Meeting View.</summary>
     [RelayCommand]
