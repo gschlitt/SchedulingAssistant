@@ -2982,6 +2982,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-02T15:51:39.822Z"
+    },
+    {
+      "id": "bug-187",
+      "timestamp": "2026-04-02T16:06:35.310Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 93→157 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T16:06:35.310Z"
+    },
+    {
+      "id": "bug-188",
+      "timestamp": "2026-04-02T16:16:19.372Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Had \"ChromeBorder\"",
+      "fix": "Changed to \"DaySeparators\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T16:16:19.372Z"
+    },
+    {
+      "id": "bug-189",
+      "timestamp": "2026-04-02T16:24:00.740Z",
+      "error_message": "Wrong reference: TilePadding should be TilePaddingH",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"TilePadding\" instead of \"TilePaddingH\"",
+      "fix": "Changed TilePadding → TilePaddingH",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-04-02T16:24:38.624Z"
+    },
+    {
+      "id": "bug-190",
+      "timestamp": "2026-04-02T16:34:39.577Z",
+      "error_message": "Wrong reference: TilePaddingH should be 2",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"TilePaddingH\" instead of \"2\"",
+      "fix": "Changed TilePaddingH → 2",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-02T16:34:39.577Z"
     }
   ]
 }

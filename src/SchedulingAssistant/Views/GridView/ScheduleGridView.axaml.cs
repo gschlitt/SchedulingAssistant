@@ -28,7 +28,6 @@ public partial class ScheduleGridView : UserControl
     private const double DayHeaderHeight  = 28;   // height of the day-name row
     private const double SemesterBarHeight = 5;   // thin colored bar below day name in multi-semester mode
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
-    private const double TilePadding      = 3;
     private const double GridBottomPadding = 12;  // extra space below the last gridline so the label and rule aren't clipped
     
     /// <summary>
@@ -42,7 +41,7 @@ public partial class ScheduleGridView : UserControl
     /// <summary>
     /// Total horizontal pixels consumed by the tile render layers between the day-column
     /// edge and the TextBlock that displays the label. Breakdown:
-    ///   2 × TilePadding (slot-allocation gap)         =  6 px
+    ///   2 × TilePaddingH (slot-allocation gap)         =  6 px
     ///   2 × tile BorderThickness (max 3 px, multi-sem) =  6 px
     ///   2 × tile Padding left/right (3 px each)        =  6 px
     ///   2 × entryRow Padding left/right (1 px each)    =  2 px
@@ -60,6 +59,12 @@ public partial class ScheduleGridView : UserControl
     private static double FontSizeFromResource(string key) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
             ? d : 12;
+    private static double Layout(string key) =>
+        Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
+            ? d : 0;
+
+    private static double TilePaddingV => Layout("TilePaddingVertical");
+    private static double TilePaddingH => Layout("TilePaddingHorizontal");
 
     private static IBrush TileFill              => Res("TileFill");
     private static IBrush TileFillSelected      => Res("TileFillSelected");
@@ -70,7 +75,7 @@ public partial class ScheduleGridView : UserControl
     private static IBrush RuleBrush          => Res("GridRuleLine");
     private static IBrush HourRuleBrush      => Res("GridHourRuleLine");
     private static IBrush HeaderFill         => Res("ChromeBackground");
-    private static IBrush HeaderBorder       => Res("ChromeBorder");
+    private static IBrush HeaderBorder       => Res("DaySeparators");
     private static IBrush GutterBg           => Res("GridGutterBackground");
 
 
@@ -239,7 +244,7 @@ public partial class ScheduleGridView : UserControl
                 // Time-proportional height before any content expansion
                 double timeBasedH = TimeToY(tile.EndMinutes, data.FirstRowMinutes)
                                   - TimeToY(tile.StartMinutes, data.FirstRowMinutes)
-                                  - TilePadding * 2;
+                                  - TilePaddingV * 2;
                 timeBasedH = Math.Max(timeBasedH, 18);
 
                 // Build a StackPanel matching the render layout to measure natural height.
@@ -403,7 +408,7 @@ public partial class ScheduleGridView : UserControl
             double minSubColWidth  = headerTextWidth / semCount;
 
             // Size each semester sub-column independently from its own content.
-            // Cluster required width = sum of slot natural widths + TilePadding (gap on left).
+            // Cluster required width = sum of slot natural widths + 2 × TilePaddingH (left + right gaps).
             // tileSumNaturalW is the same for all tiles in a given cluster, so the max across
             // all tiles in the column is the widest cluster's required width.
             for (int s = 0; s < semCount; s++)
@@ -413,7 +418,7 @@ public partial class ScheduleGridView : UserControl
 
                 double colContentWidth = dayCol.Tiles.Count == 0 ? 0 :
                     dayCol.Tiles.Max(t =>
-                        tileSumNaturalW[(flatCol, t.StartMinutes, t.EndMinutes)] + TilePadding);
+                        tileSumNaturalW[(flatCol, t.StartMinutes, t.EndMinutes)] + 2 * TilePaddingH);
 
                 dayColWidths[flatCol] = Math.Max(minSubColWidth, colContentWidth);
             }
@@ -552,9 +557,9 @@ public partial class ScheduleGridView : UserControl
                 double natW      = tileSlotNaturalW[tileKey];
                 double sumNatW   = tileSumNaturalW[tileKey];
                 double predNatW  = tilePredNaturalW[tileKey];
-                double scale     = (dayColWidth - TilePadding) / sumNatW;
+                double scale     = (dayColWidth - TilePaddingH) / sumNatW;
                 double tileW     = natW * scale;
-                double tileX     = dayX + TilePadding / 2.0 + predNatW * scale;
+                double tileX     = dayX + TilePaddingH + predNatW * scale;
 
                 // Get adjusted Y position and height using adjusted gridline positions
                 var (timeBasedH, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
@@ -564,9 +569,9 @@ public partial class ScheduleGridView : UserControl
                 double endY = effectiveHeaderHeight + TimeToY(tile.EndMinutes, data.FirstRowMinutes)
                             + GetGridlineOffset(gridlineYOffsets, tile.EndMinutes);
 
-                double adjustedTileY = startY + TilePadding;
+                double adjustedTileY = startY + TilePaddingV;
                 // Height is the distance between adjusted gridlines, minus padding; but at least the measured content height
-                double gridlineSpanH = endY - startY - TilePadding * 2;
+                double gridlineSpanH = endY - startY - TilePaddingV * 2;
                 double adjustedTileH = Math.Max(gridlineSpanH, actualH);
 
                 // Rebuild the StackPanel (we need fresh instance with event handlers)
@@ -685,7 +690,7 @@ public partial class ScheduleGridView : UserControl
 
                     border = new Border
                     {
-                        Width           = tileW - TilePadding,
+                        Width           = tileW - TilePaddingH,
                         Height          = adjustedTileH,
                         Background      = TileFill,
                         BorderBrush     = OverlayFrameBorder,
@@ -700,7 +705,7 @@ public partial class ScheduleGridView : UserControl
                     // Standard tile: use semester color in multi-semester mode, else gray border
                     border = new Border
                     {
-                        Width           = tileW - TilePadding,
+                        Width           = tileW - TilePaddingH,
                         Height          = adjustedTileH,
                         Background      = TileFill,
                         BorderBrush     = tileHasOverlay ? OverlayFrameBorder

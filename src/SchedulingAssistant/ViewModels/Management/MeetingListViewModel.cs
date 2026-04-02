@@ -9,14 +9,14 @@ using System.ComponentModel;
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// Drives the Meeting List left panel — the counterpart to <see cref="SectionListViewModel"/>
+/// Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/>
 /// when the user has toggled to Events View.
 ///
 /// <para>
-/// Displays a list of <see cref="MeetingListItemViewModel"/> cards for the currently
-/// selected semester(s). One card may be expanded inline for editing via
-/// <see cref="MeetingEditViewModel"/>. Adding a new meeting inserts a transient card
-/// at the top of the list.
+/// In single-semester mode, displays a flat list of <see cref="MeetingListItemViewModel"/>
+/// cards. In multi-semester mode, inserts a <see cref="SemesterBannerViewModel"/> header
+/// before each semester group and shows a colored left border on every card, matching the
+/// pattern used by <see cref="SectionListViewModel"/>.
 /// </para>
 ///
 /// <para>
@@ -38,18 +38,27 @@ public partial class MeetingListViewModel : ViewModelBase
 
     /// <summary>
     /// The transient placeholder card inserted into <see cref="Items"/> during Add
-    /// while the meeting has not yet been saved. Removed by <see cref="CloseEditor"/>.
+    /// while the event has not yet been saved. Removed by <see cref="CloseEditor"/>.
     /// </summary>
     private MeetingListItemViewModel? _newMeetingPlaceholder;
 
-    /// <summary>The displayed list of meeting cards.</summary>
-    [ObservableProperty] private ObservableCollection<MeetingListItemViewModel> _items = new();
+    /// <summary>
+    /// The flat list of items shown in the Event List.
+    /// Contains a mix of <see cref="SemesterBannerViewModel"/> (group headers) and
+    /// <see cref="MeetingListItemViewModel"/> (event cards). Banners appear only when
+    /// more than one semester is loaded; in single-semester mode the list contains only
+    /// event cards.
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<IMeetingListEntry> _items = new();
 
-    /// <summary>The currently selected card, or null when nothing is selected.</summary>
+    /// <summary>
+    /// The currently selected list entry. May be an event card or (transiently) a banner.
+    /// Use <see cref="SelectedMeetingItem"/> for a cast-safe accessor that returns null for banners.
+    /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EditCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]
-    private MeetingListItemViewModel? _selectedItem;
+    private IMeetingListEntry? _selectedItem;
 
     /// <summary>
     /// The currently open inline editor, or null when no card is being edited.
@@ -57,8 +66,37 @@ public partial class MeetingListViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private MeetingEditViewModel? _editVm;
 
+    /// <summary>Whether the "Add to which semester?" inline prompt is visible.</summary>
+    [ObservableProperty] private bool _isAddSemesterPromptVisible;
+
+    // ── Computed Properties ───────────────────────────────────────────────────
+
     /// <summary>True when write operations are permitted (the write lock is held).</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>True when more than one semester is currently loaded.</summary>
+    public bool IsMultiSemesterMode => _semesterContext.IsMultiSemesterMode;
+
+    /// <summary>
+    /// The currently selected event card, or null if nothing is selected or a banner is selected.
+    /// </summary>
+    public MeetingListItemViewModel? SelectedMeetingItem => SelectedItem as MeetingListItemViewModel;
+
+    /// <summary>
+    /// Semester options shown in the Add prompt. Rebuilt each time the prompt opens.
+    /// </summary>
+    public IReadOnlyList<SemesterPromptItem> AddSemesterOptions { get; private set; } = [];
+
+    // ── Property-Changed Hooks ────────────────────────────────────────────────
+
+    partial void OnSelectedItemChanged(IMeetingListEntry? value)
+    {
+        // Banners are not selectable entities; ignore clicks on them.
+        // CanExecute for Edit/Delete is evaluated against SelectedMeetingItem, so
+        // NotifyCanExecuteChangedFor on the attribute handles those automatically.
+        if (value is SemesterBannerViewModel)
+            return;
+    }
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -96,6 +134,8 @@ public partial class MeetingListViewModel : ViewModelBase
     {
         if (e.PropertyName != nameof(SemesterContext.SelectedSemesters)) return;
 
+        OnPropertyChanged(nameof(IsMultiSemesterMode));
+
         // When semesters change, ScheduleGridViewModel already reloads the MeetingStore,
         // which fires MeetingsChanged → LoadFromStore. But if the grid is not active we
         // reload here directly so the list is never stale.
@@ -103,37 +143,57 @@ public partial class MeetingListViewModel : ViewModelBase
         _meetingStore.Reload(_meetingRepo, semIds);
     }
 
-    /// <summary>Rebuilds <see cref="Items"/> from the current <see cref="MeetingStore"/> cache.</summary>
+    /// <summary>
+    /// Rebuilds <see cref="Items"/> from the current <see cref="MeetingStore"/> cache.
+    /// In multi-semester mode, inserts a <see cref="SemesterBannerViewModel"/> before
+    /// each semester group and passes semester color to each card for the left border.
+    /// </summary>
     private void LoadFromStore()
     {
-        // If a new meeting is being added when a reload arrives (e.g. from a semester
-        // change), discard the unsaved placeholder and close the editor — the unsaved
-        // meeting cannot survive a context switch, matching section-list behaviour.
+        // If a new event is being added when a reload arrives (e.g. from a semester
+        // change), discard the unsaved placeholder and close the editor.
         if (_newMeetingPlaceholder is not null)
             CloseEditor();
 
         var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
 
-        // Only show meetings for currently selected semesters.
-        var selectedIds = _semesterContext.SelectedSemesters
-            .Select(s => s.Semester.Id)
-            .ToHashSet();
+        var selectedSemesters = _semesterContext.SelectedSemesters.ToList();
+        var selectedIds       = selectedSemesters.Select(s => s.Semester.Id).ToHashSet();
 
         var previousEditId = EditVm?.MeetingId;
-        var previousSelId  = SelectedItem?.Meeting.Id;
+        var previousSelId  = SelectedMeetingItem?.Meeting.Id;
 
-        Items.Clear();
-        foreach (var meeting in _meetingStore.Meetings.Where(m => selectedIds.Contains(m.SemesterId)))
-            Items.Add(new MeetingListItemViewModel(meeting, instructors, rooms));
+        bool showBanners = selectedSemesters.Count > 1;
+        var newItems = new List<IMeetingListEntry>();
+
+        for (int i = 0; i < selectedSemesters.Count; i++)
+        {
+            var semDisplay = selectedSemesters[i];
+
+            if (showBanners)
+                newItems.Add(new SemesterBannerViewModel(semDisplay, i));
+
+            var semName  = semDisplay.Semester.Name;
+            var semColor = semDisplay.Semester.Color ?? string.Empty;
+
+            var meetings = _meetingStore.Meetings
+                .Where(m => m.SemesterId == semDisplay.Semester.Id)
+                .OrderBy(m => m.Title, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var meeting in meetings)
+                newItems.Add(new MeetingListItemViewModel(meeting, instructors, rooms, semName, semColor));
+        }
+
+        Items = new ObservableCollection<IMeetingListEntry>(newItems);
 
         // Restore selection and edit state after reload.
         if (previousSelId is not null)
-            SelectedItem = Items.FirstOrDefault(i => i.Meeting.Id == previousSelId);
+            SelectedItem = Items.OfType<MeetingListItemViewModel>().FirstOrDefault(i => i.Meeting.Id == previousSelId);
 
         if (previousEditId is not null)
         {
-            var restored = Items.FirstOrDefault(i => i.Meeting.Id == previousEditId);
+            var restored = Items.OfType<MeetingListItemViewModel>().FirstOrDefault(i => i.Meeting.Id == previousEditId);
             if (restored is not null)
                 OpenEditor(restored.Meeting, isNew: false);
         }
@@ -142,38 +202,94 @@ public partial class MeetingListViewModel : ViewModelBase
     // ── Commands ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Opens a blank inline editor at the top of the list for a new meeting.
-    /// Inserts a transient placeholder card (parallel to the section list Add flow)
-    /// rather than routing through <see cref="OpenEditor"/>, so that the placeholder
-    /// is in <see cref="Items"/> before the card lookup runs.
+    /// Opens a blank inline editor for a new event.
+    /// In multi-semester mode: if an event is selected, defaults to its semester without
+    /// prompting; otherwise shows the "Add to which semester?" inline prompt.
+    /// Matches the pattern used by <see cref="SectionListViewModel.Add"/>.
     /// </summary>
     [RelayCommand]
     private void Add()
     {
+        if (_semesterContext.IsMultiSemesterMode)
+        {
+            if (SelectedMeetingItem is not null)
+                AddToSemester(SelectedMeetingItem.Meeting.SemesterId);
+            else
+                ShowAddSemesterPrompt();
+            return;
+        }
+
         var semester = _semesterContext.SelectedSemesters.FirstOrDefault()?.Semester;
         if (semester is null) return;
 
-        // Close any currently open editor (collapses its card and removes any
-        // previous placeholder) before inserting the new one.
+        // In single-semester mode insert at the top of the list.
+        CreateNewMeetingAt(semester.Id, insertAt: 0);
+    }
+
+    /// <summary>
+    /// Builds the <see cref="AddSemesterOptions"/> list from the currently selected semesters
+    /// and makes the prompt panel visible.
+    /// </summary>
+    private void ShowAddSemesterPrompt()
+    {
+        var semesters = _semesterContext.SelectedSemesters.ToList();
+        AddSemesterOptions = semesters
+            .Select((s, i) => new SemesterPromptItem(s, i))
+            .ToList();
+        OnPropertyChanged(nameof(AddSemesterOptions));
+        IsAddSemesterPromptVisible = true;
+    }
+
+    /// <summary>
+    /// Called when the user picks a semester from the Add prompt.
+    /// Hides the prompt, finds the right insertion point in that semester's group,
+    /// and opens the inline editor.
+    /// </summary>
+    /// <param name="semesterId">The ID of the semester to add to.</param>
+    [RelayCommand]
+    private void AddToSemester(string semesterId)
+    {
+        IsAddSemesterPromptVisible = false;
+        int insertAt = FindInsertionIndex(semesterId);
+        CreateNewMeetingAt(semesterId, insertAt);
+    }
+
+    /// <summary>Hides the Add prompt without adding an event.</summary>
+    [RelayCommand]
+    private void CancelAddPrompt() => IsAddSemesterPromptVisible = false;
+
+    /// <summary>
+    /// Creates a placeholder card and inline editor for a new event in the given semester,
+    /// inserting the card at <paramref name="insertAt"/>.
+    /// </summary>
+    /// <param name="semesterId">The target semester for the new event.</param>
+    /// <param name="insertAt">Position in <see cref="Items"/> to insert the placeholder card.</param>
+    private void CreateNewMeetingAt(string semesterId, int insertAt)
+    {
         CloseEditor();
 
-        var meeting = new Meeting { SemesterId = semester.Id };
+        var semDisplay = _semesterContext.SelectedSemesters.FirstOrDefault(s => s.Semester.Id == semesterId);
+        var semName    = semDisplay?.Semester.Name  ?? string.Empty;
+        var semColor   = semDisplay?.Semester.Color ?? string.Empty;
+
+        var meeting = new Meeting { SemesterId = semesterId };
 
         // Share the lookup data between the placeholder card and the editor VM
         // to avoid a duplicate round-trip to the repository.
-        var allInstructors  = _instructorRepo.GetAll();
-        var allRooms        = _roomRepo.GetAll();
+        var allInstructors   = _instructorRepo.GetAll();
+        var allRooms         = _roomRepo.GetAll();
         var instructorLookup = allInstructors.ToDictionary(i => i.Id);
         var roomLookup       = allRooms.ToDictionary(r => r.Id);
 
-        _newMeetingPlaceholder = new MeetingListItemViewModel(meeting, instructorLookup, roomLookup)
+        _newMeetingPlaceholder = new MeetingListItemViewModel(meeting, instructorLookup, roomLookup, semName, semColor)
         {
             IsBeingCreated = true
         };
-        Items.Insert(0, _newMeetingPlaceholder);
 
-        // Build the editor VM directly (not via OpenEditor) so we can wire the
-        // placeholder-removal into the EditCompleted callback.
+        // Clamp insertAt to a valid range in case the list changed since the index was computed.
+        insertAt = Math.Clamp(insertAt, 0, Items.Count);
+        Items.Insert(insertAt, _newMeetingPlaceholder);
+
         var academicYearId  = _semesterContext.SelectedAcademicYear?.Id ?? string.Empty;
         var legalStartTimes = string.IsNullOrEmpty(academicYearId)
             ? new List<LegalStartTime>()
@@ -197,28 +313,54 @@ public partial class MeetingListViewModel : ViewModelBase
         _newMeetingPlaceholder.IsExpanded = true;
     }
 
-    /// <summary>Opens the inline editor for the currently selected meeting.</summary>
+    /// <summary>
+    /// Finds the best index at which to insert a new event for the given semester.
+    /// Returns the index immediately after the last existing event in that semester's
+    /// group, or immediately after the group's banner if the group is empty.
+    /// Falls back to end-of-list if neither is found.
+    /// </summary>
+    /// <param name="semesterId">Target semester ID.</param>
+    private int FindInsertionIndex(string semesterId)
+    {
+        // Walk backward to find the last event belonging to this semester.
+        for (int i = Items.Count - 1; i >= 0; i--)
+        {
+            if (Items[i] is MeetingListItemViewModel vm && vm.Meeting.SemesterId == semesterId)
+                return i + 1;
+        }
+
+        // No events yet — insert right after the semester's banner.
+        for (int i = 0; i < Items.Count; i++)
+        {
+            if (Items[i] is SemesterBannerViewModel banner && banner.SemesterId == semesterId)
+                return i + 1;
+        }
+
+        return Items.Count;
+    }
+
+    /// <summary>Opens the inline editor for the currently selected event.</summary>
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private void Edit()
     {
-        if (SelectedItem is null) return;
-        OpenEditor(SelectedItem.Meeting, isNew: false);
+        if (SelectedMeetingItem is null) return;
+        OpenEditor(SelectedMeetingItem.Meeting, isNew: false);
     }
 
-    private bool CanEdit() => SelectedItem is not null;
+    private bool CanEdit() => SelectedMeetingItem is not null;
 
-    /// <summary>Deletes the currently selected meeting after confirmation.</summary>
+    /// <summary>Deletes the currently selected event after confirmation.</summary>
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private void Delete()
     {
-        if (SelectedItem is null) return;
-        _meetingRepo.Delete(SelectedItem.Meeting.Id);
+        if (SelectedMeetingItem is null) return;
+        _meetingRepo.Delete(SelectedMeetingItem.Meeting.Id);
 
         var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
         _meetingStore.Reload(_meetingRepo, semIds);
     }
 
-    private bool CanDelete() => SelectedItem is not null;
+    private bool CanDelete() => SelectedMeetingItem is not null;
 
     // ── Editor lifecycle ──────────────────────────────────────────────────────
 
@@ -228,7 +370,6 @@ public partial class MeetingListViewModel : ViewModelBase
     /// </summary>
     private void OpenEditor(Meeting meeting, bool isNew)
     {
-        // Collapse any currently open editor first.
         CloseEditor();
 
         var academicYearId = _semesterContext.SelectedAcademicYear?.Id ?? string.Empty;
@@ -252,24 +393,24 @@ public partial class MeetingListViewModel : ViewModelBase
         EditVm = vm;
 
         // Expand and select the corresponding card.
-        var card = Items.FirstOrDefault(i => i.Meeting.Id == meeting.Id);
+        var card = Items.OfType<MeetingListItemViewModel>().FirstOrDefault(i => i.Meeting.Id == meeting.Id);
         if (card is not null)
         {
-            SelectedItem      = card;
-            card.IsExpanded   = true;
+            SelectedItem    = card;
+            card.IsExpanded = true;
         }
     }
 
     /// <summary>
-    /// Opens the inline editor for the meeting with the given ID.
-    /// Called by the schedule grid when the user double-clicks a meeting tile.
-    /// If no matching meeting is found in the current list (e.g. the meeting's semester
+    /// Opens the inline editor for the event with the given ID.
+    /// Called by the schedule grid when the user double-clicks an event tile.
+    /// If no matching event is found in the current list (e.g. the event's semester
     /// is not selected) the call is silently ignored.
     /// </summary>
-    /// <param name="meetingId">The ID of the meeting to edit.</param>
+    /// <param name="meetingId">The ID of the event to edit.</param>
     public void EditMeetingById(string meetingId)
     {
-        var item = Items.FirstOrDefault(i => i.Meeting.Id == meetingId);
+        var item = Items.OfType<MeetingListItemViewModel>().FirstOrDefault(i => i.Meeting.Id == meetingId);
         if (item is null) return;
         OpenEditor(item.Meeting, isNew: false);
     }
@@ -277,7 +418,7 @@ public partial class MeetingListViewModel : ViewModelBase
     private void CloseEditor()
     {
         // Remove the unsaved placeholder card if one exists (Add flow, cancelled or saved).
-        // After a successful save the store reload will add the persisted meeting back.
+        // After a successful save the store reload will add the persisted event back.
         if (_newMeetingPlaceholder is not null)
         {
             Items.Remove(_newMeetingPlaceholder);
@@ -290,7 +431,7 @@ public partial class MeetingListViewModel : ViewModelBase
             EditVm = null;
         }
 
-        foreach (var item in Items)
+        foreach (var item in Items.OfType<MeetingListItemViewModel>())
             item.IsExpanded = false;
     }
 }

@@ -427,8 +427,46 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <!--  Main content: list of meeting cards  -->
+    <!--  Main content: list of event cards  -->
     <DockPanel>
+
+        <!--  Add-to-semester prompt — shown in multi-semester mode when Add is clicked  -->
+        <Border
+            DockPanel.Dock="Top"
+            Padding="8,6"
+            Background="{StaticResource EditorBackground}"
+            BorderBrush="{StaticResource EditorBorder}"
+            BorderThickness="0,0,0,1"
+            IsVisible="{Binding IsAddSemesterPromptVisible}">
+            <StackPanel Spacing="4">
+                <TextBlock
+                    FontSize="11"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource TextPrimary}"
+                    Text="Add event to which semester?" />
+                <ItemsControl ItemsSource="{Binding AddSemesterOptions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button
+                                Margin="0,2,0,0"
+                                Padding="8,4"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Background="{Binding BannerBackground}"
+                                Command="{Binding $parent[UserControl].DataContext.AddToSemesterCommand}"
+                                CommandParameter="{Binding SemesterId}"
+                                Content="{Binding SemesterName}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button
+                    Margin="0,2,0,0"
+                    Padding="8,3"
+                    HorizontalAlignment="Left"
+                    Command="{Binding CancelAddPromptCommand}"
+                    Content="Cancel" />
+            </StackPanel>
+        </Border>
 
         <!--  Empty-state hint  -->
         <TextBlock
@@ -465,16 +503,41 @@
                 </ControlTheme>
             </ListBox.ItemContainerTheme>
 
-            <ListBox.ItemTemplate>
+            <ListBox.DataTemplates>
+
+                <!--
+                    Semester group banner — shown at the top of each semester's event group.
+                    IsHitTestVisible="False" on the content prevents the click from registering
+                    as a meaningful item selection; the ViewModel ignores banner selections.
+                -->
+                <DataTemplate DataType="{x:Type vm:SemesterBannerViewModel}">
+                    <Border
+                        Margin="0,10,0,4"
+                        Padding="10,4"
+                        Background="{Binding BannerBackground}"
+                        BorderThickness="0"
+                        CornerRadius="4"
+                        IsHitTestVisible="False">
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="{Binding SemesterName}" />
+                    </Border>
+                </DataTemplate>
+
+                <!--  Event card with multi-semester left border indicator  -->
                 <DataTemplate DataType="{x:Type vm:MeetingListItemViewModel}">
                     <Border
                         Margin="0,2,0,2"
-                        Padding="6,4"
+                        Padding="0"
                         Background="{StaticResource SurfaceBackground}"
+                        BorderBrush="{Binding SemesterLeftBorderBrush}"
+                        BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                         BoxShadow="{StaticResource PanelBoxShadow}"
                         Classes="MeetingCard"
                         CornerRadius="4">
-                        <StackPanel Spacing="0">
+                        <StackPanel Margin="6,4,6,4" Spacing="0">
 
                             <!--
                                 Card summary — hidden for placeholder cards (IsBeingCreated=true)
@@ -516,7 +579,8 @@
                         </StackPanel>
                     </Border>
                 </DataTemplate>
-            </ListBox.ItemTemplate>
+
+            </ListBox.DataTemplates>
         </ListBox>
 
     </DockPanel>

@@ -1,14 +1,16 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// Display wrapper for a single meeting row in the meeting list panel.
+/// Display wrapper for a single event row in the meeting list panel.
 /// Holds pre-formatted strings so the view needs no converter logic.
 /// </summary>
-public partial class MeetingListItemViewModel : ObservableObject
+public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEntry
 {
     private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,12 +39,26 @@ public partial class MeetingListItemViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _isBeingCreated;
 
+    /// <summary>
+    /// Left-border brush for this event's semester, resolved from AppColors.
+    /// Used in multi-semester view to visually indicate semester membership.
+    /// </summary>
+    public IBrush? SemesterLeftBorderBrush { get; }
+
+    /// <param name="meeting">The meeting model to wrap.</param>
+    /// <param name="instructorLookup">Instructor lookup by ID for formatting attendee names.</param>
+    /// <param name="roomLookup">Room lookup by ID for formatting schedule lines.</param>
+    /// <param name="semesterName">Name of the semester (e.g. "Fall 2025") for color resolution.</param>
+    /// <param name="semesterColor">Hex color of the semester, or empty to fall back to name-based lookup.</param>
     public MeetingListItemViewModel(
         Meeting meeting,
         Dictionary<string, Instructor> instructorLookup,
-        Dictionary<string, Room> roomLookup)
+        Dictionary<string, Room> roomLookup,
+        string semesterName = "",
+        string semesterColor = "")
     {
         Meeting = meeting;
+        SemesterLeftBorderBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(semesterName, semesterColor);
 
         ScheduleLines = meeting.Schedule
             .OrderBy(s => s.Day).ThenBy(s => s.StartMinutes)

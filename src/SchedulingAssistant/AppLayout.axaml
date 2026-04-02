@@ -1,0 +1,20 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ══════════════════════════════════════════════════════════════════
+        Application Layout Constants
+        Non-color UI constants: spacing, padding, sizes.
+        Change values here to adjust layout and spacing app-wide.
+        ══════════════════════════════════════════════════════════════════
+    -->
+
+    <!--  ── Schedule grid tile padding  ────────────────────────────────  -->
+    <!--  Vertical gap between the gridline and the top/bottom of a tile  -->
+    <x:Double x:Key="TilePaddingVertical">3</x:Double>
+    <!--
+        Horizontal gap between the day-column edge and tile edges;
+        also used as the slot-allocation gap when scaling tile widths
+    -->
+    <x:Double x:Key="TilePaddingHorizontal">4</x:Double>
+
+</ResourceDictionary>

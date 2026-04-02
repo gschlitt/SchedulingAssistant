@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T15:51:50.669Z
-> Files: 13 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T16:34:45.015Z
+> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -172,6 +172,9 @@
 
 ## src/SchedulingAssistant/
 
+- `App.axaml` (~1128 tok)
+- `AppColors.axaml` (~2823 tok)
+- `AppLayout.axaml` (~235 tok)
 - `MainWindow.axaml` — Declares applied (~11871 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11704 tok)
 
@@ -207,9 +210,11 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `IMeetingListEntry.cs` — Marker interface for items that can appear in the Meeting List panel. Implemented by both event card (~133 tok)
 - `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~3358 tok)
-- `MeetingListItemViewModel.cs` — Display wrapper for a single meeting row in the meeting list panel. Holds pre-formatted strings so t (~837 tok)
-- `MeetingListViewModel.cs` — Drives the Meeting List left panel — the counterpart to <see cref="SectionListViewModel"/> when the (~3304 tok)
+- `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1106 tok)
+- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~4822 tok)
+- `SemesterBannerViewModel.cs` — Represents a semester group header row in the Section List. Carries the semester identity and displa (~916 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -223,11 +228,11 @@
 ## src/SchedulingAssistant/Views/GridView/
 
 - `GridFilterView.axaml` (~9355 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11638 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11715 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `MeetingListView.axaml` (~7726 tok)
+- `MeetingListView.axaml` (~8582 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

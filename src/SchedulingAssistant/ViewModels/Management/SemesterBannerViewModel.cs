@@ -13,7 +13,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// This is a plain (non-observable) ViewModel: banners are rebuilt from scratch
 /// on each load, so no change notification is needed.
 /// </summary>
-public class SemesterBannerViewModel : ISectionListEntry
+public class SemesterBannerViewModel : ISectionListEntry, IMeetingListEntry
 {
     /// <summary>Database ID of the semester this banner heads.</summary>
     public string SemesterId { get; }
