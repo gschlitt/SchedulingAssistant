@@ -301,10 +301,22 @@
 
         <ListBox
             Classes="MeetingList"
+            b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
             DockPanel.Dock="Top"
             ItemsSource="{Binding Items}"
             SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
             SelectionMode="Single">
+
+            <!--
+                Non-virtualizing panel so that inline editors can expand cards to
+                arbitrary heights without layout being clamped by a recycling host.
+                Matches the approach used in SectionListView.
+            -->
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
 
             <ListBox.ItemContainerTheme>
                 <ControlTheme BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
@@ -316,33 +328,44 @@
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MeetingListItemViewModel}">
                     <Border
+                        Margin="0,2,0,2"
                         Padding="6,4"
                         Background="{StaticResource SurfaceBackground}"
+                        BoxShadow="{StaticResource PanelBoxShadow}"
                         Classes="MeetingCard"
-                        CornerRadius="2">
+                        CornerRadius="4">
                         <StackPanel Spacing="0">
 
-                            <!--  Card heading: title  -->
-                            <TextBlock
-                                FontSize="12"
-                                FontWeight="SemiBold"
-                                Text="{Binding Title}"
-                                TextTrimming="CharacterEllipsis" />
+                            <!--
+                                Card summary — hidden for placeholder cards (IsBeingCreated=true)
+                                so the editor form fills the card without a blank heading above it.
+                                Matches the pattern used in SectionListView.
+                            -->
+                            <StackPanel IsVisible="{Binding !IsBeingCreated}" Spacing="0">
 
-                            <!--  Schedule lines  -->
-                            <ItemsControl
-                                Margin="0,1,0,0"
-                                FontSize="10"
-                                Foreground="{StaticResource TextSubdued}"
-                                ItemsSource="{Binding ScheduleLines}" />
+                                <!--  Card heading: title  -->
+                                <TextBlock
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding Title}"
+                                    TextTrimming="CharacterEllipsis" />
 
-                            <!--  Attendees  -->
-                            <TextBlock
-                                FontSize="10"
-                                Foreground="{StaticResource TextFaint}"
-                                IsVisible="{Binding AttendeeLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                Text="{Binding AttendeeLine}"
-                                TextTrimming="CharacterEllipsis" />
+                                <!--  Schedule lines  -->
+                                <ItemsControl
+                                    Margin="0,1,0,0"
+                                    FontSize="10"
+                                    Foreground="{StaticResource TextSubdued}"
+                                    ItemsSource="{Binding ScheduleLines}" />
+
+                                <!--  Attendees  -->
+                                <TextBlock
+                                    FontSize="10"
+                                    Foreground="{StaticResource TextFaint}"
+                                    IsVisible="{Binding AttendeeLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Text="{Binding AttendeeLine}"
+                                    TextTrimming="CharacterEllipsis" />
+
+                            </StackPanel>
 
                             <!--  Inline editor (shown when this card is being edited)  -->
                             <ContentControl

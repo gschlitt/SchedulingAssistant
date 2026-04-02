@@ -30,6 +30,13 @@ public partial class MeetingListItemViewModel : ObservableObject
     /// <summary>True when the card's detail section is showing.</summary>
     [ObservableProperty] private bool _isExpanded;
 
+    /// <summary>
+    /// True for a placeholder card created by the Add command before the meeting has
+    /// been saved. When true the card summary (title, schedule, attendees) is hidden
+    /// so the editor form fills the card without a blank heading above it.
+    /// </summary>
+    [ObservableProperty] private bool _isBeingCreated;
+
     public MeetingListItemViewModel(
         Meeting meeting,
         Dictionary<string, Instructor> instructorLookup,

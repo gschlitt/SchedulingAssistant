@@ -790,7 +790,8 @@ public partial class MainWindow : Window
             // Wire the grid's double-click-to-edit callback at the view level.
             // This keeps SectionListViewModel and ScheduleGridViewModel decoupled —
             // neither holds a reference to the other.
-            vm.ScheduleGridVm.EditRequested = vm.SectionListVm.EditSectionById;
+            vm.ScheduleGridVm.EditRequested        = vm.SectionListVm.EditSectionById;
+            vm.ScheduleGridVm.MeetingEditRequested  = vm.MeetingListVm.EditMeetingById;
 
             vm.PropertyChanged += OnMainWindowVmPropertyChanged;
             vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;

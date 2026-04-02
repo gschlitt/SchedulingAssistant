@@ -182,14 +182,19 @@ public partial class MeetingEditViewModel : ViewModelBase
         else
             _meetingRepo.Update(_meeting);
 
-        // Reload the store so the grid and list reflect the change immediately.
-        // The semesterIds are inferred from the meeting's own semester.
+        // Fire EditCompleted BEFORE reloading the store.
+        // MeetingStore.Reload fires MeetingsChanged synchronously, which triggers
+        // MeetingListViewModel.LoadFromStore().  LoadFromStore snapshots EditVm at its
+        // start to decide whether to re-open the editor after the reload.  If we fire
+        // EditCompleted first, CloseEditor() sets EditVm = null so LoadFromStore sees
+        // no previous editor and the form stays closed after Apply.
+        EditCompleted?.Invoke();
+
+        // Reload after the editor is closed so the list and grid reflect the saved data.
         _meetingStore.Reload(_meetingRepo,
             _meetingStore.MeetingsBySemester.Keys
                 .Append(_meeting.SemesterId)
                 .Distinct());
-
-        EditCompleted?.Invoke();
     }
 
     private bool CanSave() => !string.IsNullOrWhiteSpace(Title);

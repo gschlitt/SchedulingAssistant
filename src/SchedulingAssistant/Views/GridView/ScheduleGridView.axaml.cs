@@ -610,7 +610,9 @@ public partial class ScheduleGridView : UserControl
                         CornerRadius = new CornerRadius(2),
                         Padding      = new Thickness(1, 0),
                         // Commitment tiles are display-only — no hand cursor.
-                        Cursor       = entry.IsCommitment ? null : entryCursor,
+                        // Meetings are flagged IsCommitment to suppress the right-click menu
+                        // but are still interactive, so they keep the hand cursor.
+                        Cursor       = entry.IsCommitment && !entry.IsMeeting ? null : entryCursor,
                         Tag          = clickCtx,
                         Child        = entryLabel,
                     };
@@ -621,16 +623,16 @@ public partial class ScheduleGridView : UserControl
 
                     entryRow.PointerPressed += (sender, e) =>
                     {
-                        // Commitment tiles are display-only. They have no SectionId, so
-                        // left-clicking them would select nothing, and right-clicking would
-                        // open the context menu with an empty ID. Guard here instead of
-                        // letting those calls fall through with bad data.
-                        if (entry.IsCommitment) { e.Handled = true; return; }
+                        // Plain commitment tiles (instructor blocks) are display-only: they carry
+                        // no entity ID, so clicks would fall through with bad data.  Meeting tiles
+                        // also carry IsCommitment=true to suppress the section right-click menu,
+                        // but they ARE clickable — the IsMeeting flag distinguishes them.
+                        if (entry.IsCommitment && !entry.IsMeeting) { e.Handled = true; return; }
 
                         if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
                         {
-                            // Context menu performs write operations — suppress in read-only mode.
-                            if (_vm is not null && _vm.IsWriteEnabled)
+                            // Right-click context menu is section-only; suppress for meetings.
+                            if (!entry.IsMeeting && _vm is not null && _vm.IsWriteEnabled)
                             {
                                 var ctx = (TileClickContext)((Border)sender!).Tag!;
                                 _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
@@ -640,9 +642,17 @@ public partial class ScheduleGridView : UserControl
                             return;
                         }
                         if (e.ClickCount >= 2)
-                            _vm?.EditRequested?.Invoke(entryId);
+                        {
+                            if (entry.IsMeeting)
+                                _vm?.MeetingEditRequested?.Invoke(entryId);
+                            else
+                                _vm?.EditRequested?.Invoke(entryId);
+                        }
                         else
-                            _vm?.SelectSection(entryId);
+                        {
+                            if (!entry.IsMeeting)
+                                _vm?.SelectSection(entryId);
+                        }
                         e.Handled = true;
                     };
                     stack.Children.Add(entryRow);

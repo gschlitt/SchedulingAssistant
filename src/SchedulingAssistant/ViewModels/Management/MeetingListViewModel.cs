@@ -36,6 +36,12 @@ public partial class MeetingListViewModel : ViewModelBase
     private readonly MeetingStore _meetingStore;
     private readonly WriteLockService _lockService;
 
+    /// <summary>
+    /// The transient placeholder card inserted into <see cref="Items"/> during Add
+    /// while the meeting has not yet been saved. Removed by <see cref="CloseEditor"/>.
+    /// </summary>
+    private MeetingListItemViewModel? _newMeetingPlaceholder;
+
     /// <summary>The displayed list of meeting cards.</summary>
     [ObservableProperty] private ObservableCollection<MeetingListItemViewModel> _items = new();
 
@@ -100,6 +106,12 @@ public partial class MeetingListViewModel : ViewModelBase
     /// <summary>Rebuilds <see cref="Items"/> from the current <see cref="MeetingStore"/> cache.</summary>
     private void LoadFromStore()
     {
+        // If a new meeting is being added when a reload arrives (e.g. from a semester
+        // change), discard the unsaved placeholder and close the editor — the unsaved
+        // meeting cannot survive a context switch, matching section-list behaviour.
+        if (_newMeetingPlaceholder is not null)
+            CloseEditor();
+
         var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
         var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
 
@@ -129,15 +141,59 @@ public partial class MeetingListViewModel : ViewModelBase
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
-    /// <summary>Opens a blank editor to add a new meeting to the currently selected semester.</summary>
+    /// <summary>
+    /// Opens a blank inline editor at the top of the list for a new meeting.
+    /// Inserts a transient placeholder card (parallel to the section list Add flow)
+    /// rather than routing through <see cref="OpenEditor"/>, so that the placeholder
+    /// is in <see cref="Items"/> before the card lookup runs.
+    /// </summary>
     [RelayCommand]
     private void Add()
     {
         var semester = _semesterContext.SelectedSemesters.FirstOrDefault()?.Semester;
         if (semester is null) return;
 
+        // Close any currently open editor (collapses its card and removes any
+        // previous placeholder) before inserting the new one.
+        CloseEditor();
+
         var meeting = new Meeting { SemesterId = semester.Id };
-        OpenEditor(meeting, isNew: true);
+
+        // Share the lookup data between the placeholder card and the editor VM
+        // to avoid a duplicate round-trip to the repository.
+        var allInstructors  = _instructorRepo.GetAll();
+        var allRooms        = _roomRepo.GetAll();
+        var instructorLookup = allInstructors.ToDictionary(i => i.Id);
+        var roomLookup       = allRooms.ToDictionary(r => r.Id);
+
+        _newMeetingPlaceholder = new MeetingListItemViewModel(meeting, instructorLookup, roomLookup)
+        {
+            IsBeingCreated = true
+        };
+        Items.Insert(0, _newMeetingPlaceholder);
+
+        // Build the editor VM directly (not via OpenEditor) so we can wire the
+        // placeholder-removal into the EditCompleted callback.
+        var academicYearId  = _semesterContext.SelectedAcademicYear?.Id ?? string.Empty;
+        var legalStartTimes = string.IsNullOrEmpty(academicYearId)
+            ? new List<LegalStartTime>()
+            : _legalStartTimeRepo.GetAll(academicYearId);
+
+        var vm = new MeetingEditViewModel(
+            meeting, isNew: true,
+            _meetingRepo, _meetingStore,
+            legalStartTimes,
+            allInstructors,
+            _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType),
+            allRooms,
+            _campusRepo.GetAll(),
+            _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag));
+
+        vm.EditCompleted += CloseEditor;
+        EditVm = vm;
+
+        SelectedItem = _newMeetingPlaceholder;
+        _newMeetingPlaceholder.IsExpanded = true;
     }
 
     /// <summary>Opens the inline editor for the currently selected meeting.</summary>
@@ -202,13 +258,36 @@ public partial class MeetingListViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Opens the inline editor for the meeting with the given ID.
+    /// Called by the schedule grid when the user double-clicks a meeting tile.
+    /// If no matching meeting is found in the current list (e.g. the meeting's semester
+    /// is not selected) the call is silently ignored.
+    /// </summary>
+    /// <param name="meetingId">The ID of the meeting to edit.</param>
+    public void EditMeetingById(string meetingId)
+    {
+        var item = Items.FirstOrDefault(i => i.Meeting.Id == meetingId);
+        if (item is null) return;
+        OpenEditor(item.Meeting, isNew: false);
+    }
+
     private void CloseEditor()
     {
+        // Remove the unsaved placeholder card if one exists (Add flow, cancelled or saved).
+        // After a successful save the store reload will add the persisted meeting back.
+        if (_newMeetingPlaceholder is not null)
+        {
+            Items.Remove(_newMeetingPlaceholder);
+            _newMeetingPlaceholder = null;
+        }
+
         if (EditVm is not null)
         {
             EditVm.EditCompleted -= CloseEditor;
             EditVm = null;
         }
+
         foreach (var item in Items)
             item.IsExpanded = false;
     }

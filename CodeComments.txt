@@ -4,6 +4,7 @@ Double-click to open section editor, but then go select something else, without 
 
 Filter selection border in Section View should be a a different color than manual selection.
 
+Restore from backup calls a new instance, associated crashes.
 
 Flow Check:
 Brand new db, no .tpconfig. Check all configs migrate properly. 

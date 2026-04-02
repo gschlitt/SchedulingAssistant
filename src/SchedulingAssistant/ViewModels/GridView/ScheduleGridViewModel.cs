@@ -147,7 +147,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Invoked by the view when an entry is double-clicked.
     /// Set by SectionListViewModel to open the section editor.
     /// </summary>
+    /// <summary>
+    /// Invoked when the user double-clicks a section tile in the grid.
+    /// Wired by <c>MainWindow.axaml.cs</c> to <c>SectionListViewModel.EditSectionById</c>.
+    /// </summary>
     public Action<string>? EditRequested { get; set; }
+
+    /// <summary>
+    /// Invoked when the user double-clicks a meeting tile in the grid.
+    /// Wired by <c>MainWindow.axaml.cs</c> to <c>MeetingListViewModel.EditMeetingById</c>.
+    /// </summary>
+    public Action<string>? MeetingEditRequested { get; set; }
 
     /// <summary>
     /// Loads context menu data for the right-clicked tile entry.
@@ -1093,9 +1103,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     {
         SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
-        // Meeting blocks: suppress click interactions (IsCommitment=true) and flag as IsMeeting=true
-        // so the renderer can apply a distinct visual treatment.
-        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  string.Empty, false, IsCommitment: true, IsMeeting: true),
+        // Meeting blocks: carry the MeetingId so double-click can route to the editor.
+        // IsCommitment=true is kept so the right-click context menu (section-only) is
+        // suppressed; IsMeeting=true lets the pointer handler distinguish meetings from
+        // plain commitments and allow double-click through.
+        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };
 
