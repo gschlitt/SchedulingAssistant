@@ -7,7 +7,7 @@
     x:DataType="vm:Step10ClosingViewModel">
 
     <StackPanel
-        MaxWidth="540"
+        MaxWidth="640"
         Margin="10,0"
         HorizontalAlignment="Left"
         Spacing="20">
@@ -20,10 +20,10 @@
 
         <!--  Body paragraph 2  -->
         <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
-            Clicking "Finish" will startup TermPoint, with your first academic year setup and ready to go.
-            At the very least you'll want to enter some Courses using the Course Editor before you start
-            scheduling, and possibly some Instructors.
-            You may also wish to visit Section Properties to further choose things like reserve codes, tags, rooms
+            Clicking "Finish" will start-up TermPoint, with your first academic year set-up and ready to go.
+            At the very least you'll want to enter some courses using the Course Editor before you start
+            scheduling, and possibly some instructors.
+            You may also wish to visit Scheduling Environment to further choose things like reserve codes, tags, rooms
             and so on.
             You can view a short video which demonstrates the basics of TermPoint use here.
             There's lots of help available under "Help"!
@@ -33,9 +33,7 @@
         <TextBlock
             FontSize="{DynamicResource FontSizeSmall}"
             Foreground="{StaticResource ForegroundMuted}"
-            TextWrapping="Wrap">
-            [Footer note — e.g. "Click Finish to open the application."]
-        </TextBlock>
+            TextWrapping="Wrap" />
 
     </StackPanel>
 

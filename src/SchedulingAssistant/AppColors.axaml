@@ -44,9 +44,9 @@
     <SolidColorBrush x:Key="ButtonPressed" Color="#A0B8DC" />
 
     <!--  ── Schedule grid tiles  ─────────────────────────────────────────  -->
-    <!--  Default fill: soft tinted blue — lower saturation than old #C8DFF8  -->
+    <!--  Default fill: soft tinted blue  -->
     <SolidColorBrush x:Key="TileFill" Color="#E2EDF8" />
-    <!--  Selected fill: calm blue replaces the old bright green  -->
+    <!--  Selected fill  -->
     <SolidColorBrush x:Key="TileFillSelected" Color="{StaticResource SelectedSectionColor}" />
     <SolidColorBrush x:Key="TileBorder" Color="#B8CCE0" />
     <!--  Selected border uses the accent color for clear emphasis  -->
@@ -75,7 +75,7 @@
     <SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
     <!--  Left border on section list cards that match the active grid filter  -->
     <SolidColorBrush x:Key="FilterColorBrush" Color="{StaticResource FilterColor}" />
-
+    <SolidColorBrush x:Key="SectionSelectedColorBrush" Color="Purple"/>
     <SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
     <SolidColorBrush x:Key="OverlayInactiveHeader" Color="#2D3748" />
 
@@ -113,7 +113,7 @@
     <!--  No background; the left border alone indicates active editor state  -->
     <SolidColorBrush x:Key="EditorBackground" Color="#FFFFFF" />
     <!--  Editor left-border uses the accent color  -->
-    <SolidColorBrush x:Key="EditorBorder" Color="{StaticResource FilterColor}" />
+    <SolidColorBrush x:Key="EditorBorder" Color="#ac8eb2" />
 
     <!--  ── Flyout overlay  ───────────────────────────────────────────────  -->
     <SolidColorBrush x:Key="FlyoutScrim" Color="#50000000" />

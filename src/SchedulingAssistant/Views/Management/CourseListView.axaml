@@ -48,6 +48,9 @@
                                         ItemsSource="{Binding Subjects}"
                                         SelectedItem="{Binding SelectedSubject}" />
 
+                                    <TextBlock Text="Title" />
+                                    <TextBox Text="{Binding CourseTitle}" />
+
                                     <!--  Course number + auto-suggested level side by side  -->
                                     <TextBlock Text="Course number (e.g. 101 or 111LAB, max 8 characters)" />
                                     <Grid ColumnDefinitions="*,12,Auto,8,Auto">
@@ -80,8 +83,7 @@
                                         IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         Text="{Binding ValidationError}" />
 
-                                    <TextBlock Text="Title" />
-                                    <TextBox Text="{Binding CourseTitle}" />
+
 
                                     <!--  Tag multi-select  -->
                                     <Expander

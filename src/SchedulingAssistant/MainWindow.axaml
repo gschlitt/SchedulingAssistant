@@ -251,7 +251,7 @@
                         Margin="4,10"
                         Background="{StaticResource SeparatorLine}" />
 
-                    <!--  Settings dropdown menu  -->
+                    <!--  Configuration dropdown menu  -->
                     <Menu
                         Margin="0,4"
                         VerticalAlignment="Center"
@@ -259,7 +259,7 @@
                         <MenuItem
                             Padding="14,8"
                             Classes="nav"
-                            Header="Settings">
+                            Header="Configuration">
                             <MenuItem Command="{Binding NavigateToBlockLengthsCommand}" Header="Scheduling" />
                             <MenuItem Command="{Binding NavigateToBlockPatternsCommand}" Header="Block Patterns" />
                             <MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />

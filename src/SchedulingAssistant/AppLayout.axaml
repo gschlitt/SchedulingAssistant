@@ -10,11 +10,11 @@
 
     <!--  ── Schedule grid tile padding  ────────────────────────────────  -->
     <!--  Vertical gap between the gridline and the top/bottom of a tile  -->
-    <x:Double x:Key="TilePaddingVertical">3</x:Double>
+    <x:Double x:Key="TilePaddingVertical">2</x:Double>
     <!--
         Horizontal gap between the day-column edge and tile edges;
         also used as the slot-allocation gap when scaling tile widths
     -->
-    <x:Double x:Key="TilePaddingHorizontal">4</x:Double>
+    <x:Double x:Key="TilePaddingHorizontal">5</x:Double>
 
 </ResourceDictionary>

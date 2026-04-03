@@ -21,7 +21,7 @@
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
             TermPoint uses these patterns to make data entry faster when you add a section.
-            You can define multiple patterns per block length to cover all the day combinations
+            You can define multiple patterns to cover the day combinations
             used at your institution. Block patterns can be changed later in Settings, and you are not
             confined to use them when scheduling.
         </TextBlock>

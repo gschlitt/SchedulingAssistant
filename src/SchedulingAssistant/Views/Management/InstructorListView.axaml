@@ -61,7 +61,7 @@
                 <DataTemplate DataType="{x:Type vm:InstructorEditViewModel}">
                     <StackPanel Spacing="10">
                         <TextBlock
-                            FontSize="12"
+                            FontSize="16"
                             FontWeight="SemiBold"
                             Text="{Binding Title}" />
 
@@ -70,46 +70,39 @@
                                 Grid.Row="0"
                                 Grid.Column="0"
                                 Margin="0,0,4,2"
-                                FontSize="10"
                                 Text="First Name" />
                             <TextBox
                                 Grid.Row="1"
                                 Grid.Column="0"
                                 Margin="0,0,4,6"
-                                FontSize="10"
                                 Text="{Binding FirstName}" />
 
                             <TextBlock
                                 Grid.Row="0"
                                 Grid.Column="1"
                                 Margin="0,0,0,2"
-                                FontSize="10"
                                 Text="Last Name" />
                             <TextBox
                                 Grid.Row="1"
                                 Grid.Column="1"
                                 Margin="0,0,0,6"
-                                FontSize="10"
                                 Text="{Binding LastName}" />
 
                             <TextBlock
                                 Grid.Row="2"
                                 Grid.Column="0"
                                 Margin="0,0,4,2"
-                                FontSize="10"
                                 Text="Initials" />
                             <TextBox
                                 Grid.Row="3"
                                 Grid.Column="0"
                                 Margin="0,0,4,6"
-                                FontSize="10"
                                 Text="{Binding Initials}" />
 
                             <TextBlock
                                 Grid.Row="2"
                                 Grid.Column="1"
                                 Margin="0,0,0,2"
-                                FontSize="10"
                                 Text="Staff Type" />
                             <ComboBox
                                 Grid.Row="3"
@@ -117,7 +110,6 @@
                                 Margin="0,0,0,6"
                                 HorizontalAlignment="Stretch"
                                 DisplayMemberBinding="{Binding Name}"
-                                FontSize="10"
                                 ItemsSource="{Binding StaffTypes}"
                                 SelectedValue="{Binding SelectedStaffTypeId}"
                                 SelectedValueBinding="{Binding Id}" />
@@ -129,32 +121,26 @@
                             IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                             Text="{Binding ValidationError}" />
 
-                        <TextBlock FontSize="10" Text="Email" />
-                        <TextBox FontSize="10" Text="{Binding Email}" />
+                        <TextBlock Text="Email" />
+                        <TextBox Text="{Binding Email}" />
 
-                        <TextBlock FontSize="10" Text="Notes" />
+                        <TextBlock Text="Notes" />
                         <TextBox
                             Height="40"
                             AcceptsReturn="True"
-                            FontSize="10"
                             Text="{Binding Notes}" />
 
-                        <CheckBox
-                            Content="Active"
-                            FontSize="10"
-                            IsChecked="{Binding IsActive}" />
+                        <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Button
                                 Padding="6,3"
                                 Command="{Binding SaveCommand}"
-                                Content="Apply"
-                                FontSize="10" />
+                                Content="Apply" />
                             <Button
                                 Padding="6,3"
                                 Command="{Binding CancelCommand}"
-                                Content="Cancel"
-                                FontSize="10" />
+                                Content="Cancel" />
                         </StackPanel>
                     </StackPanel>
                 </DataTemplate>
@@ -167,16 +153,15 @@
             Grid.Column="0"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
             Spacing="6">
-            <CheckBox
-                Content="Show only active instructors"
-                FontSize="10"
-                IsChecked="{Binding ShowOnlyActive}" />
+            <CheckBox Content="Show only active instructors" IsChecked="{Binding ShowOnlyActive}" />
 
-            <!--  CanUserSortColumns enables click-to-sort on column headers.
-                  The Sorting event is handled in code-behind, which delegates to
-                  InstructorListViewModel.SetSortMode() and sets e.Handled=true to
-                  suppress the DataGrid's built-in client-side sort (we sort at the DB level).
-                  Tag values on each column identify which InstructorSortMode to apply.  -->
+            <!--
+                CanUserSortColumns enables click-to-sort on column headers.
+                The Sorting event is handled in code-behind, which delegates to
+                InstructorListViewModel.SetSortMode() and sets e.Handled=true to
+                suppress the DataGrid's built-in client-side sort (we sort at the DB level).
+                Tag values on each column identify which InstructorSortMode to apply.
+            -->
             <DataGrid
                 MaxHeight="250"
                 AutoGenerateColumns="False"
@@ -226,27 +211,26 @@
             </DataGrid>
 
             <!--  Buttons — IsEnabled gates the entire group in read-only mode  -->
-            <StackPanel Orientation="Horizontal" Spacing="3"
-                        IsEnabled="{Binding IsWriteEnabled}">
+            <StackPanel
+                IsEnabled="{Binding IsWriteEnabled}"
+                Orientation="Horizontal"
+                Spacing="3">
                 <Button
                     Width="45"
                     Padding="5,3"
                     Command="{Binding AddCommand}"
-                    Content="Add"
-                    FontSize="10" />
+                    Content="Add" />
                 <Button
                     Width="45"
                     Padding="5,3"
                     Command="{Binding EditCommand}"
                     Content="Edit"
-                    FontSize="10"
                     IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 <Button
                     Width="55"
                     Padding="5,3"
                     Command="{Binding DeleteCommand}"
                     Content="Delete"
-                    FontSize="10"
                     IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
         </StackPanel>
@@ -312,7 +296,6 @@
                         <!--  Sections heading  -->
                         <TextBlock
                             Margin="0,4,0,0"
-                            FontSize="11"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextFaint}"
                             Text="Sections" />
@@ -377,13 +360,13 @@
                                         Text="New Release" />
 
                                     <StackPanel Spacing="2">
-                                        <TextBlock FontSize="10" Text="Title" />
-                                        <TextBox FontSize="10" Text="{Binding Title}" />
+                                        <TextBlock Text="Title" />
+                                        <TextBox Text="{Binding Title}" />
                                     </StackPanel>
 
                                     <StackPanel Spacing="2">
-                                        <TextBlock FontSize="10" Text="Workload" />
-                                        <TextBox FontSize="10" Text="{Binding WorkloadText}" />
+                                        <TextBlock Text="Workload" />
+                                        <TextBox Text="{Binding WorkloadText}" />
                                     </StackPanel>
 
                                     <TextBlock
@@ -396,13 +379,11 @@
                                         <Button
                                             Padding="6,3"
                                             Command="{Binding SaveCommand}"
-                                            Content="Apply"
-                                            FontSize="10" />
+                                            Content="Apply" />
                                         <Button
                                             Padding="6,3"
                                             Command="{Binding CancelCommand}"
-                                            Content="Cancel"
-                                            FontSize="10" />
+                                            Content="Cancel" />
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -424,12 +405,10 @@
                                 <DataGridTextColumn
                                     Width="*"
                                     Binding="{Binding Title}"
-                                    FontSize="10"
                                     Header="Title" />
                                 <DataGridTextColumn
                                     Width="70"
                                     Binding="{Binding WorkloadValue, StringFormat=0.##}"
-                                    FontSize="10"
                                     Header="Workload" />
                             </DataGrid.Columns>
                         </DataGrid>
@@ -440,21 +419,18 @@
                                 Width="45"
                                 Padding="5,3"
                                 Command="{Binding AddCommand}"
-                                Content="Add"
-                                FontSize="10" />
+                                Content="Add" />
                             <Button
                                 Width="45"
                                 Padding="5,3"
                                 Command="{Binding EditCommand}"
                                 Content="Edit"
-                                FontSize="10"
                                 IsEnabled="{Binding SelectedRelease, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             <Button
                                 Width="55"
                                 Padding="5,3"
                                 Command="{Binding DeleteCommand}"
                                 Content="Delete"
-                                FontSize="10"
                                 IsEnabled="{Binding SelectedRelease, Converter={x:Static ObjectConverters.IsNotNull}}" />
                         </StackPanel>
 
@@ -492,28 +468,23 @@
                                 <DataTemplate DataType="{x:Type vm:CommitmentEditViewModel}">
                                     <StackPanel Margin="0,4,0,0" Spacing="4">
                                         <StackPanel Spacing="2">
-                                            <TextBlock FontSize="10" Text="Name" />
-                                            <TextBox
-                                                FontSize="10"
-                                                Text="{Binding Name}"
-                                                Watermark="Commitment name" />
+                                            <TextBlock Text="Name" />
+                                            <TextBox Text="{Binding Name}" Watermark="Commitment name" />
                                         </StackPanel>
 
                                         <StackPanel Spacing="2">
-                                            <TextBlock FontSize="10" Text="Day" />
+                                            <TextBlock Text="Day" />
                                             <ComboBox
                                                 DisplayMemberBinding="{Binding Display}"
-                                                FontSize="10"
                                                 ItemsSource="{Binding DayOptions}"
                                                 SelectedItem="{Binding SelectedDayOption}" />
                                         </StackPanel>
 
-                                        <TextBlock FontSize="10" Text="Time" />
+                                        <TextBlock Text="Time" />
                                         <Grid Margin="0,0,0,6" ColumnDefinitions="*,4,*">
                                             <ComboBox
                                                 Grid.Column="0"
                                                 DisplayMemberBinding="{Binding Display}"
-                                                FontSize="10"
                                                 ItemsSource="{Binding StartTimeOptions}"
                                                 SelectedValue="{Binding SelectedStartMinutes}"
                                                 SelectedValueBinding="{Binding Minutes}" />
@@ -521,12 +492,10 @@
                                                 Grid.Column="1"
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"
-                                                FontSize="10"
                                                 Text="–" />
                                             <ComboBox
                                                 Grid.Column="2"
                                                 DisplayMemberBinding="{Binding Display}"
-                                                FontSize="10"
                                                 ItemsSource="{Binding EndTimeOptions}"
                                                 SelectedValue="{Binding SelectedEndMinutes}"
                                                 SelectedValueBinding="{Binding Minutes}" />
@@ -542,13 +511,11 @@
                                             <Button
                                                 Padding="6,3"
                                                 Command="{Binding SaveCommand}"
-                                                Content="Apply"
-                                                FontSize="10" />
+                                                Content="Apply" />
                                             <Button
                                                 Padding="6,3"
                                                 Command="{Binding CancelCommand}"
-                                                Content="Cancel"
-                                                FontSize="10" />
+                                                Content="Cancel" />
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
@@ -570,17 +537,14 @@
                                     <DataGridTextColumn
                                         Width="*"
                                         Binding="{Binding Name}"
-                                        FontSize="10"
                                         Header="Name" />
                                     <DataGridTextColumn
                                         Width="40"
                                         Binding="{Binding DayDisplay}"
-                                        FontSize="10"
                                         Header="Day" />
                                     <DataGridTextColumn
                                         Width="90"
                                         Binding="{Binding TimeDisplay}"
-                                        FontSize="10"
                                         Header="Time" />
                                 </DataGrid.Columns>
                             </DataGrid>
@@ -591,21 +555,18 @@
                                     Width="45"
                                     Padding="5,3"
                                     Command="{Binding AddCommand}"
-                                    Content="Add"
-                                    FontSize="10" />
+                                    Content="Add" />
                                 <Button
                                     Width="45"
                                     Padding="5,3"
                                     Command="{Binding EditCommand}"
                                     Content="Edit"
-                                    FontSize="10"
                                     IsEnabled="{Binding SelectedCommitment, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                 <Button
                                     Width="55"
                                     Padding="5,3"
                                     Command="{Binding DeleteCommand}"
                                     Content="Delete"
-                                    FontSize="10"
                                     IsEnabled="{Binding SelectedCommitment, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             </StackPanel>
 

@@ -6,7 +6,11 @@
     x:CompileBindings="False"
     x:DataType="vm:BlockPatternListViewModel">
 
-    <StackPanel MaxWidth="500" Spacing="16">
+    <StackPanel
+        MaxWidth="500"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="16">
 
         <TextBlock
             FontSize="{StaticResource FontSizeXLarge}"

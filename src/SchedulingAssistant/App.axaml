@@ -31,9 +31,13 @@
         <SimpleTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
         <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
-        <!--  Inter is the application-wide font. It is registered as the default in
-              Program.cs via .WithInterFont() — no explicit XAML style is needed.  -->
+
+        <!--
+            Inter is the application-wide font. It is registered as the default in
+            Program.cs via .WithInterFont() — no explicit XAML style is needed.
+        -->
         <!--  Flat buttons: no border, fill-based depth only.  -->
+
         <Style Selector="Button">
             <Setter Property="Background" Value="{StaticResource ButtonBackground}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
@@ -75,6 +79,12 @@
         <Style Selector="MenuItem.nav:selected /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
+
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+        </Style>
+
+
     </Application.Styles>
 
     <Application.DataTemplates>

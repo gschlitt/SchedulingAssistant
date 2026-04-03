@@ -15,7 +15,7 @@
             <TextBlock
                 MaxWidth="1000"
                 HorizontalAlignment="Left"
-                FontSize="{StaticResource FontSizeNormal}"
+                FontSize="{DynamicResource FontSizeNormal}"
                 TextWrapping="Wrap">
                 Institutions often place a prefix on their section designators, to indicate
                 a campus, delivery mode, or other aspect of the section. Registering your institution's section prefixes and designators here can greatly speed
@@ -318,7 +318,7 @@
             <TextBlock
                 Grid.Row="6"
                 Grid.ColumnSpan="2"
-                MaxWidth="1000"
+                MaxWidth="1200"
                 HorizontalAlignment="Left"
                 TextWrapping="Wrap">
                 Supply your institution's section prefixes below. Indicate also whether your designators are numbers or letters. If your insitution does not use section prefixes or uses a format that does not fit these patterns, leave the list empty and just choose the designator. If your section prefix is linked to  a campus indicate that here.

@@ -1,130 +1,190 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
-             x:Class="SchedulingAssistant.Views.Management.SettingsView"
-             x:DataType="vm:SettingsViewModel"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.SettingsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:SettingsViewModel">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="24" MaxWidth="540" Margin="0,0,16,16" HorizontalAlignment="Left">
+        <StackPanel
+            MaxWidth="540"
+            Margin="10,0,16,16"
+            HorizontalAlignment="Left"
+            Spacing="24">
 
-            <!-- ══════════════════════════════════════════════════════════════
-                 SECTION — Save & Backup
-                 ═════════════════════════════════════════════════════════ -->
+            <!--
+                ══════════════════════════════════════════════════════════════
+                SECTION — Save & Backup
+                ═════════════════════════════════════════════════════════
+            -->
             <StackPanel Spacing="10">
-                <TextBlock Text="Save &amp; Backup" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock
+                    FontSize="{StaticResource FontSizeLarge}"
+                    FontWeight="SemiBold"
+                    Text="Save &amp; Backup" />
 
-                <!-- Autosave interval -->
-                <TextBlock Text="Auto-save interval (minutes)" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
-                <TextBlock TextWrapping="Wrap" FontSize="11"
-                           Foreground="{StaticResource TextDimLabel}"
-                           Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval." />
-                <NumericUpDown Value="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}"
-                               Minimum="1" Maximum="120" Increment="5"
-                               FormatString="0"
-                               FontSize="11"
-                               MaxWidth="140"
-                               HorizontalAlignment="Left" />
+                <!--  Autosave interval  -->
+                <TextBlock
+                    Margin="0,4,0,0"
+                    FontSize="11"
+                    FontWeight="SemiBold"
+                    Text="Auto-save interval (minutes)" />
+                <TextBlock
+                    FontSize="11"
+                    Foreground="{StaticResource TextDimLabel}"
+                    Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval."
+                    TextWrapping="Wrap" />
+                <NumericUpDown
+                    MaxWidth="140"
+                    HorizontalAlignment="Left"
+                    FontSize="11"
+                    FormatString="0"
+                    Increment="5"
+                    Maximum="120"
+                    Minimum="1"
+                    Value="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}" />
 
-                <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0"
-                           Foreground="{StaticResource TextDimLabel}"
-                           Text="Backups are taken immediately before each save and at the interval below. Each backup is a SQLite database file." />
+                <TextBlock
+                    Margin="0,8,0,0"
+                    FontSize="11"
+                    Foreground="{StaticResource TextDimLabel}"
+                    Text="Backups are taken immediately before each save and at the interval below. "
+                    TextWrapping="Wrap" />
 
-                <!-- Backup folder -->
-                <TextBlock Text="Backup Folder" FontSize="11" FontWeight="SemiBold" Margin="0,4,0,0" />
+                <!--  Backup folder  -->
+                <TextBlock
+                    Margin="0,4,0,0"
+                    FontSize="11"
+                    FontWeight="SemiBold"
+                    Text="Backup Folder" />
                 <DockPanel LastChildFill="True">
-                    <Button DockPanel.Dock="Right"
-                            Content="Browse…"
-                            Padding="10,4"
-                            Margin="6,0,0,0"
-                            Click="OnBrowseBackupFolder" />
-                    <TextBox Text="{Binding BackupFolderPath, Mode=TwoWay}"
-                             FontSize="11"
-                             Watermark="No backup folder configured"
-                             IsReadOnly="False" />
+                    <Button
+                        Margin="6,0,0,0"
+                        Padding="10,4"
+                        Click="OnBrowseBackupFolder"
+                        Content="Browse…"
+                        DockPanel.Dock="Right" />
+                    <TextBox
+                        FontSize="11"
+                        IsReadOnly="False"
+                        Text="{Binding BackupFolderPath, Mode=TwoWay}"
+                        Watermark="No backup folder configured" />
                 </DockPanel>
 
-                <TextBlock FontSize="11" Foreground="DarkOrange"
-                           TextWrapping="Wrap"
-                           IsVisible="{Binding !IsBackupConfigured}"
-                           Text="No backup folder is configured. Backups will not run until a folder is set." />
+                <TextBlock
+                    FontSize="11"
+                    Foreground="DarkOrange"
+                    IsVisible="{Binding !IsBackupConfigured}"
+                    Text="No backup folder is configured. Backups will not run until a folder is set."
+                    TextWrapping="Wrap" />
 
-                <!-- Interval and max count side by side -->
-                <Grid ColumnDefinitions="*,16,*" Margin="0,4,0,0">
+                <!--  Interval and max count side by side  -->
+                <Grid Margin="0,4,0,0" ColumnDefinitions="*,16,*">
 
                     <StackPanel Grid.Column="0" Spacing="4">
-                        <TextBlock Text="Backup interval (minutes)" FontSize="11" FontWeight="SemiBold" />
-                        <NumericUpDown Value="{Binding BackupIntervalMinutes, Mode=TwoWay}"
-                                       Minimum="1" Maximum="480" Increment="5"
-                                       FormatString="0"
-                                       FontSize="11" />
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Text="Backup interval (minutes)" />
+                        <NumericUpDown
+                            FontSize="11"
+                            FormatString="0"
+                            Increment="5"
+                            Maximum="480"
+                            Minimum="1"
+                            Value="{Binding BackupIntervalMinutes, Mode=TwoWay}" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Spacing="4">
-                        <TextBlock Text="Backups to keep" FontSize="11" FontWeight="SemiBold" />
-                        <NumericUpDown Value="{Binding MaxBackupCount, Mode=TwoWay}"
-                                       Minimum="1" Maximum="50" Increment="1"
-                                       FormatString="0"
-                                       FontSize="11" />
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Text="Backups to keep" />
+                        <NumericUpDown
+                            FontSize="11"
+                            FormatString="0"
+                            Increment="1"
+                            Maximum="50"
+                            Minimum="1"
+                            Value="{Binding MaxBackupCount, Mode=TwoWay}" />
                     </StackPanel>
                 </Grid>
 
-                <!-- Status + manual trigger -->
-                <Border Background="{StaticResource FilterBarBackground}"
-                        CornerRadius="3" Padding="8,6">
+                <!--  Status + manual trigger  -->
+                <Border
+                    Padding="8,6"
+                    Background="{StaticResource FilterBarBackground}"
+                    CornerRadius="3">
                     <DockPanel>
-                        <Button DockPanel.Dock="Right"
-                                Content="Back Up Now"
-                                Command="{Binding BackUpNowCommand}"
-                                Padding="10,4"
-                                Margin="8,0,0,0"
-                                IsEnabled="{Binding IsBackupConfigured}" />
-                        <TextBlock Text="{Binding LastBackupStatus}"
-                                   FontSize="11"
-                                   VerticalAlignment="Center"
-                                   TextWrapping="Wrap" />
+                        <Button
+                            Margin="8,0,0,0"
+                            Padding="10,4"
+                            Command="{Binding BackUpNowCommand}"
+                            Content="Back Up Now"
+                            DockPanel.Dock="Right"
+                            IsEnabled="{Binding IsBackupConfigured}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="{Binding LastBackupStatus}"
+                            TextWrapping="Wrap" />
                     </DockPanel>
                 </Border>
             </StackPanel>
 
-            <!-- ══════════════════════════════════════════════════════════════
-                 SECTION — Restore
-                 ═════════════════════════════════════════════════════════ -->
+            <!--
+                ══════════════════════════════════════════════════════════════
+                SECTION — Restore
+                ═════════════════════════════════════════════════════════
+            -->
             <StackPanel Spacing="10">
-                <TextBlock Text="Restore from Backup" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Text="Restore from Backup" />
 
-                <TextBlock TextWrapping="Wrap" FontSize="11"
-                           Foreground="{StaticResource TextDimLabel}"
-                           Text="Restoring replaces the current database with the selected backup and restarts the application. The current database is not kept." />
+                <TextBlock
+                    FontSize="11"
+                    Foreground="{StaticResource TextDimLabel}"
+                    Text="Restoring replaces the current database with the selected backup and restarts the application. The current database is not kept."
+                    TextWrapping="Wrap" />
 
-                <!-- Empty state — shown when backup entries list is empty -->
-                <TextBlock FontSize="11" FontStyle="Italic"
-                           Foreground="{StaticResource TextDimLabel}"
-                           IsVisible="{Binding HasNoBackups}"
-                           Text="No backups found in the configured folder." />
+                <!--  Empty state — shown when backup entries list is empty  -->
+                <TextBlock
+                    FontSize="11"
+                    FontStyle="Italic"
+                    Foreground="{StaticResource TextDimLabel}"
+                    IsVisible="{Binding HasNoBackups}"
+                    Text="No backups found in the configured folder." />
 
-                <!-- Backup list -->
+                <!--  Backup list  -->
                 <ItemsControl ItemsSource="{Binding BackupEntries}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{StaticResource FilterBarBackground}"
-                                    CornerRadius="3"
-                                    Padding="8,6"
-                                    Margin="0,0,0,4">
+                            <Border
+                                Margin="0,0,0,4"
+                                Padding="8,6"
+                                Background="{StaticResource FilterBarBackground}"
+                                CornerRadius="3">
                                 <DockPanel>
-                                    <Button DockPanel.Dock="Right"
-                                            Content="Restore…"
-                                            Command="{Binding RestoreCommand}"
-                                            CommandParameter="{Binding}"
-                                            Padding="10,3"
-                                            FontSize="11"
-                                            Margin="8,0,0,0" />
-                                    <StackPanel Spacing="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding TimestampDisplay}"
-                                                   FontSize="12" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Detail}"
-                                                   FontSize="10"
-                                                   Foreground="{StaticResource TextDimLabel}" />
+                                    <Button
+                                        Margin="8,0,0,0"
+                                        Padding="10,3"
+                                        Command="{Binding RestoreCommand}"
+                                        CommandParameter="{Binding}"
+                                        Content="Restore…"
+                                        DockPanel.Dock="Right"
+                                        FontSize="11" />
+                                    <StackPanel VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding TimestampDisplay}" />
+                                        <TextBlock
+                                            FontSize="10"
+                                            Foreground="{StaticResource TextDimLabel}"
+                                            Text="{Binding Detail}" />
                                     </StackPanel>
                                 </DockPanel>
                             </Border>

@@ -1,37 +1,54 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
-             x:Class="SchedulingAssistant.Views.Management.AcademicUnitListView"
-             x:DataType="vm:AcademicUnitListViewModel"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.AcademicUnitListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:AcademicUnitListViewModel">
 
-    <StackPanel Spacing="16" MaxWidth="400" HorizontalAlignment="Left">
+    <StackPanel
+        MaxWidth="400"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="16">
 
-        <TextBlock Text="Academic Unit" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock
+            FontSize="20"
+            FontWeight="SemiBold"
+            Text="Academic Unit" />
 
-        <!-- Display form (when not editing) -->
-        <StackPanel Spacing="8" IsVisible="{Binding !IsEditing}">
-            <TextBlock Text="Name" />
-            <Border BorderBrush="{StaticResource ControlBorder}" BorderThickness="1"
-                    Padding="8,6" Background="{StaticResource ControlBackground}">
-                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+        <!--  Display form (when not editing)  -->
+        <StackPanel IsVisible="{Binding !IsEditing}" Spacing="8">
+
+            <Border
+                Padding="8,6"
+                Background="{StaticResource ControlBackground}"
+                BorderBrush="{StaticResource ControlBorder}"
+                BorderThickness="1">
+                <TextBlock VerticalAlignment="Center" Text="{Binding Name}" />
             </Border>
-            <Button Content="Edit" Command="{Binding EditCommand}" Width="80" HorizontalAlignment="Left"
-                    IsEnabled="{Binding IsWriteEnabled}" />
+            <Button
+                Width="80"
+                HorizontalAlignment="Left"
+                Command="{Binding EditCommand}"
+                Content="Edit"
+                IsEnabled="{Binding IsWriteEnabled}" />
         </StackPanel>
 
-        <!-- Edit form (when editing) -->
-        <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+        <!--  Edit form (when editing)  -->
+        <StackPanel IsVisible="{Binding IsEditing}" Spacing="8">
             <TextBlock Text="Name" />
             <TextBox Text="{Binding Name}" />
 
-            <TextBlock Text="{Binding ValidationError}"
-                       Foreground="{StaticResource TextError}" FontSize="12"
-                       IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <TextBlock
+                FontSize="12"
+                Foreground="{StaticResource TextError}"
+                IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding ValidationError}" />
 
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Apply" Command="{Binding SaveCommand}" />
-                <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                <Button Command="{Binding SaveCommand}" Content="Apply" />
+                <Button Command="{Binding CancelCommand}" Content="Cancel" />
             </StackPanel>
         </StackPanel>
 

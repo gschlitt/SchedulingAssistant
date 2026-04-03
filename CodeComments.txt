@@ -1,63 +1,77 @@
 Bugs:
 
-Double-click to open section editor, but then go select something else, without cancelling. Section editor stays open. Should close. 
+Taking over a stale lock (at least for an already logged in as reader user) does not generate a lock file. In fact it seems to take over D' or at least
+refer to D''?
+
+Restoring from backup starts a new instance? Does not create a new copy of db but uses the backup. 
+
+Change "Academic Unit" doesn't update it on Schedule View, even after a restart?
+
+Not all the flyouts acquire scrollviewers when needed.
+
+Revisions:
 
 Filter selection border in Section View should be a a different color than manual selection.
 
-Restore from backup calls a new instance, associated crashes.
+Walkthrough observations:
+(A) Cancel button on first Wizard Page
+Need a licensing dialog (between first and second wizard page)
+Database filename: if user chooses, ensure has .db suffix
+Sort buttons for campus do not work
+Last page refers to nonexistent video
 
-Flow Check:
-Brand new db, no .tpconfig. Check all configs migrate properly. 
-Are the backups being configured properly? Check all paths.
+Flyouts don't always expand in depth to accommodate content, in particular Section Prefixes, when editor is open.
+SettingsView is wrongly named. This just governs backup etc. 
+Fontsizes are hardcoded here. Do a scan through whole app for this! Likewise in the edit form for instructors.
+SectionListView editor is kind of silly with the block patterns. 
+SectionListView editor needs to be better styled.
 
--validate database filename. Accepts blanks right now. Validate to Windows standards?
--BlockPatternView is very reptitive! Extract to a control.
-The campus selector in Section Prefixes is not being populated?
-Block patterns and campus not coming through to the db?
+Times could be entered as hour or minutes. Is this a user preference? Complicated!
+
+Autosave should be by default, but turned off with preference persisted in local users.
 
 
 
 
-Agenda.
 
-UI design --> strengthen keyboard interaction
 
-Hover over dbnames (filenames) shows full path
+
+
+
+
+
+
+
+
+
+
+Walkthroughs:
+(A) Wizard with no prior database, no .tpconfig, manual setup COMPLETE
+(B) Setting of courses instructors, scheduling environment.
+
+
+
+
+
+Notes:
+
+
+Agenda. (For release 1)
 
 Key board shortcuts
-
-Double-click on a section editor to save???
-Make save/close button larger
-
-After a new db possibly other times, Academic Unit is default. Setting it does not revise the display 
-in Schedule View. 
-
-
-
-Wizard is duplicating section properties as they end up in the Settings?
 
 Use a package for error logging e.g. Sentry, Firebase Crashlytics, Bugsnag
 
 Improve human-readability of db.
 
-Should there be an inactivation on section properties etc so they could be retired rather than deleted.
-
-Ordering on Section Prefixes,
-
-need a bit of margin on lefthand section list
-
-What happens if we modify legal start times while a semester is in use?
-
-Sort Section View by tag?
+Announcements? (We have this don't we?)
+Did you know...?
 
 
 
-Show notes in closed card?
 
-User can add fields to the right?
 
-Zoom to cursor? Via scroll wheel?
 
-Banner on sections header to show number of sections
+
 
 Hover help in a lot of places
