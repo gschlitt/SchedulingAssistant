@@ -113,6 +113,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         LoadAcademicUnitName();
 
+        _academicUnitService.NameChanged += name => AcademicUnitName = name;
+
         Filter.FilterChanged += Reload;
 
         // Reload whenever sections or meetings change (inserts, updates, deletes from any source).

@@ -10,6 +10,12 @@ namespace SchedulingAssistant.Services;
 public class AcademicUnitService(IAcademicUnitRepository repository)
 {
     /// <summary>
+    /// Fired after <see cref="UpdateName"/> successfully persists a new name.
+    /// Subscribers (e.g. <c>ScheduleGridViewModel</c>) can refresh their display immediately.
+    /// </summary>
+    public event Action<string>? NameChanged;
+
+    /// <summary>
     /// Gets the one and only Academic Unit.
     /// This should never be null because one is created at database initialization.
     /// </summary>
@@ -20,12 +26,13 @@ public class AcademicUnitService(IAcademicUnitRepository repository)
     }
 
     /// <summary>
-    /// Updates the Academic Unit name.
+    /// Updates the Academic Unit name and fires <see cref="NameChanged"/> with the trimmed value.
     /// </summary>
     public void UpdateName(string newName)
     {
         var unit = GetUnit();
         unit.Name = newName.Trim();
         repository.Update(unit);
+        NameChanged?.Invoke(unit.Name);
     }
 }
