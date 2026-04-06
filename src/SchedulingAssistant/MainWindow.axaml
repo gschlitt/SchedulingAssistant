@@ -811,10 +811,9 @@
 
                         <!--  Flyout content  -->
 
-                        <ContentControl
-                            Grid.Row="1"
-                            Margin="0,15"
-                            Content="{Binding FlyoutPage}" />
+                        <ScrollViewer Grid.Row="1" Margin="0,15">
+                            <ContentControl Content="{Binding FlyoutPage}" />
+                        </ScrollViewer>
 
 
                     </Grid>
