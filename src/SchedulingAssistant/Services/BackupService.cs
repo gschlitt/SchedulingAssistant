@@ -13,7 +13,9 @@ namespace SchedulingAssistant.Services;
 /// <para><b>Backup file naming:</b> <c>{dbName}_{yyyy-MM-dd_HH-mm-ss}.db</c> and
 /// <c>{dbName}_{yyyy-MM-dd_HH-mm-ss}_sections.csv</c>, all written to
 /// <see cref="AppSettings.BackupFolderPath"/>. Using the database filename as a prefix
-/// keeps backups from multiple databases cleanly separated within the same folder.</para>
+/// keeps backups from multiple databases cleanly separated within the same folder.
+/// The entire database is always backed up regardless of which academic year is selected,
+/// so no academic year slug appears in the filename.</para>
 ///
 /// <para><b>Session lifecycle:</b> Call <see cref="StartSessionAsync"/> when the user
 /// acquires the write lock. The service performs an immediate backup and then starts a
@@ -107,9 +109,21 @@ public class BackupService : IDisposable
     }
 
     /// <summary>
+    /// Stops the periodic backup timer without performing a final backup.
+    /// Safe to call multiple times. Also called by <see cref="Dispose"/>.
+    /// </summary>
+    public void StopSession()
+    {
+        _periodicTimer?.Dispose();
+        _periodicTimer = null;
+    }
+
+    // ── Core backup logic ────────────────────────────────────────────────────
+
+    /// <summary>
     /// Converts an academic year name (e.g. "2024-2025" or "Fall 2024") into a string
-    /// that is safe to embed in a filename. Spaces become underscores; any character that
-    /// is not alphanumeric, a hyphen, or an underscore is removed.
+    /// safe to embed in a filename. Spaces become underscores; any character that is not
+    /// alphanumeric, a hyphen, or an underscore is removed.
     /// </summary>
     /// <param name="name">Raw academic year name from the data model.</param>
     /// <returns>Filesystem-safe slug, e.g. "2024-2025" or "Fall_2024".</returns>
@@ -125,17 +139,6 @@ public class BackupService : IDisposable
         return sb.Length > 0 ? sb.ToString() : "Unknown";
     }
 
-    /// <summary>
-    /// Stops the periodic backup timer without performing a final backup.
-    /// Safe to call multiple times. Also called by <see cref="Dispose"/>.
-    /// </summary>
-    public void StopSession()
-    {
-        _periodicTimer?.Dispose();
-        _periodicTimer = null;
-    }
-
-    // ── Core backup logic ────────────────────────────────────────────────────
 
     /// <summary>
     /// Performs one complete backup cycle:
@@ -173,8 +176,10 @@ public class BackupService : IDisposable
         var prefix    = _dbName ?? "backup";
         var aySlug    = ToFileSlug(_semesterContext.SelectedAcademicYear?.Name ?? "Unknown");
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-        var dbDest    = Path.Combine(folder, $"{prefix}_{aySlug}_{timestamp}.db");
-        var csvDest   = Path.Combine(folder, $"{prefix}_{aySlug}_{timestamp}_sections.csv");
+        var dbDest    = Path.Combine(folder, $"{prefix}_{timestamp}.db");
+        // CSV name includes the academic year slug because the CSV contains only that
+        // year's sections. The .db file contains the whole database, so it gets no slug.
+        var csvDest   = Path.Combine(folder, $"{prefix}_{timestamp}_{aySlug}_sections.csv");
 
         // Step 1 — VACUUM INTO
         try
@@ -213,10 +218,10 @@ public class BackupService : IDisposable
             _logger.LogError(ex, "Section CSV export failed during backup");
         }
 
-        // Step 4 — rotate old backups (per academic year, so older years are never evicted)
+        // Step 4 — rotate old backups
         try
         {
-            RotateBackups(folder, prefix, aySlug, settings.MaxBackupCount);
+            RotateBackups(folder, prefix, settings.MaxBackupCount);
         }
         catch (Exception ex)
         {
@@ -235,6 +240,38 @@ public class BackupService : IDisposable
         LastBackupResult = result;
         FireBackupCompleted();
         return result;
+    }
+
+    /// <summary>
+    /// Creates a database-only snapshot in the backup folder using VACUUM INTO.
+    /// Does not write a CSV, does not rotate old backups, and does not fire
+    /// <see cref="BackupCompleted"/>. Intended for use as a pre-save safety
+    /// snapshot by <see cref="CheckoutService"/> immediately before writing D' → D.
+    /// Non-throwing — failures are logged but do not propagate.
+    /// </summary>
+    public void TakeDbSnapshot()
+    {
+        var folder = AppSettings.Current.BackupFolderPath;
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
+
+        try
+        {
+            var prefix    = _dbName ?? "backup";
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+            var dest      = Path.Combine(folder, $"{prefix}_{timestamp}.db");
+
+            using var cmd = _db.Connection.CreateCommand();
+            cmd.CommandText = "VACUUM INTO $path";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "$path";
+            p.Value = dest;
+            cmd.Parameters.Add(p);
+            cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInfo($"BackupService: pre-save snapshot failed (non-critical): {ex.Message}");
+        }
     }
 
     // ── Backup list ──────────────────────────────────────────────────────────
@@ -256,17 +293,16 @@ public class BackupService : IDisposable
 
         return Directory
             .GetFiles(folder, $"{prefix}_*.db")
-            .OrderByDescending(f => f)
             .Select(f =>
             {
-                var csv = Path.ChangeExtension(f, null) + "_sections.csv";
                 return new BackupEntry
                 {
                     DbPath    = f,
-                    CsvPath   = File.Exists(csv) ? csv : null,
+                    CsvPath   = FindCompanionCsv(folder, f),
                     Timestamp = ParseTimestampFromFilename(f) ?? File.GetCreationTime(f)
                 };
             })
+            .OrderByDescending(e => e.Timestamp)
             .ToList();
     }
 
@@ -494,23 +530,19 @@ public class BackupService : IDisposable
     }
 
     /// <summary>
-    /// Enforces the backup retention limit for a single academic year. Only files whose
-    /// name contains <paramref name="aySlug"/> are considered; backups from other academic
-    /// years are never touched. Oldest backup pairs (db + csv) are deleted until the count
-    /// for this academic year is at or below <paramref name="maxCount"/>.
+    /// Enforces the backup retention limit. Oldest backup pairs (db + csv) are deleted
+    /// until the count is at or below <paramref name="maxCount"/>.
     /// </summary>
     /// <param name="folder">Backup folder path.</param>
     /// <param name="prefix">Database name prefix, e.g. "ComputerScience".</param>
-    /// <param name="aySlug">Filesystem-safe academic year slug, e.g. "2025-2026".</param>
-    /// <param name="maxCount">Maximum number of backup pairs to retain for this academic year.</param>
-    private static void RotateBackups(string folder, string prefix, string aySlug, int maxCount)
+    /// <param name="maxCount">Maximum number of backup pairs to retain.</param>
+    private static void RotateBackups(string folder, string prefix, int maxCount)
     {
         // Clamp to a sensible minimum to prevent accidental deletion of everything.
         maxCount = Math.Max(maxCount, 1);
 
-        // Only rotate the files that belong to the current academic year.
-        // File pattern: {prefix}_{aySlug}_{yyyy-MM-dd_HH-mm-ss}.db
-        var files = Directory.GetFiles(folder, $"{prefix}_{aySlug}_*.db")
+        // File pattern: {prefix}_{yyyy-MM-dd_HH-mm-ss}.db
+        var files = Directory.GetFiles(folder, $"{prefix}_*.db")
                              .OrderBy(f => f)   // ascending = oldest first
                              .ToList();
 
@@ -521,9 +553,12 @@ public class BackupService : IDisposable
 
             TryDelete(oldest);
 
-            // Delete companion CSV
-            var csv = Path.ChangeExtension(oldest, null) + "_sections.csv";
-            TryDelete(csv);
+            // Delete companion CSV — the CSV name includes an academic year slug between
+            // the timestamp and "_sections.csv", so derive it via glob rather than string
+            // substitution. e.g. DB: MATH-TT_2026-04-05_21-15-25.db →
+            // CSV: MATH-TT_2026-04-05_21-15-25_2025-2026_sections.csv
+            var companionCsv = FindCompanionCsv(folder, oldest);
+            if (companionCsv != null) TryDelete(companionCsv);
         }
     }
 
@@ -568,6 +603,25 @@ public class BackupService : IDisposable
                 System.Globalization.DateTimeStyles.None, out var dt))
             return dt;
         return null;
+    }
+
+    /// <summary>
+    /// Locates the companion CSV file for a given database backup file.
+    /// The DB is named <c>{prefix}_{timestamp}.db</c>; the CSV is named
+    /// <c>{prefix}_{timestamp}_{aySlug}_sections.csv</c>. Because the slug varies,
+    /// the companion is found by scanning for files matching
+    /// <c>{prefix}_{timestamp}_*_sections.csv</c>.
+    /// Returns null when no companion exists.
+    /// </summary>
+    /// <param name="folder">Backup folder to search.</param>
+    /// <param name="dbPath">Full path to the .db backup file.</param>
+    /// <returns>Full path to the companion CSV, or null if none found.</returns>
+    private static string? FindCompanionCsv(string folder, string dbPath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(dbPath);  // e.g. "MATH-TT_2026-04-05_21-15-25"
+        return Directory
+            .GetFiles(folder, $"{stem}_*_sections.csv")
+            .FirstOrDefault();
     }
 
     /// <summary>Converts minutes-from-midnight to a display string, e.g. 510 → "8:30 AM".</summary>

@@ -344,11 +344,14 @@ public partial class MainWindow : Window
     private async Task SetupMainWindowAsync(string dbPath, MainWindowViewModel vm)
     {
         // Start the automated backup session if this instance acquired the write lock.
+        // Also wire the backup service into CheckoutService so pre-save snapshots use
+        // the same service and naming convention as regular backups.
         // Fire-and-forget: the first backup runs asynchronously in the background.
         if (App.Services.GetService(typeof(BackupService)) is BackupService backup
             && App.Services.GetService(typeof(WriteLockService)) is WriteLockService wl
             && wl.IsWriter)
         {
+            App.Checkout.SetBackupService(backup);
             _ = backup.StartSessionAsync(dbPath);
         }
 

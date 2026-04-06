@@ -49,6 +49,14 @@ public sealed class CheckoutService : IDisposable
     private readonly IAppLogger _logger;
 
     /// <summary>
+    /// Optional reference to the application's <see cref="BackupService"/>, used to take
+    /// a pre-save DB snapshot before writing D' → D. Set after DI initialisation via
+    /// <see cref="SetBackupService"/> because <see cref="BackupService"/> requires a live
+    /// <see cref="IDatabaseContext"/> that does not exist until after checkout completes.
+    /// </summary>
+    private BackupService? _backupService;
+
+    /// <summary>
     /// Dispatcher used to raise events on the UI thread. In production this is
     /// <c>Dispatcher.UIThread.Post</c>; in unit tests it is typically <c>a => a()</c>
     /// for synchronous, immediate dispatch.
@@ -186,6 +194,15 @@ public sealed class CheckoutService : IDisposable
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Wires up the <see cref="BackupService"/> so that <see cref="SaveAsync"/> can
+    /// delegate pre-save snapshots to it. Called from <c>MainWindow.SetupMainWindowAsync</c>
+    /// after the DI container is built and the backup session has started.
+    /// </summary>
+    /// <param name="backupService">The application-wide backup service instance.</param>
+    public void SetBackupService(BackupService backupService) =>
+        _backupService = backupService;
 
     /// <summary>
     /// Opens a database session. In write mode, acquires the write lock and copies D → D'.
@@ -805,26 +822,12 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Copies D' to a timestamped backup file in the configured backup folder.
-    /// Non-throwing — a backup failure is logged but does not abort the save.
+    /// Delegates to <see cref="BackupService.TakeDbSnapshot"/> when a backup service
+    /// has been wired up via <see cref="SetBackupService"/>. No-op otherwise.
+    /// Non-throwing — a backup failure inside the service is logged there and does not
+    /// propagate to the caller.
     /// </summary>
-    private void TakePreSaveBackup()
-    {
-        var folder = AppSettings.Current.BackupFolderPath;
-        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
-
-        try
-        {
-            var dbName    = Path.GetFileNameWithoutExtension(SourcePath);
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            var dest      = Path.Combine(folder, $"{dbName}_{timestamp}.db");
-            BackupSqliteDatabase(WorkingPath, dest);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogInfo($"CheckoutService: pre-save backup failed (non-critical): {ex.Message}");
-        }
-    }
+    private void TakePreSaveBackup() => _backupService?.TakeDbSnapshot();
 
     /// <summary>Writes a dirty marker file alongside D' to track ungraceful exits.</summary>
     private void WriteDirtyMarker()
