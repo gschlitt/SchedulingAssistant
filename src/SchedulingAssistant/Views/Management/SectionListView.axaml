@@ -300,7 +300,7 @@
                                             MinimumPrefixLength="0"
                                             Text="{Binding BlockLengthText, Mode=TwoWay}"
                                             ToolTip.Tip="{Binding BlockLengthError}"
-                                            Watermark="hours" />
+                                            Watermark="{Binding BlockLengthWatermark}" />
 
                                         <!--  Frequency  -->
                                         <ComboBox

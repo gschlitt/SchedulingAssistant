@@ -47,6 +47,14 @@ public class AppSettings
     public bool IncludeSaturday { get; set; } = false;
     public bool IncludeSunday { get; set; } = false;
     public double? PreferredBlockLength { get; set; } = null;
+
+    /// <summary>
+    /// Controls whether block lengths are entered and displayed in hours or minutes throughout the app.
+    /// This is a display-only preference; storage is always in hours.
+    /// Default: Hours.
+    /// </summary>
+    public BlockLengthUnit BlockLengthUnit { get; set; } = BlockLengthUnit.Hours;
+
     public bool ShowOnlyActiveInstructors { get; set; } = true;
 
     /// <summary>

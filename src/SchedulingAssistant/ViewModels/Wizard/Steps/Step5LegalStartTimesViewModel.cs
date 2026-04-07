@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -39,8 +41,16 @@ public partial class WizardBlockLengthEntry : ViewModelBase
     /// <summary>Block length in hours (e.g. 1.5, 2.0, 3.0). Stored as-is in the DB.</summary>
     public double BlockLengthHours { get; }
 
-    /// <summary>Human-readable label shown in the card header (e.g. "2 hours").</summary>
-    public string Label { get; }
+    /// <summary>
+    /// The active display unit. Set by the parent VM when the user toggles the unit.
+    /// Changing this raises <see cref="Label"/> for binding refresh.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Label))]
+    private BlockLengthUnit _blockLengthUnit;
+
+    /// <summary>Human-readable label shown in the card header, reflecting the active unit (e.g. "2 hours" or "120 min").</summary>
+    public string Label => BlockLengthFormatter.LabelFor(BlockLengthHours, BlockLengthUnit);
 
     /// <summary>Editable list of start times for this block length.</summary>
     public ObservableCollection<WizardStartTimeEntry> StartTimes { get; } = [];
@@ -52,12 +62,12 @@ public partial class WizardBlockLengthEntry : ViewModelBase
     [ObservableProperty] private string? _addTimeError;
 
     /// <param name="blockLengthHours">Block length in hours.</param>
-    /// <param name="label">Display label.</param>
+    /// <param name="unit">The current display unit.</param>
     /// <param name="initialTimes">Initial HHMM strings to populate the list.</param>
-    public WizardBlockLengthEntry(double blockLengthHours, string label, IEnumerable<string> initialTimes)
+    public WizardBlockLengthEntry(double blockLengthHours, BlockLengthUnit unit, IEnumerable<string> initialTimes)
     {
         BlockLengthHours = blockLengthHours;
-        Label            = label;
+        _blockLengthUnit = unit;
         foreach (var t in initialTimes)
             StartTimes.Add(new WizardStartTimeEntry(t));
     }
@@ -88,7 +98,7 @@ public partial class WizardBlockLengthEntry : ViewModelBase
         int endMinutes = minutes + (int)Math.Round(BlockLengthHours * 60);
         if (endMinutes > SectionMeetingViewModel.MaxEndMinutes)
         {
-            AddTimeError = $"A {BlockLengthHours}h block starting then would end after 2200.";
+            AddTimeError = $"A {BlockLengthFormatter.LabelFor(BlockLengthHours, BlockLengthUnit)} block starting then would end after 2200.";
             return;
         }
 
@@ -143,14 +153,6 @@ public partial class WizardBlockLengthEntry : ViewModelBase
     /// </summary>
     public List<int> GetStartMinutes() =>
         StartTimes.Select(e => e.ToMinutes()).Where(m => m >= 0).ToList();
-
-    /// <summary>
-    /// Builds a human-readable label from a block length in hours.
-    /// Whole numbers render as "N hours"; fractions as "N.N hours".
-    /// </summary>
-    /// <param name="hours">Block length in hours.</param>
-    public static string LabelFor(double hours) =>
-        hours == Math.Floor(hours) ? $"{(int)hours} hours" : $"{hours} hours";
 }
 
 /// <summary>
@@ -168,8 +170,8 @@ public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
     public ObservableCollection<WizardBlockLengthEntry> BlockLengths { get; } = [];
 
     /// <summary>
-    /// Input field for the new block length to add, in hours (e.g. "1.5").
-    /// Accepts a decimal number; leading zeros and commas are tolerated.
+    /// Input field for the new block length to add.
+    /// In hours mode: decimal hours (e.g. "1.5"). In minutes mode: whole minutes (e.g. "90").
     /// </summary>
     [ObservableProperty] private string _newBlockLengthInput = string.Empty;
 
@@ -179,35 +181,99 @@ public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
     /// <summary>Whether Sunday is available as a scheduling day. Saved to AppSettings on finish.</summary>
     [ObservableProperty] private bool _includeSunday;
 
+    // ── Block length unit ─────────────────────────────────────────────────────
+
+    private BlockLengthUnit _blockLengthUnit;
+
+    /// <summary>
+    /// Controls whether block lengths are displayed and entered in hours or minutes.
+    /// Writes through to AppSettings and refreshes all card labels.
+    /// </summary>
+    public BlockLengthUnit BlockLengthUnit
+    {
+        get => _blockLengthUnit;
+        set
+        {
+            if (_blockLengthUnit == value) return;
+            _blockLengthUnit = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsHoursUnit));
+            OnPropertyChanged(nameof(IsMinutesUnit));
+            OnPropertyChanged(nameof(NewBlockLengthWatermark));
+            OnPropertyChanged(nameof(NewBlockLengthLabel));
+
+            // Propagate new unit to each card so their labels update.
+            foreach (var entry in BlockLengths)
+                entry.BlockLengthUnit = value;
+
+            AppSettings.Current.BlockLengthUnit = value;
+            AppSettings.Current.Save();
+        }
+    }
+
+    /// <summary>True when the unit is Hours; used by RadioButton IsChecked binding.</summary>
+    public bool IsHoursUnit
+    {
+        get => _blockLengthUnit == BlockLengthUnit.Hours;
+        set { if (value) BlockLengthUnit = BlockLengthUnit.Hours; }
+    }
+
+    /// <summary>True when the unit is Minutes; used by RadioButton IsChecked binding.</summary>
+    public bool IsMinutesUnit
+    {
+        get => _blockLengthUnit == BlockLengthUnit.Minutes;
+        set { if (value) BlockLengthUnit = BlockLengthUnit.Minutes; }
+    }
+
+    /// <summary>Watermark shown in the "Add block length" input field.</summary>
+    public string NewBlockLengthWatermark => BlockLengthFormatter.BlockLengthWatermark(_blockLengthUnit);
+
+    /// <summary>Label shown beside the "Add block length" field.</summary>
+    public string NewBlockLengthLabel => BlockLengthFormatter.BlockLengthInputLabel(_blockLengthUnit);
+
     public Step5LegalStartTimesViewModel()
     {
+        _blockLengthUnit = AppSettings.Current.BlockLengthUnit;
+
         // Pre-populate from AppDefaults. The user can edit, delete, or add entries freely.
         foreach (var (hours, startMinutes) in AppDefaults.LegalStartTimes)
         {
             var hhmm = startMinutes.Select(AppDefaults.MinutesToHhmm);
-            BlockLengths.Add(new WizardBlockLengthEntry(
-                hours, WizardBlockLengthEntry.LabelFor(hours), hhmm));
+            BlockLengths.Add(new WizardBlockLengthEntry(hours, _blockLengthUnit, hhmm));
         }
     }
 
     /// <summary>
     /// Adds a new block length card using the value in <see cref="NewBlockLengthInput"/>.
+    /// In hours mode: parses decimal hours. In minutes mode: parses whole minutes.
     /// Ignores non-positive or duplicate values. Clears the input field on success.
     /// </summary>
     [RelayCommand]
     private void AddBlockLength()
     {
-        // Accept both "1.5" and "1,5" as decimal separators
-        var normalized = NewBlockLengthInput.Trim().Replace(',', '.');
-        if (!double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out var hours)
-            || hours <= 0)
-            return;
+        double hours;
+
+        if (_blockLengthUnit == BlockLengthUnit.Minutes)
+        {
+            // Whole minutes only (e.g. "90")
+            if (!int.TryParse(NewBlockLengthInput.Trim(), out int mins) || mins <= 0)
+                return;
+            hours = mins / 60.0;
+        }
+        else
+        {
+            // Decimal hours (e.g. "1.5") — accept both "." and "," as separators
+            var normalized = NewBlockLengthInput.Trim().Replace(',', '.');
+            if (!double.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out hours)
+                || hours <= 0)
+                return;
+        }
 
         // Prevent duplicates (within 0.01h tolerance)
         if (BlockLengths.Any(b => Math.Abs(b.BlockLengthHours - hours) < 0.01))
             return;
 
-        BlockLengths.Add(new WizardBlockLengthEntry(hours, WizardBlockLengthEntry.LabelFor(hours), []));
+        BlockLengths.Add(new WizardBlockLengthEntry(hours, _blockLengthUnit, []));
         NewBlockLengthInput = string.Empty;
     }
 

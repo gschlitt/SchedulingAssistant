@@ -510,7 +510,8 @@ public partial class SectionEditViewModel : ViewModelBase
         // Meetings — pass rooms down so each meeting can show its own room picker.
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
-            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, entry, defaultBlockLength, _onValidationError));
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, entry, defaultBlockLength, _onValidationError,
+                unit: AppSettings.Current.BlockLengthUnit));
 
         // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
         _isConstructed = true;
@@ -587,7 +588,8 @@ public partial class SectionEditViewModel : ViewModelBase
     private void AddMeeting()
     {
         Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
-            defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError));
+            defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError,
+            unit: AppSettings.Current.BlockLengthUnit));
     }
 
     [RelayCommand]
@@ -641,7 +643,8 @@ public partial class SectionEditViewModel : ViewModelBase
             // the auto-fill fires OnSelectedBlockLengthChanged and the coupling propagates
             // it to all follower meetings just like a manual change would.
             var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
-                defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError);
+                defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError,
+                unit: AppSettings.Current.BlockLengthUnit);
             meeting.SelectedDay = day;
             created.Add(meeting);
             Meetings.Add(meeting);

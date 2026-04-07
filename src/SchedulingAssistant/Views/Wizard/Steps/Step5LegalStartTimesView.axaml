@@ -21,6 +21,19 @@
             If you do not wish to supply these
             now, you can do so later in the application.</TextBlock>
 
+        <!--  Block length unit toggle  -->
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
+            <RadioButton
+                Content="Hours"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsHoursUnit}" />
+            <RadioButton
+                Content="Minutes"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsMinutesUnit}" />
+        </StackPanel>
+
         <!--  One card per block length  -->
         <ItemsControl ItemsSource="{Binding BlockLengths}">
             <ItemsControl.ItemTemplate>
@@ -134,11 +147,11 @@
                         FontFamily="Consolas"
                         FontSize="{DynamicResource FontSizeSmall}"
                         Text="{Binding NewBlockLengthInput}"
-                        Watermark="e.g. 1.5" />
+                        Watermark="{Binding NewBlockLengthWatermark}" />
                     <TextBlock
                         VerticalAlignment="Center"
                         FontSize="{DynamicResource FontSizeSmall}"
-                        Text="hours" />
+                        Text="{Binding NewBlockLengthWatermark}" />
                     <Button
                         Command="{Binding AddBlockLengthCommand}"
                         Content="Add block length"

@@ -10,6 +10,16 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// <summary>Represents one item in the "Preferred block length" ComboBox.</summary>
 public record NullableBlockLengthOption(double? Value, string Label);
 
+/// <summary>
+/// Display wrapper for a <see cref="LegalStartTime"/> row in the DataGrid.
+/// Carries the block length formatted in the current unit so the grid reflects the active preference.
+/// </summary>
+public record LegalStartTimeRow(LegalStartTime Entry, string BlockLengthDisplay)
+{
+    /// <summary>Start times forwarded from the underlying entry.</summary>
+    public string StartTimesDisplay => Entry.StartTimesDisplay;
+}
+
 public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
 {
     private readonly ILegalStartTimeRepository _repo;
@@ -27,7 +37,19 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     private bool CanWrite() => _lockService.IsWriter;
 
     [ObservableProperty] private ObservableCollection<LegalStartTime> _entries = new();
-    [ObservableProperty] private LegalStartTime? _selectedEntry;
+
+    /// <summary>
+    /// Unit-formatted display rows shown in the DataGrid.
+    /// Rebuilt whenever entries or the block-length unit changes.
+    /// </summary>
+    public ObservableCollection<LegalStartTimeRow> DisplayEntries { get; } = new();
+
+    /// <summary>The row currently selected in the DataGrid.</summary>
+    [ObservableProperty] private LegalStartTimeRow? _selectedRow;
+
+    /// <summary>The underlying entry for the selected row; null when nothing is selected.</summary>
+    private LegalStartTime? SelectedEntry => SelectedRow?.Entry;
+
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
 
     // ── Include Saturday / Sunday settings ───────────────────────────────────
@@ -83,6 +105,52 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
             _changeNotifier.NotifySectionChanged();
         }
     }
+
+    // ── Block length unit ─────────────────────────────────────────────────────
+
+    private BlockLengthUnit _blockLengthUnit;
+
+    /// <summary>
+    /// Controls whether block lengths are displayed and entered in hours or minutes.
+    /// Writes through immediately to AppSettings on change and refreshes all dependent labels.
+    /// </summary>
+    public BlockLengthUnit BlockLengthUnit
+    {
+        get => _blockLengthUnit;
+        set
+        {
+            if (_blockLengthUnit == value) return;
+            _blockLengthUnit = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsHoursUnit));
+            OnPropertyChanged(nameof(IsMinutesUnit));
+            OnPropertyChanged(nameof(BlockLengthColumnHeader));
+
+            var settings = AppSettings.Current;
+            settings.BlockLengthUnit = value;
+            settings.Save();
+
+            RebuildDisplayEntries();
+            RebuildPreferredOptions();
+        }
+    }
+
+    /// <summary>True when the unit is Hours; used by RadioButton IsChecked binding.</summary>
+    public bool IsHoursUnit
+    {
+        get => _blockLengthUnit == BlockLengthUnit.Hours;
+        set { if (value) BlockLengthUnit = BlockLengthUnit.Hours; }
+    }
+
+    /// <summary>True when the unit is Minutes; used by RadioButton IsChecked binding.</summary>
+    public bool IsMinutesUnit
+    {
+        get => _blockLengthUnit == BlockLengthUnit.Minutes;
+        set { if (value) BlockLengthUnit = BlockLengthUnit.Minutes; }
+    }
+
+    /// <summary>DataGrid column header text, updated when the unit changes.</summary>
+    public string BlockLengthColumnHeader => BlockLengthFormatter.BlockLengthColumnHeader(_blockLengthUnit);
 
     // ── Preferred block length ────────────────────────────────────────────────
 
@@ -154,11 +222,27 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
 
         _currentAcademicYearId = ayId;
         Entries = new ObservableCollection<LegalStartTime>(_repo.GetAll(ayId));
+
+        _blockLengthUnit = AppSettings.Current.BlockLengthUnit;
+        OnPropertyChanged(nameof(BlockLengthUnit));
+        OnPropertyChanged(nameof(IsHoursUnit));
+        OnPropertyChanged(nameof(IsMinutesUnit));
+        OnPropertyChanged(nameof(BlockLengthColumnHeader));
+
+        RebuildDisplayEntries();
         RebuildPreferredOptions();
         _includeSaturday = AppSettings.Current.IncludeSaturday;
         OnPropertyChanged(nameof(IncludeSaturday));
         _includeSunday = AppSettings.Current.IncludeSunday;
         OnPropertyChanged(nameof(IncludeSunday));
+    }
+
+    private void RebuildDisplayEntries()
+    {
+        DisplayEntries.Clear();
+        foreach (var e in Entries)
+            DisplayEntries.Add(new LegalStartTimeRow(e,
+                BlockLengthFormatter.FormatBlockLength(e.BlockLength, _blockLengthUnit)));
     }
 
     private void RebuildPreferredOptions()
@@ -171,7 +255,8 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
         PreferredBlockLengthOptions.Add(none);
 
         foreach (var entry in Entries)
-            PreferredBlockLengthOptions.Add(new NullableBlockLengthOption(entry.BlockLength, $"{entry.BlockLength:0.#} hrs"));
+            PreferredBlockLengthOptions.Add(new NullableBlockLengthOption(entry.BlockLength,
+                BlockLengthFormatter.LabelFor(entry.BlockLength, _blockLengthUnit)));
 
         _selectedPreferredOption = saved.HasValue
             ? PreferredBlockLengthOptions.FirstOrDefault(o => o.Value.HasValue && Math.Abs(o.Value.Value - saved.Value) < 0.01)
@@ -185,7 +270,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     {
         if (string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var entry = new LegalStartTime();
-        EditVm = new LegalStartTimeEditViewModel(entry, isNew: true,
+        EditVm = new LegalStartTimeEditViewModel(entry, isNew: true, _blockLengthUnit,
             onSave: async e =>
             {
                 try { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; }
@@ -199,7 +284,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     {
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var copy = new LegalStartTime { BlockLength = SelectedEntry.BlockLength, StartTimes = new List<int>(SelectedEntry.StartTimes) };
-        EditVm = new LegalStartTimeEditViewModel(copy, isNew: false,
+        EditVm = new LegalStartTimeEditViewModel(copy, isNew: false, _blockLengthUnit,
             onSave: async e =>
             {
                 try { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; }

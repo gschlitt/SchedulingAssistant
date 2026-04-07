@@ -1,13 +1,33 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class LegalStartTimeEditViewModel : ViewModelBase
 {
-    [ObservableProperty] private double _blockLength;
+    /// <summary>Block length in hours — internal storage unit. Never exposed directly to the UI.</summary>
+    private double _blockLengthHours;
+
+    /// <summary>
+    /// Block length as shown in the NumericUpDown, expressed in the current <see cref="_unit"/>.
+    /// Hours mode: hours (e.g. 1.5). Minutes mode: whole minutes (e.g. 90).
+    /// Setting this converts back to hours for internal storage.
+    /// </summary>
+    public double BlockLengthDisplay
+    {
+        get => BlockLengthFormatter.HoursToDisplay(_blockLengthHours, _unit);
+        set
+        {
+            double newHours = BlockLengthFormatter.DisplayToHours(value, _unit);
+            if (Math.Abs(_blockLengthHours - newHours) < 0.0001) return;
+            _blockLengthHours = newHours;
+            OnPropertyChanged();
+        }
+    }
+
     [ObservableProperty] private ObservableCollection<StartTimeRowViewModel> _startTimeRows = new();
     [ObservableProperty] private string _newStartTime = string.Empty;
     [ObservableProperty] private string? _validationError;
@@ -15,18 +35,41 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
     public string Title => IsNew ? "Add Block Length" : "Edit Block Length";
     public bool IsNew { get; }
 
+    /// <summary>Label for the block-length field, e.g. "Block Length (hours)" or "Block Length (minutes)".</summary>
+    public string BlockLengthLabel => BlockLengthFormatter.BlockLengthInputLabel(_unit);
+
+    /// <summary>NumericUpDown increment in display units.</summary>
+    public decimal NumericIncrement => BlockLengthFormatter.NumericIncrement(_unit);
+
+    /// <summary>NumericUpDown minimum in display units.</summary>
+    public decimal NumericMinimum => BlockLengthFormatter.NumericMinimum(_unit);
+
+    /// <summary>NumericUpDown maximum in display units.</summary>
+    public decimal NumericMaximum => BlockLengthFormatter.NumericMaximum(_unit);
+
+    /// <summary>NumericUpDown format string.</summary>
+    public string NumericFormatString => BlockLengthFormatter.NumericFormatString(_unit);
+
     private readonly LegalStartTime _entry;
+    private readonly BlockLengthUnit _unit;
     private readonly Func<LegalStartTime, Task> _onSave;
     private readonly Action _onCancel;
 
-    public LegalStartTimeEditViewModel(LegalStartTime entry, bool isNew, Func<LegalStartTime, Task> onSave, Action onCancel)
+    /// <param name="entry">The entry being edited or a blank entry for new additions.</param>
+    /// <param name="isNew">True when adding a new block length; false when editing an existing one.</param>
+    /// <param name="unit">Current block-length display unit from AppSettings.</param>
+    /// <param name="onSave">Callback invoked with the updated entry on save.</param>
+    /// <param name="onCancel">Callback invoked when the user cancels.</param>
+    public LegalStartTimeEditViewModel(LegalStartTime entry, bool isNew, BlockLengthUnit unit,
+        Func<LegalStartTime, Task> onSave, Action onCancel)
     {
-        _entry = entry;
-        IsNew = isNew;
+        _entry  = entry;
+        IsNew   = isNew;
+        _unit   = unit;
         _onSave = onSave;
         _onCancel = onCancel;
 
-        BlockLength = entry.BlockLength;
+        _blockLengthHours = entry.BlockLength;
         StartTimeRows = new ObservableCollection<StartTimeRowViewModel>(
             entry.StartTimes.Select(m => new StartTimeRowViewModel(m, Remove)));
     }
@@ -48,10 +91,10 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
             ValidationError = "Start times cannot be earlier than 0730.";
             return;
         }
-        int endMinutes = minutes + (int)Math.Round(BlockLength * 60);
+        int endMinutes = minutes + (int)Math.Round(_blockLengthHours * 60);
         if (endMinutes > SectionMeetingViewModel.MaxEndMinutes)
         {
-            ValidationError = $"A {BlockLength}h block starting then would end after 2200.";
+            ValidationError = $"A {BlockLengthFormatter.LabelFor(_blockLengthHours, _unit)} block starting then would end after 2200.";
             return;
         }
         if (StartTimeRows.Any(r => r.Minutes == minutes))
@@ -93,8 +136,8 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
     [RelayCommand]
     private async Task Save()
     {
-        _entry.BlockLength = BlockLength;
-        _entry.StartTimes = StartTimeRows.Select(r => r.Minutes).ToList();
+        _entry.BlockLength = _blockLengthHours;
+        _entry.StartTimes  = StartTimeRows.Select(r => r.Minutes).ToList();
         await _onSave(_entry);
     }
 
@@ -111,9 +154,9 @@ public partial class StartTimeRowViewModel : ViewModelBase
 
     public StartTimeRowViewModel(int minutes, Action<StartTimeRowViewModel> onRemove)
     {
-        Minutes = minutes;
+        Minutes   = minutes;
         _onRemove = onRemove;
-        Label = $"{minutes / 60:D2}{minutes % 60:D2}";
+        Label     = $"{minutes / 60:D2}{minutes % 60:D2}";
     }
 
     [RelayCommand]

@@ -44,10 +44,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private double? _selectedBlockLength;
 
-    /// <summary>The raw text currently showing in the Start time field (e.g. "08:30").</summary>
+    /// <summary>The raw text currently showing in the Start time field (e.g. "0830").</summary>
     [ObservableProperty] private string _startTimeText = "";
 
-    /// <summary>The raw text currently showing in the Length field (e.g. "1.5").</summary>
+    /// <summary>The raw text currently showing in the Length field (e.g. "1.5" or "90").</summary>
     [ObservableProperty] private string _blockLengthText = "";
 
     /// <summary>Validation error message for the Start field. Null when valid.</summary>
@@ -64,19 +64,24 @@ public partial class SectionMeetingViewModel : ViewModelBase
     public ObservableCollection<Room> Rooms { get; }
 
     /// <summary>
-    /// All distinct start times available across all block-length rows, formatted as "HH:MM".
+    /// All distinct start times available across all block-length rows, formatted as "HHMM".
     /// Shown as suggestions in the Start AutoCompleteBox regardless of which block length
     /// is selected — the user picks start time first, then sees corresponding lengths.
     /// </summary>
     public IReadOnlyList<string> AllStartTimeStrings { get; }
 
     /// <summary>
-    /// Block lengths valid for the currently selected start time, formatted as decimal hours
-    /// (e.g. "1.5", "2", "3"). Populated by <see cref="RefreshBlockLengths"/> after the
-    /// start time is committed. Empty when no start time is set or none of the legal
-    /// start-time entries include the current start time.
+    /// Block lengths valid for the currently selected start time, formatted in the active unit
+    /// (e.g. "1.5", "2" for hours; "90", "120" for minutes).
+    /// Populated by <see cref="RefreshBlockLengths"/> after the start time is committed.
+    /// Empty when no start time is set or none of the legal start-time entries include the current start time.
     /// </summary>
     public ObservableCollection<string> AvailableBlockLengthStrings { get; } = new();
+
+    /// <summary>
+    /// Watermark text for the Length AutoCompleteBox, reflecting the active unit ("hours" or "min").
+    /// </summary>
+    public string BlockLengthWatermark => BlockLengthFormatter.BlockLengthWatermark(_unit);
 
     // ── Time bound constants ──────────────────────────────────────────────────
 
@@ -89,6 +94,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // ─────────────────────────────────────────────────────────────────────────
 
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
+    private readonly BlockLengthUnit _unit;
 
     /// <summary>
     /// The preferred block length from Settings. When the user commits a start time,
@@ -117,6 +123,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// Optional callback invoked when a start time or block length is silently clamped to a
     /// hard bound (07:30 earliest, 22:00 latest end). Receives the message to display.
     /// </param>
+    /// <param name="unit">
+    /// The block-length display unit (Hours or Minutes). Controls formatting and parsing of
+    /// the Length field throughout this meeting's lifetime.
+    /// </param>
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
@@ -125,11 +135,13 @@ public partial class SectionMeetingViewModel : ViewModelBase
         IReadOnlyList<Room> rooms,
         SectionDaySchedule? existing = null,
         double? defaultBlockLength = null,
-        Func<string, Task>? onWarning = null)
+        Func<string, Task>? onWarning = null,
+        BlockLengthUnit unit = BlockLengthUnit.Hours)
     {
         _legalStartTimes    = legalStartTimes;
         _defaultBlockLength = defaultBlockLength;
         _onWarning          = onWarning;
+        _unit               = unit;
 
         // Build the start-time suggestion list from ALL distinct start times across every
         // block-length row, sorted chronologically.
@@ -476,10 +488,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
             return;
         }
 
-        var parsed = ParseBlockLength(BlockLengthText);
+        var parsed = BlockLengthFormatter.ParseBlockLength(BlockLengthText, _unit);
         if (parsed is null || parsed.Value <= 0)
         {
-            BlockLengthError = "Enter a duration like 1.5 or 1:30";
+            BlockLengthError = BlockLengthFormatter.ParseErrorHint(_unit);
             return;
         }
 
@@ -511,9 +523,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     /// <summary>
     /// Rebuilds <see cref="AvailableBlockLengthStrings"/> to contain every block length for
-    /// which the currently selected start time is a legal start. This is the reverse of the
-    /// old flow (pick length → see valid starts); now the user picks start first and sees
-    /// which lengths are available.
+    /// which the currently selected start time is a legal start, formatted in the active unit.
     /// When the chosen start time is not in the table (e.g. a custom time like 09:15), falls
     /// back to showing every known block length as suggestions so the dropdown is never empty.
     /// </summary>
@@ -548,12 +558,12 @@ public partial class SectionMeetingViewModel : ViewModelBase
         $"{minutes / 60:D2}{minutes % 60:D2}";
 
     /// <summary>
-    /// Formats a block length in hours as a compact decimal string (e.g. 1.5 → "1.5", 2.0 → "2").
-    /// Uses the invariant culture so the decimal separator is always ".".
+    /// Formats a block length in hours using the active unit.
+    /// Hours: compact decimal ("1.5", "2"). Minutes: whole integer ("90", "120").
     /// </summary>
     /// <param name="hours">Block length in hours.</param>
-    internal static string FormatBlockLength(double hours) =>
-        hours.ToString("G", CultureInfo.InvariantCulture);
+    private string FormatBlockLength(double hours) =>
+        BlockLengthFormatter.FormatBlockLength(hours, _unit);
 
     /// <summary>
     /// Parses a military-time string to minutes from midnight.
@@ -572,41 +582,6 @@ public partial class SectionMeetingViewModel : ViewModelBase
         int m = hhmm % 100;
         if (h > 23 || m > 59) return null;
         return h * 60 + m;
-    }
-
-    /// <summary>
-    /// Parses a block-length string to hours. Accepts:
-    /// <list type="bullet">
-    ///   <item><term>Decimal hours</term><description>"1.5" → 1.5</description></item>
-    ///   <item><term>H:MM format</term><description>"1:30" → 1.5</description></item>
-    /// </list>
-    /// Returns null if the string cannot be parsed or is non-positive.
-    /// </summary>
-    /// <param name="text">The input string to parse.</param>
-    /// <returns>Block length in hours, or null if parsing fails.</returns>
-    internal static double? ParseBlockLength(string text)
-    {
-        text = text.Trim();
-        if (string.IsNullOrEmpty(text)) return null;
-
-        // H:MM format: "1:30" → 1.5h
-        if (text.Contains(':'))
-        {
-            var parts = text.Split(':');
-            if (parts.Length == 2
-                && int.TryParse(parts[0].Trim(), out int h)
-                && int.TryParse(parts[1].Trim(), out int m)
-                && h >= 0 && m >= 0 && m < 60)
-                return h + m / 60.0;
-            return null;
-        }
-
-        // Decimal hours: "1.5" → 1.5h
-        if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out double val)
-            && val > 0)
-            return val;
-
-        return null;
     }
 
     // ── Model conversion ──────────────────────────────────────────────────────

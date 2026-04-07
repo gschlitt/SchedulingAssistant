@@ -6,7 +6,7 @@
     x:CompileBindings="False"
     x:DataType="vm:LegalStartTimeListViewModel">
 
-    <Grid Margin="10,0" RowDefinitions="Auto,*,Auto,Auto,Auto">
+    <Grid Margin="10,0" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
 
         <TextBlock
             Grid.Row="0"
@@ -38,14 +38,14 @@
                             Grid.Column="0"
                             Margin="0,0,16,12"
                             Spacing="4">
-                            <TextBlock Text="Block Length (hours)" />
+                            <TextBlock Text="{Binding BlockLengthLabel}" />
                             <NumericUpDown
-                                FormatString="0.0"
-                                Increment="0.5"
+                                FormatString="{Binding NumericFormatString}"
+                                Increment="{Binding NumericIncrement}"
                                 IsEnabled="{Binding IsNew}"
-                                Maximum="8"
-                                Minimum="0.5"
-                                Value="{Binding BlockLength}" />
+                                Maximum="{Binding NumericMaximum}"
+                                Minimum="{Binding NumericMinimum}"
+                                Value="{Binding BlockLengthDisplay}" />
                         </StackPanel>
 
                         <!--  Start times list  -->
@@ -115,13 +115,20 @@
             CanUserSortColumns="True"
             IsReadOnly="True"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
-            ItemsSource="{Binding Entries}"
-            SelectedItem="{Binding SelectedEntry}">
+            ItemsSource="{Binding DisplayEntries}"
+            SelectedItem="{Binding SelectedRow}">
             <DataGrid.Columns>
-                <DataGridTextColumn
-                    Width="160"
-                    Binding="{Binding BlockLength}"
-                    Header="Block Length (hrs)" />
+                <!--  Block Length column — header and cell both reflect the active unit  -->
+                <DataGridTemplateColumn Width="160">
+                    <DataGridTemplateColumn.Header>
+                        <TextBlock Text="{Binding DataContext.BlockLengthColumnHeader, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Margin="4,2" Text="{Binding BlockLengthDisplay}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="*" Header="Start Times">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
@@ -146,11 +153,11 @@
             <Button
                 Command="{Binding EditCommand}"
                 Content="Edit"
-                IsEnabled="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                IsEnabled="{Binding SelectedRow, Converter={x:Static ObjectConverters.IsNotNull}}" />
             <Button
                 Command="{Binding DeleteCommand}"
                 Content="Delete"
-                IsEnabled="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                IsEnabled="{Binding SelectedRow, Converter={x:Static ObjectConverters.IsNotNull}}" />
         </StackPanel>
 
         <!--  Preferred block length preference  -->
@@ -169,9 +176,28 @@
                 SelectedItem="{Binding SelectedPreferredOption}" />
         </StackPanel>
 
-        <!--  Weekend day inclusion settings  -->
+        <!--  Block length unit toggle  -->
         <StackPanel
             Grid.Row="4"
+            Margin="0,12,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="12">
+            <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
+            <RadioButton
+                Content="Hours"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsHoursUnit}" />
+            <RadioButton
+                Content="Minutes"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsMinutesUnit}" />
+        </StackPanel>
+
+        <!--  Weekend day inclusion settings  -->
+        <StackPanel
+            Grid.Row="5"
             Margin="0,24,0,0"
             IsEnabled="{Binding IsWriteEnabled}"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
