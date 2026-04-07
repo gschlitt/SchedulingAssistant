@@ -75,8 +75,8 @@
     <SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
     <!--  Left border on section list cards that match the active grid filter  -->
     <SolidColorBrush x:Key="FilterColorBrush" Color="{StaticResource FilterColor}" />
-    <!--  Section card outer border: section matches the active Schedule Grid filter  -->
-    <SolidColorBrush x:Key="FilterSelectedSectionBorderColor" Color="{StaticResource FilterColor}" />
+    <!--  Section card background: section matches the active Schedule Grid filter  -->
+    <SolidColorBrush x:Key="FilterSelectedSectionBackgroundColor" Color="#EAF0FB" />
     <!--  Section card outer border: section is actively selected by the user (cross-view)  -->
     <SolidColorBrush x:Key="UserSelectedSectionBorderColor" Color="#7052A3" />
     <SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />

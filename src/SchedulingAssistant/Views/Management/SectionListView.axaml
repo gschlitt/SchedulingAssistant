@@ -876,27 +876,24 @@
                         <!--  Section card with multi-semester left border indicator  -->
                         <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
                             <!--
-                                Two-tier accent border system:
-                                Outer (UserSelectedSectionBorderColor): fires when the user has actively selected this section.
-                                Inner (FilterSelectedSectionBorderColor): fires when this section passes the active Schedule Grid filter.
-                                When both are true the user-selection ring visually surrounds the filter ring without obscuring it.
+                                Selection feedback:
+                                  Outer border (UserSelectedSectionBorderColor): visible when the user
+                                  has actively selected this section (cross-view).
+                                  Card background (CardBackgroundBrush): tinted when this section passes
+                                  the active Schedule Grid filter, plain white otherwise.
                             -->
                             <Border
                                 Margin="0,2,0,2"
                                 BorderBrush="{StaticResource UserSelectedSectionBorderColor}"
                                 BorderThickness="{Binding IsSelected, Converter={StaticResource FilterBorderThicknessConverter}}"
-                                CornerRadius="6">
+                                CornerRadius="5">
+                                <!--
+                                    Card surface: background switches between plain white and the filter
+                                    tint via CardBackgroundBrush. Left stripe shows semester color in
+                                    multi-semester mode.
+                                -->
                                 <Border
-                                    BorderBrush="{StaticResource FilterSelectedSectionBorderColor}"
-                                    BorderThickness="{Binding IsFilterHighlighted, Converter={StaticResource FilterBorderThicknessConverter}}"
-                                    CornerRadius="5">
-                                    <!--
-                                        Card surface: white bg + soft shadow.
-                                        Left stripe shows semester color in multi-semester mode.
-                                        Classes="SectionCard" lets the ListBoxItem :selected style target this border directly.
-                                    -->
-                                    <Border
-                                        Background="{StaticResource SurfaceBackground}"
+                                    Background="{Binding CardBackgroundBrush}"
                                         BorderBrush="{Binding SemesterLeftBorderBrush}"
                                         BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                                         BoxShadow="{StaticResource PanelBoxShadow}"
@@ -1141,7 +1138,6 @@
                                             </Border>
 
                                         </StackPanel>
-                                    </Border>
                                 </Border>
                             </Border>
                         </DataTemplate>

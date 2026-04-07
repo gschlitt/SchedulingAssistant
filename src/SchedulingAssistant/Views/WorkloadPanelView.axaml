@@ -23,16 +23,14 @@
             <Setter Property="Background" Value="#EDE8F5" />
             <Setter Property="BorderBrush" Value="#B0A0C8" />
         </Style>
-        <!--  Selected chip: darker highlight  -->
+        <!--  Selected chip: violet border matching UserSelectedSectionBorderColor in other views  -->
         <Style Selector="Button.chip.selected">
-            <Setter Property="Background" Value="#5BA3D0" />
-            <Setter Property="BorderBrush" Value="#2E5C7A" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
+            <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.chip.release.selected">
-            <Setter Property="Background" Value="#9D7EB8" />
-            <Setter Property="BorderBrush" Value="#5D3E7F" />
+            <Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
+            <Setter Property="BorderThickness" Value="2" />
         </Style>
     </UserControl.Styles>
 

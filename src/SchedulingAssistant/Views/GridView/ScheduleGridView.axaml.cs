@@ -66,10 +66,13 @@ public partial class ScheduleGridView : UserControl
     private static double TilePaddingV => Layout("TilePaddingVertical");
     private static double TilePaddingH => Layout("TilePaddingHorizontal");
 
+    /// <summary>Border thickness applied to the entry row of a user-selected section tile.</summary>
+    private const double TileSelectionBorderThickness = 3;
+
     private static IBrush TileFill              => Res("TileFill");
-    private static IBrush TileFillSelected      => Res("TileFillSelected");
     private static IBrush TileBorder            => Res("TileBorder");
     private static IBrush TileBorderSelected    => Res("TileBorderSelected");
+    private static IBrush UserSelectedBorder    => Res("UserSelectedSectionBorderColor");
     private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
     private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
     private static IBrush RuleBrush          => Res("GridRuleLine");
@@ -185,8 +188,10 @@ public partial class ScheduleGridView : UserControl
         {
             bool isSelected = selectedId is not null && info.SectionId == selectedId;
 
-            info.Row.Background  = isSelected ? TileFillSelected : Brushes.Transparent;
-            info.Label.FontWeight = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
+            info.Row.Background      = Brushes.Transparent;
+            info.Row.BorderBrush     = isSelected ? UserSelectedBorder : Brushes.Transparent;
+            info.Row.BorderThickness = new Thickness(isSelected ? TileSelectionBorderThickness : 0);
+            info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
             info.Label.Foreground = isSelected       ? TileBorderSelected
                                   : info.IsOverlay    ? OverlayFrameBorder
                                   : info.IsDeemphasized ? TileDeemphasizedText
@@ -264,10 +269,12 @@ public partial class ScheduleGridView : UserControl
 
                     var entryRow = new Border
                     {
-                        Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
-                        CornerRadius = new CornerRadius(2),
-                        Padding      = new Thickness(1, 0),
-                        Child        = new TextBlock
+                        Background      = Brushes.Transparent,
+                        BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
+                        BorderThickness = new Thickness(entrySelected ? TileSelectionBorderThickness : 0),
+                        CornerRadius    = new CornerRadius(2),
+                        Padding         = new Thickness(1, 0),
+                        Child           = new TextBlock
                         {
                             Text            = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation),
                             FontSize        = 11,
@@ -611,9 +618,11 @@ public partial class ScheduleGridView : UserControl
                     };
                     var entryRow = new Border
                     {
-                        Background   = entrySelected ? TileFillSelected : Brushes.Transparent,
-                        CornerRadius = new CornerRadius(2),
-                        Padding      = new Thickness(1, 0),
+                        Background      = Brushes.Transparent,
+                        BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
+                        BorderThickness = new Thickness(entrySelected ? TileSelectionBorderThickness : 0),
+                        CornerRadius    = new CornerRadius(2),
+                        Padding         = new Thickness(1, 0),
                         // Commitment tiles are display-only — no hand cursor.
                         // Meetings are flagged IsCommitment to suppress the right-click menu
                         // but are still interactive, so they keep the hand cursor.

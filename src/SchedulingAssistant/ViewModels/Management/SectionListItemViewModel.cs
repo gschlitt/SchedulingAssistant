@@ -34,11 +34,33 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     /// <summary>
     /// True when the Schedule Grid has an active filter and this section's ID is in the
-    /// passing set. Drives the inner accent border (<c>FilterSelectedSectionBorderColor</c>).
+    /// passing set. Drives <see cref="CardBackgroundBrush"/> to show the filter tint.
     /// Set externally by <see cref="SectionListViewModel.ApplyFilterHighlights"/>.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CardBackgroundBrush))]
     private bool _isFilterHighlighted;
+
+    /// <summary>
+    /// Card surface background: <c>FilterSelectedSectionBackgroundColor</c> when this section
+    /// passes the active Schedule Grid filter, <c>SurfaceBackground</c> otherwise.
+    /// </summary>
+    public IBrush CardBackgroundBrush =>
+        IsFilterHighlighted ? ResolveAppBrush("FilterSelectedSectionBackgroundColor")
+                            : ResolveAppBrush("SurfaceBackground");
+
+    /// <summary>
+    /// Looks up a named <see cref="IBrush"/> from the application-level resource dictionary.
+    /// Returns <see cref="Brushes.White"/> if the key is not found or the value is not a brush.
+    /// </summary>
+    /// <param name="key">The resource key defined in AppColors.axaml.</param>
+    private static IBrush ResolveAppBrush(string key)
+    {
+        if (Application.Current?.Resources.TryGetResource(key, null, out var value) == true
+            && value is IBrush brush)
+            return brush;
+        return Brushes.White;
+    }
 
     /// <summary>
     /// True when this section is the currently selected section (from any view — Section List,
