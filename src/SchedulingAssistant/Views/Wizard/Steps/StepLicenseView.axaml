@@ -1,0 +1,39 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.StepLicenseView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False">
+
+    <StackPanel MaxWidth="840" Spacing="16">
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeXLarge}"
+            FontWeight="Bold"
+            Text="GNU General Public License (GPL)" />
+
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
+            This application is licensed under the GNU General Public License.
+        </TextBlock>
+
+        <TextBlock>
+            You may obtain a copy of the license at:
+            https://www.gnu.org/licenses/gpl-3.0.html
+        </TextBlock>
+
+        <TextBlock>
+            The complete source code for this application is available at:
+            [INSERT YOUR REPOSITORY OR DOWNLOAD LINK HERE]
+        </TextBlock>
+
+
+        <TextBlock>
+            Copyright (C) [YEAR] [YOUR NAME OR ORGANIZATION]
+        </TextBlock>
+
+        <TextBlock Margin="0,30" TextWrapping="Wrap">
+            Disclaimer of Warranty:
+            This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+        </TextBlock>
+    </StackPanel>
+
+</UserControl>

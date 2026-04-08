@@ -10,9 +10,9 @@
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
-            The next few steps of the wizard allow you to configure the application to your institution's scheduling patterns, and to set up
+            The next few steps of this wizard allow you to configure the application to your institution's scheduling patterns, and to set up
             some tools that will greatly speed up your scheduling work. You can choose to exit the setup process now and to configure later, but
-            the wizard makes it easier to do now.
+            the wizard makes it much easier to do now.
         </TextBlock>
         <TextBlock
             FontSize="{DynamicResource FontSizeNormal}"
@@ -25,7 +25,8 @@
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{StaticResource ForegroundMuted}"
             TextWrapping="Wrap">
-            Otherwise, you can proceed through the wizard. Any of the steps can be passed over if you wish to take care of them later, but are easier to set now.
+            Otherwise, you can proceed through the wizard. Any of the steps can be passed over if you wish to take care of them later,
+            but are easier to set now.
         </TextBlock>
 
         <!--  Radio: Manual setup  -->
@@ -62,7 +63,7 @@
         <StackPanel Spacing="4">
             <RadioButton FontSize="{DynamicResource FontSizeMedium}" IsChecked="{Binding IsExitNowChoice}">
                 <RadioButton.Content>
-                    <TextBlock Text="I'd like to exit the wizard now. I will configure settings later (under Settings), in the application." TextWrapping="Wrap" />
+                    <TextBlock Text="I'd like to exit the wizard now. I will configure settings later (under Configuration), in the application." TextWrapping="Wrap" />
                 </RadioButton.Content>
             </RadioButton>
             <TextBlock

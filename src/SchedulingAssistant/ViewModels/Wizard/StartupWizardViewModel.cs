@@ -14,23 +14,24 @@ namespace SchedulingAssistant.ViewModels.Wizard;
 ///
 /// Step index map:
 ///   0  — Welcome
-///   1  — Existing-DB check (Step1a)          ← new
-///   2  — Institution                          (was 1)
-///   3  — Database location + filename         (was 2)
-///   4  — TpConfig import / ExitNow            (was 3)
-///   5  — Campuses                             (was 4)
-///   6  — Legal start times                    (was 5)
-///   7  — Block patterns                       (was 6)
-///   8  — Section prefixes                     (was 7)
-///   9  — Academic year                        (was 8)
-///  10  — Semester colors                      (was 9)
-///  11  — Closing panel                        (was 10)
+///   1  — License Agreement                    ← new
+///   2  — Existing-DB check (Step1a)           (was 1)
+///   3  — Institution                          (was 2)
+///   4  — Database location + filename         (was 3)
+///   5  — TpConfig import / ExitNow            (was 4)
+///   6  — Campuses                             (was 5)
+///   7  — Legal start times                    (was 6)
+///   8  — Block patterns                       (was 7)
+///   9  — Section prefixes                     (was 8)
+///  10  — Academic year                        (was 9)
+///  11  — Semester colors                      (was 10)
+///  12  — Closing panel                        (was 11)
 ///
 /// Routing variants:
-///   Existing-DB path  (step 1, Yes):  steps 0–1 → finish immediately
-///   ExitNow path      (step 4):       steps 0–4 → finish
-///   Import path       (step 4):       skips 5–8 and 10 → 9 → 11
-///   Manual path:                      all steps → 11
+///   Existing-DB path  (step 2, Yes):  steps 0–2 → finish immediately
+///   ExitNow path      (step 5):       steps 0–5 → finish
+///   Import path       (step 5):       skips 6–9 and 11 → 10 → 12
+///   Manual path:                      all steps → 12
 ///
 /// IsInitialSetupComplete is set to true only inside <see cref="FinishAsync"/>.
 /// The window closes when <see cref="IsComplete"/> becomes true.
@@ -55,6 +56,9 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     /// <summary>True when there is a previous step to return to.</summary>
     public bool CanGoBack => _stepIndex > 0;
+
+    /// <summary>True on the welcome step — allows the user to exit before committing to anything.</summary>
+    public bool CanCancel => _stepIndex == 0;
 
     /// <summary>Label for the Next/Finish button.</summary>
     public string NextButtonText => IsLastStep() ? "Finish" : "Next";
@@ -95,7 +99,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         if (!await ValidateCurrentStep()) return;
         await CommitCurrentStep();
 
-        // Existing-DB path finishes immediately after step 1a
+        // Existing-DB path finishes immediately after step 2
         if (_isExistingDbPath)
         {
             await FinishAsync();
@@ -104,9 +108,9 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         var next = _stepIndex + 1;
 
-        // Import path skips manual-config steps (5–8) and the colors step (10)
-        if (_isImportPath && next >= 5 && next <= 8) next = 9;
-        if (_isImportPath && next == 10)              next = 11;
+        // Import path skips manual-config steps (6–9) and the colors step (11)
+        if (_isImportPath && next >= 6 && next <= 9) next = 10;
+        if (_isImportPath && next == 11)              next = 12;
 
         if (IsLastStep())
             await FinishAsync();
@@ -114,14 +118,18 @@ public partial class StartupWizardViewModel : ViewModelBase
             NavigateTo(next);
     }
 
+    /// <summary>Closes the wizard window (and consequently shuts down the app) without completing setup.</summary>
+    [RelayCommand]
+    private void Cancel() => _window?.Close();
+
     [RelayCommand]
     private void Back()
     {
         var prev = _stepIndex - 1;
 
-        // Import path: stepping back skips manual-config steps (5–8) and colors (10)
-        if (_isImportPath && prev >= 5 && prev <= 8) prev = 4;
-        if (_isImportPath && prev == 10)              prev = 9;
+        // Import path: stepping back skips manual-config steps (6–9) and colors (11)
+        if (_isImportPath && prev >= 6 && prev <= 9) prev = 5;
+        if (_isImportPath && prev == 11)              prev = 10;
 
         if (prev >= 0)
             NavigateTo(prev);
@@ -140,34 +148,36 @@ public partial class StartupWizardViewModel : ViewModelBase
         _stepIndex  = index;
         CurrentStep = vm;
         OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(CanCancel));
         OnPropertyChanged(nameof(NextButtonText));
     }
 
     private WizardStepViewModel BuildStep(int index) => index switch
     {
         0  => new Step0WelcomeViewModel(),
-        1  => BuildStep1a(),                                        // existing-DB check
-        2  => new Step1InstitutionViewModel(),
-        3  => new Step2DatabaseViewModel(_acUnitAbbrev, _window),
-        4  => BuildStep4(),                                         // TpConfig / ExitNow
-        // Manual-path config steps (5–8):
-        5  => new Step4CampusesViewModel(_services.CampusListVm()),
-        6  => new Step5LegalStartTimesViewModel(),
-        7  => new Step6BlockPatternsViewModel(_services.BlockPatternListVm()),
-        8  => new Step7SectionPrefixesViewModel(_services.SectionPrefixListVm()),
-        // Academic year + colors (9–10):
-        9  => BuildStep9(),
+        1  => new StepLicenseViewModel(),                           // license agreement
+        2  => BuildStep2a(),                                        // existing-DB check
+        3  => new Step1InstitutionViewModel(),
+        4  => new Step2DatabaseViewModel(_acUnitAbbrev, _window),
+        5  => BuildStep5(),                                         // TpConfig / ExitNow
+        // Manual-path config steps (6–9):
+        6  => new Step4CampusesViewModel(_services.CampusListVm()),
+        7  => new Step5SchedulingViewModel(),
+        8  => new Step6BlockPatternsViewModel(_services.BlockPatternListVm()),
+        9  => new Step7SectionPrefixesViewModel(_services.SectionPrefixListVm()),
+        // Academic year + colors (10–11):
         10 => BuildStep10(),
+        11 => BuildStep11(),
         // Closing panel (both normal paths):
-        11 => new Step10ClosingViewModel(),
+        12 => new Step10ClosingViewModel(),
         _  => throw new ArgumentOutOfRangeException(nameof(index))
     };
 
     /// <summary>
-    /// Builds the step-1a VM and wires a PropertyChanged handler so that the
+    /// Builds the existing-DB check VM (step 2) and wires a PropertyChanged handler so that the
     /// Next/Finish button label updates immediately when the choice changes.
     /// </summary>
-    private Step1aExistingDbViewModel BuildStep1a()
+    private Step1aExistingDbViewModel BuildStep2a()
     {
         var vm = new Step1aExistingDbViewModel(_window);
         vm.PropertyChanged += (_, _) => OnPropertyChanged(nameof(NextButtonText));
@@ -175,49 +185,49 @@ public partial class StartupWizardViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Builds the TpConfig VM and wires a PropertyChanged handler so that the
+    /// Builds the TpConfig VM (step 5) and wires a PropertyChanged handler so that the
     /// Next/Finish button label updates immediately when ExitNow is toggled.
     /// </summary>
-    private Step3TpConfigViewModel BuildStep4()
+    private Step3TpConfigViewModel BuildStep5()
     {
         var vm = new Step3TpConfigViewModel(_window);
         vm.PropertyChanged += (_, _) => OnPropertyChanged(nameof(NextButtonText));
         return vm;
     }
 
-    /// <summary>Builds the Academic Year step, pre-populating semesters on the import path.</summary>
-    private Step5AcademicYearViewModel BuildStep9()
+    /// <summary>Builds the Academic Year step (step 10), pre-populating semesters on the import path.</summary>
+    private Step5AcademicYearViewModel BuildStep10()
     {
         var vm = new Step5AcademicYearViewModel();
 
-        if (_isImportPath && _stepCache.TryGetValue(4, out var s4vm) && s4vm is Step3TpConfigViewModel s4)
+        if (_isImportPath && _stepCache.TryGetValue(5, out var s5vm) && s5vm is Step3TpConfigViewModel s5)
         {
-            if (s4.ImportedConfig?.SemesterDefs is { Count: > 0 } defs)
+            if (s5.ImportedConfig?.SemesterDefs is { Count: > 0 } defs)
                 vm.LoadFromConfig(defs);
         }
 
         return vm;
     }
 
-    /// <summary>Builds the Semester Colors step, seeding rows from the Academic Year step.</summary>
-    private Step6SemesterColorsViewModel BuildStep10()
+    /// <summary>Builds the Semester Colors step (step 11), seeding rows from the Academic Year step.</summary>
+    private Step6SemesterColorsViewModel BuildStep11()
     {
         var vm = new Step6SemesterColorsViewModel();
-        if (_stepCache.TryGetValue(9, out var s9vm) && s9vm is Step5AcademicYearViewModel s9)
-            vm.LoadFromSemesters(s9.Semesters);
+        if (_stepCache.TryGetValue(10, out var s10vm) && s10vm is Step5AcademicYearViewModel s10)
+            vm.LoadFromSemesters(s10.Semesters);
         return vm;
     }
 
     private bool IsLastStep()
     {
-        // Existing-DB path: wizard finishes immediately after step 1a
-        if (_stepIndex == 1 && CurrentStep is Step1aExistingDbViewModel { IsExistingDbChoice: true })
+        // Existing-DB path: wizard finishes immediately after step 2
+        if (_stepIndex == 2 && CurrentStep is Step1aExistingDbViewModel { IsExistingDbChoice: true })
             return true;
-        // ExitNow at step 4 (TpConfig)
-        if (_stepIndex == 4 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
+        // ExitNow at step 5 (TpConfig)
+        if (_stepIndex == 5 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
             return true;
         // Both normal paths converge on the closing panel
-        return _stepIndex == 11;
+        return _stepIndex == 12;
     }
 
     // ── Validation ───────────────────────────────────────────────────────────
@@ -230,13 +240,13 @@ public partial class StartupWizardViewModel : ViewModelBase
         if (!CurrentStep.CanAdvance)
             return false;
 
-        if (_stepIndex == 1)
+        if (_stepIndex == 2)
             return await ValidateStep1a();
 
-        if (_stepIndex == 3)
+        if (_stepIndex == 4)
             return await ValidateStep3();
 
-        if (_stepIndex == 4 && CurrentStep is Step3TpConfigViewModel s4)
+        if (_stepIndex == 5 && CurrentStep is Step3TpConfigViewModel s4)
         {
             if (!s4.ValidateAndImport()) return false;
             _isImportPath = s4.HasTpConfig && s4.ImportedConfig is not null;
@@ -347,16 +357,16 @@ public partial class StartupWizardViewModel : ViewModelBase
     {
         switch (_stepIndex)
         {
-            case 2 when CurrentStep is Step1InstitutionViewModel s2:
+            case 3 when CurrentStep is Step1InstitutionViewModel s2:
                 _institutionName   = s2.InstitutionName.Trim();
                 _institutionAbbrev = s2.InstitutionAbbrev.Trim();
                 _acUnitName        = s2.AcUnitName.Trim();
                 _acUnitAbbrev      = s2.AcUnitAbbrev.Trim();
-                // Step 3 (Database) needs the abbrev to suggest a filename — invalidate its cache
-                _stepCache.Remove(3);
+                // Step 4 (Database) needs the abbrev to suggest a filename — invalidate its cache
+                _stepCache.Remove(4);
                 break;
 
-            case 3 when CurrentStep is Step2DatabaseViewModel s3:
+            case 4 when CurrentStep is Step2DatabaseViewModel s3:
                 _dbFolder     = s3.DbFolder;
                 _backupFolder = s3.BackupFolder;
                 break;
@@ -389,7 +399,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         }
 
         // ExitNow path — DB created, wizard config skipped.
-        if (_stepIndex == 4 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
+        if (_stepIndex == 5 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
         {
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
@@ -437,7 +447,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         AppSettings.Current.Save();
 
         // --- First Academic Year ---
-        if (!_stepCache.TryGetValue(9, out var s9vm) || s9vm is not Step5AcademicYearViewModel s9) return;
+        if (!_stepCache.TryGetValue(10, out var s9vm) || s9vm is not Step5AcademicYearViewModel s9) return;
 
         var ayRepo  = _services.AcademicYears();
         var semRepo = _services.Semesters();
@@ -447,7 +457,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         // Resolve the imported config (null on the manual path).
         TpConfigData? importedCfg = null;
-        if (_isImportPath && _stepCache.TryGetValue(4, out var s4CfgVm) && s4CfgVm is Step3TpConfigViewModel s4Cfg)
+        if (_isImportPath && _stepCache.TryGetValue(5, out var s4CfgVm) && s4CfgVm is Step3TpConfigViewModel s4Cfg)
             importedCfg = s4Cfg.ImportedConfig;
 
         // --- Import path: campuses and section prefixes from .tpconfig ---
@@ -504,7 +514,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             AppSettings.Current.IncludeSaturday = importedCfg.IncludeSaturday;
             AppSettings.Current.IncludeSunday   = importedCfg.IncludeSunday;
         }
-        else if (_stepCache.TryGetValue(6, out var s6lstVm) && s6lstVm is Step5LegalStartTimesViewModel s6lst)
+        else if (_stepCache.TryGetValue(7, out var s6lstVm) && s6lstVm is Step5SchedulingViewModel s6lst)
         {
             var seedData = s6lst.GetSeedData();
             if (seedData.Count > 0)
@@ -521,12 +531,12 @@ public partial class StartupWizardViewModel : ViewModelBase
         // Manual path: colors from step 10.  Import path: colors from step 4 (.tpconfig).
         var colorBySemesterName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        if (!_isImportPath && _stepCache.TryGetValue(10, out var s10vm) && s10vm is Step6SemesterColorsViewModel s10)
+        if (!_isImportPath && _stepCache.TryGetValue(11, out var s10vm) && s10vm is Step6SemesterColorsViewModel s10)
         {
             foreach (var row in s10.Rows)
                 colorBySemesterName[row.Name] = row.HexColor;
         }
-        else if (_isImportPath && _stepCache.TryGetValue(4, out var s4vm) && s4vm is Step3TpConfigViewModel s4)
+        else if (_isImportPath && _stepCache.TryGetValue(5, out var s4vm) && s4vm is Step3TpConfigViewModel s4)
         {
             foreach (var def in s4.ImportedConfig?.SemesterDefs ?? [])
                 colorBySemesterName[def.Name] = def.Color;

@@ -1,21 +1,12 @@
 {
-  "session_id": "session-2026-04-08-2044",
-  "started": "2026-04-08T03:44:16.460Z",
+  "session_id": "session-2026-04-08-0819",
+  "started": "2026-04-08T15:19:21.352Z",
   "files_read": {},
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/.claude/plans/jiggly-sprouting-trinket.md",
-      "action": "create",
-      "tokens": 457,
-      "at": "2026-04-08T03:45:15.935Z"
-    }
-  ],
-  "edit_counts": {
-    "../../../.claude/plans/jiggly-sprouting-trinket.md": 1
-  },
+  "files_written": [],
+  "edit_counts": {},
   "anatomy_hits": 0,
   "anatomy_misses": 0,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 2
+  "stop_count": 0
 }

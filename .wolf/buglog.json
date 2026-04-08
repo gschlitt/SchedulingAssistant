@@ -3046,6 +3046,166 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-02T16:34:39.577Z"
+    },
+    {
+      "id": "bug-191",
+      "timestamp": "2026-04-08T03:56:14.410Z",
+      "error_message": "Wrong reference: SettingsViewModel should be SaveAndBackupViewModel",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Used \"SettingsViewModel\" instead of \"SaveAndBackupViewModel\"",
+      "fix": "Changed SettingsViewModel → SaveAndBackupViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T03:56:14.410Z"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-04-08T03:56:25.597Z",
+      "error_message": "Wrong reference: SettingsViewModel should be SaveAndBackupViewModel",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SaveAndBackupViewModel.cs",
+      "root_cause": "Used \"SettingsViewModel\" instead of \"SaveAndBackupViewModel\"",
+      "fix": "Changed SettingsViewModel → SaveAndBackupViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T03:56:25.597Z"
+    },
+    {
+      "id": "bug-193",
+      "timestamp": "2026-04-08T03:59:49.290Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Tests/WizardStepValidationTests.cs",
+      "root_cause": "Had \"2 hours\"",
+      "fix": "Changed to \"0800\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-04-08T03:59:59.030Z"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-04-08T04:26:26.435Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "Condition was: if (_isImportPath && prev >= 5 && prev <= 8)",
+      "fix": "Changed to: if (_isImportPath && prev >= 6 && prev <= 9)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-04-08T04:27:23.354Z"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-04-08T04:40:19.004Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T04:40:19.004Z"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-04-08T04:58:49.496Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CampusListView.axaml",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 30→19 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T04:58:49.496Z"
+    },
+    {
+      "id": "bug-197",
+      "timestamp": "2026-04-08T05:01:26.719Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step5SchedulingView.axaml",
+      "root_cause": "Had \"SchedulingAssistant.Views.Wizard.Steps.Step5Legal",
+      "fix": "Changed to \"SchedulingAssistant.Views.Wizard.Steps.Step5Sched",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T05:01:26.719Z"
+    },
+    {
+      "id": "bug-198",
+      "timestamp": "2026-04-08T05:01:28.913Z",
+      "error_message": "Wrong reference: Step5LegalStartTimesViewModel should be Step5SchedulingViewModel",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5SchedulingViewModel.cs",
+      "root_cause": "Used \"Step5LegalStartTimesViewModel\" instead of \"Step5SchedulingViewModel\"",
+      "fix": "Changed Step5LegalStartTimesViewModel → Step5SchedulingViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-08T05:01:33.575Z"
+    },
+    {
+      "id": "bug-199",
+      "timestamp": "2026-04-08T05:01:34.044Z",
+      "error_message": "Wrong reference: Step5LegalStartTimesViewModel should be Step5SchedulingViewModel",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "Used \"Step5LegalStartTimesViewModel\" instead of \"Step5SchedulingViewModel\"",
+      "fix": "Changed Step5LegalStartTimesViewModel → Step5SchedulingViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T05:01:34.044Z"
+    },
+    {
+      "id": "bug-200",
+      "timestamp": "2026-04-08T05:01:43.650Z",
+      "error_message": "Wrong reference: Step5LegalStartTimesViewModel should be Step5SchedulingViewModel",
+      "file": "src/SchedulingAssistant.Tests/WizardStepValidationTests.cs",
+      "root_cause": "Used \"Step5LegalStartTimesViewModel\" instead of \"Step5SchedulingViewModel\"",
+      "fix": "Changed Step5LegalStartTimesViewModel → Step5SchedulingViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-08T05:01:47.342Z"
     }
   ]
 }

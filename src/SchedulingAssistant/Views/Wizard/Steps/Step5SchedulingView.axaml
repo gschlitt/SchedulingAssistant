@@ -1,28 +1,30 @@
 <UserControl
-    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step5LegalStartTimesView"
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step5SchedulingView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:SchedulingAssistant.ViewModels.Wizard.Steps"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="900" Spacing="14">
 
-        <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{StaticResource ForegroundMuted}"
-            TextWrapping="Wrap">
-            Block lengths are the standard class durations at your institution (e.g. 1.5 hours, 3 hours).
-            For each block length, specify the valid start times. (Often these are specified by your registrar.)<LineBreak /><LineBreak />
-            Two example blocks are provided below. Edit or delete them and add your own.
-            Times use 24-hour HHMM format (<Italic>0800</Italic>
-            = 8:00 AM,<Italic>1330</Italic>
-            = 1:30 PM).<LineBreak /><LineBreak />
-            You are not confined to these lengths and times when editing sections, but they make data entry much faster.
-            If you do not wish to supply these
-            now, you can do so later in the application.</TextBlock>
+    <StackPanel Grid.Row="0" Margin="0,0,0,15">
+
+        <TextBlock TextWrapping="Wrap">
+            <Span>
+                TermPoint uses the 24-hour clock to specify time of day (so that 1:30 pm = 1330). A typical 'block'  is scheduled using the start time (e.g. 1330) and a length, measured either in minutes or hours (e.g. 80 minutes or 1.25 hours) as you prefer.
+            </Span>
+            <LineBreak />
+            <LineBreak />
+            <Span>
+                You can specify the start-times your institution uses, and associated block lengths. It will speed up your section editing to do so, as the start times will be available from a menu, rather than requiring manual entry.
+            </Span>
+        </TextBlock>
+
 
         <!--  Block length unit toggle  -->
-        <StackPanel Orientation="Horizontal" Spacing="12">
+        <StackPanel
+            Margin="0,10,0,10"
+            Orientation="Horizontal"
+            Spacing="12">
             <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
             <RadioButton
                 Content="Hours"
@@ -75,7 +77,7 @@
                                     <DataTemplate DataType="local:WizardStartTimeEntry">
                                         <Border
                                             Margin="0,0,5,5"
-                                            Padding="6,2"
+                                            Padding="2,2"
                                             Background="{StaticResource ChromeBackground}"
                                             BorderBrush="{StaticResource ChromeBorder}"
                                             BorderThickness="1"
@@ -104,7 +106,6 @@
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBox
                                         Width="80"
-                                        FontFamily="Consolas"
                                         FontSize="{DynamicResource FontSizeSmall}"
                                         Text="{Binding NewTimeInput}"
                                         Watermark="HHMM" />
@@ -166,10 +167,8 @@
                 FontSize="{DynamicResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="Weekend days" />
-            <CheckBox Content="Include Saturday as an available scheduling day"
-                      IsChecked="{Binding IncludeSaturday}" />
-            <CheckBox Content="Include Sunday as an available scheduling day"
-                      IsChecked="{Binding IncludeSunday}" />
+            <CheckBox Content="Include Saturday as an available scheduling day" IsChecked="{Binding IncludeSaturday}" />
+            <CheckBox Content="Include Sunday as an available scheduling day" IsChecked="{Binding IncludeSunday}" />
         </StackPanel>
 
     </StackPanel>

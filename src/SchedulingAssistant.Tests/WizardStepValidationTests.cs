@@ -524,9 +524,9 @@ public class WizardStepValidationTests
     }
 
     [Fact]
-    public void Step5LegalStartTimes_GetSeedData_OmitsBlocksWithNoStartTimes()
+    public void Step5Scheduling_GetSeedData_OmitsBlocksWithNoStartTimes()
     {
-        var vm = new Step5LegalStartTimesViewModel();
+        var vm = new Step5SchedulingViewModel();
         vm.BlockLengths.Clear();
         vm.BlockLengths.Add(new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, []));     // no times
         vm.BlockLengths.Add(new WizardBlockLengthEntry(3.0, BlockLengthUnit.Hours, ["0900"])); // has a time
@@ -536,9 +536,9 @@ public class WizardStepValidationTests
     }
 
     [Fact]
-    public void Step5LegalStartTimes_AddBlockLength_RejectsZero()
+    public void Step5Scheduling_AddBlockLength_RejectsZero()
     {
-        var vm = new Step5LegalStartTimesViewModel();
+        var vm = new Step5SchedulingViewModel();
         var countBefore = vm.BlockLengths.Count;
         vm.NewBlockLengthInput = "0";
         vm.AddBlockLengthCommand.Execute(null);
@@ -546,9 +546,9 @@ public class WizardStepValidationTests
     }
 
     [Fact]
-    public void Step5LegalStartTimes_AddBlockLength_RejectsNegative()
+    public void Step5Scheduling_AddBlockLength_RejectsNegative()
     {
-        var vm = new Step5LegalStartTimesViewModel();
+        var vm = new Step5SchedulingViewModel();
         var countBefore = vm.BlockLengths.Count;
         vm.NewBlockLengthInput = "-1";
         vm.AddBlockLengthCommand.Execute(null);
@@ -556,9 +556,9 @@ public class WizardStepValidationTests
     }
 
     [Fact]
-    public void Step5LegalStartTimes_AddBlockLength_RejectsDuplicate()
+    public void Step5Scheduling_AddBlockLength_RejectsDuplicate()
     {
-        var vm = new Step5LegalStartTimesViewModel(); // pre-seeded with 1.5 and 3.0 (AppDefaults)
+        var vm = new Step5SchedulingViewModel(); // pre-seeded with 1.5 and 3.0 (AppDefaults)
         var countBefore = vm.BlockLengths.Count;
         vm.NewBlockLengthInput = "3.0";   // already present — must be rejected
         vm.AddBlockLengthCommand.Execute(null);
@@ -566,9 +566,9 @@ public class WizardStepValidationTests
     }
 
     [Fact]
-    public void Step5LegalStartTimes_AddBlockLength_AcceptsCommaDecimalSeparator()
+    public void Step5Scheduling_AddBlockLength_AcceptsCommaDecimalSeparator()
     {
-        var vm = new Step5LegalStartTimesViewModel(); // pre-seeded with 1.5 and 3.0 (AppDefaults)
+        var vm = new Step5SchedulingViewModel(); // pre-seeded with 1.5 and 3.0 (AppDefaults)
         var countBefore = vm.BlockLengths.Count;
         vm.NewBlockLengthInput = "2,0";   // comma decimal, not yet present — must be accepted
         vm.AddBlockLengthCommand.Execute(null);

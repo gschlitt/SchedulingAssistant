@@ -162,9 +162,9 @@ public partial class WizardBlockLengthEntry : ViewModelBase
 /// or add block lengths before proceeding. Data is applied to the DB after the first
 /// academic year is created.
 /// </summary>
-public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
+public partial class Step5SchedulingViewModel : WizardStepViewModel
 {
-    public override string StepTitle => "Block Length, Start Times and Schedule Days";
+    public override string StepTitle => "Scheduling";
 
     /// <summary>The editable list of block lengths and their start times.</summary>
     public ObservableCollection<WizardBlockLengthEntry> BlockLengths { get; } = [];
@@ -231,7 +231,7 @@ public partial class Step5LegalStartTimesViewModel : WizardStepViewModel
     /// <summary>Label shown beside the "Add block length" field.</summary>
     public string NewBlockLengthLabel => BlockLengthFormatter.BlockLengthInputLabel(_blockLengthUnit);
 
-    public Step5LegalStartTimesViewModel()
+    public Step5SchedulingViewModel()
     {
         _blockLengthUnit = AppSettings.Current.BlockLengthUnit;
 

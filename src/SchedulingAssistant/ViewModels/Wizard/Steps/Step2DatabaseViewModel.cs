@@ -57,7 +57,8 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
 
     /// <summary>
     /// Validation error for the filename field, or null when the filename is acceptable.
-    /// A filename is invalid if it is blank or contains path-separator characters.
+    /// A filename is invalid if it is blank, contains path-separator characters, or does not
+    /// end with the <c>.db</c> extension.
     /// </summary>
     public string? DbFilenameError
     {
@@ -68,8 +69,23 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
                 return "Filename cannot be blank.";
             if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                 return "Filename contains invalid characters.";
+            if (!name.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
+                return "Filename must end in .db.";
             return null;
         }
+    }
+
+    /// <summary>
+    /// When the filename is edited and has no extension at all, silently append <c>.db</c>
+    /// so the user does not have to type it explicitly.  If the user has started typing an
+    /// extension (e.g. "myfile.t") the value is left unchanged and <see cref="DbFilenameError"/>
+    /// will display the validation message.
+    /// </summary>
+    partial void OnDbFilenameChanged(string value)
+    {
+        var trimmed = value.Trim();
+        if (!string.IsNullOrEmpty(trimmed) && string.IsNullOrEmpty(Path.GetExtension(trimmed)))
+            DbFilename = trimmed + ".db";
     }
 
     /// <summary>

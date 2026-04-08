@@ -6,33 +6,36 @@
 
     <StackPanel MaxWidth="860" Spacing="20">
 
-        <!-- Radio: fresh install -->
+
+        <TextBlock Text="Have you already been provided with a TermPoint database (.db file)? Unless someone has already set-up a database file for you should proceed with a fresh install." TextWrapping="Wrap" />
+
+        <!--  Radio: fresh install  -->
         <RadioButton
             Content="This is a fresh install. I need to set up my own database."
             FontSize="{DynamicResource FontSizeNormal}"
             IsChecked="{Binding IsNewSetupChoice}" />
 
-        <!-- Radio: existing database -->
+        <!--  Radio: existing database  -->
         <StackPanel Spacing="12">
             <RadioButton
-                Content="I already have a database."
+                Content="I already have a database and want to use that."
                 FontSize="{DynamicResource FontSizeNormal}"
                 IsChecked="{Binding IsExistingDbChoice}" />
 
-            <!-- Detail pane — revealed when existing DB is chosen -->
+            <!--  Detail pane — revealed when existing DB is chosen  -->
             <StackPanel
-                IsVisible="{Binding IsExistingDbChoice}"
                 Margin="28,0,0,0"
+                IsVisible="{Binding IsExistingDbChoice}"
                 Spacing="16">
 
-                <!-- Placeholder text — user will supply -->
+                <!--  Placeholder text — user will supply  -->
                 <TextBlock
                     FontSize="{DynamicResource FontSizeNormal}"
                     Foreground="{StaticResource ForegroundMuted}"
-                    TextWrapping="Wrap"
-                    Text="[Placeholder — instructions for connecting to a shared database.]" />
+                    Text="[Placeholder — instructions for connecting to a shared database.]"
+                    TextWrapping="Wrap" />
 
-                <!-- Database file -->
+                <!--  Database file  -->
                 <StackPanel Spacing="6">
                     <TextBlock
                         FontSize="{DynamicResource FontSizeNormal}"
@@ -51,7 +54,7 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Backup folder -->
+                <!--  Backup folder  -->
                 <StackPanel Spacing="6">
                     <TextBlock
                         FontSize="{DynamicResource FontSizeNormal}"
@@ -60,8 +63,8 @@
                     <TextBlock
                         FontSize="{DynamicResource FontSizeSmall}"
                         Foreground="{StaticResource ForegroundMuted}"
-                        TextWrapping="Wrap"
-                        Text="[Placeholder — backup location guidance.]" />
+                        Text="[Placeholder — backup location guidance.]"
+                        TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,8,Auto">
                         <TextBox
                             Grid.Column="0"
@@ -75,7 +78,7 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Error message -->
+                <!--  Error message  -->
                 <TextBlock
                     FontSize="{DynamicResource FontSizeSmall}"
                     Foreground="{StaticResource NotificationErrorText}"
