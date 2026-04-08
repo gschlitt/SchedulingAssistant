@@ -517,14 +517,14 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToShare() => OpenFlyout<ShareViewModel>("Share");
 
     /// <summary>
-    /// Opens the Settings flyout and wires the restore callback so that
-    /// <see cref="SettingsViewModel"/> can trigger a database restore + app restart
+    /// Opens the Save &amp; Backup flyout and wires the restore callback so that
+    /// <see cref="SaveAndBackupViewModel"/> can trigger a database restore + app restart
     /// without knowing anything about the view layer.
     /// </summary>
     [RelayCommand]
     private void NavigateToSettings()
     {
-        var vm = _services.GetRequiredService<SettingsViewModel>();
+        var vm = _services.GetRequiredService<SaveAndBackupViewModel>();
         vm.RestoreCallback = RestoreFromBackupAsync;
         FlyoutPage  = vm;
         FlyoutTitle = "Save & Backup";

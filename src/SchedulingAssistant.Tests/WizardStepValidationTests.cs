@@ -1,3 +1,4 @@
+using SchedulingAssistant.Models;
 using SchedulingAssistant.ViewModels.Wizard.Steps;
 using Xunit;
 
@@ -440,7 +441,7 @@ public class WizardStepValidationTests
     [InlineData("0729")]   // one minute before the hard lower bound
     public void WizardBlockLength_AddTime_RejectsStartTimeBefore0730(string hhmm)
     {
-        var entry = new WizardBlockLengthEntry(2.0, "2 hours", []);
+        var entry = new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, []);
         entry.NewTimeInput = hhmm;
         entry.AddTimeCommand.Execute(null);
         Assert.NotNull(entry.AddTimeError);
@@ -450,7 +451,7 @@ public class WizardStepValidationTests
     [Fact]
     public void WizardBlockLength_AddTime_Accepts0730_AsEarliestValidStart()
     {
-        var entry = new WizardBlockLengthEntry(2.0, "2 hours", []);
+        var entry = new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, []);
         entry.NewTimeInput = "0730";
         entry.AddTimeCommand.Execute(null);
         Assert.Null(entry.AddTimeError);
@@ -463,7 +464,7 @@ public class WizardStepValidationTests
     [InlineData("2001", 2.0)]   // 2001 + 2h = 2201 — just over
     public void WizardBlockLength_AddTime_RejectsStartTimeThatExceedsMaxEnd(string hhmm, double blockHours)
     {
-        var entry = new WizardBlockLengthEntry(blockHours, $"{blockHours} hours", []);
+        var entry = new WizardBlockLengthEntry(blockHours, BlockLengthUnit.Hours, []);
         entry.NewTimeInput = hhmm;
         entry.AddTimeCommand.Execute(null);
         Assert.NotNull(entry.AddTimeError);
@@ -476,7 +477,7 @@ public class WizardStepValidationTests
     [InlineData("1930", 0.5)]   // 1930 + 0.5h = 2000 — well within bounds
     public void WizardBlockLength_AddTime_AcceptsStartTimeThatEndsExactlyAt2200OrEarlier(string hhmm, double blockHours)
     {
-        var entry = new WizardBlockLengthEntry(blockHours, $"{blockHours} hours", []);
+        var entry = new WizardBlockLengthEntry(blockHours, BlockLengthUnit.Hours, []);
         entry.NewTimeInput = hhmm;
         entry.AddTimeCommand.Execute(null);
         Assert.Null(entry.AddTimeError);
@@ -486,7 +487,7 @@ public class WizardStepValidationTests
     [Fact]
     public void WizardBlockLength_AddTime_RejectsDuplicate()
     {
-        var entry = new WizardBlockLengthEntry(2.0, "2 hours", ["0800"]);
+        var entry = new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, ["0800"]);
         entry.NewTimeInput = "0800";
         entry.AddTimeCommand.Execute(null);
         Assert.NotNull(entry.AddTimeError);
@@ -496,7 +497,7 @@ public class WizardStepValidationTests
     [Fact]
     public void WizardBlockLength_AddTime_ClearsInputOnSuccess()
     {
-        var entry = new WizardBlockLengthEntry(2.0, "2 hours", []);
+        var entry = new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, []);
         entry.NewTimeInput = "0800";
         entry.AddTimeCommand.Execute(null);
         Assert.Equal(string.Empty, entry.NewTimeInput);
@@ -506,7 +507,7 @@ public class WizardStepValidationTests
     [Fact]
     public void WizardBlockLength_AddTime_SetsError_WhenInvalidFormat()
     {
-        var entry = new WizardBlockLengthEntry(2.0, "2 hours", []);
+        var entry = new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, []);
         entry.NewTimeInput = "800"; // 3 digits — invalid
         entry.AddTimeCommand.Execute(null);
         Assert.NotNull(entry.AddTimeError);
@@ -516,7 +517,7 @@ public class WizardStepValidationTests
     [Fact]
     public void WizardBlockLength_GetStartMinutes_ConvertsCorrectly()
     {
-        var entry = new WizardBlockLengthEntry(2.0, "2 hours", ["0830", "1300"]);
+        var entry = new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, ["0830", "1300"]);
         var minutes = entry.GetStartMinutes();
         Assert.Equal(510, minutes[0]);   // 8*60+30
         Assert.Equal(780, minutes[1]);   // 13*60+0
@@ -527,8 +528,8 @@ public class WizardStepValidationTests
     {
         var vm = new Step5LegalStartTimesViewModel();
         vm.BlockLengths.Clear();
-        vm.BlockLengths.Add(new WizardBlockLengthEntry(2.0, "2 hours", []));     // no times
-        vm.BlockLengths.Add(new WizardBlockLengthEntry(3.0, "3 hours", ["0900"])); // has a time
+        vm.BlockLengths.Add(new WizardBlockLengthEntry(2.0, BlockLengthUnit.Hours, []));     // no times
+        vm.BlockLengths.Add(new WizardBlockLengthEntry(3.0, BlockLengthUnit.Hours, ["0900"])); // has a time
         var seed = vm.GetSeedData();
         Assert.Single(seed);
         Assert.Equal(3.0, seed[0].BlockLengthHours);

@@ -221,7 +221,7 @@ public partial class App : Application
         services.AddTransient<SubjectListViewModel>();
         services.AddTransient<CourseListViewModel>();
         services.AddTransient<CourseHistoryViewModel>();
-        services.AddTransient<SettingsViewModel>();
+        services.AddTransient<SaveAndBackupViewModel>();
         services.AddTransient<SchedulingEnvironmentViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();

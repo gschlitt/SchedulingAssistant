@@ -6,11 +6,11 @@ using SchedulingAssistant.Services;
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// ViewModel for the Settings flyout. Manages automated-backup configuration and restore.
+/// ViewModel for the Save &amp; Backup flyout. Manages automated-backup configuration and restore.
 /// Backup entries are loaded lazily and refreshed after every backup via subscription
 /// to <see cref="BackupService.BackupCompleted"/>.
 /// </summary>
-public partial class SettingsViewModel : ViewModelBase, IDisposable
+public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
 {
     private readonly BackupService _backupService;
     private readonly IDialogService _dialogService;
@@ -75,7 +75,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <param name="backupService">Singleton backup service.</param>
     /// <param name="dialogService">Used for backup-now error reporting and restore confirmation.</param>
-    public SettingsViewModel(
+    public SaveAndBackupViewModel(
         BackupService backupService,
         IDialogService dialogService)
     {

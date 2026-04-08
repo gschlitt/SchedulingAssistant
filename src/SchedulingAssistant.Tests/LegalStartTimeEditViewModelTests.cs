@@ -1,5 +1,6 @@
 using SchedulingAssistant.Models;
 using SchedulingAssistant.ViewModels.Management;
+using SchedulingAssistant.Services;
 using Xunit;
 
 namespace SchedulingAssistant.Tests;
@@ -21,6 +22,7 @@ public class LegalStartTimeEditViewModelTests
         new(
             new LegalStartTime { BlockLength = blockLengthHours, StartTimes = [] },
             isNew: true,
+            unit: BlockLengthUnit.Hours,
             onSave: _ => Task.CompletedTask,
             onCancel: () => { });
 
