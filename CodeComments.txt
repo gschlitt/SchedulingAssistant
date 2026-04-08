@@ -1,17 +1,8 @@
 Bugs:
 
-Taking over a stale lock (at least for an already logged in as reader user) does not generate a lock file. In fact it seems to take over D' or at least
-refer to D''?
-
-Restoring from backup starts a new instance? Does not create a new copy of db but uses the backup. 
-
-Change "Academic Unit" doesn't update it on Schedule View, even after a restart?
-
-Not all the flyouts acquire scrollviewers when needed.
 
 Revisions:
 
-Filter selection border in Section View should be a a different color than manual selection.
 
 Walkthrough observations:
 (A) Cancel button on first Wizard Page
@@ -20,11 +11,11 @@ Database filename: if user chooses, ensure has .db suffix
 Sort buttons for campus do not work
 Last page refers to nonexistent video
 
-Flyouts don't always expand in depth to accommodate content, in particular Section Prefixes, when editor is open.
+
 SettingsView is wrongly named. This just governs backup etc. 
 Fontsizes are hardcoded here. Do a scan through whole app for this! Likewise in the edit form for instructors.
 SectionListView editor is kind of silly with the block patterns. 
-SectionListView editor needs to be better styled.
+
 
 Times could be entered as hour or minutes. Is this a user preference? Complicated!
 

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T16:34:45.015Z
-> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-07T22:05:00.517Z
+> Files: 26 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,8 @@
 
 ## ../../../.claude/plans/
 
+- `fancy-wiggling-newell.md` — Plan: Apply-Save Flash Animation on Schedule Grid (~2500 tok)
+- `whimsical-baking-haven.md` — Plan: Block Length Unit Toggle (Hours ↔ Minutes) (~2795 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -167,16 +169,12 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~4689 tok)
-- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5713 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1128 tok)
-- `AppColors.axaml` (~2823 tok)
-- `AppLayout.axaml` (~235 tok)
-- `MainWindow.axaml` — Declares applied (~11871 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11704 tok)
+- `AppColors.axaml` (~2890 tok)
+- `MainWindow.axaml` — Declares applied (~11874 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11760 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -195,50 +193,60 @@
 
 ## src/SchedulingAssistant/Models/
 
+- `BlockLengthUnit.cs` — Controls how block lengths are displayed and entered throughout the application. The underlying stor (~81 tok)
 
 ## src/SchedulingAssistant/Services/
 
+- `AcademicUnitService.cs` — Service for accessing the single Academic Unit in the system. There is always exactly one Academic U (~368 tok)
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2238 tok)
+- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~8906 tok)
+- `BlockLengthFormatter.cs` — Stateless helpers for formatting and parsing block lengths under the current <see cref="BlockLengthU (~1596 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12543 tok)
+- `SectionStore.cs` — Singleton service that holds the in-memory cache of sections for the currently selected semester(s) (~2240 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7332 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2999 tok)
-- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~17915 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~18256 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `IMeetingListEntry.cs` — Marker interface for items that can appear in the Meeting List panel. Implemented by both event card (~133 tok)
-- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~3358 tok)
-- `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1106 tok)
-- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~4822 tok)
-- `SemesterBannerViewModel.cs` — Represents a semester group header row in the Section List. Carries the semester identity and displa (~916 tok)
+- `LegalStartTimeEditViewModel.cs` — Block length in hours — internal storage unit. Never exposed directly to the UI. (~1677 tok)
+- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3296 tok)
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10072 tok)
+- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3281 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12094 tok)
+- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~6855 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
+- `Step5LegalStartTimesViewModel.cs` — An editable start time entry within a block length row. Stored in HHMM military format (e.g. "0800" (~3180 tok)
 
 ## src/SchedulingAssistant/Views/
 
+- `WorkloadPanelView.axaml` (~3406 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~9355 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11715 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~13804 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `MeetingListView.axaml` (~8582 tok)
+- `InstructorListView.axaml` (~8034 tok)
+- `LegalStartTimeListView.axaml` (~2613 tok)
+- `SectionListView.axaml` (~19529 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 
+- `Step5LegalStartTimesView.axaml` — Declares durations (~2478 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

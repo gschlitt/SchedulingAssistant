@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Threading;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
@@ -6,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Styling;
 using SchedulingAssistant.ViewModels.GridView;
 using System.ComponentModel;
 
@@ -81,6 +83,29 @@ public partial class ScheduleGridView : UserControl
     private static IBrush HeaderBorder       => Res("DaySeparators");
     private static IBrush GutterBg           => Res("GridGutterBackground");
 
+
+    // ── Apply-save flash animation ─────────────────────────────────────────────
+    // When the user clicks Apply on an edit, the saved section's tile(s) briefly
+    // pulse to draw the eye to their (possibly new) position on the grid.
+    // The background of each matching TextBlock fades from TileFill to a tint
+    // (FlashMaxIntensity of the way toward the selection-framing color) then back.
+
+    /// <summary>Duration of the fade-in phase of the flash animation.</summary>
+    private static readonly TimeSpan FlashFadeIn      = TimeSpan.FromSeconds(3);
+
+    /// <summary>Duration of the fade-out phase of the flash animation.</summary>
+    private static readonly TimeSpan FlashFadeOut     = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Fraction (0–1) of the way from <c>TileFill</c> toward the selection-framing
+    /// color at the peak of the flash. 0.5 produces a midpoint tint.
+    /// </summary>
+    private const double FlashMaxIntensity = 0.5;
+
+    private DispatcherTimer? _flashTimer;
+    private DateTime         _flashStartTime;
+    private List<Border>?    _flashEntryRows;
+    // ──────────────────────────────────────────────────────────────────────────
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
@@ -173,6 +198,19 @@ public partial class ScheduleGridView : UserControl
             Render();
         else if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
             UpdateSelectionHighlight();
+        else if (e.PropertyName == nameof(ScheduleGridViewModel.FlashSectionId))
+        {
+            // Defer to after all pending layout work (DispatcherPriority.Background is lower
+            // than Layout). When the section editor collapses on save, the grid panel's width
+            // changes, triggering SizeChanged → Render(), which rebuilds the canvas with fresh
+            // Borders. If we start the animation synchronously here, our tile Border references
+            // are orphaned by that second Render(). Posting at Background priority ensures we
+            // run after layout, so _entryRowRegistry contains the final, canvas-attached Borders.
+            var flashId = _vm?.FlashSectionId;
+            Dispatcher.UIThread.Post(
+                () => OnFlashSectionIdChanged(flashId),
+                DispatcherPriority.Background);
+        }
     }
 
     /// <summary>
@@ -198,6 +236,114 @@ public partial class ScheduleGridView : UserControl
                                   : Brushes.Black;
         }
     }
+
+    /// <summary>
+    /// Starts or cancels the apply-save flash animation on the tile Borders of every
+    /// grid card that contains an entry for the saved section.
+    /// <para>
+    /// A null <paramref name="sectionId"/> cancels any running animation. A non-null ID
+    /// starts a new one: the tile Border's background fades from <c>TileFill</c> to a
+    /// tint at <see cref="FlashMaxIntensity"/> of the way toward
+    /// <c>UserSelectedSectionBorderColor</c> (over <see cref="FlashFadeIn"/>), then fades
+    /// back (over <see cref="FlashFadeOut"/>).
+    /// </para>
+    /// <para>
+    /// This method is invoked via <see cref="Dispatcher.Post"/> at
+    /// <see cref="DispatcherPriority.Background"/> so it runs <em>after</em> any pending
+    /// layout pass. When the section editor collapses on save, the grid panel's width
+    /// changes and <c>SizeChanged → Render()</c> rebuilds the canvas with fresh Borders.
+    /// Deferring guarantees we read <see cref="_entryRowRegistry"/> in its final state and
+    /// obtain tile Borders that are still attached to the live visual tree.
+    /// </para>
+    /// </summary>
+    /// <param name="sectionId">The section whose tiles should flash, or null to cancel.</param>
+    private void OnFlashSectionIdChanged(string? sectionId)
+    {
+        // Stop any previous animation and restore entry row backgrounds to transparent.
+        // DispatcherTimer.Stop() is synchronous on the UI thread, so there is no race
+        // between the Tick handler and this cleanup.
+        _flashTimer?.Stop();
+        _flashTimer = null;
+        if (_flashEntryRows is not null)
+        {
+            foreach (var row in _flashEntryRows)
+                row.Background = Brushes.Transparent;
+            _flashEntryRows = null;
+        }
+
+        if (sectionId is null) return;
+
+        // Target the entry-row Borders for the saved section — one per meeting day.
+        // These are the small inner Borders inside the tile (the ones that carry the
+        // purple selection border). Animating their Background pulses only the saved
+        // section's row, leaving co-scheduled sections in the same tile unaffected.
+        var entryRows = _entryRowRegistry
+            .Where(e => e.SectionId == sectionId)
+            .Select(e => e.Row)
+            .ToList();
+
+        if (entryRows.Count == 0) return;
+
+        var tileFillColor = ((SolidColorBrush)TileFill).Color;
+        var framingColor  = ((SolidColorBrush)UserSelectedBorder).Color;
+        var peakColor     = LerpColor(tileFillColor, framingColor, FlashMaxIntensity);
+
+        _flashEntryRows = entryRows;
+        _flashStartTime = DateTime.UtcNow;
+
+        // Use a DispatcherTimer that directly reassigns the entry row's Background on
+        // every tick. Reassigning a fresh SolidColorBrush instance unconditionally
+        // triggers the property-changed → InvalidateVisual chain at ~60 fps.
+        _flashTimer = new DispatcherTimer(DispatcherPriority.Render)
+        {
+            Interval = TimeSpan.FromMilliseconds(16)
+        };
+
+        _flashTimer.Tick += (_, _) =>
+        {
+            var elapsed = DateTime.UtcNow - _flashStartTime;
+            var total   = FlashFadeIn + FlashFadeOut;
+
+            if (elapsed >= total)
+            {
+                // Animation complete — restore entry row backgrounds to transparent.
+                _flashTimer!.Stop();
+                _flashTimer = null;
+                foreach (var row in _flashEntryRows!)
+                    row.Background = Brushes.Transparent;
+                _flashEntryRows = null;
+                return;
+            }
+
+            // Compute blend factor t ∈ [0, 1]:
+            //   Fade-in  (elapsed ≤ FlashFadeIn):  t rises from 0 to 1.
+            //   Fade-out (elapsed > FlashFadeIn):  t falls from 1 to 0.
+            double t = elapsed <= FlashFadeIn
+                ? elapsed.TotalSeconds / FlashFadeIn.TotalSeconds
+                : 1.0 - (elapsed - FlashFadeIn).TotalSeconds / FlashFadeOut.TotalSeconds;
+
+            var color = LerpColor(tileFillColor, peakColor, t);
+            var brush = new SolidColorBrush(color);
+            foreach (var row in _flashEntryRows!)
+                row.Background = brush;
+        };
+
+        _flashTimer.Start();
+    }
+
+    /// <summary>
+    /// Linearly interpolates between two <see cref="Color"/> values.
+    /// </summary>
+    /// <param name="a">The color at t = 0.</param>
+    /// <param name="b">The color at t = 1.</param>
+    /// <param name="t">Blend factor in [0, 1].</param>
+    /// <returns>The interpolated color.</returns>
+    private static Color LerpColor(Color a, Color b, double t)
+        => Color.FromArgb(
+            (byte)(a.A + (b.A - a.A) * t),
+            (byte)(a.R + (b.R - a.R) * t),
+            (byte)(a.G + (b.G - a.G) * t),
+            (byte)(a.B + (b.B - a.B) * t));
 
     private void Render()
     {
@@ -226,6 +372,7 @@ public partial class ScheduleGridView : UserControl
         // Bold label text width across all entries in that tile. Used in Phase 1.5 to
         // compute per-overlap-slot natural widths.
         var tileMaxTextWidths = new Dictionary<(int d, int start, int end), double>();
+        
         // tileHeightMap maps (startMinutes, endMinutes) → (timeBasedHeight, actualHeight).
         // Key is the tile's time span only — column is intentionally omitted because in
         // multi-semester mode co-scheduled tiles across semester sub-columns share the same

@@ -92,7 +92,7 @@ public partial class App : Application
         // when the file does not yet exist (brand-new database).
         if (File.Exists(dbPath) && !BackupService.CheckIntegrity(dbPath))
         {
-            // Signal the caller; MainWindow.RunStartupAsync handles the restore dialog.
+            // Signal the caller; MainWindow.RunStartupAsync handles the restore dialog.<--Incorrect
             throw new DatabaseCorruptException(dbPath);
         }
 

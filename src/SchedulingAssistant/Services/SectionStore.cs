@@ -92,6 +92,22 @@ public class SectionStore
     /// </summary>
     public string? SelectedSectionId { get; private set; }
 
+    // ── Save-flash coordination ────────────────────────────────────────────────
+
+    /// <summary>
+    /// The ID of the section that was just saved, set for the duration of a
+    /// <see cref="ReloadAfterSave"/> call and cleared immediately after all
+    /// <see cref="SectionsChanged"/> subscribers have returned.
+    /// <para>
+    /// Subscribers (e.g. <c>ScheduleGridViewModel</c>) read this during their
+    /// <see cref="SectionsChanged"/> handler to know whether to start the
+    /// apply-save flash animation.  It is <c>null</c> for all other reload paths
+    /// (filter changes, semester switches, etc.), so those paths never trigger
+    /// the animation.
+    /// </para>
+    /// </summary>
+    public string? PendingSavedId { get; private set; }
+
     // ── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -115,6 +131,29 @@ public class SectionStore
         _sectionsBySemester = dict;
         Sections = dict.Values.SelectMany(v => v).ToList();
         SectionsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Reloads sections and fires <see cref="SectionsChanged"/> with
+    /// <see cref="PendingSavedId"/> set to <paramref name="savedSectionId"/>, so
+    /// subscribers can distinguish a save-triggered reload from other reloads and
+    /// start the apply-save flash animation on the affected tiles.
+    /// <para>
+    /// <see cref="PendingSavedId"/> is cleared to <c>null</c> immediately after all
+    /// subscribers have returned from <see cref="SectionsChanged"/>, so it is only
+    /// readable during the event invocation.
+    /// </para>
+    /// </summary>
+    /// <param name="sectionRepo">Repository for this call.</param>
+    /// <param name="semesterIds">Semester IDs to load.</param>
+    /// <param name="savedSectionId">The ID of the section that was just saved.</param>
+    public void ReloadAfterSave(ISectionRepository sectionRepo,
+                                IEnumerable<string> semesterIds,
+                                string savedSectionId)
+    {
+        PendingSavedId = savedSectionId;
+        Reload(sectionRepo, semesterIds);
+        PendingSavedId = null;
     }
 
     /// <summary>

@@ -716,8 +716,8 @@ public partial class SectionListViewModel : ViewModelBase
                     if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
                     CollapseEditor();
                     var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
-                    _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
-                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
+                    _sectionStore.ReloadAfterSave(_sectionRepo, semIds, s.Id); // notifies Grid + Workload; sets PendingSavedId for flash animation
+                    Load(selectSectionId: s.Id);                             // rebuild list with correct post-save selection
                 }
                 catch (Exception ex)
                 {

@@ -3046,6 +3046,549 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-02T16:34:39.577Z"
+    },
+    {
+      "id": "bug-191",
+      "timestamp": "2026-04-06T04:29:45.265Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/BackupService.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→5 lines (2 removed) | Also: /// Enforces the backup retention limit for a sing; /// name contains <paramref name=\"aySlug\"/> are co",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-06T04:30:03.047Z"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-04-06T04:30:19.382Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/BackupService.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-06T04:30:19.382Z"
+    },
+    {
+      "id": "bug-193",
+      "timestamp": "2026-04-06T04:30:54.190Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-06T04:30:54.190Z"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-04-06T05:04:50.464Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/BackupService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: // Delete companion CSV — the CSV name includes an academic ; // the timestamp and \"_sections.csv\", so derive it via glob ",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-06T05:05:13.811Z"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-04-06T05:21:51.805Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/AcademicUnitService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-06T05:21:51.805Z"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-04-06T05:49:36.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 24→16 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-06T05:49:36.908Z"
+    },
+    {
+      "id": "bug-197",
+      "timestamp": "2026-04-06T20:13:36.324Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 15→20 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-06T20:13:36.324Z"
+    },
+    {
+      "id": "bug-198",
+      "timestamp": "2026-04-07T03:15:59.022Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "Had \"FilterSelectedSectionBorderColor\"",
+      "fix": "Changed to \"FilterSelectedSectionBackgroundColor\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T03:15:59.022Z"
+    },
+    {
+      "id": "bug-199",
+      "timestamp": "2026-04-07T03:16:49.778Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T03:16:49.778Z"
+    },
+    {
+      "id": "bug-200",
+      "timestamp": "2026-04-07T03:19:01.878Z",
+      "error_message": "Wrong operator: ?? should be ==",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "Used \"??\" instead of \"==\"",
+      "fix": "Changed operator ?? → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T03:19:01.878Z"
+    },
+    {
+      "id": "bug-201",
+      "timestamp": "2026-04-07T03:30:26.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T03:30:26.908Z"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-04-07T04:01:28.321Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: _blockLengthUnit == value",
+      "fix": "Added guard clause: if (_blockLengthUnit == value)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:01:28.321Z"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-04-07T04:02:14.313Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml",
+      "root_cause": "Had \"Auto,*,Auto,Auto,Auto\"",
+      "fix": "Changed to \"Auto,*,Auto,Auto,Auto,Auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:02:14.314Z"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-04-07T04:04:35.313Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:04:35.313Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-04-07T04:10:00.650Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"hours\"",
+      "fix": "Changed to \"{Binding BlockLengthWatermark}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:10:00.650Z"
+    },
+    {
+      "id": "bug-206",
+      "timestamp": "2026-04-07T04:10:45.437Z",
+      "error_message": "Wrong reference: _blockLengthUnit should be BlockLengthUnit",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs",
+      "root_cause": "Used \"_blockLengthUnit\" instead of \"BlockLengthUnit\"",
+      "fix": "Changed _blockLengthUnit → BlockLengthUnit",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:10:45.437Z"
+    },
+    {
+      "id": "bug-207",
+      "timestamp": "2026-04-07T04:10:51.190Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs",
+      "root_cause": "Had \"A {BlockLengthFormatter.LabelFor(BlockLengthHours",
+      "fix": "Changed to \"A {BlockLengthFormatter.LabelFor(BlockLengthHours",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:10:51.190Z"
+    },
+    {
+      "id": "bug-208",
+      "timestamp": "2026-04-07T04:10:56.217Z",
+      "error_message": "Wrong reference: _selectedRow should be SelectedRow",
+      "file": "src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs",
+      "root_cause": "Used \"_selectedRow\" instead of \"SelectedRow\"",
+      "fix": "Changed _selectedRow → SelectedRow",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T04:10:56.217Z"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-04-07T15:27:51.489Z",
+      "error_message": "Null/undefined access in ",
+      "file": "../../../.claude/plans/fancy-wiggling-newell.md",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T15:27:51.489Z"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-04-07T16:38:05.499Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: /// <summary>; /// Starts or cancels the apply-save flash animation on the ",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-07T16:38:27.213Z"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-04-07T16:47:36.566Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T16:47:36.566Z"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-04-07T17:13:30.550Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/fancy-wiggling-newell.md",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 19→19 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T17:13:30.550Z"
+    },
+    {
+      "id": "bug-213",
+      "timestamp": "2026-04-07T17:15:34.477Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 27→44 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T17:15:34.477Z"
+    },
+    {
+      "id": "bug-214",
+      "timestamp": "2026-04-07T21:21:40.539Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:21:40.539Z"
+    },
+    {
+      "id": "bug-215",
+      "timestamp": "2026-04-07T21:24:39.020800Z",
+      "error_message": "Animation.RunAsync on SolidColorBrush does not produce visible repaints on Border.Background in Avalonia 11",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Avalonia Animation engine animates the brush Color at BindingPriority.Animation but color changes do not propagate through IBrush.Invalidated to InvalidateVisual on the owning Border when the brush is installed on a canvas-positioned control outside the normal style/binding pipeline.",
+      "fix": "Replaced RunAsync with a DispatcherTimer (16ms, DispatcherPriority.Render) that directly reassigns row.Background = new SolidColorBrush(lerpedColor) each tick. Direct property assignment unconditionally triggers the property-changed chain and InvalidateVisual.",
+      "tags": [
+        "animation",
+        "avalonia",
+        "schedule-grid",
+        "dispatcher-timer",
+        "brush"
+      ]
+    },
+    {
+      "id": "bug-216",
+      "timestamp": "2026-04-07T21:32:23.501Z",
+      "error_message": "Wrong reference: _flashRows should be _flashTileBorders",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"_flashRows\" instead of \"_flashTileBorders\"",
+      "fix": "Changed _flashRows → _flashTileBorders",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:32:23.501Z"
+    },
+    {
+      "id": "bug-217",
+      "timestamp": "2026-04-07T21:32:46.263Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "24 lines replaced/restructured",
+      "fix": "Rewrote 72→102 lines (24 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:32:46.264Z"
+    },
+    {
+      "id": "bug-218",
+      "timestamp": "2026-04-07T21:41:05.298Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:41:05.298Z"
+    },
+    {
+      "id": "bug-219",
+      "timestamp": "2026-04-07T21:41:27.749Z",
+      "error_message": "Wrong reference: IsAttachedToVisualTree should be GetVisualRoot",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"IsAttachedToVisualTree\" instead of \"GetVisualRoot\"",
+      "fix": "Changed IsAttachedToVisualTree → GetVisualRoot",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-07T21:41:42.486Z"
+    },
+    {
+      "id": "bug-220",
+      "timestamp": "2026-04-07T21:49:03.261Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→11 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:49:03.262Z"
+    },
+    {
+      "id": "bug-221",
+      "timestamp": "2026-04-07T21:49:23.717Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Had \"[FLASH] Tick #{_flashTickCount}: t={t:F3} color={",
+      "fix": "Changed to \"[FLASH] Tick #{_flashTickCount}: t={t:F3} brush={",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:49:23.717Z"
+    },
+    {
+      "id": "bug-222",
+      "timestamp": "2026-04-07T21:52:28.949Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T21:52:28.949Z"
+    },
+    {
+      "id": "bug-223",
+      "timestamp": "2026-04-07T22:00:54.531498Z",
+      "error_message": "Flash animation sets Background on orphaned tile Borders (Parent=NULL) — no visible effect",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "When the section editor collapses on save, the grid panel width changes. Avalonia defers the layout pass; SizeChanged fires after the synchronous save code returns, triggering Render() which rebuilds the Canvas with fresh Borders. The flash timer held references to the OLD Borders (now orphaned, Parent=null).",
+      "fix": "Defer OnFlashSectionIdChanged via Dispatcher.UIThread.Post at DispatcherPriority.Background (lower than Layout). The deferred call runs after layout completes, so _entryRowRegistry contains the final canvas-attached Borders.",
+      "tags": [
+        "animation",
+        "avalonia",
+        "schedule-grid",
+        "layout-timing",
+        "SizeChanged",
+        "orphaned-controls"
+      ]
+    },
+    {
+      "id": "bug-224",
+      "timestamp": "2026-04-07T22:04:22.799Z",
+      "error_message": "Wrong reference: _flashTileBorders should be _flashEntryRows",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"_flashTileBorders\" instead of \"_flashEntryRows\"",
+      "fix": "Changed _flashTileBorders → _flashEntryRows",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-07T22:04:22.799Z"
     }
   ]
 }

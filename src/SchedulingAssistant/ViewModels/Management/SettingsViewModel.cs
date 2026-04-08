@@ -152,8 +152,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         bool confirmed = await _dialogService.Confirm(
             $"Restore from backup:\n\n{entry.TimestampDisplay}\n\n" +
-            "This will replace the current database with the selected backup. " +
-            "The application will restart automatically.\n\n" +
+            "This will replace the current database with the selected backup.\n\n " +            
             "Continue?",
             confirmLabel: "Restore");
 

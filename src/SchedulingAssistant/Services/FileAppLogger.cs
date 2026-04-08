@@ -5,7 +5,7 @@ namespace SchedulingAssistant.Services;
 
 /// <summary>
 /// Writes log entries to a rolling daily log file under
-/// %AppData%\SchedulingAssistant\Logs\app-YYYY-MM-DD.log.
+/// %AppData%\TermPoint\Logs\app-YYYY-MM-DD.log.
 ///
 /// Designed to be swapped out for a remote/database sink later by implementing
 /// IAppLogger differently and updating the DI registration in App.axaml.cs.
@@ -25,7 +25,7 @@ public sealed class FileAppLogger : IAppLogger
 
     private static readonly string LogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SchedulingAssistant", "Logs");
+        "TermPoint", "Logs");
 
     private static readonly string AppVersion =
         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";

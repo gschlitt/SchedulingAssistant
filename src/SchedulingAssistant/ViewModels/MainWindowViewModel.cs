@@ -538,24 +538,25 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <param name="backupDbPath">Full path to the .db backup file to restore from.</param>
     private async Task RestoreFromBackupAsync(string backupDbPath)
     {
-        var mainDbPath = AppSettings.Current.DatabasePath;
-        if (mainDbPath is null) return;
+        if (MainWindowReference is null) return;
+
+        var canonicalPath = App.Checkout.SourcePath ?? AppSettings.Current.DatabasePath;
+        if (canonicalPath is null) return;
 
         try
         {
-            // Release the write lock and close the database connection.
-            _services.GetRequiredService<BackupService>().StopSession();
-            _services.GetRequiredService<WriteLockService>().Release();
+            // Release WITHOUT saving — we're discarding the working copy.
+            App.Checkout.StopAutoSave();
+            await App.Checkout.ReleaseAsync(saveFirst: false);
+
+            // Dispose DI to close all SQLite handles before touching the source file.
             (App.Services as IDisposable)?.Dispose();
 
-            // Overwrite the main database with the selected backup.
-            File.Copy(backupDbPath, mainDbPath, overwrite: true);
+            // Overwrite the canonical source with the backup.
+            File.Copy(backupDbPath, canonicalPath, overwrite: true);
 
-            // Restart the application so it opens the restored database cleanly.
-            var exePath = Environment.ProcessPath;
-            if (exePath is not null)
-                System.Diagnostics.Process.Start(
-                    new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = true });
+            // Switch to the restored DB — identical to opening any other DB.
+            await MainWindowReference.SwitchDatabaseAsync(canonicalPath);
         }
         catch (Exception ex)
         {

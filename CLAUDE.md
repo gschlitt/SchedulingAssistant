@@ -1,18 +1,11 @@
 
-
 # Coding Practice
-
-
-Code should clean. Prefer building reusable code, even if it takes more time, rather than repeating yourself.
-
+Code should clean. Prefer building reusable code, even if it takes more time.
 Commenting should be on the liberal side, if anything. When in doubt, comment. Methods should be commented, explain the purpose, its parameters, return values, and any exceptions it might throw.
-
 Uses /// for single-line XML documentation comments that a documentation generator can process.
-
 Any fonts sizes, weights, and colors used should not be hardcoded, but refer back to appcolors.axaml or app.axaml
 
 Strongly prefer MVVM style with minimal code-behinds.  Prefer attached behaviors to code-behinds, unless it is unnatural and too complex.
-
 
 # SchedulingAssistant — Project Decisions
 
@@ -60,7 +53,6 @@ A scheduling **visualization and information management tool** for university ad
 - The section list is an always-visible left panel, not a flyout or modal
 - Editing a section expands its card inline within the list — no separate window
 - Adding a new section shows a form at the top of the list
-- Controls inside the expanded editor are compact (FontSize 10–11, tight padding) to conserve vertical space
 - The summary row (heading + schedule lines) remains visible above the expanded form
 - Only one section can be open for editing at a time; opening another collapses the previous
 
@@ -92,5 +84,4 @@ The Section Code TextBox lives inside a `DataTemplate`, so it cannot be reached 
 ### Copy operation
 "Copy" adds a new section immediately below the selected one in the list, pre-setting its course and (if derivable) its section code. The code derivation increments the trailing integer suffix of the source section code (e.g. "AB1" → "AB2"). If the candidate code is already taken, a notice is shown and the code is left blank. The editor opens in the same step-gate mode; if both course and code are pre-populated, the snapshot is set at construction so all fields are immediately editable.
 
-## Decisions Not Yet Made
-- Exact fields on Section, Instructor, Room (beyond what's described above)
+

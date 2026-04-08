@@ -1596,3 +1596,236 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-04-04 21:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-06 20:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-06 20:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:29 | Edited src/SchedulingAssistant/Services/BackupService.cs | 7→9 lines | ~151 |
+| 21:29 | Edited src/SchedulingAssistant/Services/BackupService.cs | 5→4 lines | ~73 |
+| 21:29 | Edited src/SchedulingAssistant/Services/BackupService.cs | 5→5 lines | ~37 |
+| 21:29 | Edited src/SchedulingAssistant/Services/BackupService.cs | 14→14 lines | ~143 |
+| 21:30 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified RotateBackups() | ~232 |
+| 21:30 | Edited src/SchedulingAssistant/Services/BackupService.cs | added error handling | ~391 |
+| 21:30 | Edited src/SchedulingAssistant/Services/BackupService.cs | removed 20 lines | ~5 |
+| 21:30 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+8 lines) | ~164 |
+| 21:30 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+9 lines) | ~182 |
+| 21:30 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added optional chaining | ~101 |
+| 21:31 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 8→11 lines | ~173 |
+| 21:31 | Session end: 11 writes across 3 files (BackupService.cs, CheckoutService.cs, MainWindow.axaml.cs) | 4 reads | ~9932 tok |
+
+## Session: 2026-04-06 21:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:04 | Edited src/SchedulingAssistant/Services/BackupService.cs | added optional chaining | ~148 |
+| 22:05 | Edited src/SchedulingAssistant/Services/BackupService.cs | added 2 condition(s) | ~249 |
+| 22:05 | Edited src/SchedulingAssistant/Services/BackupService.cs | 14→13 lines | ~123 |
+| 22:05 | Edited src/SchedulingAssistant/Services/BackupService.cs | ChangeExtension() → FindCompanionCsv() | ~163 |
+| 22:05 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified FindCompanionCsv() | ~295 |
+| 22:06 | Session end: 5 writes across 1 files (BackupService.cs) | 1 reads | ~9695 tok |
+| 22:10 | Session end: 5 writes across 1 files (BackupService.cs) | 1 reads | ~9695 tok |
+
+## Session: 2026-04-06 22:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:21 | Edited src/SchedulingAssistant/Services/AcademicUnitService.cs | added optional chaining | ~325 |
+| 22:21 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→5 lines | ~40 |
+| 22:22 | Session end: 2 writes across 2 files (AcademicUnitService.cs, ScheduleGridViewModel.cs) | 11 reads | ~391 tok |
+| 22:25 | Session end: 2 writes across 2 files (AcademicUnitService.cs, ScheduleGridViewModel.cs) | 11 reads | ~391 tok |
+
+## Session: 2026-04-06 22:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:32 | Edited src/SchedulingAssistant/MainWindow.axaml | 6→5 lines | ~63 |
+| 22:32 | Session end: 1 writes across 1 files (MainWindow.axaml) | 6 reads | ~67 tok |
+| 22:34 | Session end: 1 writes across 1 files (MainWindow.axaml) | 6 reads | ~67 tok |
+| 22:35 | Session end: 1 writes across 1 files (MainWindow.axaml) | 6 reads | ~67 tok |
+
+## Session: 2026-04-06 22:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:40 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 23→25 lines | ~287 |
+| 22:40 | Session end: 1 writes across 1 files (InstructorListView.axaml) | 2 reads | ~307 tok |
+| 22:40 | Session end: 1 writes across 1 files (InstructorListView.axaml) | 2 reads | ~307 tok |
+
+## Session: 2026-04-06 22:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:48 | Edited src/SchedulingAssistant/AppColors.axaml | 4→7 lines | ~167 |
+| 22:49 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | modified Outer() | ~628 |
+| 22:49 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 4→5 lines | ~57 |
+| 22:49 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | reduced (-8 lines) | ~219 |
+| 22:49 | Session end: 4 writes across 3 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs) | 10 reads | ~20336 tok |
+| 22:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+16 lines) | ~323 |
+| 22:57 | Session end: 5 writes across 3 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs) | 10 reads | ~20693 tok |
+| 23:04 | Session end: 5 writes across 3 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs) | 10 reads | ~20693 tok |
+
+## Session: 2026-04-06 09:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:59 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+18 lines) | ~454 |
+| 12:59 | Session end: 1 writes across 1 files (SectionListView.axaml) | 1 reads | ~20075 tok |
+| 13:06 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 12→9 lines | ~159 |
+| 13:06 | Session end: 2 writes across 1 files (SectionListView.axaml) | 1 reads | ~20246 tok |
+| 13:13 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | highlight() → ContentPresenter() | ~405 |
+| 13:13 | Session end: 3 writes across 1 files (SectionListView.axaml) | 1 reads | ~20618 tok |
+
+## Session: 2026-04-06 13:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-07 18:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:15 | Edited src/SchedulingAssistant/AppColors.axaml | 2→2 lines | ~46 |
+| 20:16 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | modified border() | ~350 |
+| 20:16 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→4 lines | ~47 |
+| 20:16 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | added optional chaining | ~246 |
+| 20:16 | Session end: 4 writes across 3 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs) | 2 reads | ~23426 tok |
+| 20:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | added 1 condition(s) | ~259 |
+| 20:19 | Session end: 5 writes across 3 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs) | 2 reads | ~23704 tok |
+| 20:30 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 5→5 lines | ~103 |
+| 20:30 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→4 lines | ~85 |
+| 20:30 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 18→20 lines | ~350 |
+| 20:30 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 6→8 lines | ~138 |
+| 20:30 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 11→9 lines | ~151 |
+| 20:31 | Session end: 10 writes across 5 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs, ScheduleGridView.axaml.cs, WorkloadPanelView.axaml) | 4 reads | ~24590 tok |
+| 20:32 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 1 → 2 | ~10 |
+| 20:32 | Session end: 11 writes across 5 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs, ScheduleGridView.axaml.cs, WorkloadPanelView.axaml) | 4 reads | ~24601 tok |
+| 20:35 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→7 lines | ~125 |
+| 20:35 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | inline fix | ~17 |
+| 20:35 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | inline fix | ~27 |
+| 20:35 | Session end: 14 writes across 5 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs, ScheduleGridView.axaml.cs, WorkloadPanelView.axaml) | 4 reads | ~36623 tok |
+| 20:39 | Session end: 14 writes across 5 files (AppColors.axaml, SectionListView.axaml, SectionListItemViewModel.cs, ScheduleGridView.axaml.cs, WorkloadPanelView.axaml) | 4 reads | ~36623 tok |
+
+## Session: 2026-04-07 20:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:55 | Created ../../../.claude/plans/whimsical-baking-haven.md | — | ~2981 |
+| 20:59 | Created src/SchedulingAssistant/Models/BlockLengthUnit.cs | — | ~81 |
+| 20:59 | Created src/SchedulingAssistant/Services/BlockLengthFormatter.cs | — | ~1596 |
+| 21:00 | Edited src/SchedulingAssistant/Services/AppSettings.cs | expanded (+8 lines) | ~119 |
+| 21:01 | Created src/SchedulingAssistant/ViewModels/Management/LegalStartTimeEditViewModel.cs | — | ~1677 |
+| 21:01 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | added 3 condition(s) | ~521 |
+| 21:01 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | expanded (+7 lines) | ~177 |
+| 21:01 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 2→3 lines | ~58 |
+| 21:01 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | modified catch() | ~134 |
+| 21:01 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | modified catch() | ~159 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | inline fix | ~19 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | 15→15 lines | ~228 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | 4→4 lines | ~68 |
+| 21:04 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | modified LegalStartTimeRow() | ~157 |
+| 21:04 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | added optional chaining | ~191 |
+| 21:04 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | modified RebuildDisplayEntries() | ~83 |
+| 21:04 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 10→11 lines | ~124 |
+| 21:04 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 5→6 lines | ~54 |
+| 21:05 | Created src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | — | ~2613 |
+| 21:06 | Created src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | — | ~3180 |
+| 21:07 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml | expanded (+13 lines) | ~161 |
+| 21:07 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step5LegalStartTimesView.axaml | 10→10 lines | ~141 |
+| 21:09 | Created src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | — | ~6855 |
+| 21:09 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~75 |
+| 21:09 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~71 |
+| 21:09 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~74 |
+| 21:10 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | "hours" → "{Binding BlockLengthWater" | ~24 |
+| 21:10 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | 2→2 lines | ~60 |
+| 21:10 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step5LegalStartTimesViewModel.cs | "A {BlockLengthFormatter.L" → "A {BlockLengthFormatter.L" | ~38 |
+| 21:10 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 2→2 lines | ~44 |
+| 21:11 | Session end: 30 writes across 12 files (whimsical-baking-haven.md, BlockLengthUnit.cs, BlockLengthFormatter.cs, AppSettings.cs, LegalStartTimeEditViewModel.cs) | 24 reads | ~65658 tok |
+| 21:18 | Session end: 30 writes across 12 files (whimsical-baking-haven.md, BlockLengthUnit.cs, BlockLengthFormatter.cs, AppSettings.cs, LegalStartTimeEditViewModel.cs) | 24 reads | ~65658 tok |
+
+## Session: 2026-04-07 21:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:35 | Created ../../../.claude/plans/fancy-wiggling-newell.md | — | ~2336 |
+| 08:27 | Edited ../../../.claude/plans/fancy-wiggling-newell.md | added optional chaining | ~1242 |
+| 09:36 | Edited src/SchedulingAssistant/Services/SectionStore.cs | modified Reload() | ~787 |
+| 09:36 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | Reload() → ReloadAfterSave() | ~73 |
+| 09:37 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | expanded (+7 lines) | ~151 |
+| 09:37 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified Reload() | ~143 |
+| 09:37 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→8 lines | ~130 |
+| 09:37 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 10→14 lines | ~104 |
+| 09:37 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | expanded (+21 lines) | ~343 |
+| 09:38 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added optional chaining | ~120 |
+| 09:38 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added optional chaining | ~931 |
+| 09:39 | Session end: 11 writes across 5 files (fancy-wiggling-newell.md, SectionStore.cs, SectionListViewModel.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs) | 18 reads | ~76941 tok |
+| 09:43 | Session end: 11 writes across 5 files (fancy-wiggling-newell.md, SectionStore.cs, SectionListViewModel.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs) | 18 reads | ~76941 tok |
+| 09:47 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified Reload() | ~14 |
+| 09:48 | Session end: 12 writes across 5 files (fancy-wiggling-newell.md, SectionStore.cs, SectionListViewModel.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs) | 18 reads | ~76956 tok |
+
+## Session: 2026-04-07 09:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:13 | Edited ../../../.claude/plans/fancy-wiggling-newell.md | 19→19 lines | ~354 |
+| 10:14 | Edited ../../../.claude/plans/fancy-wiggling-newell.md | modified OnFlashSectionIdChanged() | ~995 |
+| 10:15 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | expanded (+7 lines) | ~215 |
+| 10:15 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified foreach() | ~634 |
+| 10:16 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→3 lines | ~23 |
+| 10:16 | Session end: 5 writes across 3 files (fancy-wiggling-newell.md, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs) | 3 reads | ~33677 tok |
+
+## Session: 2026-04-07 13:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:10 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→7 lines | ~102 |
+| 14:11 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified foreach() | ~238 |
+| 14:12 | Session end: 2 writes across 1 files (ScheduleGridView.axaml.cs) | 1 reads | ~13887 tok |
+| 14:15 | Session end: 2 writes across 1 files (ScheduleGridView.axaml.cs) | 1 reads | ~13887 tok |
+
+## Session: 2026-04-07 14:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:21 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 5→3 lines | ~18 |
+| 14:21 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→3 lines | ~27 |
+| 14:21 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 1→3 lines | ~35 |
+| 14:22 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 2 condition(s) | ~786 |
+| 14:24 | Session end: 4 writes across 1 files (ScheduleGridView.axaml.cs) | 1 reads | ~14474 tok |
+| 14:32 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→3 lines | ~36 |
+| 14:32 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 4 condition(s) | ~1182 |
+| 14:33 | Session end: 6 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~46042 tok |
+| 14:41 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added optional chaining | ~883 |
+| 14:41 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | inline fix | ~8 |
+| 14:41 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | inline fix | ~6 |
+| 14:41 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | inline fix | ~15 |
+| 14:42 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified foreach() | ~108 |
+| 14:42 | Session end: 11 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~47868 tok |
+| 14:46 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified foreach() | ~75 |
+| 14:46 | Session end: 12 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~47918 tok |
+| 14:49 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified foreach() | ~160 |
+| 14:49 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | "[FLASH] Tick #{_flashTick" → "[FLASH] Tick #{_flashTick" | ~23 |
+| 14:49 | Session end: 14 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~48220 tok |
+| 14:52 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified OnVmPropertyChanged() | ~213 |
+| 14:52 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added optional chaining | ~276 |
+| 14:52 | Session end: 16 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~48840 tok |
+| 14:55 | Session end: 16 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~48840 tok |
+| 14:57 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | expanded (+11 lines) | ~231 |
+| 14:57 | Session end: 17 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~49088 tok |
+| 14:59 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | removed 9 lines | ~25 |
+| 15:00 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified OnFlashSectionIdChanged() | ~1167 |
+| 15:01 | Session end: 19 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~50686 tok |
+| 15:04 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→3 lines | ~36 |
+| 15:04 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified if() | ~783 |
+| 15:05 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | removed 28 lines | ~5 |
+| 15:05 | Session end: 22 writes across 1 files (ScheduleGridView.axaml.cs) | 3 reads | ~51035 tok |

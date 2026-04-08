@@ -43,6 +43,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     [ObservableProperty] private string? _selectedSectionId;
     [ObservableProperty] private string? _lastErrorMessage;
 
+    /// <summary>
+    /// Set to the saved section's ID immediately after <see cref="GridData"/> is updated
+    /// following an apply-save reload, so the view can start the flash animation on the
+    /// matching tiles. Null on all other reload paths (filter changes, semester switches, etc.).
+    /// </summary>
+    [ObservableProperty] private string? _flashSectionId;
+
     /// <summary>Display name of the selected semester, e.g. "2025-2026 — Fall"</summary>
     [ObservableProperty] private string _semesterLine = string.Empty;
 
@@ -1021,6 +1028,18 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
 
         GridData = new GridData(firstRow, lastRow, dayColumns, semesters.Count);
+
+        // Notify the view of a save-triggered reload so it can flash the saved section's tiles.
+        // GridData is set first so the view's canvas rebuild (and _entryRowRegistry repopulation)
+        // runs synchronously before the view reads FlashSectionId.
+        //
+        // Double-assignment: SetProperty skips notification when the value doesn't change, so if
+        // the same section is saved twice the second save would be silently swallowed. Resetting to
+        // null first guarantees PropertyChanged fires in both directions every time a save occurs.
+        // The null→null case (non-save reloads) is a no-op — SetProperty sees no change and skips.
+        var pendingFlashId = _sectionStore.PendingSavedId;
+        FlashSectionId = null;
+        FlashSectionId = pendingFlashId;
 
         // ── Semester line and colored segment chips ────────────────────────────
         // Single-semester mode: "Year — Semester" (e.g. "2025-2026 — Fall")
