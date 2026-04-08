@@ -122,8 +122,15 @@ public static class SectionPrefixHelper
     ///     consistent with the Add behaviour).
     ///   </item>
     ///   <item>
-    ///     If no known prefix is detected, the trailing integer is incremented by
-    ///     one and checked for availability (simple advance fallback).
+    ///     If no known prefix is detected and the code ends with digits, the trailing
+    ///     integer is incremented by one (simple advance fallback).
+    ///   </item>
+    ///   <item>
+    ///     If no known prefix is detected and the code is a bare letter sequence (e.g.
+    ///     "A", "B", "AA"), and <paramref name="fallbackDesignatorType"/> is
+    ///     <see cref="DesignatorType.Letter"/>, gap-fill semantics are used via
+    ///     <see cref="FindNextAvailableCode"/> with an empty prefix.  This handles
+    ///     institutions that use bare letter designators without section prefixes.
     ///   </item>
     /// </list>
     /// </summary>
@@ -132,6 +139,13 @@ public static class SectionPrefixHelper
     /// <param name="codeExists">
     /// A delegate that returns <c>true</c> when the candidate code is already in use.
     /// The caller scopes this to the correct course and semester.
+    /// </param>
+    /// <param name="fallbackDesignatorType">
+    /// Designator type to use when no configured prefix matches and the trailing-digit
+    /// heuristic also fails.  Pass <see cref="DesignatorType.Letter"/> when the
+    /// institution uses bare letter designators (i.e. <c>UseSectionPrefixes</c> is
+    /// false and the global designator type is Letter).  Defaults to <c>null</c>
+    /// (original behaviour: return <c>null</c> when no pattern is recognised).
     /// </param>
     /// <returns>
     /// A tuple of (<c>Code</c>, <c>CampusId</c>).  Either field may be <c>null</c>:
@@ -142,7 +156,8 @@ public static class SectionPrefixHelper
     public static (string? Code, string? CampusId) AdvanceSectionCode(
         string sourceCode,
         IReadOnlyList<SectionPrefix> prefixes,
-        Func<string, bool> codeExists)
+        Func<string, bool> codeExists,
+        DesignatorType? fallbackDesignatorType = null)
     {
         if (string.IsNullOrEmpty(sourceCode))
             return (null, null);
@@ -157,15 +172,26 @@ public static class SectionPrefixHelper
 
         // Fallback: strip trailing digits and increment by one.
         var m = Regex.Match(sourceCode, @"^(.*?)(\d+)$");
-        if (!m.Success)
-            return (null, null);
+        if (m.Success)
+        {
+            var fallbackPrefix = m.Groups[1].Value;
+            var number         = int.Parse(m.Groups[2].Value);
+            var candidate      = $"{fallbackPrefix}{number + 1}";
+            return codeExists(candidate) ? (null, null) : (candidate, null);
+        }
 
-        var fallbackPrefix = m.Groups[1].Value;
-        var number         = int.Parse(m.Groups[2].Value);
-        var candidate      = $"{fallbackPrefix}{number + 1}";
+        // Fallback for bare letter designators (no prefix, no trailing digits).
+        // When the entire source code is letters — e.g. "A", "B", "AA" — and the
+        // caller has indicated that letter designators are in use, find the first
+        // available slot from the beginning of the letter sequence.
+        if (fallbackDesignatorType == DesignatorType.Letter
+            && Regex.IsMatch(sourceCode, @"^[A-Za-z]+$"))
+        {
+            var next = FindNextAvailableCode("", codeExists, DesignatorType.Letter);
+            return (next, null);
+        }
 
-        // Only return the candidate if it is actually available.
-        return codeExists(candidate) ? (null, null) : (candidate, null);
+        return (null, null);
     }
 
     /// <summary>

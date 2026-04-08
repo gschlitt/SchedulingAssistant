@@ -3206,6 +3206,38 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-04-08T05:01:47.342Z"
+    },
+    {
+      "id": "bug-201",
+      "timestamp": "2026-04-08T18:48:10.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 54→97 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T18:48:10.909Z"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-04-08T19:03:33.534Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/SectionPrefixHelper.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 57→83 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T19:03:33.534Z"
     }
   ]
 }

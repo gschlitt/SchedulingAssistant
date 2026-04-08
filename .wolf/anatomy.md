@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-08T05:01:47.316Z
-> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-08T19:03:43.987Z
+> Files: 32 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -31,6 +31,7 @@
 
 - `jiggly-sprouting-trinket.md` — Plan: Fix Chip Column Misalignment in Workload View (~400 tok)
 - `linked-watching-dove.md` — Rename SettingsView → SaveAndBackupView (~643 tok)
+- `parsed-jingling-gadget.md` — Plan: Section Prefix Opt-Out (~1864 tok)
 - `polished-plotting-chipmunk.md` — Plan: Insert License Page as Wizard Step 1 (~1396 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
@@ -171,11 +172,11 @@
 ## src/SchedulingAssistant.Tests/
 
 - `LegalStartTimeEditViewModelTests.cs` — Unit tests for <see cref="LegalStartTimeEditViewModel"/> start-time validation, specifically the 07: (~992 tok)
-- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance  (~5905 tok)
+- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5905 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3391 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3431 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -188,15 +189,20 @@
 
 ## src/SchedulingAssistant/Data/
 
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~4105 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
+- `AppConfigurationRepository.cs` — SQLite-backed implementation of <see cref="IAppConfigurationRepository"/>. Reads and writes rows in (~327 tok)
+- `IAppConfigurationRepository.cs` — Data access contract for the <c>AppConfiguration</c> key-value table. Stores DB-level settings that (~176 tok)
 
 ## src/SchedulingAssistant/Models/
 
 
 ## src/SchedulingAssistant/Services/
 
+- `AppConfigurationService.cs` — Singleton service that caches DB-persisted application configuration values. Settings stored here tr (~718 tok)
+- `SectionPrefixHelper.cs` — Static utility methods for matching and advancing section codes based on the configured list of <see (~2600 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -209,6 +215,9 @@
 
 - `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1897 tok)
 - `SaveAndBackupViewModel.cs` — ViewModel for the Save &amp; Backup flyout. Manages automated-backup configuration and restore. Back (~2403 tok)
+- `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10497 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12230 tok)
+- `SectionPrefixListViewModel.cs` — ViewModel for the Section Prefixes management flyout. Provides a list of section prefixes with inlin (~2261 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -231,6 +240,8 @@
 - `CampusListView.axaml` (~1009 tok)
 - `SaveAndBackupView.axaml` (~2360 tok)
 - `SaveAndBackupView.axaml.cs` — Code-behind for <see cref="SaveAndBackupView"/>. Kept minimal — only the folder-picker button handle (~616 tok)
+- `SectionListView.axaml` (~19548 tok)
+- `SectionPrefixListView.axaml` (~5625 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

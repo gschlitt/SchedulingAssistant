@@ -25,6 +25,7 @@ public partial class SectionListViewModel : ViewModelBase
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
     private readonly WriteLockService _lockService;
+    private readonly AppConfigurationService _appConfig;
 
     // ── Observable Properties ──────────────────────────────────────────────────
 
@@ -152,7 +153,8 @@ public partial class SectionListViewModel : ViewModelBase
         ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
         IDialogService dialog,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        AppConfigurationService appConfig)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -169,6 +171,7 @@ public partial class SectionListViewModel : ViewModelBase
         _campusRepo = campusRepo;
         _dialog = dialog;
         _lockService = lockService;
+        _appConfig = appConfig;
         _lockService.LockStateChanged += OnLockStateChanged;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
@@ -728,6 +731,7 @@ public partial class SectionListViewModel : ViewModelBase
             onValidationError: msg => _dialog.ShowError(msg),
             _blockPatternRepo,
             _prefixRepo,
+            _appConfig,
             defaultBlockLength: ctx.DefaultBlockLength);
     }
 
@@ -843,8 +847,12 @@ public partial class SectionListViewModel : ViewModelBase
             Func<string, bool> codeExists =
                 code => _sectionRepo.ExistsBySectionCode(semesterId, source.CourseId, code, excludeId: null);
 
+            // When section prefixes are disabled, pass the global designator type so that
+            // bare letter codes (e.g. "A" → "B") are advanced correctly.  When prefixes
+            // are enabled the parameter is unused (prefix matching handles letter codes).
+            var fallback = _appConfig.UseSectionPrefixes ? null : (DesignatorType?)_appConfig.GlobalDesignatorType;
             (newCode, newCampusId) = SectionPrefixHelper.AdvanceSectionCode(
-                source.SectionCode, prefixes, codeExists);
+                source.SectionCode, prefixes, codeExists, fallback);
 
             if (newCode is null)
                 await _dialog.ShowError(

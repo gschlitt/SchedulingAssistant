@@ -98,7 +98,8 @@
                     <StackPanel
                         Grid.Column="2"
                         Margin="0,0,4,0"
-                        IsEnabled="{Binding IsSectionCodeEnabled}">
+                        IsEnabled="{Binding IsSectionCodeEnabled}"
+                        IsVisible="{Binding IsPrefixPickerVisible}">
                         <TextBlock
                             FontSize="10"
                             Foreground="{StaticResource TextLabel}"

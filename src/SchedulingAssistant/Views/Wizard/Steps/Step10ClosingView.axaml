@@ -28,7 +28,7 @@
 
         <Grid ColumnDefinitions="30,*">
             <TextBlock Grid.Column="0" Text="x" />
-            <Textblock Grid.Column="1" Text="Courses" />
+            <TextBlock Grid.Column="1" Text="Courses" />
 
         </Grid>
 

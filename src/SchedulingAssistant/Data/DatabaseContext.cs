@@ -157,6 +157,11 @@ public class DatabaseContext : IDatabaseContext
                 title       TEXT,
                 data        TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS AppConfiguration (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT ''
+            );
             """;
         cmd.ExecuteNonQuery();
     }

@@ -9,7 +9,8 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
 /// ViewModel for the Section Prefixes management flyout.
-/// Provides a list of section prefixes with inline Add/Edit/Delete support.
+/// Provides a list of section prefixes with inline Add/Edit/Delete support,
+/// plus a toggle for whether the institution uses section prefixes at all.
 /// </summary>
 public partial class SectionPrefixListViewModel : ViewModelBase
 {
@@ -17,6 +18,7 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     private readonly ICampusRepository _campusRepo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
+    private readonly AppConfigurationService _appConfig;
 
     /// <summary>The list of section prefixes shown in the data grid.</summary>
     [ObservableProperty] private ObservableCollection<SectionPrefixRow> _items = new();
@@ -29,6 +31,27 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private SectionPrefixEditViewModel? _editVm;
 
+    /// <summary>
+    /// Whether the institution uses section prefixes.  When false the prefix list
+    /// is hidden and the bare <see cref="GlobalDesignatorType"/> is used instead.
+    /// Persisted in the DB via <see cref="AppConfigurationService"/>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPrefixListVisible))]
+    private bool _useSectionPrefixes;
+
+    /// <summary>
+    /// True when the global designator type is <see cref="DesignatorType.Letter"/>.
+    /// Bound to the Letter radio button when <see cref="UseSectionPrefixes"/> is false.
+    /// </summary>
+    [ObservableProperty] private bool _isLetterDesignator;
+
+    /// <summary>
+    /// Whether the prefix list and CRUD toolbar should be visible.
+    /// True only when <see cref="UseSectionPrefixes"/> is enabled.
+    /// </summary>
+    public bool IsPrefixListVisible => UseSectionPrefixes;
+
     /// <summary>True when the current user holds the write lock; controls whether CRUD buttons are enabled.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
@@ -39,19 +62,39 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// <param name="campusRepo">Repository used to load campus options for the dropdown.</param>
     /// <param name="dialog">Service for confirmation and error dialogs.</param>
     /// <param name="lockService">Write lock service; gates edit operations in read-only mode.</param>
+    /// <param name="appConfig">DB-persisted application configuration (prefix opt-out and global designator type).</param>
     public SectionPrefixListViewModel(
         ISectionPrefixRepository repo,
         ICampusRepository campusRepo,
         IDialogService dialog,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        AppConfigurationService appConfig)
     {
         _repo = repo;
         _campusRepo = campusRepo;
         _dialog = dialog;
         _lockService = lockService;
+        _appConfig = appConfig;
         _lockService.LockStateChanged += OnLockStateChanged;
+
+        // Load DB-persisted settings without triggering the Changed partial methods.
+        _useSectionPrefixes = _appConfig.UseSectionPrefixes;
+        _isLetterDesignator = _appConfig.GlobalDesignatorType == DesignatorType.Letter;
+
         Load();
     }
+
+    /// <summary>
+    /// Persists a change to the UseSectionPrefixes toggle.
+    /// </summary>
+    partial void OnUseSectionPrefixesChanged(bool value) =>
+        _appConfig.SetUseSectionPrefixes(value);
+
+    /// <summary>
+    /// Persists a change to the global designator type (Number vs. Letter).
+    /// </summary>
+    partial void OnIsLetterDesignatorChanged(bool value) =>
+        _appConfig.SetGlobalDesignatorType(value ? DesignatorType.Letter : DesignatorType.Number);
 
     /// <summary>
     /// Reloads the list from the database, resolving campus names for display.
