@@ -6,16 +6,53 @@
     x:CompileBindings="False"
     x:DataType="vm:LegalStartTimeListViewModel">
 
-    <Grid Margin="10,0" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+    <Grid
+        Width="1000"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto">
 
-        <TextBlock
-            Grid.Row="0"
-            Margin="0,0,0,12"
-            FontSize="20"
-            FontWeight="SemiBold"
-            Text="Scheduling" />
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock
+                Margin="0,0,0,12"
+                FontSize="20"
+                FontWeight="SemiBold"
+                Text="Scheduling" />
+            <TextBlock TextWrapping="Wrap">
+                <Span>
+                    TermPoint uses the 24-hour clock to specify time of day (so that 1:30 pm = 1330). A typical 'block'  is scheduled using the start time (e.g. 1330) and a length, measured either in minutes or hours (e.g. 80 minutes or 1.25 hours) as you prefer.
+                </Span>
+                <LineBreak />
+                <LineBreak />
+                <Span>
+                    You can specify the start-times your institution uses, and associated block lengths. It will speed up your section editing to do so, as the start times will be available from a menu, rather than requiring manual entry.
+                </Span>
+                <LineBreak />
+                <LineBreak />
+                Choose as a preferred block length the length you most commonly schedule: it will be supplied automatically, and you can override if need be.</TextBlock>
+        </StackPanel>
 
-        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+        <!--  Block length unit toggle  -->
+
+        <StackPanel
+            Grid.Row="1"
+            Margin="0,6,0,12"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="12">
+            <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
+            <RadioButton
+                Content="Hours"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsHoursUnit}" />
+            <RadioButton
+                Content="Minutes"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsMinutesUnit}" />
+        </StackPanel>
+
+        <ContentControl Grid.Row="3" Content="{Binding EditVm}">
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="{x:Type vm:LegalStartTimeEditViewModel}">
                     <Grid
@@ -110,7 +147,7 @@
         </ContentControl>
 
         <DataGrid
-            Grid.Row="1"
+            Grid.Row="2"
             AutoGenerateColumns="False"
             CanUserSortColumns="True"
             IsReadOnly="True"
@@ -143,7 +180,7 @@
         </DataGrid>
 
         <StackPanel
-            Grid.Row="2"
+            Grid.Row="3"
             Margin="0,12,0,0"
             IsEnabled="{Binding IsWriteEnabled}"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
@@ -162,7 +199,7 @@
 
         <!--  Preferred block length preference  -->
         <StackPanel
-            Grid.Row="3"
+            Grid.Row="4"
             Margin="0,16,0,0"
             IsEnabled="{Binding IsWriteEnabled}"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
@@ -176,24 +213,7 @@
                 SelectedItem="{Binding SelectedPreferredOption}" />
         </StackPanel>
 
-        <!--  Block length unit toggle  -->
-        <StackPanel
-            Grid.Row="4"
-            Margin="0,12,0,0"
-            IsEnabled="{Binding IsWriteEnabled}"
-            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
-            Orientation="Horizontal"
-            Spacing="12">
-            <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
-            <RadioButton
-                Content="Hours"
-                GroupName="BLUnit"
-                IsChecked="{Binding IsHoursUnit}" />
-            <RadioButton
-                Content="Minutes"
-                GroupName="BLUnit"
-                IsChecked="{Binding IsMinutesUnit}" />
-        </StackPanel>
+
 
         <!--  Weekend day inclusion settings  -->
         <StackPanel

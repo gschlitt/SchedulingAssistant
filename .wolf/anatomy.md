@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-02T16:34:45.015Z
-> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-08T03:45:15.928Z
+> Files: 1 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,7 @@
 
 ## ../../../.claude/plans/
 
+- `jiggly-sprouting-trinket.md` — Plan: Fix Chip Column Misalignment in Workload View (~400 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -167,16 +168,9 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~4689 tok)
-- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5713 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1128 tok)
-- `AppColors.axaml` (~2823 tok)
-- `AppLayout.axaml` (~235 tok)
-- `MainWindow.axaml` — Declares applied (~11871 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11704 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -201,20 +195,12 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7332 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~2999 tok)
-- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~17915 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `IMeetingListEntry.cs` — Marker interface for items that can appear in the Meeting List panel. Implemented by both event card (~133 tok)
-- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~3358 tok)
-- `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1106 tok)
-- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~4822 tok)
-- `SemesterBannerViewModel.cs` — Represents a semester group header row in the Section List. Carries the semester identity and displa (~916 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -227,12 +213,9 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~9355 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~11715 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `MeetingListView.axaml` (~8582 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
