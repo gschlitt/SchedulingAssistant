@@ -37,6 +37,7 @@ public class MeetingRepository(IDatabaseContext db) : IMeetingRepository
     /// <inheritdoc/>
     public void Insert(Meeting meeting)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Meetings (id, semester_id, title, data) VALUES ($id, $sid, $title, $data)";
@@ -50,6 +51,7 @@ public class MeetingRepository(IDatabaseContext db) : IMeetingRepository
     /// <inheritdoc/>
     public void Update(Meeting meeting)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = """
             UPDATE Meetings
@@ -68,6 +70,7 @@ public class MeetingRepository(IDatabaseContext db) : IMeetingRepository
     /// <inheritdoc/>
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Meetings WHERE id = $id";
         cmd.AddParam("$id", id);
@@ -77,6 +80,7 @@ public class MeetingRepository(IDatabaseContext db) : IMeetingRepository
     /// <inheritdoc/>
     public void DeleteBySemesterId(string semesterId)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Meetings WHERE semester_id = $sid";
         cmd.AddParam("$sid", semesterId);

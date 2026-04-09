@@ -25,6 +25,7 @@ public class InstructorCommitmentRepository(IDatabaseContext db) : IInstructorCo
 
     public void Insert(InstructorCommitment commitment)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = """
             INSERT INTO InstructorCommitments (id, instructor_id, semester_id, instructor_name, semester_name, data)
@@ -42,6 +43,7 @@ public class InstructorCommitmentRepository(IDatabaseContext db) : IInstructorCo
 
     public void Update(InstructorCommitment commitment)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = """
             UPDATE InstructorCommitments SET
@@ -61,6 +63,7 @@ public class InstructorCommitmentRepository(IDatabaseContext db) : IInstructorCo
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM InstructorCommitments WHERE id = $id";
         cmd.AddParam("$id", id);

@@ -41,6 +41,7 @@ public class BlockPatternRepository : IBlockPatternRepository
 
     public void Insert(BlockPattern pattern)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO BlockPatterns (id, name, data) VALUES ($id, $name, $data)";
         cmd.AddParam("$id", pattern.Id);
@@ -51,6 +52,7 @@ public class BlockPatternRepository : IBlockPatternRepository
 
     public void Update(BlockPattern pattern)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE BlockPatterns SET name = $name, data = $data WHERE id = $id";
         cmd.AddParam("$id", pattern.Id);
@@ -61,6 +63,7 @@ public class BlockPatternRepository : IBlockPatternRepository
 
     public void Delete(string id)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM BlockPatterns WHERE id = $id";
         cmd.AddParam("$id", id);

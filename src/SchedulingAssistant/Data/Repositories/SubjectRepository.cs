@@ -72,6 +72,7 @@ public class SubjectRepository(IDatabaseContext db) : ISubjectRepository
 
     public void Insert(Subject subject)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Subjects (id, name, abbreviation, data) VALUES ($id, $name, $abbreviation, $data)";
@@ -84,6 +85,7 @@ public class SubjectRepository(IDatabaseContext db) : ISubjectRepository
 
     public void Update(Subject subject)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE Subjects SET name = $name, abbreviation = $abbreviation, data = $data WHERE id = $id";
@@ -96,6 +98,7 @@ public class SubjectRepository(IDatabaseContext db) : ISubjectRepository
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Subjects WHERE id = $id";
         cmd.AddParam("$id", id);

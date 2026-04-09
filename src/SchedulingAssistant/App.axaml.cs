@@ -102,7 +102,9 @@ public partial class App : Application
         // the instance that already has the correct IsWriter / CurrentHolder state.
 
         // Eagerly initialize the database (schema creation + seeding).
-        Services.GetRequiredService<IDatabaseContext>();
+        // Wire SaveCompleted → ResetDirty so the next user write after a save re-arms MarkDirty.
+        var dbCtx = Services.GetRequiredService<IDatabaseContext>();
+        App.Checkout.SaveCompleted += dbCtx.ResetDirty;
 
         // Seed the global semester context from the database,
         // restoring the last-used academic year and semester(s) from local settings.
@@ -149,7 +151,8 @@ public partial class App : Application
         // Data layer — DatabaseContext receives the resolved path directly.
         // Repositories are stateless wrappers around the singleton DatabaseContext,
         // so they are registered as singletons to accurately reflect their actual lifetime.
-        services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath));
+        // Must use factory (not instance) so the container owns and disposes it on shutdown.
+        services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath, App.Checkout.MarkDirty));
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();

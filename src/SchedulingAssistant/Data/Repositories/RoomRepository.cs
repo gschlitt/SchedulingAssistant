@@ -42,6 +42,7 @@ public class RoomRepository(IDatabaseContext db) : IRoomRepository
 
     public void Insert(Room room)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Rooms (id, building, room_number, data) VALUES ($id, $building, $roomNumber, $data)";
@@ -54,6 +55,7 @@ public class RoomRepository(IDatabaseContext db) : IRoomRepository
 
     public void Update(Room room)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE Rooms SET building = $building, room_number = $roomNumber, data = $data WHERE id = $id";
@@ -66,6 +68,7 @@ public class RoomRepository(IDatabaseContext db) : IRoomRepository
 
     public void Delete(string id, System.Data.Common.DbTransaction? tx = null)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Rooms WHERE id = $id";

@@ -92,6 +92,7 @@ public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
 
     public void Insert(Instructor instructor)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Instructors (id, last_name, first_name, initials, data) " +
@@ -106,6 +107,7 @@ public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
 
     public void Update(Instructor instructor, System.Data.Common.DbTransaction? tx = null)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
@@ -121,6 +123,7 @@ public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Instructors WHERE id = $id";
         cmd.AddParam("$id", id);

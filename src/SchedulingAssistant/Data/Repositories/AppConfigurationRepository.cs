@@ -27,6 +27,7 @@ public class AppConfigurationRepository : IAppConfigurationRepository
     /// <inheritdoc/>
     public void Set(string key, string value)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "INSERT OR REPLACE INTO AppConfiguration (key, value) VALUES ($key, $value)";
         cmd.AddParam("$key", key);

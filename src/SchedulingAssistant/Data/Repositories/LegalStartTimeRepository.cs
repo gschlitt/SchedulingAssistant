@@ -37,6 +37,7 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
 
     public void Insert(LegalStartTime entry, string academicYearId)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO LegalStartTimes (academic_year_id, academic_year_name, block_length, start_times) " +
@@ -49,6 +50,7 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
 
     public void Update(LegalStartTime entry, string academicYearId)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE LegalStartTimes SET start_times = $st WHERE academic_year_id = $ay AND block_length = $bl";
         cmd.AddParam("$ay", academicYearId);
@@ -59,6 +61,7 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
 
     public void Delete(string academicYearId, double blockLength)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM LegalStartTimes WHERE academic_year_id = $ay AND block_length = $bl";
         cmd.AddParam("$ay", academicYearId);
@@ -74,6 +77,7 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
     {
         if (string.IsNullOrEmpty(fromAcademicYearId)) return;
 
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = """
             INSERT INTO LegalStartTimes (academic_year_id, academic_year_name, block_length, start_times)

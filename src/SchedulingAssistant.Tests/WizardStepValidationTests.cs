@@ -568,7 +568,10 @@ public class WizardStepValidationTests
     [Fact]
     public void Step5Scheduling_AddBlockLength_AcceptsCommaDecimalSeparator()
     {
-        var vm = new Step5SchedulingViewModel(); // pre-seeded with 1.5 and 3.0 (AppDefaults)
+        var vm = new Step5SchedulingViewModel();
+        // Comma decimals only apply to the hours parsing path; force hours mode
+        // regardless of whatever AppSettings.Current may report in the test environment.
+        vm.IsHoursUnit = true;
         var countBefore = vm.BlockLengths.Count;
         vm.NewBlockLengthInput = "2,0";   // comma decimal, not yet present — must be accepted
         vm.AddBlockLengthCommand.Execute(null);

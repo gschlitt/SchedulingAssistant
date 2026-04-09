@@ -13,9 +13,24 @@ namespace SchedulingAssistant.Tests;
 /// Tests for <see cref="StartupWizardViewModel"/> navigation, routing logic,
 /// step caching, and button-label state.
 ///
+/// Current step sequence (indices 0–12):
+///   0  Step0WelcomeViewModel
+///   1  StepLicenseViewModel           ← license agreement
+///   2  Step1aExistingDbViewModel       ← existing-DB vs new-setup choice
+///   3  Step1InstitutionViewModel
+///   4  Step2DatabaseViewModel
+///   5  Step3TpConfigViewModel          ← route choice (import / manual / exit-now)
+///   6  Step4CampusesViewModel          ↘ manual path only
+///   7  Step5SchedulingViewModel        ↘
+///   8  Step6BlockPatternsViewModel     ↘
+///   9  Step7SectionPrefixesViewModel   ↘
+///  10  Step5AcademicYearViewModel
+///  11  Step6SemesterColorsViewModel    (skipped on import path)
+///  12  Step10ClosingViewModel
+///
 /// These tests do not exercise the full finish flow (which writes to disk and
 /// builds the DI container). Tests that would cross the database-creation boundary
-/// (steps 3 and 1a in the "Yes" branch) are omitted here and covered by
+/// (step 4 / step 2 in the "Yes" branch) are omitted here and covered by
 /// WizardDataFlowTests, which use a real temp directory.
 /// </summary>
 public class WizardRoutingTests
@@ -87,10 +102,19 @@ public class WizardRoutingTests
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Next_FromStep0_NavigatesToStep1a()
+    public async Task Next_FromStep0_NavigatesToLicense()
     {
         var vm = CreateWizard(); // Step 0 — Welcome (CanAdvance always true)
         await vm.NextCommand.ExecuteAsync(null);
+        Assert.IsType<StepLicenseViewModel>(vm.CurrentStep);
+    }
+
+    [Fact]
+    public async Task Next_FromLicense_NavigatesToStep2a()
+    {
+        var vm = CreateWizard();
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
         Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
     }
 
@@ -106,16 +130,17 @@ public class WizardRoutingTests
     public async Task Next_Blocked_WhenCurrentStepCannotAdvance()
     {
         var vm = CreateWizard();
-        await vm.NextCommand.ExecuteAsync(null); // advance to step 1a
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
 
-        // Step 1a defaults: HasExistingDb=false (new setup) — CanAdvance=true.
-        // Now switch to ExistingDb choice without providing a path → CanAdvance=false.
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsExistingDbChoice = true;
-        step1a.DbPath = string.Empty;
+        // Step 2 defaults: new-setup choice — CanAdvance=true.
+        // Switch to ExistingDb choice without providing a path → CanAdvance=false.
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsExistingDbChoice = true;
+        step2a.DbPath = string.Empty;
 
         await vm.NextCommand.ExecuteAsync(null); // should NOT advance
-        Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep); // still on step 1a
+        Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep); // still on step 2
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -123,21 +148,31 @@ public class WizardRoutingTests
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Back_FromStep1a_ReturnsToStep0()
+    public async Task Back_FromLicense_ReturnsToStep0()
     {
         var vm = CreateWizard();
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
         vm.BackCommand.Execute(null);
         Assert.IsType<Step0WelcomeViewModel>(vm.CurrentStep);
     }
 
     [Fact]
-    public async Task Back_FromStep1a_ClearsCanGoBack()
+    public async Task Back_FromLicense_ClearsCanGoBack()
     {
         var vm = CreateWizard();
-        await vm.NextCommand.ExecuteAsync(null);
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
         vm.BackCommand.Execute(null);
         Assert.False(vm.CanGoBack);
+    }
+
+    [Fact]
+    public async Task Back_FromStep2a_ReturnsToLicense()
+    {
+        var vm = CreateWizard();
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
+        vm.BackCommand.Execute(null);
+        Assert.IsType<StepLicenseViewModel>(vm.CurrentStep);
     }
 
     [Fact]
@@ -157,148 +192,150 @@ public class WizardRoutingTests
     public async Task StepCache_ForwardBackForward_ReturnsSameVmInstance()
     {
         var vm = CreateWizard();
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a
-        var step1aFirst = vm.CurrentStep;
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+        var licenseFirst = vm.CurrentStep;
 
         vm.BackCommand.Execute(null);            // back to step 0
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a again
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 again
 
-        Assert.Same(step1aFirst, vm.CurrentStep);
+        Assert.Same(licenseFirst, vm.CurrentStep);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // NextButtonText driven by step-1a choice
+    // NextButtonText driven by step-2a choice
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task NextButtonText_IsFinish_WhenStep1aExistingDbChoiceSelected()
+    public async Task NextButtonText_IsFinish_WhenStep2aExistingDbChoiceSelected()
     {
         var vm = CreateWizard();
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
 
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsExistingDbChoice = true;
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsExistingDbChoice = true;
 
         Assert.Equal("Finish", vm.NextButtonText);
     }
 
     [Fact]
-    public async Task NextButtonText_IsNext_WhenStep1aNewSetupChoiceSelected()
+    public async Task NextButtonText_IsNext_WhenStep2aNewSetupChoiceSelected()
     {
         var vm = CreateWizard();
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
 
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsNewSetupChoice = true;
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsNewSetupChoice = true;
 
         Assert.Equal("Next", vm.NextButtonText);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // NextButtonText driven by step-4 (TpConfig) ExitNow choice
+    // NextButtonText driven by step-5 (TpConfig) ExitNow choice
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task NextButtonText_IsFinish_WhenStep4ExitNowChoiceSelected()
+    public async Task NextButtonText_IsFinish_WhenStep5ExitNowChoiceSelected()
     {
         var vm = CreateWizard();
 
-        // Navigate: 0 → 1a (new setup) → 2 (institution) …
-        // Step 1a: choose new setup
-        await vm.NextCommand.ExecuteAsync(null);
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsNewSetupChoice = true;
+        // 0 → 1 (license) → 2 (existing-DB check) → 3 (institution) → 4 (database) → 5 (TpConfig)
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
 
-        // Step 1a → step 2 (Institution)
-        await vm.NextCommand.ExecuteAsync(null);
-        var step2 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
-        step2.InstitutionName   = "Test U";
-        step2.InstitutionAbbrev = "TU";
-        step2.AcUnitName        = "Engineering";
-        step2.AcUnitAbbrev      = "ENG";
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsNewSetupChoice = true;
 
-        // Step 2 → step 3 (Database)
-        await vm.NextCommand.ExecuteAsync(null);
-        var step3 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
-        step3.DbFolder     = Path.GetTempPath();
-        step3.DbFilename   = $"test_wizard_{Guid.NewGuid():N}.db";
-        step3.BackupFolder = Path.GetTempPath();
+        await vm.NextCommand.ExecuteAsync(null); // → step 3 (institution)
+        var step3 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
+        step3.InstitutionName   = "Test U";
+        step3.InstitutionAbbrev = "TU";
+        step3.AcUnitName        = "Engineering";
+        step3.AcUnitAbbrev      = "ENG";
 
-        // Step 3 → step 4 (TpConfig). ValidateStep3 calls InitializeServices (no-op)
-        // and Directory.CreateDirectory (temp path already exists) — safe.
-        await vm.NextCommand.ExecuteAsync(null);
-        var step4 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
+        await vm.NextCommand.ExecuteAsync(null); // → step 4 (database)
+        var step4 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
+        step4.DbFolder     = Path.GetTempPath();
+        step4.DbFilename   = $"test_wizard_{Guid.NewGuid():N}.db";
+        step4.BackupFolder = Path.GetTempPath();
 
-        // Now choose ExitNow
-        step4.IsExitNowChoice = true;
+        // ValidateStep3 calls InitializeServices (no-op here) + CreateDirectory (temp already exists)
+        await vm.NextCommand.ExecuteAsync(null); // → step 5 (TpConfig)
+        var step5 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
+        step5.IsExitNowChoice = true;
 
         Assert.Equal("Finish", vm.NextButtonText);
     }
 
     [Fact]
-    public async Task NextButtonText_IsNext_WhenStep4ManualChoiceSelected()
+    public async Task NextButtonText_IsNext_WhenStep5ManualChoiceSelected()
     {
         var vm = CreateWizard();
 
-        await vm.NextCommand.ExecuteAsync(null);
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsNewSetupChoice = true;
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
 
-        await vm.NextCommand.ExecuteAsync(null);
-        var step2 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
-        step2.InstitutionName   = "Test U";
-        step2.InstitutionAbbrev = "TU";
-        step2.AcUnitName        = "Engineering";
-        step2.AcUnitAbbrev      = "ENG";
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsNewSetupChoice = true;
 
-        await vm.NextCommand.ExecuteAsync(null);
-        var step3 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
-        step3.DbFolder     = Path.GetTempPath();
-        step3.DbFilename   = $"test_wizard_{Guid.NewGuid():N}.db";
-        step3.BackupFolder = Path.GetTempPath();
+        await vm.NextCommand.ExecuteAsync(null); // → step 3 (institution)
+        var step3 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
+        step3.InstitutionName   = "Test U";
+        step3.InstitutionAbbrev = "TU";
+        step3.AcUnitName        = "Engineering";
+        step3.AcUnitAbbrev      = "ENG";
 
-        await vm.NextCommand.ExecuteAsync(null);
-        var step4 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
-        step4.IsManualChoice = true;
+        await vm.NextCommand.ExecuteAsync(null); // → step 4 (database)
+        var step4 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
+        step4.DbFolder     = Path.GetTempPath();
+        step4.DbFilename   = $"test_wizard_{Guid.NewGuid():N}.db";
+        step4.BackupFolder = Path.GetTempPath();
+
+        await vm.NextCommand.ExecuteAsync(null); // → step 5 (TpConfig)
+        var step5 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
+        step5.IsManualChoice = true;
 
         Assert.Equal("Next", vm.NextButtonText);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Institution commit invalidates step-3 cache
+    // Institution commit invalidates step-4 cache
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task InstitutionCommit_InvalidatesStep3Cache_WhenAbbrevChanges()
+    public async Task InstitutionCommit_InvalidatesStep4Cache_WhenAbbrevChanges()
     {
         var vm = CreateWizard();
 
-        // Navigate to step 2 (Institution)
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a
+        // Navigate to step 3 (Institution)
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
+
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing-DB check)
         Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
 
-        await vm.NextCommand.ExecuteAsync(null); // → step 2 institution
-        var step2 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
-        step2.InstitutionName   = "Test U";
-        step2.InstitutionAbbrev = "TU";
-        step2.AcUnitName        = "Engineering";
-        step2.AcUnitAbbrev      = "ENG";
+        await vm.NextCommand.ExecuteAsync(null); // → step 3 (institution)
+        var step3 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
+        step3.InstitutionName   = "Test U";
+        step3.InstitutionAbbrev = "TU";
+        step3.AcUnitName        = "Engineering";
+        step3.AcUnitAbbrev      = "ENG";
 
-        // Advance to step 3 (Database) — this commits step 2 into _acUnitAbbrev
+        // Advance to step 4 (Database) — this commits step 3 into _acUnitAbbrev
         await vm.NextCommand.ExecuteAsync(null);
-        var step3First = vm.CurrentStep;
-        Assert.IsType<Step2DatabaseViewModel>(step3First);
+        var step4First = vm.CurrentStep;
+        Assert.IsType<Step2DatabaseViewModel>(step4First);
 
-        // Go back to step 2
+        // Go back to step 3 (institution)
         vm.BackCommand.Execute(null);
 
-        // Change abbreviation — should invalidate step 3 cache
-        step2.AcUnitAbbrev = "CS";
+        // Change abbreviation — should invalidate step 4 cache
+        step3.AcUnitAbbrev = "CS";
 
-        // Go forward again — should get a NEW step 3 instance
+        // Go forward again — should get a NEW step 4 instance
         await vm.NextCommand.ExecuteAsync(null);
-        var step3Second = vm.CurrentStep;
+        var step4Second = vm.CurrentStep;
 
-        Assert.NotSame(step3First, step3Second);
+        Assert.NotSame(step4First, step4Second);
     }
 }

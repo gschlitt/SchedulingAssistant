@@ -14,11 +14,33 @@ public class DatabaseContext : IDatabaseContext
     // Not readonly because ReinitializeConnection needs to reassign it after a file refresh.
     private SqliteConnection _conn;
 
+    // Fires at most once per session when the first user-initiated write occurs.
+    private readonly Action? _onFirstWrite;
+    private int _dirtyFired; // 0 = not yet fired; 1 = fired. Interlocked for thread safety.
+
     /// <inheritdoc/>
     public DbConnection Connection => _conn;
 
-    public DatabaseContext(string dbPath)
+    /// <inheritdoc/>
+    public void MarkDirty()
     {
+        if (Interlocked.CompareExchange(ref _dirtyFired, 1, 0) == 0)
+            _onFirstWrite?.Invoke();
+    }
+
+    /// <inheritdoc/>
+    public void ResetDirty() => Interlocked.Exchange(ref _dirtyFired, 0);
+
+    /// <param name="dbPath">Path to the SQLite database file.</param>
+    /// <param name="onFirstWrite">
+    /// Optional callback invoked exactly once, on the first user-initiated write to this
+    /// context. Used by <see cref="Services.CheckoutService"/> to write the dirty marker
+    /// at the right moment — after checkout but only when data actually changes.
+    /// Pass <c>null</c> in tests and demo contexts where no dirty marker is needed.
+    /// </param>
+    public DatabaseContext(string dbPath, Action? onFirstWrite = null)
+    {
+        _onFirstWrite = onFirstWrite;
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
         _conn = new SqliteConnection($"Data Source={dbPath}");

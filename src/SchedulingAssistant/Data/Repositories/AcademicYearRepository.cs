@@ -41,6 +41,7 @@ public class AcademicYearRepository(IDatabaseContext db) : IAcademicYearReposito
 
     public void Insert(AcademicYear academicYear)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO AcademicYears (id, name, data) VALUES ($id, $name, $data)";
         cmd.AddParam("$id", academicYear.Id);
@@ -51,6 +52,7 @@ public class AcademicYearRepository(IDatabaseContext db) : IAcademicYearReposito
 
     public void Update(AcademicYear academicYear)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE AcademicYears SET name = $name, data = $data WHERE id = $id";
         cmd.AddParam("$id", academicYear.Id);
@@ -61,6 +63,7 @@ public class AcademicYearRepository(IDatabaseContext db) : IAcademicYearReposito
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM AcademicYears WHERE id = $id";
         cmd.AddParam("$id", id);

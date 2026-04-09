@@ -68,6 +68,7 @@ public class CampusRepository : ICampusRepository
     /// <inheritdoc/>
     public void Insert(Campus campus)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO Campuses (id, name, data) VALUES ($id, $name, $data)";
         cmd.AddParam("$id",   campus.Id);
@@ -79,6 +80,7 @@ public class CampusRepository : ICampusRepository
     /// <inheritdoc/>
     public void Update(Campus campus)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE Campuses SET name = $name, data = $data WHERE id = $id";
         cmd.AddParam("$id",   campus.Id);
@@ -90,6 +92,7 @@ public class CampusRepository : ICampusRepository
     /// <inheritdoc/>
     public void Delete(string id)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Campuses WHERE id = $id";
         cmd.AddParam("$id", id);

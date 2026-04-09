@@ -48,6 +48,7 @@ public class AcademicUnitRepository(IDatabaseContext db) : IAcademicUnitReposito
 
     public void Insert(AcademicUnit unit)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO AcademicUnits (id, name, data) VALUES ($id, $name, $data)";
         cmd.AddParam("$id", unit.Id);
@@ -58,6 +59,7 @@ public class AcademicUnitRepository(IDatabaseContext db) : IAcademicUnitReposito
 
     public void Update(AcademicUnit unit)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE AcademicUnits SET name = $name, data = $data WHERE id = $id";
         cmd.AddParam("$id", unit.Id);
@@ -68,6 +70,7 @@ public class AcademicUnitRepository(IDatabaseContext db) : IAcademicUnitReposito
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM AcademicUnits WHERE id = $id";
         cmd.AddParam("$id", id);

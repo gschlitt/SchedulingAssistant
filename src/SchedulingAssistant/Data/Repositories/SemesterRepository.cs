@@ -31,6 +31,7 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
 
     public void Insert(Semester semester)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Semesters (id, academic_year_id, academic_year_name, name, sort_order, data) " +
@@ -45,6 +46,7 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
 
     public void Update(Semester semester)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE Semesters " +
@@ -62,6 +64,7 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Semesters WHERE id = $id";
         cmd.AddParam("$id", id);
@@ -70,6 +73,7 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
 
     public void DeleteByAcademicYear(string academicYearId)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Semesters WHERE academic_year_id = $ayid";
         cmd.AddParam("$ayid", academicYearId);

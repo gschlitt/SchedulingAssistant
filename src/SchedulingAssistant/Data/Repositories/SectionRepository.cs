@@ -43,6 +43,7 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
 
     public void Insert(Section section, System.Data.Common.DbTransaction? tx = null)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
@@ -67,6 +68,7 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
 
     public void Update(Section section, System.Data.Common.DbTransaction? tx = null)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
@@ -125,6 +127,7 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Sections WHERE id = $id";
         cmd.AddParam("$id", id);
@@ -147,6 +150,7 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
     /// </summary>
     public void DeleteBySemesterId(string semesterId)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Sections WHERE semester_id = $sid";
         cmd.AddParam("$sid", semesterId);

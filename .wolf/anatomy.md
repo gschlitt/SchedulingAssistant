@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T05:40:13.572Z
-> Files: 2 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T21:35:26.580Z
+> Files: 34 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,10 +29,13 @@
 
 ## ../../../.claude/plans/
 
+- `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
+- `feedback_build_vs_lock.md` (~207 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~6053 tok)
 
 ## ./
 
@@ -168,9 +171,18 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~18353 tok)
+- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~5114 tok)
+- `WizardDataFlowTests.cs` — End-to-end data-flow tests for <see cref="StartupWizardViewModel"/>. These tests drive the wizard th (~7043 tok)
+- `WizardManualPathTests.cs` — Tests for the manual setup path through the startup wizard, focusing on data flowing correctly betwe (~2434 tok)
+- `WizardRoutingTests.cs` — Tests for <see cref="StartupWizardViewModel"/> navigation, routing logic, step caching, and button-l (~3635 tok)
+- `WizardStepValidationTests.cs` — Unit tests for individual wizard step ViewModels. These tests exercise validation logic, CanAdvance (~5948 tok)
+- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~6678 tok)
 
 ## src/SchedulingAssistant/
 
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11701 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -183,15 +195,35 @@
 
 ## src/SchedulingAssistant/Data/
 
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~4771 tok)
+- `IDatabaseContext.cs` — Abstraction over the application database connection. The SQLite desktop implementation opens a file (~374 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
+- `AcademicUnitRepository.cs` — Returns true if an academic unit with this name already exists (case-insensitive). Pass excludeId to (~812 tok)
+- `AcademicYearRepository.cs` — Class: AcademicYearRepository (~712 tok)
+- `AppConfigurationRepository.cs` — SQLite-backed implementation of <see cref="IAppConfigurationRepository"/>. Reads and writes rows in (~343 tok)
+- `BlockPatternRepository.cs` — Class: BlockPatternRepository (~660 tok)
+- `CampusRepository.cs` — SQLite-backed implementation of <see cref="ICampusRepository"/>. Uses the project's standard pattern (~906 tok)
+- `CourseRepository.cs` — Returns true if any sections reference this course. (~1290 tok)
+- `InstructorCommitmentRepository.cs` — Class: InstructorCommitmentRepository (~1031 tok)
+- `InstructorRepository.cs` — Returns all instructors, ordered according to the persisted <see cref="AppSettings.InstructorSortMod (~1589 tok)
+- `LegalStartTimeRepository.cs` — Copies all legal start times from a previous academic year to a new one. If fromAcademicYearId is nu (~1047 tok)
+- `MeetingRepository.cs` — SQLite-backed implementation of <see cref="IMeetingRepository"/>. The <c>Meetings</c> table uses the (~1219 tok)
+- `ReleaseRepository.cs` — Class: ReleaseRepository (~864 tok)
+- `RoomRepository.cs` — Returns all rooms ordered by <see cref="Room.SortOrder"/> ascending, then by building and room numbe (~792 tok)
+- `SchedulingEnvironmentRepository.cs` — Returns all values of the given type, ordered by <see cref="SchedulingEnvironmentValue.SortOrder"/> (~1073 tok)
+- `SectionPrefixRepository.cs` — CRUD repository for <see cref="SectionPrefix"/> records stored in the <c>SectionPrefixes</c> table. (~1071 tok)
+- `SectionRepository.cs` — Returns all sections for the given course across all semesters, ordered by section code. (~2023 tok)
+- `SemesterRepository.cs` — Serializes the extra JSON data for a semester (currently just Color). The key structural fields (id, (~1287 tok)
+- `SubjectRepository.cs` — Returns true if any courses belong to this subject. (~1187 tok)
 
 ## src/SchedulingAssistant/Models/
 
 
 ## src/SchedulingAssistant/Services/
 
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12854 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 

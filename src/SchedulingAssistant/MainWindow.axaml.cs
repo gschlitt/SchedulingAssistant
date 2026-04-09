@@ -99,6 +99,9 @@ public partial class MainWindow : Window
         // Dispose the DI container, which closes the SQLite connection cleanly.
         (App.Services as IDisposable)?.Dispose();
 
+        // Now that the connection is closed, delete D' from the working directory.
+        App.Checkout.CleanupWorkingCopy();
+
         Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
     }   
     
@@ -233,9 +236,10 @@ public partial class MainWindow : Window
         // and copy D → D' (or D → D'' for read-only mode).
         // The result determines which path is passed to InitializeServices.
         App.Checkout.CleanupOrphanedTmp(dbPath);
+        App.Checkout.CleanupStaleCrashArtifacts(dbPath);
 
         if (App.Checkout.DetectCrashRecovery(dbPath))
-            dbPath = await HandleCrashRecoveryAsync(dbPath) ?? dbPath;
+            await HandleCrashRecoveryAsync(dbPath);
 
         dbPath = await RunCheckoutAsync(dbPath);
         // ─────────────────────────────────────────────────────────────────────
@@ -418,10 +422,14 @@ public partial class MainWindow : Window
             // before RunCheckoutAsync establishes D as the save target.
             (App.Services as IDisposable)?.Dispose();
 
+            // Now that the connection is closed, delete the old D' from the working directory.
+            App.Checkout.CleanupWorkingCopy();
+
             // Run crash recovery + checkout for the new path.
             App.Checkout.CleanupOrphanedTmp(newDatabasePath);
+            App.Checkout.CleanupStaleCrashArtifacts(newDatabasePath);
             if (App.Checkout.DetectCrashRecovery(newDatabasePath))
-                newDatabasePath = await HandleCrashRecoveryAsync(newDatabasePath) ?? newDatabasePath;
+                await HandleCrashRecoveryAsync(newDatabasePath);
 
             newDatabasePath = await RunCheckoutAsync(newDatabasePath);
 
@@ -681,35 +689,20 @@ public partial class MainWindow : Window
   
 
     /// <summary>
-    /// Handles crash recovery for <paramref name="sourcePath"/>: prompts the user,
-    /// then either saves the orphaned working copy back to D or discards it.
+    /// Handles crash recovery for <paramref name="sourcePath"/>: notifies the user
+    /// that unsaved changes were lost, then discards the orphaned working copy.
+    /// The working copy is not written back to D — a crash may have left D' corrupt,
+    /// and D is the last fully committed state.
     /// </summary>
     /// <param name="sourcePath">The database path with an orphaned working copy.</param>
-    /// <returns>
-    /// The source path to continue with (unchanged — crash recovery doesn't alter
-    /// which D the user wants to open; <see cref="RunCheckoutAsync"/> follows).
-    /// Returns null to indicate the caller should use its existing value unchanged.
-    /// </returns>
-    private async Task<string?> HandleCrashRecoveryAsync(string sourcePath)
+    private async Task HandleCrashRecoveryAsync(string sourcePath)
     {
-        var save = await ShowYesNoAsync(
-            "Unsaved Changes",
-            "You have unsaved local changes from a previous session. " +
-            "Save them to the database now?");
+        await ShowMessageAsync(
+            "Unsaved Changes Lost",
+            "The application did not close cleanly. Any unsaved changes from the " +
+            "previous session have been discarded.");
 
-        if (save)
-        {
-            var result = await App.Checkout.ResumeFromCrashAsync(sourcePath);
-            if (result != SaveOutcome.Success)
-                await ShowMessageAsync("Recovery Failed",
-                    "Could not save your previous changes. They have been discarded.");
-        }
-        else
-        {
-            App.Checkout.DiscardCrash(sourcePath);
-        }
-
-        return null; // Tell caller to use its existing sourcePath.
+        App.Checkout.DiscardCrash(sourcePath);
     }
 
     // ── CheckoutService event handlers ───────────────────────────────────────

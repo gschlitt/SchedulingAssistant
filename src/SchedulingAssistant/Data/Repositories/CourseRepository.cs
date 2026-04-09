@@ -63,6 +63,7 @@ public class CourseRepository(IDatabaseContext db) : ICourseRepository
 
     public void Insert(Course course)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO Courses (id, subject_id, calendar_code, title, data) " +
@@ -82,6 +83,7 @@ public class CourseRepository(IDatabaseContext db) : ICourseRepository
     /// <param name="tx">Optional transaction to join. Pass null for auto-commit behaviour.</param>
     public void Update(Course course, System.Data.Common.DbTransaction? tx = null)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
@@ -96,6 +98,7 @@ public class CourseRepository(IDatabaseContext db) : ICourseRepository
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Courses WHERE id = $id";
         cmd.AddParam("$id", id);

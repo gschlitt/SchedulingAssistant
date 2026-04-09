@@ -1883,3 +1883,160 @@
 | 22:39 | Edited ../../../.claude/plans/unified-crunching-sonnet.md | inline fix | ~74 |
 | 22:40 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | reduced (-8 lines) | ~69 |
 | 22:40 | Session end: 3 writes across 2 files (unified-crunching-sonnet.md, SectionEditViewModel.cs) | 4 reads | ~423 tok |
+
+## Session: 2026-04-09 09:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:45 | Created ../../../.claude/plans/peaceful-napping-whistle.md | — | ~922 |
+| 09:49 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified if() | ~141 |
+| 09:49 | Session end: 2 writes across 2 files (peaceful-napping-whistle.md, CheckoutService.cs) | 3 reads | ~1139 tok |
+| 09:51 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_MidSession_DirtyMarkerPreserved() | ~721 |
+| 09:52 | Session end: 3 writes across 3 files (peaceful-napping-whistle.md, CheckoutService.cs, CheckoutServiceTests.cs) | 3 reads | ~1911 tok |
+| 09:56 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 6→7 lines | ~124 |
+| 09:56 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 6→7 lines | ~126 |
+| 09:56 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 5→6 lines | ~116 |
+| 09:56 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | inline fix | ~23 |
+| 09:56 | Edited src/SchedulingAssistant.Tests/WizardManualPathTests.cs | 7→7 lines | ~106 |
+| 09:57 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 22→25 lines | ~349 |
+| 09:57 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 10→11 lines | ~156 |
+| 09:57 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 6→7 lines | ~59 |
+| 10:00 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | added nullish coalescing | ~292 |
+| 10:00 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | modified SectionEdit_AfterCourseSelected_SectionCode_IsEnabled_OtherFields_StillLocked() | ~217 |
+| 10:00 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | added optional chaining | ~27 |
+| 10:00 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 2→3 lines | ~18 |
+| 10:02 | Session end: 15 writes across 6 files (peaceful-napping-whistle.md, CheckoutService.cs, CheckoutServiceTests.cs, WriteLockReadOnlyTests.cs, WizardManualPathTests.cs) | 12 reads | ~25734 tok |
+| 10:07 | Edited src/SchedulingAssistant.Tests/WizardStepValidationTests.cs | modified Step5Scheduling_AddBlockLength_AcceptsCommaDecimalSeparator() | ~180 |
+| 10:08 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | modified RunImportPathAsync() | ~615 |
+| 10:08 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | modified NewGuid() | ~356 |
+| 10:08 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | modified sequence() | ~299 |
+| 10:09 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | modified Next_FromStep0_NavigatesToLicense() | ~411 |
+| 10:09 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | modified Back_FromLicense_ReturnsToStep0() | ~529 |
+| 10:10 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | modified NextButtonText_IsFinish_WhenStep2aExistingDbChoiceSelected() | ~1376 |
+| 10:10 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | 13→13 lines | ~105 |
+| 10:10 | Session end: 23 writes across 9 files (peaceful-napping-whistle.md, CheckoutService.cs, CheckoutServiceTests.cs, WriteLockReadOnlyTests.cs, WizardManualPathTests.cs) | 29 reads | ~33514 tok |
+| 10:13 | Session end: 23 writes across 9 files (peaceful-napping-whistle.md, CheckoutService.cs, CheckoutServiceTests.cs, WriteLockReadOnlyTests.cs, WizardManualPathTests.cs) | 29 reads | ~62337 tok |
+| 10:16 | Session end: 23 writes across 9 files (peaceful-napping-whistle.md, CheckoutService.cs, CheckoutServiceTests.cs, WriteLockReadOnlyTests.cs, WizardManualPathTests.cs) | 29 reads | ~62337 tok |
+| 10:38 | Created ../../../.claude/plans/peaceful-napping-whistle.md | — | ~1206 |
+
+## Session: 2026-04-09 10:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-09 10:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:45 | Created ../../../.claude/plans/peaceful-napping-whistle.md | — | ~892 |
+| 13:19 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~28 |
+| 13:19 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~35 |
+| 13:20 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified HandleCrashRecoveryAsync() | ~203 |
+| 13:20 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | removed 29 lines | ~5 |
+| 13:20 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | inline fix | ~21 |
+| 13:22 | Session end: 6 writes across 4 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs) | 4 reads | ~30093 tok |
+| 13:24 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/feedback_build_vs_lock.md | — | ~221 |
+| 13:24 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→3 lines | ~75 |
+| 13:24 | Session end: 8 writes across 6 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 5 reads | ~30410 tok |
+| 13:28 | Session end: 8 writes across 6 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 5 reads | ~30410 tok |
+| 13:30 | Session end: 8 writes across 6 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 5 reads | ~30410 tok |
+| 13:32 | Session end: 8 writes across 6 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 5 reads | ~30410 tok |
+| 13:59 | Created ../../../.claude/plans/peaceful-napping-whistle.md | — | ~1872 |
+| 14:01 | Edited ../../../.claude/plans/peaceful-napping-whistle.md | added error handling | ~613 |
+| 14:04 | Edited src/SchedulingAssistant/Data/IDatabaseContext.cs | expanded (+7 lines) | ~173 |
+| 14:04 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | added optional chaining | ~360 |
+| 14:04 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 7→6 lines | ~37 |
+| 14:04 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 7→6 lines | ~37 |
+| 14:05 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added error handling | ~492 |
+| 14:05 | Edited src/SchedulingAssistant/App.axaml.cs | inline fix | ~29 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/AppConfigurationRepository.cs | modified Set() | ~36 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/AcademicYearRepository.cs | modified Insert() | ~36 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/AcademicUnitRepository.cs | modified Insert() | ~34 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/BlockPatternRepository.cs | modified Insert() | ~35 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/CampusRepository.cs | modified Insert() | ~34 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/CourseRepository.cs | modified Insert() | ~33 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/InstructorRepository.cs | modified Insert() | ~35 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/InstructorCommitmentRepository.cs | modified Insert() | ~38 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/LegalStartTimeRepository.cs | modified Insert() | ~41 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/MeetingRepository.cs | modified Insert() | ~34 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/RoomRepository.cs | modified Insert() | ~32 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/SectionRepository.cs | modified Insert() | ~46 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/SectionPrefixRepository.cs | modified Insert() | ~35 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/SchedulingEnvironmentRepository.cs | modified Insert() | ~42 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/SemesterRepository.cs | modified Insert() | ~34 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/SubjectRepository.cs | modified Insert() | ~34 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/ReleaseRepository.cs | modified Insert() | ~34 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/AcademicYearRepository.cs | modified Update() | ~36 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/AcademicYearRepository.cs | modified Delete() | ~51 |
+| 14:06 | Edited src/SchedulingAssistant/Data/Repositories/AcademicUnitRepository.cs | modified Update() | ~34 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/AcademicUnitRepository.cs | modified Delete() | ~51 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/BlockPatternRepository.cs | modified Update() | ~35 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/BlockPatternRepository.cs | modified Delete() | ~51 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/CampusRepository.cs | modified Update() | ~34 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/CampusRepository.cs | modified Delete() | ~50 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/CourseRepository.cs | modified Update() | ~45 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/CourseRepository.cs | modified Delete() | ~49 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/InstructorRepository.cs | modified Update() | ~47 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/InstructorRepository.cs | modified Delete() | ~50 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/InstructorCommitmentRepository.cs | modified Update() | ~38 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/InstructorCommitmentRepository.cs | modified Delete() | ~53 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/LegalStartTimeRepository.cs | modified Update() | ~41 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/LegalStartTimeRepository.cs | modified Delete() | ~40 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/LegalStartTimeRepository.cs | modified CopyFromPreviousYear() | ~64 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/MeetingRepository.cs | modified Update() | ~34 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/MeetingRepository.cs | modified Delete() | ~49 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/MeetingRepository.cs | modified DeleteBySemesterId() | ~57 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/RoomRepository.cs | modified Update() | ~32 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/RoomRepository.cs | modified Delete() | ~44 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SectionRepository.cs | modified Update() | ~46 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SectionRepository.cs | modified Delete() | ~49 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SectionRepository.cs | modified DeleteBySemesterId() | ~57 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SectionPrefixRepository.cs | modified Update() | ~35 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SectionPrefixRepository.cs | modified Delete() | ~44 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SchedulingEnvironmentRepository.cs | modified Update() | ~38 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SchedulingEnvironmentRepository.cs | modified Delete() | ~44 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SemesterRepository.cs | modified Update() | ~34 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SemesterRepository.cs | modified Delete() | ~50 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SemesterRepository.cs | modified DeleteByAcademicYear() | ~39 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SubjectRepository.cs | modified Update() | ~34 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/SubjectRepository.cs | modified Delete() | ~49 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/ReleaseRepository.cs | modified Update() | ~34 |
+| 14:07 | Edited src/SchedulingAssistant/Data/Repositories/ReleaseRepository.cs | modified Delete() | ~49 |
+| 14:08 | Edited src/SchedulingAssistant/Data/Repositories/LegalStartTimeRepository.cs | 5→5 lines | ~40 |
+| 14:08 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 4→5 lines | ~57 |
+| 14:08 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 4→5 lines | ~87 |
+| 14:09 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 4→5 lines | ~74 |
+| 14:09 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 5→6 lines | ~75 |
+| 14:09 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 6→7 lines | ~122 |
+| 14:09 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 7→7 lines | ~119 |
+| 14:09 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 2→2 lines | ~43 |
+| 14:09 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 3→3 lines | ~44 |
+| 14:10 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified CheckoutAsync_NoEdits_NoDirtyMarker() | ~1852 |
+| 14:12 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified CheckoutAsync_ExistingDb_NoLock_NoDirtyMarkerYet() | ~176 |
+| 14:12 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_MidSession_DirtyMarkerPreserved() | ~240 |
+| 14:13 | Session end: 81 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~59176 tok |
+| 14:19 | Edited src/SchedulingAssistant/Data/IDatabaseContext.cs | expanded (+7 lines) | ~170 |
+| 14:19 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | modified MarkDirty() | ~71 |
+| 14:19 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | saves() → MarkDirty() | ~115 |
+| 14:19 | Edited src/SchedulingAssistant/App.axaml.cs | 4→7 lines | ~147 |
+| 14:19 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_MidSession_DirtyMarkerDeleted() | ~221 |
+| 14:19 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 14→19 lines | ~323 |
+| 14:20 | Session end: 87 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~69199 tok |
+| 14:23 | Session end: 87 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~69199 tok |
+| 14:24 | Session end: 87 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~69199 tok |
+| 14:25 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 5→6 lines | ~88 |
+| 14:26 | Session end: 88 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~69315 tok |
+| 14:28 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified CleanupWorkingCopy() | ~243 |
+| 14:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 4→7 lines | ~93 |
+| 14:29 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 9→12 lines | ~235 |
+| 14:30 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | 4→6 lines | ~93 |
+| 14:31 | Session end: 92 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~70240 tok |
+| 14:35 | Edited src/SchedulingAssistant/App.axaml.cs | 7→5 lines | ~122 |
+| 14:35 | Edited src/SchedulingAssistant/App.axaml.cs | 2→4 lines | ~86 |
+| 14:35 | Edited src/SchedulingAssistant/App.axaml.cs | 4→4 lines | ~79 |
+| 14:36 | Session end: 95 writes across 26 files (peaceful-napping-whistle.md, MainWindow.axaml.cs, CheckoutService.cs, CheckoutServiceTests.cs, feedback_build_vs_lock.md) | 44 reads | ~70597 tok |
+
+## Session: 2026-04-09 14:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

@@ -40,6 +40,7 @@ public class SectionPrefixRepository : ISectionPrefixRepository
     /// <param name="prefix">The prefix to insert. Its <c>Id</c> must be set.</param>
     public void Insert(SectionPrefix prefix)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO SectionPrefixes (id, prefix, data) VALUES ($id, $prefix, $data)";
@@ -55,6 +56,7 @@ public class SectionPrefixRepository : ISectionPrefixRepository
     /// <param name="prefix">The prefix with updated values.</param>
     public void Update(SectionPrefix prefix)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE SectionPrefixes SET prefix = $prefix, data = $data WHERE id = $id";
@@ -71,6 +73,7 @@ public class SectionPrefixRepository : ISectionPrefixRepository
     /// <param name="tx">Optional transaction to participate in.</param>
     public void Delete(string id, System.Data.Common.DbTransaction? tx = null)
     {
+        _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM SectionPrefixes WHERE id = $id";

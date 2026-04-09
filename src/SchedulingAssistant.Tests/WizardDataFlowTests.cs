@@ -112,39 +112,43 @@ public class WizardDataFlowTests : IDisposable
         // Step 0 — Welcome (always CanAdvance)
         await vm.NextCommand.ExecuteAsync(null);
 
-        // Step 1a — choose new setup (not existing DB)
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsNewSetupChoice = true;
+        // Step 1 — License agreement (always CanAdvance)
+        Assert.IsType<StepLicenseViewModel>(vm.CurrentStep);
         await vm.NextCommand.ExecuteAsync(null);
 
-        // Step 2 — Institution
-        var step2 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
-        step2.InstitutionName   = "Test University";
-        step2.InstitutionAbbrev = "TU";
-        step2.AcUnitName        = "Engineering";
-        step2.AcUnitAbbrev      = "ENG";
+        // Step 2 — choose new setup (not existing DB)
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsNewSetupChoice = true;
         await vm.NextCommand.ExecuteAsync(null);
 
-        // Step 3 — Database location
+        // Step 3 — Institution
+        var step3 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
+        step3.InstitutionName   = "Test University";
+        step3.InstitutionAbbrev = "TU";
+        step3.AcUnitName        = "Engineering";
+        step3.AcUnitAbbrev      = "ENG";
+        await vm.NextCommand.ExecuteAsync(null);
+
+        // Step 4 — Database location
         // Use the temp dir for both DB folder and backup to avoid creating real paths.
-        var step3 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
-        step3.DbFolder     = _tempDir;
-        step3.DbFilename   = $"wizard_{Guid.NewGuid():N}.db";
-        step3.BackupFolder = _tempDir;
+        var step4 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
+        step4.DbFolder     = _tempDir;
+        step4.DbFilename   = $"wizard_{Guid.NewGuid():N}.db";
+        step4.BackupFolder = _tempDir;
         await vm.NextCommand.ExecuteAsync(null); // triggers ValidateStep3 (InitializeServices no-op)
 
-        // Step 4 — TpConfig: choose Import and provide path
-        var step4 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
-        step4.IsImportChoice = true;
-        step4.TpConfigPath   = tpConfigPath;
-        await vm.NextCommand.ExecuteAsync(null); // ValidateAndImport reads the file; skips to step 9
+        // Step 5 — TpConfig: choose Import and provide path
+        var step5 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
+        step5.IsImportChoice = true;
+        step5.TpConfigPath   = tpConfigPath;
+        await vm.NextCommand.ExecuteAsync(null); // ValidateAndImport reads the file; skips to step 10
 
-        // Step 9 — Academic Year
-        var step9 = Assert.IsType<Step5AcademicYearViewModel>(vm.CurrentStep);
-        step9.AcademicYearName = academicYearName;
-        await vm.NextCommand.ExecuteAsync(null); // skips step 10 (import path); goes to step 11
+        // Step 10 — Academic Year
+        var step10 = Assert.IsType<Step5AcademicYearViewModel>(vm.CurrentStep);
+        step10.AcademicYearName = academicYearName;
+        await vm.NextCommand.ExecuteAsync(null); // skips step 11 (import path); goes to step 12
 
-        // Step 11 — Closing panel; Finish calls WriteDbRecordsAsync
+        // Step 12 — Closing panel; Finish calls WriteDbRecordsAsync
         Assert.IsType<Step10ClosingViewModel>(vm.CurrentStep);
         await vm.NextCommand.ExecuteAsync(null);
 
@@ -564,28 +568,31 @@ public class WizardDataFlowTests : IDisposable
 
         var vm = new StartupWizardViewModel(null!, services);
 
-        // Navigate to step 4 and choose ExitNow
-        await vm.NextCommand.ExecuteAsync(null); // → step 1a
+        // Navigate to step 5 (TpConfig) and choose ExitNow
+        await vm.NextCommand.ExecuteAsync(null); // → step 1 (license)
 
-        var step1a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
-        step1a.IsNewSetupChoice = true;
-        await vm.NextCommand.ExecuteAsync(null); // → step 2
+        Assert.IsType<StepLicenseViewModel>(vm.CurrentStep);
+        await vm.NextCommand.ExecuteAsync(null); // → step 2 (existing DB check)
 
-        var step2 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
-        step2.InstitutionName   = "Test U";
-        step2.InstitutionAbbrev = "TU";
-        step2.AcUnitName        = "Eng";
-        step2.AcUnitAbbrev      = "ENG";
-        await vm.NextCommand.ExecuteAsync(null); // → step 3
+        var step2a = Assert.IsType<Step1aExistingDbViewModel>(vm.CurrentStep);
+        step2a.IsNewSetupChoice = true;
+        await vm.NextCommand.ExecuteAsync(null); // → step 3 (institution)
 
-        var step3 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
-        step3.DbFolder     = _tempDir;
-        step3.DbFilename   = $"exitnow_{Guid.NewGuid():N}.db";
-        step3.BackupFolder = _tempDir;
-        await vm.NextCommand.ExecuteAsync(null); // → step 4
+        var step3 = Assert.IsType<Step1InstitutionViewModel>(vm.CurrentStep);
+        step3.InstitutionName   = "Test U";
+        step3.InstitutionAbbrev = "TU";
+        step3.AcUnitName        = "Eng";
+        step3.AcUnitAbbrev      = "ENG";
+        await vm.NextCommand.ExecuteAsync(null); // → step 4 (database)
 
-        var step4 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
-        step4.IsExitNowChoice = true;
+        var step4 = Assert.IsType<Step2DatabaseViewModel>(vm.CurrentStep);
+        step4.DbFolder     = _tempDir;
+        step4.DbFilename   = $"exitnow_{Guid.NewGuid():N}.db";
+        step4.BackupFolder = _tempDir;
+        await vm.NextCommand.ExecuteAsync(null); // → step 5 (TpConfig)
+
+        var step5 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
+        step5.IsExitNowChoice = true;
         await vm.NextCommand.ExecuteAsync(null); // → FinishAsync (ExitNow branch)
 
         Assert.True(vm.IsComplete);

@@ -67,8 +67,8 @@ public class WizardManualPathTests : IDisposable
             repo:        _prefixRepo,
             campusRepo:  _campusRepo,
             dialog:      Mock.Of<IDialogService>(),
-            lockService: new WriteLockService()   // IsWriter = false; no Avalonia dispatcher needed
-        );
+            lockService: new WriteLockService(),   // IsWriter = false; no Avalonia dispatcher needed
+            appConfig:   new AppConfigurationService(new AppConfigurationRepository(_db)));
 
     /// <summary>
     /// Invokes the private <c>BuildCampusOptions()</c> method on a

@@ -319,11 +319,12 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// A dirty marker file (D'.dirty) must be created alongside D' at checkout time.
-    /// This sentinel is used at the next startup to detect a crash during a previous session.
+    /// No dirty marker is written at checkout — the marker only appears after the first
+    /// user-initiated write (via MarkDirty). This prevents a spurious crash notification
+    /// when the app is opened and closed without making any edits.
     /// </summary>
     [Fact]
-    public async Task CheckoutAsync_ExistingDb_NoLock_DirtyMarkerCreated()
+    public async Task CheckoutAsync_ExistingDb_NoLock_NoDirtyMarkerYet()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
@@ -331,7 +332,8 @@ public sealed class CheckoutServiceTests : IDisposable
 
         await svc.CheckoutAsync(db);
 
-        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "Dirty marker must exist after checkout.");
+        Assert.False(File.Exists(svc.WorkingPath + ".dirty"),
+            "Dirty marker must NOT be written at checkout — only on first user write.");
     }
 
     /// <summary>
@@ -555,22 +557,78 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// The dirty marker must be deleted after a successful save — a clean save
-    /// means no crash recovery is needed at the next startup.
+    /// A mid-session save (releaseLockAfter=false, the default) must delete the dirty
+    /// marker, because D' now matches D. If the user edits again, MarkDirty() re-writes it.
     /// </summary>
     [Fact]
-    public async Task SaveAsync_ExistingDb_DirtyMarkerDeleted()
+    public async Task SaveAsync_MidSession_DirtyMarkerDeleted()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
         CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
+        svc.MarkDirty(); // Simulate a user write so the dirty marker is created.
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "Dirty marker should exist before save.");
 
-        await svc.SaveAsync();
+        await svc.SaveAsync(); // releaseLockAfter defaults to false
 
-        Assert.False(File.Exists(svc.WorkingPath + ".dirty"), "Dirty marker should be gone after save.");
+        Assert.False(File.Exists(svc.WorkingPath + ".dirty"),
+            "Dirty marker must be deleted after a mid-session save — D' now matches D.");
+    }
+
+    /// <summary>
+    /// A release save (releaseLockAfter=true) deletes the dirty marker because
+    /// the session is ending cleanly — no crash recovery is needed at next startup.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_WithReleaseLockAfter_DirtyMarkerDeleted()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty(); // Simulate a user write so the dirty marker is created.
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "Dirty marker should exist before save.");
+
+        await svc.SaveAsync(releaseLockAfter: true);
+
+        Assert.False(File.Exists(svc.WorkingPath + ".dirty"),
+            "Dirty marker must be removed after a release save — session ended cleanly.");
+    }
+
+    /// <summary>
+    /// After a mid-session save, DetectCrashRecovery still returns true for this
+    /// path — the dirty marker persists so a crash at any subsequent point is
+    /// recoverable. This is the core regression guard for the mid-session fix.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_MidSession_CrashRecoveryStillDetectable()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+
+        // Simulate a mid-session save (does NOT end the session).
+        InsertTestValue(svc.WorkingPath, "first-edit");
+        svc.MarkDirty(); // Marks the session dirty before save, as a real write would.
+        await svc.SaveAsync();
+        // After save: marker is deleted and _dirtyFired is reset (via SaveCompleted → ResetDirty).
+        // In tests we call svc.MarkDirty() directly to simulate the next edit re-arming it.
+        // (In production, DatabaseContext.ResetDirty() is called by the SaveCompleted handler
+        //  wired in App.axaml.cs, so the next repository write re-fires the callback.)
+
+        // Another edit after the save — crash here would leave unsaved changes.
+        InsertTestValue(svc.WorkingPath, "post-save-edit");
+        svc.MarkDirty(); // Re-arm: simulates the repository write that follows the post-save edit.
+
+        // Simulate a crash: the service is abandoned without calling ReleaseAsync.
+        // DetectCrashRecovery must return true so the UI can notify the user.
+        Assert.True(svc.DetectCrashRecovery(db),
+            "Crash recovery must be detectable after a mid-session save with subsequent edits.");
     }
 
     /// <summary>
@@ -735,8 +793,10 @@ public sealed class CheckoutServiceTests : IDisposable
         await svc.CheckoutAsync(db1);
         var oldWorkingPath = svc.WorkingPath;
 
-        // Save first (so SessionDirty becomes false) then release — triggers cleanup.
+        // Save and release, then clean up the working copy (in production this is
+        // called by MainWindow after the DB connection is disposed).
         await svc.ReleaseAsync(saveFirst: true);
+        svc.CleanupWorkingCopy();
 
         Assert.False(File.Exists(oldWorkingPath), "Old working copy should be deleted after clean release.");
 
@@ -783,12 +843,13 @@ public sealed class CheckoutServiceTests : IDisposable
         var db = DbPath();
         CreateFile(db);
 
-        // Simulate a previous session that checked out but never saved (app crashed).
-        // CheckoutAsync creates both D' and the dirty marker.
+        // Simulate a previous session that checked out, made an edit, then crashed.
+        // MarkDirty() writes the dirty marker (as a real repository write would).
         await svc.CheckoutAsync(db);
+        svc.MarkDirty(); // Simulate a user write.
         var workingPath = svc.WorkingPath;
-        // Release without saving so the dirty marker remains.
-        await svc.ReleaseAsync(saveFirst: false);
+        // Simulate crash: abandon without releasing (dirty marker stays).
+        // NOTE: do NOT call ReleaseAsync here — a crash means no clean shutdown.
 
         // Use a fresh service instance (simulating app restart) — same workingDir so
         // it computes the same D' path.
@@ -801,8 +862,8 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// DetectCrashRecovery returns false when D' exists but the dirty marker does
-    /// not — this is the normal state after a clean save (marker was deleted).
+    /// DetectCrashRecovery returns false when D' exists but no dirty marker was
+    /// ever written — this is the normal state when no user edits were made.
     /// </summary>
     [Fact]
     public async Task DetectCrashRecovery_NoDirtyMarker_ReturnsFalse()
@@ -812,7 +873,7 @@ public sealed class CheckoutServiceTests : IDisposable
         CreateSqliteDb(db);
 
         await svc.CheckoutAsync(db);
-        // Save cleanly — this deletes the dirty marker.
+        // Release without any user edits — no dirty marker was ever written.
         await svc.ReleaseAsync(saveFirst: true);
 
         var (svc2, _) = CreateService();
@@ -847,9 +908,9 @@ public sealed class CheckoutServiceTests : IDisposable
         CreateFile(db);
 
         await svc.CheckoutAsync(db);
+        svc.MarkDirty(); // Simulate a user write so the dirty marker is created.
         var workingPath = svc.WorkingPath;
-        // Release without saving — leaves dirty marker intact.
-        await svc.ReleaseAsync(saveFirst: false);
+        // Simulate crash: abandon without releasing (dirty marker and working copy remain).
 
         Assert.True(File.Exists(workingPath), "Precondition: working copy must exist.");
         Assert.True(File.Exists(workingPath + ".dirty"), "Precondition: dirty marker must exist.");
@@ -889,6 +950,202 @@ public sealed class CheckoutServiceTests : IDisposable
         CreateFile(db);
 
         var ex = Record.Exception(() => svc.CleanupOrphanedTmp(db));
+        Assert.Null(ex);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 6b — MarkDirty and CleanupStaleCrashArtifacts
+    //
+    // These tests cover the accurate dirty-marker design:
+    //   • The dirty marker is NOT written at checkout — only when MarkDirty() is called.
+    //   • MarkDirty() is a no-op in read-only mode.
+    //   • CleanupStaleCrashArtifacts silently handles the two benign orphan states.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// After checkout with no subsequent MarkDirty call, no dirty marker exists.
+    /// This means a crash before any user edits won't trigger a spurious notification.
+    /// </summary>
+    [Fact]
+    public async Task CheckoutAsync_NoEdits_NoDirtyMarker()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+
+        Assert.False(File.Exists(svc.WorkingPath + ".dirty"),
+            "Dirty marker must not be written at checkout — only on first user write.");
+    }
+
+    /// <summary>
+    /// After CheckoutAsync, calling MarkDirty() writes the dirty marker.
+    /// </summary>
+    [Fact]
+    public async Task MarkDirty_AfterCheckout_DirtyMarkerAppears()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        Assert.False(File.Exists(svc.WorkingPath + ".dirty"), "Precondition: no marker yet.");
+
+        svc.MarkDirty();
+
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"),
+            "Dirty marker must appear after MarkDirty() is called.");
+    }
+
+    /// <summary>
+    /// MarkDirty() is idempotent — calling it multiple times does not throw or
+    /// create duplicate markers, and the marker exists after all calls.
+    /// </summary>
+    [Fact]
+    public async Task MarkDirty_CalledMultipleTimes_NoException()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+        svc.MarkDirty();
+        svc.MarkDirty();
+
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+    }
+
+    /// <summary>
+    /// MarkDirty() in read-only mode (lock held by another) does not write a marker.
+    /// </summary>
+    [Fact]
+    public async Task MarkDirty_ReadOnlyMode_NoMarkerWritten()
+    {
+        var (svc1, _) = CreateService();
+        var (svc2, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        // svc1 holds the write lock; svc2 gets read-only.
+        await svc1.CheckoutAsync(db);
+        await svc2.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutMode.ReadOnly, svc2.Mode);
+
+        svc2.MarkDirty(); // Should be a no-op in read-only mode.
+
+        Assert.False(File.Exists(svc2.WorkingPath + ".dirty"),
+            "MarkDirty() must not write a marker in read-only mode.");
+
+        await svc1.ReleaseAsync(saveFirst: false);
+    }
+
+    /// <summary>
+    /// DetectCrashRecovery returns false when no user edits were made (no dirty marker),
+    /// even though D' exists. The crash happened before any data changed.
+    /// This is the regression guard for the false-positive crash notification fix.
+    /// </summary>
+    [Fact]
+    public async Task DetectCrashRecovery_NoEdits_ReturnsFalse()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        // Simulate crash: abandon without calling MarkDirty or ReleaseAsync.
+        var workingPath = svc.WorkingPath;
+
+        var (svc2, _) = CreateService();
+        Assert.False(svc2.DetectCrashRecovery(db),
+            "No dirty marker = no crash to recover from, even though D' exists.");
+
+        // D' exists but has no marker — CleanupStaleCrashArtifacts should handle it.
+        Assert.True(File.Exists(workingPath), "D' is left behind by the abandoned checkout.");
+    }
+
+    /// <summary>
+    /// CleanupStaleCrashArtifacts deletes D' when it exists without a dirty marker
+    /// (crash before any edits — nothing was lost).
+    /// </summary>
+    [Fact]
+    public async Task CleanupStaleCrashArtifacts_WorkingCopyNoMarker_DeletesWorkingCopy()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db); // D' created, no marker written.
+        var workingPath = svc.WorkingPath;
+
+        var (svc2, _) = CreateService();
+        svc2.CleanupStaleCrashArtifacts(db);
+
+        Assert.False(File.Exists(workingPath),
+            "D' without a dirty marker should be silently deleted.");
+    }
+
+    /// <summary>
+    /// CleanupStaleCrashArtifacts deletes the dirty marker when it exists without D'
+    /// (interrupted discard from a previous session).
+    /// </summary>
+    [Fact]
+    public async Task CleanupStaleCrashArtifacts_MarkerNoWorkingCopy_DeletesMarker()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+        var workingPath = svc.WorkingPath;
+        var markerPath  = workingPath + ".dirty";
+
+        // Manually delete D' but leave the marker (simulates interrupted discard).
+        File.Delete(workingPath);
+
+        var (svc2, _) = CreateService();
+        svc2.CleanupStaleCrashArtifacts(db);
+
+        Assert.False(File.Exists(markerPath),
+            "Orphaned dirty marker without D' should be silently deleted.");
+    }
+
+    /// <summary>
+    /// CleanupStaleCrashArtifacts leaves both files untouched when both D' and its
+    /// dirty marker exist — this is a real crash scenario for DetectCrashRecovery.
+    /// </summary>
+    [Fact]
+    public async Task CleanupStaleCrashArtifacts_BothPresent_LeavesUntouched()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+        var workingPath = svc.WorkingPath;
+
+        var (svc2, _) = CreateService();
+        svc2.CleanupStaleCrashArtifacts(db);
+
+        Assert.True(File.Exists(workingPath),       "D' must remain when both files present.");
+        Assert.True(File.Exists(workingPath + ".dirty"), "Dirty marker must remain when both files present.");
+    }
+
+    /// <summary>
+    /// CleanupStaleCrashArtifacts does not throw when neither D' nor marker exist.
+    /// </summary>
+    [Fact]
+    public void CleanupStaleCrashArtifacts_NeitherPresent_NoException()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+
+        var ex = Record.Exception(() => svc.CleanupStaleCrashArtifacts(db));
         Assert.Null(ex);
     }
 

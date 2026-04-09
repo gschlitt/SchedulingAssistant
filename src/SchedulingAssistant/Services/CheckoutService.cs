@@ -271,7 +271,6 @@ public sealed class CheckoutService : IDisposable
         // We hold the lock — copy D to D'.
         Directory.CreateDirectory(_workingDir);
         HashAtCheckout = ComputeHash(sourcePath);
-        WriteDirtyMarker();
 
         try
         {
@@ -334,7 +333,6 @@ public sealed class CheckoutService : IDisposable
         // Lock acquired — now copy D to D' (same as CheckoutAsync write path).
         Directory.CreateDirectory(_workingDir);
         HashAtCheckout = ComputeHash(SourcePath);
-        WriteDirtyMarker();
 
         try
         {
@@ -467,8 +465,11 @@ public sealed class CheckoutService : IDisposable
         // ── Step 7 & 8: Update state ──────────────────────────────────────────
         HashAtCheckout = newSourceHash;
         SessionDirty   = false;
-        DeleteDirtyMarker();
 
+        // D' now matches D — delete the dirty marker. If the user makes further
+        // edits, DatabaseContext.MarkDirty() will re-write it (after ResetDirty rearms it).
+        // This keeps the marker as an accurate signal: present = unsaved changes exist.
+        DeleteDirtyMarker();
         if (releaseLockAfter)
             _lockService.Release();
 
@@ -592,6 +593,45 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Called by <see cref="Data.DatabaseContext"/> on the first user-initiated write
+    /// of a session. Writes the dirty marker so crash recovery detection works correctly.
+    /// Only acts when in <see cref="CheckoutMode.WriteAccess"/> mode — no-op otherwise.
+    /// </summary>
+    public void MarkDirty()
+    {
+        if (Mode == CheckoutMode.WriteAccess)
+            WriteDirtyMarker();
+    }
+
+    /// <summary>
+    /// Cleans up orphaned working-copy and dirty-marker files that represent states
+    /// where no user data was lost and no crash notification is needed:
+    /// D' without a marker (crash before any edits), or a marker without D'
+    /// (interrupted discard from a previous session). Call at startup before
+    /// <see cref="DetectCrashRecovery"/>.
+    /// </summary>
+    /// <param name="sourcePath">The database path being opened.</param>
+    public void CleanupStaleCrashArtifacts(string sourcePath)
+    {
+        var workingPath = ComputeWorkingPath(sourcePath);
+        var markerPath  = workingPath + ".dirty";
+
+        bool hasWorking = File.Exists(workingPath);
+        bool hasMarker  = File.Exists(markerPath);
+
+        if (hasWorking && !hasMarker)
+        {
+            try { File.Delete(workingPath); } catch { }
+            _logger.LogInfo($"CheckoutService: cleaned up untracked working copy (no dirty marker): {workingPath}");
+        }
+        else if (!hasWorking && hasMarker)
+        {
+            try { File.Delete(markerPath); } catch { }
+            _logger.LogInfo($"CheckoutService: cleaned up orphaned dirty marker (no working copy): {markerPath}");
+        }
+    }
+
+    /// <summary>
     /// Detects whether a previous session for <paramref name="sourcePath"/> ended
     /// ungracefully with unsaved changes. Call at startup before
     /// <see cref="CheckoutAsync"/>.
@@ -617,34 +657,6 @@ public sealed class CheckoutService : IDisposable
         }
 
         return hasCrash;
-    }
-
-    /// <summary>
-    /// Acquires the lock and saves the orphaned D' back to D. Call when the user
-    /// confirms they want to recover unsaved changes from a previous crashed session.
-    /// After this returns, call <see cref="CheckoutAsync"/> normally to start a new session.
-    /// </summary>
-    /// <param name="sourcePath">The database path being recovered.</param>
-    /// <returns>The save outcome; if not <see cref="SaveOutcome.Success"/>, discard instead.</returns>
-    public async Task<SaveOutcome> ResumeFromCrashAsync(string sourcePath)
-    {
-        SourcePath  = sourcePath;
-        WorkingPath = ComputeWorkingPath(sourcePath);
-
-        _lockService.TryAcquire(sourcePath);
-        if (!_lockService.IsWriter)
-            return SaveOutcome.LockLost;
-
-        Mode           = CheckoutMode.WriteAccess;
-        HashAtCheckout = File.Exists(sourcePath) ? ComputeHash(sourcePath) : null;
-
-        var result = await SaveAsync(releaseLockAfter: true);
-
-        // Reset state so a fresh CheckoutAsync can follow.
-        Mode        = CheckoutMode.ReadOnly;
-        SourcePath  = string.Empty;
-        WorkingPath = string.Empty;
-        return result;
     }
 
     /// <summary>
@@ -695,13 +707,22 @@ public sealed class CheckoutService : IDisposable
         else
             _lockService.Release();
 
-        // Clean up the working copy (D' or D'') on a clean shutdown.
-        if (!SessionDirty && File.Exists(WorkingPath) && WorkingPath != SourcePath)
-        {
-            try { File.Delete(WorkingPath); } catch { }
-        }
-
         Mode = CheckoutMode.ReadOnly;
+    }
+
+    /// <summary>
+    /// Deletes D' (or D'') from the working directory. Call after the database
+    /// connection has been closed — the file cannot be deleted while SQLite holds it open.
+    /// On crash the file is left behind; <see cref="CleanupStaleCrashArtifacts"/> or
+    /// <see cref="DetectCrashRecovery"/> handles it at next startup.
+    /// </summary>
+    public void CleanupWorkingCopy()
+    {
+        if (!string.IsNullOrEmpty(WorkingPath) && File.Exists(WorkingPath) && WorkingPath != SourcePath)
+        {
+            try { File.Delete(WorkingPath); }
+            catch (Exception ex) { _logger.LogInfo($"CheckoutService: could not delete working copy: {ex.Message}"); }
+        }
     }
 
     /// <summary>

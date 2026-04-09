@@ -31,6 +31,7 @@ public class SchedulingEnvironmentRepository(IDatabaseContext db) : ISchedulingE
 
     public void Insert(string type, SchedulingEnvironmentValue value)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO SchedulingEnvironmentValues (id, type, name, data) VALUES ($id, $type, $name, $data)";
@@ -43,6 +44,7 @@ public class SchedulingEnvironmentRepository(IDatabaseContext db) : ISchedulingE
 
     public void Update(SchedulingEnvironmentValue value)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
             "UPDATE SchedulingEnvironmentValues SET name = $name, data = $data WHERE id = $id";
@@ -54,6 +56,7 @@ public class SchedulingEnvironmentRepository(IDatabaseContext db) : ISchedulingE
 
     public void Delete(string id, System.Data.Common.DbTransaction? tx = null)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM SchedulingEnvironmentValues WHERE id = $id";

@@ -33,6 +33,7 @@ public class ReleaseRepository(IDatabaseContext db) : IReleaseRepository
 
     public void Insert(Release release)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO Releases (id, semester_id, instructor_id, data) VALUES ($id, $sid, $iid, $data)";
         cmd.AddParam("$id", release.Id);
@@ -44,6 +45,7 @@ public class ReleaseRepository(IDatabaseContext db) : IReleaseRepository
 
     public void Update(Release release)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE Releases SET semester_id = $sid, instructor_id = $iid, data = $data WHERE id = $id";
         cmd.AddParam("$id", release.Id);
@@ -55,6 +57,7 @@ public class ReleaseRepository(IDatabaseContext db) : IReleaseRepository
 
     public void Delete(string id)
     {
+        db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Releases WHERE id = $id";
         cmd.AddParam("$id", id);

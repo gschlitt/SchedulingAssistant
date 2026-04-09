@@ -85,12 +85,13 @@ public sealed class WriteLockReadOnlyTests : IDisposable
 
     // ── Services ──────────────────────────────────────────────────────────────
 
-    private readonly SemesterContext           _semesterContext;
-    private readonly SectionChangeNotifier     _changeNotifier;
-    private readonly SectionStore              _sectionStore;
-    private readonly AcademicUnitService       _academicUnitService;
-    private readonly ScheduleValidationService _scheduleValidation;
-    private readonly IDialogService            _dialog;
+    private readonly SemesterContext              _semesterContext;
+    private readonly SectionChangeNotifier        _changeNotifier;
+    private readonly SectionStore                 _sectionStore;
+    private readonly AcademicUnitService          _academicUnitService;
+    private readonly ScheduleValidationService    _scheduleValidation;
+    private readonly IDialogService               _dialog;
+    private readonly AppConfigurationService      _appConfig;
 
     /// <summary>
     /// Creates an isolated temporary directory, initialises a fresh SQLite schema
@@ -128,6 +129,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _academicUnitService = new AcademicUnitService(_academicUnitRepo);
         _scheduleValidation  = new ScheduleValidationService(_legalStartTimeRepo);
         _dialog             = new NullDialogService();
+        _appConfig          = new AppConfigurationService(new AppConfigurationRepository(_db));
     }
 
     /// <summary>Disposes the lock service, database connection, and temp directory.</summary>
@@ -158,7 +160,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private SectionListViewModel CreateSectionListVm() =>
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _prefixRepo,
-            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock);
+            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock,
+            _appConfig);
 
     /// <summary>Creates a fully-wired <see cref="CourseListViewModel"/> in reader mode.</summary>
     private CourseListViewModel CreateCourseListVm() =>
@@ -356,21 +359,21 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void SectionPrefix_AddCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock);
+        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock, _appConfig);
         Assert.False(vm.AddCommand.CanExecute(null));
     }
 
     [Fact]
     public void SectionPrefix_EditCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock);
+        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock, _appConfig);
         Assert.False(vm.EditCommand.CanExecute(null));
     }
 
     [Fact]
     public void SectionPrefix_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock);
+        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock, _appConfig);
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 
