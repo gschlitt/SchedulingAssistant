@@ -3510,6 +3510,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-09T04:48:39.893Z"
+    },
+    {
+      "id": "bug-220",
+      "timestamp": "2026-04-09T05:15:07.713Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"ToggleButton.FilterDim:pressed\"",
+      "fix": "Changed to \"ToggleButton.FilterDim:pressed /template/ Content",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-09T05:15:11.767Z"
+    },
+    {
+      "id": "bug-221",
+      "timestamp": "2026-04-09T05:19:22.915Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (2 removed) | Also: <Style Selector=\"ToggleButton.OverlayDim:pressed /; <Setter Property=\"Background\" Value=\"{StaticResour",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-09T05:19:31.543Z"
     }
   ]
 }

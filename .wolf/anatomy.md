@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T04:49:12.591Z
-> Files: 49 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T05:19:31.505Z
+> Files: 51 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -182,6 +182,7 @@
 
 ## src/SchedulingAssistant/
 
+- `App.axaml` (~1318 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3431 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -249,6 +250,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~9355 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12098 tok)
 
 ## src/SchedulingAssistant/Views/Management/
