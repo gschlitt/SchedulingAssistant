@@ -433,18 +433,10 @@ public partial class SectionEditViewModel : ViewModelBase
         // Load all configured section prefixes for use by the prefix picker and CommitSectionCode.
         _prefixes = prefixRepository.GetAll();
 
-        // Build campus name lookup so prefix labels can show "AB — Abbotsford".
-        var campusNameById = campuses.ToDictionary(c => c.Id, c => c.Name);
-
         // Build the prefix picker items: sentinel "(none)" first, then one per prefix.
         var pickerItems = new List<SectionPrefixPickerItem> { new(null, "(none)") };
         foreach (var p in _prefixes)
-        {
-            var label = p.CampusId is not null && campusNameById.TryGetValue(p.CampusId, out var campusName)
-                ? $"{p.Prefix} \u2014 {campusName}"   // "AB — Abbotsford"
-                : p.Prefix;
-            pickerItems.Add(new(p, label));
-        }
+            pickerItems.Add(new(p, p.Prefix));
         PrefixOptions = pickerItems;
 
         // Prefix picker is shown only when the institution uses prefixes and has at least one configured.

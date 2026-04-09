@@ -152,7 +152,7 @@ public static class HelpTip
         };
 
         ToolTip.SetTip(c, tooltip);
-        ToolTip.SetShowDelay(c, 600);
+        ToolTip.SetShowDelay(c, 900);
     }
 
     // ── Resource helpers ───────────────────────────────────────────────────────

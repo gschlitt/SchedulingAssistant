@@ -3542,6 +3542,22 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-04-09T05:19:31.543Z"
+    },
+    {
+      "id": "bug-222",
+      "timestamp": "2026-04-09T05:40:13.588Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 12→4 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T05:40:13.588Z"
     }
   ]
 }

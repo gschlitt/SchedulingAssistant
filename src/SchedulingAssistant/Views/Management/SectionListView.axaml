@@ -107,6 +107,7 @@
                         <ComboBox
                             MinWidth="80"
                             HorizontalAlignment="Stretch"
+                            b:HelpTip.Text="Choosing a prefix will automatically choose the next available section code. Prefixes can be set under the Configuration tab."
                             CornerRadius="4"
                             DisplayMemberBinding="{Binding Label}"
                             FontSize="11"

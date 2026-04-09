@@ -547,6 +547,7 @@
                                             MinWidth="0"
                                             MinHeight="0"
                                             Padding="5,1"
+                                            b:HelpTip.Text="Add a new section"
                                             Command="{Binding AddCommand}"
                                             Content="Add"
                                             FontSize="14" />
@@ -554,6 +555,7 @@
                                             MinWidth="0"
                                             MinHeight="0"
                                             Padding="5,1"
+                                            b:HelpTip.Text="Edit the selected section"
                                             Command="{Binding EditCommand}"
                                             Content="Edit"
                                             FontSize="14"
@@ -562,6 +564,7 @@
                                             MinWidth="0"
                                             MinHeight="0"
                                             Padding="5,1"
+                                            b:HelpTip.Text="Copy the selected section, incrementing the section code"
                                             Command="{Binding CopyCommand}"
                                             Content="Copy"
                                             FontSize="14"
