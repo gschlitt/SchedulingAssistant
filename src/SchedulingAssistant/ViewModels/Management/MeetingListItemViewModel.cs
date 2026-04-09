@@ -26,6 +26,18 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
     /// <summary>Comma-separated attendee names, or null when no attendees are assigned.</summary>
     public string? AttendeeLine { get; }
 
+    /// <summary>
+    /// Up to 5 attendee names joined by ", ". When more than 5 are assigned, the string ends
+    /// with " …+N more" to indicate overflow. Null when no attendees are assigned.
+    /// </summary>
+    public string? AttendeeLineBrief { get; }
+
+    /// <summary>
+    /// Full attendee list for a hover tooltip, populated only when the list is truncated
+    /// (more than 5 attendees). Null otherwise so no tooltip appears for short lists.
+    /// </summary>
+    public string? AttendeeTooltip { get; }
+
     /// <summary>Optional note preview text.</summary>
     public string? NoteLine { get; }
 
@@ -80,6 +92,18 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
             .Where(n => n is not null)
             .ToList();
         AttendeeLine = attendeeNames.Count > 0 ? string.Join(", ", attendeeNames) : null;
+
+        const int maxBrief = 5;
+        if (attendeeNames.Count > maxBrief)
+        {
+            AttendeeLineBrief = string.Join(", ", attendeeNames.Take(maxBrief)) + $" …+{attendeeNames.Count - maxBrief} more";
+            AttendeeTooltip   = AttendeeLine;
+        }
+        else
+        {
+            AttendeeLineBrief = AttendeeLine;
+            AttendeeTooltip   = null;
+        }
 
         NoteLine = !string.IsNullOrWhiteSpace(meeting.Notes) ? meeting.Notes : null;
     }

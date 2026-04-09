@@ -9,6 +9,13 @@
     x:DataType="vm:MeetingListViewModel">
 
     <UserControl.Styles>
+        <!--  Remove the default ListBox border and background  -->
+        <Style Selector="ListBox.MeetingList">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
         <!--  Card hover / selected styles  -->
         <Style Selector="ListBox.MeetingList ListBoxItem:selected Border.MeetingCard">
             <Setter Property="Background" Value="{StaticResource TileFillSelected}" />
@@ -38,6 +45,11 @@
         </Style>
         <Style Selector="ToggleButton.EditorPopupTrigger:checked">
             <Setter Property="Background" Value="{StaticResource FilterExpanderBorder}" />
+        </Style>
+        <!--  Prevent string content from wrapping inside narrow popup-trigger columns  -->
+        <Style Selector="ToggleButton.EditorPopupTrigger TextBlock">
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
     </UserControl.Styles>
 
@@ -99,12 +111,48 @@
                                 <Grid ColumnDefinitions="80,80,80,90,70,80,24" RowDefinitions="Auto,Auto,Auto">
 
                                     <!--  Column headers  -->
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,2,1" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Day" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Margin="2,0,2,1" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Start" />
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Margin="2,0,2,1" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Length" />
-                                    <TextBlock Grid.Row="0" Grid.Column="3" Margin="2,0,2,1" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Freq" />
-                                    <TextBlock Grid.Row="0" Grid.Column="4" Margin="2,0,2,1" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Mtg Type" />
-                                    <TextBlock Grid.Row="0" Grid.Column="5" Margin="2,0,2,1" FontSize="9" Foreground="{StaticResource TextMuted}" Text="Room" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Margin="0,0,2,1"
+                                        FontSize="9"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Day" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        Margin="2,0,2,1"
+                                        FontSize="9"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Start" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="2"
+                                        Margin="2,0,2,1"
+                                        FontSize="9"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Length" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="3"
+                                        Margin="2,0,2,1"
+                                        FontSize="9"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Freq" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="4"
+                                        Margin="2,0,2,1"
+                                        FontSize="9"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Mtg Type" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="5"
+                                        Margin="2,0,2,1"
+                                        FontSize="9"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Room" />
 
                                     <!--  Day  -->
                                     <ComboBox
@@ -132,9 +180,9 @@
                                         Margin="2,0,2,0"
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
-                                        CornerRadius="4"
                                         b:LostFocusCommandBehavior.Command="{Binding CommitStartTimeCommand}"
                                         b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                                        CornerRadius="4"
                                         FilterMode="None"
                                         FontSize="11"
                                         ItemsSource="{Binding AllStartTimeStrings}"
@@ -149,9 +197,9 @@
                                         Margin="2,0,2,0"
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
-                                        CornerRadius="4"
                                         b:LostFocusCommandBehavior.Command="{Binding CommitBlockLengthCommand}"
                                         b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                                        CornerRadius="4"
                                         FilterMode="None"
                                         FontSize="11"
                                         ItemsSource="{Binding AvailableBlockLengthStrings}"
@@ -253,9 +301,7 @@
                     FontSize="10" />
 
                 <!--  Attendees / Tags / Resources popup pickers  -->
-                <Grid
-                    Margin="0,6,0,0"
-                    ColumnDefinitions="*,4,*,4,*">
+                <Grid Margin="0,6,0,0" ColumnDefinitions="*,4,*,4,*">
 
                     <!--  Attendees popup  -->
                     <StackPanel Grid.Column="0">
@@ -269,7 +315,14 @@
                             <ToggleButton
                                 x:Name="AttendeesToggle"
                                 Classes="EditorPopupTrigger"
-                                Content="{Binding AttendeeSummary}" />
+                                Content="{Binding AttendeeSummary}">
+                                <ToolTip.Tip>
+                                    <TextBlock
+                                        MaxWidth="300"
+                                        Text="{Binding AttendeeSummaryTooltip}"
+                                        TextWrapping="Wrap" />
+                                </ToolTip.Tip>
+                            </ToggleButton>
                             <Popup
                                 IsLightDismissEnabled="True"
                                 IsOpen="{Binding #AttendeesToggle.IsChecked, Mode=TwoWay}"
@@ -277,25 +330,48 @@
                                 PlacementTarget="{Binding #AttendeesToggle}">
                                 <Border
                                     MinWidth="160"
-                                    MaxHeight="160"
+                                    MaxHeight="200"
                                     Padding="2"
                                     Background="{StaticResource FilterExpanderContent}"
                                     BorderBrush="{StaticResource SubduedBorder}"
                                     BorderThickness="1"
                                     CornerRadius="3">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl Margin="2" ItemsSource="{Binding AttendeeSelections}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
-                                                    <CheckBox
-                                                        Margin="2,0,0,1"
-                                                        Padding="2,1"
-                                                        Content="{Binding DisplayName}"
-                                                        FontSize="11"
-                                                        IsChecked="{Binding IsSelected}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <StackPanel>
+                                            <!--  Preset sentinels (Everyone / No one / per-staff-type)  -->
+                                            <ItemsControl Margin="2,2,2,0" ItemsSource="{Binding SentinelPresets}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:AttendeeSentinelViewModel}">
+                                                        <CheckBox
+                                                            Margin="2,0,0,1"
+                                                            Padding="2,1"
+                                                            Background="{StaticResource FilterSentinelBackground}"
+                                                            Content="{Binding DisplayName}"
+                                                            FontSize="11"
+                                                            FontStyle="Italic"
+                                                            IsChecked="{Binding IsSelected}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <!--  Divider between presets and individuals  -->
+                                            <Border
+                                                Height="1"
+                                                Margin="4,3"
+                                                Background="{StaticResource SubduedBorder}" />
+                                            <!--  Individual instructors  -->
+                                            <ItemsControl Margin="2" ItemsSource="{Binding AttendeeSelections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
+                                                        <CheckBox
+                                                            Margin="2,0,0,1"
+                                                            Padding="2,1"
+                                                            Content="{Binding DisplayName}"
+                                                            FontSize="11"
+                                                            IsChecked="{Binding IsSelected}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
@@ -432,11 +508,11 @@
 
         <!--  Add-to-semester prompt — shown in multi-semester mode when Add is clicked  -->
         <Border
-            DockPanel.Dock="Top"
             Padding="8,6"
             Background="{StaticResource EditorBackground}"
             BorderBrush="{StaticResource EditorBorder}"
             BorderThickness="0,0,0,1"
+            DockPanel.Dock="Top"
             IsVisible="{Binding IsAddSemesterPromptVisible}">
             <StackPanel Spacing="4">
                 <TextBlock
@@ -478,8 +554,9 @@
             Text="No events for this semester." />
 
         <ListBox
-            Classes="MeetingList"
+            Margin="5,0"
             b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
+            Classes="MeetingList"
             DockPanel.Dock="Top"
             ItemsSource="{Binding Items}"
             SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
@@ -560,21 +637,29 @@
                                     Foreground="{StaticResource TextSubdued}"
                                     ItemsSource="{Binding ScheduleLines}" />
 
-                                <!--  Attendees  -->
+                                <!--  Attendees (capped at 5 names; hover tooltip shows all when truncated)  -->
                                 <TextBlock
                                     FontSize="10"
                                     Foreground="{StaticResource TextFaint}"
                                     IsVisible="{Binding AttendeeLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                    Text="{Binding AttendeeLine}"
-                                    TextTrimming="CharacterEllipsis" />
+                                    Text="{Binding AttendeeLineBrief}"
+                                    TextTrimming="CharacterEllipsis"
+                                    ToolTip.IsEnabled="{Binding AttendeeTooltip, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <ToolTip.Tip>
+                                        <TextBlock
+                                            MaxWidth="300"
+                                            Text="{Binding AttendeeTooltip}"
+                                            TextWrapping="Wrap" />
+                                    </ToolTip.Tip>
+                                </TextBlock>
 
                             </StackPanel>
 
                             <!--  Inline editor (shown when this card is being edited)  -->
                             <ContentControl
-                                IsVisible="{Binding IsExpanded}"
                                 Content="{Binding DataContext.EditVm, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                ContentTemplate="{StaticResource InlineMeetingEditTemplate}" />
+                                ContentTemplate="{StaticResource InlineMeetingEditTemplate}"
+                                IsVisible="{Binding IsExpanded}" />
 
                         </StackPanel>
                     </Border>

@@ -38,7 +38,9 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
     public void Insert(LegalStartTime entry, string academicYearId)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO LegalStartTimes (academic_year_id, block_length, start_times) VALUES ($ay, $bl, $st)";
+        cmd.CommandText =
+            "INSERT INTO LegalStartTimes (academic_year_id, academic_year_name, block_length, start_times) " +
+            "VALUES ($ay, (SELECT name FROM AcademicYears WHERE id = $ay), $bl, $st)";
         cmd.AddParam("$ay", academicYearId);
         cmd.AddParam("$bl", entry.BlockLength);
         cmd.AddParam("$st", JsonHelpers.Serialize(entry.StartTimes));
@@ -74,8 +76,8 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
 
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO LegalStartTimes (academic_year_id, block_length, start_times)
-            SELECT $to_ay, block_length, start_times
+            INSERT INTO LegalStartTimes (academic_year_id, academic_year_name, block_length, start_times)
+            SELECT $to_ay, (SELECT name FROM AcademicYears WHERE id = $to_ay), block_length, start_times
             FROM LegalStartTimes
             WHERE academic_year_id = $from_ay
             """;

@@ -3238,6 +3238,246 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-08T19:03:33.534Z"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-04-08T20:36:14.244Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T20:36:14.244Z"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-04-08T21:00:27.404Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 9→11 lines (7 removed) | Also: AddColumnIfMissing(_conn, \"Sections\",            \"; AddColumnIfMissing(_conn, \"Sections\",            \"",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-08T21:00:33.451Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-04-08T21:00:49.648Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Data/Repositories/SemesterRepository.cs",
+      "root_cause": "Had \"INSERT INTO Semesters (id, academic_year_id, name",
+      "fix": "Changed to \"INSERT INTO Semesters (id, academic_year_id, acad",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T21:00:49.648Z"
+    },
+    {
+      "id": "bug-206",
+      "timestamp": "2026-04-08T21:01:07.262Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/Repositories/SectionRepository.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 10→13 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T21:01:07.262Z"
+    },
+    {
+      "id": "bug-207",
+      "timestamp": "2026-04-08T21:01:14.852Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Data/Repositories/LegalStartTimeRepository.cs",
+      "root_cause": "Had \"INSERT INTO LegalStartTimes (academic_year_id, bl",
+      "fix": "Changed to \"INSERT INTO LegalStartTimes (academic_year_id, ac",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T21:01:14.852Z"
+    },
+    {
+      "id": "bug-208",
+      "timestamp": "2026-04-08T23:14:34.618Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "No early return/throw for edge case: _applyingPreset || e.PropertyName != nameof(AttendeeSentinel",
+      "fix": "Added guard clause: if (_applyingPreset || e.PropertyName != nam)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T23:14:34.618Z"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-04-08T23:27:11.211Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T23:27:11.211Z"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-04-08T23:33:44.029Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "No early return/throw for edge case: selected.Count == 0",
+      "fix": "Added guard clause: if (selected.Count == 0)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-08T23:33:44.029Z"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-04-08T23:52:56.944Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 23→12 lines (11 removed) | Also: ToolTip.IsEnabled=\"{Binding AttendeeSummaryTooltip; <ToolTip.Tip>",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-08T23:56:17.019Z"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-04-09T00:42:57.071Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "Had \", \"",
+      "fix": "Changed to \"\\n\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T00:42:57.071Z"
+    },
+    {
+      "id": "bug-213",
+      "timestamp": "2026-04-09T00:43:02.657Z",
+      "error_message": "Wrong reference: AttendeeLine should be string",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListItemViewModel.cs",
+      "root_cause": "Used \"AttendeeLine\" instead of \"string\"",
+      "fix": "Changed AttendeeLine → string",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T00:43:02.657Z"
+    },
+    {
+      "id": "bug-214",
+      "timestamp": "2026-04-09T00:48:07.320Z",
+      "error_message": "Wrong reference: string should be AttendeeLine",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListItemViewModel.cs",
+      "root_cause": "Used \"string\" instead of \"AttendeeLine\"",
+      "fix": "Changed string → AttendeeLine",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T00:48:07.320Z"
+    },
+    {
+      "id": "bug-215",
+      "timestamp": "2026-04-09T00:48:11.918Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "Had \"\\n\"",
+      "fix": "Changed to \", \"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T00:48:11.918Z"
+    },
+    {
+      "id": "bug-216",
+      "timestamp": "2026-04-09T00:48:33.613Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→11 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T00:48:33.613Z"
+    },
+    {
+      "id": "bug-217",
+      "timestamp": "2026-04-09T03:26:57.311Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→14 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T03:26:57.311Z"
     }
   ]
 }

@@ -23,21 +23,12 @@
         </TextBlock>
 
         <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
-            To get started, you'll want to first:
+            If you're using TermPoint for the first time, it will be helpful to watch the short video at xxx. It will guide you through the basics of course creation, section editing and viewing your sections. The video is always available under 'Help', along with many other resources.
         </TextBlock>
 
-        <Grid ColumnDefinitions="30,*">
-            <TextBlock Grid.Column="0" Text="x" />
-            <TextBlock Grid.Column="1" Text="Courses" />
-
-        </Grid>
 
 
-        <!--  Call-to-action note  -->
-        <TextBlock
-            FontSize="{DynamicResource FontSizeSmall}"
-            Foreground="{StaticResource ForegroundMuted}"
-            TextWrapping="Wrap" />
+
 
     </StackPanel>
 

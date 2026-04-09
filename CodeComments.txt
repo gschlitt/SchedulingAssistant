@@ -5,7 +5,6 @@ Revisions:
 
 
 Walkthrough observations:
-Create option for institutions that do not use section prefixes
 Last page refers to nonexistent video
 Limit blocklength "names" to 5 characters
 
@@ -15,7 +14,7 @@ SectionListView editor is kind of silly with the block patterns.
 
 
 
-
+New via Wizard...
 Autosave should be by default, but turned off with preference persisted in local users.
 
 

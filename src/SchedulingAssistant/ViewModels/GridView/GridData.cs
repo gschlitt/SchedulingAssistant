@@ -71,7 +71,9 @@ public record MeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
     string Title, string Attendees, string MeetingId,
     string SemesterId = "", string SemesterName = "", string SemesterColor = "",
-    string FrequencyAnnotation = ""
+    string FrequencyAnnotation = "",
+    /// <summary>Full comma-separated attendee names for the hover tooltip. Empty when no attendees.</summary>
+    string AttendeeList = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -120,7 +122,9 @@ public record TileEntry(
     bool IsCommitment = false,
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false,
-    bool IsMeeting = false);
+    bool IsMeeting = false,
+    /// <summary>Full comma-separated attendee names shown in the tile hover tooltip. Empty for sections and commitments.</summary>
+    string AttendeeList = "");
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections
@@ -165,7 +169,11 @@ public record GridDayColumn(
 /// new entries appear automatically without touching the view.
 /// </para>
 /// </summary>
-public record TileTooltip(IReadOnlyList<string> Lines);
+/// <summary>
+/// AttendeeList, when non-null, is rendered as a separate wrapped TextBlock (MaxWidth 300)
+/// below the main lines — used for meeting tiles with many attendees.
+/// </summary>
+public record TileTooltip(IReadOnlyList<string> Lines, string? AttendeeList = null);
 
 /// <summary>All data needed by the view to render the schedule grid.</summary>
 public record GridData(

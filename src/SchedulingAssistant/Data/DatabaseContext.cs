@@ -50,11 +50,12 @@ public class DatabaseContext : IDatabaseContext
             );
 
             CREATE TABLE IF NOT EXISTS Semesters (
-                id               TEXT PRIMARY KEY,
-                academic_year_id TEXT NOT NULL DEFAULT '',
-                name             TEXT NOT NULL,
-                sort_order       INTEGER NOT NULL DEFAULT 0,
-                data             TEXT NOT NULL DEFAULT '{}'
+                id                 TEXT PRIMARY KEY,
+                academic_year_id   TEXT NOT NULL DEFAULT '',
+                academic_year_name TEXT,
+                name               TEXT NOT NULL,
+                sort_order         INTEGER NOT NULL DEFAULT 0,
+                data               TEXT NOT NULL DEFAULT '{}'
             );
 
             CREATE TABLE IF NOT EXISTS Instructors (
@@ -73,9 +74,10 @@ public class DatabaseContext : IDatabaseContext
             );
 
             CREATE TABLE IF NOT EXISTS LegalStartTimes (
-                academic_year_id TEXT NOT NULL,
-                block_length     REAL NOT NULL,
-                start_times      TEXT NOT NULL,
+                academic_year_id   TEXT NOT NULL,
+                academic_year_name TEXT,
+                block_length       REAL NOT NULL,
+                start_times        TEXT NOT NULL,
                 PRIMARY KEY (academic_year_id, block_length)
             );
 
@@ -95,13 +97,15 @@ public class DatabaseContext : IDatabaseContext
             );
 
             CREATE TABLE IF NOT EXISTS Sections (
-                id           TEXT PRIMARY KEY,
-                semester_id  TEXT NOT NULL,
-                course_id    TEXT,
-                room_id      TEXT,
-                section_code TEXT,
-                course_code  TEXT,
-                data         TEXT NOT NULL DEFAULT '{}'
+                id                 TEXT PRIMARY KEY,
+                semester_id        TEXT NOT NULL,
+                semester_name      TEXT,
+                academic_year_name TEXT,
+                course_id          TEXT,
+                room_id            TEXT,
+                section_code       TEXT,
+                course_code        TEXT,
+                data               TEXT NOT NULL DEFAULT '{}'
             );
 
             CREATE TABLE IF NOT EXISTS SchedulingEnvironmentValues (
@@ -213,9 +217,13 @@ public class DatabaseContext : IDatabaseContext
         AddColumnIfMissing(_conn, "Subjects",            "abbreviation",  "TEXT");
         AddColumnIfMissing(_conn, "Courses",             "calendar_code", "TEXT");
         AddColumnIfMissing(_conn, "Courses",             "title",         "TEXT");
-        AddColumnIfMissing(_conn, "Sections",            "section_code",  "TEXT");
-        AddColumnIfMissing(_conn, "Sections",            "course_code",   "TEXT");
-        AddColumnIfMissing(_conn, "SchedulingEnvironmentValues", "name",   "TEXT");
+        AddColumnIfMissing(_conn, "Sections",            "section_code",       "TEXT");
+        AddColumnIfMissing(_conn, "Sections",            "course_code",        "TEXT");
+        AddColumnIfMissing(_conn, "Sections",            "semester_name",      "TEXT");
+        AddColumnIfMissing(_conn, "Sections",            "academic_year_name", "TEXT");
+        AddColumnIfMissing(_conn, "Semesters",           "academic_year_name", "TEXT");
+        AddColumnIfMissing(_conn, "LegalStartTimes",     "academic_year_name", "TEXT");
+        AddColumnIfMissing(_conn, "SchedulingEnvironmentValues", "name",        "TEXT");
         AddColumnIfMissing(_conn, "AcademicUnits",       "name",          "TEXT");
         AddColumnIfMissing(_conn, "InstructorCommitments", "instructor_name", "TEXT");
         AddColumnIfMissing(_conn, "InstructorCommitments", "semester_name",   "TEXT");
@@ -275,6 +283,21 @@ public class DatabaseContext : IDatabaseContext
                                 "course_code  = (SELECT json_extract(c.data, '$.calendarCode') " +
                                                 "FROM Courses c WHERE c.id = Sections.course_id) " +
             "WHERE section_code IS NULL",
+
+            "UPDATE Sections " +
+            "SET semester_name      = (SELECT s.name FROM Semesters s WHERE s.id = Sections.semester_id), " +
+                "academic_year_name = (SELECT ay.name FROM AcademicYears ay " +
+                                      "JOIN Semesters s ON s.academic_year_id = ay.id " +
+                                      "WHERE s.id = Sections.semester_id) " +
+            "WHERE semester_name IS NULL",
+
+            "UPDATE Semesters " +
+            "SET academic_year_name = (SELECT name FROM AcademicYears WHERE id = Semesters.academic_year_id) " +
+            "WHERE academic_year_name IS NULL",
+
+            "UPDATE LegalStartTimes " +
+            "SET academic_year_name = (SELECT name FROM AcademicYears WHERE id = LegalStartTimes.academic_year_id) " +
+            "WHERE academic_year_name IS NULL",
 
             "UPDATE SchedulingEnvironmentValues SET name = json_extract(data, '$.name') WHERE name IS NULL",
 

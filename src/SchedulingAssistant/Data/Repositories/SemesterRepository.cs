@@ -33,7 +33,8 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "INSERT INTO Semesters (id, academic_year_id, name, sort_order, data) VALUES ($id, $ayid, $name, $so, $data)";
+            "INSERT INTO Semesters (id, academic_year_id, academic_year_name, name, sort_order, data) " +
+            "VALUES ($id, $ayid, (SELECT name FROM AcademicYears WHERE id = $ayid), $name, $so, $data)";
         cmd.AddParam("$id", semester.Id);
         cmd.AddParam("$ayid", semester.AcademicYearId);
         cmd.AddParam("$name", semester.Name);
@@ -46,7 +47,11 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
     {
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText =
-            "UPDATE Semesters SET academic_year_id = $ayid, name = $name, sort_order = $so, data = $data WHERE id = $id";
+            "UPDATE Semesters " +
+            "SET academic_year_id = $ayid, " +
+                "academic_year_name = (SELECT name FROM AcademicYears WHERE id = $ayid), " +
+                "name = $name, sort_order = $so, data = $data " +
+            "WHERE id = $id";
         cmd.AddParam("$id", semester.Id);
         cmd.AddParam("$ayid", semester.AcademicYearId);
         cmd.AddParam("$name", semester.Name);

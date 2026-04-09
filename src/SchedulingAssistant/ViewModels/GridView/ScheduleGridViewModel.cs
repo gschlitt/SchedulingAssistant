@@ -484,7 +484,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
     {
         static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
         var lines = new List<string> { $"{Fmt(tile.StartMinutes)}-{Fmt(tile.EndMinutes)}" };
-        return new TileTooltip(lines);
+
+        // For meeting tiles with more attendees than fit in the tile label, surface the
+        // full name list as a wrapped block in the tooltip.
+        var attendeeList = tile.Entries
+            .Select(e => e.AttendeeList)
+            .FirstOrDefault(a => !string.IsNullOrEmpty(a));
+
+        return new TileTooltip(lines, attendeeList);
     }
 
     internal static (string Label, string Initials) BuildSectionLabel(
@@ -862,10 +869,20 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         foreach (var meeting in _meetingStore.Meetings)
         {
-            // Build a space-joined attendee initials string (parallel to section "Initials").
-            var attendees = string.Join(" ", meeting.InstructorIds
+            // Build initials list; truncate to 5 + "+N" when there are more.
+            const int maxInitials = 5;
+            var allInitials = meeting.InstructorIds
                 .Where(id => instructors.ContainsKey(id))
-                .Select(id => instructors[id].Initials));
+                .Select(id => instructors[id].Initials)
+                .ToList();
+            var attendees = allInitials.Count <= maxInitials
+                ? string.Join(" ", allInitials)
+                : string.Join(" ", allInitials.Take(maxInitials)) + $" +{allInitials.Count - maxInitials}";
+
+            // Full name list for the hover tooltip (empty when no attendees).
+            var attendeeList = string.Join(", ", meeting.InstructorIds
+                .Where(id => instructors.ContainsKey(id))
+                .Select(id => $"{instructors[id].FirstName} {instructors[id].LastName}"));
 
             semIdToName.TryGetValue(meeting.SemesterId,  out var semName);
             semIdToColor.TryGetValue(meeting.SemesterId, out var semColor);
@@ -875,9 +892,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 blocks.Add(new MeetingBlock(
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
                     IsOverlay: false,
-                    meeting.Title, attendees ?? string.Empty, meeting.Id,
+                    meeting.Title, attendees, meeting.Id,
                     meeting.SemesterId, semName ?? string.Empty, semColor ?? string.Empty,
-                    FrequencyAnnotation: SectionDaySchedule.FormatFrequency(slot.Frequency)));
+                    FrequencyAnnotation: SectionDaySchedule.FormatFrequency(slot.Frequency),
+                    AttendeeList: attendeeList));
             }
         }
         return blocks;
@@ -1110,7 +1128,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // IsCommitment=true is kept so the right-click context menu (section-only) is
         // suppressed; IsMeeting=true lets the pointer handler distinguish meetings from
         // plain commitments and allow double-click through.
-        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true, FrequencyAnnotation: m.FrequencyAnnotation),
+        MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true, FrequencyAnnotation: m.FrequencyAnnotation, AttendeeList: m.AttendeeList),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };
 

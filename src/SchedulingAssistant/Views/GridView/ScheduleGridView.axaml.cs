@@ -776,8 +776,11 @@ public partial class ScheduleGridView : UserControl
     /// </summary>
     private static ToolTip BuildTileTooltipContent(TileTooltip tooltip)
     {
+        // Use a StackPanel whenever there are multiple lines or a full attendee list to show.
+        bool hasAttendeeList = !string.IsNullOrEmpty(tooltip.AttendeeList);
+
         object content;
-        if (tooltip.Lines.Count == 1)
+        if (tooltip.Lines.Count == 1 && !hasAttendeeList)
         {
             content = new TextBlock { Text = tooltip.Lines[0] };
         }
@@ -786,6 +789,18 @@ public partial class ScheduleGridView : UserControl
             var panel = new StackPanel { Spacing = 2 };
             foreach (var line in tooltip.Lines)
                 panel.Children.Add(new TextBlock { Text = line });
+
+            // Full attendee list: wrap at 300 px so it forms a readable box rather than a
+            // single long line. Separated from the time range by a small top margin.
+            if (hasAttendeeList)
+                panel.Children.Add(new TextBlock
+                {
+                    Text        = tooltip.AttendeeList,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth    = 300,
+                    Margin      = new Thickness(0, 2, 0, 0),
+                });
+
             content = panel;
         }
 

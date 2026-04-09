@@ -48,9 +48,13 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
         // room_id column kept in schema for backward compat but always NULL — room is now per-meeting in JSON
         // course_code is denormalised from Courses via subquery for easy DB browsing
         cmd.CommandText = """
-            INSERT INTO Sections (id, semester_id, course_id, room_id, section_code, course_code, data)
+            INSERT INTO Sections (id, semester_id, course_id, room_id, section_code, course_code,
+                                  semester_name, academic_year_name, data)
             VALUES ($id, $sid, $cid, NULL, $sectionCode,
                     (SELECT json_extract(data, '$.calendarCode') FROM Courses WHERE id = $cid),
+                    (SELECT name FROM Semesters WHERE id = $sid),
+                    (SELECT ay.name FROM AcademicYears ay
+                     JOIN Semesters s ON s.academic_year_id = ay.id WHERE s.id = $sid),
                     $data)
             """;
         cmd.AddParam("$id", section.Id);
@@ -69,12 +73,15 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
         // course_code is denormalised from Courses via subquery for easy DB browsing
         cmd.CommandText = """
             UPDATE Sections
-            SET semester_id  = $sid,
-                course_id    = $cid,
-                room_id      = NULL,
-                section_code = $sectionCode,
-                course_code  = (SELECT json_extract(data, '$.calendarCode') FROM Courses WHERE id = $cid),
-                data         = $data
+            SET semester_id        = $sid,
+                course_id          = $cid,
+                room_id            = NULL,
+                section_code       = $sectionCode,
+                course_code        = (SELECT json_extract(data, '$.calendarCode') FROM Courses WHERE id = $cid),
+                semester_name      = (SELECT name FROM Semesters WHERE id = $sid),
+                academic_year_name = (SELECT ay.name FROM AcademicYears ay
+                                      JOIN Semesters s ON s.academic_year_id = ay.id WHERE s.id = $sid),
+                data               = $data
             WHERE id = $id
             """;
         cmd.AddParam("$id", section.Id);

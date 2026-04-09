@@ -494,10 +494,23 @@ public partial class SectionEditViewModel : ViewModelBase
             _validatedSectionCode = section.SectionCode;
         }
 
-        // The prefix picker always starts in the "(none)" state. It is a generation aid only —
-        // the authoritative campus is SelectedCampusId, which is set from section data on load
-        // and updated programmatically by CommitSectionCode via SectionPrefixHelper.MatchPrefix.
-        SelectedPrefixOption = null;
+        // Derive the prefix picker display from the section code via MatchPrefix.
+        // We set the backing field directly to bypass OnSelectedPrefixOptionChanged, which is a
+        // generator (finds next available code, overwrites SectionCode) and must only fire on
+        // explicit user interaction — not on programmatic restore.
+        // If no prefix matches (manual entry, no-prefix institution, or code from digit-increment
+        // fallback), the picker correctly shows "(none)".
+        if (!string.IsNullOrEmpty(section.SectionCode) && IsPrefixPickerVisible)
+        {
+            var matched = SectionPrefixHelper.MatchPrefix(section.SectionCode, _prefixes);
+            _selectedPrefixOption = matched is not null
+                ? PrefixOptions.FirstOrDefault(p => p.Prefix?.Id == matched.Id)
+                : null;
+        }
+        else
+        {
+            _selectedPrefixOption = null;
+        }
 
         // Instructor multi-select with workload
         InstructorSelections = new ObservableCollection<InstructorSelectionViewModel>(

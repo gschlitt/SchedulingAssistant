@@ -45,12 +45,42 @@ public partial class MeetingEditViewModel : ViewModelBase
     public ObservableCollection<InstructorSelectionViewModel> AttendeeSelections { get; } = new();
 
     /// <summary>
-    /// Comma-joined display names of selected attendees, shown in the collapsed popup trigger.
+    /// Bulk-selection presets shown above the instructor list in the attendee popup.
+    /// Includes "Everyone", "No one", and one entry per staff type.
+    /// Checking a sentinel applies the preset and immediately resets itself.
     /// </summary>
-    public string AttendeeSummary =>
-        AttendeeSelections.Where(a => a.IsSelected).Select(a => a.DisplayName) is var names && names.Any()
-            ? string.Join(", ", names)
-            : "(none)";
+    public ObservableCollection<AttendeeSentinelViewModel> SentinelPresets { get; } = new();
+
+    /// <summary>Maximum number of attendee names shown in the collapsed popup trigger before truncation.</summary>
+    private const int AttendeeSummaryMax = 5;
+
+    /// <summary>
+    /// Up to <see cref="AttendeeSummaryMax"/> attendee names joined by ", ", followed by
+    /// " …+N more" when the list is longer. Shows "(none)" when no attendees are selected.
+    /// </summary>
+    public string AttendeeSummary
+    {
+        get
+        {
+            var selected = AttendeeSelections.Where(a => a.IsSelected).Select(a => a.DisplayName).ToList();
+            if (selected.Count == 0) return "(none)";
+            if (selected.Count <= AttendeeSummaryMax) return string.Join(", ", selected);
+            return string.Join(", ", selected.Take(AttendeeSummaryMax)) + $" …+{selected.Count - AttendeeSummaryMax} more";
+        }
+    }
+
+    /// <summary>
+    /// Full attendee list for the toggle-button tooltip. Null when ≤ <see cref="AttendeeSummaryMax"/>
+    /// attendees are selected so no tooltip appears for short lists.
+    /// </summary>
+    public string? AttendeeSummaryTooltip
+    {
+        get
+        {
+            var selected = AttendeeSelections.Where(a => a.IsSelected).Select(a => a.DisplayName).ToList();
+            return selected.Count > AttendeeSummaryMax ? string.Join(", ", selected) : null;
+        }
+    }
 
     // ── Campus ────────────────────────────────────────────────────────────────
 
@@ -106,6 +136,7 @@ public partial class MeetingEditViewModel : ViewModelBase
     /// <param name="campuses">Available campuses for the campus picker.</param>
     /// <param name="allTags">Available tags — those already on the meeting are pre-checked.</param>
     /// <param name="allResources">Available resources — those already on the meeting are pre-checked.</param>
+    /// <param name="allStaffTypes">Staff types used to build per-type preset sentinels in the attendee popup.</param>
     public MeetingEditViewModel(
         Meeting meeting,
         bool isNew,
@@ -117,7 +148,8 @@ public partial class MeetingEditViewModel : ViewModelBase
         IReadOnlyList<Room> allRooms,
         IReadOnlyList<Campus> campuses,
         IReadOnlyList<SchedulingEnvironmentValue> allTags,
-        IReadOnlyList<SchedulingEnvironmentValue> allResources)
+        IReadOnlyList<SchedulingEnvironmentValue> allResources,
+        IReadOnlyList<SchedulingEnvironmentValue> allStaffTypes)
     {
         _meeting         = meeting;
         _meetingRepo     = meetingRepo;
@@ -144,6 +176,22 @@ public partial class MeetingEditViewModel : ViewModelBase
             AttendeeSelections.Add(new InstructorSelectionViewModel(instr, selected, w));
         }
         WireSelectionSummary(AttendeeSelections, nameof(AttendeeSummary));
+        WireSelectionSummary(AttendeeSelections, nameof(AttendeeSummaryTooltip));
+
+        // Build attendee preset sentinels: universal (Everyone / No one) plus one per staff type.
+        var sentinels = new List<AttendeeSentinelViewModel>
+        {
+            new("Everyone", AttendeeSentinelKind.Everyone),
+            new("No one",   AttendeeSentinelKind.NoOne),
+        };
+        foreach (var st in allStaffTypes.OrderBy(s => s.SortOrder).ThenBy(s => s.Name))
+            sentinels.Add(new AttendeeSentinelViewModel(st.Name, AttendeeSentinelKind.StaffType, st.Id));
+
+        foreach (var sentinel in sentinels)
+        {
+            sentinel.PropertyChanged += OnSentinelPropertyChanged;
+            SentinelPresets.Add(sentinel);
+        }
 
         // Populate campuses with a leading "(none)" sentinel.
         _campuses.Add(new Campus { Id = "", Name = "(none)" });
@@ -181,6 +229,52 @@ public partial class MeetingEditViewModel : ViewModelBase
                 if (e.PropertyName == "IsSelected")
                     OnPropertyChanged(summaryPropertyName);
             };
+    }
+
+    // ── Attendee sentinel preset ──────────────────────────────────────────────
+
+    /// <summary>Guards against re-entrant property-change handling while applying a preset.</summary>
+    private bool _applyingPreset;
+
+    /// <summary>
+    /// Fired when any sentinel's <c>IsSelected</c> changes. When a sentinel is checked,
+    /// applies the bulk-selection preset to <see cref="AttendeeSelections"/> and then
+    /// immediately resets the sentinel to unchecked (it is a one-shot action, not a state).
+    /// </summary>
+    private void OnSentinelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_applyingPreset || e.PropertyName != nameof(AttendeeSentinelViewModel.IsSelected)) return;
+        var sentinel = (AttendeeSentinelViewModel)sender!;
+        if (!sentinel.IsSelected) return;
+
+        _applyingPreset = true;
+        try
+        {
+            ApplySentinelPreset(sentinel);
+        }
+        finally
+        {
+            sentinel.IsSelected = false;
+            _applyingPreset = false;
+        }
+    }
+
+    /// <summary>
+    /// Sets <c>IsSelected</c> on each instructor item according to the sentinel's kind.
+    /// </summary>
+    /// <param name="sentinel">The triggered sentinel.</param>
+    private void ApplySentinelPreset(AttendeeSentinelViewModel sentinel)
+    {
+        foreach (var item in AttendeeSelections)
+        {
+            item.IsSelected = sentinel.Kind switch
+            {
+                AttendeeSentinelKind.Everyone  => true,
+                AttendeeSentinelKind.NoOne     => false,
+                AttendeeSentinelKind.StaffType => item.Value.StaffTypeId == sentinel.StaffTypeId,
+                _                              => item.IsSelected,
+            };
+        }
     }
 
     // ── Slot management ───────────────────────────────────────────────────────
