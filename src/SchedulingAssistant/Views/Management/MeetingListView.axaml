@@ -3,6 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:b="using:SchedulingAssistant.Behaviors"
+    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
     xmlns:models="using:SchedulingAssistant.Models"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
@@ -67,23 +68,23 @@
                         Padding="6,2"
                         Command="{Binding SaveCommand}"
                         Content="Apply"
-                        FontSize="10" />
+                        FontSize="11" />
                     <Button
                         Padding="6,2"
                         Command="{Binding CancelCommand}"
                         Content="Cancel"
-                        FontSize="10" />
+                        FontSize="11" />
                 </StackPanel>
 
                 <!--  Title  -->
                 <StackPanel Spacing="1">
                     <TextBlock
-                        FontSize="10"
+                        FontSize="12"
                         Foreground="{StaticResource TextLabel}"
                         Text="Title" />
                     <TextBox
                         Height="24"
-                        FontSize="11"
+                        FontSize="12"
                         Text="{Binding Title}"
                         Watermark="Meeting title…" />
                 </StackPanel>
@@ -91,7 +92,7 @@
                 <!--  Schedule slots  -->
                 <TextBlock
                     Margin="0,4,0,0"
-                    FontSize="10"
+                    FontSize="12"
                     FontWeight="SemiBold"
                     Foreground="{StaticResource TextLabel}"
                     Text="Schedule" />
@@ -205,7 +206,7 @@
                                         ItemsSource="{Binding AvailableBlockLengthStrings}"
                                         MinimumPrefixLength="0"
                                         Text="{Binding BlockLengthText, Mode=TwoWay}"
-                                        Watermark="hrs" />
+                                        Watermark="{Binding BlockLengthWatermark}" />
 
                                     <!--  Frequency  -->
                                     <ComboBox
@@ -297,8 +298,8 @@
                 <Button
                     Padding="4,1"
                     Command="{Binding AddSlotCommand}"
-                    Content="+ Add time slot"
-                    FontSize="10" />
+                    Content="+ Add Meeting Time"
+                    FontSize="12" />
 
                 <!--  Attendees / Tags / Resources popup pickers  -->
                 <Grid Margin="0,6,0,0" ColumnDefinitions="*,4,*,4,*">
@@ -307,7 +308,7 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock
                             Margin="0,0,0,1"
-                            FontSize="10"
+                            FontSize="12"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextLabel}"
                             Text="Attendees" />
@@ -382,7 +383,7 @@
                     <StackPanel Grid.Column="2">
                         <TextBlock
                             Margin="0,0,0,1"
-                            FontSize="10"
+                            FontSize="12"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextLabel}"
                             Text="Tags" />
@@ -427,7 +428,7 @@
                     <StackPanel Grid.Column="4">
                         <TextBlock
                             Margin="0,0,0,1"
-                            FontSize="10"
+                            FontSize="12"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextLabel}"
                             Text="Resources" />
@@ -472,7 +473,7 @@
                 <!--  Campus  -->
                 <StackPanel Margin="0,6,0,0">
                     <TextBlock
-                        FontSize="10"
+                        FontSize="12"
                         Foreground="{StaticResource TextLabel}"
                         Text="Campus" />
                     <ComboBox
@@ -488,7 +489,7 @@
                 <!--  Notes  -->
                 <StackPanel Margin="0,6,0,0" Spacing="1">
                     <TextBlock
-                        FontSize="10"
+                        FontSize="12"
                         Foreground="{StaticResource TextLabel}"
                         Text="Notes" />
                     <TextBox
@@ -652,6 +653,40 @@
                                             TextWrapping="Wrap" />
                                     </ToolTip.Tip>
                                 </TextBlock>
+
+                                <!--  Tags  -->
+                                <StackPanel
+                                    IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Orientation="Horizontal"
+                                    Spacing="4">
+                                    <svg:Svg
+                                        Width="12"
+                                        Height="12"
+                                        VerticalAlignment="Center"
+                                        Path="/Assets/tag.svg" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        Foreground="{StaticResource TextFaint}"
+                                        Text="{Binding TagLine}" />
+                                </StackPanel>
+
+                                <!--  Resources  -->
+                                <StackPanel
+                                    IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Orientation="Horizontal"
+                                    Spacing="4">
+                                    <svg:Svg
+                                        Width="12"
+                                        Height="12"
+                                        VerticalAlignment="Center"
+                                        Path="/Assets/tools.svg" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        Foreground="{StaticResource TextFaint}"
+                                        Text="{Binding ResourceLine}" />
+                                </StackPanel>
 
                             </StackPanel>
 

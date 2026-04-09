@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T03:41:44.840Z
-> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T04:49:12.591Z
+> Files: 49 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -36,6 +36,7 @@
 - `prancy-launching-cosmos.md` — Plan: Attendee Preset Sentinels in Meeting Editor (~1887 tok)
 - `sequential-petting-bengio.md` — Plan: Derive and display section prefix at editor load time (~1002 tok)
 - `soft-popping-petal.md` — Plan: Human-Readable Columns for LegalStartTimes, Sections, Semesters (~1340 tok)
+- `streamed-rolling-newt.md` — Plan: Propagate BlockLengthUnit Preference to Meeting Length Fields (~628 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -225,9 +226,9 @@
 
 - `AttendeeSentinelViewModel.cs` — Discriminates the kind of bulk-selection preset a sentinel represents. (~592 tok)
 - `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1897 tok)
-- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~4468 tok)
-- `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1354 tok)
-- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~4985 tok)
+- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~4483 tok)
+- `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1685 tok)
+- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5120 tok)
 - `SaveAndBackupViewModel.cs` — ViewModel for the Save &amp; Backup flyout. Manages automated-backup configuration and restore. Back (~2403 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10661 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12230 tok)
@@ -253,7 +254,7 @@
 ## src/SchedulingAssistant/Views/Management/
 
 - `CampusListView.axaml` (~1009 tok)
-- `MeetingListView.axaml` (~9914 tok)
+- `MeetingListView.axaml` (~10472 tok)
 - `SaveAndBackupView.axaml` (~2360 tok)
 - `SaveAndBackupView.axaml.cs` — Code-behind for <see cref="SaveAndBackupView"/>. Kept minimal — only the folder-picker button handle (~616 tok)
 - `SectionListView.axaml` (~19548 tok)

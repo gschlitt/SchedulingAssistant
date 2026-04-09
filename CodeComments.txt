@@ -49,7 +49,7 @@ Key board shortcuts
 
 Use a package for error logging e.g. Sentry, Firebase Crashlytics, Bugsnag
 
-Improve human-readability of db.
+
 
 
 

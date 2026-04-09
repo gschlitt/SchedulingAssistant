@@ -155,8 +155,10 @@ public partial class MeetingListViewModel : ViewModelBase
         if (_newMeetingPlaceholder is not null)
             CloseEditor();
 
-        var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
+        var instructors    = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+        var rooms          = _roomRepo.GetAll().ToDictionary(r => r.Id);
+        var tagLookup      = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id);
+        var resourceLookup = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource).ToDictionary(v => v.Id);
 
         var selectedSemesters = _semesterContext.SelectedSemesters.ToList();
         var selectedIds       = selectedSemesters.Select(s => s.Semester.Id).ToHashSet();
@@ -182,7 +184,7 @@ public partial class MeetingListViewModel : ViewModelBase
                 .OrderBy(m => m.Title, StringComparer.OrdinalIgnoreCase);
 
             foreach (var meeting in meetings)
-                newItems.Add(new MeetingListItemViewModel(meeting, instructors, rooms, semName, semColor));
+                newItems.Add(new MeetingListItemViewModel(meeting, instructors, rooms, tagLookup, resourceLookup, semName, semColor));
         }
 
         Items = new ObservableCollection<IMeetingListEntry>(newItems);
@@ -280,8 +282,10 @@ public partial class MeetingListViewModel : ViewModelBase
         var allRooms         = _roomRepo.GetAll();
         var instructorLookup = allInstructors.ToDictionary(i => i.Id);
         var roomLookup       = allRooms.ToDictionary(r => r.Id);
+        var tagLookup        = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id);
+        var resourceLookup   = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource).ToDictionary(v => v.Id);
 
-        _newMeetingPlaceholder = new MeetingListItemViewModel(meeting, instructorLookup, roomLookup, semName, semColor)
+        _newMeetingPlaceholder = new MeetingListItemViewModel(meeting, instructorLookup, roomLookup, tagLookup, resourceLookup, semName, semColor)
         {
             IsBeingCreated = true
         };

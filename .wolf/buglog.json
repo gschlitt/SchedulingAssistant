@@ -3478,6 +3478,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-09T03:26:57.311Z"
+    },
+    {
+      "id": "bug-218",
+      "timestamp": "2026-04-09T04:42:05.947Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "Had \"hrs\"",
+      "fix": "Changed to \"{Binding BlockLengthWatermark}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T04:42:05.947Z"
+    },
+    {
+      "id": "bug-219",
+      "timestamp": "2026-04-09T04:48:39.893Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-09T04:48:39.893Z"
     }
   ]
 }

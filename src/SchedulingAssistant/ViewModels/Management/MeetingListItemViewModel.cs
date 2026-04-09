@@ -2,6 +2,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -38,6 +39,12 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
     /// </summary>
     public string? AttendeeTooltip { get; }
 
+    /// <summary>Comma-separated tag names shown on the card, or null when no tags are assigned.</summary>
+    public string? TagLine { get; }
+
+    /// <summary>Comma-separated resource names shown on the card, or null when no resources are assigned.</summary>
+    public string? ResourceLine { get; }
+
     /// <summary>Optional note preview text.</summary>
     public string? NoteLine { get; }
 
@@ -60,12 +67,16 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
     /// <param name="meeting">The meeting model to wrap.</param>
     /// <param name="instructorLookup">Instructor lookup by ID for formatting attendee names.</param>
     /// <param name="roomLookup">Room lookup by ID for formatting schedule lines.</param>
+    /// <param name="tagLookup">Tag lookup by ID for building the tag summary line.</param>
+    /// <param name="resourceLookup">Resource lookup by ID for building the resource summary line.</param>
     /// <param name="semesterName">Name of the semester (e.g. "Fall 2025") for color resolution.</param>
     /// <param name="semesterColor">Hex color of the semester, or empty to fall back to name-based lookup.</param>
     public MeetingListItemViewModel(
         Meeting meeting,
         Dictionary<string, Instructor> instructorLookup,
         Dictionary<string, Room> roomLookup,
+        Dictionary<string, SchedulingEnvironmentValue> tagLookup,
+        Dictionary<string, SchedulingEnvironmentValue> resourceLookup,
         string semesterName = "",
         string semesterColor = "")
     {
@@ -104,6 +115,18 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
             AttendeeLineBrief = AttendeeLine;
             AttendeeTooltip   = null;
         }
+
+        var tagNames = meeting.TagIds
+            .Select(id => tagLookup.TryGetValue(id, out var t) ? t.Name : null)
+            .Where(n => n is not null)
+            .ToList();
+        TagLine = tagNames.Count > 0 ? string.Join(", ", tagNames) : null;
+
+        var resourceNames = meeting.ResourceIds
+            .Select(id => resourceLookup.TryGetValue(id, out var r) ? r.Name : null)
+            .Where(n => n is not null)
+            .ToList();
+        ResourceLine = resourceNames.Count > 0 ? string.Join(", ", resourceNames) : null;
 
         NoteLine = !string.IsNullOrWhiteSpace(meeting.Notes) ? meeting.Notes : null;
     }

@@ -48,7 +48,9 @@
     <SolidColorBrush x:Key="TileFill" Color="#E2EDF8" />
     <!--  Selected fill  -->
     <SolidColorBrush x:Key="TileFillSelected" Color="{StaticResource SelectedSectionColor}" />
-    <SolidColorBrush x:Key="TileBorder" Color="#B8CCE0" />
+
+    <SolidColorBrush x:Key="TileBorder" Color="#acb4bd" />
+
     <!--  Selected border uses the accent color for clear emphasis  -->
     <SolidColorBrush x:Key="TileBorderSelected" Color="{StaticResource FilterColor}" />
     <SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />

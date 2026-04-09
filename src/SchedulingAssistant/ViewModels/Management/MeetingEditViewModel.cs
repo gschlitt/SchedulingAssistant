@@ -290,7 +290,8 @@ public partial class MeetingEditViewModel : ViewModelBase
 
     private SectionMeetingViewModel CreateSlotVm(SectionDaySchedule? existing) =>
         new(_legalStartTimes, includeSaturday: true, includeSunday: false,
-            _meetingTypes, _allRooms, existing);
+            _meetingTypes, _allRooms, existing,
+            unit: AppSettings.Current.BlockLengthUnit);
 
     // ── Save / Cancel ─────────────────────────────────────────────────────────
 
