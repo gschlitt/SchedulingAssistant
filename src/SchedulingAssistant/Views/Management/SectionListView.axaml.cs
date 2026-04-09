@@ -70,17 +70,24 @@ public partial class SectionListView : UserControl
     }
 
     /// <summary>
-    /// Brings the currently selected ListBox item into the visible area of the scroll viewer.
+    /// Brings the active editor item into the visible area of the scroll viewer.
     /// Called after the inline editor opens or closes, since the layout shift caused by
-    /// expanding/collapsing the editor form can push the selected item out of the viewport.
+    /// expanding/collapsing the editor form can push the item out of the viewport.
     /// Uses BringIntoView() which bubbles up to the outer ScrollViewer automatically.
+    /// For existing sections the list item is selected; for new Add/Copy placeholders it is
+    /// not (SelectedItem is null), so we fall back to the VM's ExpandedItem.
     /// </summary>
     private void ScrollSelectedItemIntoView()
     {
         var listBox = this.FindControl<ListBox>("SectionListBox");
-        if (listBox?.SelectedItem is null) return;
+        if (listBox is null) return;
 
-        var container = listBox.ContainerFromItem(listBox.SelectedItem) as Control;
+        // For existing sections the item is selected; for new Add/Copy placeholders it is not —
+        // fall back to the VM's ExpandedItem so the editor scrolls into view either way.
+        var target = listBox.SelectedItem ?? _vm?.ExpandedItem;
+        if (target is null) return;
+
+        var container = listBox.ContainerFromItem(target) as Control;
         container?.BringIntoView();
     }
 
