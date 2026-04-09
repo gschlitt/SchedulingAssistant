@@ -3766,6 +3766,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-09T21:28:44.235Z"
+    },
+    {
+      "id": "bug-236",
+      "timestamp": "2026-04-09T22:05:49.233Z",
+      "error_message": "Wrong reference: TileBorder should be TileExternalBorder",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"TileBorder\" instead of \"TileExternalBorder\"",
+      "fix": "Changed TileBorder → TileExternalBorder",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-04-09T22:06:23.473Z"
     }
   ]
 }

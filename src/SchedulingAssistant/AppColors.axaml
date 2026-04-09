@@ -50,6 +50,10 @@
     <SolidColorBrush x:Key="TileFillSelected" Color="{StaticResource SelectedSectionColor}" />
 
     <SolidColorBrush x:Key="TileBorder" Color="#acb4bd" />
+    <!--  External border: the outline around the entire tile card  -->
+    <SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
+    <!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->
+    <SolidColorBrush x:Key="TileInternalBorder" Color="#dce0e3" />
 
     <!--  Selected border uses the accent color for clear emphasis  -->
     <SolidColorBrush x:Key="TileBorderSelected" Color="{StaticResource FilterColor}" />

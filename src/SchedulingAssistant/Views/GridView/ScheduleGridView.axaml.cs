@@ -71,6 +71,8 @@ public partial class ScheduleGridView : UserControl
 
     private static IBrush TileFill              => Res("TileFill");
     private static IBrush TileBorder            => Res("TileBorder");
+    private static IBrush TileExternalBorder    => Res("TileExternalBorder");
+    private static IBrush TileInternalBorder    => Res("TileInternalBorder");
     private static IBrush TileBorderSelected    => Res("TileBorderSelected");
     private static IBrush UserSelectedBorder    => Res("UserSelectedSectionBorderColor");
     private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
@@ -263,7 +265,7 @@ public partial class ScheduleGridView : UserControl
                         stack.Children.Add(new Border
                         {
                             Height     = 1,
-                            Background = TileBorder,
+                            Background = TileInternalBorder,
                             Margin     = new Thickness(0, 2, 0, 2),
                         });
 
@@ -593,7 +595,7 @@ public partial class ScheduleGridView : UserControl
                         stack.Children.Add(new Border
                         {
                             Height = 1,
-                            Background = TileBorder,
+                            Background = TileInternalBorder,
                             Margin = new Thickness(0, 2, 0, 2),
                         });
 
@@ -718,7 +720,7 @@ public partial class ScheduleGridView : UserControl
                         Height          = adjustedTileH,
                         Background      = TileFill,
                         BorderBrush     = tileHasOverlay ? OverlayFrameBorder
-                                        : semesterBrush ?? TileBorder,
+                                        : semesterBrush ?? TileExternalBorder,
                         BorderThickness = tileHasOverlay ? new Thickness(2)
                                         : semesterBrush is not null ? new Thickness(3) : new Thickness(1),
                         CornerRadius    = new CornerRadius(3),

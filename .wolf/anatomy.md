@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T21:35:26.580Z
-> Files: 34 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T22:06:29.508Z
+> Files: 37 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,6 +30,7 @@
 ## ../../../.claude/plans/
 
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
+- `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
@@ -182,6 +183,7 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
+- `AppColors.axaml` (~2975 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11701 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -246,6 +248,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12146 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
