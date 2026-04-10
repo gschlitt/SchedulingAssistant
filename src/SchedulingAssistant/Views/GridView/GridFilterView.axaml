@@ -98,8 +98,8 @@
                 Orientation="Horizontal"
                 Spacing="6">
                 <CheckBox
-                    Classes="FilterBarToggle"
                     VerticalAlignment="Center"
+                    Classes="FilterBarToggle"
                     Content="Events"
                     IsChecked="{Binding ShowMeetings, Mode=TwoWay}"
                     ToolTip.Tip="Show or hide events on the schedule grid" />
@@ -127,6 +127,7 @@
                         Width="16"
                         Height="16"
                         VerticalAlignment="Center"
+                        b:HelpTip.Text="Filter the sections: Section shown are those which pass all the active filters."
                         Path="/Assets/filter-icon.svg" />
                 </StackPanel>
                 <!--  Instructor  -->
@@ -481,6 +482,7 @@
                         Width="16"
                         Height="16"
                         VerticalAlignment="Center"
+                        b:HelpTip.Text="Overlay chosen sections (regardless of filter) "
                         Path="/Assets/overlay-icon.svg" />
                 </StackPanel>
                 <!--  Overlay: Instructor  -->

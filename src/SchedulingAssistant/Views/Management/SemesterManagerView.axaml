@@ -76,12 +76,6 @@
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserSortColumns="False">
-                <DataGrid.Styles>
-                    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-                        <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
-                        <Setter Property="Opacity" Value="1" />
-                    </Style>
-                </DataGrid.Styles>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Semester" Binding="{Binding Name}" Width="*" />
                     <DataGridTemplateColumn Header="Color" Width="60" CellTemplate="{StaticResource ColorSwatchTemplate}" />

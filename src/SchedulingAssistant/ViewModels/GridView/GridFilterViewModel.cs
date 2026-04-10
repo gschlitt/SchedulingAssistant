@@ -276,7 +276,7 @@ public partial class GridFilterViewModel : ViewModelBase
         // then Unstaffed is inserted at [0], pushing Emphasize to [1].
         // Final layout: [0]=Unstaffed, [1]=Unstaffed (Emphasize), [2..]=named instructors.
         InsertSentinelItem(Instructors, ref _emphasizeUnstaffedItem, EmphasizeUnstaffedId, "Unstaffed (Emphasize)");
-        InsertSentinelItem(Instructors, ref _notStaffedItem,         NotStaffedId,         "Unstaffed");
+        InsertSentinelItem(Instructors, ref _notStaffedItem,         NotStaffedId,         "Unstaffed (Isolate)");
 
         // All rooms, subjects, campuses, section types, tags, and meeting types are shown
         // in full — not filtered to only those present in the current semester's sections.

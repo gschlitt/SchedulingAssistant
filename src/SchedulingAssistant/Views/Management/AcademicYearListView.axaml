@@ -6,12 +6,6 @@
     x:CompileBindings="False"
     x:DataType="vm:AcademicYearListViewModel">
 
-    <UserControl.Styles>
-        <Style Selector="DataGrid DataGridRow:selected">
-            <Setter Property="Background" Value="#FFE0E0E0" />
-        </Style>
-    </UserControl.Styles>
-
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Add Academic Year form (shown while EditVm is active) -->

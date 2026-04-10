@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-09T22:40:02.812Z
-> Files: 39 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T03:39:15.911Z
+> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -31,6 +31,7 @@
 
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
+- `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
 
@@ -183,6 +184,7 @@
 
 ## src/SchedulingAssistant/
 
+- `App.axaml` (~1404 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~2975 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11701 tok)
@@ -253,7 +255,14 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `AcademicYearListView.axaml` (~1214 tok)
+- `CampusListView.axaml` (~919 tok)
+- `CourseListView.axaml` (~4491 tok)
+- `InstructorListView.axaml` (~8127 tok)
+- `RoomListView.axaml` (~1467 tok)
+- `SchedulingEnvironmentListView.axaml` — Declares description (~1443 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~1620 tok)
+- `SemesterManagerView.axaml` (~1433 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

@@ -7,13 +7,6 @@
     x:CompileBindings="False"
     x:DataType="vm:CourseListViewModel">
 
-    <UserControl.Styles>
-        <Style Selector="DataGrid DataGridRow:selected">
-            <Setter Property="Background" Value="#FFE0E0E0" />
-            <!--  shaded gray  -->
-        </Style>
-    </UserControl.Styles>
-
     <Border Padding="0,0,12,12">
         <Grid Margin="10,0" ColumnDefinitions="Auto,1,*">
 

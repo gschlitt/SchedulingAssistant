@@ -93,6 +93,11 @@
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
         </Style>
 
+        <!--  DataGrid row selection: use ButtonBackground across all grids  -->
+        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
 
     </Application.Styles>
 

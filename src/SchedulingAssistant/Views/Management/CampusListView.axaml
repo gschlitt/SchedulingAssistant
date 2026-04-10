@@ -42,12 +42,6 @@
                   IsReadOnly="True"
                   CanUserSortColumns="False"
                   IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-            <DataGrid.Styles>
-                <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-                    <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
-                    <Setter Property="Opacity" Value="1" />
-                </Style>
-            </DataGrid.Styles>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name"         Binding="{Binding Name}"         Width="*" />
                 <DataGridTextColumn Header="Abbreviation" Binding="{Binding Abbreviation}"  Width="120" />

@@ -2,19 +2,15 @@
     x:Class="SchedulingAssistant.Views.Management.InstructorListView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:v="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
     x:DataType="vm:InstructorListViewModel">
 
-    <UserControl.Styles>
-        <Style Selector="DataGrid DataGridRow:selected">
-            <Setter Property="Background" Value="#FFE0E0E0" />
-            <!--  shaded gray  -->
-        </Style>
-    </UserControl.Styles>
 
-    <!--  Two-column layout: Column 0 has instructor list + workload panels | Column 1 reserved  -->
+
+    <!--  Two-column layout: Column 0 has instructor list + workload panels | Column 1 workload history  -->
     <Grid
         Margin="10,0,0,0"
         ColumnDefinitions="*,*"
@@ -174,13 +170,14 @@
                 Sorting="DataGrid_Sorting">
                 <DataGrid.Columns>
                     <DataGridTextColumn
-                        Width="*"
+                        Width="Auto"
                         Binding="{Binding FirstName}"
                         FontSize="12"
                         Header="First"
                         Tag="FirstName" />
                     <DataGridTextColumn
-                        Width="*"
+                        Width="Auto"
+                        MinWidth="200"
                         Binding="{Binding LastName}"
                         FontSize="12"
                         Header="Last"
@@ -192,18 +189,19 @@
                         Header="Init"
                         Tag="Initials" />
                     <DataGridTextColumn
-                        Width="*"
+                        Width="100"
                         Binding="{Binding StaffTypeName}"
                         FontSize="12"
                         Header="Type"
                         Tag="StaffType" />
                     <DataGridTextColumn
-                        Width="*"
+                        Width="Auto"
+                        MinWidth="200"
                         Binding="{Binding Email}"
                         FontSize="12"
                         Header="Email" />
                     <DataGridCheckBoxColumn
-                        Width="46"
+                        Width="50"
                         Binding="{Binding IsActive}"
                         Header="Active"
                         IsReadOnly="True" />
@@ -345,6 +343,7 @@
                 BorderThickness="1">
                 <StackPanel DataContext="{Binding ReleaseVm}" Spacing="8">
                     <TextBlock
+                        b:HelpTip.Text="Keep track of semester non-instructional workload (such as releases) here. Workload recorded                         here is visible in Workload View in the main window."
                         FontSize="14"
                         FontWeight="SemiBold"
                         Text="Non-instructional Workload" />
@@ -458,6 +457,7 @@
                 <ScrollViewer>
                     <StackPanel DataContext="{Binding CommitmentsVm}" Spacing="8">
                         <TextBlock
+                            b:HelpTip.Text="Keep track of time committments an instructor may have, other than scheduled teaching. Anything recorded here will show when an instructor is overlaid on Schedule Grid."
                             FontSize="14"
                             FontWeight="SemiBold"
                             Text="Scheduled Commitments" />

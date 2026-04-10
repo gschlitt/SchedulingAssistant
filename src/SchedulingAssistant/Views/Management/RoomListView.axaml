@@ -59,12 +59,6 @@
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserSortColumns="False">
-                <DataGrid.Styles>
-                    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-                        <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
-                        <Setter Property="Opacity" Value="1" />
-                    </Style>
-                </DataGrid.Styles>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Building"  Binding="{Binding Room.Building}"   Width="*" />
                     <DataGridTextColumn Header="Room #"    Binding="{Binding Room.RoomNumber}"  Width="80" />
