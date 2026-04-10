@@ -158,18 +158,17 @@
                             <MenuItem Command="{Binding NewDatabaseCommand}" Header="New…" />
                             <Separator IsVisible="{Binding RecentDatabases.Count}" />
                             <MenuItem
+                                b:CloseMenuOnClickBehavior.IsEnabled="True"
                                 Header="Recent Files"
                                 IsVisible="{Binding RecentDatabases.Count}"
                                 ItemsSource="{Binding RecentDatabases}">
-                                <MenuItem.ItemTemplate>
-                                    <DataTemplate>
-                                        <MenuItem
-                                            Command="{Binding DataContext.OpenRecentDatabaseCommand, ElementName=RootWindow}"
-                                            CommandParameter="{Binding Path}"
-                                            Header="{Binding DisplayName}"
-                                            ToolTip.Tip="{Binding Path}" />
-                                    </DataTemplate>
-                                </MenuItem.ItemTemplate>
+                                <MenuItem.Styles>
+                                    <Style Selector="MenuItem">
+                                        <Setter Property="Header" Value="{Binding DisplayName}" />
+                                        <Setter Property="Command" Value="{Binding OpenCommand}" />
+                                        <Setter Property="ToolTip.Tip" Value="{Binding Path}" />
+                                    </Style>
+                                </MenuItem.Styles>
                             </MenuItem>
                             <Separator />
                             <MenuItem Command="{Binding NavigateToShareCommand}" Header="Share…" />

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T04:30:17.340Z
-> Files: 51 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T05:13:48.124Z
+> Files: 54 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -33,6 +33,7 @@
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
+- `splendid-wandering-sun.md` — Plan: Fix Menu Staying Open After Recent File Selection (~970 tok)
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
 
@@ -188,11 +189,12 @@
 - `App.axaml` (~1404 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~2975 tok)
-- `MainWindow.axaml` — Declares applied (~12070 tok)
+- `MainWindow.axaml` — Declares applied (~12050 tok)
 - `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11787 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `CloseMenuOnClickBehavior.cs` — Attached behavior that closes the parent Menu when a child MenuItem is clicked. Avalonia 11.x does n (~583 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -227,6 +229,7 @@
 
 ## src/SchedulingAssistant/Models/
 
+- `RecentDatabaseItem.cs` — Represents a recent database file for display in the Files menu. (~187 tok)
 
 ## src/SchedulingAssistant/Services/
 
@@ -234,7 +237,7 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7487 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7524 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 

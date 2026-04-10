@@ -298,10 +298,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (File.Exists(path))
             {
+                var capturedPath = path;
                 RecentDatabases.Add(new RecentDatabaseItem
                 {
                     Path = path,
-                    DisplayName = Path.GetFileName(path)
+                    DisplayName = Path.GetFileName(path),
+                    OpenCommand = new AsyncRelayCommand(() => OpenRecentDatabase(capturedPath))
                 });
             }
         }

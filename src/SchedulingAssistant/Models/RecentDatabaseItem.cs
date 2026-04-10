@@ -1,3 +1,5 @@
+using System.Windows.Input;
+
 namespace SchedulingAssistant.Models;
 
 /// <summary>
@@ -14,4 +16,9 @@ public class RecentDatabaseItem
     /// Display name (typically the filename with extension).
     /// </summary>
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Command that opens this database. Pre-wired at construction time in MainWindowViewModel.
+    /// </summary>
+    public ICommand? OpenCommand { get; set; }
 }
