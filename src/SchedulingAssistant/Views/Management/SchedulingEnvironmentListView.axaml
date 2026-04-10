@@ -2,6 +2,7 @@
     x:Class="SchedulingAssistant.Views.Management.SchedulingEnvironmentListView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
     x:DataType="vm:SchedulingEnvironmentListViewModel">
@@ -68,6 +69,7 @@
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
 
             <DataGrid
+                b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                 Grid.Column="0"
                 AutoGenerateColumns="False"
                 CanUserSortColumns="False"
