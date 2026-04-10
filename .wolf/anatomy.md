@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T16:05:04.327Z
-> Files: 55 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T17:56:29.303Z
+> Files: 70 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,6 +30,7 @@
 ## ../../../.claude/plans/
 
 - `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
+- `fancy-singing-matsumoto.md` — Plan: Restore Focus After Keyboard Shortcuts in DataGrid Editors (~980 tok)
 - `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
@@ -191,11 +192,12 @@
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~2975 tok)
 - `MainWindow.axaml` — Declares applied (~12050 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11787 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12444 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 - `CloseMenuOnClickBehavior.cs` — Attached behavior that closes the parent Menu when a child MenuItem is clicked. Avalonia 11.x does n (~583 tok)
+- `EnterKeyCommandBehavior.cs` — Attached behavior that executes a command when the Enter key is pressed on a control. Commonly used (~672 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -245,6 +247,11 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1927 tok)
+- `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3005 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4378 tok)
+- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2573 tok)
+- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -263,12 +270,20 @@
 ## src/SchedulingAssistant/Views/Management/
 
 - `AcademicYearListView.axaml` (~1214 tok)
-- `CampusListView.axaml` (~919 tok)
-- `CourseListView.axaml` (~4634 tok)
-- `InstructorListView.axaml` (~8148 tok)
-- `RoomListView.axaml` (~1467 tok)
-- `SchedulingEnvironmentListView.axaml` — Declares description (~1477 tok)
-- `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~1620 tok)
+- `CampusListView.axaml` (~931 tok)
+- `CampusListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~595 tok)
+- `CourseListView.axaml` (~4687 tok)
+- `CourseListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1134 tok)
+- `InstructorListView.axaml` (~8160 tok)
+- `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1364 tok)
+- `MeetingListView.axaml` (~10491 tok)
+- `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1018 tok)
+- `RoomListView.axaml` (~1479 tok)
+- `RoomListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~589 tok)
+- `SchedulingEnvironmentListView.axaml` — Declares description (~1490 tok)
+- `SchedulingEnvironmentListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~962 tok)
+- `SectionListView.axaml` (~19872 tok)
+- `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2335 tok)
 - `SemesterManagerView.axaml` (~1433 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

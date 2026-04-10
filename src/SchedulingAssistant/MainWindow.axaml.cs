@@ -44,11 +44,43 @@ public partial class MainWindow : Window
         Title = $"TermPoint v{version?.Major}.{version?.Minor}.{version?.Build}";
 
         // Escape-to-close-flyout is handled declaratively by DismissBehaviors.EscapeCommand
-        // on the Window element in AXAML. The KeyDown handler below is retained only for
-        // the DEBUG-only error simulation hotkeys.
-#if DEBUG
+        // on the Window element in AXAML.
+        // Ctrl+S is handled here to save editors in management views (works globally, not dependent on focus).
         KeyDown += (_, e) =>
         {
+            // Handle Ctrl+S to save the current editor in any management view
+            if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                if (DataContext is MainWindowViewModel vm)
+                {
+                    // Always-visible panels: Section View and Meeting View
+                    if (TrySaveEditor(vm.SectionListVm?.EditVm?.SaveCommand, ref e)) return;
+                    if (TrySaveEditor(vm.MeetingListVm?.EditVm?.SaveCommand, ref e)) return;
+
+                    // Flyout panels: check the currently open flyout ViewModel
+                    if (vm.FlyoutPage is CourseListViewModel courseVm)
+                    {
+                        if (TrySaveEditor(courseVm.EditVm?.SaveCommand, ref e)) return;
+                        if (TrySaveEditor(courseVm.SubjectEditVm?.SaveCommand, ref e)) return;
+                    }
+                    else if (vm.FlyoutPage is InstructorListViewModel instructorVm)
+                    {
+                        if (TrySaveEditor(instructorVm.EditVm?.SaveCommand, ref e)) return;
+                    }
+                    else if (vm.FlyoutPage is SchedulingEnvironmentViewModel schedEnvVm)
+                    {
+                        // SelectedCategory can be SchedulingEnvironmentListViewModel, RoomListViewModel, or CampusListViewModel
+                        if (schedEnvVm.SelectedCategory is SchedulingEnvironmentListViewModel listVm)
+                            if (TrySaveEditor(listVm.EditVm?.SaveCommand, ref e)) return;
+                        if (schedEnvVm.SelectedCategory is RoomListViewModel roomVm)
+                            if (TrySaveEditor(roomVm.EditVm?.SaveCommand, ref e)) return;
+                        if (schedEnvVm.SelectedCategory is CampusListViewModel campusVm)
+                            if (TrySaveEditor(campusVm.EditVm?.SaveCommand, ref e)) return;
+                    }
+                }
+            }
+
+#if DEBUG
             // DEV-ONLY hotkeys for testing error banners. Remove before shipping.
             // Ctrl+Shift+E → simulate schedule grid error
             // Ctrl+Shift+W → simulate section list error
@@ -66,8 +98,20 @@ public partial class MainWindow : Window
                     e.Handled = true;
                 }
             }
-        };
 #endif
+        };
+    }
+
+    /// <summary>
+    /// Executes a save command if it exists and can currently execute.
+    /// Returns true if the command was executed (so the caller can short-circuit).
+    /// </summary>
+    private static bool TrySaveEditor(System.Windows.Input.ICommand? saveCommand, ref KeyEventArgs e)
+    {
+        if (saveCommand?.CanExecute(null) != true) return false;
+        saveCommand.Execute(null);
+        e.Handled = true;
+        return true;
     }
 
     // Prevents double-close when OnClosing cancels itself to run async shutdown.

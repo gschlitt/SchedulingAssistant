@@ -3830,6 +3830,374 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-10T04:30:00.269Z"
+    },
+    {
+      "id": "bug-240",
+      "timestamp": "2026-04-10T16:34:06.672Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: e.Key != Key.Return",
+      "fix": "Added guard clause: if (e.Key != Key.Return)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:34:06.672Z"
+    },
+    {
+      "id": "bug-241",
+      "timestamp": "2026-04-10T16:34:14.697Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: e.Key != Key.Return",
+      "fix": "Added guard clause: if (e.Key != Key.Return)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:34:14.697Z"
+    },
+    {
+      "id": "bug-242",
+      "timestamp": "2026-04-10T16:34:20.401Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: e.Key != Key.Return",
+      "fix": "Added guard clause: if (e.Key != Key.Return)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:34:20.401Z"
+    },
+    {
+      "id": "bug-243",
+      "timestamp": "2026-04-10T16:35:02.974Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "Condition was: if (e.Source is DataGridCell && vm.EditCommand.CanExec)",
+      "fix": "Changed to: if (e.Source is DataGridCell && vm.EditCommand.CanExec)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:35:02.974Z"
+    },
+    {
+      "id": "bug-244",
+      "timestamp": "2026-04-10T16:35:06.417Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "Condition was: if (e.Source is DataGridCell && vm.EditCommand.CanExec)",
+      "fix": "Changed to: if (e.Source is DataGridCell && vm.EditCommand.CanExec)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:35:06.417Z"
+    },
+    {
+      "id": "bug-245",
+      "timestamp": "2026-04-10T16:36:23.697Z",
+      "error_message": "Wrong operator: == should be ||",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "Used \"==\" instead of \"||\"",
+      "fix": "Changed operator == → ||",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:36:23.697Z"
+    },
+    {
+      "id": "bug-246",
+      "timestamp": "2026-04-10T16:36:31.326Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 40→51 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:36:31.326Z"
+    },
+    {
+      "id": "bug-247",
+      "timestamp": "2026-04-10T16:43:16.460Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T16:43:16.460Z"
+    },
+    {
+      "id": "bug-248",
+      "timestamp": "2026-04-10T17:00:46.272Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 51→118 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:00:46.272Z"
+    },
+    {
+      "id": "bug-249",
+      "timestamp": "2026-04-10T17:00:54.953Z",
+      "error_message": "Wrong operator: != should be ==",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "Used \"!=\" instead of \"==\"",
+      "fix": "Changed operator != → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:00:54.953Z"
+    },
+    {
+      "id": "bug-250",
+      "timestamp": "2026-04-10T17:01:02.353Z",
+      "error_message": "Wrong operator: != should be ==",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "Used \"!=\" instead of \"==\"",
+      "fix": "Changed operator != → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:01:02.353Z"
+    },
+    {
+      "id": "bug-251",
+      "timestamp": "2026-04-10T17:18:42.294Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: /// <summary>; /// Executes a save command if it exists and can currently e",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-10T17:22:36.803Z"
+    },
+    {
+      "id": "bug-252",
+      "timestamp": "2026-04-10T17:21:56.035Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "30 lines replaced/restructured",
+      "fix": "Rewrote 59→30 lines (30 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:21:56.035Z"
+    },
+    {
+      "id": "bug-253",
+      "timestamp": "2026-04-10T17:26:43.283Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Condition was: if (vm.FlyoutPage is SchedulingEnvironmentListViewMode)",
+      "fix": "Changed to: if (vm.FlyoutPage is SchedulingEnvironmentViewModel sc)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:26:43.283Z"
+    },
+    {
+      "id": "bug-254",
+      "timestamp": "2026-04-10T17:34:09.212Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "../../../.claude/plans/fancy-singing-matsumoto.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:34:09.212Z"
+    },
+    {
+      "id": "bug-255",
+      "timestamp": "2026-04-10T17:34:30.561Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: /// <summary>; /// Restores keyboard focus to the DataGrid after an editor ",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-10T17:34:36.081Z"
+    },
+    {
+      "id": "bug-256",
+      "timestamp": "2026-04-10T17:34:41.543Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: /// Restores keyboard focus to the DataGrid after an editor ; /// Called when EditVm becomes null to prevent focus from ju",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-10T17:34:50.666Z"
+    },
+    {
+      "id": "bug-257",
+      "timestamp": "2026-04-10T17:35:00.600Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: /// Restores keyboard focus to the DataGrid after an editor ; /// Called when EditVm becomes null to prevent focus from ju",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-10T17:35:08.440Z"
+    },
+    {
+      "id": "bug-258",
+      "timestamp": "2026-04-10T17:35:34.579Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 24→15 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:35:34.579Z"
+    },
+    {
+      "id": "bug-259",
+      "timestamp": "2026-04-10T17:35:37.974Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 24→15 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:35:37.974Z"
+    },
+    {
+      "id": "bug-260",
+      "timestamp": "2026-04-10T17:35:41.237Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 24→15 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:35:41.237Z"
+    },
+    {
+      "id": "bug-261",
+      "timestamp": "2026-04-10T17:42:45.805Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/RoomListView.axaml",
+      "root_cause": "Had \"\n                      ItemsSource=\"",
+      "fix": "Changed to \"RoomsDataGrid\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:42:45.805Z"
+    },
+    {
+      "id": "bug-262",
+      "timestamp": "2026-04-10T17:42:49.215Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/CampusListView.axaml",
+      "root_cause": "Had \"\n                  ItemsSource=\"",
+      "fix": "Changed to \"CampusesDataGrid\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T17:42:49.215Z"
     }
   ]
 }

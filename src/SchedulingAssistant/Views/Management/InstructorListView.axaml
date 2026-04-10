@@ -159,6 +159,7 @@
                 Tag values on each column identify which InstructorSortMode to apply.
             -->
             <DataGrid
+                x:Name="InstructorDataGrid"
                 b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                 MaxHeight="250"
                 AutoGenerateColumns="False"

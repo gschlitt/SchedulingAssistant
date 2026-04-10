@@ -117,7 +117,7 @@ public partial class CourseListViewModel : ViewModelBase
             allTags: LoadAllTags(),
             onSave: async c =>
             {
-                try { _courseRepo.Insert(c); LoadCourses(); EditVm = null; }
+                try { _courseRepo.Insert(c); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
@@ -142,7 +142,7 @@ public partial class CourseListViewModel : ViewModelBase
             allTags: LoadAllTags(),
             onSave: async c =>
             {
-                try { _courseRepo.Update(c); LoadCourses(); EditVm = null; }
+                try { _courseRepo.Update(c); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
@@ -182,7 +182,7 @@ public partial class CourseListViewModel : ViewModelBase
         SubjectEditVm = new SubjectEditViewModel(subject, isNew: true,
             onSave: async s =>
             {
-                try { _subjectRepo.Insert(s); LoadSubjects(); SubjectEditVm = null; }
+                try { _subjectRepo.Insert(s); LoadSubjects(); SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id); SubjectEditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.AddSubject"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => SubjectEditVm = null,
@@ -203,7 +203,7 @@ public partial class CourseListViewModel : ViewModelBase
         SubjectEditVm = new SubjectEditViewModel(clone, isNew: false,
             onSave: async s =>
             {
-                try { _subjectRepo.Update(s); LoadSubjects(); SubjectEditVm = null; }
+                try { _subjectRepo.Update(s); LoadSubjects(); SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id); SubjectEditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.EditSubject"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => SubjectEditVm = null,

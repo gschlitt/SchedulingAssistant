@@ -829,6 +829,7 @@
                     x:Name="SectionListBox"
                     Margin="5,0"
                     b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
+                    b:EnterKeyCommandBehavior.Command="{Binding EditCommand}"
                     Background="{StaticResource AppBackground}"
                     BorderThickness="0"
                     Classes="SectionList"

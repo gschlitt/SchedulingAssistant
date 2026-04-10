@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.ComponentModel;
@@ -18,6 +19,9 @@ public partial class SectionListView : UserControl
         // Measure content width after the control is first attached to the visual tree,
         // so the left panel column is sized to fit the section cards at startup.
         AttachedToVisualTree += (_, _) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
+
+        // Handle keyboard shortcuts: Ctrl+S to save, Esc to cancel
+        AddHandler(InputElement.KeyDownEvent, OnKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         // Note: DoubleTapped (open inline editor) and LostFocus forwarding (commit section
         // code) are handled declaratively via DoubleTapCommandBehavior and
@@ -125,5 +129,70 @@ public partial class SectionListView : UserControl
         var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
         if (requiredWidth > currentWidth + 20)
             threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
+    }
+
+    /// <summary>
+    /// Handles keyboard shortcuts for the inline section editor.
+    /// Ctrl+S: Execute SaveCommand (Apply button)
+    /// Esc: Execute CancelCommand (Cancel button)
+    /// When either command completes, focus is restored to the section list.
+    /// </summary>
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Only handle shortcuts if an editor is open
+        if (_vm?.EditVm is null)
+            return;
+
+        var sectionListBox = this.FindControl<ListBox>("SectionListBox");
+        if (sectionListBox is null)
+            return;
+
+        // Ctrl+S to save
+        if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (_vm.EditVm.SaveCommand.CanExecute(null))
+            {
+                _vm.EditVm.SaveCommand.Execute(null);
+                e.Handled = true;
+                // Restore focus to the list after editor closes
+                RestoreFocusToList(sectionListBox);
+            }
+        }
+        // Esc to cancel
+        else if (e.Key == Key.Escape)
+        {
+            if (_vm.EditVm.CancelCommand.CanExecute(null))
+            {
+                _vm.EditVm.CancelCommand.Execute(null);
+                e.Handled = true;
+                // Restore focus to the list after editor closes
+                RestoreFocusToList(sectionListBox);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Restores keyboard focus to the section list or selected item.
+    /// Called after the editor closes via keyboard shortcut to prevent focus from
+    /// moving to an unrelated element in the tab order.
+    /// </summary>
+    private void RestoreFocusToList(ListBox listBox)
+    {
+        // Defer to the next render pass so the editor has time to fully close
+        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+            () =>
+            {
+                // Focus the selected item if possible, otherwise focus the list itself
+                var selectedContainer = listBox.SelectedItem is not null
+                    ? listBox.ContainerFromItem(listBox.SelectedItem) as Control
+                    : null;
+
+                if (selectedContainer?.Focus() == true)
+                    return; // Successfully focused the item
+
+                // Fallback: focus the list itself
+                listBox.Focus();
+            },
+            Avalonia.Threading.DispatcherPriority.Normal);
     }
 }

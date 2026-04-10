@@ -302,7 +302,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             staffTypes: GetStaffTypes(),
             onSave: i =>
             {
-                try { _repo.Insert(i); Load(); EditVm = null; }
+                try { _repo.Insert(i); Load(); SelectedInstructor = Instructors.FirstOrDefault(x => x.Id == i.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Add"); _ = _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,
@@ -329,7 +329,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
             staffTypes: GetStaffTypes(),
             onSave: i =>
             {
-                try { _repo.Update(i); Load(); EditVm = null; }
+                try { _repo.Update(i); Load(); SelectedInstructor = Instructors.FirstOrDefault(x => x.Id == i.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Edit"); _ = _dialog.ShowError("The save could not be completed. Please try again."); }
             },
             onCancel: () => EditVm = null,

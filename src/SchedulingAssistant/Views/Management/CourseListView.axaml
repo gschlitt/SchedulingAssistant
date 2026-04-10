@@ -124,6 +124,7 @@
                         is Width="Auto" and naturally sizes to whatever the DataGrid needs.
                     -->
                     <DataGrid
+                        x:Name="CoursesDataGrid"
                         b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                         MaxHeight="300"
                         HorizontalAlignment="Left"
@@ -228,6 +229,8 @@
 
                         <!--  Subject list  -->
                         <DataGrid
+                            x:Name="SubjectsDataGrid"
+                            b:DoubleTapCommandBehavior.Command="{Binding EditSubjectCommand}"
                             MaxHeight="200"
                             HorizontalAlignment="Left"
                             AutoGenerateColumns="False"

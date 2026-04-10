@@ -35,7 +35,8 @@
         </ContentControl>
 
         <!-- List (shown when EditVm is null) -->
-        <DataGrid Grid.Row="1"
+        <DataGrid x:Name="CampusesDataGrid"
+                  Grid.Row="1"
                   ItemsSource="{Binding Items}"
                   SelectedItem="{Binding SelectedItem}"
                   AutoGenerateColumns="False"

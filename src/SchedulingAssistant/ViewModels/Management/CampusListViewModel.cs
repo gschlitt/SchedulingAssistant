@@ -66,7 +66,7 @@ public partial class CampusListViewModel : ViewModelBase
             SortOrder = Items.Count > 0 ? Items.Max(c => c.SortOrder) + 1 : 0
         };
         EditVm = new CampusEditViewModel(campus, isNew: true,
-            onSave: c => { _repo.Insert(c); Load(); EditVm = null; },
+            onSave: c => { _repo.Insert(c); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == c.Id); EditVm = null; },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name));
     }
@@ -84,7 +84,7 @@ public partial class CampusListViewModel : ViewModelBase
             SortOrder    = SelectedItem.SortOrder,
         };
         EditVm = new CampusEditViewModel(copy, isNew: false,
-            onSave: c => { _repo.Update(c); Load(); EditVm = null; },
+            onSave: c => { _repo.Update(c); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == c.Id); EditVm = null; },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name, excludeId: copy.Id));
     }

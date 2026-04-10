@@ -557,6 +557,7 @@
         <ListBox
             Margin="5,0"
             b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
+            b:EnterKeyCommandBehavior.Command="{Binding EditCommand}"
             Classes="MeetingList"
             DockPanel.Dock="Top"
             ItemsSource="{Binding Items}"

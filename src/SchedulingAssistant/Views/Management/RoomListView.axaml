@@ -53,7 +53,8 @@
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto"
               IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
 
-            <DataGrid Grid.Column="0"
+            <DataGrid x:Name="RoomsDataGrid"
+                      Grid.Column="0"
                       ItemsSource="{Binding Rooms}"
                       SelectedItem="{Binding SelectedRow}"
                       AutoGenerateColumns="False"

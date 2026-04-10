@@ -157,7 +157,7 @@ public partial class RoomListViewModel : ViewModelBase
         };
         EditVm = new RoomEditViewModel(room, isNew: true,
             campusOptions: BuildCampusOptions(),
-            onSave: r => { _repo.Insert(r); Load(); EditVm = null; },
+            onSave: r => { _repo.Insert(r); Load(); SelectedRow = Rooms.FirstOrDefault(x => x.Room.Id == r.Id); EditVm = null; },
             onCancel: () => EditVm = null);
     }
 
@@ -180,7 +180,7 @@ public partial class RoomListViewModel : ViewModelBase
         };
         EditVm = new RoomEditViewModel(copy, isNew: false,
             campusOptions: BuildCampusOptions(),
-            onSave: r => { _repo.Update(r); Load(); EditVm = null; _sectionListVm.Reload(); },
+            onSave: r => { _repo.Update(r); Load(); SelectedRow = Rooms.FirstOrDefault(x => x.Room.Id == r.Id); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null);
     }
 

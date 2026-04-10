@@ -69,6 +69,7 @@
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
 
             <DataGrid
+                x:Name="EnvironmentDataGrid"
                 b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                 Grid.Column="0"
                 AutoGenerateColumns="False"

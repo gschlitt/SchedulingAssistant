@@ -154,7 +154,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase
             SortOrder = Items.Count > 0 ? Items.Max(i => i.SortOrder) + 1 : 0
         };
         EditVm = new SchedulingEnvironmentEditViewModel(value, isNew: true,
-            onSave: v => { _repo.Insert(_type, v); Load(); EditVm = null; },
+            onSave: v => { _repo.Insert(_type, v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(_type, name),
             showAbbreviation: ShowAbbreviation);
@@ -172,7 +172,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase
             SortOrder = SelectedItem.SortOrder,
         };
         EditVm = new SchedulingEnvironmentEditViewModel(copy, isNew: false,
-            onSave: v => { _repo.Update(v); Load(); EditVm = null; _sectionListVm.Reload(); },
+            onSave: v => { _repo.Update(v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(_type, name, excludeId: copy.Id),
             showAbbreviation: ShowAbbreviation);
