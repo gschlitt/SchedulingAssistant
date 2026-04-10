@@ -124,6 +124,7 @@
                         is Width="Auto" and naturally sizes to whatever the DataGrid needs.
                     -->
                     <DataGrid
+                        b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                         MaxHeight="300"
                         HorizontalAlignment="Left"
                         AutoGenerateColumns="False"
