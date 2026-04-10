@@ -2,6 +2,7 @@
     x:Class="SchedulingAssistant.Views.Management.CourseListView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:v="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
@@ -81,6 +82,7 @@
                                     <!--  Tag multi-select  -->
                                     <Expander
                                         Padding="0"
+                                        b:HelpTip.Text="Tags selected here will be applied to every newly created section of the course."
                                         Header="{Binding TagSummary, StringFormat='Tags: {0}'}"
                                         IsVisible="{Binding TagSelections.Count, Converter={x:Static ObjectConverters.IsNotNull}}">
                                         <ItemsControl Margin="4,4,0,0" ItemsSource="{Binding TagSelections}">
@@ -146,8 +148,11 @@
                             <DataGridTextColumn
                                 Width="Auto"
                                 MinWidth="80"
-                                Binding="{Binding TagSummary}"
-                                Header="Tags" />
+                                Binding="{Binding TagSummary}">
+                                <DataGridTextColumn.Header>
+                                    <TextBlock b:HelpTip.Text="These tags will be applied to every section of the course" Text="Tags" />
+                                </DataGridTextColumn.Header>
+                            </DataGridTextColumn>
                             <DataGridCheckBoxColumn
                                 Width="Auto"
                                 MinWidth="55"
