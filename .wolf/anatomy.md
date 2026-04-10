@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T05:13:48.124Z
-> Files: 54 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T16:05:04.327Z
+> Files: 55 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,6 +30,7 @@
 ## ../../../.claude/plans/
 
 - `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
+- `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
@@ -263,10 +264,10 @@
 
 - `AcademicYearListView.axaml` (~1214 tok)
 - `CampusListView.axaml` (~919 tok)
-- `CourseListView.axaml` (~4491 tok)
-- `InstructorListView.axaml` (~8127 tok)
+- `CourseListView.axaml` (~4634 tok)
+- `InstructorListView.axaml` (~8148 tok)
 - `RoomListView.axaml` (~1467 tok)
-- `SchedulingEnvironmentListView.axaml` — Declares description (~1443 tok)
+- `SchedulingEnvironmentListView.axaml` — Declares description (~1477 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~1620 tok)
 - `SemesterManagerView.axaml` (~1433 tok)
 
