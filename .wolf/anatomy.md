@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T03:39:15.911Z
-> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T04:30:17.340Z
+> Files: 51 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,7 @@
 
 ## ../../../.claude/plans/
 
+- `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
@@ -187,7 +188,8 @@
 - `App.axaml` (~1404 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~2975 tok)
-- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11701 tok)
+- `MainWindow.axaml` — Declares applied (~12070 tok)
+- `MainWindow.axaml.cs` — Called whenever the window is about to close — whether via Files → Exit or the title-bar X. Cancels (~11787 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -228,10 +230,11 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12854 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12941 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7487 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 

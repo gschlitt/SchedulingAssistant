@@ -111,6 +111,19 @@ public partial class MainWindowViewModel : ViewModelBase
     // ── Save / checkout properties ────────────────────────────────────────────
 
     /// <summary>
+    /// True when the database has unsaved changes (first write since last save).
+    /// Cleared when a save completes. Drives the "Unsaved changes" indicator in the UI.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDirty;
+
+    /// <summary>Called by MainWindow when the database first becomes dirty.</summary>
+    internal void SetDirty()   => IsDirty = true;
+
+    /// <summary>Called by MainWindow when a save completes and dirty state is cleared.</summary>
+    internal void ClearDirty() => IsDirty = false;
+
+    /// <summary>
     /// Human-readable description of a save error, or null when no error is active.
     /// Shown in the save-error banner below the menu bar.
     /// </summary>

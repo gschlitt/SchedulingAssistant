@@ -364,12 +364,14 @@ public partial class MainWindow : Window
         // Wire CheckoutService events so the VM and window can react to save
         // results and session timeouts. Unsubscribe any previous handlers first
         // to avoid accumulation across database switches.
-        App.Checkout.SaveCompleted  -= OnCheckoutSaveCompleted;
-        App.Checkout.SaveFailed     -= OnCheckoutSaveFailed;
+        App.Checkout.SaveCompleted   -= OnCheckoutSaveCompleted;
+        App.Checkout.SaveFailed      -= OnCheckoutSaveFailed;
         App.Checkout.SessionTimedOut -= OnSessionTimedOut;
-        App.Checkout.SaveCompleted  += OnCheckoutSaveCompleted;
-        App.Checkout.SaveFailed     += OnCheckoutSaveFailed;
+        App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
+        App.Checkout.SaveCompleted   += OnCheckoutSaveCompleted;
+        App.Checkout.SaveFailed      += OnCheckoutSaveFailed;
         App.Checkout.SessionTimedOut += OnSessionTimedOut;
+        App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
 
         // Start autosave if it was enabled in settings.
         if (AppSettings.Current.AutoSaveEnabled)
@@ -710,7 +712,16 @@ public partial class MainWindow : Window
     private void OnCheckoutSaveCompleted()
     {
         if (DataContext is MainWindowViewModel vm)
+        {
             vm.ClearSaveError();
+            vm.ClearDirty();
+        }
+    }
+
+    private void OnCheckoutBecameDirty()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.SetDirty();
     }
 
     private void OnCheckoutSaveFailed(string message)

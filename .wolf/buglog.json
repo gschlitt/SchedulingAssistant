@@ -3798,6 +3798,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-09T22:40:02.836Z"
+    },
+    {
+      "id": "bug-238",
+      "timestamp": "2026-04-10T04:29:44.068Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T04:29:44.068Z"
+    },
+    {
+      "id": "bug-239",
+      "timestamp": "2026-04-10T04:30:00.269Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T04:30:00.269Z"
     }
   ]
 }

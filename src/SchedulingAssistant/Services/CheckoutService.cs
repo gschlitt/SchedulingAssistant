@@ -144,6 +144,12 @@ public sealed class CheckoutService : IDisposable
     public event Action? SaveCompleted;
 
     /// <summary>
+    /// Raised on the UI thread the first time the database is written to after a
+    /// checkout or save. The UI can use this to show an "Unsaved changes" indicator.
+    /// </summary>
+    public event Action? BecameDirty;
+
+    /// <summary>
     /// Raised on the UI thread when <see cref="SaveAsync"/> fails for a reason
     /// other than a transient copy error. The string parameter contains a
     /// human-readable description suitable for display to the user.
@@ -600,7 +606,10 @@ public sealed class CheckoutService : IDisposable
     public void MarkDirty()
     {
         if (Mode == CheckoutMode.WriteAccess)
+        {
             WriteDirtyMarker();
+            _dispatch(() => BecameDirty?.Invoke());
+        }
     }
 
     /// <summary>

@@ -1,44 +1,44 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
-             x:Class="SchedulingAssistant.Views.Management.SemesterManagerView"
-             x:DataType="vm:SemesterManagerViewModel"
-             x:CompileBindings="False">
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.SemesterManagerView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:SemesterManagerViewModel">
 
     <UserControl.Resources>
-        <!-- Template for the color swatch cell: a bordered rectangle that opens a ColorView flyout when clicked -->
+        <!--  Template for the color swatch cell: a bordered rectangle that opens a ColorView flyout when clicked  -->
         <DataTemplate x:Key="ColorSwatchTemplate" DataType="vm:SemesterRowViewModel">
             <Button
                 Padding="0"
-                Background="Transparent"
-                BorderThickness="0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
                 ToolTip.Tip="Click to change color">
                 <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedLeft">
                         <ColorView
                             Margin="4"
+                            HexInputAlphaPosition="Trailing"
+                            IsAccentColorsVisible="False"
                             IsAlphaEnabled="False"
                             IsAlphaVisible="False"
-                            IsColorSpectrumVisible="False"
-                            IsColorSpectrumSliderVisible="False"
-                            IsComponentSliderVisible="False"
-                            IsColorPreviewVisible="False"
                             IsColorComponentsVisible="False"
                             IsColorModelVisible="False"
-                            IsHexInputVisible="False"
-                            IsAccentColorsVisible="False"
                             IsColorPaletteVisible="True"
+                            IsColorPreviewVisible="False"
+                            IsColorSpectrumSliderVisible="True"
+                            IsColorSpectrumVisible="True"                            
                             Color="{Binding SelectedColor, Mode=TwoWay}" />
                     </Flyout>
                 </Button.Flyout>
                 <Border
                     Width="48"
                     Height="18"
-                    CornerRadius="3"
                     BorderBrush="{StaticResource SeparatorLine}"
-                    BorderThickness="1">
+                    BorderThickness="1"
+                    CornerRadius="3">
                     <Border.Background>
                         <SolidColorBrush Color="{Binding SelectedColor}" />
                     </Border.Background>
@@ -49,57 +49,84 @@
 
     <Grid RowDefinitions="Auto,*,Auto">
 
-        <!-- Inline Add / Rename form (shown when EditVm is not null) -->
+        <!--  Inline Add / Rename form (shown when EditVm is not null)  -->
         <ContentControl Grid.Row="1" Content="{Binding EditVm}">
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="{x:Type vm:SemesterEditViewModel}">
-                    <StackPanel Spacing="10" MaxWidth="320" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" />
+                    <StackPanel
+                        MaxWidth="320"
+                        HorizontalAlignment="Left"
+                        Spacing="10">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="{Binding Title}" />
                         <TextBlock Text="Name" />
                         <TextBox Text="{Binding Name}" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Apply" Command="{Binding SaveCommand}" />
-                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                            <Button Command="{Binding SaveCommand}" Content="Apply" />
+                            <Button Command="{Binding CancelCommand}" Content="Cancel" />
                         </StackPanel>
                     </StackPanel>
                 </DataTemplate>
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- List + move buttons (shown when EditVm is null) -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto"
-              IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+        <!--  List + move buttons (shown when EditVm is null)  -->
+        <Grid
+            Grid.Row="1"
+            ColumnDefinitions="*,Auto"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
 
-            <DataGrid Grid.Column="0"
-                      ItemsSource="{Binding Semesters}"
-                      SelectedItem="{Binding SelectedSemester}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      CanUserSortColumns="False">
+            <DataGrid
+                Grid.Column="0"
+                AutoGenerateColumns="False"
+                CanUserSortColumns="False"
+                IsReadOnly="True"
+                ItemsSource="{Binding Semesters}"
+                SelectedItem="{Binding SelectedSemester}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Semester" Binding="{Binding Name}" Width="*" />
-                    <DataGridTemplateColumn Header="Color" Width="60" CellTemplate="{StaticResource ColorSwatchTemplate}" />
+                    <DataGridTextColumn
+                        Width="*"
+                        Binding="{Binding Name}"
+                        Header="Semester" />
+                    <DataGridTemplateColumn
+                        Width="60"
+                        CellTemplate="{StaticResource ColorSwatchTemplate}"
+                        Header="Color" />
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!-- Up/Down ordering buttons -->
-            <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4"
-                        Margin="6,0,0,0" VerticalAlignment="Top">
-                <Button Content="↑" Command="{Binding MoveUpCommand}" />
-                <Button Content="↓" Command="{Binding MoveDownCommand}" />
+            <!--  Up/Down ordering buttons  -->
+            <StackPanel
+                Grid.Column="1"
+                Margin="6,0,0,0"
+                VerticalAlignment="Top"
+                Orientation="Vertical"
+                Spacing="4">
+                <Button Command="{Binding MoveUpCommand}" Content="↑" />
+                <Button Command="{Binding MoveDownCommand}" Content="↓" />
             </StackPanel>
 
         </Grid>
 
-        <!-- Toolbar -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
-                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
-                    IsEnabled="{Binding IsWriteEnabled}">
-            <Button Content="Add" Command="{Binding AddCommand}" />
-            <Button Content="Rename" Command="{Binding RenameCommand}"
-                    IsEnabled="{Binding SelectedSemester, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <Button Content="Delete" Command="{Binding DeleteCommand}"
-                    IsEnabled="{Binding SelectedSemester, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <!--  Toolbar  -->
+        <StackPanel
+            Grid.Row="2"
+            Margin="0,12,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Command="{Binding AddCommand}" Content="Add" />
+            <Button
+                Command="{Binding RenameCommand}"
+                Content="Rename"
+                IsEnabled="{Binding SelectedSemester, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button
+                Command="{Binding DeleteCommand}"
+                Content="Delete"
+                IsEnabled="{Binding SelectedSemester, Converter={x:Static ObjectConverters.IsNotNull}}" />
         </StackPanel>
 
     </Grid>

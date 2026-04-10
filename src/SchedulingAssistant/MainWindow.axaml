@@ -56,7 +56,6 @@
             BorderBrush="{StaticResource ChromeBorder}"
             BorderThickness="0,0,0,1">
             <DockPanel>
-
                 <!--  Academic Year and Semester pickers, right-aligned — always visible  -->
                 <StackPanel
                     Margin="8,4"
@@ -144,6 +143,7 @@
                 </StackPanel>
 
                 <!--  Nav buttons — wrap when space is tight  -->
+
                 <WrapPanel VerticalAlignment="Center" Orientation="Horizontal">
                     <!--  Files menu (far left)  -->
                     <Menu
@@ -199,13 +199,21 @@
                         Orientation="Horizontal"
                         Spacing="4">
                         <Button
-                            Padding="10,6"
+                            Padding="8,4"
                             Background="{StaticResource ButtonBackground}"
                             Command="{Binding SaveCommand}"
                             Content="Save"
                             FontSize="13"
                             FontWeight="SemiBold"
                             ToolTip.Tip="Save changes to the database" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            FontStyle="Italic"
+                            Foreground="Red"
+                            IsVisible="{Binding IsDirty}"
+                            Text="Unsaved changes"
+                            ToolTip.Tip="You have unsaved changes" />
                         <CheckBox
                             VerticalAlignment="Center"
                             Content="Auto-save"
@@ -213,6 +221,8 @@
                             IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
                             ToolTip.Tip="Automatically save at the interval configured under Settings → Save &amp; Backup" />
                     </StackPanel>
+
+
 
                     <Border
                         Width="1"
