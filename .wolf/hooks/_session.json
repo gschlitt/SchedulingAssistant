@@ -1,327 +1,56 @@
 {
-  "session_id": "session-2026-04-10-1033",
-  "started": "2026-04-10T17:33:38.127Z",
+  "session_id": "session-2026-04-11-1102",
+  "started": "2026-04-11T18:02:02.439Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs": {
-      "count": 1,
-      "tokens": 582,
-      "first_read": "2026-04-10T17:33:52.628Z"
-    },
-    "C:/Users/gregs/.claude/plans/fancy-singing-matsumoto.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:34:03.880Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs": {
-      "count": 1,
-      "tokens": 2335,
-      "first_read": "2026-04-10T17:34:18.450Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml": {
-      "count": 1,
-      "tokens": 8148,
-      "first_read": "2026-04-10T17:41:41.846Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml": {
       "count": 2,
-      "tokens": 4659,
-      "first_read": "2026-04-10T17:41:42.743Z"
+      "tokens": 3523,
+      "first_read": "2026-04-11T18:06:45.152Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml": {
-      "count": 1,
-      "tokens": 1477,
-      "first_read": "2026-04-10T17:41:44.024Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomListView.axaml.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-10T17:42:23.330Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:42:23.677Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomListView.axaml": {
-      "count": 1,
-      "tokens": 1467,
-      "first_read": "2026-04-10T17:42:37.610Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml": {
-      "count": 1,
-      "tokens": 919,
-      "first_read": "2026-04-10T17:42:38.137Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs": {
-      "count": 1,
-      "tokens": 1576,
-      "first_read": "2026-04-10T17:43:15.136Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs": {
-      "count": 2,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:53:42.623Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:54:48.018Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:55:33.845Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:55:52.578Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-10T17:56:14.949Z"
+      "first_read": "2026-04-11T18:12:38.405Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/.claude/plans/fancy-singing-matsumoto.md",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 321,
-      "at": "2026-04-10T17:34:09.206Z"
+      "tokens": 413,
+      "at": "2026-04-11T18:07:17.322Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 519,
-      "at": "2026-04-10T17:34:30.554Z"
+      "tokens": 178,
+      "at": "2026-04-11T18:08:06.912Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 425,
-      "at": "2026-04-10T17:34:36.074Z"
+      "tokens": 168,
+      "at": "2026-04-11T18:08:12.570Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 449,
-      "at": "2026-04-10T17:34:41.538Z"
+      "tokens": 216,
+      "at": "2026-04-11T18:08:17.547Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 658,
-      "at": "2026-04-10T17:34:50.661Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
-      "action": "edit",
-      "tokens": 1122,
-      "at": "2026-04-10T17:35:00.593Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
-      "action": "edit",
-      "tokens": 647,
-      "at": "2026-04-10T17:35:08.434Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
-      "action": "edit",
-      "tokens": 169,
-      "at": "2026-04-10T17:35:34.572Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
-      "action": "edit",
-      "tokens": 164,
-      "at": "2026-04-10T17:35:37.968Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
-      "action": "edit",
-      "tokens": 164,
-      "at": "2026-04-10T17:35:41.231Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
-      "action": "edit",
-      "tokens": 157,
-      "at": "2026-04-10T17:41:51.189Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml",
-      "action": "edit",
-      "tokens": 214,
-      "at": "2026-04-10T17:41:57.881Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml",
-      "action": "edit",
-      "tokens": 194,
-      "at": "2026-04-10T17:42:03.040Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml",
-      "action": "edit",
-      "tokens": 113,
-      "at": "2026-04-10T17:42:07.652Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomListView.axaml",
-      "action": "edit",
-      "tokens": 39,
-      "at": "2026-04-10T17:42:45.799Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml",
-      "action": "edit",
-      "tokens": 35,
-      "at": "2026-04-10T17:42:49.210Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomListView.axaml.cs",
-      "action": "create",
-      "tokens": 546,
-      "at": "2026-04-10T17:43:00.576Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs",
-      "action": "create",
-      "tokens": 552,
-      "at": "2026-04-10T17:43:10.929Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
-      "action": "create",
-      "tokens": 945,
-      "at": "2026-04-10T17:43:29.232Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
-      "action": "edit",
-      "tokens": 165,
-      "at": "2026-04-10T17:49:13.878Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
-      "action": "edit",
-      "tokens": 165,
-      "at": "2026-04-10T17:49:19.356Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
-      "action": "edit",
-      "tokens": 165,
-      "at": "2026-04-10T17:49:24.952Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomListView.axaml.cs",
-      "action": "edit",
-      "tokens": 165,
-      "at": "2026-04-10T17:49:30.838Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs",
-      "action": "edit",
-      "tokens": 165,
-      "at": "2026-04-10T17:49:37.072Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs",
-      "action": "edit",
-      "tokens": 88,
-      "at": "2026-04-10T17:54:37.135Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs",
-      "action": "edit",
-      "tokens": 88,
-      "at": "2026-04-10T17:54:41.788Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
-      "action": "edit",
-      "tokens": 88,
-      "at": "2026-04-10T17:54:57.721Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
-      "action": "edit",
-      "tokens": 89,
-      "at": "2026-04-10T17:55:05.909Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
-      "action": "edit",
-      "tokens": 94,
-      "at": "2026-04-10T17:55:13.970Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
-      "action": "edit",
-      "tokens": 94,
-      "at": "2026-04-10T17:55:21.139Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs",
-      "action": "edit",
-      "tokens": 38,
-      "at": "2026-04-10T17:55:41.703Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs",
-      "action": "edit",
-      "tokens": 43,
-      "at": "2026-04-10T17:55:47.493Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs",
-      "action": "edit",
-      "tokens": 37,
-      "at": "2026-04-10T17:56:03.200Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs",
-      "action": "edit",
-      "tokens": 44,
-      "at": "2026-04-10T17:56:09.198Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs",
-      "action": "edit",
-      "tokens": 36,
-      "at": "2026-04-10T17:56:21.644Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs",
-      "action": "edit",
-      "tokens": 36,
-      "at": "2026-04-10T17:56:29.324Z"
+      "tokens": 99,
+      "at": "2026-04-11T18:12:48.246Z"
     }
   ],
   "edit_counts": {
-    "../../../.claude/plans/fancy-singing-matsumoto.md": 1,
-    "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs": 4,
-    "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs": 4,
-    "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs": 5,
-    "src/SchedulingAssistant/Views/Management/InstructorListView.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/CourseListView.axaml": 2,
-    "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/RoomListView.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/CampusListView.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/RoomListView.axaml.cs": 2,
-    "src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs": 2,
-    "src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs": 2,
-    "src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs": 4,
-    "src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs": 2,
-    "src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs": 2,
-    "src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs": 2
+    "src/SchedulingAssistant/Views/WorkloadPanelView.axaml": 5
   },
-  "anatomy_hits": 8,
-  "anatomy_misses": 8,
-  "repeated_reads_warned": 2,
+  "anatomy_hits": 0,
+  "anatomy_misses": 2,
+  "repeated_reads_warned": 1,
   "cerebrum_warnings": 0,
-  "stop_count": 5
+  "stop_count": 3
 }

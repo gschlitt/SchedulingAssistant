@@ -37,6 +37,18 @@
         <Style Selector="ComboBox">
             <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
         </Style>
+
+        <!--
+            Hover tint on section cards. Because the card's Background is a local binding
+            (CardBackgroundBrush), a style setter cannot override it. Instead, a transparent
+            overlay Border (Classes="SectionCardHover") sits on top of the card content.
+            That overlay has no binding on Background, so the style setter below can apply
+            the tint freely without fighting the binding priority system.
+        -->
+        <Style Selector="ListBox.SectionList ListBoxItem:pointerover Border.SectionCardHover">
+            <Setter Property="Background" Value="#15000000" />
+        </Style>
+
     </UserControl.Styles>
 
     <UserControl.Resources>
@@ -746,7 +758,7 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,Auto,*">
 
         <!--  Error banner (only visible when LastErrorMessage is set)  -->
         <Border
@@ -860,6 +872,9 @@
                                 External Style rules cannot override /template/ setters defined in
                                 the base ControlTheme, so these must live inside this ControlTheme.
                             -->
+                            <Style Selector="^:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
                             <Style Selector="^:selected /template/ ContentPresenter">
                                 <Setter Property="Background" Value="Transparent" />
                             </Style>
@@ -910,6 +925,8 @@
                             -->
                             <Border
                                 Margin="0,2,0,2"
+                                HorizontalAlignment="Left"
+                                Width="{Binding $parent[UserControl].DataContext.UniformCardWidth}"
                                 BorderBrush="{StaticResource UserSelectedSectionBorderColor}"
                                 BorderThickness="{Binding IsSelected, Converter={StaticResource FilterBorderThicknessConverter}}"
                                 CornerRadius="5">
@@ -925,6 +942,7 @@
                                     BoxShadow="{StaticResource PanelBoxShadow}"
                                     Classes="SectionCard"
                                     CornerRadius="4">
+                                    <Grid>
                                     <StackPanel>
 
                                         <!--  Summary row (hidden while section is being created)  -->
@@ -1164,6 +1182,17 @@
                                         </Border>
 
                                     </StackPanel>
+                                    <!--
+                                        Hover overlay: transparent by default; tinted by the SectionCardHover style
+                                        when the ListBoxItem is in :pointerover state. Using a separate overlay Border
+                                        avoids competing with the CardBackgroundBrush local binding on the card's own
+                                        Border (local bindings have higher priority than style setters in Avalonia).
+                                    -->
+                                    <Border
+                                        Classes="SectionCardHover"
+                                        CornerRadius="4"
+                                        IsHitTestVisible="False" />
+                                    </Grid>
                                 </Border>
                             </Border>
                         </DataTemplate>

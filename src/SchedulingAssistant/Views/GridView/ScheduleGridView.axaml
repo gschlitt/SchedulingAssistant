@@ -39,7 +39,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,Auto,*,Auto">
 
         <!--  Row 0: Filter bar - always visible  -->
         <local:GridFilterView Grid.Row="0" DataContext="{Binding Filter}" />

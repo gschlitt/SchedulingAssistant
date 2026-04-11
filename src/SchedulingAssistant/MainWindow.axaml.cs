@@ -154,10 +154,10 @@ public partial class MainWindow : Window
         base.OnOpened(e);
         try
         {
-            var splash = new SplashScreen();
-            splash.Show();
-            await Task.Delay(2000);
-            splash.Close();
+            // var splash = new SplashScreen();
+            // splash.Show();
+            // await Task.Delay(2000);
+            // splash.Close();
 
             await RunStartupAsync();
         }
@@ -428,6 +428,18 @@ public partial class MainWindow : Window
         // Enqueue any feature announcements the user hasn't seen yet.
         if (App.Services.GetService(typeof(AppNotificationService)) is AppNotificationService notifier)
             notifier.EnqueueUnseenAnnouncements();
+
+        // Hide the loading curtain after the ScheduleGrid completes its first layout pass.
+        // SizeChanged fires after Avalonia measures and arranges the control; by then
+        // ScheduleGridView's own SizeChanged handler has already called Render(), so the
+        // canvas is fully populated before the curtain lifts.
+        EventHandler<SizeChangedEventArgs>? curtainHandler = null;
+        curtainHandler = (_, _) =>
+        {
+            ScheduleGridViewControl.SizeChanged -= curtainHandler;
+          //  LoadingCurtain.IsVisible = false;
+        };
+        ScheduleGridViewControl.SizeChanged += curtainHandler;
 
         IsVisible = true;
         Activate();

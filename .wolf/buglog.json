@@ -4198,6 +4198,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-10T17:42:49.215Z"
+    },
+    {
+      "id": "bug-263",
+      "timestamp": "2026-04-10T23:26:18.400Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 21→28 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-10T23:26:18.400Z"
+    },
+    {
+      "id": "bug-264",
+      "timestamp": "2026-04-11T17:32:49.312Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T17:32:49.312Z"
+    },
+    {
+      "id": "bug-265",
+      "timestamp": "2026-04-11T18:07:17.328Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 24→29 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T18:07:17.328Z"
     }
   ]
 }

@@ -1,4 +1,5 @@
 using Avalonia;
+using Bugsnag;
 using SchedulingAssistant.Services;
 using System;
 
@@ -12,6 +13,8 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        
+
         // ── Global exception handlers ────────────────────────────────────────
         // These are last-resort nets. They log the exception and then let the
         // normal crash path proceed (no attempt to keep the app running, since
@@ -31,6 +34,7 @@ class Program
         };
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

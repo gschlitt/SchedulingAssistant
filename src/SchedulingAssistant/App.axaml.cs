@@ -13,6 +13,7 @@ using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views.Management;
+using Bugsnag;
 
 namespace SchedulingAssistant;
 
@@ -24,7 +25,13 @@ public partial class App : Application
     /// Logger available app-wide, including before DI is fully initialized.
     /// Set early in InitializeServices so it can be used during startup error handling.
     /// </summary>
-    public static IAppLogger Logger { get; private set; } = new FileAppLogger();
+    public static IAppLogger Logger { get; private set; } = new FileAppLogger
+    {        
+        BugsnagClient = new Bugsnag.Client(new Configuration("0433a4d8b6fc7e95c43cbb6a87935c31")
+        {
+            ReleaseStage="production"
+        })
+    };
 
     /// <summary>
     /// Write-lock service, created once at app startup and shared across all DI containers.
@@ -133,7 +140,7 @@ public partial class App : Application
     {
         // Logger — singleton so the same instance is used everywhere.
         // Swap FileAppLogger for a remote/database implementation here when ready.
-        services.AddSingleton<IAppLogger>(new FileAppLogger());
+        services.AddSingleton<IAppLogger>(App.Logger);
 
         // Services
         services.AddSingleton<SemesterContext>();

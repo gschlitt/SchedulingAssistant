@@ -79,9 +79,11 @@ public partial class ScheduleGridView : UserControl
     private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
     private static IBrush RuleBrush          => Res("GridRuleLine");
     private static IBrush HourRuleBrush      => Res("GridHourRuleLine");
-    private static IBrush HeaderFill         => Res("ChromeBackground");
+    private static IBrush HeaderFill         => Res("WeekDayBar");
     private static IBrush HeaderBorder       => Res("DaySeparators");
-    private static IBrush GutterBg           => Res("GridGutterBackground");
+    private static IBrush GutterBg           => Res("TimesColumn");
+
+    private static IBrush ScheduleBackground => Res("AppBackground");
 
 
     private Canvas? _canvas;
@@ -462,7 +464,7 @@ public partial class ScheduleGridView : UserControl
         // Required for PNG export: RenderTargetBitmap renders only the canvas itself
         // (without the parent ScrollViewer's background), so any unpainted area would
         // appear transparent — and thus dark — in the exported file.
-        AddRect(_canvas, 0, 0, totalWidth, totalHeight, Brushes.White, null);
+        AddRect(_canvas, 0, 0, totalWidth, totalHeight, ScheduleBackground, null);
 
         // ── Gutter background ──────────────────────────────────────────────
         AddRect(_canvas, 0, 0, TimeGutterWidth, totalHeight, GutterBg, null);
@@ -707,6 +709,7 @@ public partial class ScheduleGridView : UserControl
                         BorderBrush     = OverlayFrameBorder,
                         BorderThickness = new Thickness(3),
                         CornerRadius    = new CornerRadius(3),
+                        BoxShadow       = new BoxShadows(new BoxShadow { Blur = 4, Spread = 0, Color = new Color(128, 0, 0, 0), OffsetX = 1, OffsetY = 2 }),
                         ClipToBounds    = false,
                         Child           = innerBorder,
                     };
@@ -724,6 +727,7 @@ public partial class ScheduleGridView : UserControl
                         BorderThickness = tileHasOverlay ? new Thickness(2)
                                         : semesterBrush is not null ? new Thickness(3) : new Thickness(1),
                         CornerRadius    = new CornerRadius(3),
+                        BoxShadow       = new BoxShadows(new BoxShadow { Blur = 4, Spread = 0, Color = new Color(128, 0, 0, 0), OffsetX = 1, OffsetY = 2 }),
                         Padding         = new Thickness(3, 2),
                         ClipToBounds    = false,
                         Child           = stack,

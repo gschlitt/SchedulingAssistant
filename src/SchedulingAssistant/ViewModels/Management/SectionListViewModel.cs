@@ -56,6 +56,14 @@ public partial class SectionListViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private bool _isAddSemesterPromptVisible;
 
+    /// <summary>
+    /// The shared width applied to all section cards so they size uniformly to the widest
+    /// card's content. Set by <c>SectionListView.UpdateColumnWidth</c> after an unconstrained
+    /// layout measurement. <see cref="double.NaN"/> while unset, which allows cards to
+    /// measure their natural content width during the measurement pass.
+    /// </summary>
+    [ObservableProperty] private double _uniformCardWidth = double.NaN;
+
     // ── Non-Observable State ───────────────────────────────────────────────────
 
     private readonly IDialogService _dialog;

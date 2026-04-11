@@ -25,12 +25,21 @@
     <Color x:Key="TileDeemphasizedTextColor">#A0AEC0</Color>
 
     <!--  ── App-wide surface hierarchy  ────────────────────────────────  -->
-    <!--  Page/window background — very light neutral blue-white  -->
-    <SolidColorBrush x:Key="AppBackground" Color="#F7F9FC" />
-    <!--  Card/panel surface — pure white for contrast against AppBackground  -->
-    <SolidColorBrush x:Key="SurfaceBackground" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="AppBackground" Color="White" />
+
+
+
+
+    <!--  Top Menu Bar  -->
+    <SolidColorBrush x:Key="MainMenu" Color="#384959" />
+
     <!--  Subtle tint — zebra rows, inactive areas, empty-state fills  -->
     <SolidColorBrush x:Key="SubtleBackground" Color="#F0F4FA" />
+
+    <!--  ── Loading curtain gradient  ───────────────────────────────────  -->
+    <Color x:Key="SplashGradientStart">#0D1F3C</Color>
+    <Color x:Key="SplashGradientEnd">#2E5899</Color>
 
     <!--  ── Primary chrome (menu bar, panel headers, grid day headers)  ──  -->
     <SolidColorBrush x:Key="ChromeBackground" Color="#EEF2F8" />
@@ -45,7 +54,7 @@
 
     <!--  ── Schedule grid tiles  ─────────────────────────────────────────  -->
     <!--  Default fill: soft tinted blue  -->
-    <SolidColorBrush x:Key="TileFill" Color="#E2EDF8" />
+    <SolidColorBrush x:Key="TileFill" Color="#d4e9fe" />
     <!--  Selected fill  -->
     <SolidColorBrush x:Key="TileFillSelected" Color="{StaticResource SelectedSectionColor}" />
 
@@ -54,6 +63,10 @@
     <SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
     <!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->
     <SolidColorBrush x:Key="TileInternalBorder" Color="#dce0e3" />
+    <SolidColorBrush x:Key="WeekDayBar" Color="White" />
+    <SolidColorBrush x:Key="TimesColumn" Color="White" />
+    <!--  Card/panel surface — pure white for contrast against AppBackground  -->
+    <SolidColorBrush x:Key="SurfaceBackground" Color="#d4e9fe" />
 
     <!--  Selected border uses the accent color for clear emphasis  -->
     <SolidColorBrush x:Key="TileBorderSelected" Color="{StaticResource FilterColor}" />
@@ -158,7 +171,7 @@
     <!--  Inline list borders — replaces raw #CCCCCC throughout views  -->
     <SolidColorBrush x:Key="InlineListBorder" Color="#E0E8F0" />
     <!--  Soft panel shadow  -->
-    <BoxShadows x:Key="PanelBoxShadow">0 1 6 0 #1A000000</BoxShadows>
+    <BoxShadows x:Key="PanelBoxShadow">1 2 4 0 #80000000</BoxShadows>
 
     <!--
         ── Wizard: section-prefix campus badge colors  ────────────────────

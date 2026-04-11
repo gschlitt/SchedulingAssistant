@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-10T17:56:29.303Z
-> Files: 70 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-11T18:12:48.225Z
+> Files: 77 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,14 +29,18 @@
 
 ## ../../../.claude/plans/
 
+- `bright-strolling-willow.md` — Plan: Style Menu Bar with MainMenu Color and White Text (~534 tok)
 - `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
 - `fancy-singing-matsumoto.md` — Plan: Restore Focus After Keyboard Shortcuts in DataGrid Editors (~980 tok)
+- `glimmering-leaping-kurzweil.md` — Fix Log Directory Path in FileAppLogger (~154 tok)
+- `glistening-snuggling-widget.md` — Plan: Fix Section Card Width, Selection Border, and Hover Highlight (~973 tok)
 - `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
 - `splendid-wandering-sun.md` — Plan: Fix Menu Staying Open After Recent File Selection (~970 tok)
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
+- `tranquil-snacking-allen.md` — Plan: Loading Curtain to Replace Splash Screen (~887 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
@@ -188,11 +192,11 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1404 tok)
+- `App.axaml` (~1420 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
-- `AppColors.axaml` (~2975 tok)
-- `MainWindow.axaml` — Declares applied (~12050 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12444 tok)
+- `AppColors.axaml` (~3064 tok)
+- `MainWindow.axaml` — Declares applied (~12365 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12619 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -237,6 +241,7 @@
 ## src/SchedulingAssistant/Services/
 
 - `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12941 tok)
+- `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\TermPoint\Logs\app-YYYY-MM-DD.log. De (~1360 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -253,6 +258,7 @@
 - `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2573 tok)
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12354 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -262,10 +268,11 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `WorkloadPanelView.axaml` (~3805 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12146 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12247 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
@@ -282,8 +289,8 @@
 - `RoomListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~589 tok)
 - `SchedulingEnvironmentListView.axaml` — Declares description (~1490 tok)
 - `SchedulingEnvironmentListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~962 tok)
-- `SectionListView.axaml` (~19872 tok)
-- `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2335 tok)
+- `SectionListView.axaml` (~20393 tok)
+- `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2650 tok)
 - `SemesterManagerView.axaml` (~1433 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

@@ -47,6 +47,14 @@ Notes:
 Agenda. (For release 1)
 
 Key board shortcuts
+Double-click to open editing in courses, instructors
+In the lists: section view, meeting view instructor view, courses view, and scheduling environment, one
+can now:
+double-click or Enter to open editor
+use arrow keys to move around.
+CtrlS to save 
+
+
 
 Use a package for error logging e.g. Sentry, Firebase Crashlytics, Bugsnag
 

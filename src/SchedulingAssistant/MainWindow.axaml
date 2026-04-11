@@ -46,7 +46,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+    <Grid  RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!--  Top menu bar  -->
         <Border
@@ -834,6 +834,35 @@
             </Panel>
 
         </Panel>
+
+        <!--  Loading curtain — spans all rows, covers menu bar and content until ScheduleGrid renders  -->
+        <!--  <Border
+        x:Name="LoadingCurtain"
+        Grid.Row="0"
+        Grid.RowSpan="5"
+        ZIndex="200">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Color="{StaticResource SplashGradientStart}" Offset="0" />
+                <GradientStop Color="{StaticResource SplashGradientEnd}" Offset="1" />
+            </LinearGradientBrush>
+        </Border.Background>
+        <StackPanel
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontSize="{StaticResource FontSizeSplash}"
+                FontWeight="ExtraLight"
+                Foreground="White"
+                Text="TermPoint" />
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontSize="{StaticResource FontSizeLarge}"
+                Foreground="#99FFFFFF"
+                Text="Loading..." />
+        </StackPanel>
+    </Border>-->
 
     </Grid>
 </Window>
