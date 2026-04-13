@@ -26,9 +26,11 @@
   
 <!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the tiles in Workload View  -->
 	
-		<!--  Tile Default fill: soft tinted blue  -->
+		<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
 			<SolidColorBrush x:Key="TileFill" Color="#d4e9fe" />
-
+  <!--WorkloadView Tiles a little darker -->
+      <SolidColorBrush x:Key="WorkloadTileFill" Color="#a9bacc"/>
+      
       <!--ScheduleGridView Tiles-->
 			<!--  External border: the outline around the entire tile card  -->
 			<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />

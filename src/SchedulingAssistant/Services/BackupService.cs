@@ -45,6 +45,7 @@ public class BackupService : IDisposable
     private readonly IAppLogger _logger;
 
     private Timer? _periodicTimer;
+    private readonly SemaphoreSlim _backupGuard = new(1, 1);
     private string? _dbName;   // filename-without-extension prefix for backup filenames
     private bool _disposed;
 
@@ -571,10 +572,32 @@ public class BackupService : IDisposable
         var interval        = TimeSpan.FromMinutes(intervalMinutes);
 
         _periodicTimer = new Timer(
-            _ => _ = PerformBackupAsync(),   // fire-and-forget; errors surfaced via LastBackupResult
+            _ => _ = RunGuardedBackupAsync(),
             null,
             interval,   // first fire after one interval (we already backed up at session start)
             interval);
+    }
+
+    /// <summary>
+    /// Runs <see cref="PerformBackupAsync"/> inside a semaphore guard so that overlapping
+    /// timer ticks are skipped rather than executing concurrently. Exceptions are caught
+    /// and logged to prevent unobserved task exceptions on the thread pool.
+    /// </summary>
+    private async Task RunGuardedBackupAsync()
+    {
+        if (!_backupGuard.Wait(0)) return; // previous backup still running — skip this tick
+        try
+        {
+            await PerformBackupAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Periodic backup failed");
+        }
+        finally
+        {
+            _backupGuard.Release();
+        }
     }
 
     /// <summary>
@@ -686,6 +709,7 @@ public class BackupService : IDisposable
         if (_disposed) return;
         _disposed = true;
         StopSession();
+        _backupGuard.Dispose();
     }
 }
 

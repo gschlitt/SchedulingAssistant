@@ -316,9 +316,15 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// Reads the existing lock file and deserializes its JSON into
-    /// <see cref="CurrentHolder"/>. All exceptions are swallowed; on failure
-    /// <see cref="CurrentHolder"/> is set to null.
+    /// <see cref="CurrentHolder"/>.
     /// </summary>
+    /// <remarks>
+    /// <para>File-not-found or permission errors set <see cref="CurrentHolder"/> to null
+    /// (the lock may have been deleted between our existence check and the read).</para>
+    /// <para>JSON corruption is treated as a stale/unreadable lock: <see cref="CurrentHolder"/>
+    /// is set to a synthetic entry with an ancient heartbeat so that stale-lock detection
+    /// sees it as expired, rather than treating corruption as "no lock held".</para>
+    /// </remarks>
     private void ReadCurrentHolder()
     {
         try
@@ -326,8 +332,24 @@ public sealed class WriteLockService : IDisposable
             var json = File.ReadAllText(_lockFilePath!);
             CurrentHolder = JsonSerializer.Deserialize<LockFileData>(json);
         }
+        catch (JsonException ex)
+        {
+            // Lock file exists but contains garbage — treat as an unreadable stale lock
+            // rather than "no lock." A synthetic holder with an ancient heartbeat ensures
+            // DetectStaleLock() and PollLockFile() classify it as stale.
+            App.Logger.LogInfo($"[WriteLockService] Lock file corrupted (treating as stale): {ex.Message}");
+            CurrentHolder = new LockFileData
+            {
+                Username  = "(corrupted)",
+                Machine   = "(corrupted)",
+                Acquired  = DateTime.MinValue,
+                Heartbeat = DateTime.MinValue,
+            };
+        }
         catch (Exception ex)
         {
+            // File not found, permission denied, or other I/O error — the lock file
+            // may have been deleted between our existence check and this read.
             App.Logger.LogInfo($"[WriteLockService] Could not read lock file: {ex.Message}");
             CurrentHolder = null;
         }

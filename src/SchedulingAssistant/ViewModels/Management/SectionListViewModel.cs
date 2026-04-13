@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SectionListViewModel : ViewModelBase
+public partial class SectionListViewModel : ViewModelBase, IDisposable
 {
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
@@ -62,6 +62,9 @@ public partial class SectionListViewModel : ViewModelBase
     /// layout measurement. <see cref="double.NaN"/> while unset, which allows cards to
     /// measure their natural content width during the measurement pass.
     /// </summary>
+    /// defunct: The goal is size uniformity, but that wasn't functioning well. Now just setting a 
+    /// minwidth on all the cards of generous width and allowing the occasional card to go over.
+
    // [ObservableProperty] private double _uniformCardWidth = double.NaN;
 
     // ── Non-Observable State ───────────────────────────────────────────────────
@@ -291,7 +294,7 @@ public partial class SectionListViewModel : ViewModelBase
         {
             App.Logger.LogError(ex, "SectionListViewModel.Load");
             SectionItems = new();
-            LastErrorMessage = "An error occurred loading the section list. See logs for details.";
+            LastErrorMessage = "An error occurred loading the section list. Please try again.";
         }
     }
 
@@ -939,6 +942,21 @@ public partial class SectionListViewModel : ViewModelBase
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
         ExpandedItem = null;
         EditVm = null;
+    }
+
+    // ── Disposal ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Unsubscribes from all singleton event sources to prevent memory leaks
+    /// when the DI container is rebuilt (e.g. on database switch).
+    /// </summary>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
+        _semesterContext.PropertyChanged -= OnSemesterContextChanged;
+        _sectionStore.SectionsChanged -= Reload;
+        _sectionStore.SelectionChanged -= OnStoreSelectionChanged;
+        _sectionStore.FilteredIdsChanged -= ApplyFilterHighlights;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────

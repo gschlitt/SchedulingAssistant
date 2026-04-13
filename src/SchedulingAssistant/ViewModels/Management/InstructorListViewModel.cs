@@ -129,6 +129,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _lockService.LockStateChanged -= OnLockStateChanged;
         _semesterContext.PropertyChanged -= OnSemesterContextPropertyChanged;
         ReleaseVm.ReleasesChanged -= RefreshWorkload;
         _workloadVm.PropertyChanged -= OnWorkloadVmPropertyChanged;

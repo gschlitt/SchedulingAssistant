@@ -110,11 +110,11 @@
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <!--  Card: white background, box shadow, and rounded corners matching section cards  -->
+                            <!--  Card:  box shadow, and rounded corners matching section cards  -->
                             <Border
                                 Classes="WorkloadCard"
                                 Margin="0,2,0,2"
-                                Background="{StaticResource SurfaceBackground}"
+                                Background="{StaticResource WorkloadTileFill}"
                                 BoxShadow="{StaticResource PanelBoxShadow}"
                                 CornerRadius="4">
                                 <Grid>

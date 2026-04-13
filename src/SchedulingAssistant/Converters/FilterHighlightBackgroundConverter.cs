@@ -18,7 +18,7 @@ public class FilterHighlightBackgroundConverter : IValueConverter
     /// <inheritdoc />
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        var key = value is true ? "FilterSelectedSectionBackgroundColor" : "SurfaceBackground";
+        var key = value is true ? "FilterSelectedSectionBackgroundColor" : "TileFill";
         if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true
             && resource is IBrush brush)
             return brush;

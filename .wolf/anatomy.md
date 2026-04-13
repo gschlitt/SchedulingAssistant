@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T17:45:24.887Z
-> Files: 92 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T22:03:01.326Z
+> Files: 97 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -41,6 +41,8 @@
 - `piped-sauteeing-rabin.md` — Plan: Disable Hover Effect When Section Editor is Open (~717 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
+- `shiny-swimming-otter.md` — UX Risk Audit: Data Loss, Surprise, and Inconvenience (~3042 tok)
+- `soft-zooming-neumann.md` — Non-UX Vulnerability Scan: Memory Leaks, Race Conditions, Resource Leaks (~2023 tok)
 - `sorted-stargazing-pie.md` — Plan: Fix WorkloadPanelView Header/Content Column Alignment (~753 tok)
 - `splendid-wandering-sun.md` — Plan: Fix Menu Staying Open After Recent File Selection (~970 tok)
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
@@ -248,8 +250,10 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~9109 tok)
 - `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~12941 tok)
 - `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\TermPoint\Logs\app-YYYY-MM-DD.log. De (~1360 tok)
+- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~5712 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -263,14 +267,15 @@
 - `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1927 tok)
 - `CommitmentsManagementViewModel.cs` — Manages the CRUD list of InstructorCommitment records for one instructor in one semester. This VM is (~2092 tok)
 - `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3005 tok)
-- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4385 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4402 tok)
 - `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1667 tok)
+- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5240 tok)
 - `ReleaseManagementViewModel.cs` — Manages CRUD for releases for a specific instructor in a specific semester. Fires ReleasesChanged ev (~1234 tok)
 - `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2573 tok)
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
 - `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~2784 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12354 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12527 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 

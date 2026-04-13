@@ -24,7 +24,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// after a save) or when <see cref="SemesterContext.SelectedSemestersChanged"/> fires.
 /// </para>
 /// </summary>
-public partial class MeetingListViewModel : ViewModelBase
+public partial class MeetingListViewModel : ViewModelBase, IDisposable
 {
     private readonly IMeetingRepository _meetingRepo;
     private readonly IInstructorRepository _instructorRepo;
@@ -439,5 +439,17 @@ public partial class MeetingListViewModel : ViewModelBase
 
         foreach (var item in Items.OfType<MeetingListItemViewModel>())
             item.IsExpanded = false;
+    }
+
+    // ── Disposal ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Unsubscribes from singleton event sources to prevent memory leaks
+    /// when the DI container is rebuilt (e.g. on database switch).
+    /// </summary>
+    public void Dispose()
+    {
+        _meetingStore.MeetingsChanged -= LoadFromStore;
+        _semesterContext.PropertyChanged -= OnSemesterContextChanged;
     }
 }
