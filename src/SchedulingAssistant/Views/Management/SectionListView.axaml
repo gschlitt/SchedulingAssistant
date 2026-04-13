@@ -46,7 +46,7 @@
             the tint freely without fighting the binding priority system.
         -->
         <Style Selector="ListBox.SectionList ListBoxItem:pointerover Border.SectionCardHover">
-            <Setter Property="Background" Value="#15000000" />
+            <Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
         </Style>
 
     </UserControl.Styles>

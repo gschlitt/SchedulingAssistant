@@ -28,7 +28,7 @@
             when the outer WorkloadCard Border is in :pointerover — same pattern as section cards.
         -->
         <Style Selector="Border.WorkloadCard:pointerover Border.WorkloadCardHover">
-            <Setter Property="Background" Value="#15000000" />
+            <Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
         </Style>
         <!--  Selected chip: violet border matching UserSelectedSectionBorderColor in other views  -->
         <Style Selector="Button.chip.selected">
@@ -41,7 +41,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
 
         <!--  Column headers  -->
         <Border
@@ -84,9 +84,8 @@
         <!--  Scrollable data area  -->
         <ScrollViewer
             Grid.Row="1"
-            Padding="8,4"
             HorizontalScrollBarVisibility="Disabled">
-            <StackPanel>
+            <StackPanel Margin="8,4">
 
                 <!--  Error banner  -->
                 <Border
@@ -242,6 +241,14 @@
 
             </StackPanel>
         </ScrollViewer>
+
+        <!--  Row 2: Footer border — fixed height matches Schedule View zoom footer  -->
+        <Border
+            Grid.Row="2"
+            Height="26"
+            Background="{StaticResource ChromeBackground}"
+            BorderBrush="{StaticResource ChromeBorder}"
+            BorderThickness="0,1,0,0" />
 
     </Grid>
 

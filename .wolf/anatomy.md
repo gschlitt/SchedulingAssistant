@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-11T18:12:48.225Z
-> Files: 77 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-12T00:03:57.526Z
+> Files: 81 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -42,6 +42,7 @@
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
 - `tranquil-snacking-allen.md` — Plan: Loading Curtain to Replace Splash Screen (~887 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
+- `vivid-nibbling-thimble.md` — Plan: Move Panel Headers Into Self-Contained UserControls (~1164 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -194,9 +195,9 @@
 
 - `App.axaml` (~1420 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
-- `AppColors.axaml` (~3064 tok)
-- `MainWindow.axaml` — Declares applied (~12365 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12619 tok)
+- `AppColors.axaml` (~3106 tok)
+- `MainWindow.axaml` — Declares applied (~9223 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12561 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -268,10 +269,13 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `WorkloadPanelView.axaml` (~3805 tok)
+- `LeftPanelView.axaml` (~2446 tok)
+- `LeftPanelView.axaml.cs` — Class: LeftPanelView (~50 tok)
+- `WorkloadPanelView.axaml` (~3894 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml` (~3533 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12247 tok)
 
 ## src/SchedulingAssistant/Views/Management/
@@ -289,7 +293,7 @@
 - `RoomListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~589 tok)
 - `SchedulingEnvironmentListView.axaml` — Declares description (~1490 tok)
 - `SchedulingEnvironmentListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~962 tok)
-- `SectionListView.axaml` (~20393 tok)
+- `SectionListView.axaml` (~20400 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2650 tok)
 - `SemesterManagerView.axaml` (~1433 tok)
 

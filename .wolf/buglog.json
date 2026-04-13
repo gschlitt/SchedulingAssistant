@@ -4246,6 +4246,118 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-11T18:07:17.328Z"
+    },
+    {
+      "id": "bug-266",
+      "timestamp": "2026-04-11T18:54:48.973Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→100 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T18:54:48.973Z"
+    },
+    {
+      "id": "bug-267",
+      "timestamp": "2026-04-11T18:56:02.602Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "84 lines replaced/restructured",
+      "fix": "Rewrote 98→9 lines (84 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T18:56:02.602Z"
+    },
+    {
+      "id": "bug-268",
+      "timestamp": "2026-04-11T22:47:38.100Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+      "root_cause": "89 lines replaced/restructured",
+      "fix": "Rewrote 104→8 lines (89 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T22:47:38.100Z"
+    },
+    {
+      "id": "bug-269",
+      "timestamp": "2026-04-11T22:48:25.651Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T22:48:25.651Z"
+    },
+    {
+      "id": "bug-270",
+      "timestamp": "2026-04-11T23:01:00.725Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"Auto,*\"",
+      "fix": "Changed to \"Auto,*,Auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-11T23:01:00.725Z"
+    },
+    {
+      "id": "bug-271",
+      "timestamp": "2026-04-12T00:03:56.738Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"#15000000\"",
+      "fix": "Changed to \"{StaticResource CardHoverOverlay}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-12T00:03:56.738Z"
+    },
+    {
+      "id": "bug-272",
+      "timestamp": "2026-04-12T00:03:57.554Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"#15000000\"",
+      "fix": "Changed to \"{StaticResource CardHoverOverlay}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-12T00:03:57.554Z"
     }
   ]
 }

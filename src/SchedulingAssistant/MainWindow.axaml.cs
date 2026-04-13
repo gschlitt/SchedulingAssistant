@@ -971,8 +971,6 @@ public partial class MainWindow : Window
         stack.Children.Add(auSeparator);
 
         // Semester — ItemsControl of colored segment pills, matching the main-window AXAML layout.
-        // SemesterLineSegment is a record (immutable), so properties are read directly in the
-        // template factory; ItemsControl rebuilds from scratch whenever the binding fires.
         var semFontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d);
         var semItemsControl = new ItemsControl
         {
@@ -1000,34 +998,6 @@ public partial class MainWindow : Window
         semItemsControl.Bind(ItemsControl.ItemsSourceProperty,
             new Binding("ScheduleGridVm.SemesterLineSegments") { Source = Vm });
         stack.Children.Add(semItemsControl);
-
-        // Subject filter separator (only shown when subject filter is active)
-        var subjectSeparator = new Border
-        {
-            Width = 1,
-            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-            Margin = new Thickness(0, 3)
-        };
-        subjectSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(subjectSeparator);
-
-        // Subject filter
-        var subjectTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        subjectTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.SubjectFilterSummary") { Source = Vm });
-        subjectTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.SubjectFilterSummary")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(subjectTextBlock);
 
         // Stats separator
         var statsSeparator = new Border
@@ -1092,6 +1062,27 @@ public partial class MainWindow : Window
         filterTextBlock.Bind(TextBlock.TextProperty, new Binding("Filter.ActiveSummary") { Source = Vm.ScheduleGridVm });
         filterTextBlock.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
         stack.Children.Add(filterTextBlock);
+
+        // Overlay
+        var overlaySeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        overlaySeparator.Bind(IsVisibleProperty, new Binding("Filter.OverlaySummary") { Source = Vm.ScheduleGridVm, Converter = StringConverters.IsNotNullOrEmpty });
+        stack.Children.Add(overlaySeparator);
+
+        var overlayTextBlock = new TextBlock
+        {
+            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
+            FontWeight = FontWeight.SemiBold,
+            Foreground = (IBrush)(this.FindResource("OverlayBadgeText") ?? Brushes.Black),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        overlayTextBlock.Bind(TextBlock.TextProperty, new Binding("Filter.OverlaySummary") { Source = Vm.ScheduleGridVm });
+        overlayTextBlock.Bind(IsVisibleProperty, new Binding("Filter.OverlaySummary") { Source = Vm.ScheduleGridVm, Converter = StringConverters.IsNotNullOrEmpty });
+        stack.Children.Add(overlayTextBlock);
 
         return stack;
     }

@@ -3,8 +3,8 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:b="using:SchedulingAssistant.Behaviors"
-    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
     xmlns:models="using:SchedulingAssistant.Models"
+    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
     x:DataType="vm:MeetingListViewModel">
@@ -19,10 +19,10 @@
 
         <!--  Card hover / selected styles  -->
         <Style Selector="ListBox.MeetingList ListBoxItem:selected Border.MeetingCard">
-            <Setter Property="Background" Value="{StaticResource TileFillSelected}" />
+            <Setter Property="Background" Value="{StaticResource TileFill}" />
         </Style>
         <Style Selector="ListBox.MeetingList ListBoxItem:pointerover:selected Border.MeetingCard">
-            <Setter Property="Background" Value="{StaticResource TileFillSelected}" />
+            <Setter Property="Background" Value="{StaticResource TileFill}" />
         </Style>
         <Style Selector="ListBox.MeetingList ListBoxItem:pointerover:not(:selected) Border.MeetingCard">
             <Setter Property="Background" Value="{StaticResource SubtleBackground}" />

@@ -86,9 +86,10 @@
             </Border>
         </ScrollViewer>
 
-        <!--  Row 3: Zoom footer  -->
+        <!--  Row 3: Zoom footer — fixed height matches Workload View footer  -->
         <Border
             Grid.Row="3"
+            Height="26"
             Padding="8,4"
             Background="{StaticResource ChromeBackground}"
             BorderBrush="{StaticResource ChromeBorder}"
