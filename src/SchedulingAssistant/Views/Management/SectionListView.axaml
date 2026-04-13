@@ -847,7 +847,8 @@
                     Classes="SectionList"
                     ItemsSource="{Binding SectionItems}"
                     SelectedItem="{Binding SelectedItem}"
-                    SelectionMode="Single">
+                    SelectionMode="Single"
+                   >
                     <!--
                         Disable virtualisation so that when an item expands to show the inline
                         editor, the panel recalculates all item positions correctly.
@@ -921,20 +922,16 @@
                                 Outer border (UserSelectedSectionBorderColor): visible when the user
                                 has actively selected this section (cross-view).
                                 Card background (CardBackgroundBrush): tinted when this section passes
-                                the active Schedule Grid filter, plain white otherwise.
+                                the active Schedule Grid filter
                             -->
                             <Border
                                 Margin="0,2,0,2"
                                 HorizontalAlignment="Left"
-                                Width="{Binding $parent[UserControl].DataContext.UniformCardWidth}"
+                                MinWidth="350"
                                 BorderBrush="{StaticResource UserSelectedSectionBorderColor}"
                                 BorderThickness="{Binding IsSelected, Converter={StaticResource FilterBorderThicknessConverter}}"
                                 CornerRadius="5">
-                                <!--
-                                    Card surface: background switches between plain white and the filter
-                                    tint via CardBackgroundBrush. Left stripe shows semester color in
-                                    multi-semester mode.
-                                -->
+                                <!--Dynamic thickness allows for Multi-semester border on the left-->
                                 <Border
                                     Background="{Binding CardBackgroundBrush}"
                                     BorderBrush="{Binding SemesterLeftBorderBrush}"
@@ -951,14 +948,14 @@
                                             <Grid
                                                 Margin="6,6,8,3"
                                                 VerticalAlignment="Center"
-                                                ColumnDefinitions="Auto,Auto,Auto,Auto,Auto">
+                                                ColumnDefinitions="Auto,Auto,130,Auto">
                                                 <!--  Collapse/expand toggle  -->
                                                 <Button
                                                     Grid.Column="0"
                                                     MinWidth="0"
                                                     MinHeight="0"
                                                     Padding="2,0"
-                                                    VerticalAlignment="Center"
+                                                    VerticalAlignment="Top"
                                                     Background="Transparent"
                                                     BorderThickness="0"
                                                     Command="{Binding ToggleCollapsedCommand}"
@@ -979,7 +976,7 @@
                                                 <!--  Heading  -->
                                                 <TextBlock
                                                     Grid.Column="1"
-                                                    Margin="2,0,8,0"
+                                                    Margin="2,0,4,0"
                                                     FontSize="12"
                                                     FontWeight="SemiBold"
                                                     Text="{Binding Heading}" />
@@ -987,18 +984,17 @@
                                                 <TextBlock
                                                     Grid.Column="2"
                                                     FontSize="12"
-                                                    IsVisible="{Binding InstructorHeaderLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    IsVisible="{Binding InstructorHeaderLine, Converter={x:Static           StringConverters.IsNotNullOrEmpty}}"
                                                     Text="{Binding InstructorHeaderLine}"
-                                                    TextTrimming="CharacterEllipsis" />
+                                                    TextWrapping="Wrap"
+                                                    />
                                                 <!--  Section Type  -->
-                                                <TextBlock
+                                                <TextBlock                                                    
                                                     Grid.Column="3"
-                                                    Margin="8,0,8,0"
+                                                    Margin="4,0,0,0"
                                                     FontSize="12"
                                                     IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding SectionTypeName}" />
-                                                <!--  Right: property indicators (when collapsed)  -->
-
+                                                    Text="{Binding SectionTypeName}" />                                               
                                             </Grid>
 
                                             <!--  Row 2: Meetings (when not collapsed)  -->
@@ -1019,8 +1015,8 @@
                                                         <ColumnDefinition Width="45" />
                                                         <ColumnDefinition Width="45" />
                                                         <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="45" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="RoomCol"/>
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock
                                                         Grid.Column="0"
@@ -1072,7 +1068,7 @@
                                                                     <ColumnDefinition Width="45" />
                                                                     <!--  Col 3: same SharedSizeGroup as the header — auto-sizes to the widest frequency value across all rows  -->
                                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
-                                                                    <ColumnDefinition Width="Auto" MinWidth="45" />
+                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="RoomCol" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
                                                                 <TextBlock

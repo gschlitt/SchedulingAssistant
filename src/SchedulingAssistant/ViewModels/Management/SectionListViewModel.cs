@@ -62,7 +62,7 @@ public partial class SectionListViewModel : ViewModelBase
     /// layout measurement. <see cref="double.NaN"/> while unset, which allows cards to
     /// measure their natural content width during the measurement pass.
     /// </summary>
-    [ObservableProperty] private double _uniformCardWidth = double.NaN;
+   // [ObservableProperty] private double _uniformCardWidth = double.NaN;
 
     // ── Non-Observable State ───────────────────────────────────────────────────
 

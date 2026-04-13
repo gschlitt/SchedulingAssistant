@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-12T00:03:57.526Z
-> Files: 81 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T03:23:17.000Z
+> Files: 82 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -38,6 +38,7 @@
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
+- `sorted-stargazing-pie.md` — Plan: Fix WorkloadPanelView Header/Content Column Alignment (~753 tok)
 - `splendid-wandering-sun.md` — Plan: Fix Menu Staying Open After Recent File Selection (~970 tok)
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
 - `tranquil-snacking-allen.md` — Plan: Loading Curtain to Replace Splash Screen (~887 tok)
@@ -271,7 +272,7 @@
 
 - `LeftPanelView.axaml` (~2446 tok)
 - `LeftPanelView.axaml.cs` — Class: LeftPanelView (~50 tok)
-- `WorkloadPanelView.axaml` (~3894 tok)
+- `WorkloadPanelView.axaml` (~4035 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 

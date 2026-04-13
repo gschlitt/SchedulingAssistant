@@ -4358,6 +4358,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-12T00:03:57.554Z"
+    },
+    {
+      "id": "bug-273",
+      "timestamp": "2026-04-13T03:12:02.692Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"10,0\"",
+      "fix": "Changed to \"14,0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T03:12:02.692Z"
+    },
+    {
+      "id": "bug-274",
+      "timestamp": "2026-04-13T03:22:55.878Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"14,0\"",
+      "fix": "Changed to \"14,0,32,0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T03:22:55.879Z"
     }
   ]
 }

@@ -28,7 +28,8 @@
 	
 		<!--  Tile Default fill: soft tinted blue  -->
 			<SolidColorBrush x:Key="TileFill" Color="#d4e9fe" />
-			
+
+      <!--ScheduleGridView Tiles-->
 			<!--  External border: the outline around the entire tile card  -->
 			<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
 			<!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->

@@ -98,13 +98,14 @@ public partial class SectionListView : UserControl
     /// <summary>
     /// Measures the desired (unconstrained) width of the section list's content stack,
     /// then widens ThreePanelGrid's left column if the content would be clipped.
-    /// Also sets <see cref="SectionListViewModel.UniformCardWidth"/> so all cards share
-    /// the width of the widest card. Cards are temporarily reset to <c>NaN</c> width before
-    /// measuring so they report their natural content width rather than their previously
-    /// assigned uniform width.
+
     /// Only runs when the editor is not open (ConditionalColumnWidthBehavior owns the
     /// column width while editing). A 20px hysteresis threshold avoids constant small
     /// adjustments as items load.
+    /// 
+    /// Cards are temporarily reset to <c>NaN</c> width before
+    /// measuring so they report their natural content width rather than their previously
+    /// assigned uniform width.
     /// </summary>
     private void UpdateColumnWidth()
     {
@@ -114,10 +115,17 @@ public partial class SectionListView : UserControl
 
         if (stackPanel is null) return;
 
+        // Do not adjust while the editor is open; ConditionalColumnWidthBehavior
+        // owns the column width in that state.
+        if (_vm?.IsEditing ?? false) return;
+
+        var mainWindow = TopLevel.GetTopLevel(this) as MainWindow;
+        if (mainWindow is null) return;
+
         // Reset uniform card width to NaN so cards report their natural content width
         // during the unconstrained measure pass below, not their previously assigned width.
-        if (_vm is not null)
-            _vm.UniformCardWidth = double.NaN;
+        //if (_vm is not null)
+        //    _vm.UniformCardWidth = double.NaN;
 
         // Force an unconstrained layout pass to get the content's natural desired width.
         stackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -126,24 +134,17 @@ public partial class SectionListView : UserControl
         // desiredWidth includes the ListBox's own horizontal margins (e.g. Margin="5,0" → +10px).
         // Cards live inside the ListBox, so subtract those margins so the card width
         // matches the natural content width rather than being inflated by the ListBox gutter.
-        var lbMargin = listBox?.Margin ?? new Thickness(0);
-        if (_vm is not null)
-            _vm.UniformCardWidth = desiredWidth - lbMargin.Left - lbMargin.Right;
+        //var lbMargin = listBox?.Margin ?? new Thickness(0);
+        //if (_vm is not null)
+         //   _vm.UniformCardWidth = desiredWidth - lbMargin.Left - lbMargin.Right;
 
         // Column width still uses the full desiredWidth (which includes the ListBox margins)
         // plus a safety margin for the scrollbar track.
         var requiredWidth = Math.Ceiling(desiredWidth) + 12;
-
-        var mainWindow = TopLevel.GetTopLevel(this) as MainWindow;
-        if (mainWindow is null) return;
-
+        
         var threePanelGrid = mainWindow.FindControl<Grid>("ThreePanelGrid");
         if (threePanelGrid is null) return;
-
-        // Do not adjust while the editor is open; ConditionalColumnWidthBehavior
-        // owns the column width in that state.
-        if (_vm?.IsEditing ?? false) return;
-
+     
         var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
         if (requiredWidth > currentWidth + 20)
             threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
