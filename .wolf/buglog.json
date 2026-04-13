@@ -4390,6 +4390,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-13T03:22:55.879Z"
+    },
+    {
+      "id": "bug-275",
+      "timestamp": "2026-04-13T04:02:11.937Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (3 removed) | Also: /// passing set. Drives <see cref=\"CardBackgroundB; [NotifyPropertyChangedFor(nameof(CardBackgroundBru",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-13T04:02:26.126Z"
+    },
+    {
+      "id": "bug-276",
+      "timestamp": "2026-04-13T04:02:53.030Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingListItemViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T04:02:53.030Z"
+    },
+    {
+      "id": "bug-277",
+      "timestamp": "2026-04-13T04:03:10.233Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"{Binding CardBackgroundBrush}\"",
+      "fix": "Changed to \"{Binding IsFilterHighlighted, Converter={StaticRe",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T04:03:10.233Z"
     }
   ]
 }

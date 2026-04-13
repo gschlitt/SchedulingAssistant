@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T03:23:17.000Z
-> Files: 82 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T04:03:28.687Z
+> Files: 87 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,7 @@
 
 ## ../../../.claude/plans/
 
+- `abstract-toasting-lake.md` — Refactor: Move IBrush properties from ViewModels to Converters (~799 tok)
 - `bright-strolling-willow.md` — Plan: Style Menu Bar with MainMenu Color and White Text (~534 tok)
 - `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
 - `fancy-singing-matsumoto.md` — Plan: Restore Focus After Keyboard Shortcuts in DataGrid Editors (~980 tok)
@@ -194,7 +195,7 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1420 tok)
+- `App.axaml` (~1470 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~3106 tok)
 - `MainWindow.axaml` — Declares applied (~9223 tok)
@@ -210,6 +211,8 @@
 
 ## src/SchedulingAssistant/Converters/
 
+- `FilterHighlightBackgroundConverter.cs` — Converts a boolean (<c>IsFilterHighlighted</c>) to a background <see cref="IBrush"/> for section car (~341 tok)
+- `SemesterBorderBrushConverter.cs` — Converts a semester name and optional hex color into the corresponding border <see cref="IBrush"/>. (~515 tok)
 
 ## src/SchedulingAssistant/Data/
 
@@ -257,9 +260,11 @@
 - `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1927 tok)
 - `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3005 tok)
 - `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4378 tok)
+- `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1667 tok)
 - `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2573 tok)
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
+- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~2784 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12354 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -288,13 +293,13 @@
 - `CourseListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1134 tok)
 - `InstructorListView.axaml` (~8160 tok)
 - `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1364 tok)
-- `MeetingListView.axaml` (~10491 tok)
+- `MeetingListView.axaml` (~10567 tok)
 - `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1018 tok)
 - `RoomListView.axaml` (~1479 tok)
 - `RoomListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~589 tok)
 - `SchedulingEnvironmentListView.axaml` — Declares description (~1490 tok)
 - `SchedulingEnvironmentListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~962 tok)
-- `SectionListView.axaml` (~20400 tok)
+- `SectionListView.axaml` (~20453 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2650 tok)
 - `SemesterManagerView.axaml` (~1433 tok)
 

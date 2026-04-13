@@ -1,9 +1,7 @@
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
-using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -58,11 +56,11 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
     /// </summary>
     [ObservableProperty] private bool _isBeingCreated;
 
-    /// <summary>
-    /// Left-border brush for this event's semester, resolved from AppColors.
-    /// Used in multi-semester view to visually indicate semester membership.
-    /// </summary>
-    public IBrush? SemesterLeftBorderBrush { get; }
+    /// <summary>Semester name (e.g. "Fall 2025") for multi-semester border color resolution.</summary>
+    public string SemesterName { get; }
+
+    /// <summary>Hex color override for the semester border (e.g. "#C65D1E"), or empty.</summary>
+    public string SemesterColor { get; }
 
     /// <param name="meeting">The meeting model to wrap.</param>
     /// <param name="instructorLookup">Instructor lookup by ID for formatting attendee names.</param>
@@ -81,7 +79,8 @@ public partial class MeetingListItemViewModel : ObservableObject, IMeetingListEn
         string semesterColor = "")
     {
         Meeting = meeting;
-        SemesterLeftBorderBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(semesterName, semesterColor);
+        SemesterName = semesterName;
+        SemesterColor = semesterColor;
 
         ScheduleLines = meeting.Schedule
             .OrderBy(s => s.Day).ThenBy(s => s.StartMinutes)

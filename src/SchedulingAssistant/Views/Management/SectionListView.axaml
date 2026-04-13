@@ -933,12 +933,17 @@
                                 CornerRadius="5">
                                 <!--Dynamic thickness allows for Multi-semester border on the left-->
                                 <Border
-                                    Background="{Binding CardBackgroundBrush}"
-                                    BorderBrush="{Binding SemesterLeftBorderBrush}"
+                                    Background="{Binding IsFilterHighlighted, Converter={StaticResource FilterHighlightBackgroundConverter}}"
                                     BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                                     BoxShadow="{StaticResource PanelBoxShadow}"
                                     Classes="SectionCard"
                                     CornerRadius="4">
+                                    <Border.BorderBrush>
+                                        <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+                                            <Binding Path="SemesterName" />
+                                            <Binding Path="SemesterColor" />
+                                        </MultiBinding>
+                                    </Border.BorderBrush>
                                     <Grid>
                                     <StackPanel>
 

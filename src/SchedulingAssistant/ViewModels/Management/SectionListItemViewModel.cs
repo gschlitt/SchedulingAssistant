@@ -1,9 +1,6 @@
-using Avalonia;
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
-using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -34,33 +31,11 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     /// <summary>
     /// True when the Schedule Grid has an active filter and this section's ID is in the
-    /// passing set. Drives <see cref="CardBackgroundBrush"/> to show the filter tint.
+    /// passing set. Drives card background tint via <c>FilterHighlightBackgroundConverter</c>.
     /// Set externally by <see cref="SectionListViewModel.ApplyFilterHighlights"/>.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CardBackgroundBrush))]
     private bool _isFilterHighlighted;
-
-    /// <summary>
-    /// Card surface background: <c>FilterSelectedSectionBackgroundColor</c> when this section
-    /// passes the active Schedule Grid filter, <c>SurfaceBackground</c> otherwise.
-    /// </summary>
-    public IBrush CardBackgroundBrush =>
-        IsFilterHighlighted ? ResolveAppBrush("FilterSelectedSectionBackgroundColor")
-                            : ResolveAppBrush("SurfaceBackground");
-
-    /// <summary>
-    /// Looks up a named <see cref="IBrush"/> from the application-level resource dictionary.
-    /// Returns <see cref="Brushes.White"/> if the key is not found or the value is not a brush.
-    /// </summary>
-    /// <param name="key">The resource key defined in AppColors.axaml.</param>
-    private static IBrush ResolveAppBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(key, null, out var value) == true
-            && value is IBrush brush)
-            return brush;
-        return Brushes.White;
-    }
 
     /// <summary>
     /// True when this section is the currently selected section (from any view — Section List,
@@ -85,11 +60,11 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     public string SortKeyInstructor { get; }
     public string SortKeySectionType { get; }
 
-    /// <summary>
-    /// Left-border brush for this section's semester, resolved from AppColors.
-    /// Used in multi-semester view to visually indicate semester membership.
-    /// </summary>
-    public IBrush? SemesterLeftBorderBrush { get; }
+    /// <summary>Semester name (e.g. "Fall 2025") for multi-semester border color resolution.</summary>
+    public string SemesterName { get; }
+
+    /// <summary>Hex color override for the semester border (e.g. "#C65D1E"), or empty.</summary>
+    public string SemesterColor { get; }
 
     private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -109,8 +84,8 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     {
         Section = section;
 
-        // Resolve semester color: hex color takes precedence, fall back to name-based lookup
-        SemesterLeftBorderBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(semesterName, semesterColor);
+        SemesterName = semesterName;
+        SemesterColor = semesterColor;
 
         // Compute sort keys for instructor and section type
         var instructorNames = section.InstructorAssignments
@@ -233,26 +208,6 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     [RelayCommand]
     private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
-
-    /// <summary>
-    /// Maps a semester name to its corresponding AppColors border brush key.
-    /// </summary>
-    private static string GetSemesterBorderKey(string semesterName)
-    {
-        if (string.IsNullOrEmpty(semesterName))
-            return "FallBorder";
-
-        var firstWord = semesterName.Split(' ')[0];
-        return firstWord switch
-        {
-            "Fall" => "FallBorder",
-            "Winter" => "WinterBorder",
-            "Early" => "EarlySummerBorder",
-            "Summer" => "SummerBorder",
-            "Late" => "LateSummerBorder",
-            _ => "FallBorder"
-        };
-    }
 
     private static string FormatMinutes(int minutes) =>
         $"{minutes / 60:D2}{minutes % 60:D2}";

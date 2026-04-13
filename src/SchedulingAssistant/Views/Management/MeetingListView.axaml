@@ -611,11 +611,16 @@
                         Margin="0,2,0,2"
                         Padding="0"
                         Background="{StaticResource SurfaceBackground}"
-                        BorderBrush="{Binding SemesterLeftBorderBrush}"
                         BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                         BoxShadow="{StaticResource PanelBoxShadow}"
                         Classes="MeetingCard"
                         CornerRadius="4">
+                        <Border.BorderBrush>
+                            <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+                                <Binding Path="SemesterName" />
+                                <Binding Path="SemesterColor" />
+                            </MultiBinding>
+                        </Border.BorderBrush>
                         <StackPanel Margin="6,4,6,4" Spacing="0">
 
                             <!--

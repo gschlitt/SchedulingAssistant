@@ -25,6 +25,8 @@
             <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
             <conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
             <conv:FilterBorderThicknessConverter x:Key="FilterBorderThicknessConverter" />
+            <conv:FilterHighlightBackgroundConverter x:Key="FilterHighlightBackgroundConverter" />
+            <conv:SemesterBorderBrushConverter x:Key="SemesterBorderBrushConverter" />
         </ResourceDictionary>
     </Application.Resources>
 
