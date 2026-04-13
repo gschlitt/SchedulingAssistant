@@ -1192,7 +1192,8 @@
                                     <Border
                                         Classes="SectionCardHover"
                                         CornerRadius="4"
-                                        IsHitTestVisible="False" />
+                                        IsHitTestVisible="False"
+                                        IsVisible="{Binding IsExpanded, Converter={StaticResource NotConverter}}" />
                                     </Grid>
                                 </Border>
                             </Border>

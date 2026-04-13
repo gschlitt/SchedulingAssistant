@@ -4438,6 +4438,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-13T04:03:10.233Z"
+    },
+    {
+      "id": "bug-278",
+      "timestamp": "2026-04-13T04:13:41.456Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/piped-sauteeing-rabin.md",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 4→22 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T04:13:41.456Z"
     }
   ]
 }

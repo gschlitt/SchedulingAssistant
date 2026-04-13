@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T04:03:28.687Z
-> Files: 87 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T04:14:51.432Z
+> Files: 89 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -37,6 +37,7 @@
 - `glistening-snuggling-widget.md` — Plan: Fix Section Card Width, Selection Border, and Hover Highlight (~973 tok)
 - `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
+- `piped-sauteeing-rabin.md` — Plan: Disable Hover Effect When Section Editor is Open (~717 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
 - `rustling-splashing-hickey.md` — Plan: Fix Instructor List Selection Color (~322 tok)
 - `sorted-stargazing-pie.md` — Plan: Fix WorkloadPanelView Header/Content Column Alignment (~753 tok)
@@ -195,7 +196,7 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1470 tok)
+- `App.axaml` (~1485 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~3106 tok)
 - `MainWindow.axaml` — Declares applied (~9223 tok)
@@ -212,6 +213,7 @@
 ## src/SchedulingAssistant/Converters/
 
 - `FilterHighlightBackgroundConverter.cs` — Converts a boolean (<c>IsFilterHighlighted</c>) to a background <see cref="IBrush"/> for section car (~341 tok)
+- `NotConverter.cs` — Converts a boolean value to its logical negation. <c>true</c> → <c>false</c>; <c>false</c> → <c>true (~207 tok)
 - `SemesterBorderBrushConverter.cs` — Converts a semester name and optional hex color into the corresponding border <see cref="IBrush"/>. (~515 tok)
 
 ## src/SchedulingAssistant/Data/
@@ -299,7 +301,7 @@
 - `RoomListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~589 tok)
 - `SchedulingEnvironmentListView.axaml` — Declares description (~1490 tok)
 - `SchedulingEnvironmentListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~962 tok)
-- `SectionListView.axaml` (~20453 tok)
+- `SectionListView.axaml` (~20484 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2650 tok)
 - `SemesterManagerView.axaml` (~1433 tok)
 
