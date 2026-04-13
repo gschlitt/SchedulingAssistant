@@ -4486,6 +4486,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-13T22:03:01.384Z"
+    },
+    {
+      "id": "bug-281",
+      "timestamp": "2026-04-13T22:40:31.222Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../.claude/plans/flickering-bubbling-curry.md",
+      "root_cause": "Had \"Use Apply to save your changes, or press Escape t",
+      "fix": "Changed to \"Use Apply to save your changes, or press Cancel o",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T22:40:31.222Z"
+    },
+    {
+      "id": "bug-282",
+      "timestamp": "2026-04-13T22:53:31.814Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: !IsEditing",
+      "fix": "Added guard clause: if (!IsEditing)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T22:53:31.814Z"
+    },
+    {
+      "id": "bug-283",
+      "timestamp": "2026-04-13T22:53:36.333Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Condition was: if (_semesterContext.IsMultiSemesterMode)",
+      "fix": "Changed to: if (await IsEditorBusy()",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-13T22:54:05.734Z"
+    },
+    {
+      "id": "bug-284",
+      "timestamp": "2026-04-13T22:53:41.459Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: private async Task Edit(); if (await IsEditorBusy()) return; | Also: public async Task EditItem(SectionListItemViewModel item); // Guard: if a different editor is open, tell the user to cl | Also: /// async void is intentional: this method is assigned as an; /// and must match that signature; exceptions are surfaced v",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-04-13T22:54:01.762Z"
+    },
+    {
+      "id": "bug-285",
+      "timestamp": "2026-04-13T23:02:06.944Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:02:06.944Z"
+    },
+    {
+      "id": "bug-286",
+      "timestamp": "2026-04-13T23:02:22.748Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Had \" (\"",
+      "fix": "Changed to \" (\\\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:02:22.748Z"
     }
   ]
 }

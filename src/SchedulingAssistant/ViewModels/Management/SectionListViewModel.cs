@@ -523,8 +523,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     // ── Add ────────────────────────────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
-    private void Add()
+    private async Task Add()
     {
+        if (await IsEditorBusy()) return;
         if (_semesterContext.IsMultiSemesterMode)
         {
             // If a section is selected, default to its semester without prompting.
@@ -569,8 +570,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// </summary>
     /// <param name="semesterId">The ID of the semester to add to.</param>
     [RelayCommand(CanExecute = nameof(CanWrite))]
-    private void AddToSemester(string semesterId)
+    private async Task AddToSemester(string semesterId)
     {
+        if (await IsEditorBusy()) return;
         IsAddSemesterPromptVisible = false;
 
         var section = new Section { SemesterId = semesterId };
@@ -778,8 +780,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     // ── Edit ───────────────────────────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
-    private void Edit()
+    private async Task Edit()
     {
+        if (await IsEditorBusy()) return;
         if (SelectedSectionItem is null) return;
         OpenEdit(CloneSection(SelectedSectionItem.Section), isNew: false, listItem: SelectedSectionItem);
     }
@@ -795,7 +798,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private void CommitEditSectionCode() => EditVm?.CommitSectionCode();
 
     /// <summary>Called from the view when a list item is double-tapped.</summary>
-    public void EditItem(SectionListItemViewModel item)
+    public async Task EditItem(SectionListItemViewModel item)
     {
         SelectedItem = item;
 
@@ -804,19 +807,24 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // SectionEditViewModel, causing ComboBox binding races that blank out selections.
         if (ExpandedItem == item) return;
 
+        // Guard: if a different editor is open, tell the user to close it first.
+        if (await IsEditorBusy()) return;
+
         OpenEdit(CloneSection(item.Section), isNew: false, listItem: item);
     }
 
     /// <summary>
     /// Called from the grid when a tile is double-clicked.
     /// Selects the item in the list and opens its inline editor.
+    /// async void is intentional: this method is assigned as an <see cref="Action{T}"/> delegate
+    /// and must match that signature; exceptions are surfaced via the Avalonia dispatcher.
     /// </summary>
-    public void EditSectionById(string sectionId)
+    public async void EditSectionById(string sectionId)
     {
         var item = SectionItems.OfType<SectionListItemViewModel>()
                                .FirstOrDefault(i => i.Section.Id == sectionId);
         if (item is null) return;
-        EditItem(item);
+        await EditItem(item);
     }
 
     private void OpenEdit(Section section, bool isNew, SectionListItemViewModel? listItem)
@@ -838,6 +846,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Copy()
     {
+        if (await IsEditorBusy()) return;
         if (SelectedSectionItem is null) return;
         var source = SelectedSectionItem.Section;
 
@@ -942,6 +951,23 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
         ExpandedItem = null;
         EditVm = null;
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> and shows a blocking error dialog if an inline editor is already
+    /// open, signalling the caller to abort its open attempt. Returns <c>false</c> when no
+    /// editor is active and it is safe to proceed.
+    /// </summary>
+    private async Task<bool> IsEditorBusy()
+    {
+        if (!IsEditing) return false;
+        var heading = ExpandedItem?.Heading;
+        var subject = string.IsNullOrEmpty(heading) ? "a new section" : heading;
+        await _dialog.ShowError(
+            $"You are currently editing {subject}. " +
+            "Please save or close the section editor before editing another section. " +
+            "Use Apply (or Enter) to save your changes, or press Cancel (or Esc) to discard them.");
+        return true;
     }
 
     // ── Disposal ──────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T22:03:01.326Z
-> Files: 97 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T23:08:15.753Z
+> Files: 98 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -34,6 +34,7 @@
 - `cosmic-swimming-feigenbaum.md` — Read-Only Mode Fix Plan (~1149 tok)
 - `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
 - `fancy-singing-matsumoto.md` — Plan: Restore Focus After Keyboard Shortcuts in DataGrid Editors (~980 tok)
+- `flickering-bubbling-curry.md` — Plan: Block Opening a Second Section Editor While One is Active (~825 tok)
 - `glimmering-leaping-kurzweil.md` — Fix Log Directory Path in FileAppLogger (~154 tok)
 - `glistening-snuggling-widget.md` — Plan: Fix Section Card Width, Selection Border, and Hover Highlight (~973 tok)
 - `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
@@ -275,7 +276,7 @@
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
 - `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~2784 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12527 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12937 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
