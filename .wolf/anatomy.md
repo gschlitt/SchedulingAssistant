@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T04:41:58.730Z
-> Files: 89 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T17:45:24.887Z
+> Files: 92 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -31,6 +31,7 @@
 
 - `abstract-toasting-lake.md` — Refactor: Move IBrush properties from ViewModels to Converters (~799 tok)
 - `bright-strolling-willow.md` — Plan: Style Menu Bar with MainMenu Color and White Text (~534 tok)
+- `cosmic-swimming-feigenbaum.md` — Read-Only Mode Fix Plan (~1149 tok)
 - `cryptic-puzzling-lake.md` — Plan: Unsaved Changes Indicator (~794 tok)
 - `fancy-singing-matsumoto.md` — Plan: Restore Focus After Keyboard Shortcuts in DataGrid Editors (~980 tok)
 - `glimmering-leaping-kurzweil.md` — Fix Log Directory Path in FileAppLogger (~154 tok)
@@ -199,7 +200,7 @@
 - `App.axaml` (~1485 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~3106 tok)
-- `MainWindow.axaml` — Declares applied (~9223 tok)
+- `MainWindow.axaml` — Declares applied (~9244 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12638 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -260,9 +261,11 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1927 tok)
+- `CommitmentsManagementViewModel.cs` — Manages the CRUD list of InstructorCommitment records for one instructor in one semester. This VM is (~2092 tok)
 - `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3005 tok)
-- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4378 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4385 tok)
 - `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1667 tok)
+- `ReleaseManagementViewModel.cs` — Manages CRUD for releases for a specific instructor in a specific semester. Fires ReleasesChanged ev (~1234 tok)
 - `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2573 tok)
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
@@ -293,7 +296,7 @@
 - `CampusListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~595 tok)
 - `CourseListView.axaml` (~4687 tok)
 - `CourseListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1134 tok)
-- `InstructorListView.axaml` (~8160 tok)
+- `InstructorListView.axaml` (~8250 tok)
 - `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1364 tok)
 - `MeetingListView.axaml` (~10567 tok)
 - `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1018 tok)

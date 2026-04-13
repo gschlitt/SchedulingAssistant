@@ -22,7 +22,7 @@
             Grid.Row="0"
             Grid.Column="0"
             Padding="8,12"
-            Background="{StaticResource SurfaceBackground}"
+            Background="White"
             BorderThickness="0,0,0,0">
             <StackPanel
                 IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -414,8 +414,11 @@
                             </DataGrid.Columns>
                         </DataGrid>
 
-                        <!--  CRUD buttons  -->
-                        <StackPanel Orientation="Horizontal" Spacing="3">
+                        <!--  CRUD buttons — IsEnabled gates the entire group in read-only mode  -->
+                        <StackPanel
+                            IsEnabled="{Binding IsWriteEnabled}"
+                            Orientation="Horizontal"
+                            Spacing="3">
                             <Button
                                 Width="45"
                                 Padding="5,3"
@@ -551,8 +554,11 @@
                                 </DataGrid.Columns>
                             </DataGrid>
 
-                            <!--  CRUD buttons  -->
-                            <StackPanel Orientation="Horizontal" Spacing="3">
+                            <!--  CRUD buttons — IsEnabled gates the entire group in read-only mode  -->
+                            <StackPanel
+                                IsEnabled="{Binding IsWriteEnabled}"
+                                Orientation="Horizontal"
+                                Spacing="3">
                                 <Button
                                     Width="45"
                                     Padding="5,3"

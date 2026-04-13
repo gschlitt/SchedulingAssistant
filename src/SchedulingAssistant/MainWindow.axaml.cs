@@ -265,7 +265,7 @@ public partial class MainWindow : Window
 
         // Record this database in recent list
         settings.AddRecentDatabase(dbPath);
-
+        
         // ── Checkout flow ─────────────────────────────────────────────────────
         // Clean up any orphaned .tmp from a previous crashed save, then check for
         // an orphaned working copy (crash recovery), then acquire the write lock

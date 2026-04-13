@@ -18,7 +18,7 @@
                                     <TextBlock>
                                         <Run Text="{Binding Display}" />
                                         <Run Text="{Binding SectionCount, StringFormat=' ({0} sections)'}"
-                                             Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Normal" />
+                                             Foreground="{StaticResource TextPrimary}" FontSize="11" FontWeight="Normal" />
                                     </TextBlock>
                                 </Expander.Header>
                                 <!-- Semesters -->

@@ -156,6 +156,7 @@
                             Header="Files">
                             <MenuItem Command="{Binding OpenDatabaseCommand}" Header="Open…" />
                             <MenuItem Command="{Binding NewDatabaseCommand}" Header="New…" />
+                            <MenuItem Command="{Binding SaveCommand}" Header="Save" />
                             <Separator IsVisible="{Binding RecentDatabases.Count}" />
                             <MenuItem
                                 b:CloseMenuOnClickBehavior.IsEnabled="True"

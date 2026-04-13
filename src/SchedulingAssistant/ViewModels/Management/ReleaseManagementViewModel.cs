@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -13,6 +14,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class ReleaseManagementViewModel : ViewModelBase
 {
     private readonly IReleaseRepository _releaseRepo;
+    private readonly WriteLockService _lockService;
     private string _instructorId = string.Empty;
     private string _semesterId = string.Empty;
 
@@ -24,9 +26,13 @@ public partial class ReleaseManagementViewModel : ViewModelBase
     /// <summary>Fired when releases are added/edited/deleted to notify parent to refresh workload display.</summary>
     public event Action? ReleasesChanged;
 
-    public ReleaseManagementViewModel(IReleaseRepository releaseRepo)
+    /// <summary>Exposed to XAML to bind button panels' IsEnabled in read-only mode.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    public ReleaseManagementViewModel(IReleaseRepository releaseRepo, WriteLockService lockService)
     {
         _releaseRepo = releaseRepo;
+        _lockService = lockService;
     }
 
     public void SetContext(string instructorId, string semesterId)

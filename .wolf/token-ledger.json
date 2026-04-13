@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 11041551,
-    "total_reads": 4209,
-    "total_writes": 4098,
-    "total_sessions": 164,
-    "anatomy_hits": 1246,
-    "anatomy_misses": 2901,
-    "repeated_reads_blocked": 3328,
-    "estimated_savings_vs_bare_cli": 25877938
+    "total_tokens_estimated": 11067843,
+    "total_reads": 4219,
+    "total_writes": 4106,
+    "total_sessions": 167,
+    "anatomy_hits": 1250,
+    "anatomy_misses": 2907,
+    "repeated_reads_blocked": 3341,
+    "estimated_savings_vs_bare_cli": 25949480
   },
   "sessions": [
     {
@@ -52297,6 +52297,140 @@
         "writes_count": 7,
         "repeated_reads_blocked": 12,
         "anatomy_lookups": 9
+      }
+    },
+    {
+      "id": "session-2026-04-13-2146",
+      "started": "2026-04-13T04:46:24.559Z",
+      "ended": "2026-04-13T04:46:44.574Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 9244,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+          "tokens_estimated": 150,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 9244,
+        "output_tokens_estimated": 150,
+        "reads_count": 1,
+        "writes_count": 1,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-04-13-1041",
+      "started": "2026-04-13T17:41:01.084Z",
+      "ended": "2026-04-13T17:45:50.118Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs",
+          "tokens_estimated": 4378,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+          "tokens_estimated": 8160,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+          "tokens_estimated": 1364,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/ReleaseManagementViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CommitmentsManagementViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/ReleaseEditViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CommitmentEditViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/8347935c-ae7e-4696-82dd-cf8def6ba7ce/tool-results/bh6isvz1g.txt",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/.claude/plans/cosmic-swimming-feigenbaum.md",
+          "tokens_estimated": 1313,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/ReleaseManagementViewModel.cs",
+          "tokens_estimated": 82,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/ReleaseManagementViewModel.cs",
+          "tokens_estimated": 300,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CommitmentsManagementViewModel.cs",
+          "tokens_estimated": 417,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+          "tokens_estimated": 369,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+          "tokens_estimated": 397,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs",
+          "tokens_estimated": 118,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 13902,
+        "output_tokens_estimated": 2996,
+        "reads_count": 9,
+        "writes_count": 7,
+        "repeated_reads_blocked": 12,
+        "anatomy_lookups": 3
       }
     }
   ],

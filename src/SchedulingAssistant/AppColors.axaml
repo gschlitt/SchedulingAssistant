@@ -101,8 +101,8 @@
   <!--  ── Text roles  ───────────────────────────────────────────────────  -->
   <!--  Primary: dark navy-gray — not pure black, but still high contrast  -->
   <SolidColorBrush x:Key="TextPrimary" Color="#1A2433" />
-  <SolidColorBrush x:Key="TextSecondary" Color="#475569" />
-  <SolidColorBrush x:Key="TextMuted" Color="#64748B" />
+  <SolidColorBrush x:Key="TextSecondary" Color="#1e2938" />
+  <SolidColorBrush x:Key="TextMuted" Color="#1e2836" />
   <SolidColorBrush x:Key="TextFaint" Color="#475569" />
   <SolidColorBrush x:Key="TextSubtle" Color="#4A5568" />
   <SolidColorBrush x:Key="TextLabel" Color="#64748B" />
@@ -130,8 +130,8 @@
 
 
   
-	<!--  Card/panel surface — pure white for contrast against AppBackground  -->
-	<SolidColorBrush x:Key="SurfaceBackground" Color="#d4e9fe" />
+	<!--  panel surface — pure white for contrast against AppBackground  -->
+	<SolidColorBrush x:Key="SurfaceBackground" Color="White" />
 
 
 	

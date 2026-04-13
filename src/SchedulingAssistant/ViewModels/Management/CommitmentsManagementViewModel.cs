@@ -28,6 +28,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
     // to the Schedule Grid. Despite its name ("Section"), it is used for any data change
     // that should cause the grid to refresh — including commitment CRUD.
     private readonly SectionChangeNotifier _changeNotifier;
+    private readonly WriteLockService _lockService;
 
     private string _instructorId = string.Empty;
     private string _semesterId = string.Empty;
@@ -40,10 +41,14 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
 
     [ObservableProperty] private string? _lastErrorMessage;
 
-    public CommitmentsManagementViewModel(IInstructorCommitmentRepository commitmentRepo, SectionChangeNotifier changeNotifier)
+    /// <summary>Exposed to XAML to bind button panels' IsEnabled in read-only mode.</summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    public CommitmentsManagementViewModel(IInstructorCommitmentRepository commitmentRepo, SectionChangeNotifier changeNotifier, WriteLockService lockService)
     {
         _commitmentRepo = commitmentRepo;
         _changeNotifier = changeNotifier;
+        _lockService = lockService;
     }
 
     /// <summary>

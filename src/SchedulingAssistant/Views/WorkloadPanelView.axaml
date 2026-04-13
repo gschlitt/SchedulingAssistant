@@ -11,12 +11,13 @@
         <Style Selector="Button.chip">
             <Setter Property="Background" Value="#DBE8F8" />
             <Setter Property="BorderBrush" Value="#7AAAD4" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderThickness" Value="2" />
             <Setter Property="CornerRadius" Value="3" />
             <Setter Property="Padding" Value="4,1" />
             <Setter Property="FontSize" Value="10" />
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="MinWidth" Value="0" />
+          <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <!--  Release chip: light lavender  -->
         <Style Selector="Button.chip.release">

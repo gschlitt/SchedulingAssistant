@@ -96,7 +96,7 @@
                             MinWidth="0"
                             MinHeight="0"
                             Padding="5,1"
-                            b:HelpTip.Text="Edit the selected section"
+                            b:HelpTip.Text="Edit the selected section. You can also begin editing by double-clicking a section or by pressing 'Enter' with a section selected."
                             Command="{Binding EditCommand}"
                             Content="Edit"
                             FontSize="14"

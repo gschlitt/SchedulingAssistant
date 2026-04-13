@@ -93,8 +93,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
         _dialog = dialog;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
-        _releaseVm = new ReleaseManagementViewModel(releaseRepo);
-        _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier);
+        _releaseVm = new ReleaseManagementViewModel(releaseRepo, lockService);
+        _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier, lockService);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);
         ShowOnlyActive = AppSettings.Current.ShowOnlyActiveInstructors;
         RebuildFlyoutSemesters();
