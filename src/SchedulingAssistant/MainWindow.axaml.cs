@@ -4,27 +4,19 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SchedulingAssistant.Controls;
-using SchedulingAssistant.Models;
+using SchedulingAssistant.Exceptions;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.GridView;
-using SchedulingAssistant.Views.Management;
-using System;
-using System.ComponentModel;
-using System.Threading.Tasks;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using SchedulingAssistant.Exceptions;
-using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Views.Wizard;
+using System.ComponentModel;
+using System.Reflection;
 
 namespace SchedulingAssistant;
 
@@ -437,7 +429,7 @@ public partial class MainWindow : Window
         curtainHandler = (_, _) =>
         {
             ScheduleGridViewControl.SizeChanged -= curtainHandler;
-          //  LoadingCurtain.IsVisible = false;
+            LoadingCurtain.IsVisible = false;
         };
         ScheduleGridViewControl.SizeChanged += curtainHandler;
 

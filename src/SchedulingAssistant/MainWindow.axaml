@@ -659,7 +659,7 @@
         </Panel>
 
         <!--  Loading curtain — spans all rows, covers menu bar and content until ScheduleGrid renders  -->
-        <!--  <Border
+          <Border
         x:Name="LoadingCurtain"
         Grid.Row="0"
         Grid.RowSpan="5"
@@ -685,7 +685,7 @@
                 Foreground="#99FFFFFF"
                 Text="Loading..." />
         </StackPanel>
-    </Border>-->
+    </Border>
 
     </Grid>
 </Window>

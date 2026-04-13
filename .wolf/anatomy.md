@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T04:14:51.432Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T04:41:58.730Z
 > Files: 89 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -200,7 +200,7 @@
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
 - `AppColors.axaml` (~3106 tok)
 - `MainWindow.axaml` — Declares applied (~9223 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12561 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12638 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
