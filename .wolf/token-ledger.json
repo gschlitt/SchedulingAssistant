@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 11630970,
-    "total_reads": 4377,
-    "total_writes": 4233,
-    "total_sessions": 175,
-    "anatomy_hits": 1343,
+    "total_tokens_estimated": 11665065,
+    "total_reads": 4382,
+    "total_writes": 4237,
+    "total_sessions": 177,
+    "anatomy_hits": 1348,
     "anatomy_misses": 2972,
-    "repeated_reads_blocked": 3529,
-    "estimated_savings_vs_bare_cli": 27200400
+    "repeated_reads_blocked": 3535,
+    "estimated_savings_vs_bare_cli": 27259336
   },
   "sessions": [
     {
@@ -54281,6 +54281,73 @@
         "writes_count": 0,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-04-14-0845",
+      "started": "2026-04-14T15:45:51.046Z",
+      "ended": "2026-04-14T15:51:21.245Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+          "tokens_estimated": 4242,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
+          "tokens_estimated": 3106,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml",
+          "tokens_estimated": 3533,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+          "tokens_estimated": 20484,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml",
+          "tokens_estimated": 1485,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/.claude/plans/joyful-watching-blanket.md",
+          "tokens_estimated": 544,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+          "tokens_estimated": 177,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+          "tokens_estimated": 468,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 32850,
+        "output_tokens_estimated": 1245,
+        "reads_count": 5,
+        "writes_count": 4,
+        "repeated_reads_blocked": 6,
+        "anatomy_lookups": 5
       }
     }
   ],

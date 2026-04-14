@@ -7,22 +7,36 @@
     x:CompileBindings="False">
 
     <UserControl.Styles>
-        <!--  Section chip: light blue  -->
+        <!--  Section chip: light blue with raised appearance  -->
         <Style Selector="Button.chip">
-            <Setter Property="Background" Value="#DBE8F8" />
-            <Setter Property="BorderBrush" Value="#7AAAD4" />
-            <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Background" Value="{StaticResource TileFill}" />
+            <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Padding" Value="4,1" />
             <Setter Property="FontSize" Value="10" />
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="MinWidth" Value="0" />
-          <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        BoxShadow="{StaticResource PanelBoxShadow}"
+                        CornerRadius="{TemplateBinding CornerRadius}">
+                        <ContentPresenter
+                            x:Name="PART_ContentPresenter"
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Content="{TemplateBinding Content}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <!--  Release chip: light lavender  -->
+        <!--  Release chip: light lavender with raised appearance  -->
         <Style Selector="Button.chip.release">
             <Setter Property="Background" Value="#EDE8F5" />
-            <Setter Property="BorderBrush" Value="#B0A0C8" />
         </Style>
         <!--
             Hover tint on instructor cards. Targets the transparent overlay Border inside the card

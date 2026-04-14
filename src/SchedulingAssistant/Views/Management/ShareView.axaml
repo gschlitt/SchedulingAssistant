@@ -51,7 +51,7 @@
         <!--  Success feedback  -->
         <TextBlock
             FontSize="11"
-            Foreground="#1A7F37"
+            Foreground="{StaticResource NotificationInfoText}"
             IsVisible="{Binding IsSuccess}"
             Text="{Binding StatusMessage}"
             TextWrapping="Wrap" />
@@ -59,7 +59,7 @@
         <!--  Error feedback  -->
         <TextBlock
             FontSize="11"
-            Foreground="#C0392B"
+            Foreground="{StaticResource NotificationErrorText}"
             Text="{Binding StatusMessage}"
             TextWrapping="Wrap">
             <TextBlock.IsVisible>

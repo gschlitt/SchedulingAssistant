@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T03:44:38.185Z
-> Files: 106 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T15:49:51.078Z
+> Files: 107 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -39,6 +39,7 @@
 - `glimmering-sparking-truffle.md` — Plan: Two-Level Escape Key in Flyout Editors (~661 tok)
 - `glistening-snuggling-widget.md` — Plan: Fix Section Card Width, Selection Border, and Hover Highlight (~973 tok)
 - `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
+- `joyful-watching-blanket.md` — Plan: Workload Panel Chip Card Styling (~476 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
 - `piped-sauteeing-rabin.md` — Plan: Disable Hover Effect When Section Editor is Open (~717 tok)
 - `proud-noodling-beacon.md` — Plan: Split Tile Border Color into TileExternalBorder / TileInternalBorder (~524 tok)
@@ -296,7 +297,7 @@
 
 - `LeftPanelView.axaml` (~2446 tok)
 - `LeftPanelView.axaml.cs` — Class: LeftPanelView (~50 tok)
-- `WorkloadPanelView.axaml` (~4035 tok)
+- `WorkloadPanelView.axaml` (~4242 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 

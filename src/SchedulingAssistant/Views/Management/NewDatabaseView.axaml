@@ -83,7 +83,7 @@
             </DockPanel>
             <TextBlock
                 FontSize="{StaticResource FontSizeSmall}"
-                Foreground="#C0392B"
+                Foreground="{StaticResource NotificationInfoBackground}"
                 IsVisible="{Binding SameFolderWarning}"
                 Text="Recommendation: choose a different folder for backups than the database itself."
                 TextWrapping="Wrap" />
@@ -107,7 +107,7 @@
                     <TextBlock
                         FontSize="{StaticResource FontSizeNormal}"
                         FontWeight="SemiBold"
-                        Foreground="#1A5276"
+                        Foreground="{StaticResource NotificationInfoText}"
                         Text="{Binding ConfigSourceLabel}"
                         TextWrapping="Wrap" />
 
@@ -131,7 +131,7 @@
                             Watermark="e.g. 2025  or  2025-2026" />
                         <TextBlock
                             FontSize="{StaticResource FontSizeSmall}"
-                            Foreground="#C0392B"
+                            Foreground="{StaticResource NotificationInfoText}"
                             IsVisible="{Binding FirstAcademicYearNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                             Text="{Binding FirstAcademicYearNameError}"
                             TextWrapping="Wrap" />
@@ -144,7 +144,7 @@
         <!--  Error message  -->
         <TextBlock
             FontSize="{StaticResource FontSizeSmall}"
-            Foreground="#C0392B"
+            Foreground="{StaticResource NotificationErrorText}"
             IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
             Text="{Binding ErrorMessage}"
             TextWrapping="Wrap" />
