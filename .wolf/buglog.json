@@ -4902,6 +4902,25 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-14T17:50:54.728Z"
+    },
+    {
+      "id": "bug-307",
+      "timestamp": "2026-04-14T00:00:00.000Z",
+      "error_message": "App freezes then throws 'SQLite Error: no such table: Sections' when clicking 'Switch to edit mode' from read-only mode",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Double-checkout in AcquireWriteLock: called CheckoutAsync(D) directly (acquiring lock, creating D'), then passed WorkingPath (D') to SwitchDatabaseAsync instead of D. SwitchDatabaseAsync is designed for D: it released the lock, deleted D', then re-ran RunCheckoutAsync(D') on the now-missing path. CheckoutAsync took the new-database shortcut (file doesn't exist), creating an empty DB at D'. The synchronous BackupSqliteDatabase call in SaveAsync also blocked the UI thread, causing the visible freeze.",
+      "fix": "Removed pre-checkout from AcquireWriteLock. Now calls SwitchDatabaseAsync(sourcePath) directly with D, delegating the full release→checkout→reinit cycle to SwitchDatabaseAsync/RunCheckoutAsync as intended.",
+      "tags": [
+        "checkout",
+        "write-lock",
+        "read-only",
+        "double-checkout",
+        "sqlite",
+        "freeze"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T00:00:00.000Z"
     }
   ]
 }

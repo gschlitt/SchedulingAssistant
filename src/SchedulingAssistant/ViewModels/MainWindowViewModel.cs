@@ -366,10 +366,20 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Switches from read-only mode to write mode by running a full checkout
-    /// (acquires lock, copies D → D'). Called when the user clicks the
-    /// "Switch to edit mode" button after the polling timer signals the lock is free.
+    /// Switches from read-only mode to write mode by delegating to
+    /// <see cref="MainWindow.SwitchDatabaseAsync"/>, which handles the full
+    /// release → checkout → re-initialize cycle.
+    /// Called when the user clicks "Switch to edit mode" after the polling timer
+    /// signals the lock is free.
     /// </summary>
+    /// <remarks>
+    /// Previously this method called <see cref="CheckoutService.CheckoutAsync"/> directly
+    /// and then passed <c>WorkingPath</c> (D') to <c>SwitchDatabaseAsync</c>.
+    /// That caused a double-checkout: SwitchDatabaseAsync released and deleted D', then
+    /// re-ran checkout on the now-missing path, creating an empty database.
+    /// The fix is to pass the canonical source path D and let SwitchDatabaseAsync own
+    /// the entire checkout sequence via <c>RunCheckoutAsync</c>.
+    /// </remarks>
     [RelayCommand]
     private async Task AcquireWriteLock()
     {
@@ -380,28 +390,13 @@ public partial class MainWindowViewModel : ViewModelBase
             sourcePath = AppSettings.Current.DatabasePath;
         if (sourcePath is null) return;
 
-        var outcome = await App.Checkout.CheckoutAsync(sourcePath);
-        switch (outcome)
-        {
-            case CheckoutOutcome.WriteAccess:
-                // Re-initialize DI against the new working copy D'.
-                await MainWindowReference.SwitchDatabaseAsync(App.Checkout.WorkingPath);
-                break;
-
-            case CheckoutOutcome.ReadOnly:
-            case CheckoutOutcome.StaleHolder:
-                // Lock was free when polling signalled but someone else grabbed it first.
-                // Refresh the lock banner so the UI reflects current state.
-                OnLockStateChanged();
-                break;
-
-            case CheckoutOutcome.Failed:
-                // Checkout failed entirely (e.g. hash mismatch on D → D' copy).
-                // Ensure we still have a valid D'' snapshot so D is not held open.
-                await App.Checkout.SetupReadOnlySnapshotAsync();
-                OnLockStateChanged();
-                break;
-        }
+        // Delegate the full release → checkout → re-initialize cycle to
+        // SwitchDatabaseAsync, passing D (the canonical source path).
+        // SwitchDatabaseAsync calls RunCheckoutAsync(D) internally, which acquires
+        // the write lock, copies D → D', and re-initializes DI against D'.
+        // If the lock is no longer free (someone else grabbed it between the poll
+        // and this click), RunCheckoutAsync falls back to read-only mode gracefully.
+        await MainWindowReference.SwitchDatabaseAsync(sourcePath);
     }
 
     /// <summary>
