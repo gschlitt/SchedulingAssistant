@@ -463,8 +463,20 @@ public partial class MainWindowViewModel : ViewModelBase
         (oldValue as IDisposable)?.Dispose();
     }
 
+    /// <summary>
+    /// Handles the Escape key for flyouts. If the current flyout page has an active inline
+    /// editor, that editor is dismissed first — the flyout stays open. Only when no editor
+    /// is active does a subsequent Escape close the flyout itself. This gives Escape a natural
+    /// "inner then outer" feel without relying on Avalonia routed-event phase ordering.
+    /// </summary>
     [RelayCommand]
-    private void CloseFlyout() => FlyoutPage = null;
+    private void CloseFlyout()
+    {
+        if (FlyoutPage is IDismissableEditor editor && editor.DismissActiveEditor())
+            return;
+
+        FlyoutPage = null;
+    }
 
     private void OpenFlyout<TViewModel>(string title) where TViewModel : ViewModelBase
     {

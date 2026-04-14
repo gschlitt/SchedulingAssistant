@@ -10,7 +10,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// <summary>
 /// ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering.
 /// </summary>
-public partial class CampusListViewModel : ViewModelBase
+public partial class CampusListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly ICampusRepository _repo;
     private readonly IDialogService _dialog;
@@ -27,6 +27,14 @@ public partial class CampusListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<Campus> _items = new();
     [ObservableProperty] private Campus? _selectedItem;
     [ObservableProperty] private CampusEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is null) return false;
+        EditVm.CancelCommand.Execute(null);
+        return true;
+    }
 
     /// <param name="repo">Campus repository for CRUD operations.</param>
     /// <param name="dialog">Service for confirmation and error dialogs.</param>

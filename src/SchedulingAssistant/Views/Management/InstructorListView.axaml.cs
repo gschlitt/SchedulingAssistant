@@ -48,7 +48,6 @@ public partial class InstructorListView : UserControl
     /// <summary>
     /// Handles KeyDown to intercept keys:
     /// - Enter: Opens editor for the selected row (when no editor is open)
-    /// - Ctrl+S: Saves the current editor (when an editor is open)
     /// Uses Tunnel routing strategy to intercept before other handlers.
     /// </summary>
     private void OnKeyDown(object? sender, KeyEventArgs e)

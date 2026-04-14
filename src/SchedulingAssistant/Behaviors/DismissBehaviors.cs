@@ -72,10 +72,18 @@ public static class DismissBehaviors
     /// <summary>
     /// Handles KeyDown: if Escape is pressed and the command can execute, runs it
     /// and marks the event as handled.
+    /// <para>
+    /// The explicit <c>e.Handled</c> check is intentional: Avalonia's
+    /// <c>handledEventsToo = false</c> guarantee does not always suppress cross-phase
+    /// calls (tunnel → bubble). Inner tunnel handlers on flyout content (e.g.
+    /// InstructorListView, RoomListView) set <c>e.Handled = true</c> when an inline
+    /// editor is open, so that Esc closes only the editor rather than the whole flyout.
+    /// Without this check, the bubble-phase handler here would still fire.
+    /// </para>
     /// </summary>
     private static void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape || sender is not Control c)
+        if (e.Handled || e.Key != Key.Escape || sender is not Control c)
             return;
 
         var cmd = GetEscapeCommand(c);

@@ -4582,6 +4582,294 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-13T23:02:22.748Z"
+    },
+    {
+      "id": "bug-287",
+      "timestamp": "2026-04-13T23:19:01.307Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 15→25 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:19:01.307Z"
+    },
+    {
+      "id": "bug-288",
+      "timestamp": "2026-04-13T23:19:10.443Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 15→35 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:19:10.443Z"
+    },
+    {
+      "id": "bug-289",
+      "timestamp": "2026-04-13T23:19:24.863Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/RoomListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:19:24.863Z"
+    },
+    {
+      "id": "bug-290",
+      "timestamp": "2026-04-13T23:28:26.314Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 14→25 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:28:26.314Z"
+    },
+    {
+      "id": "bug-291",
+      "timestamp": "2026-04-13T23:28:41.145Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-13T23:28:41.145Z"
+    },
+    {
+      "id": "bug-292",
+      "timestamp": "2026-04-14T03:42:23.907Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: EditVm is null",
+      "fix": "Added guard clause: if (EditVm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:42:23.907Z"
+    },
+    {
+      "id": "bug-293",
+      "timestamp": "2026-04-14T03:42:40.456Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: EditVm is null",
+      "fix": "Added guard clause: if (EditVm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:42:40.456Z"
+    },
+    {
+      "id": "bug-294",
+      "timestamp": "2026-04-14T03:42:45.156Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: EditVm is null",
+      "fix": "Added guard clause: if (EditVm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:42:45.156Z"
+    },
+    {
+      "id": "bug-295",
+      "timestamp": "2026-04-14T03:42:49.509Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/CampusListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: EditVm is null",
+      "fix": "Added guard clause: if (EditVm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:42:49.509Z"
+    },
+    {
+      "id": "bug-296",
+      "timestamp": "2026-04-14T03:42:55.583Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:42:55.583Z"
+    },
+    {
+      "id": "bug-297",
+      "timestamp": "2026-04-14T03:43:01.519Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: EditVm is null",
+      "fix": "Added guard clause: if (EditVm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:43:01.519Z"
+    },
+    {
+      "id": "bug-298",
+      "timestamp": "2026-04-14T03:43:05.644Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs",
+      "root_cause": "No early return/throw for edge case: EditVm is null",
+      "fix": "Added guard clause: if (EditVm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:43:05.644Z"
+    },
+    {
+      "id": "bug-299",
+      "timestamp": "2026-04-14T03:43:11.940Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:43:11.940Z"
+    },
+    {
+      "id": "bug-300",
+      "timestamp": "2026-04-14T03:43:38.532Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 25→14 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:43:38.532Z"
+    },
+    {
+      "id": "bug-301",
+      "timestamp": "2026-04-14T03:43:49.594Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CourseListView.axaml.cs",
+      "root_cause": "19 lines replaced/restructured",
+      "fix": "Rewrote 35→14 lines (19 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:43:49.594Z"
+    },
+    {
+      "id": "bug-302",
+      "timestamp": "2026-04-14T03:43:59.066Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/RoomListView.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:43:59.066Z"
+    },
+    {
+      "id": "bug-303",
+      "timestamp": "2026-04-14T03:44:20.984Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml.cs",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 25→14 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:44:20.984Z"
+    },
+    {
+      "id": "bug-304",
+      "timestamp": "2026-04-14T03:44:30.505Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/CampusListView.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T03:44:30.505Z"
     }
   ]
 }

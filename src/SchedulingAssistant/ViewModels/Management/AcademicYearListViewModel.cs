@@ -9,7 +9,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class AcademicYearListViewModel : ViewModelBase
+public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
@@ -28,6 +28,14 @@ public partial class AcademicYearListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
     [ObservableProperty] private AcademicYearEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is not null) { EditVm.CancelCommand.Execute(null); return true; }
+        if (SemesterManager?.EditVm is not null) { SemesterManager.EditVm.CancelCommand.Execute(null); return true; }
+        return false;
+    }
 
     /// <summary>
     /// The semester manager panel scoped to the currently selected academic year.

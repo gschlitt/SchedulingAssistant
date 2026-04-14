@@ -12,7 +12,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// ViewModel for the Rooms management panel. Provides a list of rooms with
 /// inline Add/Edit/Delete and manual ordering support.
 /// </summary>
-public partial class RoomListViewModel : ViewModelBase
+public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly IRoomRepository _repo;
     private readonly ICampusRepository _campusRepo;
@@ -33,6 +33,14 @@ public partial class RoomListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<RoomRow> _rooms = new();
     [ObservableProperty] private RoomRow? _selectedRow;
     [ObservableProperty] private RoomEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is null) return false;
+        EditVm.CancelCommand.Execute(null);
+        return true;
+    }
 
     /// <summary>Convenience accessor for the selected room model; null when nothing is selected.</summary>
     private Room? SelectedRoom => SelectedRow?.Room;

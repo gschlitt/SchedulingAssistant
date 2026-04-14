@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-13T23:08:15.753Z
-> Files: 98 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T03:44:38.185Z
+> Files: 106 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -36,6 +36,7 @@
 - `fancy-singing-matsumoto.md` — Plan: Restore Focus After Keyboard Shortcuts in DataGrid Editors (~980 tok)
 - `flickering-bubbling-curry.md` — Plan: Block Opening a Second Section Editor While One is Active (~825 tok)
 - `glimmering-leaping-kurzweil.md` — Fix Log Directory Path in FileAppLogger (~154 tok)
+- `glimmering-sparking-truffle.md` — Plan: Two-Level Escape Key in Flyout Editors (~661 tok)
 - `glistening-snuggling-widget.md` — Plan: Fix Section Card Width, Selection Border, and Hover Highlight (~973 tok)
 - `golden-giggling-hollerith.md` — Plan: Double-Click-to-Edit for Courses Flyout (~698 tok)
 - `peaceful-napping-whistle.md` — Plan: Accurate Dirty Marker — Write on First Edit, Not on Checkout (~2323 tok)
@@ -209,6 +210,7 @@
 ## src/SchedulingAssistant/Behaviors/
 
 - `CloseMenuOnClickBehavior.cs` — Attached behavior that closes the parent Menu when a child MenuItem is clicked. Avalonia 11.x does n (~583 tok)
+- `DismissBehaviors.cs` — Attached behavior that executes a command when the Escape key is pressed on a control. Commonly used (~1252 tok)
 - `EnterKeyCommandBehavior.cs` — Attached behavior that executes a command when the Enter key is pressed on a control. Commonly used (~672 tok)
 
 ## src/SchedulingAssistant/Controls/
@@ -258,25 +260,31 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7524 tok)
+- `IDismissableEditor.cs` — Implemented by flyout-hosted ViewModels that support inline editing. <para> When the user presses Es (~248 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7669 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1927 tok)
+- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2393 tok)
+- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1638 tok)
+- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~1983 tok)
 - `CommitmentsManagementViewModel.cs` — Manages the CRUD list of InstructorCommitment records for one instructor in one semester. This VM is (~2092 tok)
-- `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3005 tok)
-- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4402 tok)
+- `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3088 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4458 tok)
+- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3351 tok)
 - `MeetingListItemViewModel.cs` — Display wrapper for a single event row in the meeting list panel. Holds pre-formatted strings so the (~1667 tok)
 - `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5240 tok)
 - `ReleaseManagementViewModel.cs` — Manages CRUD for releases for a specific instructor in a specific semester. Fires ReleasesChanged ev (~1234 tok)
-- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2573 tok)
-- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2887 tok)
+- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~2626 tok)
+- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2943 tok)
+- `SchedulingEnvironmentViewModel.cs` — Class: SchedulingEnvironmentViewModel (~938 tok)
 - `SectionEditViewModel.cs` — Wrapper used by the Section Prefix picker ComboBox in the section editor. The sentinel item (<see cr (~10555 tok)
 - `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~2784 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~12937 tok)
+- `SectionPrefixListViewModel.cs` — ViewModel for the Section Prefixes management flyout. Provides a list of section prefixes with inlin (~2317 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -301,9 +309,9 @@
 - `CampusListView.axaml` (~931 tok)
 - `CampusListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~595 tok)
 - `CourseListView.axaml` (~4687 tok)
-- `CourseListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1134 tok)
+- `CourseListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1116 tok)
 - `InstructorListView.axaml` (~8250 tok)
-- `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1364 tok)
+- `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1346 tok)
 - `MeetingListView.axaml` (~10567 tok)
 - `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1018 tok)
 - `RoomListView.axaml` (~1479 tok)

@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class CourseListViewModel : ViewModelBase
+public partial class CourseListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly ICourseRepository _courseRepo;
     private readonly ISubjectRepository _subjectRepo;
@@ -27,6 +27,15 @@ public partial class CourseListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<Course> _courses = new();
     [ObservableProperty] private Course? _selectedCourse;
     [ObservableProperty] private CourseEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (SubjectEditVm is not null) { SubjectEditVm.CancelCommand.Execute(null); return true; }
+        if (EditVm is not null) { EditVm.CancelCommand.Execute(null); return true; }
+        return false;
+    }
+
     [ObservableProperty] private CourseHistoryViewModel _courseHistoryVm;
 
     /// <summary>

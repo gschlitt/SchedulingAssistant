@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SchedulingEnvironmentViewModel : ViewModelBase
+public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissableEditor
 {
     public ObservableCollection<ViewModelBase> Categories { get; }
 
@@ -44,5 +44,11 @@ public partial class SchedulingEnvironmentViewModel : ViewModelBase
             new CampusListViewModel(campusRepo, dialog, lockService),
         };
         SelectedCategory = Categories[0];
+    }
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        return SelectedCategory is IDismissableEditor editor && editor.DismissActiveEditor();
     }
 }

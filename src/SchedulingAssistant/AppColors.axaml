@@ -74,13 +74,17 @@
 
   <SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
   <SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
+  
+  <SolidColorBrush x:Key="OverlayActiveHeader"   Color="{StaticResource OverlayColor}" />
+<SolidColorBrush x:Key="OverlayInactiveHeader"  Color="#2D3748" />
+
 
   <!--  ── "Filtered by" text in panel header  ──────────────────────────  -->
   <!-- The color of the text in the overlay/filter bar labeling the active filter-->
   <Color x:Key="FilterColor">#4A6FA5</Color>
   <SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
   <!--  Overlay:  -->  
-  <SolidColorBrush x:Key="OverlayBadgeText" Color="{StaticResource OverlayColor}" />
+  <SolidColorBrush x:Key="OverlayBadgeText" Color="Red" />
 
 <!--Schedule View-->
 
@@ -119,10 +123,9 @@
 
 	
 
-  <!--To be revised-->
-  <!--Actually tooltip bo
-  <SolidColorBrush x:Key="TileBorder" Color="Red" />
-  -->
+  
+  <SolidColorBrush x:Key="TileBorder" Color="#9ABED8" />
+  
   <!--this is actually coloring selected text -->
   <SolidColorBrush x:Key="TileBorderSelected" Color="Black" />
 

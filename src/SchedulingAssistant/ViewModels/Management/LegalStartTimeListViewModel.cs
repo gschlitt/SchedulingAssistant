@@ -20,7 +20,7 @@ public record LegalStartTimeRow(LegalStartTime Entry, string BlockLengthDisplay)
     public string StartTimesDisplay => Entry.StartTimesDisplay;
 }
 
-public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
+public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, IDismissableEditor
 {
     private readonly ILegalStartTimeRepository _repo;
     private readonly SemesterContext _semesterContext;
@@ -51,6 +51,14 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable
     private LegalStartTime? SelectedEntry => SelectedRow?.Entry;
 
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is null) return false;
+        EditVm.CancelCommand.Execute(null);
+        return true;
+    }
 
     // ── Include Saturday / Sunday settings ───────────────────────────────────
 

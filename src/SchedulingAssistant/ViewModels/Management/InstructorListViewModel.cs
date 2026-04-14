@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class InstructorListViewModel : ViewModelBase, IDisposable
+public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDismissableEditor
 {
     private readonly IInstructorRepository _repo;
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
@@ -31,6 +31,15 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
     [ObservableProperty] private Instructor? _selectedInstructor;
     [ObservableProperty] private InstructorEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is null) return false;
+        EditVm.CancelCommand.Execute(null);
+        return true;
+    }
+
     [ObservableProperty] private bool _showOnlyActive = true;
     [ObservableProperty] private InstructorWorkloadViewModel _workloadVm = new();
     [ObservableProperty] private ReleaseManagementViewModel _releaseVm;

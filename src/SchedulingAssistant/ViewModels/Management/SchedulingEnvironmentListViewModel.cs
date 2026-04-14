@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SchedulingEnvironmentListViewModel : ViewModelBase
+public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly ISchedulingEnvironmentRepository _repo;
     private readonly ISectionRepository _sectionRepo;
@@ -43,6 +43,14 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _items = new();
     [ObservableProperty] private SchedulingEnvironmentValue? _selectedItem;
     [ObservableProperty] private SchedulingEnvironmentEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is null) return false;
+        EditVm.CancelCommand.Execute(null);
+        return true;
+    }
 
     public SchedulingEnvironmentListViewModel(
         string propertyType,

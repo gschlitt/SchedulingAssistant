@@ -34,7 +34,7 @@
         <!--  Selected chip: violet border matching UserSelectedSectionBorderColor in other views  -->
         <Style Selector="Button.chip.selected">
             <Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
-            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderThickness" Value="3" />
         </Style>
         <Style Selector="Button.chip.release.selected">
             <Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
@@ -114,7 +114,7 @@
                             <Border
                                 Classes="WorkloadCard"
                                 Margin="0,2,0,2"
-                                Background="{StaticResource WorkloadTileFill}"
+                                Background="White"
                                 BoxShadow="{StaticResource PanelBoxShadow}"
                                 CornerRadius="4">
                                 <Grid>

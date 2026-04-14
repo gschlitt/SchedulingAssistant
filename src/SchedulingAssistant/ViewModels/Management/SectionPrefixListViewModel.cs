@@ -12,7 +12,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// Provides a list of section prefixes with inline Add/Edit/Delete support,
 /// plus a toggle for whether the institution uses section prefixes at all.
 /// </summary>
-public partial class SectionPrefixListViewModel : ViewModelBase
+public partial class SectionPrefixListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly ISectionPrefixRepository _repo;
     private readonly ICampusRepository _campusRepo;
@@ -30,6 +30,14 @@ public partial class SectionPrefixListViewModel : ViewModelBase
     /// Non-null while the Add/Edit form is visible; null when showing the list.
     /// </summary>
     [ObservableProperty] private SectionPrefixEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public bool DismissActiveEditor()
+    {
+        if (EditVm is null) return false;
+        EditVm.CancelCommand.Execute(null);
+        return true;
+    }
 
     /// <summary>
     /// Whether the institution uses section prefixes.  When false the prefix list
