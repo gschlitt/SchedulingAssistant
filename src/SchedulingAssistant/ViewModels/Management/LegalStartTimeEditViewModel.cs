@@ -55,19 +55,31 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
     private readonly Func<LegalStartTime, Task> _onSave;
     private readonly Action _onCancel;
 
+    /// <summary>
+    /// Optional predicate that returns true when the given block length (in hours) is already
+    /// taken by another entry. Only evaluated when <see cref="IsNew"/> is true.
+    /// </summary>
+    private readonly Func<double, bool>? _isDuplicateBlockLength;
+
     /// <param name="entry">The entry being edited or a blank entry for new additions.</param>
     /// <param name="isNew">True when adding a new block length; false when editing an existing one.</param>
     /// <param name="unit">Current block-length display unit from AppSettings.</param>
     /// <param name="onSave">Callback invoked with the updated entry on save.</param>
     /// <param name="onCancel">Callback invoked when the user cancels.</param>
+    /// <param name="isDuplicateBlockLength">
+    /// Optional. Called during save (add mode only) to check whether the entered block length
+    /// conflicts with an existing entry. Return true to abort the save and display an error.
+    /// </param>
     public LegalStartTimeEditViewModel(LegalStartTime entry, bool isNew, BlockLengthUnit unit,
-        Func<LegalStartTime, Task> onSave, Action onCancel)
+        Func<LegalStartTime, Task> onSave, Action onCancel,
+        Func<double, bool>? isDuplicateBlockLength = null)
     {
         _entry  = entry;
         IsNew   = isNew;
         _unit   = unit;
         _onSave = onSave;
         _onCancel = onCancel;
+        _isDuplicateBlockLength = isDuplicateBlockLength;
 
         _blockLengthHours = entry.BlockLength;
         StartTimeRows = new ObservableCollection<StartTimeRowViewModel>(
@@ -136,6 +148,13 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
     [RelayCommand]
     private async Task Save()
     {
+        if (IsNew && _isDuplicateBlockLength?.Invoke(_blockLengthHours) == true)
+        {
+            ValidationError = $"A block length of {BlockLengthFormatter.LabelFor(_blockLengthHours, _unit)} already exists.";
+            return;
+        }
+
+        ValidationError = null;
         _entry.BlockLength = _blockLengthHours;
         _entry.StartTimes  = StartTimeRows.Select(r => r.Minutes).ToList();
         await _onSave(_entry);

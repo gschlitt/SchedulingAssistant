@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T22:28:56.721Z
-> Files: 1 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T22:50:22.786Z
+> Files: 3 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -201,6 +201,8 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `LegalStartTimeEditViewModel.cs` — Block length in hours — internal storage unit. Never exposed directly to the UI. (~1925 tok)
+- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3378 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 

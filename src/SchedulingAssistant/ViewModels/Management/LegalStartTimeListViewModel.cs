@@ -284,7 +284,8 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
                 try { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
             },
-            onCancel: () => EditVm = null);
+            onCancel: () => EditVm = null,
+            isDuplicateBlockLength: bl => Entries.Any(e => Math.Abs(e.BlockLength - bl) < 0.0001));
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]

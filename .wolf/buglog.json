@@ -4921,6 +4921,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-14T00:00:00.000Z"
+    },
+    {
+      "id": "bug-308",
+      "timestamp": "2026-04-14T22:50:14.852Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/LegalStartTimeEditViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T22:50:14.852Z"
     }
   ]
 }
