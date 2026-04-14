@@ -30,7 +30,7 @@
                             MinHeight="0"
                             Padding="4,1"
                             VerticalAlignment="Center"
-                            Background="Transparent"
+                            Background="{StaticResource ButtonBackground}"
                             BorderThickness="0"
                             Command="{Binding ToggleMeetingViewCommand}"
                             Content="{Binding ToggleMeetingViewLabel}"
@@ -175,8 +175,8 @@
             <!--  ScrollViewer needed because ListBox with custom StackPanel ItemsPanel doesn't scroll internally  -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding IsShowingSections}" />
-                    <views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding IsShowingMeetings}" />
+                    <views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                 </StackPanel>
             </ScrollViewer>
 

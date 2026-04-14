@@ -4870,6 +4870,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-14T03:44:30.505Z"
+    },
+    {
+      "id": "bug-305",
+      "timestamp": "2026-04-14T16:53:13.977Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/LeftPanelView.axaml",
+      "root_cause": "Had \"{Binding IsShowingSections}\"",
+      "fix": "Changed to \"{Binding DataContext.IsShowingSections, RelativeS",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T16:53:13.977Z"
     }
   ]
 }

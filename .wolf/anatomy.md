@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T15:49:51.078Z
-> Files: 107 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T16:53:13.948Z
+> Files: 108 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -48,6 +48,7 @@
 - `soft-zooming-neumann.md` — Non-UX Vulnerability Scan: Memory Leaks, Race Conditions, Resource Leaks (~2023 tok)
 - `sorted-stargazing-pie.md` — Plan: Fix WorkloadPanelView Header/Content Column Alignment (~753 tok)
 - `splendid-wandering-sun.md` — Plan: Fix Menu Staying Open After Recent File Selection (~970 tok)
+- `ticklish-zooming-codd.md` — Fix: Events/Meeting View toggle doesn't swap content (~458 tok)
 - `tidy-doodling-gray.md` — Plan: Scroll New Section Editor Into View (~537 tok)
 - `tranquil-snacking-allen.md` — Plan: Loading Curtain to Replace Splash Screen (~887 tok)
 - `unified-crunching-sonnet.md` — Plan: Show only prefix in prefix picker (not prefix + campus) (~281 tok)
@@ -295,7 +296,7 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `LeftPanelView.axaml` (~2446 tok)
+- `LeftPanelView.axaml` (~2511 tok)
 - `LeftPanelView.axaml.cs` — Class: LeftPanelView (~50 tok)
 - `WorkloadPanelView.axaml` (~4242 tok)
 
