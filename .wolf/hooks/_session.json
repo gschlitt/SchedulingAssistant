@@ -1,69 +1,12 @@
 {
-  "session_id": "session-2026-04-14-0950",
-  "started": "2026-04-14T16:50:55.095Z",
-  "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/LeftPanelView.axaml": {
-      "count": 4,
-      "tokens": 2446,
-      "first_read": "2026-04-14T16:51:08.645Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
-      "count": 2,
-      "tokens": 20484,
-      "first_read": "2026-04-14T16:51:09.666Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/LeftPanelView.axaml.cs": {
-      "count": 1,
-      "tokens": 50,
-      "first_read": "2026-04-14T16:51:11.952Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml": {
-      "count": 1,
-      "tokens": 10567,
-      "first_read": "2026-04-14T16:51:12.393Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs": {
-      "count": 2,
-      "tokens": 7669,
-      "first_read": "2026-04-14T16:51:20.124Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml": {
-      "count": 5,
-      "tokens": 9244,
-      "first_read": "2026-04-14T16:51:29.646Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Controls/DetachablePanel.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-14T16:51:38.037Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs": {
-      "count": 1,
-      "tokens": 12638,
-      "first_read": "2026-04-14T16:51:41.263Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/.claude/plans/ticklish-zooming-codd.md",
-      "action": "create",
-      "tokens": 523,
-      "at": "2026-04-14T16:52:49.804Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/LeftPanelView.axaml",
-      "action": "edit",
-      "tokens": 111,
-      "at": "2026-04-14T16:53:13.971Z"
-    }
-  ],
-  "edit_counts": {
-    "../../../.claude/plans/ticklish-zooming-codd.md": 1,
-    "src/SchedulingAssistant/Views/LeftPanelView.axaml": 1
-  },
-  "anatomy_hits": 7,
-  "anatomy_misses": 1,
-  "repeated_reads_warned": 9,
+  "session_id": "session-2026-04-14-1410",
+  "started": "2026-04-14T21:10:50.715Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
+  "anatomy_misses": 0,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 1
+  "stop_count": 0
 }

@@ -38,6 +38,12 @@
             <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
         </Style>
 
+      
+        <Style Selector="TextBlock">
+          <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+        </Style>
+      
+
         <!--
             Hover tint on section cards. Because the card's Background is a local binding
             (CardBackgroundBrush), a style setter cannot override it. Instead, a transparent

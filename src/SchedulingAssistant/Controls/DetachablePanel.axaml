@@ -20,6 +20,7 @@
             -->
             <Border
                 x:Name="HeaderBorder"
+                Height="30"
                 Grid.Row="0"
                 Padding="8,2"
                 b:RightClickCommandBehavior.Command="{Binding #Root.InternalHeaderRightClickCommand}"
@@ -30,7 +31,7 @@
                     <!--  Row 0: Title row with detach button  -->
                     <DockPanel Grid.Row="0">
                         <Button
-                            Padding="4,2"
+                            Padding="4,0,0,6"
                             Background="Transparent"
                             BorderThickness="0"
                             Click="OnDetachClicked"
@@ -42,6 +43,7 @@
                         <!--  Panel title  -->
                         <TextBlock
                             Margin="0,0,12,0"
+                            
                             VerticalAlignment="Center"
                             DockPanel.Dock="Left"
                             FontSize="{StaticResource FontSizeLarge}"
@@ -51,12 +53,14 @@
                         <ContentPresenter VerticalAlignment="Center" Content="{Binding #Root.HeaderContext}" />
                     </DockPanel>
 
-                    <!--  Row 1: Extra controls (buttons)  -->
+                    <!--  Row 1: Extra controls (buttons). Collapsed when empty so its top
+                         margin doesn't create phantom space below the title row.  -->
                     <ContentPresenter
                         Grid.Row="1"
-                        Margin="0,4,0,0"
+                        Margin="0,0,0,0"
                         VerticalAlignment="Top"
-                        Content="{Binding #Root.HeaderExtra}" />
+                        Content="{Binding #Root.HeaderExtra}"
+                        IsVisible="{Binding #Root.HeaderExtra, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </Grid>
             </Border>
 

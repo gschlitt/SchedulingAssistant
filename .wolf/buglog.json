@@ -4886,6 +4886,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-14T16:53:13.977Z"
+    },
+    {
+      "id": "bug-306",
+      "timestamp": "2026-04-14T17:50:54.728Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Controls/DetachablePanel.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-14T17:50:54.728Z"
     }
   ]
 }

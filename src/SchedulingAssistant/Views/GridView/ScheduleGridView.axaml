@@ -42,7 +42,7 @@
     <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,Auto,*,Auto">
 
         <!--  Row 0: Filter bar - always visible  -->
-        <local:GridFilterView Grid.Row="0" DataContext="{Binding Filter}" />
+        <local:GridFilterView Grid.Row="0" DataContext="{Binding Filter}" Margin="0,4,0,0" />
 
         <!--  Row 1: Error banner (only visible when LastErrorMessage is set)  -->
         <Border

@@ -67,9 +67,11 @@
 
 
 <!--Filters and Overlays ────────────────────────────────   -->
-  
+
   <SolidColorBrush x:Key="FilterBarBackground" Color="#EEF4FC" />
   <SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
+  <!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
+  <SolidColorBrush x:Key="FilterGroupBorder" Color="#D0DFF0" />
   <SolidColorBrush x:Key="FilterExpanderContent" Color="White" />
   <!--  Sentinel row background in filter dropdowns (separates "All" entry)  -->
   <SolidColorBrush x:Key="FilterSentinelBackground" Color="#EEF4FC" />

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T16:53:13.948Z
-> Files: 108 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T18:27:32.194Z
+> Files: 110 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -205,7 +205,7 @@
 
 - `App.axaml` (~1485 tok)
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3508 tok)
-- `AppColors.axaml` (~3106 tok)
+- `AppColors.axaml` (~2789 tok)
 - `MainWindow.axaml` — Declares applied (~9244 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12638 tok)
 
@@ -217,6 +217,7 @@
 
 ## src/SchedulingAssistant/Controls/
 
+- `DetachablePanel.axaml` (~887 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -302,6 +303,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~10708 tok)
 - `ScheduleGridView.axaml` (~3533 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12247 tok)
 
