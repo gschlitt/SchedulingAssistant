@@ -210,7 +210,7 @@
                             VerticalAlignment="Center"
                             FontSize="11"
                             FontStyle="Italic"
-                            Foreground="Red"
+                            Foreground="{StaticResource NotificationWarningText}"
                             IsVisible="{Binding IsDirty}"
                             Text="Unsaved changes"
                             ToolTip.Tip="You have unsaved changes" />
@@ -618,7 +618,7 @@
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
                     Background="{StaticResource FlyoutBackground}"
-                    BoxShadow="0 4 20 2 #50000000"
+                    BoxShadow="{StaticResource PanelBoxShadow}"
                     CornerRadius="0,0,6,6">
                     <Grid RowDefinitions="Auto,*">
 

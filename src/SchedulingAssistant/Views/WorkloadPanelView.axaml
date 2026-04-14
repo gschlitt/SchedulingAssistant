@@ -36,7 +36,7 @@
         </Style>
         <!--  Release chip: light lavender with raised appearance  -->
         <Style Selector="Button.chip.release">
-            <Setter Property="Background" Value="#EDE8F5" />
+            <Setter Property="Background" Value="{StaticResource ReleaseTile}" />
         </Style>
         <!--
             Hover tint on instructor cards. Targets the transparent overlay Border inside the card
@@ -128,7 +128,7 @@
                             <Border
                                 Classes="WorkloadCard"
                                 Margin="0,2,0,2"
-                                Background="White"
+                                Background="{StaticResource AppBackground}"
                                 BoxShadow="{StaticResource PanelBoxShadow}"
                                 CornerRadius="4">
                                 <Grid>

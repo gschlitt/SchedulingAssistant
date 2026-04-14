@@ -52,15 +52,15 @@
 
             <WrapPanel VerticalAlignment="Center">
                 <TextBlock Text="The following examples of sections of the " />
-                <Border Padding="2,0" Background="{StaticResource PrefixCampusABackground}">
+                <Border Padding="2,0" Background="{StaticResource PrefixCourseBackground}">
                     <TextBlock Text="course" />
                 </Border>
                 <TextBlock Text=" PSYC 101 show various forms of " />
-                <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
+                <Border Padding="2,0" Background="{StaticResource PrefixSectionBackground}">
                     <TextBlock Text="section prefix" />
                 </Border>
                 <TextBlock Text=" and " />
-                <Border Padding="2,0" Background="LightSalmon">
+                <Border Padding="2,0" Background="{StaticResource PrefixDesignatorBackground}">
                     <TextBlock Text="section designator" />
                 </Border>
                 <TextBlock Text="." />
@@ -82,13 +82,13 @@
                     Spacing="0">
                     <Border
                         Padding="5,2"
-                        Background="{StaticResource PrefixCampusABackground}"
+                        Background="{StaticResource PrefixCourseBackground}"
                         CornerRadius="2,0,0,2">
                         <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                     </Border>
                     <Border
                         Padding="0"
-                        Background="{StaticResource PrefixCampusBBackground}"
+                        Background="{StaticResource PrefixSectionBackground}"
                         CornerRadius="0">
                         <TextBlock
                             HorizontalAlignment="Right"
@@ -98,7 +98,7 @@
                     </Border>
                     <Border
                         Padding="0,0,1,0"
-                        Background="LIghtSalmon"
+                        Background="{StaticResource PrefixDesignatorBackground}"
                         CornerRadius="0,2,2,0">
                         <TextBlock
                             HorizontalAlignment="Left"
@@ -117,13 +117,13 @@
                     Spacing="0">
                     <Border
                         Padding="5,2"
-                        Background="{StaticResource PrefixCampusABackground}"
+                        Background="{StaticResource PrefixCourseBackground}"
                         CornerRadius="2,0,0,2">
                         <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                     </Border>
                     <Border
                         Padding="0"
-                        Background="{StaticResource PrefixCampusBBackground}"
+                        Background="{StaticResource PrefixSectionBackground}"
                         CornerRadius="0">
                         <TextBlock
                             HorizontalAlignment="Right"
@@ -133,7 +133,7 @@
                     </Border>
                     <Border
                         Padding="0,0,1,0"
-                        Background="LIghtSalmon"
+                        Background="{StaticResource PrefixDesignatorBackground}"
                         CornerRadius="0,2,2,0">
                         <TextBlock
                             HorizontalAlignment="Left"
@@ -151,11 +151,11 @@
                     Margin="20,0"
                     VerticalAlignment="Top">
                     <TextBlock Text="The" />
-                    <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
+                    <Border Padding="2,0" Background="{StaticResource PrefixSectionBackground}">
                         <TextBlock Text="section prefix" />
                     </Border>
                     <TextBlock Text=" designates campus. The" />
-                    <Border Padding="2,0" Background="LightSalmon">
+                    <Border Padding="2,0" Background="{StaticResource PrefixDesignatorBackground}">
                         <TextBlock Text="section designator " />
                     </Border>
                     <TextBlock Text="is a number." />
@@ -171,13 +171,13 @@
                     Spacing="0">
                     <Border
                         Padding="5,2"
-                        Background="{StaticResource PrefixCampusABackground}"
+                        Background="{StaticResource PrefixCourseBackground}"
                         CornerRadius="2,0,0,2">
                         <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                     </Border>
                     <Border
                         Padding="0"
-                        Background="{StaticResource PrefixCampusBBackground}"
+                        Background="{StaticResource PrefixSectionBackground}"
                         CornerRadius="0">
                         <TextBlock
                             HorizontalAlignment="Right"
@@ -187,7 +187,7 @@
                     </Border>
                     <Border
                         Padding="0,0,1,0"
-                        Background="LIghtSalmon"
+                        Background="{StaticResource PrefixDesignatorBackground}"
                         CornerRadius="0,2,2,0">
                         <TextBlock
                             HorizontalAlignment="Left"
@@ -206,13 +206,13 @@
                     Spacing="0">
                     <Border
                         Padding="5,2"
-                        Background="{StaticResource PrefixCampusABackground}"
+                        Background="{StaticResource PrefixCourseBackground}"
                         CornerRadius="2,0,0,2">
                         <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                     </Border>
                     <Border
                         Padding="0"
-                        Background="{StaticResource PrefixCampusBBackground}"
+                        Background="{StaticResource PrefixSectionBackground}"
                         CornerRadius="0">
                         <TextBlock
                             HorizontalAlignment="Right"
@@ -222,7 +222,7 @@
                     </Border>
                     <Border
                         Padding="0,0,1,0"
-                        Background="LightSalmon"
+                        Background="{StaticResource PrefixDesignatorBackground}"
                         CornerRadius="0,2,2,0">
                         <TextBlock
                             HorizontalAlignment="Left"
@@ -241,11 +241,11 @@
                     Margin="0,10,0,0"
                     VerticalAlignment="Top">
                     <TextBlock Text="The" />
-                    <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
+                    <Border Padding="2,0" Background="{StaticResource PrefixSectionBackground}">
                         <TextBlock Text="section prefix" />
                     </Border>
                     <TextBlock Text=" designates a tutorial. The" />
-                    <Border Padding="2,0" Background="LightSalmon">
+                    <Border Padding="2,0" Background="{StaticResource PrefixDesignatorBackground}">
                         <TextBlock Text="section designator " />
                     </Border>
                     <TextBlock Text="is a letter." />
@@ -261,13 +261,13 @@
                     Spacing="0">
                     <Border
                         Padding="5,2"
-                        Background="{StaticResource PrefixCampusABackground}"
+                        Background="{StaticResource PrefixCourseBackground}"
                         CornerRadius="2,0,0,2">
                         <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                     </Border>
                     <Border
                         Padding="0"
-                        Background="{StaticResource PrefixCampusBBackground}"
+                        Background="{StaticResource PrefixSectionBackground}"
                         CornerRadius="0">
                         <TextBlock
                             HorizontalAlignment="Right"
@@ -277,7 +277,7 @@
                     </Border>
                     <Border
                         Padding="0,0,1,0"
-                        Background="LIghtSalmon"
+                        Background="{StaticResource PrefixDesignatorBackground}"
                         CornerRadius="0,2,2,0">
                         <TextBlock
                             HorizontalAlignment="Left"
@@ -296,13 +296,13 @@
                     Spacing="0">
                     <Border
                         Padding="5,2"
-                        Background="{StaticResource PrefixCampusABackground}"
+                        Background="{StaticResource PrefixCourseBackground}"
                         CornerRadius="2,0,0,2">
                         <TextBlock FontSize="{DynamicResource FontSizeNormal}" Text="PSYC 101 " />
                     </Border>
                     <Border
                         Padding="0"
-                        Background="{StaticResource PrefixCampusBBackground}"
+                        Background="{StaticResource PrefixSectionBackground}"
                         CornerRadius="0">
                         <TextBlock
                             HorizontalAlignment="Right"
@@ -312,7 +312,7 @@
                     </Border>
                     <Border
                         Padding="0,0,1,0"
-                        Background="LIghtSalmon"
+                        Background="{StaticResource PrefixDesignatorBackground}"
                         CornerRadius="0,2,2,0">
                         <TextBlock
                             HorizontalAlignment="Left"
@@ -331,11 +331,11 @@
                     Margin="0,10,0,0"
                     VerticalAlignment="Top">
                     <TextBlock Text="The" />
-                    <Border Padding="2,0" Background="{StaticResource PrefixCampusBBackground}">
+                    <Border Padding="2,0" Background="{StaticResource PrefixSectionBackground}">
                         <TextBlock Text="section prefix " />
                     </Border>
                     <TextBlock Text="designates some other section aspect. The" />
-                    <Border Padding="2,0" Background="LightSalmon">
+                    <Border Padding="2,0" Background="{StaticResource PrefixDesignatorBackground}">
                         <TextBlock Text="section designator " />
                     </Border>
                     <TextBlock Text="is a number." />

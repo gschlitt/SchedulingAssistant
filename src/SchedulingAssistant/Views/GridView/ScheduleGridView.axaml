@@ -102,7 +102,7 @@
                     VerticalAlignment="Center"
                     DockPanel.Dock="Right"
                     FontSize="10"
-                    Foreground="Black"
+                    Foreground="{StaticResource TextPrimary}"
                     TextAlignment="Right" />
                 <Slider
                     x:Name="ZoomSlider"
@@ -117,7 +117,7 @@
                 <TextBlock
                     VerticalAlignment="Center"
                     FontSize="10"
-                    Foreground="Black"
+                    Foreground="{StaticResource TextPrimary}"
                     Text="Zoom:" />
             </DockPanel>
         </Border>
@@ -130,7 +130,7 @@
             IsOpen="{Binding ContextMenu.IsOpen, Mode=TwoWay}"
             Placement="Pointer">
             <Border
-                Background="White"
+                Background="{StaticResource AppBackground}"
                 BorderBrush="{StaticResource FilterExpanderBorder}"
                 BorderThickness="1"
                 BoxShadow="0 2 8 0 #33000000"
@@ -146,7 +146,7 @@
                                     Margin="0,1,0,0"
                                     VerticalAlignment="Center"
                                     FontSize="9"
-                                    Foreground="Gray"
+                                    Foreground="{StaticResource TextPrimary}"
                                     Text="▶" />
                             </StackPanel>
                         </Button>
@@ -157,7 +157,7 @@
                                     Margin="0,1,0,0"
                                     VerticalAlignment="Center"
                                     FontSize="9"
-                                    Foreground="Gray"
+                                    Foreground="{StaticResource TextPrimary}"
                                     Text="▶" />
                             </StackPanel>
                         </Button>
@@ -168,7 +168,7 @@
                                     Margin="0,1,0,0"
                                     VerticalAlignment="Center"
                                     FontSize="9"
-                                    Foreground="Gray"
+                                    Foreground="{StaticResource TextPrimary}"
                                     Text="▶" />
                             </StackPanel>
                         </Button>

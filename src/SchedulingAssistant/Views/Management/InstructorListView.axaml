@@ -22,7 +22,7 @@
             Grid.Row="0"
             Grid.Column="0"
             Padding="8,12"
-            Background="White"
+            Background="{StaticResource AppBackground}"
             BorderThickness="0,0,0,0">
             <StackPanel
                 IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"

@@ -1,66 +1,12 @@
 {
-  "session_id": "session-2026-04-14-0845",
-  "started": "2026-04-14T15:45:51.046Z",
-  "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml": {
-      "count": 5,
-      "tokens": 4242,
-      "first_read": "2026-04-14T15:46:05.549Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml": {
-      "count": 1,
-      "tokens": 3106,
-      "first_read": "2026-04-14T15:46:06.107Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml": {
-      "count": 1,
-      "tokens": 3533,
-      "first_read": "2026-04-14T15:46:11.416Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
-      "count": 3,
-      "tokens": 20484,
-      "first_read": "2026-04-14T15:46:11.633Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml": {
-      "count": 1,
-      "tokens": 1485,
-      "first_read": "2026-04-14T15:46:24.805Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/.claude/plans/joyful-watching-blanket.md",
-      "action": "create",
-      "tokens": 544,
-      "at": "2026-04-14T15:46:50.218Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
-      "action": "edit",
-      "tokens": 177,
-      "at": "2026-04-14T15:47:20.884Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
-      "action": "edit",
-      "tokens": 56,
-      "at": "2026-04-14T15:47:26.295Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
-      "action": "edit",
-      "tokens": 468,
-      "at": "2026-04-14T15:49:51.103Z"
-    }
-  ],
-  "edit_counts": {
-    "../../../.claude/plans/joyful-watching-blanket.md": 1,
-    "src/SchedulingAssistant/Views/WorkloadPanelView.axaml": 3
-  },
-  "anatomy_hits": 5,
+  "session_id": "session-2026-04-14-0934",
+  "started": "2026-04-14T16:34:14.431Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
   "anatomy_misses": 0,
-  "repeated_reads_warned": 6,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 1
+  "stop_count": 0
 }

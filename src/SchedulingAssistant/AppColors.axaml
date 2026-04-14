@@ -30,8 +30,8 @@
 	
 		<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
 			<SolidColorBrush x:Key="TileFill" Color="#d4e9fe" />
-  <!--WorkloadView Tiles a little darker -->
-      <SolidColorBrush x:Key="WorkloadTileFill" Color="#a9bacc"/>
+			
+			<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5"/>
       
       <!--ScheduleGridView Tiles-->
 			<!--  External border: the outline around the entire tile card  -->
@@ -196,11 +196,12 @@
 	
 
 	<!--
-		── Wizard: section-prefix campus badge colors  ────────────────────
-		Two distinct tints for campus A vs campus B prefix badges.
+		 section-prefix dialog badge colors  ────────────────────
+		
 	-->
-	<SolidColorBrush x:Key="PrefixCampusABackground" Color="#DBEAFE" />
-	<SolidColorBrush x:Key="PrefixCampusBBackground" Color="#D1FAE5" />
+	<SolidColorBrush x:Key="PrefixCourseBackground" Color="#DBEAFE" />
+	<SolidColorBrush x:Key="PrefixSectionBackground" Color="#D1FAE5" />
+  <SolidColorBrush x:Key="PrefixDesignatorBackground" Color="LightSalmon"/>
 
 	<!--  ── Help tooltips  ──────────────────────────────────────────────────  -->
 	<!--  Light indigo-white fill — distinct from the cooler TileFill (#E2EDF8)  -->

@@ -74,7 +74,7 @@
 
                 <TextBlock
                     FontSize="11"
-                    Foreground="DarkOrange"
+                    Foreground="{StaticResource NotificationWarningText}"
                     IsVisible="{Binding !IsBackupConfigured}"
                     Text="No backup folder is configured. Backups will not run until a folder is set."
                     TextWrapping="Wrap" />

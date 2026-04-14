@@ -82,7 +82,8 @@ public partial class ScheduleGridView : UserControl
     private static IBrush HeaderFill         => Res("WeekDayBar");
     private static IBrush HeaderBorder       => Res("DaySeparators");
     private static IBrush GutterBg           => Res("TimesColumn");
-
+    private static IBrush TileText => Res("TextPrimary");
+    private static IBrush HalfHourText => Res("GridTimeHalfHourText");
     private static IBrush ScheduleBackground => Res("AppBackground");
 
 
@@ -199,7 +200,7 @@ public partial class ScheduleGridView : UserControl
             info.Label.Foreground = isSelected       ? TileBorderSelected
                                   : info.IsOverlay    ? OverlayFrameBorder
                                   : info.IsDeemphasized ? TileDeemphasizedText
-                                  : Brushes.Black;
+                                  : TileText;
         }
     }
 
@@ -285,7 +286,7 @@ public partial class ScheduleGridView : UserControl
                             FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
                             Foreground      = entrySelected        ? TileBorderSelected
                                            : entry.IsDeemphasized  ? TileDeemphasizedText
-                                           : Brushes.Black,
+                                           : TileText,
                             TextTrimming    = TextTrimming.CharacterEllipsis,
                             TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                         },
@@ -542,7 +543,7 @@ public partial class ScheduleGridView : UserControl
             {
                 Text = label,
                 FontSize = isHour ? 11 : 9,
-                Foreground = isHour ? Brushes.Black : Res("GridTimeHalfHourText"),
+                Foreground = isHour ? TileText : HalfHourText,
                 Width = TimeGutterWidth - 4,
                 TextAlignment = TextAlignment.Right,
             };
@@ -616,7 +617,7 @@ public partial class ScheduleGridView : UserControl
                         Foreground      = entrySelected        ? TileBorderSelected
                                        : entry.IsOverlay       ? OverlayFrameBorder
                                        : entry.IsDeemphasized  ? TileDeemphasizedText
-                                       : Brushes.Black,
+                                       : TileText,
                         TextTrimming    = TextTrimming.CharacterEllipsis,
                         TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                     };

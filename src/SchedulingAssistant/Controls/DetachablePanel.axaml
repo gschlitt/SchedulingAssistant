@@ -9,7 +9,7 @@
     <Border
         BorderBrush="{StaticResource ChromeBorder}"
         BorderThickness="1"
-        BoxShadow="0 1 6 0 #1A000000"
+        BoxShadow="{StaticResource PanelBoxShadow}"
         CornerRadius="2">
         <Grid RowDefinitions="Auto,*">
 
