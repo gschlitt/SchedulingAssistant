@@ -48,7 +48,7 @@ public class DatabaseContext : IDatabaseContext
         {
             _conn.Open();
             InitializeSchema();
-            Migrate();
+            Migrate(dbPath);
             SeedData.EnsureSeeded(_conn);
         }
         catch (Exception ex)
@@ -196,70 +196,151 @@ public class DatabaseContext : IDatabaseContext
     /// Handles schema migrations for existing databases.
     /// All tables are created by <see cref="InitializeSchema"/>; this method only handles
     /// column additions and data backfills for databases created before certain columns existed.
+    ///
+    /// Migrations run inside a transaction so a crash or error cannot leave the database
+    /// in a partially-migrated state. A pre-migration backup is taken (via VACUUM INTO)
+    /// whenever migration work is detected, so the user has a rollback point even if the
+    /// process is killed at the OS level (outside SQLite's transactional protection).
     /// </summary>
-    private void Migrate()
+    /// <param name="dbPath">Path to the database file, used for the pre-migration backup.</param>
+    private void Migrate(string dbPath)
+    {
+        if (!IsMigrationNeeded()) return;
+
+        TakePreMigrationBackup(dbPath);
+
+        using var tx = _conn.BeginTransaction();
+        try
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.Transaction = tx;
+
+            // Rename SectionPropertyValues to SchedulingEnvironmentValues if the old table still exists
+            cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SectionPropertyValues'";
+            var oldTableExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            if (oldTableExists)
+            {
+                cmd.CommandText = "ALTER TABLE SectionPropertyValues RENAME TO SchedulingEnvironmentValues";
+                cmd.ExecuteNonQuery();
+            }
+
+            // Purge invalid commitment records (missing instructor_id or semester_id)
+            cmd.CommandText = "DELETE FROM InstructorCommitments WHERE instructor_id IS NULL OR instructor_id = '' OR semester_id IS NULL OR semester_id = ''";
+            cmd.ExecuteNonQuery();
+
+            // Add academic_year_id column to LegalStartTimes if it doesn't exist
+            // (for databases upgraded from the old schema)
+            AddColumnIfMissing(_conn, tx, "LegalStartTimes", "academic_year_id", "TEXT DEFAULT ''");
+
+            // Human-readable columns for DB browsing (added across all entity tables)
+            AddColumnIfMissing(_conn, tx, "AcademicYears",       "name",          "TEXT");
+            AddColumnIfMissing(_conn, tx, "Instructors",         "last_name",     "TEXT");
+            AddColumnIfMissing(_conn, tx, "Instructors",         "first_name",    "TEXT");
+            AddColumnIfMissing(_conn, tx, "Instructors",         "initials",      "TEXT");
+            AddColumnIfMissing(_conn, tx, "Rooms",               "building",      "TEXT");
+            AddColumnIfMissing(_conn, tx, "Rooms",               "room_number",   "TEXT");
+            AddColumnIfMissing(_conn, tx, "Subjects",            "name",          "TEXT");
+            AddColumnIfMissing(_conn, tx, "Subjects",            "abbreviation",  "TEXT");
+            AddColumnIfMissing(_conn, tx, "Courses",             "calendar_code", "TEXT");
+            AddColumnIfMissing(_conn, tx, "Courses",             "title",         "TEXT");
+            AddColumnIfMissing(_conn, tx, "Sections",            "section_code",       "TEXT");
+            AddColumnIfMissing(_conn, tx, "Sections",            "course_code",        "TEXT");
+            AddColumnIfMissing(_conn, tx, "Sections",            "semester_name",      "TEXT");
+            AddColumnIfMissing(_conn, tx, "Sections",            "academic_year_name", "TEXT");
+            AddColumnIfMissing(_conn, tx, "Semesters",           "academic_year_name", "TEXT");
+            AddColumnIfMissing(_conn, tx, "LegalStartTimes",     "academic_year_name", "TEXT");
+            AddColumnIfMissing(_conn, tx, "SchedulingEnvironmentValues", "name",        "TEXT");
+            AddColumnIfMissing(_conn, tx, "AcademicUnits",       "name",          "TEXT");
+            AddColumnIfMissing(_conn, tx, "InstructorCommitments", "instructor_name", "TEXT");
+            AddColumnIfMissing(_conn, tx, "InstructorCommitments", "semester_name",   "TEXT");
+
+            BackfillReadableColumns(_conn, tx);
+
+            tx.Commit();
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Quick read-only check for whether any migration work is pending.
+    /// Returns false when the database is fully up-to-date, avoiding unnecessary
+    /// pre-migration backups on every startup.
+    /// </summary>
+    private bool IsMigrationNeeded()
     {
         using var cmd = _conn.CreateCommand();
 
-        // Rename SectionPropertyValues to SchedulingEnvironmentValues if the old table still exists
+        // Old table name still present → rename migration needed
         cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SectionPropertyValues'";
-        var oldTableExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
-        if (oldTableExists)
+        if (Convert.ToInt32(cmd.ExecuteScalar()) > 0) return true;
+
+        // Check a late-stage readable column as a proxy for "all columns added".
+        // If this column exists, all earlier AddColumnIfMissing calls are also complete.
+        cmd.CommandText = "PRAGMA table_info(InstructorCommitments)";
+        var hasInstructorName = false;
+        using (var r = cmd.ExecuteReader())
+            while (r.Read())
+                if (r.GetString(1) == "instructor_name") { hasInstructorName = true; break; }
+        if (!hasInstructorName) return true;
+
+        // Check if any backfill rows remain (representative sample — Sections is the largest table)
+        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM Sections WHERE section_code IS NULL)";
+        if (Convert.ToInt32(cmd.ExecuteScalar()) == 1) return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Creates a pre-migration backup of the database using VACUUM INTO.
+    /// The backup is placed alongside the database file with a <c>.pre-migration.bak</c> suffix.
+    /// Non-throwing: if the backup fails (disk full, permissions, etc.) migration proceeds
+    /// anyway — the transaction wrapper is the primary safety net.
+    /// </summary>
+    /// <param name="dbPath">Path to the database file being migrated.</param>
+    private void TakePreMigrationBackup(string dbPath)
+    {
+        try
         {
-            cmd.CommandText = "ALTER TABLE SectionPropertyValues RENAME TO SchedulingEnvironmentValues";
+            var backupPath = dbPath + ".pre-migration.bak";
+
+            // Overwrite any prior backup — we only keep the most recent one
+            if (File.Exists(backupPath))
+                File.Delete(backupPath);
+
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "VACUUM INTO $path";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "$path";
+            p.Value = backupPath;
+            cmd.Parameters.Add(p);
             cmd.ExecuteNonQuery();
         }
-
-        // Purge invalid commitment records (missing instructor_id or semester_id)
-        cmd.CommandText = "DELETE FROM InstructorCommitments WHERE instructor_id IS NULL OR instructor_id = '' OR semester_id IS NULL OR semester_id = ''";
-        cmd.ExecuteNonQuery();
-
-        // Add academic_year_id column to LegalStartTimes if it doesn't exist
-        // (for databases upgraded from the old schema)
-        cmd.CommandText = "PRAGMA table_info(LegalStartTimes)";
-        using var reader = cmd.ExecuteReader();
-        var columns = new HashSet<string>();
-        while (reader.Read())
-            columns.Add((string)reader[1]);
-
-        if (!columns.Contains("academic_year_id"))
+        catch (Exception ex)
         {
-            cmd.CommandText = "ALTER TABLE LegalStartTimes ADD COLUMN academic_year_id TEXT DEFAULT ''";
-            cmd.ExecuteNonQuery();
+            // Log but don't block startup — the transaction is the real protection.
+            System.Diagnostics.Debug.WriteLine(
+                $"DatabaseContext: pre-migration backup failed (non-critical): {ex.Message}");
         }
-
-        // Human-readable columns for DB browsing (added across all entity tables)
-        AddColumnIfMissing(_conn, "AcademicYears",       "name",          "TEXT");
-        AddColumnIfMissing(_conn, "Instructors",         "last_name",     "TEXT");
-        AddColumnIfMissing(_conn, "Instructors",         "first_name",    "TEXT");
-        AddColumnIfMissing(_conn, "Instructors",         "initials",      "TEXT");
-        AddColumnIfMissing(_conn, "Rooms",               "building",      "TEXT");
-        AddColumnIfMissing(_conn, "Rooms",               "room_number",   "TEXT");
-        AddColumnIfMissing(_conn, "Subjects",            "name",          "TEXT");
-        AddColumnIfMissing(_conn, "Subjects",            "abbreviation",  "TEXT");
-        AddColumnIfMissing(_conn, "Courses",             "calendar_code", "TEXT");
-        AddColumnIfMissing(_conn, "Courses",             "title",         "TEXT");
-        AddColumnIfMissing(_conn, "Sections",            "section_code",       "TEXT");
-        AddColumnIfMissing(_conn, "Sections",            "course_code",        "TEXT");
-        AddColumnIfMissing(_conn, "Sections",            "semester_name",      "TEXT");
-        AddColumnIfMissing(_conn, "Sections",            "academic_year_name", "TEXT");
-        AddColumnIfMissing(_conn, "Semesters",           "academic_year_name", "TEXT");
-        AddColumnIfMissing(_conn, "LegalStartTimes",     "academic_year_name", "TEXT");
-        AddColumnIfMissing(_conn, "SchedulingEnvironmentValues", "name",        "TEXT");
-        AddColumnIfMissing(_conn, "AcademicUnits",       "name",          "TEXT");
-        AddColumnIfMissing(_conn, "InstructorCommitments", "instructor_name", "TEXT");
-        AddColumnIfMissing(_conn, "InstructorCommitments", "semester_name",   "TEXT");
-
-        BackfillReadableColumns(_conn);
     }
 
     /// <summary>
     /// Adds a column to a table if it does not already exist.
     /// Safe to call on every startup — exits immediately when column is present.
     /// </summary>
-    private static void AddColumnIfMissing(SqliteConnection conn, string table, string column, string columnDef)
+    /// <param name="conn">Open database connection.</param>
+    /// <param name="tx">Active transaction to enlist commands in (required during migration).</param>
+    /// <param name="table">Target table name.</param>
+    /// <param name="column">Column name to add.</param>
+    /// <param name="columnDef">Column type and optional default, e.g. "TEXT" or "TEXT DEFAULT ''".</param>
+    private static void AddColumnIfMissing(SqliteConnection conn, SqliteTransaction tx,
+        string table, string column, string columnDef)
     {
         using var infoCmd = conn.CreateCommand();
+        infoCmd.Transaction = tx;
         infoCmd.CommandText = $"PRAGMA table_info({table})";
         var found = false;
         using (var r = infoCmd.ExecuteReader())
@@ -269,6 +350,7 @@ public class DatabaseContext : IDatabaseContext
         if (found) return;
 
         using var alter = conn.CreateCommand();
+        alter.Transaction = tx;
         alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDef}";
         alter.ExecuteNonQuery();
     }
@@ -278,7 +360,9 @@ public class DatabaseContext : IDatabaseContext
     /// that were written before the columns existed (WHERE col IS NULL guard).
     /// Safe to run on every startup — does nothing once all rows are populated.
     /// </summary>
-    private static void BackfillReadableColumns(SqliteConnection conn)
+    /// <param name="conn">Open database connection.</param>
+    /// <param name="tx">Active transaction to enlist commands in (required during migration).</param>
+    private static void BackfillReadableColumns(SqliteConnection conn, SqliteTransaction tx)
     {
         var statements = new[]
         {
@@ -337,6 +421,7 @@ public class DatabaseContext : IDatabaseContext
         foreach (var sql in statements)
         {
             using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
         }

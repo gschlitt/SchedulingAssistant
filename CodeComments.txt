@@ -1,5 +1,5 @@
 Bugs:
-Protected against data loss when updating db schema?
+New DB and transfer config does not transfer semester colors
 
 
 Revisions:

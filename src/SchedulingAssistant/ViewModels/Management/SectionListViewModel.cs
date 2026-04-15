@@ -107,7 +107,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     /// <summary>Display labels for the Sort ComboBox, ordered to match <see cref="SortModeToIndex"/>.</summary>
     public static IReadOnlyList<string> SortModeOptions { get; } =
-        ["Subject / Course", "Instructor", "Section Type"];
+        ["Subj/Crs", "Inst", "SecTyp"];
 
     /// <summary>Maps a <see cref="SectionSortMode"/> to its ComboBox index.</summary>
     private static int SortModeToIndex(SectionSortMode m) => m switch
