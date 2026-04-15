@@ -88,7 +88,7 @@
   <Color x:Key="FilterColor">#4A6FA5</Color>
   <SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
   <!--  Overlay:  -->  
-  <SolidColorBrush x:Key="OverlayBadgeText" Color="Red" />
+  <SolidColorBrush x:Key="OverlayBadgeText" Color="#D63050" />
 
 <!--Schedule View-->
 

@@ -32,7 +32,6 @@ class Program
             App.Logger.LogError(e.Exception, "TaskScheduler.UnobservedTaskException");
             e.SetObserved(); // prevent process termination for fire-and-forget tasks
         };
-
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         
     }

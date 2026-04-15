@@ -11,7 +11,7 @@
         BorderThickness="1"
         BoxShadow="{StaticResource PanelBoxShadow}"
         CornerRadius="2">
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="Auto,Auto">
 
             <!--
                 Panel header bar (two rows: title + extra controls).
@@ -25,7 +25,7 @@
                 Padding="8,2"
                 b:RightClickCommandBehavior.Command="{Binding #Root.InternalHeaderRightClickCommand}"
                 Background="{StaticResource ChromeBackground}"
-                BorderBrush="{StaticResource ChromeBorder}"
+                BorderBrush="Red"
                 BorderThickness="0,0,0,0">
                 <Grid RowDefinitions="Auto,Auto">
                     <!--  Row 0: Title row with detach button  -->
@@ -55,12 +55,13 @@
 
                     <!--  Row 1: Extra controls (buttons). Collapsed when empty so its top
                          margin doesn't create phantom space below the title row.  -->
-                    <ContentPresenter
-                        Grid.Row="1"
+                    <Grid Grid.Row="1" Height="70" VerticalAlignment="Center">
+                      <ContentPresenter
+                       
                         Margin="0,0,0,0"
-                        VerticalAlignment="Top"
+                        VerticalAlignment="Center"
                         Content="{Binding #Root.HeaderExtra}"
-                        IsVisible="{Binding #Root.HeaderExtra, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        IsVisible="{Binding #Root.HeaderExtra, Converter={x:Static ObjectConverters.IsNotNull}}" /></Grid>
                 </Grid>
             </Border>
 

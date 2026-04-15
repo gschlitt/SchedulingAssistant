@@ -59,7 +59,7 @@
                 <!--  Academic Year and Semester pickers, right-aligned — always visible  -->
                 <StackPanel
                     Margin="8,4"
-                    VerticalAlignment="Top"
+                    VerticalAlignment="Center"
                     DockPanel.Dock="Right"
                     Orientation="Horizontal"
                     Spacing="8">

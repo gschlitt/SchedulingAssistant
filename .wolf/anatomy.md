@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-14T22:50:22.786Z
-> Files: 3 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-15T03:23:44.519Z
+> Files: 7 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -203,6 +203,7 @@
 
 - `LegalStartTimeEditViewModel.cs` — Block length in hours — internal storage unit. Never exposed directly to the UI. (~1925 tok)
 - `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3378 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13024 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -212,9 +213,12 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `LeftPanelView.axaml` (~2566 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~10719 tok)
+- `ScheduleGridView.axaml` (~3576 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

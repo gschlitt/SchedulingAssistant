@@ -311,6 +311,12 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     {
         _lastSelectedIndex = -1;
 
+        // Close any open inline editor before rebuilding the list.
+        // The rebuilt collection contains fresh VM instances, so the old
+        // ExpandedItem would become an orphan while EditVm remained non-null,
+        // causing IsEditing to block future edits with no visible editor.
+        CollapseEditor();
+
         var semesters = _semesterContext.SelectedSemesters.ToList();
         if (semesters.Count == 0) { SectionItems = new(); return; }
 

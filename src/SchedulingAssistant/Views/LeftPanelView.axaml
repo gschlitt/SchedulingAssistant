@@ -17,7 +17,7 @@
             <!--  Header  -->
             <Border
                 Grid.Row="0"
-                Padding="10,6"
+                Padding="8,4"
                 Background="{StaticResource ChromeBackground}"
                 BorderBrush="{StaticResource ChromeBorder}"
                 BorderThickness="0,0,0,1">
@@ -53,7 +53,7 @@
                     -->
                     <StackPanel
                         Grid.Row="1"
-                        Margin="0,12,0,1"
+                        Margin="0,8,0,1"
                         VerticalAlignment="Top"
                         DataContext="{Binding SectionListVm}"
                         IsEnabled="{Binding IsWriteEnabled}"
@@ -137,7 +137,7 @@
                     <!--  Event action buttons — shown when Events View is active  -->
                     <StackPanel
                         Grid.Row="1"
-                        Margin="0,12,0,1"
+                        Margin="0,8,0,1"
                         VerticalAlignment="Top"
                         DataContext="{Binding MeetingListVm}"
                         IsEnabled="{Binding IsWriteEnabled}"
