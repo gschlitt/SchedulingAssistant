@@ -1,5 +1,5 @@
 Bugs:
-
+Protected against data loss when updating db schema?
 
 
 Revisions:
@@ -56,7 +56,7 @@ CtrlS to save
 
 
 
-Use a package for error logging e.g. Sentry, Firebase Crashlytics, Bugsnag
+
 
 
 

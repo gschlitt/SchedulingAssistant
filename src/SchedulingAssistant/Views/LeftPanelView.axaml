@@ -1,186 +1,193 @@
 <UserControl
-    x:Class="SchedulingAssistant.Views.LeftPanelView"
-    xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:b="using:SchedulingAssistant.Behaviors"
-    xmlns:views="using:SchedulingAssistant.Views.Management"
-    x:CompileBindings="False">
+	x:Class="SchedulingAssistant.Views.LeftPanelView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:b="using:SchedulingAssistant.Behaviors"
+	xmlns:views="using:SchedulingAssistant.Views.Management"
+	x:CompileBindings="False">
 
-    <!--  Outer shell: soft shadow + 1 px light edge; matches DetachablePanel treatment  -->
-    <Border
-        BorderBrush="{StaticResource ChromeBorder}"
-        BorderThickness="1"
-        BoxShadow="0 1 6 0 #1A000000"
-        CornerRadius="2">
-        <Grid RowDefinitions="Auto,*">
+	<!--  Outer shell: soft shadow + 1 px light edge; matches DetachablePanel treatment  -->
+	<Border
+		BorderBrush="{StaticResource ChromeBorder}"
+		BorderThickness="1"
+		BoxShadow="0 1 6 0 #1A000000"
+		CornerRadius="2">
+		<Grid RowDefinitions="Auto,*">
 
-            <!--  Header  -->
-            <Border
-                Grid.Row="0"
-                Padding="8,4"
-                Background="{StaticResource ChromeBackground}"
-                BorderBrush="{StaticResource ChromeBorder}"
-                BorderThickness="0,0,0,1">
-                <Grid RowDefinitions="Auto,Auto">
+			<!--  Header  -->
+			<Border
+				Grid.Row="0"
+				Padding="0,0"
+				Background="{StaticResource ChromeBackground}"
+				BorderBrush="{StaticResource ChromeBorder}"
+				BorderThickness="0,0,0,1">
+				<Grid RowDefinitions="Auto,Auto">
 
-                    <!--  Title row: panel title (left) + view-toggle (right)  -->
-                    <DockPanel Grid.Row="0">
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="4,1"
-                            VerticalAlignment="Center"
-                            Background="{StaticResource ButtonBackground}"
-                            BorderThickness="0"
-                            Command="{Binding ToggleMeetingViewCommand}"
-                            Content="{Binding ToggleMeetingViewLabel}"
-                            DockPanel.Dock="Right"
-                            FontSize="10"
-                            Foreground="{StaticResource TextFaint}"
-                            ToolTip.Tip="Switch between Section View and Events View" />
-                        <TextBlock
-                            Margin="1,0,0,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            FontSize="{StaticResource FontSizeLarge}"
-                            FontWeight="SemiBold"
-                            Text="{Binding LeftPanelTitle}" />
-                    </DockPanel>
-                    <!--
-                        Action buttons — the entire group is disabled in read-only mode
-                        via a single IsEnabled binding on the container.
-                        Visibility swaps with the Meeting action buttons based on IsShowingMeetings.
-                    -->
-                    <StackPanel
-                        Grid.Row="1"
-                        Margin="0,8,0,1"
-                        VerticalAlignment="Top"
-                        DataContext="{Binding SectionListVm}"
-                        IsEnabled="{Binding IsWriteEnabled}"
-                        IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                        Orientation="Horizontal"
-                        Spacing="3">
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="4,1"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{Binding ExpandAllCommand}"
-                            Content="▼"
-                            FontSize="9"
-                            ToolTip.Tip="Expand all cards" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="4,1"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{Binding CollapseAllCommand}"
-                            Content="▶"
-                            FontSize="9"
-                            ToolTip.Tip="Collapse all cards" />
-                        <Border
-                            Width="1"
-                            Margin="2,2"
-                            Background="{StaticResource SeparatorLine}" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            b:HelpTip.Text="Add a new section"
-                            Command="{Binding AddCommand}"
-                            Content="Add"
-                            FontSize="14" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            b:HelpTip.Text="Edit the selected section. You can also begin editing by double-clicking a section or by pressing 'Enter' with a section selected."
-                            Command="{Binding EditCommand}"
-                            Content="Edit"
-                            FontSize="14"
-                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            b:HelpTip.Text="Copy the selected section, incrementing the section code"
-                            Command="{Binding CopyCommand}"
-                            Content="Copy"
-                            FontSize="14"
-                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            Command="{Binding DeleteCommand}"
-                            Content="Delete"
-                            FontSize="14"
-                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            FontSize="{StaticResource FontSizeNormal}"
-                            Text="Sort:" />
-                        <ComboBox
-                            MinHeight="0"
-                            Padding="5,1"
-                            VerticalAlignment="Center"
-                            Background="{StaticResource ButtonBackground}"
-                            BorderThickness="0"
-                            CornerRadius="4"
-                            FontSize="14"
-                            ItemsSource="{Binding SortModeOptions}"
-                            SelectedIndex="{Binding SelectedSortModeIndex}" />
-                    </StackPanel>
+					<!--  Title row: panel title (left) + view-toggle (right)  -->
+					<DockPanel
+						Grid.Row="0"
+						Height="30"
+						VerticalAlignment="Top"
+						>
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="4,1"
+							VerticalAlignment="Center"
+							Background="{StaticResource ButtonBackground}"
+							BorderThickness="0"
+							Command="{Binding ToggleMeetingViewCommand}"
+							Content="{Binding ToggleMeetingViewLabel}"
+							DockPanel.Dock="Right"
+							FontSize="10"
+							Foreground="{StaticResource TextFaint}"
+							ToolTip.Tip="Switch between Section View and Events View" />
+						<TextBlock
+							Margin="1,0,0,0"
+							HorizontalAlignment="Left"
+							VerticalAlignment="Center"
+							FontSize="{StaticResource FontSizeLarge}"
+							FontWeight="SemiBold"
+							Text="{Binding LeftPanelTitle}" />
+					</DockPanel>
+					<!--
+						Action buttons — the entire group is disabled in read-only mode
+						via a single IsEnabled binding on the container.
+						Visibility swaps with the Meeting action buttons based on IsShowingMeetings.
+					-->
+					<StackPanel
+						Grid.Row="1"
+						Margin="0,4,0,4"
+						VerticalAlignment="Top"
+						DataContext="{Binding SectionListVm}"
+						IsEnabled="{Binding IsWriteEnabled}"
+						IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}"
+						Orientation="Horizontal"
+						Spacing="3">
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="4,1"
+							Background="Transparent"
+							BorderThickness="0"
+							Command="{Binding ExpandAllCommand}"
+							Content="▼"
+							FontSize="9"
+							ToolTip.Tip="Expand all cards" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="4,1"
+							Background="Transparent"
+							BorderThickness="0"
+							Command="{Binding CollapseAllCommand}"
+							Content="▶"
+							FontSize="9"
+							ToolTip.Tip="Collapse all cards" />
+						<Border
+							Width="1"
+							Margin="2,2"
+							Background="{StaticResource SeparatorLine}" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							b:HelpTip.Text="Add a new section"
+							Command="{Binding AddCommand}"
+							Content="Add"
+							FontSize="14" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							b:HelpTip.Text="Edit the selected section. You can also begin editing by double-clicking a section or by pressing 'Enter' with a section selected."
+							Command="{Binding EditCommand}"
+							Content="Edit"
+							FontSize="14"
+							IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							b:HelpTip.Text="Copy the selected section, incrementing the section code"
+							Command="{Binding CopyCommand}"
+							Content="Copy"
+							FontSize="14"
+							IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							Command="{Binding DeleteCommand}"
+							Content="Delete"
+							FontSize="14"
+							IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="{StaticResource FontSizeNormal}"
+							Text="Sort:" />
+						<ComboBox
+							MinHeight="0"
+							Padding="5,1"
+							VerticalAlignment="Center"
+							Background="{StaticResource ButtonBackground}"
+							BorderThickness="0"
+							CornerRadius="4"
+							FontSize="14"
+							ItemsSource="{Binding SortModeOptions}"
+							SelectedIndex="{Binding SelectedSortModeIndex}" />
+					</StackPanel>
 
-                    <!--  Event action buttons — shown when Events View is active  -->
-                    <StackPanel
-                        Grid.Row="1"
-                        Margin="0,8,0,1"
-                        VerticalAlignment="Top"
-                        DataContext="{Binding MeetingListVm}"
-                        IsEnabled="{Binding IsWriteEnabled}"
-                        IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                        Orientation="Horizontal"
-                        Spacing="3">
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            Command="{Binding AddCommand}"
-                            Content="Add"
-                            FontSize="14" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            Command="{Binding EditCommand}"
-                            Content="Edit"
-                            FontSize="14"
-                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                        <Button
-                            MinWidth="0"
-                            MinHeight="0"
-                            Padding="5,1"
-                            Command="{Binding DeleteCommand}"
-                            Content="Delete"
-                            FontSize="14"
-                            IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    </StackPanel>
-                </Grid>
-            </Border>
+					<!--  Event action buttons — shown when Events View is active  -->
+					<StackPanel
+						Grid.Row="1"
+						Margin="0,8,0,1"
+						VerticalAlignment="Top"
+						DataContext="{Binding MeetingListVm}"
+						IsEnabled="{Binding IsWriteEnabled}"
+						IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}"
+						Orientation="Horizontal"
+						Spacing="3">
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							Command="{Binding AddCommand}"
+							Content="Add"
+							FontSize="14" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							Command="{Binding EditCommand}"
+							Content="Edit"
+							FontSize="14"
+							IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							Command="{Binding DeleteCommand}"
+							Content="Delete"
+							FontSize="14"
+							IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+					</StackPanel>
+				</Grid>
+			</Border>
 
-            <!--  Content: swaps between Section View and Events View  -->
-            <!--  ScrollViewer needed because ListBox with custom StackPanel ItemsPanel doesn't scroll internally  -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel>
-                    <views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                    <views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                </StackPanel>
-            </ScrollViewer>
+			<!--  Content: swaps between Section View and Events View  -->
+			<!--  ScrollViewer needed because ListBox with custom StackPanel ItemsPanel doesn't scroll internally  -->
+			<ScrollViewer
+				Grid.Row="1"
+				HorizontalScrollBarVisibility="Disabled"
+				VerticalScrollBarVisibility="Auto">
+				<StackPanel>
+					<views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+					<views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+				</StackPanel>
+			</ScrollViewer>
 
-        </Grid>
-    </Border>
+		</Grid>
+	</Border>
 
 </UserControl>
