@@ -481,7 +481,7 @@
 
                 <!--  ── Overlay chooser group ──────────────────────────────────────────  -->
                 <Border
-                    Margin="0,0,0,0"
+                    Margin="5,0,0,0"
                     Padding="0,0"
                     BorderBrush="{StaticResource FilterGroupBorder}"
                     BorderThickness="1"

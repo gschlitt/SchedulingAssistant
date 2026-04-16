@@ -77,6 +77,7 @@ public partial class ScheduleGridView : UserControl
     private static IBrush UserSelectedBorder    => Res("UserSelectedSectionBorderColor");
     private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
     private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
+    private static IBrush TileEntryHoverOverlay => Res("CardHoverOverlay");
     private static IBrush RuleBrush          => Res("GridRuleLine");
     private static IBrush HourRuleBrush      => Res("GridHourRuleLine");
     private static IBrush HeaderFill         => Res("WeekDayBar");
@@ -677,6 +678,15 @@ public partial class ScheduleGridView : UserControl
                         Child        = entryLabel,
                     };
 
+                    // Hover tint: darken the individual section row on pointer-over,
+                    // matching the card-hover effect in Section List view.
+                    // Plain commitment tiles are display-only and don't receive hover feedback.
+                    if (!entry.IsCommitment || entry.IsMeeting)
+                    {
+                        entryRow.PointerEntered += (s, _) => ((Border)s!).Background = TileEntryHoverOverlay;
+                        entryRow.PointerExited  += (s, _) => ((Border)s!).Background = Brushes.Transparent;
+                    }
+
                     // Register for lightweight selection repainting (avoids full Render() on selection change).
                     if (!entry.IsCommitment)
                         _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized));
@@ -776,8 +786,6 @@ public partial class ScheduleGridView : UserControl
                     };
                 }
 
-                ToolTip.SetTip(border, BuildTileTooltipContent(
-                    ScheduleGridViewModel.BuildTileTooltip(tile)));
 
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, adjustedTileY);

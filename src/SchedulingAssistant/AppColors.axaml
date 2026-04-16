@@ -7,16 +7,20 @@
 	<!--  ── App-wide surface hierarchy  ────────────────────────────────  -->
 	<Color x:Key="AppBackgroundColor">#e0e4eb</Color>
 	<SolidColorBrush x:Key="AppBackground" Color="{StaticResource AppBackgroundColor}" />
-	<!--  ── Primary chrome (menu bar, panel headers  -->
+	<!--  ── Primary chrome (menu bar)  -->
 	<SolidColorBrush x:Key="ChromeBackground" Color="#f6f7f9" />
+	<!--  Section View, Schedule View, and Workload View panel header bars  -->
+	<SolidColorBrush x:Key="ViewHeaderBackground" Color="#e0e4eb" />
 	<!--  Very light 1 px separator  -->
-	<SolidColorBrush x:Key="ChromeBorder" Color="#DDE6F0" />
+	<SolidColorBrush x:Key="ChromeBorder" Color="#A0707070" />
 
 	<!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the pills in Workload View  -->
 
 	<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
 	<SolidColorBrush x:Key="TileFill" Color="#bbcbe2" />
 
+	<!--  Workload panel instructor card background: midpoint between ViewHeaderBackground and TileFill  -->
+	<SolidColorBrush x:Key="WorkloadTileBackground" Color="#CED8E7" />
 
 	<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5" />
 
@@ -71,7 +75,7 @@
 	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
 	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
 	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
-	<SolidColorBrush x:Key="FilterGroupBorder" Color="#D0DFF0" />
+	<SolidColorBrush x:Key="FilterGroupBorder" Color="#8AAAC8" />
 	<SolidColorBrush x:Key="FilterExpanderContent" Color="White" />
 	<!--  Sentinel row background in filter dropdowns (separates "All" entry)  -->
 	<SolidColorBrush x:Key="FilterSentinelBackground" Color="#EEF4FC" />

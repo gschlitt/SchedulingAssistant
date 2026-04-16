@@ -5049,6 +5049,118 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-04-16T16:17:34.971Z"
+    },
+    {
+      "id": "bug-316",
+      "timestamp": "2026-04-16T16:25:19.081Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Condition was: if (!entry.IsCommitment)",
+      "fix": "Changed to: if (!entry.IsCommitment || entry.IsMeeting)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T16:25:19.081Z"
+    },
+    {
+      "id": "bug-317",
+      "timestamp": "2026-04-16T16:39:53.912Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Controls/DetachablePanel.axaml",
+      "root_cause": "Had \"{StaticResource ChromeBackground}\"",
+      "fix": "Changed to \"{StaticResource ViewHeaderBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T16:39:53.912Z"
+    },
+    {
+      "id": "bug-318",
+      "timestamp": "2026-04-16T16:48:07.593Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "Had \"Transparent\"",
+      "fix": "Changed to \"#707070\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-16T16:50:39.337Z"
+    },
+    {
+      "id": "bug-319",
+      "timestamp": "2026-04-16T18:36:31.867Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"{StaticResource ChromeBackground}\"",
+      "fix": "Changed to \"{StaticResource ViewHeaderBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T18:36:31.867Z"
+    },
+    {
+      "id": "bug-320",
+      "timestamp": "2026-04-16T18:39:55.938Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "Had \"#D0DFF0\"",
+      "fix": "Changed to \"#8AAAC8\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T18:39:55.938Z"
+    },
+    {
+      "id": "bug-321",
+      "timestamp": "2026-04-16T18:40:33.389Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"0,0,0,0\"",
+      "fix": "Changed to \"5,0,0,0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T18:40:33.389Z"
+    },
+    {
+      "id": "bug-322",
+      "timestamp": "2026-04-16T18:50:17.915Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
+      "root_cause": "Had \"{StaticResource AppBackground}\"",
+      "fix": "Changed to \"{StaticResource WorkloadTileBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T18:50:17.915Z"
     }
   ]
 }

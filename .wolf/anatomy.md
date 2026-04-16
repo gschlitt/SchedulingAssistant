@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T16:17:34.907Z
-> Files: 3 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T18:50:17.867Z
+> Files: 7 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -170,13 +170,15 @@
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml` — Declares applied (~6743 tok)
+- `AppColors.axaml` (~2878 tok)
+- `MainWindow.axaml` — Declares applied (~6752 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
+- `DetachablePanel.axaml` (~683 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -210,11 +212,13 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `WorkloadPanelView.axaml` (~4333 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~10719 tok)
 - `ScheduleGridView.axaml` (~2482 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12750 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12894 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
