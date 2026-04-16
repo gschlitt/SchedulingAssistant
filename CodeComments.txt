@@ -3,6 +3,12 @@ New DB and transfer config does not transfer semester colors
 
 
 Revisions:
+Spacing and borders around tags and overlays
+Different color for meeting tiles in in Schedule View and Event View
+Delete key operational across lists?
+
+
+
 
 
 Walkthrough observations:
