@@ -59,7 +59,7 @@
 			<DockPanel>
 				<!--  Academic Year and Semester pickers, right-aligned — always visible  -->
 				<StackPanel
-					Margin="8,4"
+					Margin="8,1.5"
 					VerticalAlignment="Center"
 					DockPanel.Dock="Right"
 					Orientation="Horizontal"
@@ -148,11 +148,11 @@
 				<WrapPanel VerticalAlignment="Center" Orientation="Horizontal">
 					<!--  Files menu (far left)  -->
 					<Menu
-						Margin="0,4"
+						Margin="0,1.5"
 						VerticalAlignment="Center"
 						Background="Transparent">
 						<MenuItem
-							Padding="14,8"
+							Padding="14,5.5"
 							Classes="nav"
 							Header="Files">
 							<MenuItem Command="{Binding OpenDatabaseCommand}" Header="Open…" />
@@ -264,11 +264,11 @@
 
 					<!--  Configuration dropdown menu  -->
 					<Menu
-						Margin="0,4"
+						Margin="0,1.5"
 						VerticalAlignment="Center"
 						Background="Transparent">
 						<MenuItem
-							Padding="14,8"
+							Padding="14,5.5"
 							Classes="nav"
 							Header="Configuration">
 							<MenuItem Command="{Binding NavigateToBlockLengthsCommand}" Header="Scheduling" />
@@ -287,11 +287,11 @@
 
 					<!--  Export menu  -->
 					<Menu
-						Margin="0,4"
+						Margin="0,1.5"
 						VerticalAlignment="Center"
 						Background="Transparent">
 						<MenuItem
-							Padding="14,8"
+							Padding="14,5.5"
 							Classes="nav"
 							Header="Export">
 							<MenuItem Command="{Binding NavigateToExportCommand}" Header="Export Schedule PNG…" />
@@ -326,7 +326,7 @@
 						Background="Transparent"
 						IsVisible="False">
 						<MenuItem
-							Padding="14,8"
+							Padding="14,5.5"
 							Classes="nav"
 							Header="Debug">
 							<MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View…" />

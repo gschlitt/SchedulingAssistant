@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T01:11:48.877Z
-> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T16:17:34.907Z
+> Files: 3 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,8 +29,6 @@
 
 ## ../../../.claude/plans/
 
-- `merry-doodling-goblet.md` — Plan: Multi-Semester Vertical Separator Lines (~563 tok)
-- `wild-meandering-teacup.md` — Plan: Make Section View a DetachablePanel (~1218 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -172,22 +170,19 @@
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml` — Declares applied (~6738 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12906 tok)
+- `MainWindow.axaml` — Declares applied (~6743 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
-- `DetachablePanel.axaml` (~682 tok)
 
 ## src/SchedulingAssistant/Converters/
 
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~5880 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
@@ -200,16 +195,12 @@
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7707 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `LegalStartTimeEditViewModel.cs` — Block length in hours — internal storage unit. Never exposed directly to the UI. (~1925 tok)
-- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3378 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13024 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -219,15 +210,11 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `LeftPanelView.axaml` (~2566 tok)
-- `SectionPanelContent.axaml` (~1321 tok)
-- `SectionPanelContent.axaml.cs` — Class: SectionPanelContent (~54 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~10719 tok)
-- `ScheduleGridView.axaml` (~2387 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12543 tok)
+- `ScheduleGridView.axaml` (~2482 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12750 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

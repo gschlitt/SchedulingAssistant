@@ -93,6 +93,9 @@ public partial class ScheduleGridView : UserControl
     private Popup? _tileContextPopup;
     private double _zoomLevel = 1.0;
 
+    /// <summary>Font size used for section label text inside tiles. Adjustable via the footer ComboBox.</summary>
+    private double _tileFontSize = 11;
+
     public ScheduleGridView()
     {
         InitializeComponent();
@@ -118,6 +121,22 @@ public partial class ScheduleGridView : UserControl
             };
         }
         UpdateZoomLabel();
+
+        // Populate and wire the tile font size ComboBox.
+        var fontSizeBox = this.FindControl<ComboBox>("TileFontSizeBox");
+        if (fontSizeBox is not null)
+        {
+            fontSizeBox.ItemsSource = new[] { 8.0, 9.0, 10.0, 11.0, 12.0 };
+            fontSizeBox.SelectedItem = _tileFontSize;
+            fontSizeBox.SelectionChanged += (_, _) =>
+            {
+                if (fontSizeBox.SelectedItem is double size)
+                {
+                    _tileFontSize = size;
+                    Render();
+                }
+            };
+        }
     }   
 
     
@@ -282,7 +301,7 @@ public partial class ScheduleGridView : UserControl
                         Child           = new TextBlock
                         {
                             Text            = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation),
-                            FontSize        = 11,
+                            FontSize        = _tileFontSize,
                             FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
                             Foreground      = entrySelected        ? TileBorderSelected
                                            : entry.IsDeemphasized  ? TileDeemphasizedText
@@ -305,7 +324,7 @@ public partial class ScheduleGridView : UserControl
                 foreach (var e in tile.Entries)
                 {
                     string lbl = BuildTileLabel(e.Label, e.Initials, e.FrequencyAnnotation);
-                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, 11, FontWeight.Bold));
+                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, _tileFontSize, FontWeight.Bold));
                 }
                 tileMaxTextWidths[(d, tile.StartMinutes, tile.EndMinutes)] = tileTextW;
 
@@ -621,7 +640,7 @@ public partial class ScheduleGridView : UserControl
                         {
                             Height = 1,
                             Background = TileInternalBorder,
-                            Margin = new Thickness(0, 1, 0, 1),
+                            Margin = new Thickness(0, 2, 0, 2),
                         });
 
                     var labelText = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation);
@@ -634,7 +653,7 @@ public partial class ScheduleGridView : UserControl
                     var entryLabel = new TextBlock
                     {
                         Text            = labelText,
-                        FontSize        = 11,
+                        FontSize        = _tileFontSize,
                         FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
                         Foreground      = entrySelected        ? TileBorderSelected
                                        : entry.IsOverlay       ? OverlayFrameBorder
