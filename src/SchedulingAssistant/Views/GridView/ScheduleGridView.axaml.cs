@@ -25,7 +25,7 @@ public partial class ScheduleGridView : UserControl
     
     // Layout constants
     private const double TimeGutterWidth  = 52;
-    private const double DayHeaderHeight  = 28;   // height of the day-name row
+    private const double DayHeaderHeight  = 21;   // height of the day-name row
     private const double SemesterBarHeight = 5;   // thin colored bar below day name in multi-semester mode
     private const double HalfHourHeight   = 30;   // pixels per 30-minute slot
     private const double GridBottomPadding = 12;  // extra space below the last gridline so the label and rule aren't clipped
@@ -524,7 +524,7 @@ public partial class ScheduleGridView : UserControl
                 TextAlignment = TextAlignment.Center,
             };
             Canvas.SetLeft(tb, dayGroupX);
-            Canvas.SetTop(tb, (DayHeaderHeight - 14) / 2);
+            Canvas.SetTop(tb, 1);
             _canvas.Children.Add(tb);
 
             // In multi-semester mode draw a colored semester indicator bar immediately
@@ -621,7 +621,7 @@ public partial class ScheduleGridView : UserControl
                         {
                             Height = 1,
                             Background = TileInternalBorder,
-                            Margin = new Thickness(0, 2, 0, 2),
+                            Margin = new Thickness(0, 1, 0, 1),
                         });
 
                     var labelText = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation);

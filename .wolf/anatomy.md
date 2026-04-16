@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-15T23:53:40.040Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T01:11:48.877Z
 > Files: 16 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -227,7 +227,7 @@
 
 - `GridFilterView.axaml` (~10719 tok)
 - `ScheduleGridView.axaml` (~2387 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12549 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12543 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

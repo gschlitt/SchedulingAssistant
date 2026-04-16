@@ -5,31 +5,18 @@
 	</Design.PreviewWith>
 
 	<!--  ── App-wide surface hierarchy  ────────────────────────────────  -->
-	<Color x:Key="AppBackgroundColor">#f6f7f9</Color>
+	<Color x:Key="AppBackgroundColor">#e0e4eb</Color>
 	<SolidColorBrush x:Key="AppBackground" Color="{StaticResource AppBackgroundColor}" />
 	<!--  ── Primary chrome (menu bar, panel headers  -->
 	<SolidColorBrush x:Key="ChromeBackground" Color="#f6f7f9" />
 	<!--  Very light 1 px separator  -->
 	<SolidColorBrush x:Key="ChromeBorder" Color="#DDE6F0" />
 
-	<!--  ── General UI structure  ─────────────────────────────────────────  -->
-	<!--  Thin separator rules inside the menu bar and chrome areas  -->
-	<SolidColorBrush x:Key="SeparatorLine" Color="Black" />
-	<SolidColorBrush x:Key="GridSplitterColor" Color="#E0E8F0" />
-	<!--  Subdued border for dialogs, secondary containers  -->
-	<SolidColorBrush x:Key="SubduedBorder" Color="#C8D5E4" />
-	<!--  Thin hairline between list items  -->
-	<SolidColorBrush x:Key="ItemSeparator" Color="#E8EEF5" />
-	<!--  Inline list borders — replaces raw #CCCCCC throughout views  -->
-	<SolidColorBrush x:Key="InlineListBorder" Color="#E0E8F0" />
-	<!--  Soft panel shadow  -->
-	<BoxShadows x:Key="PanelBoxShadow">1 2 4 0 #80000000</BoxShadows>
-
-
-	<!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the tiles in Workload View  -->
+	<!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the pills in Workload View  -->
 
 	<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
-	<SolidColorBrush x:Key="TileFill" Color="#e0e2e5" />
+	<SolidColorBrush x:Key="TileFill" Color="#bbcbe2" />
+
 
 	<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5" />
 
@@ -59,7 +46,18 @@
 	-->
 	<Color x:Key="OverlayColor">#D63050</Color>
 	<SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
-
+	<!--  ── General UI structure  ─────────────────────────────────────────  -->
+	<!--  Thin separator rules inside the menu bar and chrome areas  -->
+	<SolidColorBrush x:Key="SeparatorLine" Color="Black" />
+	<SolidColorBrush x:Key="GridSplitterColor" Color="#E0E8F0" />
+	<!--  Subdued border for dialogs, secondary containers  -->
+	<SolidColorBrush x:Key="SubduedBorder" Color="#C8D5E4" />
+	<!--  Thin hairline between list items  -->
+	<SolidColorBrush x:Key="ItemSeparator" Color="#E8EEF5" />
+	<!--  Inline list borders — replaces raw #CCCCCC throughout views  -->
+	<SolidColorBrush x:Key="InlineListBorder" Color="#E0E8F0" />
+	<!--  Soft panel shadow  -->
+	<BoxShadows x:Key="PanelBoxShadow">1 2 4 0 #80000000</BoxShadows>
 
 	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
 	<SolidColorBrush x:Key="ButtonBackground" Color="#bcdcff" />

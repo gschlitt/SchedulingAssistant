@@ -5017,6 +5017,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-15T23:52:17.547Z"
+    },
+    {
+      "id": "bug-314",
+      "timestamp": "2026-04-16T01:11:48.920Z",
+      "error_message": "Wrong reference: DayHeaderHeight should be 1",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"DayHeaderHeight\" instead of \"1\"",
+      "fix": "Changed DayHeaderHeight → 1",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T01:11:48.920Z"
     }
   ]
 }
