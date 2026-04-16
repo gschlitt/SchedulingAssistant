@@ -13,9 +13,14 @@
       "first_read": "2026-04-16T01:00:39.498Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs": {
+      "count": 3,
+      "tokens": 18732,
+      "first_read": "2026-04-16T02:56:38.657Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/GridlineOffsetTests.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-16T02:56:38.657Z"
+      "first_read": "2026-04-16T04:13:35.563Z"
     }
   },
   "files_written": [
@@ -48,14 +53,34 @@
       "action": "edit",
       "tokens": 10,
       "at": "2026-04-16T01:11:48.904Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "action": "edit",
+      "tokens": 1082,
+      "at": "2026-04-16T04:13:26.439Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "action": "edit",
+      "tokens": 997,
+      "at": "2026-04-16T04:19:27.875Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/GridlineOffsetTests.cs",
+      "action": "create",
+      "tokens": 6232,
+      "at": "2026-04-16T04:21:12.492Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": 5
+    "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": 5,
+    "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs": 2,
+    "src/SchedulingAssistant.Tests/GridlineOffsetTests.cs": 1
   },
   "anatomy_hits": 2,
-  "anatomy_misses": 1,
-  "repeated_reads_warned": 9,
+  "anatomy_misses": 2,
+  "repeated_reads_warned": 11,
   "cerebrum_warnings": 0,
-  "stop_count": 8
+  "stop_count": 11
 }

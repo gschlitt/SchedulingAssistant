@@ -1253,11 +1253,56 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <em>at</em> a given gridline has not yet been added to that gridline's offset entry —
     /// it will instead appear in the next gridline's offset.
     /// </returns>
+    /// <summary>
+    /// Computes cumulative Y-offsets for each 30-minute gridline to accommodate
+    /// tiles whose content exceeds their time-proportional height.
+    ///
+    /// Uses a greedy "defer to last slot" strategy: instead of distributing a
+    /// tile's overflow proportionally across every slot it covers, the algorithm
+    /// defers all expansion to the tile's last covered slot and credits any
+    /// expansion that earlier slots already received (from other tiles ending
+    /// sooner).  This minimises total vertical expansion because short-tile
+    /// expansions at earlier slots become free credit for longer tiles spanning
+    /// those same slots.
+    /// </summary>
     internal static Dictionary<int, double> ComputeGridlineOffsets(
         IReadOnlyDictionary<(int start, int end), (double timeBasedH, double actualH)> tileHeightMap,
         int firstRowMinutes,
         int lastRowMinutes)
     {
+        // Expansion at the very last gridline pushes a gridline (lastRow + 30)
+        // that doesn't exist, so the last slot whose expansion is visible is
+        // the one just before lastRowMinutes.
+        int lastUsefulSlot = lastRowMinutes - 30;
+
+        // Group overflowing tiles by the last grid slot where their deficit
+        // will be resolved.
+        var tilesByLastSlot = new Dictionary<int, List<(int firstCoveredSlot, double overflow)>>();
+
+        foreach (var ((start, end), (timeBasedH, actualH)) in tileHeightMap)
+        {
+            if (actualH <= timeBasedH) continue;
+            double overflow = actualH - timeBasedH;
+
+            // Last 30-min slot boundary the tile covers.
+            int lastSlotStart = ((end - 1) / 30) * 30;
+            // Clamp to the visible grid range.
+            lastSlotStart = Math.Min(lastSlotStart, lastUsefulSlot);
+
+            // First 30-min slot boundary the tile covers, clamped to grid start.
+            int firstCoveredSlot = Math.Max((start / 30) * 30, firstRowMinutes);
+
+            // Tile has no usable slots inside the grid — skip.
+            if (firstCoveredSlot > lastSlotStart) continue;
+
+            if (!tilesByLastSlot.TryGetValue(lastSlotStart, out var list))
+            {
+                list = [];
+                tilesByLastSlot[lastSlotStart] = list;
+            }
+            list.Add((firstCoveredSlot, overflow));
+        }
+
         var    gridlineYOffsets = new Dictionary<int, double>();
         double cumulativeOffset = 0;
 
@@ -1265,26 +1310,22 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             gridlineYOffsets[mins] = cumulativeOffset;
 
-            // Find the maximum expansion any tile needs distributed to this slot.
             double expansionThisSlot = 0;
 
-            foreach (var ((start, end), (timeBasedH, actualH)) in tileHeightMap)
+            if (tilesByLastSlot.TryGetValue(mins, out var tiles))
             {
-                // A tile contributes to this slot only if it overlaps [mins, mins+30).
-                // Using strict inequality on end handles tiles whose end aligns exactly
-                // with a gridline — they belong entirely to the preceding slot(s).
-                if (start >= mins + 30 || end <= mins) continue;
+                foreach (var (firstCoveredSlot, overflow) in tiles)
+                {
+                    // Credit: expansion already accumulated across the tile's
+                    // earlier slots.  Because we process top-to-bottom, both
+                    // endpoints are already in gridlineYOffsets.
+                    double priorExpansion = gridlineYOffsets[mins]
+                                         - gridlineYOffsets[firstCoveredSlot];
 
-                if (actualH <= timeBasedH) continue;
-
-                // Distribute this tile's expansion proportionally: each slot receives a
-                // share equal to its overlap with the tile as a fraction of the full span.
-                int    tileSpanMinutes   = end - start;
-                int    overlapMinutes    = Math.Min(mins + 30, end) - Math.Max(mins, start);
-                double expansionFraction = (double)overlapMinutes / tileSpanMinutes;
-                double slotExpansion     = (actualH - timeBasedH) * expansionFraction;
-
-                expansionThisSlot = Math.Max(expansionThisSlot, slotExpansion);
+                    double deficit = overflow - priorExpansion;
+                    if (deficit > 0)
+                        expansionThisSlot = Math.Max(expansionThisSlot, deficit);
+                }
             }
 
             cumulativeOffset += expansionThisSlot;

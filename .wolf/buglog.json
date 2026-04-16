@@ -5033,6 +5033,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-16T01:11:48.920Z"
+    },
+    {
+      "id": "bug-315",
+      "timestamp": "2026-04-16T04:13:26.451Z",
+      "error_message": "Wrong operator: >= should be >>",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Used \">=\" instead of \">>\"",
+      "fix": "Changed operator >= → >>",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T04:13:26.451Z"
     }
   ]
 }

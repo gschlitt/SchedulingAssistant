@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T01:11:48.877Z
-> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T04:21:12.469Z
+> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -169,6 +169,7 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `GridlineOffsetTests.cs` — Unit tests for <see cref="ScheduleGridViewModel.ComputeGridlineOffsets"/>. The method computes a cum (~5817 tok)
 
 ## src/SchedulingAssistant/
 
@@ -204,6 +205,7 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~18653 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
