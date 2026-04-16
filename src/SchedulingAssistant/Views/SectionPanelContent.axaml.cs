@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace SchedulingAssistant.Views;
 
-public partial class LeftPanelView : UserControl
+public partial class SectionPanelContent : UserControl
 {
-    public LeftPanelView()
+    public SectionPanelContent()
     {
         InitializeComponent();
     }

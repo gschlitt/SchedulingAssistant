@@ -11,7 +11,7 @@
 		BorderThickness="1"
 		BoxShadow="{StaticResource PanelBoxShadow}"
 		CornerRadius="2">
-		<Grid RowDefinitions="Auto,Auto">
+		<Grid RowDefinitions="Auto,*">
 
 			<!--
 				Panel header bar (two rows: title + extra controls).
@@ -58,7 +58,6 @@
 					-->
 					<Grid
 						Grid.Row="1"
-						Height="70"
 						VerticalAlignment="Center">
 						<ContentPresenter
 							Margin="0,0,0,0"

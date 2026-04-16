@@ -1,150 +1,152 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-		<Design.PreviewWith>
-      <Border Padding="20" Background="{StaticResource ChromeBackground}"/>
-    </Design.PreviewWith>
+	<Design.PreviewWith>
+		<Border Padding="20" Background="{StaticResource ChromeBackground}" />
+	</Design.PreviewWith>
 
 	<!--  ── App-wide surface hierarchy  ────────────────────────────────  -->
+	<Color x:Key="AppBackgroundColor">#f6f7f9</Color>
+	<SolidColorBrush x:Key="AppBackground" Color="{StaticResource AppBackgroundColor}" />
+	<!--  ── Primary chrome (menu bar, panel headers  -->
+	<SolidColorBrush x:Key="ChromeBackground" Color="#f6f7f9" />
+	<!--  Very light 1 px separator  -->
+	<SolidColorBrush x:Key="ChromeBorder" Color="#DDE6F0" />
 
-		<SolidColorBrush x:Key="AppBackground" Color="White" />
-		<!--  ── Primary chrome (menu bar, panel headers  -->
-		<SolidColorBrush x:Key="ChromeBackground" Color="#f2f6fa" />
-		<!--  Very light 1 px separator  -->
-		<SolidColorBrush x:Key="ChromeBorder" Color="#DDE6F0" />
-
-  <!--  ── General UI structure  ─────────────────────────────────────────  -->
-  <!--  Thin separator rules inside the menu bar and chrome areas  -->
-  <SolidColorBrush x:Key="SeparatorLine" Color="Black" />
-  <SolidColorBrush x:Key="GridSplitterColor" Color="#E0E8F0" />
-  <!--  Subdued border for dialogs, secondary containers  -->
-  <SolidColorBrush x:Key="SubduedBorder" Color="#C8D5E4" />
-  <!--  Thin hairline between list items  -->
-  <SolidColorBrush x:Key="ItemSeparator" Color="#E8EEF5" />
-  <!--  Inline list borders — replaces raw #CCCCCC throughout views  -->
-  <SolidColorBrush x:Key="InlineListBorder" Color="#E0E8F0" />
-  <!--  Soft panel shadow  -->
-  <BoxShadows x:Key="PanelBoxShadow">1 2 4 0 #80000000</BoxShadows>
-
-  
-<!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the tiles in Workload View  -->
-	
-		<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
-			<SolidColorBrush x:Key="TileFill" Color="#d4e9fe" />
-			
-			<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5"/>
-      
-      <!--ScheduleGridView Tiles-->
-			<!--  External border: the outline around the entire tile card  -->
-			<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
-			<!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->
-			<SolidColorBrush x:Key="TileInternalBorder" Color="#dce0e3" /> 
-  
-  <!--  Selection and Interaction with Tiles -->
-			<!--  When user selects a section or section meeting in Section View, Schedule View or Workload View  -->
-			<SolidColorBrush x:Key="UserSelectedSectionBorderColor" Color="#3c647f" />
-			<!--  Section card background: section matches the active Schedule Grid filter  -->
-			<SolidColorBrush x:Key="FilterSelectedSectionBackgroundColor" Color="#9ecbf7" />
-
-			
-			<!--  De-emphasis: staffed tiles under "Emphasize Unstaffed" mode  -->
-			<Color x:Key="TileDeemphasizedTextColor">#A0AEC0</Color>
-      <SolidColorBrush x:Key="TileDeemphasizedText" Color="{StaticResource TileDeemphasizedTextColor}" />
-		  
-		  <!-- Hover" Semi-transparent dark tint overlaid on Section View tiles  on hover  -->
-		  <SolidColorBrush x:Key="CardHoverOverlay" Color="#14000000" />
-
-			<!--When a section meeting is emphasized via overlay Also colors the border of the entire tile and the text
-      describing the overlay in the filter/overlay bar-->
-			<Color x:Key="OverlayColor">#D63050</Color>
-      <SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
+	<!--  ── General UI structure  ─────────────────────────────────────────  -->
+	<!--  Thin separator rules inside the menu bar and chrome areas  -->
+	<SolidColorBrush x:Key="SeparatorLine" Color="Black" />
+	<SolidColorBrush x:Key="GridSplitterColor" Color="#E0E8F0" />
+	<!--  Subdued border for dialogs, secondary containers  -->
+	<SolidColorBrush x:Key="SubduedBorder" Color="#C8D5E4" />
+	<!--  Thin hairline between list items  -->
+	<SolidColorBrush x:Key="ItemSeparator" Color="#E8EEF5" />
+	<!--  Inline list borders — replaces raw #CCCCCC throughout views  -->
+	<SolidColorBrush x:Key="InlineListBorder" Color="#E0E8F0" />
+	<!--  Soft panel shadow  -->
+	<BoxShadows x:Key="PanelBoxShadow">1 2 4 0 #80000000</BoxShadows>
 
 
-<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
-		<SolidColorBrush x:Key="ButtonBackground" Color="#bcdcff" />
-		<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
-		<SolidColorBrush x:Key="ButtonHover" Color="#a9d2fb" />
-		<SolidColorBrush x:Key="ButtonPressed" Color="#94c6f7" />
+	<!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the tiles in Workload View  -->
+
+	<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
+	<SolidColorBrush x:Key="TileFill" Color="#e0e2e5" />
+
+	<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5" />
+
+	<!--  ScheduleGridView Tiles  -->
+	<!--  External border: the outline around the entire tile card  -->
+	<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
+	<!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->
+	<SolidColorBrush x:Key="TileInternalBorder" Color="#dce0e3" />
+
+	<!--  Selection and Interaction with Tiles  -->
+	<!--  When user selects a section or section meeting in Section View, Schedule View or Workload View  -->
+	<SolidColorBrush x:Key="UserSelectedSectionBorderColor" Color="#3c647f" />
+	<!--  Section card background: section matches the active Schedule Grid filter  -->
+	<SolidColorBrush x:Key="FilterSelectedSectionBackgroundColor" Color="#9ecbf7" />
 
 
-<!--Filters and Overlays ────────────────────────────────   -->
+	<!--  De-emphasis: staffed tiles under "Emphasize Unstaffed" mode  -->
+	<Color x:Key="TileDeemphasizedTextColor">#A0AEC0</Color>
+	<SolidColorBrush x:Key="TileDeemphasizedText" Color="{StaticResource TileDeemphasizedTextColor}" />
 
-  <SolidColorBrush x:Key="FilterBarBackground" Color="#EEF4FC" />
-  <SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
-  <!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
-  <SolidColorBrush x:Key="FilterGroupBorder" Color="#D0DFF0" />
-  <SolidColorBrush x:Key="FilterExpanderContent" Color="White" />
-  <!--  Sentinel row background in filter dropdowns (separates "All" entry)  -->
-  <SolidColorBrush x:Key="FilterSentinelBackground" Color="#EEF4FC" />
+	<!--  Hover" Semi-transparent dark tint overlaid on Section View tiles  on hover  -->
+	<SolidColorBrush x:Key="CardHoverOverlay" Color="#14000000" />
 
-  <SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
-  <SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
-  
-  <SolidColorBrush x:Key="OverlayActiveHeader"   Color="{StaticResource OverlayColor}" />
-<SolidColorBrush x:Key="OverlayInactiveHeader"  Color="#2D3748" />
+	<!--
+		When a section meeting is emphasized via overlay Also colors the border of the entire tile and the text
+		describing the overlay in the filter/overlay bar
+	-->
+	<Color x:Key="OverlayColor">#D63050</Color>
+	<SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
 
 
-  <!--  ── "Filtered by" text in panel header  ──────────────────────────  -->
-  <!-- The color of the text in the overlay/filter bar labeling the active filter-->
-  <Color x:Key="FilterColor">#4A6FA5</Color>
-  <SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
-  <!--  Overlay:  -->  
-  <SolidColorBrush x:Key="OverlayBadgeText" Color="#D63050" />
-
-<!--Schedule View-->
-
-  <!--  ── Schedule grid canvas chrome  ────────────────────────────────  -->
-  <!--  Vertical lines separating day columns on the schedule grid  -->
-  <SolidColorBrush x:Key="DaySeparators" Color="#a0a6ad" />
-  <SolidColorBrush x:Key="GridRuleLine" Color="#E8EDF5" />
-  <SolidColorBrush x:Key="GridHourRuleLine" Color="#D4DCE8" />
-  <SolidColorBrush x:Key="GridGutterBackground" Color="#F2F5FA" />
-  <SolidColorBrush x:Key="GridTimeHalfHourText" Color="#64748B" />
-  <SolidColorBrush x:Key="GridDayHeaderText" Color="#8A9AB0" />
-
-  <SolidColorBrush x:Key="WeekDayBar" Color="White" />
-  <SolidColorBrush x:Key="TimesColumn" Color="White" />
-
-  <!--  ── Loading curtain gradient  ───────────────────────────────────  -->
-  <Color x:Key="SplashGradientStart">#0D1F3C</Color>
-  <Color x:Key="SplashGradientEnd">#2E5899</Color>
-
-  <!--  ── Text roles  ───────────────────────────────────────────────────  -->
-  <!--  Primary: dark navy-gray — not pure black, but still high contrast  -->
-  <SolidColorBrush x:Key="TextPrimary" Color="#1A2433" />
-  <SolidColorBrush x:Key="TextSecondary" Color="#1e2938" />
-  <SolidColorBrush x:Key="TextMuted" Color="#1e2836" />
-  <SolidColorBrush x:Key="TextFaint" Color="#475569" />
-  <SolidColorBrush x:Key="TextSubtle" Color="#4A5568" />
-  <SolidColorBrush x:Key="TextLabel" Color="#64748B" />
-  <SolidColorBrush x:Key="TextDimLabel" Color="#64748B" />
-  <SolidColorBrush x:Key="TextSemesterLabel" Color="#475569" />
-  <SolidColorBrush x:Key="TextValidationError" Color="#C53030" />
-  <SolidColorBrush x:Key="TextError" Color="#C53030" />
+	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
+	<SolidColorBrush x:Key="ButtonBackground" Color="#bcdcff" />
+	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
+	<SolidColorBrush x:Key="ButtonHover" Color="#a9d2fb" />
+	<SolidColorBrush x:Key="ButtonPressed" Color="#94c6f7" />
 
 
-  <!--  Subtle tint — zebra rows, inactive areas, empty-state fills  -->
+	<!--  Filters and Overlays ────────────────────────────────  -->
+
+	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
+	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
+	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
+	<SolidColorBrush x:Key="FilterGroupBorder" Color="#D0DFF0" />
+	<SolidColorBrush x:Key="FilterExpanderContent" Color="White" />
+	<!--  Sentinel row background in filter dropdowns (separates "All" entry)  -->
+	<SolidColorBrush x:Key="FilterSentinelBackground" Color="#EEF4FC" />
+
+	<SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
+	<SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
+
+	<SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
+	<SolidColorBrush x:Key="OverlayInactiveHeader" Color="#2D3748" />
+
+
+	<!--  ── "Filtered by" text in panel header  ──────────────────────────  -->
+	<!--  The color of the text in the overlay/filter bar labeling the active filter  -->
+	<Color x:Key="FilterColor">#4A6FA5</Color>
+	<SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
+	<!--  Overlay:  -->
+	<SolidColorBrush x:Key="OverlayBadgeText" Color="#D63050" />
+
+	<!--  Schedule View  -->
+
+	<!--  ── Schedule grid canvas chrome  ────────────────────────────────  -->
+	<!--  Vertical lines separating day columns on the schedule grid  -->
+	<SolidColorBrush x:Key="DaySeparators" Color="#a0a6ad" />
+	<SolidColorBrush x:Key="GridRuleLine" Color="#E8EDF5" />
+	<SolidColorBrush x:Key="GridHourRuleLine" Color="#D4DCE8" />
+	<SolidColorBrush x:Key="GridGutterBackground" Color="#F2F5FA" />
+	<SolidColorBrush x:Key="GridTimeHalfHourText" Color="#64748B" />
+	<SolidColorBrush x:Key="GridDayHeaderText" Color="#8A9AB0" />
+
+	<SolidColorBrush x:Key="WeekDayBar" Color="{StaticResource AppBackgroundColor}" />
+	<SolidColorBrush x:Key="TimesColumn" Color="{StaticResource AppBackgroundColor}" />
+
+	<!--  ── Loading curtain gradient  ───────────────────────────────────  -->
+	<Color x:Key="SplashGradientStart">#0D1F3C</Color>
+	<Color x:Key="SplashGradientEnd">#2E5899</Color>
+
+	<!--  ── Text roles  ───────────────────────────────────────────────────  -->
+	<!--  Primary: dark navy-gray — not pure black, but still high contrast  -->
+	<SolidColorBrush x:Key="TextPrimary" Color="#1A2433" />
+	<SolidColorBrush x:Key="TextSecondary" Color="#1e2938" />
+	<SolidColorBrush x:Key="TextMuted" Color="#1e2836" />
+	<SolidColorBrush x:Key="TextFaint" Color="#475569" />
+	<SolidColorBrush x:Key="TextSubtle" Color="#4A5568" />
+	<SolidColorBrush x:Key="TextLabel" Color="#64748B" />
+	<SolidColorBrush x:Key="TextDimLabel" Color="#64748B" />
+	<SolidColorBrush x:Key="TextSemesterLabel" Color="#475569" />
+	<SolidColorBrush x:Key="TextValidationError" Color="#C53030" />
+	<SolidColorBrush x:Key="TextError" Color="#C53030" />
+
+
+	<!--  Subtle tint — zebra rows, inactive areas, empty-state fills  -->
 	<SolidColorBrush x:Key="SubtleBackground" Color="#F0F4FA" />
 
-	
-
-  
-  <SolidColorBrush x:Key="TileBorder" Color="#9ABED8" />
-  
-  <!--this is actually coloring selected text -->
-  <SolidColorBrush x:Key="TileBorderSelected" Color="Black" />
-
-  <!-- This is actually used in help tips nowhere else  -->
-  <SolidColorBrush x:Key="FilterColorBrush" Color="{StaticResource FilterColor}" />
 
 
 
-  
+	<SolidColorBrush x:Key="TileBorder" Color="#9ABED8" />
+
+	<!--  this is actually coloring selected text  -->
+	<SolidColorBrush x:Key="TileBorderSelected" Color="Black" />
+
+	<!--  This is actually used in help tips nowhere else  -->
+	<SolidColorBrush x:Key="FilterColorBrush" Color="{StaticResource FilterColor}" />
+
+
+
+
 	<!--  panel surface — pure white for contrast against AppBackground  -->
-	<SolidColorBrush x:Key="SurfaceBackground" Color="White" />
+	<SolidColorBrush x:Key="SurfaceBackground" Color="#e9ecf1" />
 
 
-	
-	
+
+
 	<!--  ── Error / warning banners  ─────────────────────────────────────  -->
 	<!--  Write-lock / warning banner (warm amber)  -->
 	<SolidColorBrush x:Key="ErrorBannerBackground" Color="#FEF3C7" />
@@ -195,15 +197,14 @@
 	<SolidColorBrush x:Key="LateSummerBackground" Color="#C09428" />
 	<SolidColorBrush x:Key="LateSummerBorder" Color="#C09428" />
 
-	
+
 
 	<!--
-		 section-prefix dialog badge colors  ────────────────────
-		
+		section-prefix dialog badge colors  ────────────────────
 	-->
 	<SolidColorBrush x:Key="PrefixCourseBackground" Color="#DBEAFE" />
 	<SolidColorBrush x:Key="PrefixSectionBackground" Color="#D1FAE5" />
-  <SolidColorBrush x:Key="PrefixDesignatorBackground" Color="LightSalmon"/>
+	<SolidColorBrush x:Key="PrefixDesignatorBackground" Color="LightSalmon" />
 
 	<!--  ── Help tooltips  ──────────────────────────────────────────────────  -->
 	<!--  Light indigo-white fill — distinct from the cooler TileFill (#E2EDF8)  -->
@@ -211,6 +212,6 @@
 	<!--  Muted medium-blue border — pairs with the indigo accent  -->
 	<SolidColorBrush x:Key="HelpTipBorder" Color="#9ABED8" />
 
-	
+
 
 </ResourceDictionary>

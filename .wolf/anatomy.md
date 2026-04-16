@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-15T20:33:31.805Z
-> Files: 8 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-15T23:53:40.040Z
+> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,8 @@
 
 ## ../../../.claude/plans/
 
+- `merry-doodling-goblet.md` — Plan: Multi-Semester Vertical Separator Lines (~563 tok)
+- `wild-meandering-teacup.md` — Plan: Make Section View a DetachablePanel (~1218 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -170,12 +172,15 @@
 
 ## src/SchedulingAssistant/
 
+- `MainWindow.axaml` — Declares applied (~6738 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~12906 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
+- `DetachablePanel.axaml` (~682 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -215,11 +220,14 @@
 ## src/SchedulingAssistant/Views/
 
 - `LeftPanelView.axaml` (~2566 tok)
+- `SectionPanelContent.axaml` (~1321 tok)
+- `SectionPanelContent.axaml.cs` — Class: SectionPanelContent (~54 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
 - `GridFilterView.axaml` (~10719 tok)
-- `ScheduleGridView.axaml` (~3576 tok)
+- `ScheduleGridView.axaml` (~2387 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12549 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

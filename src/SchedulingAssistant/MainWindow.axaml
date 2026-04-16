@@ -15,7 +15,8 @@
 	MinHeight="600"
 	b:DismissBehaviors.EscapeCommand="{Binding CloseFlyoutCommand}"
 	x:CompileBindings="False"
-	x:DataType="vm:MainWindowViewModel">
+	x:DataType="vm:MainWindowViewModel"
+	Background="{StaticResource AppBackground}">
 
 	<Window.Styles>
 		<!--
@@ -469,8 +470,30 @@
 				<!--  Left column: Section Editor (top) + Workload (bottom)  -->
 				<Grid Grid.Column="0" RowDefinitions="*,4,200">
 
-					<!--  Section View (fixed panel — not detachable)  -->
-					<panelViews:LeftPanelView Grid.Row="0" />
+					<!--  Section View (detachable)  -->
+					<controls:DetachablePanel
+						x:Name="SectionViewPanel"
+						Grid.Row="0"
+						DetachRequested="OnSectionViewDetach"
+						Header="{Binding LeftPanelTitle}">
+						<controls:DetachablePanel.HeaderContext>
+							<Button
+								MinWidth="0"
+								MinHeight="0"
+								Padding="4,1"
+								VerticalAlignment="Center"
+								Background="{StaticResource ButtonBackground}"
+								BorderThickness="0"
+								Command="{Binding ToggleMeetingViewCommand}"
+								Content="{Binding ToggleMeetingViewLabel}"
+								FontSize="10"
+								Foreground="{StaticResource TextFaint}"
+								ToolTip.Tip="Switch between Section View and Events View" />
+						</controls:DetachablePanel.HeaderContext>
+						<controls:DetachablePanel.PanelContent>
+							<panelViews:SectionPanelContent />
+						</controls:DetachablePanel.PanelContent>
+					</controls:DetachablePanel>
 
 					<GridSplitter
 						Grid.Row="1"
@@ -504,7 +527,6 @@
 				<controls:DetachablePanel
 					x:Name="ScheduleGridPanel"
 					Grid.Column="2"
-					VerticalAlignment="Top"
 					DetachRequested="OnScheduleGridDetach"
 					Header="Schedule View">
 					<controls:DetachablePanel.HeaderContext>
@@ -663,7 +685,7 @@
 		</Panel>
 
 		<!--  Loading curtain — spans all rows, covers menu bar and content until ScheduleGrid renders  -->
-		<Border
+		<!--		<Border
 			x:Name="LoadingCurtain"
 			Grid.Row="0"
 			Grid.RowSpan="5"
@@ -687,7 +709,7 @@
 					Foreground="#99FFFFFF"
 					Text="Loading..." />
 			</StackPanel>
-		</Border>
+		</Border>-->
 
 	</Grid>
 </Window>

@@ -40,7 +40,6 @@
 	</UserControl.Styles>
 
 	<Grid
-		VerticalAlignment="Top"
 		Background="{StaticResource AppBackground}"
 		RowDefinitions="Auto,Auto,*,Auto">
 
@@ -82,7 +81,6 @@
 		<!--  Row 2: Grid canvas with zoom transform  -->
 		<ScrollViewer
 			Grid.Row="2"
-			VerticalAlignment="Center"
 			HorizontalScrollBarVisibility="Auto"
 			VerticalScrollBarVisibility="Auto">
 			<Border x:Name="ZoomContainer" HorizontalAlignment="Left">

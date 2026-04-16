@@ -467,6 +467,28 @@ public partial class ScheduleGridView : UserControl
         // appear transparent — and thus dark — in the exported file.
         AddRect(_canvas, 0, 0, totalWidth, totalHeight, ScheduleBackground, null);
 
+        // ── Multi-semester column wash ────────────────────────────────────
+        // In multi-semester mode, fill each semester sub-column with a light
+        // tint of the semester's color so adjacent semesters are visually
+        // distinct even when no sections are scheduled.
+        if (data.IsMultiSemester)
+        {
+            const double SemesterWashOpacity = 0.25;
+
+            for (int d = 0; d < dayCount; d++)
+            {
+                var col     = data.DayColumns[d];
+                var baseBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(
+                    col.SemesterName, col.SemesterColor);
+                if (baseBrush is SolidColorBrush scb)
+                {
+                    var washBrush = new SolidColorBrush(scb.Color, SemesterWashOpacity);
+                    AddRect(_canvas, dayXOffsets[d], effectiveHeaderHeight,
+                            dayColWidths[d], totalHeight - effectiveHeaderHeight, washBrush, null);
+                }
+            }
+        }
+
         // ── Gutter background ──────────────────────────────────────────────
         AddRect(_canvas, 0, 0, TimeGutterWidth, totalHeight, GutterBg, null);
 
@@ -544,10 +566,10 @@ public partial class ScheduleGridView : UserControl
                 Text = label,
                 FontSize = isHour ? 11 : 9,
                 Foreground = isHour ? TileText : HalfHourText,
-                Width = TimeGutterWidth - 4,
-                TextAlignment = TextAlignment.Right,
+                Width = TimeGutterWidth - 8,
+                TextAlignment = TextAlignment.Left,
             };
-            Canvas.SetLeft(timeTb, 0);
+            Canvas.SetLeft(timeTb, 4);
             Canvas.SetTop(timeTb, y - (isHour ? 7 : 6));
             _canvas.Children.Add(timeTb);
         }

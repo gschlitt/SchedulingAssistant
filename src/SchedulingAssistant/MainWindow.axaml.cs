@@ -22,6 +22,7 @@ namespace SchedulingAssistant;
 
 public partial class MainWindow : Window
 {
+    private DetachedPanelWindow? _sectionViewWindow;
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
     private MainWindowViewModel? _previousVm;
@@ -429,7 +430,7 @@ public partial class MainWindow : Window
         curtainHandler = (_, _) =>
         {
             ScheduleGridViewControl.SizeChanged -= curtainHandler;
-            LoadingCurtain.IsVisible = false;
+        //    LoadingCurtain.IsVisible = false;
         };
         ScheduleGridViewControl.SizeChanged += curtainHandler;
 
@@ -890,6 +891,42 @@ public partial class MainWindow : Window
     }
 
     // ── Detach handlers ─────────────────────────────────────────────────────
+
+    private void OnSectionViewDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+
+        // Build a toggle button for the detached window header, matching the
+        // inline HeaderContext button in MainWindow.axaml.
+        var toggleButton = new Button
+        {
+            MinWidth = 0,
+            MinHeight = 0,
+            Padding = new Thickness(4, 1),
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = (IBrush)(this.FindResource("ButtonBackground") ?? Brushes.LightGray),
+            BorderThickness = new Thickness(0),
+            FontSize = 10,
+            Foreground = (IBrush)(this.FindResource("TextFaint") ?? Brushes.Gray),
+        };
+        toggleButton.Bind(Button.CommandProperty,
+            new Binding("ToggleMeetingViewCommand") { Source = Vm });
+        toggleButton.Bind(ContentControl.ContentProperty,
+            new Binding("ToggleMeetingViewLabel") { Source = Vm });
+
+        // Null out PanelContent to prevent dual event firing while detached.
+        slot.PanelContent = null;
+
+        DetachSlot(slot, ref _sectionViewWindow,
+            () => new SectionPanelContent { DataContext = Vm },
+            () =>
+            {
+                slot.PanelContent = new SectionPanelContent { DataContext = Vm };
+                slot.IsVisible = true;
+                _sectionViewWindow = null;
+            },
+            toggleButton);
+    }
 
     private void OnWorkloadDetach(object? sender, EventArgs e)
     {
