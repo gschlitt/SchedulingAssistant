@@ -24,6 +24,9 @@
 
 	<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5" />
 
+	<!--  Events/Meetings tile fill: warm tan used in both Events View cards and Schedule Grid meeting tiles  -->
+	<SolidColorBrush x:Key="MeetingTile" Color="#B2AC88" />
+
 	<!--  ScheduleGridView Tiles  -->
 	<!--  External border: the outline around the entire tile card  -->
 	<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
@@ -38,9 +41,9 @@
 
 
 	<!--  De-emphasis: staffed tiles under "Emphasize Unstaffed" mode  -->
-	<Color x:Key="TileDeemphasizedTextColor">#A0AEC0</Color>
+	<Color x:Key="TileDeemphasizedTextColor">#555f6d</Color>
 	<SolidColorBrush x:Key="TileDeemphasizedText" Color="{StaticResource TileDeemphasizedTextColor}" />
-
+  <SolidColorBrush x:Key="TileEmphasizedText" Color="Black"/>
 	<!--  Hover" Semi-transparent dark tint overlaid on Section View tiles  on hover  -->
 	<SolidColorBrush x:Key="CardHoverOverlay" Color="#14000000" />
 
@@ -73,6 +76,8 @@
 	<!--  Filters and Overlays ────────────────────────────────  -->
 
 	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
+	<!--  Background fill for the filter-selector and overlay-selector bordered groups  -->
+	<SolidColorBrush x:Key="FilterSelectorBackground" Color="#bcdcff" />
 	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
 	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
 	<SolidColorBrush x:Key="FilterGroupBorder" Color="#8AAAC8" />
@@ -99,8 +104,8 @@
 	<!--  ── Schedule grid canvas chrome  ────────────────────────────────  -->
 	<!--  Vertical lines separating day columns on the schedule grid  -->
 	<SolidColorBrush x:Key="DaySeparators" Color="#a0a6ad" />
-	<SolidColorBrush x:Key="GridRuleLine" Color="#E8EDF5" />
-	<SolidColorBrush x:Key="GridHourRuleLine" Color="#D4DCE8" />
+	<SolidColorBrush x:Key="GridRuleLine" Color="#c3ccda" />
+	<SolidColorBrush x:Key="GridHourRuleLine" Color="#c3ccda" />
 	<SolidColorBrush x:Key="GridGutterBackground" Color="#F2F5FA" />
 	<SolidColorBrush x:Key="GridTimeHalfHourText" Color="#64748B" />
 	<SolidColorBrush x:Key="GridDayHeaderText" Color="#8A9AB0" />

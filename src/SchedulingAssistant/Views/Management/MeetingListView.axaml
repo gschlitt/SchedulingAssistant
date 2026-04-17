@@ -19,10 +19,10 @@
 
         <!--  Card hover / selected styles  -->
         <Style Selector="ListBox.MeetingList ListBoxItem:selected Border.MeetingCard">
-            <Setter Property="Background" Value="{StaticResource TileFill}" />
+            <Setter Property="Background" Value="{StaticResource MeetingTile}" />
         </Style>
         <Style Selector="ListBox.MeetingList ListBoxItem:pointerover:selected Border.MeetingCard">
-            <Setter Property="Background" Value="{StaticResource TileFill}" />
+            <Setter Property="Background" Value="{StaticResource MeetingTile}" />
         </Style>
         <Style Selector="ListBox.MeetingList ListBoxItem:pointerover:not(:selected) Border.MeetingCard">
             <Setter Property="Background" Value="{StaticResource SubtleBackground}" />
@@ -610,7 +610,7 @@
                     <Border
                         Margin="0,2,0,2"
                         Padding="0"
-                        Background="{StaticResource SurfaceBackground}"
+                        Background="{StaticResource MeetingTile}"
                         BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                         BoxShadow="{StaticResource PanelBoxShadow}"
                         Classes="MeetingCard"

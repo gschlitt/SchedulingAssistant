@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-16T18:50:17.867Z
-> Files: 7 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-17T17:56:45.823Z
+> Files: 11 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -170,7 +170,8 @@
 
 ## src/SchedulingAssistant/
 
-- `AppColors.axaml` (~2878 tok)
+- `App.axaml` (~1544 tok)
+- `AppColors.axaml` (~2983 tok)
 - `MainWindow.axaml` — Declares applied (~6752 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -200,6 +201,8 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~3265 tok)
+- `ScheduleGridViewModel.cs` — Represents one colored segment in the semester line display, e.g. "Fall" with orange background. (~18234 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
@@ -216,12 +219,13 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~10719 tok)
+- `GridFilterView.axaml` (~6572 tok)
 - `ScheduleGridView.axaml` (~2482 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~12894 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~13488 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `MeetingListView.axaml` (~10567 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

@@ -48,13 +48,16 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 ///                       e.g. "(odd)", "(1,6,7)". Empty string for weekly meetings.
 /// IsDeemphasized      = true when "Emphasize Unstaffed" is active and this section is staffed.
 ///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
+/// IsEmphasized        = true when "Emphasize Unstaffed" is active and this section is unstaffed.
+///                       The renderer applies a distinct background to make these tiles stand out.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
     string Label, string Initials, string SectionId,
     string SemesterId = "", string SemesterName = "", string SemesterColor = "",
     string FrequencyAnnotation = "",
-    bool IsDeemphasized = false
+    bool IsDeemphasized = false,
+    bool IsEmphasized = false
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -108,6 +111,8 @@ public record CommitmentBlock(
 ///                       Empty string for weekly meetings and all commitments.
 /// IsDeemphasized      = true when "Emphasize Unstaffed" is active and this section is staffed.
 ///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
+/// IsEmphasized        = true when "Emphasize Unstaffed" is active and this section is unstaffed.
+///                       The renderer applies a distinct background to make these tiles stand out.
 /// IsMeeting           = true when this entry came from a <see cref="MeetingBlock"/>.
 ///                       The renderer uses this to apply a distinct visual treatment
 ///                       (e.g. a different tile background tint) without affecting overlay or
@@ -123,6 +128,7 @@ public record TileEntry(
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false,
     bool IsMeeting = false,
+    bool IsEmphasized = false,
     /// <summary>Full comma-separated attendee names shown in the tile hover tooltip. Empty for sections and commitments.</summary>
     string AttendeeList = "");
 

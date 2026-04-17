@@ -656,8 +656,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
             bool sectionIsOverlay  = overlayMatchedIds.Contains(section.Id);
             // "Emphasize Unstaffed" mode: staffed sections are de-emphasised with a
-            // strikethrough in the grid. Unstaffed sections render normally.
+            // strikethrough in the grid; unstaffed sections are highlighted.
             bool isDeemphasized    = snap.EmphasizeUnstaffedSelected && section.InstructorIds.Any();
+            bool isEmphasized      = snap.EmphasizeUnstaffedSelected && !section.InstructorIds.Any();
 
             // ── Meeting-level filters and block emission ───────────────────────────
             foreach (var slot in section.Schedule)
@@ -687,7 +688,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
                     isOverlay, label, initials, section.Id, section.SemesterId, semName, semColor,
                     SectionDaySchedule.FormatFrequency(slot.Frequency),
-                    IsDeemphasized: isDeemphasized));
+                    IsDeemphasized: isDeemphasized,
+                    IsEmphasized: isEmphasized));
             }
         }
 
@@ -1122,7 +1124,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

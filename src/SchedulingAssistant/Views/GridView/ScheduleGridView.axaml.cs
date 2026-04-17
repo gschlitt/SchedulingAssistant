@@ -20,7 +20,7 @@ public partial class ScheduleGridView : UserControl
     /// Used by <see cref="UpdateSelectionHighlight"/> to repaint selection state without
     /// triggering a full layout pass.
     /// </summary>
-    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized);
+    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, IBrush BaseBg);
     private readonly List<EntryRowInfo> _entryRowRegistry = new();
     
     // Layout constants
@@ -70,6 +70,7 @@ public partial class ScheduleGridView : UserControl
     private const double TileSelectionBorderThickness = 3;
 
     private static IBrush TileFill              => Res("TileFill");
+    private static IBrush MeetingTileFill       => Res("MeetingTile");
     private static IBrush TileBorder            => Res("TileBorder");
     private static IBrush TileExternalBorder    => Res("TileExternalBorder");
     private static IBrush TileInternalBorder    => Res("TileInternalBorder");
@@ -86,6 +87,7 @@ public partial class ScheduleGridView : UserControl
     private static IBrush TileText => Res("TextPrimary");
     private static IBrush HalfHourText => Res("GridTimeHalfHourText");
     private static IBrush ScheduleBackground => Res("AppBackground");
+    private static IBrush FilterEmphasizedBg  => Res("FilterSelectedSectionBackgroundColor");
 
 
     private Canvas? _canvas;
@@ -213,7 +215,7 @@ public partial class ScheduleGridView : UserControl
         {
             bool isSelected = selectedId is not null && info.SectionId == selectedId;
 
-            info.Row.Background      = Brushes.Transparent;
+            info.Row.Background      = info.BaseBg;
             info.Row.BorderBrush     = isSelected ? UserSelectedBorder : Brushes.Transparent;
             info.Row.BorderThickness = new Thickness(isSelected ? TileSelectionBorderThickness : 0);
             info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
@@ -503,8 +505,9 @@ public partial class ScheduleGridView : UserControl
                 if (baseBrush is SolidColorBrush scb)
                 {
                     var washBrush = new SolidColorBrush(scb.Color, SemesterWashOpacity);
-                    AddRect(_canvas, dayXOffsets[d], effectiveHeaderHeight,
-                            dayColWidths[d], totalHeight - effectiveHeaderHeight, washBrush, null);
+                    var (washX, washW) = GetDayGroupContentBounds(d, semCount, dayXOffsets, dayColWidths);
+                    AddRect(_canvas, washX, effectiveHeaderHeight,
+                            washW, totalHeight - effectiveHeaderHeight, washBrush, null);
                 }
             }
         }
@@ -560,8 +563,9 @@ public partial class ScheduleGridView : UserControl
                     string semColor  = data.DayColumns[flatCol].SemesterColor;
                     IBrush barFill   = ScheduleGridViewModel.ResolveSemesterBorderBrush(semName, semColor)
                                        ?? HeaderBorder;
-                    AddRect(_canvas, dayXOffsets[flatCol], DayHeaderHeight,
-                            dayColWidths[flatCol], SemesterBarHeight, barFill, null);
+                    var (barX, barW) = GetDayGroupContentBounds(flatCol, semCount, dayXOffsets, dayColWidths);
+                    AddRect(_canvas, barX, DayHeaderHeight,
+                            barW, SemesterBarHeight, barFill, null);
                 }
             }
         }
@@ -663,9 +667,12 @@ public partial class ScheduleGridView : UserControl
                         TextTrimming    = TextTrimming.CharacterEllipsis,
                         TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                     };
+                    IBrush entryRowBg = entry.IsMeeting   ? MeetingTileFill
+                                      : entry.IsEmphasized ? FilterEmphasizedBg
+                                      : Brushes.Transparent;
                     var entryRow = new Border
                     {
-                        Background      = Brushes.Transparent,
+                        Background      = entryRowBg,
                         BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
                         BorderThickness = new Thickness(entrySelected ? TileSelectionBorderThickness : 0),
                         CornerRadius    = new CornerRadius(2),
@@ -684,12 +691,12 @@ public partial class ScheduleGridView : UserControl
                     if (!entry.IsCommitment || entry.IsMeeting)
                     {
                         entryRow.PointerEntered += (s, _) => ((Border)s!).Background = TileEntryHoverOverlay;
-                        entryRow.PointerExited  += (s, _) => ((Border)s!).Background = Brushes.Transparent;
+                        entryRow.PointerExited  += (s, _) => ((Border)s!).Background = entryRowBg;
                     }
 
                     // Register for lightweight selection repainting (avoids full Render() on selection change).
                     if (!entry.IsCommitment)
-                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized));
+                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, entryRowBg));
 
                     entryRow.PointerPressed += (sender, e) =>
                     {
@@ -787,6 +794,12 @@ public partial class ScheduleGridView : UserControl
                 }
 
 
+                // Show attendee tooltip only for meeting tiles (not section tiles).
+                // The time-span tooltip on section tiles was intentionally removed.
+                var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile);
+                if (!string.IsNullOrEmpty(tileTooltip.AttendeeList))
+                    ToolTip.SetTip(border, BuildTileTooltipContent(tileTooltip));
+
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, adjustedTileY);
                 _canvas.Children.Add(border);
@@ -873,6 +886,28 @@ public partial class ScheduleGridView : UserControl
 
     private static double TimeToY(int minutes, int firstRowMinutes) =>
         (minutes - firstRowMinutes) / 30.0 * HalfHourHeight;
+
+    /// <summary>
+    /// Returns the horizontal content bounds (X, Width) for a flat sub-column, inset by
+    /// <see cref="TilePaddingH"/> at day-group boundaries only. In single-semester mode
+    /// every sub-column is both first and last in its group, so both sides are inset;
+    /// in multi-semester mode adjacent semester sub-columns within the same day render
+    /// edge-to-edge, while the outer edges of the day-group reserve a gutter.
+    ///
+    /// This unifies the gutter concept across modes: tiles already inset by TilePaddingH
+    /// (creating the visible gap in single-semester mode), and by using the same constant
+    /// here, any day-column-level fills (semester wash, header bars) leave the same gap
+    /// at day-group boundaries.
+    /// </summary>
+    private static (double X, double Width) GetDayGroupContentBounds(
+        int flatCol, int semCount, double[] dayXOffsets, double[] dayColWidths)
+    {
+        int subIdx = flatCol % semCount;
+        double leftInset  = subIdx == 0              ? TilePaddingH : 0;
+        double rightInset = subIdx == semCount - 1   ? TilePaddingH : 0;
+        return (dayXOffsets[flatCol] + leftInset,
+                dayColWidths[flatCol] - leftInset - rightInset);
+    }
 
     /// <summary>
     /// Returns the cumulative expansion offset for <paramref name="minutes"/>.

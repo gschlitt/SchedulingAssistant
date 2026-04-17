@@ -1,283 +1,285 @@
 <UserControl
-    x:Class="SchedulingAssistant.Views.WorkloadPanelView"
-    xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:conv="using:SchedulingAssistant.Converters"
-    x:Name="Root"
-    x:CompileBindings="False">
+	x:Class="SchedulingAssistant.Views.WorkloadPanelView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:conv="using:SchedulingAssistant.Converters"
+	x:Name="Root"
+	x:CompileBindings="False">
 
-    <UserControl.Styles>
-        <!--  Section chip: light blue with raised appearance  -->
-        <Style Selector="Button.chip">
-            <Setter Property="Background" Value="{StaticResource TileFill}" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="4,1" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="MinWidth" Value="0" />
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border
-                        Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        BoxShadow="{StaticResource PanelBoxShadow}"
-                        CornerRadius="{TemplateBinding CornerRadius}">
-                        <ContentPresenter
-                            x:Name="PART_ContentPresenter"
-                            Margin="{TemplateBinding Padding}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Content="{TemplateBinding Content}" />
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <!--  Release chip: light lavender with raised appearance  -->
-        <Style Selector="Button.chip.release">
-            <Setter Property="Background" Value="{StaticResource ReleaseTile}" />
-        </Style>
-        <!--
-            Hover tint on instructor cards. Targets the transparent overlay Border inside the card
-            when the outer WorkloadCard Border is in :pointerover — same pattern as section cards.
-        -->
-        <Style Selector="Border.WorkloadCard:pointerover Border.WorkloadCardHover">
-            <Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
-        </Style>
-        <!--  Selected chip: violet border matching UserSelectedSectionBorderColor in other views  -->
-        <Style Selector="Button.chip.selected">
-            <Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
-            <Setter Property="BorderThickness" Value="3" />
-        </Style>
-        <Style Selector="Button.chip.release.selected">
-            <Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
-            <Setter Property="BorderThickness" Value="2" />
-        </Style>
-    </UserControl.Styles>
+	<UserControl.Styles>
+		<!--  Section chip: light blue with raised appearance  -->
+		<Style Selector="Button.chip">
+			<Setter Property="Background" Value="{StaticResource TileFill}" />
+			<Setter Property="CornerRadius" Value="4" />
+			<Setter Property="Padding" Value="4,1" />
+			<Setter Property="FontSize" Value="10" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						BoxShadow="{StaticResource PanelBoxShadow}"
+						CornerRadius="{TemplateBinding CornerRadius}">
+						<ContentPresenter
+							x:Name="PART_ContentPresenter"
+							Margin="{TemplateBinding Padding}"
+							HorizontalAlignment="Center"
+							VerticalAlignment="Center"
+							Content="{TemplateBinding Content}" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+		<!--  Release chip: light lavender with raised appearance  -->
+		<Style Selector="Button.chip.release">
+			<Setter Property="Background" Value="{StaticResource ReleaseTile}" />
+		</Style>
+		<!--
+			Hover tint on instructor cards. Targets the transparent overlay Border inside the card
+			when the outer WorkloadCard Border is in :pointerover — same pattern as section cards.
+		-->
+		<Style Selector="Border.WorkloadCard:pointerover Border.WorkloadCardHover">
+			<Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
+		</Style>
+		<!--  Selected chip: violet border matching UserSelectedSectionBorderColor in other views  -->
+		<Style Selector="Button.chip.selected">
+			<Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
+			<Setter Property="BorderThickness" Value="3" />
+		</Style>
+		<Style Selector="Button.chip.release.selected">
+			<Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
+			<Setter Property="BorderThickness" Value="2" />
+		</Style>
+	</UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto" Grid.IsSharedSizeScope="True">
+	<Grid Grid.IsSharedSizeScope="True" RowDefinitions="Auto,*,Auto">
 
-        <!--  Column headers  -->
-        <Border
-            Grid.Row="0"
-            Padding="14,0,32,0"
-            Background="{StaticResource ViewHeaderBackground}"
-            BorderBrush="{StaticResource InlineListBorder}"
-            BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
-                    <ColumnDefinition Width="32" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="35" />
-                    <ColumnDefinition Width="20" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Grid.Column="0"
-                    Margin="4,3"
-                    FontWeight="SemiBold"
-                    Text="Instructor" />
-                <TextBlock
-                    Grid.Column="1"
-                    Margin="2,3"
-                    FontWeight="SemiBold"
-                    Text="Init." />
-                <TextBlock
-                    Grid.Column="2"
-                    Margin="4,3"
-                    FontWeight="SemiBold"
-                    Text="Sections &amp; Releases" />
-                <TextBlock
-                    Grid.Column="3"
-                    Margin="0,3"
-                    HorizontalAlignment="Center"
-                    FontWeight="SemiBold"
-                    Text="Sem." />
-                <TextBlock
-                    Grid.Column="4"
-                    Margin="0,3"
-                    HorizontalAlignment="Center"
-                    FontWeight="SemiBold"
-                    Text="AY" />
-            </Grid>
-        </Border>
+		<!--  Column headers  -->
+		<Border
+			Grid.Row="0"
+			Padding="14,0,32,0"
+			Background="{StaticResource ViewHeaderBackground}"
+			BorderBrush="{StaticResource InlineListBorder}"
+			BorderThickness="0,0,0,1">
+			<Grid>
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
+					<ColumnDefinition Width="20" />
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="35" />
+					<ColumnDefinition Width="20" />
+				</Grid.ColumnDefinitions>
+				<TextBlock
+					Grid.Column="0"
+					Margin="4,3"
+					FontWeight="SemiBold"
+					Text="Instructor" />
+				<TextBlock
+					Grid.Column="1"
+					Margin="5,3"
+					HorizontalAlignment="Left"
+					FontWeight="SemiBold"
+					Text="Init." />
+				<TextBlock
+					Grid.Column="2"
+					Margin="4,3"
+					FontWeight="SemiBold"
+					Text="Sections &amp; Releases" />
+				<TextBlock
+					Grid.Column="3"
+					Margin="0,3"
+					HorizontalAlignment="Center"
+					FontWeight="SemiBold"
+					Text="Sem." />
+				<TextBlock
+					Grid.Column="4"
+					Margin="0,3"
+					HorizontalAlignment="Center"
+					FontWeight="SemiBold"
+					Text="AY" />
+			</Grid>
+		</Border>
 
-        <!--  Scrollable data area  -->
-        <ScrollViewer
-            Grid.Row="1"
-            HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="8,4">
+		<!--  Scrollable data area  -->
+		<ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+			<StackPanel Margin="8,4">
 
-                <!--  Error banner  -->
-                <Border
-                    Padding="6,3"
-                    Background="{StaticResource NotificationWarningBackground}"
-                    IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <TextBlock
-                        Foreground="{StaticResource NotificationWarningText}"
-                        Text="{Binding LastErrorMessage}"
-                        TextWrapping="Wrap" />
-                </Border>
+				<!--  Error banner  -->
+				<Border
+					Padding="6,3"
+					Background="{StaticResource NotificationWarningBackground}"
+					IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+					<TextBlock
+						Foreground="{StaticResource NotificationWarningText}"
+						Text="{Binding LastErrorMessage}"
+						TextWrapping="Wrap" />
+				</Border>
 
-                <!--  Instructor cards — same raised appearance as section cards  -->
-                <ItemsControl ItemsSource="{Binding Rows}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <!--  Card:  box shadow, and rounded corners matching section cards  -->
-                            <Border
-                                Classes="WorkloadCard"
-                                Margin="0,2,0,2"
-                                Background="{StaticResource WorkloadTileBackground}"
-                                BoxShadow="{StaticResource PanelBoxShadow}"
-                                CornerRadius="4">
-                                <Grid>
-                                <Grid Margin="6,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="35" />
-                                        <ColumnDefinition Width="20" />
-                                    </Grid.ColumnDefinitions>
+				<!--  Instructor cards — same raised appearance as section cards  -->
+				<ItemsControl ItemsSource="{Binding Rows}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<!--  Card:  box shadow, and rounded corners matching section cards  -->
+							<Border
+								Margin="0,2,0,2"
+								Background="{StaticResource WorkloadTileBackground}"
+								BoxShadow="{StaticResource PanelBoxShadow}"
+								Classes="WorkloadCard"
+								CornerRadius="4">
+								<Grid>
+									<Grid Margin="6,4">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
+											<ColumnDefinition Width="20" />
+											<ColumnDefinition Width="*" />
+											<ColumnDefinition Width="35" />
+											<ColumnDefinition Width="20" />
+										</Grid.ColumnDefinitions>
 
-                                    <!--  Name  -->
-                                    <TextBlock
-                                        Grid.Column="0"
-                                        Margin="4,2"
-                                        VerticalAlignment="Top"
-                                        Text="{Binding FullName}"
-                                        TextTrimming="CharacterEllipsis"
-                                        TextWrapping="NoWrap" />
+										<!--  Name  -->
+										<TextBlock
+											Grid.Column="0"
+											Margin="4,2"
+											VerticalAlignment="Top"
+											Text="{Binding FullName}"
+											TextTrimming="CharacterEllipsis"
+											TextWrapping="NoWrap" />
 
-                                    <!--  Initials  -->
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Margin="2,2"
-                                        VerticalAlignment="Top"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="{Binding Initials}" />
+										<!--  Initials  -->
+										<TextBlock
+											Grid.Column="1"
+											Margin="5,2"
+											HorizontalAlignment="Left"
+											VerticalAlignment="Top"
+											Foreground="{StaticResource TextMuted}"
+											Text="{Binding Initials}" />
 
-                                    <!--  Single-semester mode: flat chips (horizontal, wrapping)  -->
-                                    <ItemsControl
-                                        Grid.Column="2"
-                                        Margin="2,0"
-                                        HorizontalAlignment="Left"
-                                        IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
-                                        ItemsSource="{Binding Items}"
-                                        >
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel HorizontalAlignment="Left" Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Button
-                                                    Margin="2,1"
-                                                    Classes="chip"
-                                                    Classes.release="{Binding IsRelease}"
-                                                    Classes.selected="{Binding IsSelected}"
-                                                    Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
-                                                    CommandParameter="{Binding}"
-                                                    Content="{Binding Label}" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+										<!--  Single-semester mode: flat chips (horizontal, wrapping)  -->
+										<ItemsControl
+											Grid.Column="2"
+											Margin="2,0"
+											HorizontalAlignment="Left"
+											IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
+											ItemsSource="{Binding Items}">
+											<ItemsControl.ItemsPanel>
+												<ItemsPanelTemplate>
+													<WrapPanel HorizontalAlignment="Left" Orientation="Horizontal" />
+												</ItemsPanelTemplate>
+											</ItemsControl.ItemsPanel>
+											<ItemsControl.ItemTemplate>
+												<DataTemplate>
+													<Button
+														Margin="2,1"
+														Classes="chip"
+														Classes.release="{Binding IsRelease}"
+														Classes.selected="{Binding IsSelected}"
+														Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
+														CommandParameter="{Binding}"
+														Content="{Binding Label}" />
+												</DataTemplate>
+											</ItemsControl.ItemTemplate>
+										</ItemsControl>
 
-                                    <!--  Multi-semester mode: grouped by semester with colored frames  -->
-                                    <ItemsControl
-                                        Grid.Column="2"
-                                        Grid.ColumnSpan="2"
-                                        Margin="2,0"
-                                        IsVisible="{Binding IsMultiSemesterMode}"
-                                        ItemsSource="{Binding SemesterGroups}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <!--  Colored frame around this semester's chips  -->
-                                                <Border
-                                                    Margin="0,2"
-                                                    Padding="3,2"
-                                                    BorderBrush="{Binding SemesterColorBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="2">
-                                                    <!--  Inner grid: chips fill *, semester total right-aligned 58px  -->
-                                                    <Grid ColumnDefinitions="*,58">
-                                                        <!--  Chips WrapPanel in col 0  -->
-                                                        <ItemsControl
-                                                            Grid.Column="0"
-                                                            Margin="2,0"
-                                                            ItemsSource="{Binding Items}">
-                                                            <ItemsControl.ItemsPanel>
-                                                                <ItemsPanelTemplate>
-                                                                    <WrapPanel Orientation="Horizontal" />
-                                                                </ItemsPanelTemplate>
-                                                            </ItemsControl.ItemsPanel>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate>
-                                                                    <Button
-                                                                        Margin="2,1"
-                                                                        Classes="chip"
-                                                                        Classes.release="{Binding IsRelease}"
-                                                                        Classes.selected="{Binding IsSelected}"
-                                                                        Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
-                                                                        CommandParameter="{Binding}"
-                                                                        Content="{Binding Label}" />
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                        <!--  Per-semester total in col 1 (aligns with outer "Sem." header)  -->
-                                                        <TextBlock
-                                                            Grid.Column="1"
-                                                            Margin="4,2"
-                                                            HorizontalAlignment="Right"
-                                                            VerticalAlignment="Top"
-                                                            Text="{Binding SemesterTotal, StringFormat={}{0:0.##}}" />
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+										<!--  Multi-semester mode: grouped by semester with colored frames  -->
+										<ItemsControl
+											Grid.Column="2"
+											Grid.ColumnSpan="2"
+											Margin="2,0"
+											IsVisible="{Binding IsMultiSemesterMode}"
+											ItemsSource="{Binding SemesterGroups}">
+											<ItemsControl.ItemTemplate>
+												<DataTemplate>
+													<!--  Colored frame around this semester's chips  -->
+													<Border
+														Margin="0,2"
+														Padding="3,2"
+														BorderBrush="{Binding SemesterColorBrush}"
+														BorderThickness="1"
+														CornerRadius="2">
+														<!--  Inner grid: chips fill *, semester total right-aligned 58px  -->
+														<Grid ColumnDefinitions="*,58">
+															<!--  Chips WrapPanel in col 0  -->
+															<ItemsControl
+																Grid.Column="0"
+																Margin="2,0"
+																ItemsSource="{Binding Items}">
+																<ItemsControl.ItemsPanel>
+																	<ItemsPanelTemplate>
+																		<WrapPanel Orientation="Horizontal" />
+																	</ItemsPanelTemplate>
+																</ItemsControl.ItemsPanel>
+																<ItemsControl.ItemTemplate>
+																	<DataTemplate>
+																		<Button
+																			Margin="2,1"
+																			Classes="chip"
+																			Classes.release="{Binding IsRelease}"
+																			Classes.selected="{Binding IsSelected}"
+																			Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
+																			CommandParameter="{Binding}"
+																			Content="{Binding Label}" />
+																	</DataTemplate>
+																</ItemsControl.ItemTemplate>
+															</ItemsControl>
+															<!--  Per-semester total in col 1 (aligns with outer "Sem." header)  -->
+															<TextBlock
+																Grid.Column="1"
+																Margin="4,2"
+																HorizontalAlignment="Right"
+																VerticalAlignment="Top"
+																Text="{Binding SemesterTotal, StringFormat={}{0:0.##}}" />
+														</Grid>
+													</Border>
+												</DataTemplate>
+											</ItemsControl.ItemTemplate>
+										</ItemsControl>
 
-                                    <!--  Semester total (single-semester mode only)  -->
-                                    <TextBlock
-                                        Grid.Column="3"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Top"
-                                        IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
-                                        Text="{Binding SemesterTotal, StringFormat={}{0:0.##}}" />
+										<!--  Semester total (single-semester mode only)  -->
+										<TextBlock
+											Grid.Column="3"
+											HorizontalAlignment="Center"
+											VerticalAlignment="Top"
+											IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
+											Text="{Binding SemesterTotal, StringFormat={}{0:0.##}}" />
 
-                                    <!--  Academic year total  -->
-                                    <TextBlock
-                                        Grid.Column="4"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Top"
-                                        Text="{Binding AcademicYearTotal, StringFormat={}{0:0.##}}" />
+										<!--  Academic year total  -->
+										<TextBlock
+											Grid.Column="4"
+											HorizontalAlignment="Center"
+											VerticalAlignment="Top"
+											Text="{Binding AcademicYearTotal, StringFormat={}{0:0.##}}" />
 
-                                </Grid>
-                                <!--
-                                    Hover overlay: transparent by default; tinted by WorkloadCardHover style
-                                    when Border.WorkloadCard is in :pointerover. IsHitTestVisible="False" lets
-                                    pointer events pass through to chips and other interactive content below.
-                                -->
-                                <Border Classes="WorkloadCardHover" CornerRadius="4" IsHitTestVisible="False" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+									</Grid>
+									<!--
+										Hover overlay: transparent by default; tinted by WorkloadCardHover style
+										when Border.WorkloadCard is in :pointerover. IsHitTestVisible="False" lets
+										pointer events pass through to chips and other interactive content below.
+									-->
+									<Border
+										Classes="WorkloadCardHover"
+										CornerRadius="4"
+										IsHitTestVisible="False" />
+								</Grid>
+							</Border>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
 
-            </StackPanel>
-        </ScrollViewer>
+			</StackPanel>
+		</ScrollViewer>
 
-        <!--  Row 2: Footer border — fixed height matches Schedule View zoom footer  -->
-        <Border
-            Grid.Row="2"
-            Height="26"
-            Background="{StaticResource ChromeBackground}"
-            BorderBrush="{StaticResource ChromeBorder}"
-            BorderThickness="0,1,0,0" />
+		<!--  Row 2: Footer border — fixed height matches Schedule View zoom footer  -->
+		<Border
+			Grid.Row="2"
+			Height="26"
+			Background="{StaticResource ChromeBackground}"
+			BorderBrush="{StaticResource ChromeBorder}"
+			BorderThickness="0,1,0,0" />
 
-    </Grid>
+	</Grid>
 
 </UserControl>

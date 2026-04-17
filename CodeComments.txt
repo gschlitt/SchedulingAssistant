@@ -1,11 +1,25 @@
 Bugs:
 New DB and transfer config does not transfer semester colors
+Separation between days in multisemester mode
+Colors in Courses off again
+WrapPanel for Filters
 
 
-Revisions:
-Spacing and borders around tags and overlays
-Different color for meeting tiles in in Schedule View and Event View
 Delete key operational across lists?
+
+
+WorkFlows?
+Filter First!
+I've scheduled my sections. I need to staff them, keeping in mind workload
+Work through the instructors that need workload one at a time, bringing them up to full workload.
+Choose an instructor, and overlay their schedule. Now choose "Unstaffed Sections (Isolate)" or Unstaffed
+Section ("Emphasize") as an Instructor Filter. 
+
+I've know who is instructing my sections. I need to schedule the sections
+I'm adding an additional section, I need to schedule and staff it.
+
+
+
 
 
 

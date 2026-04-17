@@ -97,6 +97,11 @@
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
         </Style>
 
+        <!--  ScrollBar track background  -->
+        <Style Selector="ScrollBar /template/ Border#PART_Root">
+            <Setter Property="Background" Value="{StaticResource ChromeBackground}" />
+        </Style>
+
         <!--  DataGrid row selection: use ButtonBackground across all grids  -->
         <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
             <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />

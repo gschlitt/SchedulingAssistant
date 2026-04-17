@@ -5161,6 +5161,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-16T18:50:17.915Z"
+    },
+    {
+      "id": "bug-323",
+      "timestamp": "2026-04-16T22:26:06.490Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Had \"TileBorder\"",
+      "fix": "Changed to \"MeetingTile\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-16T22:26:06.490Z"
     }
   ]
 }
