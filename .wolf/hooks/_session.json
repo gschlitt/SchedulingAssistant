@@ -11,6 +11,11 @@
       "count": 3,
       "tokens": 10759,
       "first_read": "2026-04-17T15:43:52.301Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": {
+      "count": 1,
+      "tokens": 13488,
+      "first_read": "2026-04-17T18:01:43.579Z"
     }
   },
   "files_written": [
@@ -49,9 +54,9 @@
     "src/SchedulingAssistant/AppColors.axaml": 1,
     "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 4
   },
-  "anatomy_hits": 2,
+  "anatomy_hits": 3,
   "anatomy_misses": 0,
   "repeated_reads_warned": 2,
   "cerebrum_warnings": 0,
-  "stop_count": 3
+  "stop_count": 5
 }
