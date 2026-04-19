@@ -1,4 +1,3 @@
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
@@ -7,9 +6,9 @@ namespace SchedulingAssistant.ViewModels.Wizard.Steps;
 
 /// <summary>
 /// Editable color row for one semester in the Semester Colors step.
-/// Exposes both <see cref="SelectedColor"/> (for the Avalonia color picker)
-/// and <see cref="HexColor"/> (used by the orchestrator when writing to the DB).
-/// The two properties are kept in sync automatically via their change callbacks.
+/// Exposes only <see cref="HexColor"/> (a <c>#RRGGBB</c> string); the view binds this to
+/// <c>ColorView.Color</c> via <c>HexToColorConverter</c>, which keeps all Avalonia.Media
+/// types out of the ViewModel layer.
 /// </summary>
 public partial class SemesterColorRowViewModel : ViewModelBase
 {
@@ -17,60 +16,19 @@ public partial class SemesterColorRowViewModel : ViewModelBase
     public string Name { get; }
 
     /// <summary>
-    /// The current color as an Avalonia <see cref="Color"/> struct.
-    /// Bound to the inline <c>ColorView</c>. Changes are reflected in <see cref="HexColor"/>.
-    /// </summary>
-    [ObservableProperty] private Color _selectedColor;
-
-    /// <summary>
-    /// The current color in <c>#RRGGBB</c> hex format.
-    /// Written to the DB by the wizard orchestrator. Changes are reflected in <see cref="SelectedColor"/>.
+    /// The current color in <c>#RRGGBB</c> hex format. Bound two-way (via the hex-to-color
+    /// converter) to the inline <c>ColorView</c>, and read by the wizard orchestrator when
+    /// writing to the DB.
     /// </summary>
     [ObservableProperty] private string _hexColor = string.Empty;
-
 
     /// <param name="name">Semester name shown as the row label.</param>
     /// <param name="hexColor">Initial color in <c>#RRGGBB</c> format.</param>
     public SemesterColorRowViewModel(string name, string hexColor)
     {
-        Name         = name;
-        _selectedColor = ParseHex(hexColor); // initialise backing field directly to avoid double-sync
-        HexColor     = hexColor;
+        Name      = name;
+        _hexColor = hexColor;
     }
-
-    /// <summary>
-    /// Keeps <see cref="SelectedColor"/> up to date when <see cref="HexColor"/> is set programmatically
-    /// (e.g. when Accept Defaults resets a row).
-    /// </summary>
-    partial void OnHexColorChanged(string value)
-    {
-        var parsed = ParseHex(value);
-        if (parsed != SelectedColor)
-            SelectedColor = parsed;
-    }
-
-    /// <summary>
-    /// Keeps <see cref="HexColor"/> up to date when the user picks a new colour
-    /// via the <c>ColorView</c> flyout.
-    /// </summary>
-    partial void OnSelectedColorChanged(Color value)
-    {
-        var hex = ColorToHex(value);
-        if (HexColor != hex)
-            HexColor = hex;
-    }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Parses a hex color string (<c>#RRGGBB</c> or <c>RRGGBB</c>) into an Avalonia <see cref="Color"/>.
-    /// Falls back to mid-grey on parse failure.
-    /// </summary>
-    private static Color ParseHex(string hex) =>
-        Color.TryParse(hex, out var c) ? c : Colors.Gray;
-
-    /// <summary>Converts an Avalonia <see cref="Color"/> to an uppercase <c>#RRGGBB</c> string.</summary>
-    private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 }
 
 /// <summary>

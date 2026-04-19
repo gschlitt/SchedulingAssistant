@@ -815,10 +815,16 @@
                                 Padding="8,4"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Left"
-                                Background="{Binding BannerBackground}"
                                 Command="{Binding $parent[UserControl].DataContext.AddToSemesterCommand}"
                                 CommandParameter="{Binding SemesterId}"
-                                Content="{Binding SemesterName}" />
+                                Content="{Binding SemesterName}">
+                                <Button.Background>
+                                    <MultiBinding Converter="{StaticResource SemesterBackgroundBrushConverter}">
+                                        <Binding Path="SemesterName" />
+                                        <Binding Path="SemesterColor" />
+                                    </MultiBinding>
+                                </Button.Background>
+                            </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -909,10 +915,15 @@
                             <Border
                                 Margin="0,10,0,4"
                                 Padding="10,4"
-                                Background="{Binding BannerBackground}"
                                 BorderThickness="0"
                                 CornerRadius="4"
                                 IsHitTestVisible="False">
+                                <Border.Background>
+                                    <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+                                        <Binding Path="SemesterName" />
+                                        <Binding Path="SemesterColor" />
+                                    </MultiBinding>
+                                </Border.Background>
                                 <TextBlock
                                     FontSize="11"
                                     FontWeight="SemiBold"

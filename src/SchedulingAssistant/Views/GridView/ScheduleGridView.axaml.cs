@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 using System.ComponentModel;
 
@@ -500,7 +501,7 @@ public partial class ScheduleGridView : UserControl
             for (int d = 0; d < dayCount; d++)
             {
                 var col     = data.DayColumns[d];
-                var baseBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(
+                var baseBrush = SemesterBrushResolver.Resolve(
                     col.SemesterName, col.SemesterColor);
                 if (baseBrush is SolidColorBrush scb)
                 {
@@ -561,7 +562,7 @@ public partial class ScheduleGridView : UserControl
                     int    flatCol   = firstCol + s;
                     string semName   = data.DayColumns[flatCol].SemesterName;
                     string semColor  = data.DayColumns[flatCol].SemesterColor;
-                    IBrush barFill   = ScheduleGridViewModel.ResolveSemesterBorderBrush(semName, semColor)
+                    IBrush barFill   = SemesterBrushResolver.Resolve(semName, semColor)
                                        ?? HeaderBorder;
                     var (barX, barW) = GetDayGroupContentBounds(flatCol, semCount, dayXOffsets, dayColWidths);
                     AddRect(_canvas, barX, DayHeaderHeight,
@@ -742,7 +743,7 @@ public partial class ScheduleGridView : UserControl
                 IBrush? semesterBrush = null;
                 if (isMultiSemester && !string.IsNullOrEmpty(tile.SemesterName))
                 {
-                    semesterBrush = ScheduleGridViewModel.ResolveSemesterBorderBrush(tile.SemesterName, tile.SemesterColor);
+                    semesterBrush = SemesterBrushResolver.Resolve(tile.SemesterName, tile.SemesterColor);
                 }
 
                 Border border;

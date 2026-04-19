@@ -1,4 +1,3 @@
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
@@ -11,8 +10,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
 /// Display wrapper for a single <see cref="Semester"/> row in the semester manager list.
-/// Exposes <see cref="SelectedColor"/> (Avalonia <see cref="Color"/>) for two-way binding
-/// to the inline color picker. When the color changes, the underlying model is updated and
+/// Exposes only <see cref="HexColor"/> (a <c>#RRGGBB</c> string); the view binds this to
+/// <c>ColorView.Color</c> via <c>HexToColorConverter</c>, which keeps Avalonia.Media types
+/// out of the ViewModel. When the color changes, the underlying model is updated and
 /// persisted via the <paramref name="onColorChanged"/> callback.
 /// </summary>
 public partial class SemesterRowViewModel : ViewModelBase
@@ -24,11 +24,11 @@ public partial class SemesterRowViewModel : ViewModelBase
     public string Name => Semester.Name;
 
     /// <summary>
-    /// Current semester color as an Avalonia <see cref="Color"/>.
-    /// Bound two-way to the inline <c>ColorView</c> in the flyout.
-    /// Changes are reflected in <see cref="Semester.Color"/> and persisted via the callback.
+    /// Current semester color in <c>#RRGGBB</c> hex format, bound two-way to the inline
+    /// <c>ColorView</c> flyout (via <c>HexToColorConverter</c>). Changes are written back
+    /// to <see cref="Semester.Color"/> and persisted via the callback.
     /// </summary>
-    [ObservableProperty] private Color _selectedColor;
+    [ObservableProperty] private string _hexColor = string.Empty;
 
     private readonly Action<Semester> _onColorChanged;
 
@@ -38,32 +38,19 @@ public partial class SemesterRowViewModel : ViewModelBase
     {
         Semester        = semester;
         _onColorChanged = onColorChanged;
-        _selectedColor  = ParseHex(semester.Color);  // set backing field directly — no callback on init
+        _hexColor       = semester.Color ?? string.Empty;  // set backing field directly — no callback on init
     }
 
     /// <summary>
     /// Syncs the model's <see cref="Semester.Color"/> and fires the persist callback
     /// whenever the user picks a new colour via the <c>ColorView</c>.
     /// </summary>
-    partial void OnSelectedColorChanged(Color value)
+    partial void OnHexColorChanged(string value)
     {
-        var hex = ColorToHex(value);
-        if (Semester.Color == hex) return;
-        Semester.Color = hex;
+        if (Semester.Color == value) return;
+        Semester.Color = value;
         _onColorChanged(Semester);
     }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Parses a hex color string (<c>#RRGGBB</c> or <c>RRGGBB</c>) into an Avalonia <see cref="Color"/>.
-    /// Falls back to mid-grey on parse failure or empty input.
-    /// </summary>
-    private static Color ParseHex(string hex) =>
-        Color.TryParse(hex, out var c) ? c : Colors.Gray;
-
-    /// <summary>Converts an Avalonia <see cref="Color"/> to an uppercase <c>#RRGGBB</c> string.</summary>
-    private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 }
 
 /// <summary>

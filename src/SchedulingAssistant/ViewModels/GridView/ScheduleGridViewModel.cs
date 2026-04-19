@@ -1,5 +1,4 @@
 using Avalonia;
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
@@ -11,9 +10,14 @@ using System.Threading.Tasks;
 namespace SchedulingAssistant.ViewModels.GridView;
 
 /// <summary>
-/// Represents one colored segment in the semester line display, e.g. "Fall" with orange background.
+/// Represents one semester-line pill. Carries the semester's name and stored hex color only;
+/// the view resolves brushes at render time via <see cref="SemesterBrushResolver"/> so that
+/// no Avalonia.Media types leak into the ViewModel layer.
 /// </summary>
-public record SemesterLineSegment(string DisplayText, IBrush? Background, IBrush? Border);
+/// <param name="DisplayText">Label shown inside the pill (usually the semester name).</param>
+/// <param name="SemesterName">Semester name, used as fallback key for name-based color lookup.</param>
+/// <param name="HexColor">Explicit hex color (e.g. "#C65D1E"); takes priority over the name fallback.</param>
+public record SemesterLineSegment(string DisplayText, string SemesterName, string HexColor);
 
 public partial class ScheduleGridViewModel : ViewModelBase
 {
@@ -1074,38 +1078,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Resolves the semester border brush using either a stored hex color or a name-based
-    /// AppColors lookup. The hex color takes precedence when non-empty.
-    /// Returns null if the resource cannot be found (renderer will use default styling).
-    /// Used by ScheduleGridView to color meeting card borders in multi-semester mode.
-    /// </summary>
-    /// <param name="semesterName">Semester name (used as fallback key).</param>
-    /// <param name="hexColor">Optional hex color string stored on the Semester model (e.g. "#C65D1E").</param>
-    public static Avalonia.Media.IBrush? ResolveSemesterBorderBrush(string semesterName, string hexColor = "")
-    {
-        if (!string.IsNullOrWhiteSpace(hexColor))
-        {
-            try { return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(hexColor)); }
-            catch { /* fall through to name-based lookup */ }
-        }
-
-        var firstWord = semesterName.Split(' ')[0];
-        string key = firstWord switch
-        {
-            "Fall"   => "FallBorder",
-            "Winter" => "WinterBorder",
-            "Early"  => "EarlySummerBorder",
-            "Summer" => "SummerBorder",
-            "Late"   => "LateSummerBorder",
-            _        => "FallBorder"
-        };
-
-        object? resource = null;
-        Avalonia.Application.Current?.Resources.TryGetResource(key, null, out resource);
-        return resource as Avalonia.Media.IBrush;
-    }
-
-    /// <summary>
     /// Converts a GridBlock to the TileEntry record consumed by the renderer.
     ///
     /// For SectionMeetingBlocks: the label, initials, section ID, and overlay flag
@@ -1313,9 +1285,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
         if (semesters.Count == 1)
         {
             // Single semester: show just the semester name without color background
-            // (colors are only needed to distinguish between multiple semesters)
+            // (colors are only needed to distinguish between multiple semesters).
+            // Empty SemesterName+HexColor is the view's signal to render the pill uncolored.
             var sem = semesters[0];
-            segments.Add(new SemesterLineSegment(sem.Semester.Name, null, null));
+            segments.Add(new SemesterLineSegment(sem.Semester.Name, string.Empty, string.Empty));
         }
         else
         {
@@ -1323,55 +1296,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
             var ayName = _semesterContext.SelectedAcademicYear?.Name ?? "";
             if (!string.IsNullOrEmpty(ayName))
             {
-                segments.Add(new SemesterLineSegment($"{ayName} —", null, null));
+                segments.Add(new SemesterLineSegment($"{ayName} —", string.Empty, string.Empty));
             }
 
             foreach (var sem in semesters)
             {
-                var (bg, bd) = GetSemesterBrushes(sem.Semester.Name, sem.Semester.Color);
-                segments.Add(new SemesterLineSegment(sem.Semester.Name, bg, bd));
+                segments.Add(new SemesterLineSegment(
+                    sem.Semester.Name, sem.Semester.Name, sem.Semester.Color ?? string.Empty));
             }
         }
 
         SemesterLineSegments = segments;
-    }
-
-    /// <summary>
-    /// Gets the background and border brushes for a semester.
-    /// When a hex color is stored on the semester, it is used for both background and border.
-    /// Otherwise falls back to name-based AppColors lookup.
-    /// </summary>
-    /// <param name="semesterName">Semester name (used as fallback key).</param>
-    /// <param name="hexColor">Optional hex color string stored on the Semester model.</param>
-    private static (IBrush? bg, IBrush? bd) GetSemesterBrushes(string semesterName, string hexColor = "")
-    {
-        if (!string.IsNullOrWhiteSpace(hexColor))
-        {
-            try
-            {
-                var brush = new SolidColorBrush(Color.Parse(hexColor));
-                return (brush, brush);
-            }
-            catch { /* fall through */ }
-        }
-
-        var firstWord = semesterName.Split(' ')[0];
-        var (bgKey, bdKey) = firstWord switch
-        {
-            "Fall"   => ("FallBackground", "FallBorder"),
-            "Winter" => ("WinterBackground", "WinterBorder"),
-            "Early"  => ("EarlySummerBackground", "EarlySummerBorder"),
-            "Summer" => ("SummerBackground", "SummerBorder"),
-            "Late"   => ("LateSummerBackground", "LateSummerBorder"),
-            _        => ("FallBackground", "FallBorder")
-        };
-
-        var bg = Application.Current?.Resources.TryGetResource(bgKey, null, out var bgObj) ?? false
-            ? bgObj as IBrush : null;
-        var bd = Application.Current?.Resources.TryGetResource(bdKey, null, out var bdObj) ?? false
-            ? bdObj as IBrush : null;
-
-        return (bg, bd);
     }
 
 }

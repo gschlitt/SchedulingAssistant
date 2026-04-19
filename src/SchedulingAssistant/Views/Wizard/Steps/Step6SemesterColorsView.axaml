@@ -42,7 +42,7 @@
                                     BorderThickness="1"
                                     CornerRadius="3">
                                     <Border.Background>
-                                        <SolidColorBrush Color="{Binding SelectedColor}" />
+                                        <SolidColorBrush Color="{Binding HexColor, Converter={StaticResource HexToColorConverter}}" />
                                     </Border.Background>
                                 </Border>
                             </StackPanel>
@@ -62,7 +62,7 @@
                             IsHexInputVisible="False"
                             IsAccentColorsVisible="False"
                             IsColorPaletteVisible="True"
-                            Color="{Binding SelectedColor, Mode=TwoWay}" />
+                            Color="{Binding HexColor, Mode=TwoWay, Converter={StaticResource HexToColorConverter}}" />
 
                     </Expander>
 

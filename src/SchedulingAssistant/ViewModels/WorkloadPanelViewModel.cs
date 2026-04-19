@@ -134,10 +134,10 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
                         groups.Add(new WorkloadSemesterGroupViewModel
                         {
-                            SemesterId = semesterDisplay.Semester.Id,
-                            SemesterName = semesterDisplay.Semester.Name,
-                            Items = new ObservableCollection<WorkloadItemViewModel>(items),
-                            SemesterColorBrush = WorkloadSemesterGroupViewModel.ResolveBrush(semesterDisplay.Semester.Name),
+                            SemesterId    = semesterDisplay.Semester.Id,
+                            SemesterName  = semesterDisplay.Semester.Name,
+                            SemesterColor = semesterDisplay.Semester.Color ?? string.Empty,
+                            Items         = new ObservableCollection<WorkloadItemViewModel>(items),
                         });
                     }
 

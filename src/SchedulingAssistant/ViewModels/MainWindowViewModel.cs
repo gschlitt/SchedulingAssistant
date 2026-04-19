@@ -583,36 +583,16 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             App.Logger.LogError(ex, "Restore failed — DI may be disposed; showing plain error window");
             // DI is disposed at this point so we cannot use IDialogService.
-            // Build a simple window programmatically (same pattern as MainWindow.ShowStartupErrorAsync).
+            // Delegate to MainWindow.ShowFatalAsync so the VM stays free of Avalonia.Controls construction.
             if (MainWindowReference is { } win)
             {
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    var msgWin = new Avalonia.Controls.Window
-                    {
-                        Title    = "Restore Failed",
-                        Width    = 440,
-                        SizeToContent = Avalonia.Controls.SizeToContent.Height,
-                        CanResize = false,
-                        WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterScreen
-                    };
-                    var ok  = new Avalonia.Controls.Button
-                    {
-                        Content             = "OK",
-                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
-                    };
-                    var panel = new Avalonia.Controls.StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 12 };
-                    panel.Children.Add(new Avalonia.Controls.TextBlock
-                    {
-                        Text        = $"Could not restore the database:\n\n{ex.Message}\n\nThe application will now close.",
-                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                        FontSize    = 12
-                    });
-                    panel.Children.Add(ok);
-                    msgWin.Content = panel;
-                    ok.Click += (_, _) => msgWin.Close();
-                    await msgWin.ShowDialog(win);
-                });
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    MainWindow.ShowFatalAsync(
+                        win,
+                        title:   "Restore Failed",
+                        heading: "Could not restore the database.",
+                        detail:  ex.Message,
+                        footer:  "The application will now close."));
             }
 
             (Avalonia.Application.Current?.ApplicationLifetime

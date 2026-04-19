@@ -30,7 +30,7 @@
                             IsColorPreviewVisible="False"
                             IsColorSpectrumSliderVisible="True"
                             IsColorSpectrumVisible="True"                            
-                            Color="{Binding SelectedColor, Mode=TwoWay}" />
+                            Color="{Binding HexColor, Mode=TwoWay, Converter={StaticResource HexToColorConverter}}" />
                     </Flyout>
                 </Button.Flyout>
                 <Border
@@ -40,7 +40,7 @@
                     BorderThickness="1"
                     CornerRadius="3">
                     <Border.Background>
-                        <SolidColorBrush Color="{Binding SelectedColor}" />
+                        <SolidColorBrush Color="{Binding HexColor, Converter={StaticResource HexToColorConverter}}" />
                     </Border.Background>
                 </Border>
             </Button>

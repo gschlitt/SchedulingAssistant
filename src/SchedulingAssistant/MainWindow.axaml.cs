@@ -516,15 +516,38 @@ public partial class MainWindow : Window
         return dialog.ChosenPath;
     }
 
-    private async Task ShowStartupErrorAsync(Exception ex)
+    private Task ShowStartupErrorAsync(Exception ex)
     {
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "TermPoint", "Logs");
 
+        return ShowFatalAsync(
+            this,
+            "TermPoint — Startup Error",
+            heading: "Scheduling Assistant encountered an error during startup and cannot continue.",
+            detail:  ex.Message,
+            footer:  $"A full error log has been written to:\n{logDir}");
+    }
+
+    /// <summary>
+    /// Shows a modal fatal-error dialog as a standalone <see cref="Window"/>. Used in contexts
+    /// where the DI container (and therefore <c>IDialogService</c>) is unavailable or already
+    /// disposed — e.g. during startup or after a destructive restore/switch operation.
+    /// Centralises the programmatic control construction so ViewModels don't need to reference
+    /// <c>Avalonia.Controls</c> directly.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Window title bar text.</param>
+    /// <param name="heading">Bold headline line at the top of the panel.</param>
+    /// <param name="detail">Main error message shown in dark red.</param>
+    /// <param name="footer">Optional grey footer line (e.g. log-file path). May be null.</param>
+    public static async Task ShowFatalAsync(
+        Window owner, string title, string heading, string detail, string? footer = null)
+    {
         var msg = new Window
         {
-            Title = "TermPoint — Startup Error",
+            Title = title,
             Width = 480,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
@@ -536,30 +559,33 @@ public partial class MainWindow : Window
         var panel = new StackPanel { Margin = new Avalonia.Thickness(28), Spacing = 12 };
         panel.Children.Add(new TextBlock
         {
-            Text = "Scheduling Assistant encountered an error during startup and cannot continue.",
+            Text = heading,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             FontSize = 13,
             FontWeight = FontWeight.SemiBold
         });
         panel.Children.Add(new TextBlock
         {
-            Text = ex.Message,
+            Text = detail,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             FontSize = 12,
             Foreground = Brushes.DarkRed
         });
-        panel.Children.Add(new TextBlock
+        if (!string.IsNullOrEmpty(footer))
         {
-            Text = $"A full error log has been written to:\n{logDir}",
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            FontSize = 11,
-            Foreground = Brushes.Gray
-        });
+            panel.Children.Add(new TextBlock
+            {
+                Text = footer,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                FontSize = 11,
+                Foreground = Brushes.Gray
+            });
+        }
         panel.Children.Add(ok);
         msg.Content = panel;
 
         ok.Click += (_, _) => msg.Close();
-        await msg.ShowDialog(this);
+        await msg.ShowDialog(owner);
     }
 
     /// <summary>
@@ -1010,11 +1036,18 @@ public partial class MainWindow : Window
                 Spacing = 4
             }),
             ItemTemplate = new FuncDataTemplate<SemesterLineSegment>((seg, _) =>
-                new Border
+            {
+                var (bg, bd) = SemesterBrushResolver.ResolvePair(seg.SemesterName, seg.HexColor);
+                // Academic-year / single-semester rows pass empty name+hex → leave brushes null
+                // so the pill renders without a background (matches previous behavior).
+                if (string.IsNullOrEmpty(seg.SemesterName) && string.IsNullOrEmpty(seg.HexColor))
+                    bg = bd = null;
+
+                return new Border
                 {
                     Padding          = new Thickness(6, 2),
-                    Background       = seg.Background,
-                    BorderBrush      = seg.Border,
+                    Background       = bg,
+                    BorderBrush      = bd,
                     BorderThickness  = new Thickness(1),
                     CornerRadius     = new CornerRadius(2),
                     Child = new TextBlock
@@ -1022,7 +1055,8 @@ public partial class MainWindow : Window
                         FontSize = semFontSize,
                         Text     = seg.DisplayText
                     }
-                })
+                };
+            })
         };
         semItemsControl.Bind(ItemsControl.ItemsSourceProperty,
             new Binding("ScheduleGridVm.SemesterLineSegments") { Source = Vm });

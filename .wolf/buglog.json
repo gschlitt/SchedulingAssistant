@@ -5177,6 +5177,182 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-16T22:26:06.490Z"
+    },
+    {
+      "id": "bug-324",
+      "timestamp": "2026-04-19T19:53:04.555Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"NotConverter\"",
+      "fix": "Changed to \"HexToColorConverter\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T19:53:04.555Z"
+    },
+    {
+      "id": "bug-325",
+      "timestamp": "2026-04-19T19:53:15.419Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→9 lines (2 removed) | Also: segments.Add(new SemesterLineSegment(sem.Semester.; segments.Add(new SemesterLineSegment($\"{ayName} —\" | Also: var bg = Application.Current?.Resources.TryGetReso; ? bgObj as IBrush : null;",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-04-19T19:53:46.741Z"
+    },
+    {
+      "id": "bug-326",
+      "timestamp": "2026-04-19T19:54:17.435Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 14→22 lines (3 removed) | Also: private async Task ShowStartupErrorAsync(Exception; Title = \"TermPoint — Startup Error\",",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-19T19:54:53.590Z"
+    },
+    {
+      "id": "bug-327",
+      "timestamp": "2026-04-19T19:55:05.859Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "24 lines replaced/restructured",
+      "fix": "Rewrote 33→13 lines (24 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T19:55:05.859Z"
+    },
+    {
+      "id": "bug-328",
+      "timestamp": "2026-04-19T19:55:39.736Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Wizard/Steps/Step6SemesterColorsView.axaml",
+      "root_cause": "Had \"{Binding SelectedColor, Mode=TwoWay}\"",
+      "fix": "Changed to \"{Binding HexColor, Mode=TwoWay, Converter={Static",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-19T19:55:41.416Z"
+    },
+    {
+      "id": "bug-329",
+      "timestamp": "2026-04-19T19:56:03.507Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T19:56:03.507Z"
+    },
+    {
+      "id": "bug-330",
+      "timestamp": "2026-04-19T19:56:04.879Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml",
+      "root_cause": "Had \"{Binding SelectedColor, Mode=TwoWay}\"",
+      "fix": "Changed to \"{Binding HexColor, Mode=TwoWay, Converter={Static",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-19T19:56:06.275Z"
+    },
+    {
+      "id": "bug-331",
+      "timestamp": "2026-04-19T20:08:06.344Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"HexToColorConverter\"",
+      "fix": "Changed to \"SemesterBackgroundBrushConverter\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:08:06.344Z"
+    },
+    {
+      "id": "bug-332",
+      "timestamp": "2026-04-19T20:08:52.105Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:08:52.105Z"
+    },
+    {
+      "id": "bug-333",
+      "timestamp": "2026-04-19T20:14:41.206Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:14:41.206Z"
+    },
+    {
+      "id": "bug-334",
+      "timestamp": "2026-04-19T20:14:48.202Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:14:48.202Z"
     }
   ]
 }

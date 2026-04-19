@@ -197,9 +197,14 @@
 													<Border
 														Margin="0,2"
 														Padding="3,2"
-														BorderBrush="{Binding SemesterColorBrush}"
 														BorderThickness="1"
 														CornerRadius="2">
+														<Border.BorderBrush>
+															<MultiBinding Converter="{StaticResource SemesterBackgroundBrushConverter}">
+																<Binding Path="SemesterName" />
+																<Binding Path="SemesterColor" />
+															</MultiBinding>
+														</Border.BorderBrush>
 														<!--  Inner grid: chips fill *, semester total right-aligned 58px  -->
 														<Grid ColumnDefinitions="*,58">
 															<!--  Chips WrapPanel in col 0  -->

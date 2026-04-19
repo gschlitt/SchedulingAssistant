@@ -27,6 +27,8 @@
             <conv:FilterBorderThicknessConverter x:Key="FilterBorderThicknessConverter" />
             <conv:FilterHighlightBackgroundConverter x:Key="FilterHighlightBackgroundConverter" />
             <conv:SemesterBorderBrushConverter x:Key="SemesterBorderBrushConverter" />
+            <conv:SemesterBackgroundBrushConverter x:Key="SemesterBackgroundBrushConverter" />
+            <conv:HexToColorConverter x:Key="HexToColorConverter" />
             <conv:NotConverter x:Key="NotConverter" />
         </ResourceDictionary>
     </Application.Resources>

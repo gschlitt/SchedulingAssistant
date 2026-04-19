@@ -561,10 +561,20 @@
 									<DataTemplate>
 										<Border
 											Padding="6,2"
-											Background="{Binding Background}"
-											BorderBrush="{Binding Border}"
 											BorderThickness="1"
 											CornerRadius="2">
+											<Border.Background>
+												<MultiBinding Converter="{StaticResource SemesterBackgroundBrushConverter}">
+													<Binding Path="SemesterName" />
+													<Binding Path="HexColor" />
+												</MultiBinding>
+											</Border.Background>
+											<Border.BorderBrush>
+												<MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+													<Binding Path="SemesterName" />
+													<Binding Path="HexColor" />
+												</MultiBinding>
+											</Border.BorderBrush>
 											<TextBlock FontSize="{StaticResource FontSizeLarge}" Text="{Binding DisplayText}" />
 										</Border>
 									</DataTemplate>
