@@ -64,8 +64,9 @@ public partial class ScheduleGridView : UserControl
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
             ? d : 0;
 
-    private static double TilePaddingV => Layout("TilePaddingVertical");
-    private static double TilePaddingH => Layout("TilePaddingHorizontal");
+    private static double TilePaddingV   => Layout("TilePaddingVertical");
+    private static double TilePaddingH   => Layout("TilePaddingHorizontal");
+    private static double MultiSemPad    => Layout("MultiSemesterInternalTilePadding");
 
     /// <summary>Border thickness applied to the entry row of a user-selected section tile.</summary>
     private const double TileSelectionBorderThickness = 3;
@@ -490,29 +491,6 @@ public partial class ScheduleGridView : UserControl
         // appear transparent — and thus dark — in the exported file.
         AddRect(_canvas, 0, 0, totalWidth, totalHeight, ScheduleBackground, null);
 
-        // ── Multi-semester column wash ────────────────────────────────────
-        // In multi-semester mode, fill each semester sub-column with a light
-        // tint of the semester's color so adjacent semesters are visually
-        // distinct even when no sections are scheduled.
-        if (data.IsMultiSemester)
-        {
-            const double SemesterWashOpacity = 0.25;
-
-            for (int d = 0; d < dayCount; d++)
-            {
-                var col     = data.DayColumns[d];
-                var baseBrush = SemesterBrushResolver.Resolve(
-                    col.SemesterName, col.SemesterColor);
-                if (baseBrush is SolidColorBrush scb)
-                {
-                    var washBrush = new SolidColorBrush(scb.Color, SemesterWashOpacity);
-                    var (washX, washW) = GetDayGroupContentBounds(d, semCount, dayXOffsets, dayColWidths);
-                    AddRect(_canvas, washX, effectiveHeaderHeight,
-                            washW, totalHeight - effectiveHeaderHeight, washBrush, null);
-                }
-            }
-        }
-
         // ── Gutter background ──────────────────────────────────────────────
         AddRect(_canvas, 0, 0, TimeGutterWidth, totalHeight, GutterBg, null);
 
@@ -599,6 +577,25 @@ public partial class ScheduleGridView : UserControl
             _canvas.Children.Add(timeTb);
         }
 
+        // ── Multi-semester column wash ────────────────────────────────────
+        // Drawn after the gridlines so the wash sits above them in Z-order, making
+        // the colored columns more prominent than the rules.
+        if (data.IsMultiSemester)
+        {
+            for (int d = 0; d < dayCount; d++)
+            {
+                var col       = data.DayColumns[d];
+                var baseBrush = SemesterBrushResolver.Resolve(col.SemesterName, col.SemesterColor);
+                if (baseBrush is SolidColorBrush scb)
+                {
+                    var washBrush = new SolidColorBrush(DesaturateColor(scb.Color, 0.25));
+                    var (washX, washW) = GetDayGroupContentBounds(d, semCount, dayXOffsets, dayColWidths);
+                    AddRect(_canvas, washX, effectiveHeaderHeight,
+                            washW, totalHeight - effectiveHeaderHeight, washBrush, null);
+                }
+            }
+        }
+
         // ── Section tiles (with adjusted heights and positions) ──────────────
         for (int d = 0; d < dayCount; d++)
         {
@@ -616,9 +613,13 @@ public partial class ScheduleGridView : UserControl
                 double natW      = tileSlotNaturalW[tileKey];
                 double sumNatW   = tileSumNaturalW[tileKey];
                 double predNatW  = tilePredNaturalW[tileKey];
-                double scale     = (dayColWidth - TilePaddingH) / sumNatW;
+                int    subIdx    = d % semCount;
+                bool   isMultiSem = semCount > 1;
+                double leftInset  = (isMultiSem && subIdx > 0)            ? MultiSemPad : TilePaddingH;
+                double rightInset = (isMultiSem && subIdx < semCount - 1) ? MultiSemPad : 0;
+                double scale     = (dayColWidth - leftInset - rightInset) / sumNatW;
                 double tileW     = natW * scale;
-                double tileX     = dayX + TilePaddingH + predNatW * scale;
+                double tileX     = dayX + leftInset + predNatW * scale;
 
                 // Get adjusted Y position and height using adjusted gridline positions
                 var (timeBasedH, actualH) = tileHeightMap[(tile.StartMinutes, tile.EndMinutes)];
@@ -903,9 +904,10 @@ public partial class ScheduleGridView : UserControl
     private static (double X, double Width) GetDayGroupContentBounds(
         int flatCol, int semCount, double[] dayXOffsets, double[] dayColWidths)
     {
-        int subIdx = flatCol % semCount;
-        double leftInset  = subIdx == 0              ? TilePaddingH : 0;
-        double rightInset = subIdx == semCount - 1   ? TilePaddingH : 0;
+        int subIdx        = flatCol % semCount;
+        bool isMultiSem   = semCount > 1;
+        double leftInset  = (isMultiSem && subIdx > 0)            ? MultiSemPad  : TilePaddingH;
+        double rightInset = (isMultiSem && subIdx < semCount - 1) ? MultiSemPad  : TilePaddingH;
         return (dayXOffsets[flatCol] + leftInset,
                 dayColWidths[flatCol] - leftInset - rightInset);
     }
@@ -975,6 +977,65 @@ public partial class ScheduleGridView : UserControl
         Canvas.SetLeft(border, x);
         Canvas.SetTop(border, y);
         canvas.Children.Add(border);
+    }
+
+    /// <summary>
+    /// Returns a copy of <paramref name="color"/> with its HSL saturation reduced by
+    /// <paramref name="amount"/> (0–1). Alpha and lightness are preserved.
+    /// </summary>
+    private static Color DesaturateColor(Color color, double amount)
+    {
+        // Convert RGB → HSL
+        double r = color.R / 255.0;
+        double g = color.G / 255.0;
+        double b = color.B / 255.0;
+
+        double max = Math.Max(r, Math.Max(g, b));
+        double min = Math.Min(r, Math.Min(g, b));
+        double l   = (max + min) / 2.0;
+        double s   = (max == min) ? 0.0
+                   : l < 0.5 ? (max - min) / (max + min)
+                              : (max - min) / (2.0 - max - min);
+        double h   = 0.0;
+        if (max != min)
+        {
+            double delta = max - min;
+            if      (max == r) h = ((g - b) / delta + (g < b ? 6 : 0)) / 6.0;
+            else if (max == g) h = ((b - r) / delta + 2) / 6.0;
+            else               h = ((r - g) / delta + 4) / 6.0;
+        }
+
+        s = Math.Max(0, s - amount);
+
+        // Convert HSL → RGB
+        static double Hue2Rgb(double p, double q, double t)
+        {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1.0 / 6) return p + (q - p) * 6 * t;
+            if (t < 1.0 / 2) return q;
+            if (t < 2.0 / 3) return p + (q - p) * (2.0 / 3 - t) * 6;
+            return p;
+        }
+
+        double nr, ng, nb;
+        if (s == 0)
+        {
+            nr = ng = nb = l;
+        }
+        else
+        {
+            double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            double p = 2 * l - q;
+            nr = Hue2Rgb(p, q, h + 1.0 / 3);
+            ng = Hue2Rgb(p, q, h);
+            nb = Hue2Rgb(p, q, h - 1.0 / 3);
+        }
+
+        return new Color(color.A,
+            (byte)Math.Round(nr * 255),
+            (byte)Math.Round(ng * 255),
+            (byte)Math.Round(nb * 255));
     }
 
     private static void AddLine(Canvas canvas, double x1, double y1,

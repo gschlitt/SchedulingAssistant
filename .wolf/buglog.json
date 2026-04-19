@@ -5353,6 +5353,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-19T20:14:48.202Z"
+    },
+    {
+      "id": "bug-335",
+      "timestamp": "2026-04-19T20:43:51.849Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 22→31 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:43:51.849Z"
+    },
+    {
+      "id": "bug-336",
+      "timestamp": "2026-04-19T20:44:06.900Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: max != min",
+      "fix": "Added guard clause: if (max != min)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:44:06.900Z"
+    },
+    {
+      "id": "bug-337",
+      "timestamp": "2026-04-19T20:56:32.800Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 31→19 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T20:56:32.800Z"
+    },
+    {
+      "id": "bug-338",
+      "timestamp": "2026-04-19T21:01:33.828Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "19 lines replaced/restructured",
+      "fix": "Rewrote 23→3 lines (19 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T21:01:33.828Z"
+    },
+    {
+      "id": "bug-339",
+      "timestamp": "2026-04-19T21:08:28.529Z",
+      "error_message": "Wrong operator: == should be &&",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"==\" instead of \"&&\"",
+      "fix": "Changed operator == → &&",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T21:08:28.529Z"
+    },
+    {
+      "id": "bug-340",
+      "timestamp": "2026-04-19T21:08:36.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→11 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-19T21:08:36.908Z"
     }
   ]
 }

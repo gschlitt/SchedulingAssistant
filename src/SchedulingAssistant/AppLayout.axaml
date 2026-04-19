@@ -17,4 +17,11 @@
     -->
     <x:Double x:Key="TilePaddingHorizontal">5</x:Double>
 
+    <!--
+        Spacing inserted on each side of an internal semester boundary in multi-semester
+        mode. Only applied between semesters within the same day group — not on the outer
+        edges of the first or last semester. Total visual gap = 2 × this value.
+    -->
+    <x:Double x:Key="MultiSemesterInternalTilePadding">0</x:Double>
+
 </ResourceDictionary>
