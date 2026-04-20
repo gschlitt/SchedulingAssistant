@@ -14,6 +14,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class SectionPrefixListViewModel : ViewModelBase, IDismissableEditor
 {
+    /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
+    public string DisplayName => "Section Prefixes";
+
     private readonly ISectionPrefixRepository _repo;
     private readonly ICampusRepository _campusRepo;
     private readonly IDialogService _dialog;

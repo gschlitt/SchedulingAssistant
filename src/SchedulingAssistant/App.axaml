@@ -1,119 +1,135 @@
 <Application
-    x:Class="SchedulingAssistant.App"
-    xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:conv="using:SchedulingAssistant.Converters"
-    xmlns:local="using:SchedulingAssistant"
-    RequestedThemeVariant="Light">
+	x:Class="SchedulingAssistant.App"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:conv="using:SchedulingAssistant.Converters"
+	xmlns:local="using:SchedulingAssistant"
+	RequestedThemeVariant="Light">
 
-    <Application.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://TermPoint/AppColors.axaml" />
-                <ResourceInclude Source="avares://TermPoint/AppLayout.axaml" />
-            </ResourceDictionary.MergedDictionaries>
+	<Application.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceInclude Source="avares://TermPoint/AppColors.axaml" />
+				<ResourceInclude Source="avares://TermPoint/AppLayout.axaml" />
+			</ResourceDictionary.MergedDictionaries>
 
-            <!--  Font sizes  -->
-            <x:Double x:Key="FontSizeSmall">10</x:Double>
-            <x:Double x:Key="FontSizeNormal">14</x:Double>
-            <x:Double x:Key="FontSizeMedium">13</x:Double>
-            <x:Double x:Key="FontSizeLarge">16</x:Double>
-            <x:Double x:Key="FontSizeXLarge">18</x:Double>
-            <x:Double x:Key="FontSizeSplash">72</x:Double>
+			<!--  Font sizes  -->
+			<x:Double x:Key="FontSizeSmall">10</x:Double>
+			<x:Double x:Key="FontSizeNormal">14</x:Double>
+			<x:Double x:Key="FontSizeMedium">14</x:Double>
+			<x:Double x:Key="FontSizeLarge">16</x:Double>
+			<x:Double x:Key="FontSizeXLarge">18</x:Double>
+			<x:Double x:Key="FontSizeSplash">72</x:Double>
 
-            <!--  Converters  -->
-            <conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
-            <conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
-            <conv:FilterBorderThicknessConverter x:Key="FilterBorderThicknessConverter" />
-            <conv:FilterHighlightBackgroundConverter x:Key="FilterHighlightBackgroundConverter" />
-            <conv:SemesterBorderBrushConverter x:Key="SemesterBorderBrushConverter" />
-            <conv:SemesterBackgroundBrushConverter x:Key="SemesterBackgroundBrushConverter" />
-            <conv:HexToColorConverter x:Key="HexToColorConverter" />
-            <conv:NotConverter x:Key="NotConverter" />
-        </ResourceDictionary>
-    </Application.Resources>
+			<!--  Converters  -->
+			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
+			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
+			<conv:FilterBorderThicknessConverter x:Key="FilterBorderThicknessConverter" />
+			<conv:FilterHighlightBackgroundConverter x:Key="FilterHighlightBackgroundConverter" />
+			<conv:SemesterBorderBrushConverter x:Key="SemesterBorderBrushConverter" />
+			<conv:SemesterBackgroundBrushConverter x:Key="SemesterBackgroundBrushConverter" />
+			<conv:HexToColorConverter x:Key="HexToColorConverter" />
+			<conv:NotConverter x:Key="NotConverter" />
+		</ResourceDictionary>
+	</Application.Resources>
 
-    <Application.Styles>
-        <SimpleTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
-        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
+	<Application.Styles>
+		<SimpleTheme />
+		<StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
+		<StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
 
-        <!--
-            Inter is the application-wide font. It is registered as the default in
-            Program.cs via .WithInterFont() — no explicit XAML style is needed.
-        -->
-        <!--  Flat buttons: no border, fill-based depth only.  -->
+		<!--
+			Inter is the application-wide font. It is registered as the default in
+			Program.cs via .WithInterFont() — no explicit XAML style is needed.
+		-->
+		<!--  Flat buttons: no border, fill-based depth only.  -->
 
-        <Style Selector="Button">
-            <Setter Property="Background" Value="{StaticResource ButtonBackground}" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="4" />
-        </Style>
-        <Style Selector="Button:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-        </Style>
-        <Style Selector="Button:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonPressed}" />
-        </Style>
-        <Style Selector="ToggleButton:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-        </Style>
-        <Style Selector="ToggleButton:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonPressed}" />
-        </Style>
-        <Style Selector="ToggleButton:checked /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonPressed}" />
-        </Style>
-        <Style Selector="Button.nav">
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="FontSize" Value="13" />
-        </Style>
-        <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-        </Style>
+		<Style Selector="Button">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="CornerRadius" Value="4" />
+		</Style>
+		<Style Selector="Button:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+		<Style Selector="Button:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonPressed}" />
+		</Style>
+		<Style Selector="ToggleButton:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+		<Style Selector="ToggleButton:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonPressed}" />
+		</Style>
+		<Style Selector="ToggleButton:checked /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonPressed}" />
+		</Style>
+		<Style Selector="Button.nav">
+			<Setter Property="Padding" Value="14,8" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="CornerRadius" Value="4" />
+			<Setter Property="FontSize" Value="13" />
+		</Style>
+		<Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
 
-        <!--  Settings menu: strip chrome from the Menu container itself  -->
-        <Style Selector="Menu">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <!--  Top-level MenuItem styled like a nav button  -->
-        <Style Selector="MenuItem.nav">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="CornerRadius" Value="4" />
-        </Style>
-        <Style Selector="MenuItem.nav:pointerover /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-        </Style>
-        <Style Selector="MenuItem.nav:selected /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-        </Style>
+		<!--  Settings menu: strip chrome from the Menu container itself  -->
+		<Style Selector="Menu">
+			<Setter Property="Background" Value="Transparent" />
+		</Style>
+		<!--  Top-level MenuItem styled like a nav button  -->
+		<Style Selector="MenuItem.nav">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="CornerRadius" Value="4" />
+		</Style>
+		<Style Selector="MenuItem.nav:pointerover /template/ Border#PART_LayoutRoot">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+		<Style Selector="MenuItem.nav:selected /template/ Border#PART_LayoutRoot">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
 
-        <Style Selector="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-        </Style>
+		<Style Selector="TextBlock">
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+		</Style>
 
-        <!--  ScrollBar track background  -->
-        <Style Selector="ScrollBar /template/ Border#PART_Root">
-            <Setter Property="Background" Value="{StaticResource ChromeBackground}" />
-        </Style>
+		<!--  ScrollBar track background  -->
+		<Style Selector="ScrollBar /template/ Border#PART_Root">
+			<Setter Property="Background" Value="{StaticResource ChromeBackground}" />
+		</Style>
 
-        <!--  DataGrid row selection: use ButtonBackground across all grids  -->
-        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-            <Setter Property="Fill" Value="{StaticResource ButtonBackground}" />
-            <Setter Property="Opacity" Value="1" />
-        </Style>
+		<!--  DataGrid row selection: use ButtonBackground across all grids  -->
+		<Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+			<Setter Property="Fill" Value="{StaticResource UserInteractionBrush}" />
+			<Setter Property="Opacity" Value="1" />
+		</Style>
 
-    </Application.Styles>
+		<!--
+			Direct-input controls: any control where the user types or picks a value
+			gets UserInteractionColor as background so it stands out against panel surfaces.
+			ButtonBackground is the brush version of UserInteractionColor.
+			Views that need different behavior can override with a local Style.
+		-->
+		<Style Selector="TextBox">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+		<Style Selector="ComboBox">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+		<Style Selector="AutoCompleteBox">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
 
-    <Application.DataTemplates>
-        <local:ViewLocator />
-    </Application.DataTemplates>
+	</Application.Styles>
+
+	<Application.DataTemplates>
+		<local:ViewLocator />
+	</Application.DataTemplates>
 
 </Application>

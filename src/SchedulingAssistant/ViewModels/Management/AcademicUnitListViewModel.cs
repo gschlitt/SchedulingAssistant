@@ -10,6 +10,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class AcademicUnitListViewModel : ViewModelBase
 {
+    /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
+    public string DisplayName => "Academic Units";
+
     private readonly AcademicUnitService _service;
     private readonly WriteLockService _lockService;
 

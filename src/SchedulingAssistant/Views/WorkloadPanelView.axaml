@@ -68,7 +68,7 @@
 			<Grid>
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
-					<ColumnDefinition Width="20" />
+					<ColumnDefinition Width="30" />
 					<ColumnDefinition Width="*" />
 					<ColumnDefinition Width="35" />
 					<ColumnDefinition Width="20" />
@@ -88,7 +88,7 @@
 					Grid.Column="2"
 					Margin="4,3"
 					FontWeight="SemiBold"
-					Text="Sections &amp; Releases" />
+					Text="Workload" />
 				<TextBlock
 					Grid.Column="3"
 					Margin="0,3"
@@ -134,7 +134,7 @@
 									<Grid Margin="6,4">
 										<Grid.ColumnDefinitions>
 											<ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
-											<ColumnDefinition Width="20" />
+											<ColumnDefinition Width="30" />
 											<ColumnDefinition Width="*" />
 											<ColumnDefinition Width="35" />
 											<ColumnDefinition Width="20" />
@@ -197,7 +197,7 @@
 													<Border
 														Margin="0,2"
 														Padding="3,2"
-														BorderThickness="1"
+														BorderThickness="2"
 														CornerRadius="2">
 														<Border.BorderBrush>
 															<MultiBinding Converter="{StaticResource SemesterBackgroundBrushConverter}">

@@ -30,7 +30,7 @@
 	<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5" />
 
 	<!--  Chosen to contrast with the section workload pill color  -->
-	<SolidColorBrush x:Key="WorkloadTileBackground" Color="#8fd2ef" />
+	<SolidColorBrush x:Key="WorkloadTileBackground" Color="#adc7d2" />
 
 	<!--  Events/Meetings tile fill Should contrast with section color  -->
 	<SolidColorBrush x:Key="MeetingTile" Color="#bbaada" />
@@ -67,6 +67,7 @@
 
 	<!--  User targets for interaction: buttons, selectors  -->
 	<Color x:Key="UserInteractionColor">#bcdcff</Color>
+  <SolidColorBrush x:Key="UserInteractionBrush" Color="{StaticResource UserInteractionColor}"/>
 	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
 	<SolidColorBrush x:Key="ButtonBackground" Color="{StaticResource UserInteractionColor}" />
 	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />

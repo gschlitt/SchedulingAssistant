@@ -262,44 +262,22 @@
 						Margin="4,10"
 						Background="{StaticResource SeparatorLine}" />
 
-					<!--  Configuration dropdown menu  -->
-					<Menu
-						Margin="0,1.5"
-						VerticalAlignment="Center"
-						Background="Transparent">
-						<MenuItem
-							Padding="14,5.5"
-							Classes="nav"
-							Header="Configuration">
-							<MenuItem Command="{Binding NavigateToBlockLengthsCommand}" Header="Scheduling" />
-							<MenuItem Command="{Binding NavigateToBlockPatternsCommand}" Header="Block Patterns" />
-							<MenuItem Command="{Binding NavigateToAcademicUnitsCommand}" Header="Academic Units" />
-							<MenuItem Command="{Binding NavigateToSectionPrefixesCommand}" Header="Section Prefixes" />
-							<Separator />
-							<MenuItem Command="{Binding NavigateToSettingsCommand}" Header="Save &amp; Backup" />
-						</MenuItem>
-					</Menu>
+					<Button
+						Margin="0,4,4,4"
+						Classes="nav"
+						Command="{Binding NavigateToConfigurationCommand}"
+						Content="Configuration" />
 
 					<Border
 						Width="1"
 						Margin="4,10"
 						Background="{StaticResource SeparatorLine}" />
 
-					<!--  Export menu  -->
-					<Menu
-						Margin="0,1.5"
-						VerticalAlignment="Center"
-						Background="Transparent">
-						<MenuItem
-							Padding="14,5.5"
-							Classes="nav"
-							Header="Export">
-							<MenuItem Command="{Binding NavigateToExportCommand}" Header="Export Schedule PNG…" />
-							<MenuItem Command="{Binding NavigateToWorkloadReportCommand}" Header="Workload Report…" />
-							<Separator />
-							<MenuItem Command="{Binding NavigateToWorkloadMailerCommand}" Header="Workload Mailer…" />
-						</MenuItem>
-					</Menu>
+					<Button
+						Margin="0,4,4,4"
+						Classes="nav"
+						Command="{Binding NavigateToExportHubCommand}"
+						Content="Export" />
 
 					<Border
 						Width="1"

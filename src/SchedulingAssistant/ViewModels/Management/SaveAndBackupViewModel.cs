@@ -12,6 +12,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
 {
+    /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
+    public string DisplayName => "Save & Backup";
+
     private readonly BackupService _backupService;
     private readonly IDialogService _dialogService;
 

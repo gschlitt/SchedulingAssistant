@@ -5561,6 +5561,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-20T04:26:12.086Z"
+    },
+    {
+      "id": "bug-348",
+      "timestamp": "2026-04-20T17:27:00.946Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"{StaticResource ButtonHover}\"",
+      "fix": "Changed to \"{StaticResource UserInteractionBrush}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T17:27:00.946Z"
+    },
+    {
+      "id": "bug-349",
+      "timestamp": "2026-04-20T19:42:57.024Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "30 lines replaced/restructured",
+      "fix": "Rewrote 38→16 lines (30 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T19:42:57.024Z"
+    },
+    {
+      "id": "bug-350",
+      "timestamp": "2026-04-20T19:43:23.272Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "14 lines replaced/restructured",
+      "fix": "Rewrote 43→25 lines (14 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T19:43:23.272Z"
     }
   ]
 }

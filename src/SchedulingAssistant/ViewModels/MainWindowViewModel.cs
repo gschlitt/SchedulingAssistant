@@ -509,48 +509,30 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToEmptySemester() => OpenFlyout<EmptySemesterViewModel>("Empty Semester");
 
     [RelayCommand]
-    private void NavigateToBlockLengths() => OpenFlyout<LegalStartTimeListViewModel>("Scheduling");
-
-    [RelayCommand]
     private void NavigateToSchedulingEnvironment() => OpenFlyout<SchedulingEnvironmentViewModel>("Scheduling Environment");
 
+    /// <summary>
+    /// Opens the Configuration flyout hub and wires the Save &amp; Backup restore callback
+    /// so <see cref="SaveAndBackupViewModel"/> can trigger a database restore without knowing
+    /// anything about the view layer.
+    /// </summary>
     [RelayCommand]
-    private void NavigateToBlockPatterns() => OpenFlyout<BlockPatternListViewModel>("Block Patterns");
+    private void NavigateToConfiguration()
+    {
+        var vm = _services.GetRequiredService<ConfigurationViewModel>();
+        vm.SaveAndBackupVm.RestoreCallback = RestoreFromBackupAsync;
+        FlyoutPage  = vm;
+        FlyoutTitle = "Configuration";
+    }
 
     [RelayCommand]
-    private void NavigateToAcademicUnits() => OpenFlyout<AcademicUnitListViewModel>("Academic Units");
-
-    [RelayCommand]
-    private void NavigateToSectionPrefixes() => OpenFlyout<SectionPrefixListViewModel>("Section Prefixes");
-
-    [RelayCommand]
-    private void NavigateToExport() => OpenFlyout<ExportViewModel>("Export");
-
-    [RelayCommand]
-    private void NavigateToWorkloadReport() => OpenFlyout<WorkloadReportViewModel>("Workload Report");
-
-    [RelayCommand]
-    private void NavigateToWorkloadMailer() => OpenFlyout<WorkloadMailerViewModel>("Workload Mailer");
+    private void NavigateToExportHub() => OpenFlyout<ExportHubViewModel>("Export");
 
     [RelayCommand]
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
     [RelayCommand]
     private void NavigateToShare() => OpenFlyout<ShareViewModel>("Share");
-
-    /// <summary>
-    /// Opens the Save &amp; Backup flyout and wires the restore callback so that
-    /// <see cref="SaveAndBackupViewModel"/> can trigger a database restore + app restart
-    /// without knowing anything about the view layer.
-    /// </summary>
-    [RelayCommand]
-    private void NavigateToSettings()
-    {
-        var vm = _services.GetRequiredService<SaveAndBackupViewModel>();
-        vm.RestoreCallback = RestoreFromBackupAsync;
-        FlyoutPage  = vm;
-        FlyoutTitle = "Save & Backup";
-    }
 
     /// <summary>
     /// Restores a backup by copying it over the main database file, then restarting

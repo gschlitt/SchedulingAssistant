@@ -73,6 +73,9 @@ public partial class MailerInstructorItem : ObservableObject
 /// </summary>
 public partial class WorkloadMailerViewModel : ViewModelBase
 {
+    /// <summary>Category label shown in the Export flyout sidebar.</summary>
+    public string DisplayName => "Workload Mailer";
+
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
     private readonly IInstructorRepository _instructorRepo;

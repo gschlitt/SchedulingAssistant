@@ -16,6 +16,9 @@ public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEdit
     private readonly WriteLockService _lockService;
     private const int MaxSlots = 5;
 
+    /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
+    public string DisplayName => "Block Patterns";
+
     /// <summary>All pattern slots, indexed 0–(MaxSlots-1). Increase <see cref="MaxSlots"/> to add more.</summary>
     public IReadOnlyList<BlockPatternSlotViewModel> Slots { get; }
 

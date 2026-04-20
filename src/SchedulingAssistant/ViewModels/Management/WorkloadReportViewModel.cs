@@ -14,6 +14,9 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public partial class WorkloadReportViewModel : ViewModelBase
 {
+    /// <summary>Category label shown in the Export flyout sidebar.</summary>
+    public string DisplayName => "Workload Report";
+
     private readonly MainWindowViewModel _mainVm;
     private readonly SemesterContext _semesterContext;
     private readonly IInstructorRepository _instructorRepo;

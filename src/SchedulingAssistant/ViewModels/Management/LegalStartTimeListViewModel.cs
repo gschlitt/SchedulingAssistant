@@ -22,6 +22,9 @@ public record LegalStartTimeRow(LegalStartTime Entry, string BlockLengthDisplay)
 
 public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, IDismissableEditor
 {
+    /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
+    public string DisplayName => "Scheduling";
+
     private readonly ILegalStartTimeRepository _repo;
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;

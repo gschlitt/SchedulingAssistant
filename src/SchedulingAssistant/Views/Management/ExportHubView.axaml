@@ -1,0 +1,41 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.ExportHubView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:ExportHubViewModel">
+
+    <Grid ColumnDefinitions="160,*">
+
+        <!--  Left: category sidebar  -->
+        <Border
+            Grid.Column="0"
+            Padding="0,0,8,0"
+            BorderBrush="{StaticResource ItemSeparator}"
+            BorderThickness="0,0,1,0">
+            <ListBox
+                Background="Transparent"
+                BorderThickness="0"
+                ItemsSource="{Binding Categories}"
+                SelectedItem="{Binding SelectedCategory}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock
+                            Padding="8,6"
+                            FontSize="13"
+                            Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!--  Right: selected category view (ViewLocator resolves view by VM type)  -->
+        <ContentControl
+            Grid.Column="1"
+            Margin="10,0,0,0"
+            HorizontalAlignment="Left"
+            Content="{Binding SelectedCategory}" />
+
+    </Grid>
+</UserControl>

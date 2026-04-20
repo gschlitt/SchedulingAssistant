@@ -3108,3 +3108,44 @@
 | 21:26 | Edited src/SchedulingAssistant/MainWindow.axaml | 6→3 lines | ~34 |
 | 21:26 | Edited src/SchedulingAssistant/MainWindow.axaml | 9→9 lines | ~78 |
 | 21:26 | Session end: 24 writes across 9 files (BoolToItalicConverter.cs, GridFilterView.axaml, GridFilterView.axaml.cs, AppColors.axaml, SectionListView.axaml) | 11 reads | ~34360 tok |
+| 22:00 | Edited src/SchedulingAssistant/App.axaml | expanded (+15 lines) | ~284 |
+| 22:01 | Edited src/SchedulingAssistant/App.axaml | 14→15 lines | ~209 |
+| 22:01 | Session end: 26 writes across 10 files (BoolToItalicConverter.cs, GridFilterView.axaml, GridFilterView.axaml.cs, AppColors.axaml, SectionListView.axaml) | 12 reads | ~34888 tok |
+
+## Session: 2026-04-20 08:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-20 10:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:27 | Edited src/SchedulingAssistant/App.axaml | 3→3 lines | ~44 |
+| 10:27 | Edited src/SchedulingAssistant/App.axaml | 6→6 lines | ~92 |
+| 10:27 | Session end: 2 writes across 1 files (App.axaml) | 0 reads | ~145 tok |
+| 10:32 | Session end: 2 writes across 1 files (App.axaml) | 1 reads | ~7008 tok |
+
+## Session: 2026-04-20 12:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:39 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | 3→6 lines | ~77 |
+| 12:39 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicUnitListViewModel.cs | 3→6 lines | ~68 |
+| 12:40 | Edited src/SchedulingAssistant/ViewModels/Management/SectionPrefixListViewModel.cs | 3→6 lines | ~74 |
+| 12:40 | Edited src/SchedulingAssistant/ViewModels/Management/BlockPatternListViewModel.cs | 2→5 lines | ~85 |
+| 12:40 | Edited src/SchedulingAssistant/ViewModels/Management/SaveAndBackupViewModel.cs | 3→6 lines | ~70 |
+| 12:40 | Edited src/SchedulingAssistant/ViewModels/Management/ExportViewModel.cs | 3→6 lines | ~62 |
+| 12:40 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadReportViewModel.cs | 3→6 lines | ~65 |
+| 12:40 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs | 3→6 lines | ~66 |
+| 12:41 | Created src/SchedulingAssistant/ViewModels/Management/ConfigurationViewModel.cs | — | ~559 |
+| 12:41 | Created src/SchedulingAssistant/Views/Management/ConfigurationView.axaml | — | ~384 |
+| 12:42 | Created src/SchedulingAssistant/ViewModels/Management/ExportHubViewModel.cs | — | ~376 |
+| 12:42 | Created src/SchedulingAssistant/Views/Management/ExportHubView.axaml | — | ~382 |
+| 12:42 | Created src/SchedulingAssistant/Views/Management/ConfigurationView.axaml.cs | — | ~55 |
+| 12:42 | Created src/SchedulingAssistant/Views/Management/ExportHubView.axaml.cs | — | ~53 |
+| 12:42 | Edited src/SchedulingAssistant/MainWindow.axaml | reduced (-22 lines) | ~103 |
+| 12:43 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified NavigateToConfiguration() | ~261 |
+| 12:43 | Edited src/SchedulingAssistant/App.axaml.cs | 7→9 lines | ~139 |
+| 12:44 | Session end: 17 writes across 17 files (LegalStartTimeListViewModel.cs, AcademicUnitListViewModel.cs, SectionPrefixListViewModel.cs, BlockPatternListViewModel.cs, SaveAndBackupViewModel.cs) | 21 reads | ~31464 tok |
+| 12:49 | Session end: 17 writes across 17 files (LegalStartTimeListViewModel.cs, AcademicUnitListViewModel.cs, SectionPrefixListViewModel.cs, BlockPatternListViewModel.cs, SaveAndBackupViewModel.cs) | 21 reads | ~31464 tok |
