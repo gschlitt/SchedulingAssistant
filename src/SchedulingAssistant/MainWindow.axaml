@@ -653,7 +653,7 @@
 					Margin="8,0,8,0"
 					HorizontalAlignment="Stretch"
 					VerticalAlignment="Top"
-					Background="{StaticResource FlyoutBackground}"
+					Background="{StaticResource AppBackground}"
 					BoxShadow="{StaticResource PanelBoxShadow}"
 					CornerRadius="0,0,6,6">
 					<Grid RowDefinitions="Auto,*">

@@ -5481,6 +5481,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-20T03:38:40.293Z"
+    },
+    {
+      "id": "bug-343",
+      "timestamp": "2026-04-20T03:56:33.184Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"Transparent\"",
+      "fix": "Changed to \"{StaticResource SectionEditorControls}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-20T03:56:37.742Z"
+    },
+    {
+      "id": "bug-344",
+      "timestamp": "2026-04-20T04:11:18.523Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "Had \"Red\"",
+      "fix": "Changed to \"White\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T04:11:18.523Z"
+    },
+    {
+      "id": "bug-345",
+      "timestamp": "2026-04-20T04:13:25.832Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "root_cause": "Had \"{StaticResource SurfaceBackground}\"",
+      "fix": "Changed to \"{StaticResource AppBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T04:13:25.832Z"
+    },
+    {
+      "id": "bug-346",
+      "timestamp": "2026-04-20T04:15:09.426Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml",
+      "root_cause": "Had \"{StaticResource SurfaceBackground}\"",
+      "fix": "Changed to \"White\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T04:15:09.426Z"
+    },
+    {
+      "id": "bug-347",
+      "timestamp": "2026-04-20T04:26:12.086Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T04:26:12.086Z"
     }
   ]
 }

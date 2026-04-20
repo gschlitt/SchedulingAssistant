@@ -71,7 +71,7 @@
                 <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Background="{StaticResource SurfaceBackground}">
+                        Background="White">
                     <StackPanel>
                         <!--  Clickable header row  -->
                         <Button Background="Transparent"
@@ -124,7 +124,7 @@
                 <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Background="{StaticResource SurfaceBackground}">
+                        Background="White">
                     <StackPanel>
                         <!--  Clickable header row  -->
                         <Button Background="Transparent"
@@ -206,7 +206,7 @@
                 <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Background="{StaticResource SurfaceBackground}">
+                        Background="White">
                     <StackPanel>
                         <!--  Clickable header row  -->
                         <Button Background="Transparent"

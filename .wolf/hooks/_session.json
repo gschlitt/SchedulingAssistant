@@ -28,14 +28,34 @@
       "first_read": "2026-04-20T02:08:33.083Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
-      "count": 1,
-      "tokens": 0,
+      "count": 3,
+      "tokens": 20745,
       "first_read": "2026-04-20T03:31:55.145Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml": {
+      "count": 4,
+      "tokens": 3023,
+      "first_read": "2026-04-20T03:38:31.139Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-04-20T04:10:41.496Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml": {
+      "count": 7,
+      "tokens": 8280,
+      "first_read": "2026-04-20T04:13:19.532Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-20T03:38:31.139Z"
+      "first_read": "2026-04-20T04:17:53.762Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-20T04:21:11.098Z"
     }
   },
   "files_written": [
@@ -80,18 +100,124 @@
       "action": "edit",
       "tokens": 24,
       "at": "2026-04-20T03:38:40.276Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
+      "action": "edit",
+      "tokens": 62,
+      "at": "2026-04-20T03:49:14.596Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "action": "edit",
+      "tokens": 66,
+      "at": "2026-04-20T03:49:28.387Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
+      "action": "edit",
+      "tokens": 53,
+      "at": "2026-04-20T03:53:43.706Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "action": "edit",
+      "tokens": 142,
+      "at": "2026-04-20T03:56:26.996Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "action": "edit",
+      "tokens": 86,
+      "at": "2026-04-20T03:56:33.169Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "action": "edit",
+      "tokens": 87,
+      "at": "2026-04-20T03:56:37.726Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
+      "action": "edit",
+      "tokens": 46,
+      "at": "2026-04-20T04:11:18.455Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "action": "edit",
+      "tokens": 13,
+      "at": "2026-04-20T04:13:25.826Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml",
+      "action": "edit",
+      "tokens": 6,
+      "at": "2026-04-20T04:15:09.412Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
+      "action": "edit",
+      "tokens": 1,
+      "at": "2026-04-20T04:15:14.046Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "action": "edit",
+      "tokens": 35,
+      "at": "2026-04-20T04:17:42.882Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "action": "edit",
+      "tokens": 108,
+      "at": "2026-04-20T04:17:47.404Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml",
+      "action": "edit",
+      "tokens": 28,
+      "at": "2026-04-20T04:17:58.666Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "action": "edit",
+      "tokens": 47,
+      "at": "2026-04-20T04:23:16.626Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+      "action": "edit",
+      "tokens": 55,
+      "at": "2026-04-20T04:26:03.734Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+      "action": "edit",
+      "tokens": 36,
+      "at": "2026-04-20T04:26:12.073Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+      "action": "edit",
+      "tokens": 83,
+      "at": "2026-04-20T04:26:22.183Z"
     }
   ],
   "edit_counts": {
     "src/SchedulingAssistant/Converters/BoolToItalicConverter.cs": 1,
     "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 3,
     "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs": 1,
-    "src/SchedulingAssistant/AppColors.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 1
+    "src/SchedulingAssistant/AppColors.axaml": 5,
+    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 5,
+    "src/SchedulingAssistant/Views/Management/InstructorListView.axaml": 4,
+    "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml": 1,
+    "src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml": 1,
+    "src/SchedulingAssistant/MainWindow.axaml": 3
   },
   "anatomy_hits": 0,
-  "anatomy_misses": 7,
-  "repeated_reads_warned": 1,
+  "anatomy_misses": 11,
+  "repeated_reads_warned": 13,
   "cerebrum_warnings": 0,
-  "stop_count": 5
+  "stop_count": 18
 }

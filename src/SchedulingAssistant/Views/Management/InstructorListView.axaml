@@ -6,13 +6,15 @@
     xmlns:v="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
-    x:DataType="vm:InstructorListViewModel">
+    x:DataType="vm:InstructorListViewModel"
+    Background="{StaticResource AppBackground}">
 
 
 
     <!--  Two-column layout: Column 0 has instructor list + workload panels | Column 1 workload history  -->
     <Grid
         Margin="10,0,0,0"
+        Background="{StaticResource AppBackground}"
         ColumnDefinitions="*,*"
         RowDefinitions="Auto,Auto,Auto,*">
         <!--  LEFT COLUMN: Instructor list and edit  -->
@@ -163,6 +165,7 @@
                 b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                 MaxHeight="250"
                 AutoGenerateColumns="False"
+                Background="{StaticResource AppBackground}"
                 BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1"
                 CanUserSortColumns="True"
@@ -283,7 +286,7 @@
             <Border
                 Grid.Column="0"
                 Padding="8"
-                Background="{StaticResource SurfaceBackground}"
+                Background="{StaticResource AppBackground}"
                 BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1">
                 <ScrollViewer>
@@ -340,7 +343,7 @@
             <Border
                 Grid.Column="2"
                 Padding="8"
-                Background="{StaticResource SurfaceBackground}"
+                Background="{StaticResource AppBackground}"
                 BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1">
                 <StackPanel DataContext="{Binding ReleaseVm}" Spacing="8">
@@ -456,7 +459,7 @@
             <Border
                 Grid.Column="4"
                 Padding="8"
-                Background="{StaticResource SurfaceBackground}"
+                Background="{StaticResource AppBackground}"
                 BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1">
                 <ScrollViewer>
@@ -603,7 +606,7 @@
             IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Border
                 Padding="8,12"
-                Background="{StaticResource SurfaceBackground}"
+                Background="{StaticResource AppBackground}"
                 DockPanel.Dock="Top">
                 <TextBlock
                     VerticalAlignment="Center"
@@ -612,7 +615,7 @@
                     Foreground="{StaticResource TextMuted}"
                     Text="Workload History" />
             </Border>
-            <Border Background="{StaticResource SurfaceBackground}">
+            <Border Background="{StaticResource AppBackground}">
                 <v:WorkloadHistoryView DataContext="{Binding WorkloadHistoryVm}" />
             </Border>
         </DockPanel>

@@ -3,7 +3,8 @@
              xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
              x:Class="SchedulingAssistant.Views.Management.WorkloadHistoryView"
              x:DataType="vm:WorkloadHistoryViewModel"
-             x:CompileBindings="False">
+             x:CompileBindings="False"
+             Background="{StaticResource AppBackground}">
 
     <ScrollViewer>
         <Border Padding="8,4">

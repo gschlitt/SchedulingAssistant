@@ -35,6 +35,7 @@
         </Style>
 
         <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{StaticResource SectionEditorControls}" />
             <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
         </Style>
 
@@ -142,6 +143,7 @@
                         <TextBox
                             x:Name="SectionCodeBox"
                             Height="24"
+                            Background="{StaticResource SectionEditorControls}"
                             BorderBrush="{StaticResource SubduedBorder}"
                             CornerRadius="4"
                             FontSize="11"
@@ -291,7 +293,7 @@
                                             HorizontalAlignment="Stretch"
                                             b:LostFocusCommandBehavior.Command="{Binding CommitStartTimeCommand}"
                                             b:OpenDropDownOnFocusBehavior.IsEnabled="True"
-                                            Background="Transparent"
+                                            Background="{StaticResource SectionEditorControls}"
                                             BorderBrush="{StaticResource SubduedBorder}"
                                             CornerRadius="4"
                                             FilterMode="None"
@@ -315,7 +317,7 @@
                                             HorizontalAlignment="Stretch"
                                             b:LostFocusCommandBehavior.Command="{Binding CommitBlockLengthCommand}"
                                             b:OpenDropDownOnFocusBehavior.IsEnabled="True"
-                                            Background="Transparent"
+                                            Background="{StaticResource SectionEditorControls}"
                                             BorderBrush="{StaticResource SubduedBorder}"
                                             CornerRadius="4"
                                             FilterMode="None"

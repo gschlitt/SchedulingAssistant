@@ -11,8 +11,7 @@
 	<!--  ── Primary chrome (top menu bar)  -->
 	<SolidColorBrush x:Key="ChromeBackground" Color="white" />
 
-	<!--  panel surfaces this is poorly defined  —  -->
-	<SolidColorBrush x:Key="SurfaceBackground" Color="{StaticResource AppBackgroundColor}" />
+
 
 	<!--  Very light 1 px separator  -->
 	<SolidColorBrush x:Key="ChromeBorder" Color="#A0707070" />
@@ -67,9 +66,9 @@
 
 
 	<!--  User targets for interaction: buttons, selectors  -->
-
+	<Color x:Key="UserInteractionColor">#bcdcff</Color>
 	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
-	<SolidColorBrush x:Key="ButtonBackground" Color="#bcdcff" />
+	<SolidColorBrush x:Key="ButtonBackground" Color="{StaticResource UserInteractionColor}" />
 	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
 	<SolidColorBrush x:Key="ButtonHover" Color="#a9d2fb" />
 	<SolidColorBrush x:Key="ButtonPressed" Color="#94c6f7" />
@@ -78,7 +77,7 @@
 
 	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
 	<!--  Background fill for the filter-selectors and overlay-selectors bordered groups, same as buttonbackground  -->
-	<SolidColorBrush x:Key="FilterSelectorBackground" Color="#bcdcff" />
+	<SolidColorBrush x:Key="FilterSelectorBackground" Color="{StaticResource UserInteractionColor}" />
 
 	<!--  Outer Border for the filter dropdowns  -->
 	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
@@ -86,10 +85,10 @@
 	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
 	<SolidColorBrush x:Key="FilterGroupBorder" Color="#8AAAC8" />
 
-	<SolidColorBrush x:Key="FilterExpanderContent" Color="#bcdcff" />
+	<SolidColorBrush x:Key="FilterExpanderContent" Color="{StaticResource UserInteractionColor}" />
 
 	<!--  Sentinel row background in filter dropdowns (separates "Unstaffed" entries) Currently the same as FilterExpanderContent  -->
-	<SolidColorBrush x:Key="FilterSentinelBackground" Color="#bcdcff" />
+	<SolidColorBrush x:Key="FilterSentinelBackground" Color="{StaticResource UserInteractionColor}" />
 	<!--  The descriptive text describing each filter  -->
 	<SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
 	<SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
@@ -179,6 +178,7 @@
 
 	<SolidColorBrush x:Key="EditorBackground" Color="#FFFFFE" />
 	<SolidColorBrush x:Key="SectionScheduleArea" Color="#FFFFFE" />
+	<SolidColorBrush x:Key="SectionEditorControls" Color="{StaticResource UserInteractionColor}" />
 	<!--  Editor left-border uses the accent color  -->
 	<SolidColorBrush x:Key="EditorBorder" Color="#ac8eb2" />
 

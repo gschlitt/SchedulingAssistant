@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-20T03:38:40.240Z
-> Files: 8 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-20T04:26:22.131Z
+> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -170,8 +170,9 @@
 
 ## src/SchedulingAssistant/
 
-- `AppColors.axaml` (~2989 tok)
+- `AppColors.axaml` (~3022 tok)
 - `AppLayout.axaml` (~337 tok)
+- `MainWindow.axaml` — Declares applied (~6863 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -213,6 +214,7 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `DatabaseRecoveryWindow.axaml` (~4056 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
@@ -222,7 +224,9 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `SectionListView.axaml` (~20720 tok)
+- `InstructorListView.axaml` (~8294 tok)
+- `SectionListView.axaml` (~20781 tok)
+- `WorkloadHistoryView.axaml` (~781 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
