@@ -4,48 +4,59 @@
 		<Border Padding="20" Background="{StaticResource ChromeBackground}" />
 	</Design.PreviewWith>
 
-	<!--  ── App-wide surface hierarchy  ────────────────────────────────  -->
-	<Color x:Key="AppBackgroundColor">#e0e4eb</Color>
+	<!--  ── App-wide surface  ────────────────────────────────  -->
+	<Color x:Key="AppBackgroundColor">#f3f4f7</Color>
 	<SolidColorBrush x:Key="AppBackground" Color="{StaticResource AppBackgroundColor}" />
-	<!--  ── Primary chrome (menu bar)  -->
-	<SolidColorBrush x:Key="ChromeBackground" Color="#f6f7f9" />
-	<!--  Section View, Schedule View, and Workload View panel header bars  -->
-	<SolidColorBrush x:Key="ViewHeaderBackground" Color="#e0e4eb" />
+
+	<!--  ── Primary chrome (top menu bar)  -->
+	<SolidColorBrush x:Key="ChromeBackground" Color="white" />
+
+	<!--  panel surfaces this is poorly defined  —  -->
+	<SolidColorBrush x:Key="SurfaceBackground" Color="{StaticResource AppBackgroundColor}" />
+
 	<!--  Very light 1 px separator  -->
 	<SolidColorBrush x:Key="ChromeBorder" Color="#A0707070" />
 
-	<!--  Tiles: the section tiles in Section View, the tiles in Schedule View, the pills in Workload View  -->
+	<!--  Section View, Schedule View, and Workload View panel header bars  -->
+	<SolidColorBrush x:Key="ViewHeaderBackground" Color="{StaticResource AppBackgroundColor}" />
 
-	<!--  Section and Schedule View Tile Default fill: soft tinted blue  -->
-	<SolidColorBrush x:Key="TileFill" Color="#bbcbe2" />
+	<!--  ────────────Information Panels   ────────────  -->
 
-	<!--  Workload panel instructor card background: midpoint between ViewHeaderBackground and TileFill  -->
-	<SolidColorBrush x:Key="WorkloadTileBackground" Color="#CED8E7" />
-
+	<!--
+		Section and Schedule View Tile fill, section workload pills
+		This forms the background of the entire time block a section meeting occupies, as well as the background for the text itself
+	-->
+	<SolidColorBrush x:Key="TileFill" Color="#cfecf8" />
+	<!--  Release workload pill  -->
 	<SolidColorBrush x:Key="ReleaseTile" Color="#EDE8F5" />
 
-	<!--  Events/Meetings tile fill: warm tan used in both Events View cards and Schedule Grid meeting tiles  -->
-	<SolidColorBrush x:Key="MeetingTile" Color="#B2AC88" />
+	<!--  Chosen to contrast with the section workload pill color  -->
+	<SolidColorBrush x:Key="WorkloadTileBackground" Color="#8fd2ef" />
 
-	<!--  ScheduleGridView Tiles  -->
+	<!--  Events/Meetings tile fill Should contrast with section color  -->
+	<SolidColorBrush x:Key="MeetingTile" Color="#bbaada" />
+
 	<!--  External border: the outline around the entire tile card  -->
 	<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
 	<!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->
 	<SolidColorBrush x:Key="TileInternalBorder" Color="#dce0e3" />
 
 	<!--  Selection and Interaction with Tiles  -->
-	<!--  When user selects a section or section meeting in Section View, Schedule View or Workload View  -->
-	<SolidColorBrush x:Key="UserSelectedSectionBorderColor" Color="#3c647f" />
-	<!--  Section card background: section matches the active Schedule Grid filter  -->
-	<SolidColorBrush x:Key="FilterSelectedSectionBackgroundColor" Color="#9ecbf7" />
 
+	<!--  Hover on Section Cards and Section Meetings: Semi-transparent dark tint overlaid on Section View tiles  on hover  -->
+	<SolidColorBrush x:Key="CardHoverOverlay" Color="#14000000" />
+
+	<!--  Border when user selects a section or section meeting in Section View, Schedule View or Workload View  -->
+	<SolidColorBrush x:Key="UserSelectedSectionBorderColor" Color="#3c647f" />
+
+	<SolidColorBrush x:Key="SectionMeetingTextSelected" Color="Black" />
+
+	<!--  Section card background when section matches the active Schedule Grid filter  -->
+	<SolidColorBrush x:Key="FilterSelectedSectionBackgroundColor" Color="#9ecbf7" />
 
 	<!--  De-emphasis: staffed tiles under "Emphasize Unstaffed" mode  -->
 	<Color x:Key="TileDeemphasizedTextColor">#555f6d</Color>
 	<SolidColorBrush x:Key="TileDeemphasizedText" Color="{StaticResource TileDeemphasizedTextColor}" />
-  <SolidColorBrush x:Key="TileEmphasizedText" Color="Black"/>
-	<!--  Hover" Semi-transparent dark tint overlaid on Section View tiles  on hover  -->
-	<SolidColorBrush x:Key="CardHoverOverlay" Color="#14000000" />
 
 	<!--
 		When a section meeting is emphasized via overlay Also colors the border of the entire tile and the text
@@ -53,6 +64,47 @@
 	-->
 	<Color x:Key="OverlayColor">#D63050</Color>
 	<SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
+
+
+	<!--  User targets for interaction: buttons, selectors  -->
+
+	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
+	<SolidColorBrush x:Key="ButtonBackground" Color="#bcdcff" />
+	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
+	<SolidColorBrush x:Key="ButtonHover" Color="#a9d2fb" />
+	<SolidColorBrush x:Key="ButtonPressed" Color="#94c6f7" />
+
+	<!--  Filters and Overlays ────────────────────────────────  -->
+
+	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
+	<!--  Background fill for the filter-selectors and overlay-selectors bordered groups, same as buttonbackground  -->
+	<SolidColorBrush x:Key="FilterSelectorBackground" Color="#bcdcff" />
+
+	<!--  Outer Border for the filter dropdowns  -->
+	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
+
+	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
+	<SolidColorBrush x:Key="FilterGroupBorder" Color="#8AAAC8" />
+
+	<SolidColorBrush x:Key="FilterExpanderContent" Color="#bcdcff" />
+
+	<!--  Sentinel row background in filter dropdowns (separates "Unstaffed" entries) Currently the same as FilterExpanderContent  -->
+	<SolidColorBrush x:Key="FilterSentinelBackground" Color="#bcdcff" />
+	<!--  The descriptive text describing each filter  -->
+	<SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
+	<SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
+
+	<SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
+	<SolidColorBrush x:Key="OverlayInactiveHeader" Color="#2D3748" />
+
+	<!--  ── "Filtered by" text in panel header  ──────────────────────────  -->
+	<!--  The color of the text in the overlay/filter bar labeling the active filter  -->
+	<Color x:Key="FilterColor">#4A6FA5</Color>
+	<SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
+	<!--  Overlay:  -->
+	<SolidColorBrush x:Key="OverlayBadgeText" Color="{StaticResource OverlayColor}" />
+
+
 	<!--  ── General UI structure  ─────────────────────────────────────────  -->
 	<!--  Thin separator rules inside the menu bar and chrome areas  -->
 	<SolidColorBrush x:Key="SeparatorLine" Color="Black" />
@@ -66,42 +118,8 @@
 	<!--  Soft panel shadow  -->
 	<BoxShadows x:Key="PanelBoxShadow">1 2 4 0 #80000000</BoxShadows>
 
-	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
-	<SolidColorBrush x:Key="ButtonBackground" Color="#bcdcff" />
-	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
-	<SolidColorBrush x:Key="ButtonHover" Color="#a9d2fb" />
-	<SolidColorBrush x:Key="ButtonPressed" Color="#94c6f7" />
 
-
-	<!--  Filters and Overlays ────────────────────────────────  -->
-
-	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
-	<!--  Background fill for the filter-selector and overlay-selector bordered groups  -->
-	<SolidColorBrush x:Key="FilterSelectorBackground" Color="#bcdcff" />
-	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
-	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
-	<SolidColorBrush x:Key="FilterGroupBorder" Color="#8AAAC8" />
-	<SolidColorBrush x:Key="FilterExpanderContent" Color="White" />
-	<!--  Sentinel row background in filter dropdowns (separates "All" entry)  -->
-	<SolidColorBrush x:Key="FilterSentinelBackground" Color="#EEF4FC" />
-
-	<SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
-	<SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />
-
-	<SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
-	<SolidColorBrush x:Key="OverlayInactiveHeader" Color="#2D3748" />
-
-
-	<!--  ── "Filtered by" text in panel header  ──────────────────────────  -->
-	<!--  The color of the text in the overlay/filter bar labeling the active filter  -->
-	<Color x:Key="FilterColor">#4A6FA5</Color>
-	<SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
-	<!--  Overlay:  -->
-	<SolidColorBrush x:Key="OverlayBadgeText" Color="#D63050" />
-
-	<!--  Schedule View  -->
-
-	<!--  ── Schedule grid canvas chrome  ────────────────────────────────  -->
+	<!--  Schedule View Structure  -->
 	<!--  Vertical lines separating day columns on the schedule grid  -->
 	<SolidColorBrush x:Key="DaySeparators" Color="#a0a6ad" />
 	<SolidColorBrush x:Key="GridRuleLine" Color="#c3ccda" />
@@ -109,7 +127,6 @@
 	<SolidColorBrush x:Key="GridGutterBackground" Color="#F2F5FA" />
 	<SolidColorBrush x:Key="GridTimeHalfHourText" Color="#64748B" />
 	<SolidColorBrush x:Key="GridDayHeaderText" Color="#8A9AB0" />
-
 	<SolidColorBrush x:Key="WeekDayBar" Color="{StaticResource AppBackgroundColor}" />
 	<SolidColorBrush x:Key="TimesColumn" Color="{StaticResource AppBackgroundColor}" />
 
@@ -129,28 +146,10 @@
 	<SolidColorBrush x:Key="TextSemesterLabel" Color="#475569" />
 	<SolidColorBrush x:Key="TextValidationError" Color="#C53030" />
 	<SolidColorBrush x:Key="TextError" Color="#C53030" />
-
+	<SolidColorBrush x:Key="ToolTipTextBrush" Color="Black" />
 
 	<!--  Subtle tint — zebra rows, inactive areas, empty-state fills  -->
 	<SolidColorBrush x:Key="SubtleBackground" Color="#F0F4FA" />
-
-
-
-
-	<SolidColorBrush x:Key="TileBorder" Color="#9ABED8" />
-
-	<!--  this is actually coloring selected text  -->
-	<SolidColorBrush x:Key="TileBorderSelected" Color="Black" />
-
-	<!--  This is actually used in help tips nowhere else  -->
-	<SolidColorBrush x:Key="FilterColorBrush" Color="{StaticResource FilterColor}" />
-
-
-
-
-	<!--  panel surface — pure white for contrast against AppBackground  -->
-	<SolidColorBrush x:Key="SurfaceBackground" Color="#e9ecf1" />
-
 
 
 
@@ -175,9 +174,11 @@
 	<SolidColorBrush x:Key="NotificationErrorBorder" Color="#C53030" />
 	<SolidColorBrush x:Key="NotificationErrorText" Color="#7A0000" />
 
+
 	<!--  ── Inline section editor highlight  ─────────────────────────────  -->
-	<!--  No background; the left border alone indicates active editor state  -->
-	<SolidColorBrush x:Key="EditorBackground" Color="#FFFFFF" />
+
+	<SolidColorBrush x:Key="EditorBackground" Color="#FFFFFE" />
+	<SolidColorBrush x:Key="SectionScheduleArea" Color="#FFFFFE" />
 	<!--  Editor left-border uses the accent color  -->
 	<SolidColorBrush x:Key="EditorBorder" Color="#ac8eb2" />
 

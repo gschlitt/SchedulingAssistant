@@ -3,6 +3,7 @@
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:b="using:SchedulingAssistant.Behaviors"
+	xmlns:conv="using:SchedulingAssistant.Converters"
 	xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
 	xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
 	x:Name="FilterRoot"
@@ -171,6 +172,7 @@
 															<Border Background="{StaticResource FilterSentinelBackground}" IsVisible="{Binding IsSentinel}" />
 															<CheckBox
 																Content="{Binding Name}"
+																FontStyle="{Binding IsSentinel, Converter={x:Static conv:BoolToItalicConverter.Instance}}"
 																IsChecked="{Binding IsSelected}"
 																IsEnabled="{Binding IsEnabled}" />
 														</Panel>
@@ -213,6 +215,7 @@
 															<Border Background="{StaticResource FilterSentinelBackground}" IsVisible="{Binding IsSentinel}" />
 															<CheckBox
 																Content="{Binding Name}"
+																FontStyle="{Binding IsSentinel, Converter={x:Static conv:BoolToItalicConverter.Instance}}"
 																IsChecked="{Binding IsSelected}"
 																IsEnabled="{Binding IsEnabled}" />
 														</Panel>

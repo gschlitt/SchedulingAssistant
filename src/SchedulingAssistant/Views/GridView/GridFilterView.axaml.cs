@@ -108,7 +108,7 @@ public partial class GridFilterView : UserControl
         int selected = list.Count(i => i.IsSelected);
         toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▾" : $"{dimensionName} ▾";
         toggle.Foreground = selected > 0 ? ActiveFilterHeaderBrush : InactiveFilterHeaderBrush;
-        toggle.FontWeight = selected > 0 ? FontWeight.SemiBold : FontWeight.Normal;
+        toggle.FontWeight = selected > 0 ? FontWeight.Bold : FontWeight.Normal;
     }
 
     /// <summary>
@@ -145,8 +145,7 @@ public partial class GridFilterView : UserControl
 
         if (isActive)
         {
-            var name = list.FirstOrDefault(i => i.Id == vm.SelectedOverlayId)?.Name ?? vm.SelectedOverlayId;
-            toggle.Content    = $"Overlay: {name} ▾";
+            toggle.Content    = $"{inactiveLabel} ▾";
             toggle.Foreground = ActiveOverlayHeaderBrush;
             toggle.FontWeight = FontWeight.SemiBold;
         }

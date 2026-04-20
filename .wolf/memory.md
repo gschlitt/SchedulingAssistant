@@ -3054,3 +3054,27 @@
 | 14:11 | Session end: 10 writes across 2 files (ScheduleGridView.axaml.cs, AppLayout.axaml) | 2 reads | ~16288 tok |
 | 14:11 | Edited src/SchedulingAssistant/AppLayout.axaml | 1 → 0 | ~18 |
 | 14:11 | Session end: 11 writes across 2 files (ScheduleGridView.axaml.cs, AppLayout.axaml) | 2 reads | ~16308 tok |
+
+## Session: 2026-04-19 15:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:05 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | modified if() | ~198 |
+| 17:05 | Session end: 1 writes across 1 files (AcademicYearListViewModel.cs) | 19 reads | ~14661 tok |
+
+## Session: 2026-04-20 18:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:59 | Created src/SchedulingAssistant/Converters/BoolToItalicConverter.cs | — | ~234 |
+| 18:59 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 3→4 lines | ~61 |
+| 18:59 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 41→42 lines | ~422 |
+| 19:00 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 41→42 lines | ~411 |
+| 19:00 | Session end: 4 writes across 2 files (BoolToItalicConverter.cs, GridFilterView.axaml) | 4 reads | ~1207 tok |
+| 19:08 | Session end: 4 writes across 2 files (BoolToItalicConverter.cs, GridFilterView.axaml) | 5 reads | ~1207 tok |
+| 19:15 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs | modified if() | ~55 |
+| 19:16 | Session end: 5 writes across 3 files (BoolToItalicConverter.cs, GridFilterView.axaml, GridFilterView.axaml.cs) | 5 reads | ~1266 tok |
+| 20:32 | Session end: 5 writes across 3 files (BoolToItalicConverter.cs, GridFilterView.axaml, GridFilterView.axaml.cs) | 6 reads | ~1266 tok |
+| 20:38 | Edited src/SchedulingAssistant/AppColors.axaml | 3→4 lines | ~64 |
+| 20:38 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | "{StaticResource SubtleBac" → "{StaticResource SectionSc" | ~22 |
+| 20:38 | Session end: 7 writes across 5 files (BoolToItalicConverter.cs, GridFilterView.axaml, GridFilterView.axaml.cs, AppColors.axaml, SectionListView.axaml) | 7 reads | ~1358 tok |

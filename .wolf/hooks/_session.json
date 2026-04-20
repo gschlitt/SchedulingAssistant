@@ -1,93 +1,97 @@
 {
-  "session_id": "session-2026-04-19-1342",
-  "started": "2026-04-19T20:42:58.574Z",
+  "session_id": "session-2026-04-20-1858",
+  "started": "2026-04-20T01:58:47.992Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": {
-      "count": 11,
-      "tokens": 13979,
-      "first_read": "2026-04-19T20:43:32.144Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppLayout.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-19T21:08:08.957Z"
+      "first_read": "2026-04-20T01:58:56.076Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/AttendeeSentinelViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-20T01:58:56.641Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/FilterItemViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-20T01:59:01.020Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Converters/NotConverter.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-20T01:59:16.959Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-04-20T02:08:33.083Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-20T03:31:55.145Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-20T03:38:31.139Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
-      "action": "edit",
-      "tokens": 466,
-      "at": "2026-04-19T20:43:51.838Z"
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Converters/BoolToItalicConverter.cs",
+      "action": "create",
+      "tokens": 250,
+      "at": "2026-04-20T01:59:23.305Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
       "action": "edit",
-      "tokens": 574,
-      "at": "2026-04-19T20:44:06.891Z"
+      "tokens": 65,
+      "at": "2026-04-20T01:59:28.765Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
       "action": "edit",
-      "tokens": 294,
-      "at": "2026-04-19T20:56:32.792Z"
+      "tokens": 452,
+      "at": "2026-04-20T01:59:49.217Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
       "action": "edit",
-      "tokens": 47,
-      "at": "2026-04-19T21:01:33.817Z"
+      "tokens": 440,
+      "at": "2026-04-20T02:00:01.765Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs",
       "action": "edit",
-      "tokens": 295,
-      "at": "2026-04-19T21:01:41.518Z"
+      "tokens": 59,
+      "at": "2026-04-20T02:15:59.787Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppLayout.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
       "action": "edit",
-      "tokens": 166,
-      "at": "2026-04-19T21:08:15.870Z"
+      "tokens": 68,
+      "at": "2026-04-20T03:38:36.366Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
       "action": "edit",
-      "tokens": 69,
-      "at": "2026-04-19T21:08:21.355Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
-      "action": "edit",
-      "tokens": 160,
-      "at": "2026-04-19T21:08:28.516Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
-      "action": "edit",
-      "tokens": 218,
-      "at": "2026-04-19T21:08:36.857Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppLayout.axaml",
-      "action": "edit",
-      "tokens": 20,
-      "at": "2026-04-19T21:11:11.971Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppLayout.axaml",
-      "action": "edit",
-      "tokens": 20,
-      "at": "2026-04-19T21:11:30.916Z"
+      "tokens": 24,
+      "at": "2026-04-20T03:38:40.276Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": 8,
-    "src/SchedulingAssistant/AppLayout.axaml": 3
+    "src/SchedulingAssistant/Converters/BoolToItalicConverter.cs": 1,
+    "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 3,
+    "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs": 1,
+    "src/SchedulingAssistant/AppColors.axaml": 1,
+    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 1
   },
   "anatomy_hits": 0,
-  "anatomy_misses": 2,
-  "repeated_reads_warned": 10,
+  "anatomy_misses": 7,
+  "repeated_reads_warned": 1,
   "cerebrum_warnings": 0,
-  "stop_count": 8
+  "stop_count": 5
 }

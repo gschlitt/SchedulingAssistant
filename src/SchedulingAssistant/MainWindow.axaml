@@ -211,7 +211,7 @@
 							VerticalAlignment="Center"
 							FontSize="11"
 							FontStyle="Italic"
-							Foreground="{StaticResource NotificationWarningText}"
+							Foreground="Red"
 							IsVisible="{Binding IsDirty}"
 							Text="Unsaved changes"
 							ToolTip.Tip="You have unsaved changes" />

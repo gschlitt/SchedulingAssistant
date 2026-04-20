@@ -156,6 +156,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
                                 {
                                     AcademicYearId = saved.Id,
                                     Name           = prevSemesters[i].Name,
+                                    Color          = prevSemesters[i].Color,
                                     SortOrder      = prevSemesters[i].SortOrder
                                 });
                             }

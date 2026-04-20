@@ -115,7 +115,7 @@ public static class HelpTip
             var link = new TextBlock
             {
                 Text                 = "More help →",
-                Foreground           = Brush("FilterColorBrush"),
+                Foreground           = Brush("ToolTipTextBrush"),
                 FontSize             = FontSize("FontSizeNormal"),
                 HorizontalAlignment  = HorizontalAlignment.Right,
                 Cursor               = new Cursor(StandardCursorType.Hand),

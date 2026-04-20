@@ -5449,6 +5449,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-19T21:08:36.908Z"
+    },
+    {
+      "id": "bug-341",
+      "timestamp": "2026-04-20T02:15:59.801Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T02:15:59.801Z"
+    },
+    {
+      "id": "bug-342",
+      "timestamp": "2026-04-20T03:38:40.293Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"{StaticResource SubtleBackground}\"",
+      "fix": "Changed to \"{StaticResource SectionScheduleArea}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T03:38:40.293Z"
     }
   ]
 }

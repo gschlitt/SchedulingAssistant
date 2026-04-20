@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-19T21:11:30.910Z
-> Files: 2 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-20T03:38:40.240Z
+> Files: 8 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -170,6 +170,7 @@
 
 ## src/SchedulingAssistant/
 
+- `AppColors.axaml` (~2989 tok)
 - `AppLayout.axaml` (~337 tok)
 
 ## src/SchedulingAssistant/Behaviors/
@@ -180,6 +181,7 @@
 
 ## src/SchedulingAssistant/Converters/
 
+- `BoolToItalicConverter.cs` — Converts a boolean to a <see cref="FontStyle"/>: <c>true</c> → <see cref="FontStyle.Italic"/>; <c>fa (~234 tok)
 
 ## src/SchedulingAssistant/Data/
 
@@ -201,6 +203,7 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2414 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -213,10 +216,13 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~6644 tok)
+- `GridFilterView.axaml.cs` — Updates a filter dimension's header ToggleButton to show how many items are selected, with active co (~1922 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14112 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `SectionListView.axaml` (~20720 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

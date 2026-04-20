@@ -73,10 +73,10 @@ public partial class ScheduleGridView : UserControl
 
     private static IBrush TileFill              => Res("TileFill");
     private static IBrush MeetingTileFill       => Res("MeetingTile");
-    private static IBrush TileBorder            => Res("TileBorder");
+    private static IBrush ToolTipBorder            => Res("ToolTipBorder");
     private static IBrush TileExternalBorder    => Res("TileExternalBorder");
     private static IBrush TileInternalBorder    => Res("TileInternalBorder");
-    private static IBrush TileBorderSelected    => Res("TileBorderSelected");
+    private static IBrush SectionMeetingTextSelected    => Res("SectionMeetingTextSelected");
     private static IBrush UserSelectedBorder    => Res("UserSelectedSectionBorderColor");
     private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
     private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
@@ -221,7 +221,7 @@ public partial class ScheduleGridView : UserControl
             info.Row.BorderBrush     = isSelected ? UserSelectedBorder : Brushes.Transparent;
             info.Row.BorderThickness = new Thickness(isSelected ? TileSelectionBorderThickness : 0);
             info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
-            info.Label.Foreground = isSelected       ? TileBorderSelected
+            info.Label.Foreground = isSelected       ? SectionMeetingTextSelected
                                   : info.IsOverlay    ? OverlayFrameBorder
                                   : info.IsDeemphasized ? TileDeemphasizedText
                                   : TileText;
@@ -308,7 +308,7 @@ public partial class ScheduleGridView : UserControl
                             Text            = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation),
                             FontSize        = _tileFontSize,
                             FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground      = entrySelected        ? TileBorderSelected
+                            Foreground      = entrySelected        ? SectionMeetingTextSelected
                                            : entry.IsDeemphasized  ? TileDeemphasizedText
                                            : TileText,
                             TextTrimming    = TextTrimming.CharacterEllipsis,
@@ -662,7 +662,7 @@ public partial class ScheduleGridView : UserControl
                         Text            = labelText,
                         FontSize        = _tileFontSize,
                         FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                        Foreground      = entrySelected        ? TileBorderSelected
+                        Foreground      = entrySelected        ? SectionMeetingTextSelected
                                        : entry.IsOverlay       ? OverlayFrameBorder
                                        : entry.IsDeemphasized  ? TileDeemphasizedText
                                        : TileText,
@@ -878,7 +878,7 @@ public partial class ScheduleGridView : UserControl
         return new ToolTip
         {
             Background      = TileFill,
-            BorderBrush     = TileBorder,
+            BorderBrush     = ToolTipBorder,
             BorderThickness = new Thickness(1),
             CornerRadius    = new CornerRadius(3),
             Padding         = new Thickness(6, 4),
