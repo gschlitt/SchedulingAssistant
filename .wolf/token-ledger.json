@@ -3,11 +3,11 @@
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
     "total_tokens_estimated": 13568285,
-    "total_reads": 5035,
+    "total_reads": 5036,
     "total_writes": 4955,
-    "total_sessions": 214,
+    "total_sessions": 215,
     "anatomy_hits": 1484,
-    "anatomy_misses": 3470,
+    "anatomy_misses": 3471,
     "repeated_reads_blocked": 4128,
     "estimated_savings_vs_bare_cli": 31207398
   },
@@ -63810,6 +63810,28 @@
         "writes_count": 17,
         "repeated_reads_blocked": 13,
         "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-04-20-1256",
+      "started": "2026-04-20T19:56:54.819Z",
+      "ended": "2026-04-20T20:18:24.259Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 0,
+        "reads_count": 1,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
       }
     }
   ],
