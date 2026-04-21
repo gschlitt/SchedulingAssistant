@@ -83,13 +83,19 @@ public partial class GridFilterViewModel : ViewModelBase
     // ── Meeting visibility toggle ─────────────────────────────────────────────
 
     /// <summary>
-    /// When true (default), meeting blocks from <see cref="MeetingStore"/> are rendered
-    /// on the schedule grid alongside section blocks. Toggling fires
+    /// When true, meeting blocks from <see cref="MeetingStore"/> are rendered on the
+    /// schedule grid alongside section blocks. Initialised from <see cref="AppSettings"/>
+    /// so the user's last choice survives restarts. Toggling fires
     /// <see cref="FilterChanged"/> so the grid reloads immediately.
     /// </summary>
-    [ObservableProperty] private bool _showMeetings = true;
+    [ObservableProperty] private bool _showMeetings = AppSettings.Current.ShowMeetingsOnGrid;
 
-    partial void OnShowMeetingsChanged(bool value) => FilterChanged?.Invoke();
+    partial void OnShowMeetingsChanged(bool value)
+    {
+        AppSettings.Current.ShowMeetingsOnGrid = value;
+        AppSettings.Current.Save();
+        FilterChanged?.Invoke();
+    }
 
     // ── Active state ──────────────────────────────────────────────────────────
 

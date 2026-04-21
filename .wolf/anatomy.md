@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-21T05:19:25.331Z
-> Files: 15 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-21T16:53:23.186Z
+> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -174,7 +174,7 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1678 tok)
+- `App.axaml` (~1720 tok)
 - `MainWindow.axaml` — Declares applied (~6695 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~13760 tok)
 
@@ -199,6 +199,7 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2304 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -208,6 +209,7 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each  (~6615 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
@@ -225,6 +227,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~6644 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

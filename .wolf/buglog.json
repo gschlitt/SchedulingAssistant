@@ -5689,6 +5689,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-21T05:19:16.981Z"
+    },
+    {
+      "id": "bug-356",
+      "timestamp": "2026-04-21T16:53:23.284Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 8→14 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-21T16:53:23.284Z"
     }
   ]
 }

@@ -128,6 +128,12 @@ public class AppSettings
     public int AutoSaveIntervalMinutes { get; set; } = 10;
 
     /// <summary>
+    /// Whether the Events checkbox in the schedule grid filter bar is checked.
+    /// Defaults to true on first startup; persisted thereafter.
+    /// </summary>
+    public bool ShowMeetingsOnGrid { get; set; } = true;
+
+    /// <summary>
     /// Email subject template for the Workload Mailer.
     /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}.
     /// </summary>

@@ -133,6 +133,9 @@
 		<Style Selector="AutoCompleteBox">
 			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
 		</Style>
+		<Style Selector="CheckBox /template/ Border#NormalRectangle">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
 
 	</Application.Styles>
 
