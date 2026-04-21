@@ -8,6 +8,9 @@ releases/
 publish-output.txt
 publish-verbose.txt
 
+# GitHub publish token — never commit this
+.publish-token
+
 # Visual Studio
 .vs/
 *.user

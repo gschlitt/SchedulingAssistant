@@ -55,104 +55,22 @@
 			Padding="12,0"
 			Background="{StaticResource ChromeBackground}"
 			BorderBrush="{StaticResource ChromeBorder}"
-			BorderThickness="0,0,0,1">
+			BorderThickness="0,0,0,1"
+			ClipToBounds="True">
 			<DockPanel>
-				<!--  Academic Year and Semester pickers, right-aligned — always visible  -->
-				<StackPanel
-					Margin="8,1.5"
-					VerticalAlignment="Center"
-					DockPanel.Dock="Right"
-					Orientation="Horizontal"
-					Spacing="8">
-					<Border
-						Width="1"
-						Margin="0,6"
-						Background="{StaticResource SeparatorLine}" />
+				<!--  Nav items — single line; low-priority items collapse into "More…" when width is tight  -->
 
-					<!--  Academic Year selector  -->
-					<TextBlock
-						VerticalAlignment="Center"
-						FontSize="12"
-						Foreground="{StaticResource TextSemesterLabel}"
-						Text="Academic Year:" />
-					<ComboBox
-						MinWidth="120"
-						VerticalAlignment="Center"
-						DisplayMemberBinding="{Binding Name}"
-						ItemsSource="{Binding SemesterContext.AcademicYears}"
-						SelectedItem="{Binding SemesterContext.SelectedAcademicYear}" />
+				<controls:ResponsiveMenuPanel x:Name="TopMenuPanel" VerticalAlignment="Center">
 
-					<Border
-						Width="1"
-						Margin="0,6"
-						Background="{StaticResource SeparatorLine}" />
 
-					<!--  Semester multi-select picker  -->
-					<!--
-						Replaces the single-select ComboBox with a button + popup approach
-						so the user can check multiple semesters within the selected year.
-					-->
-					<TextBlock
-						VerticalAlignment="Center"
-						FontSize="12"
-						Foreground="{StaticResource TextSemesterLabel}"
-						Text="Semester:" />
-					<Panel VerticalAlignment="Center">
-						<!--
-							The button label shows the current selection, e.g. "Fall 2025"
-							or "Early Summer, Summer". Clicking toggles the popup open/closed.
-						-->
-						<Button
-							x:Name="SemesterPickerButton"
-							MinWidth="120"
-							Padding="8,4"
-							VerticalAlignment="Center"
-							Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
-							Content="{Binding SemesterContext.SelectedSemestersLabel}" />
-
-						<!--
-							Popup with one CheckBox per semester in the selected year.
-							LightDismissOverlayMode closes it when the user clicks elsewhere.
-							Two-way binding on IsOpen lets the light-dismiss update the ViewModel.
-						-->
-						<Popup
-							IsLightDismissEnabled="True"
-							IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
-							PlacementMode="Bottom"
-							PlacementTarget="{Binding ElementName=SemesterPickerButton}">
-							<Border
-								MinWidth="150"
-								Padding="4,4"
-								Background="{StaticResource FlyoutBackground}"
-								BorderBrush="{StaticResource ChromeBorder}"
-								BorderThickness="1"
-								CornerRadius="2">
-								<ItemsControl ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
-									<ItemsControl.ItemTemplate>
-										<DataTemplate>
-											<CheckBox
-												Padding="4,3"
-												Content="{Binding DisplayName}"
-												FontSize="12"
-												IsChecked="{Binding IsSelected, Mode=TwoWay}" />
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
-							</Border>
-						</Popup>
-					</Panel>
-				</StackPanel>
-
-				<!--  Nav buttons — wrap when space is tight  -->
-
-				<WrapPanel VerticalAlignment="Center" Orientation="Horizontal">
 					<!--  Files menu (far left)  -->
 					<Menu
-						Margin="0,1.5"
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,2,8,1.5"
 						VerticalAlignment="Center"
 						Background="Transparent">
 						<MenuItem
-							Padding="14,5.5"
+							Padding="4,5.5"
 							Classes="nav"
 							Header="Files">
 							<MenuItem Command="{Binding OpenDatabaseCommand}" Header="Open…" />
@@ -180,12 +98,15 @@
 					</Menu>
 
 					<Border
+						controls:ResponsiveMenuPanel.IsPriority="True"
 						Width="1"
-						Margin="0,10,8,10"
+						Height="20"
+						Margin="0,6,10,6"
 						Background="{StaticResource SeparatorLine}" />
 
 					<TextBlock
-						Margin="4,4,4,4"
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,10,4"
 						VerticalAlignment="Center"
 						FontSize="13"
 						FontWeight="SemiBold"
@@ -194,17 +115,18 @@
 
 					<!--  Save button + autosave checkbox — positioned right after database name  -->
 					<StackPanel
-						Margin="0,4,8,4"
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,6,4"
 						VerticalAlignment="Center"
 						IsVisible="{Binding IsWriteEnabled}"
 						Orientation="Horizontal"
-						Spacing="4">
+						Spacing="6">
 						<Button
 							Padding="8,4"
 							Background="{StaticResource ButtonBackground}"
 							Command="{Binding SaveCommand}"
 							Content="Save"
-							FontSize="13"
+							FontSize="12"
 							FontWeight="SemiBold"
 							ToolTip.Tip="Save changes to the database" />
 						<TextBlock
@@ -223,82 +145,139 @@
 							ToolTip.Tip="Automatically save at the interval configured under Settings → Save &amp; Backup" />
 					</StackPanel>
 
+					<Border
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Width="1"
+						Height="20"
+						Margin="0,6,6,6"
+						Background="{StaticResource SeparatorLine}" />
 
+					<!--  Academic Year + Semester pickers — sit between DB name/save and Courses nav  -->
+					<StackPanel
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,1.5,6,1.5"
+						VerticalAlignment="Center"
+						Orientation="Horizontal"
+						Spacing="8">
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="12"
+							Foreground="{StaticResource TextSemesterLabel}"
+							Text="Academic Year:" />
+						<ComboBox
+							Height="24"
+							MinWidth="120"
+							VerticalAlignment="Center"
+							CornerRadius="4"
+							DisplayMemberBinding="{Binding Name}"
+							FontSize="12"
+							ItemsSource="{Binding SemesterContext.AcademicYears}"
+							SelectedItem="{Binding SemesterContext.SelectedAcademicYear}" />
+
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="12"
+							Foreground="{StaticResource TextSemesterLabel}"
+							Text="Semester:" />
+						<Panel VerticalAlignment="Center">
+							<Button
+								x:Name="SemesterPickerButton"
+								Height="24"
+								MinWidth="120"
+								Padding="8,4"
+								VerticalAlignment="Center"
+								Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
+								Content="{Binding SemesterContext.SelectedSemestersLabel}"
+								FontSize="12" />
+							<Popup
+								IsLightDismissEnabled="True"
+								IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
+								PlacementMode="Bottom"
+								PlacementTarget="{Binding ElementName=SemesterPickerButton}">
+								<Border
+									MinWidth="150"
+									Padding="4,4"
+									Background="{StaticResource FlyoutBackground}"
+									BorderBrush="{StaticResource ChromeBorder}"
+									BorderThickness="1"
+									CornerRadius="2">
+									<ItemsControl ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
+										<ItemsControl.ItemTemplate>
+											<DataTemplate>
+												<CheckBox
+													Padding="4,3"
+													Content="{Binding DisplayName}"
+													FontSize="12"
+													IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+											</DataTemplate>
+										</ItemsControl.ItemTemplate>
+									</ItemsControl>
+								</Border>
+							</Popup>
+						</Panel>
+					</StackPanel>
 
 					<Border
+						controls:ResponsiveMenuPanel.IsPriority="True"
 						Width="1"
-						Margin="0,10,8,10"
+						Height="20"
+						Margin="0,6,6,6"
 						Background="{StaticResource SeparatorLine}" />
 
 					<Button
-						Margin="0,4,4,4"
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,6,4"
 						Classes="nav"
 						Command="{Binding NavigateToCoursesCommand}"
 						Content="Courses" />
 					<Button
-						Margin="0,4,4,4"
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,0,4"
 						Classes="nav"
 						Command="{Binding NavigateToInstructorsCommand}"
 						Content="Instructors" />
+
+					<!--  Low-priority items below — collapse into "More…" when width is tight  -->
 					<Button
-						Margin="0,4,4,4"
+						x:Name="NavSchedulingEnvironment"
+						Margin="0,4,0,4"
 						Classes="nav"
 						Command="{Binding NavigateToSchedulingEnvironmentCommand}"
 						Content="Scheduling Environment" />
 
-					<Border
-						Width="1"
-						Margin="4,10"
-						Background="{StaticResource SeparatorLine}" />
-
 					<Button
-						Margin="4,4,4,4"
+						x:Name="NavAcademicYears"
+						Margin="0,4,0,4"
 						Classes="nav"
 						Command="{Binding NavigateToAcademicYearsCommand}"
 						Content="Academic Years" />
 
-					<Border
-						Width="1"
-						Margin="4,10"
-						Background="{StaticResource SeparatorLine}" />
-
 					<Button
-						Margin="0,4,4,4"
+						x:Name="NavConfiguration"
+						Margin="0,4,9,4"
 						Classes="nav"
 						Command="{Binding NavigateToConfigurationCommand}"
 						Content="Configuration" />
 
-					<Border
-						Width="1"
-						Margin="4,10"
-						Background="{StaticResource SeparatorLine}" />
-
 					<Button
-						Margin="0,4,4,4"
+						x:Name="NavExport"
+						Margin="0,4,0,4"
 						Classes="nav"
 						Command="{Binding NavigateToExportHubCommand}"
 						Content="Export" />
 
-					<Border
-						Width="1"
-						Margin="4,10"
-						Background="{StaticResource SeparatorLine}" />
-
 					<!--  Help button — opens the Help documentation flyout  -->
 					<Button
-						Margin="4,4,0,4"
+						x:Name="NavHelp"
+						Margin="0,4,0,4"
 						Classes="nav"
 						Command="{Binding NavigateToHelpCommand}"
 						Content="Help" />
 
-					<Border
-						Width="1"
-						Margin="4,10"
-						Background="{StaticResource SeparatorLine}" />
-
-					<!--  Debug menu (added in code-behind in DEBUG mode)  -->
+					<!--  Debug menu (added in code-behind in DEBUG mode) — stays in main bar  -->
 					<Menu
 						x:Name="DebugMenu"
+						controls:ResponsiveMenuPanel.IsPriority="True"
 						Margin="0,4"
 						VerticalAlignment="Center"
 						Background="Transparent"
@@ -313,7 +292,23 @@
 							<MenuItem Command="{Binding OpenMigrationCommand}" Header="Migration: CSV → JSON…" />
 						</MenuItem>
 					</Menu>
-				</WrapPanel>
+
+					<!--
+						"More…" button — trailing, shown only when one or more low-priority items
+						have been collapsed by ResponsiveMenuPanel. Clicking opens the More flyout.
+						Classes.active="{Binding IsMoreOpen}" keeps it highlighted while the flyout is open.
+					-->
+					<Button
+						x:Name="MoreButton"
+						controls:ResponsiveMenuPanel.IsMoreButton="True"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Classes.active="{Binding IsMoreOpen}"
+						Command="{Binding OpenMoreMenuCommand}"
+						Content="More…"
+						IsVisible="False"
+						ToolTip.Tip="Show additional menu items" />
+				</controls:ResponsiveMenuPanel>
 
 			</DockPanel>
 		</Border>

@@ -5641,6 +5641,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-20T21:50:27.953Z"
+    },
+    {
+      "id": "bug-353",
+      "timestamp": "2026-04-21T03:30:12.530Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Had \"0,1.5,40,1.5\"",
+      "fix": "Changed to \"0,1.5,10,1.5\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-21T03:30:16.728Z"
+    },
+    {
+      "id": "bug-354",
+      "timestamp": "2026-04-21T05:12:40.132Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-21T05:12:40.132Z"
+    },
+    {
+      "id": "bug-355",
+      "timestamp": "2026-04-21T05:19:16.981Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MoreMenuView.axaml",
+      "root_cause": "Had \"SchedulingAssistant.Views.Management.MoreMenuView",
+      "fix": "Changed to \"SchedulingAssistant.Views.MoreMenuView\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-21T05:19:16.981Z"
     }
   ]
 }

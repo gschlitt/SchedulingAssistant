@@ -334,6 +334,47 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Re-raise notification properties when the current notification changes.
         _notificationService.NotificationChanged += OnNotificationChanged;
+
+        // Build the More-menu VM eagerly and wire up cross-VM callbacks. Held for the
+        // lifetime of the main window; content pane is resolved on demand.
+        MoreMenuVm = new MoreMenuViewModel(_services);
+        MoreMenuVm.TitleChangeRequested += OnMoreMenuTitleChangeRequested;
+        MoreMenuVm.ConfigurationRestoreCallback = RestoreFromBackupAsync;
+    }
+
+    /// <summary>
+    /// Hosts the "More…" flyout that appears when the top menu bar overflows.
+    /// Populated by the top-bar codebehind via <see cref="MoreMenuViewModel.SetHiddenKeys"/>.
+    /// </summary>
+    public MoreMenuViewModel MoreMenuVm { get; }
+
+    /// <summary>
+    /// True while the More flyout is open. Drives the "More…" button's active-state
+    /// highlight in the top bar via <c>Classes.active</c>. Updated from
+    /// <see cref="OnFlyoutPageChanged"/>.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isMoreOpen;
+
+    /// <summary>
+    /// Opens the More flyout by pushing <see cref="MoreMenuVm"/> into <see cref="FlyoutPage"/>.
+    /// The top-bar codebehind will already have called <see cref="MoreMenuViewModel.SetHiddenKeys"/>
+    /// in response to the panel's HiddenOverflowItemsChanged event.
+    /// </summary>
+    [RelayCommand]
+    private void OpenMoreMenu()
+    {
+        FlyoutPage = MoreMenuVm;
+        FlyoutTitle = "More";
+    }
+
+    /// <summary>
+    /// Receives title-change requests from <see cref="MoreMenuVm"/> — e.g. when the user
+    /// picks a rail entry the title becomes "More › &lt;entry&gt;".
+    /// </summary>
+    private void OnMoreMenuTitleChangeRequested(string title)
+    {
+        if (IsMoreOpen) FlyoutTitle = title;
     }
 
     /// <summary>
@@ -455,7 +496,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnFlyoutPageChanged(object? oldValue, object? newValue)
     {
-        (oldValue as IDisposable)?.Dispose();
+        // MoreMenuVm is a long-lived singleton — never dispose it when the flyout closes.
+        if (oldValue is not null && !ReferenceEquals(oldValue, MoreMenuVm))
+            (oldValue as IDisposable)?.Dispose();
+
+        IsMoreOpen = ReferenceEquals(newValue, MoreMenuVm);
     }
 
     /// <summary>

@@ -33,6 +33,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        // Subscribe to overflow-set changes on the top menu panel so we can mirror them
+        // into MoreMenuViewModel. DataContext isn't set yet; the handler guards for null.
+        if (this.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is { } topPanel)
+            topPanel.HiddenOverflowItemsChanged += OnTopMenuOverflowChanged;
+
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         Title = $"TermPoint v{version?.Major}.{version?.Minor}.{version?.Build}";
 
@@ -888,7 +893,32 @@ public partial class MainWindow : Window
             if (debugMenu is not null)
                 debugMenu.IsVisible = true;
 #endif
+
+            // Push the panel's current overflow set into the freshly-attached
+            // MoreMenuViewModel. Early measure passes may have fired before the VM
+            // existed; this catches that case (and DB-switch refreshes the new VM too).
+            SyncOverflowToViewModel();
         }
+    }
+
+    /// <summary>
+    /// Forwards the top menu panel's current hidden-items list into the active
+    /// <see cref="MoreMenuViewModel"/>. Called from both the panel's change event and
+    /// from <see cref="OnDataContextChanged"/> to handle timing ordering.
+    /// </summary>
+    private void OnTopMenuOverflowChanged(object? sender, EventArgs e) => SyncOverflowToViewModel();
+
+    private void SyncOverflowToViewModel()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (this.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is not { } panel) return;
+
+        var keys = new List<string>(panel.HiddenOverflowItems.Count);
+        foreach (var c in panel.HiddenOverflowItems)
+        {
+            if (!string.IsNullOrEmpty(c.Name)) keys.Add(c.Name);
+        }
+        vm.MoreMenuVm.SetHiddenKeys(keys);
     }
 
     private void OnMainWindowVmPropertyChanged(object? sender, PropertyChangedEventArgs e)

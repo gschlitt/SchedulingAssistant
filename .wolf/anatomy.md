@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-21T00:51:37.809Z
-> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-21T05:19:25.331Z
+> Files: 15 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,13 +29,16 @@
 
 ## ../../../.claude/plans/
 
+- `partitioned-prancing-gosling.md` — Plan: Responsive Menu Bar with Dynamic Overflow (~2307 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 
 ## ./
 
-- `.gitignore` — Git ignore rules (~120 tok)
+- `.gitignore` — Git ignore rules (~137 tok)
+- `publish.ps1` (~798 tok)
+- `spec_responsive_menu_overflow.md` — Responsive Menu Bar with Dynamic Overflow — Specification (~3404 tok)
 
 ## .claude/
 
@@ -171,23 +174,19 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1587 tok)
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3627 tok)
-- `AppColors.axaml` (~3022 tok)
-- `AppLayout.axaml` (~337 tok)
-- `MainWindow.axaml` — Declares applied (~6583 tok)
-- `Program.cs` — Class: Program (~477 tok)
-- `SchedulingAssistant.csproj` (~735 tok)
+- `App.axaml` (~1678 tok)
+- `MainWindow.axaml` — Declares applied (~6695 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~13760 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
+- `ResponsiveMenuPanel.cs` — Single-row horizontal panel that dynamically hides low-priority children into a trailing "More…" but (~2214 tok)
 
 ## src/SchedulingAssistant/Converters/
 
-- `BoolToItalicConverter.cs` — Converts a boolean to a <see cref="FontStyle"/>: <c>true</c> → <see cref="FontStyle.Italic"/>; <c>fa (~234 tok)
 
 ## src/SchedulingAssistant/Data/
 
@@ -200,28 +199,18 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `UpdateService.cs` — Checks GitHub Releases for a newer version and stages it for the next launch. Updates are applied si (~446 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7220 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7740 tok)
+- `MoreMenuEntry.cs` — Represents one overflow entry shown in the More flyout's left rail. Created by <see cref="MoreMenuVi (~239 tok)
+- `MoreMenuViewModel.cs` — Hosts the "More" flyout. Its left rail lists whichever low-priority top-bar items are currently over (~1566 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `AcademicUnitListViewModel.cs` — ViewModel for editing the single Academic Unit in the system. There is always exactly one unit; this (~676 tok)
-- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2414 tok)
-- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1675 tok)
-- `ConfigurationViewModel.cs` — ViewModel for the Configuration flyout hub. Hosts a left-sidebar list of configuration categories; s (~559 tok)
-- `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~376 tok)
-- `ExportViewModel.cs` — Category label shown in the Export flyout sidebar. (~677 tok)
-- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3414 tok)
-- `SaveAndBackupViewModel.cs` — ViewModel for the Save &amp; Backup flyout. Manages automated-backup configuration and restore. Back (~2440 tok)
-- `SectionPrefixListViewModel.cs` — ViewModel for the Section Prefixes management flyout. Provides a list of section prefixes with inlin (~2355 tok)
-- `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5496 tok)
-- `WorkloadReportViewModel.cs` — Category label shown in the Export flyout sidebar. (~2388 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -231,23 +220,16 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `DatabaseRecoveryWindow.axaml` (~4056 tok)
+- `MoreMenuView.axaml` (~563 tok)
+- `MoreMenuView.axaml.cs` — Class: MoreMenuView (~50 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~6644 tok)
-- `GridFilterView.axaml.cs` — Updates a filter dimension's header ToggleButton to show how many items are selected, with active co (~1922 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14112 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `ConfigurationView.axaml` (~384 tok)
-- `ConfigurationView.axaml.cs` — Class: ConfigurationView (~55 tok)
-- `ExportHubView.axaml` (~382 tok)
-- `ExportHubView.axaml.cs` — Class: ExportHubView (~53 tok)
-- `InstructorListView.axaml` (~8294 tok)
-- `SectionListView.axaml` (~20781 tok)
-- `WorkloadHistoryView.axaml` (~781 tok)
+- `MoreMenuView.axaml` (~566 tok)
+- `MoreMenuView.axaml.cs` — Class: MoreMenuView (~53 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

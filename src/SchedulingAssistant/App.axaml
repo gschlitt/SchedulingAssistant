@@ -77,6 +77,14 @@
 			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
 		</Style>
 
+		<!--
+			Active-state highlight for nav buttons. Applied via Classes.active binding
+			(e.g. the "More…" button stays highlighted while the More flyout is open).
+		-->
+		<Style Selector="Button.nav.active /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+
 		<!--  Settings menu: strip chrome from the Menu container itself  -->
 		<Style Selector="Menu">
 			<Setter Property="Background" Value="Transparent" />
