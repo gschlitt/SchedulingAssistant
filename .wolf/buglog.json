@@ -5609,6 +5609,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-20T19:43:23.272Z"
+    },
+    {
+      "id": "bug-351",
+      "timestamp": "2026-04-20T20:53:13.256Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Services/UpdateService.cs",
+      "root_cause": "Had \"https://github.com/YOUR_GITHUB_USERNAME/Schedulin",
+      "fix": "Changed to \"https://github.com/gschlitt/SchedulingAssistant\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T20:53:13.256Z"
+    },
+    {
+      "id": "bug-352",
+      "timestamp": "2026-04-20T21:50:27.953Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Had \"Avalonia.Svg.Skia\"",
+      "fix": "Changed to \"Avalonia.Controls.ColorPicker\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-20T21:50:27.953Z"
     }
   ]
 }

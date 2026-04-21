@@ -1,6 +1,6 @@
 Bugs:
-New DB and transfer config does not transfer semester colors
-Separation between days in multisemester mode
+
+
 Colors in Courses off again
 
 

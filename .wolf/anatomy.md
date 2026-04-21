@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-20T19:43:38.228Z
-> Files: 29 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-21T00:51:37.809Z
+> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -35,6 +35,7 @@
 
 ## ./
 
+- `.gitignore` — Git ignore rules (~120 tok)
 
 ## .claude/
 
@@ -171,10 +172,12 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1587 tok)
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3588 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3627 tok)
 - `AppColors.axaml` (~3022 tok)
 - `AppLayout.axaml` (~337 tok)
 - `MainWindow.axaml` — Declares applied (~6583 tok)
+- `Program.cs` — Class: Program (~477 tok)
+- `SchedulingAssistant.csproj` (~735 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -197,6 +200,7 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `UpdateService.cs` — Checks GitHub Releases for a newer version and stages it for the next launch. Updates are applied si (~446 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 

@@ -2,6 +2,7 @@ using Avalonia;
 using Bugsnag;
 using SchedulingAssistant.Services;
 using System;
+using Velopack;
 
 namespace SchedulingAssistant;
 
@@ -13,7 +14,10 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        
+        // Must be the very first call — handles installer hooks and applies any staged updates.
+        VelopackApp.Build().Run();
+
+
 
         // ── Global exception handlers ────────────────────────────────────────
         // These are last-resort nets. They log the exception and then let the

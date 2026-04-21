@@ -65,6 +65,9 @@ public partial class App : Application
             var win = new MainWindow();
             win.IsVisible = false;
             desktop.MainWindow = win;
+
+            // Check for updates in the background. Failures are non-fatal.
+            _ = new UpdateService().CheckForUpdatesAsync(Logger);
         }
 
         base.OnFrameworkInitializationCompleted();
