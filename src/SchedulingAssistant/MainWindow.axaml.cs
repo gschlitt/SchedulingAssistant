@@ -6,7 +6,9 @@ using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Controls;
+using SchedulingAssistant.Data;
 using SchedulingAssistant.Exceptions;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
@@ -810,19 +812,65 @@ public partial class MainWindow : Window
             vm.SetSaveError(message);
     }
 
+    /// <summary>
+    /// Handles <see cref="CheckoutService.SessionTimedOut"/> — fired when
+    /// <see cref="CheckoutService.SaveAsync"/> or the wake-check discovered that
+    /// the write lock is no longer ours (deleted, stolen, or its <c>SessionGuid</c>
+    /// was modified).
+    ///
+    /// <para>Demotes the session to read-only <b>in place</b>, without swapping the
+    /// DataContext. The existing <see cref="MainWindowViewModel"/> is kept so the
+    /// banner set by <see cref="MainWindowViewModel.SetSaveError"/> remains visible.
+    /// The <c>DatabaseContext</c> is closed, D'' is created from D, and the connection
+    /// is reopened against D''. A reload of <see cref="SectionStore"/> then refreshes
+    /// every panel from D'' (our unsaved in-memory edits in D' are gone by design).</para>
+    ///
+    /// <para>The user is directed to restart the app to re-bid for write access;
+    /// we deliberately do not auto-reacquire, because doing so would silently trample
+    /// whoever now holds the lock.</para>
+    /// </summary>
     private async void OnSessionTimedOut()
     {
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            if (DataContext is MainWindowViewModel vm)
-                vm.SetSaveError(
-                    "Your editing session timed out and another user has taken over. " +
-                    "Unsaved changes have been lost. You are now in read-only mode.");
+            const string banner =
+                "You have lost write access. You can attempt to regain it " +
+                "by exiting and restarting TermPoint.";
 
-            // Re-open the source database in read-only mode.
-            var sourcePath = App.Checkout.SourcePath;
-            if (!string.IsNullOrEmpty(sourcePath))
-                await SwitchDatabaseAsync(sourcePath);
+            var vm        = DataContext as MainWindowViewModel;
+            var dbContext = App.Services?.GetService<IDatabaseContext>() as DatabaseContext;
+
+            // Close the DatabaseContext connection before D' is deleted; reopen it
+            // against the new WorkingPath (= D'') after SetupReadOnlySnapshotAsync runs.
+            async Task BeforeClose()
+            {
+                await Task.CompletedTask;
+                dbContext?.CloseConnection();
+            }
+
+            async Task AfterOpen()
+            {
+                await Task.CompletedTask;
+                if (dbContext is not null && !string.IsNullOrEmpty(App.Checkout.WorkingPath))
+                    dbContext.ReinitializeConnection(App.Checkout.WorkingPath);
+            }
+
+            var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);
+
+            // Surface the banner AFTER demotion so nothing wipes it mid-flight.
+            vm?.SetSaveError(banner);
+
+            // Reload so panels reflect D'' (which equals D) instead of the discarded D'.
+            // Failure here is non-fatal — we've already flipped to read-only; worst case
+            // the UI shows slightly stale data until the user manually refreshes.
+            if (ok && vm is not null)
+            {
+                try { vm.SectionListVm.ReloadFromDatabase(); }
+                catch (System.Exception ex)
+                {
+                    App.Logger.LogError(ex, "OnSessionTimedOut: post-demote reload failed");
+                }
+            }
         });
     }
 

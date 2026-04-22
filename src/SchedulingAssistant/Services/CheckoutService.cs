@@ -40,6 +40,35 @@ namespace SchedulingAssistant.Services;
 /// <see cref="WriteLockService"/>, <see cref="IAppLogger"/>, a synchronous dispatcher,
 /// and a custom working directory. Production code passes <c>App.LockService</c> and
 /// <c>App.Logger</c>; unit tests supply their own isolated instances.</para>
+///
+/// <para><b>Lock-loss scenarios — "write access disappears out from under us":</b>
+/// the app can discover it no longer owns the write lock in three ways. In all
+/// three cases the session is demoted to read-only in place (without rebuilding
+/// the view-model) and a banner is shown instructing the user to exit and
+/// restart if they want to bid for write access again. The sequence is:
+/// <see cref="SessionTimedOut"/> raised → MainWindow handler calls
+/// <see cref="DemoteToReadOnlyAsync"/> → banner surfaced → reader polling
+/// resumes so a later clean release by the new holder can still offer an
+/// in-app takeover prompt without a restart.</para>
+///
+/// <list type="number">
+///   <item><b>Save-time verification.</b> <see cref="SaveAsync"/> calls
+///         <see cref="VerifyLockIsOurs"/> before writing D' → D. If the lock
+///         file is missing or its <c>SessionGuid</c> doesn't match ours, the
+///         save is aborted and <see cref="HandleSessionTimeoutAsync"/> fires.
+///         Triggers: lock file manually deleted, or contents rewritten by
+///         another process.</item>
+///   <item><b>Wake-from-sleep check.</b> <see cref="WriteLockService.WakeDetected"/>
+///         fires when the 30-second tick gap exceeds 90 s — a clear
+///         "we were asleep" signal. <see cref="OnWake"/> verifies the lock on a
+///         background thread (the SMB reconnect can take 30 s; doing it on the
+///         UI thread froze the window) and, if we no longer own it, fires the
+///         same <see cref="HandleSessionTimeoutAsync"/> path. Triggers: another
+///         user took over via stale-lock prompt while this machine slept.</item>
+///   <item><b>Heartbeat renewal failure.</b> Not yet treated as a lock-loss
+///         signal — currently logged only. Future work could route it through
+///         the same path.</item>
+/// </list>
 /// </summary>
 public sealed class CheckoutService : IDisposable
 {
@@ -70,10 +99,23 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     private readonly string _workingDir;
 
+    // ── Constants ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Maximum time to wait for a single file operation that touches the network
+    /// (D, D.lock, D.tmp). Operations that exceed this threshold are presumed to
+    /// be blocked by an unreachable network share.
+    /// </summary>
+    private const int NetworkTimeoutMs = 5000;
+
+    private const string NetworkUnreachableMessage =
+        "Cannot reach the database — check your network connection and try again.";
+
     // ── State ──────────────────────────────────────────────────────────────────
 
     private Timer?  _autoSaveTimer;
     private bool    _disposed;
+    private bool    _saveInFlight;
 
     /// <summary>Current checkout mode.</summary>
     public CheckoutMode Mode { get; private set; } = CheckoutMode.ReadOnly;
@@ -131,9 +173,16 @@ public sealed class CheckoutService : IDisposable
     // ── Events ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Raised on the UI thread when a wake-from-sleep check finds that the write
-    /// lock is no longer held by this session. The app should switch to read-only
-    /// mode and notify the user that unsaved changes have been lost.
+    /// Raised on the UI thread when this session is found to no longer own the
+    /// write lock. Fired from every lock-loss detection path — see the
+    /// "Lock-loss scenarios" section on <see cref="CheckoutService"/> for the
+    /// full list (save-time verification, wake-from-sleep check, …).
+    ///
+    /// <para>The handler (<c>MainWindow.OnSessionTimedOut</c>) is expected to
+    /// call <see cref="DemoteToReadOnlyAsync"/> to transition into read-only
+    /// mode, surface a banner to the user, and reload the panels from the fresh
+    /// D'' snapshot. Unsaved changes in D' are lost by design — the alternative
+    /// would be to trample whoever now holds the lock.</para>
     /// </summary>
     public event Action? SessionTimedOut;
 
@@ -385,6 +434,25 @@ public sealed class CheckoutService : IDisposable
         if (Mode != CheckoutMode.WriteAccess)
             return SaveOutcome.NotInWriteMode;
 
+        if (_saveInFlight)
+        {
+            _logger.LogInfo("CheckoutService: SaveAsync skipped — a save is already in progress.");
+            return SaveOutcome.CopyError;
+        }
+
+        _saveInFlight = true;
+        try
+        {
+            return await SaveAsyncCore(releaseLockAfter);
+        }
+        finally
+        {
+            _saveInFlight = false;
+        }
+    }
+
+    private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter)
+    {
         // Degenerate mode — D' IS D (new database that was never copied).
         // Nothing to copy back; just release the lock if requested.
         if (WorkingPath == SourcePath)
@@ -396,7 +464,17 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Step 1: Verify we still hold the lock ─────────────────────────────
-        if (!VerifyLockIsOurs())
+        var (lockCheckCompleted, lockIsOurs) = await WithNetworkTimeout(
+            () => VerifyLockIsOurs(), "lock verification");
+
+        if (!lockCheckCompleted)
+        {
+            _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
+            _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+            return SaveOutcome.CopyError;
+        }
+
+        if (!lockIsOurs)
         {
             await HandleSessionTimeoutAsync();
             return SaveOutcome.LockLost;
@@ -405,14 +483,13 @@ public sealed class CheckoutService : IDisposable
         // ── Step 2: Verify D has not been externally modified ─────────────────
         if (HashAtCheckout is not null)
         {
-            string currentSourceHash;
-            try { currentSourceHash = ComputeHash(SourcePath); }
-            catch (Exception ex)
+            var (hashCompleted, currentSourceHash) = await WithNetworkTimeout(
+                () => ComputeHash(SourcePath), "source hash verification");
+
+            if (!hashCompleted)
             {
-                _logger.LogInfo($"CheckoutService: could not hash source — {ex.Message}");
-                // If D can't be read (e.g. network unavailable), treat as a copy error.
-                var errMsg = $"Cannot reach the database location: {ex.Message}";
-                _dispatch(() => SaveFailed?.Invoke(errMsg));
+                _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
+                _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
                 return SaveOutcome.CopyError;
             }
 
@@ -436,7 +513,16 @@ public sealed class CheckoutService : IDisposable
         var tmpPath = SourcePath + ".tmp";
         try
         {
-            BackupSqliteDatabase(WorkingPath, tmpPath);
+            var backupCompleted = await WithNetworkTimeout(
+                () => BackupSqliteDatabase(WorkingPath, tmpPath), "D' → D.tmp backup");
+
+            if (!backupCompleted)
+            {
+                _logger.LogInfo("CheckoutService: D.tmp backup timed out — network unreachable");
+                try { File.Delete(tmpPath); } catch { }
+                _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+                return SaveOutcome.CopyError;
+            }
         }
         catch (Exception ex)
         {
@@ -452,12 +538,29 @@ public sealed class CheckoutService : IDisposable
         // We therefore hash D.tmp itself — the file that will become the new D —
         // so that HashAtCheckout matches D after the rename and conflict detection
         // on the next save works correctly.
-        var newSourceHash = ComputeHash(tmpPath);
+        var (hashTmpCompleted, newSourceHash) = await WithNetworkTimeout(
+            () => ComputeHash(tmpPath), "D.tmp hash");
+
+        if (!hashTmpCompleted)
+        {
+            _logger.LogInfo("CheckoutService: D.tmp hash timed out — network unreachable");
+            try { File.Delete(tmpPath); } catch { }
+            _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+            return SaveOutcome.CopyError;
+        }
 
         // ── Step 6: Atomically rename D.tmp → D ──────────────────────────────
         try
         {
-            File.Move(tmpPath, SourcePath, overwrite: true);
+            var renameCompleted = await WithNetworkTimeout(
+                () => File.Move(tmpPath, SourcePath, overwrite: true), "D.tmp → D rename");
+
+            if (!renameCompleted)
+            {
+                _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
+                _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+                return SaveOutcome.CopyError;
+            }
         }
         catch (Exception ex)
         {
@@ -527,15 +630,37 @@ public sealed class CheckoutService : IDisposable
         // Attempt up to 3 times in case D is modified mid-copy (hash mismatch).
         for (int attempt = 0; attempt < 3; attempt++)
         {
-            string sourceHash;
-            try { sourceHash = ComputeHash(SourcePath); }
+            string? sourceHash;
+            try
+            {
+                bool hashCompleted;
+                (hashCompleted, sourceHash) = await WithNetworkTimeout(
+                    () => ComputeHash(SourcePath), "read-only refresh hash");
+
+                if (!hashCompleted)
+                {
+                    _logger.LogInfo("CheckoutService: refresh hash timed out — network unreachable");
+                    return RefreshOutcome.SourceUnavailable;
+                }
+            }
             catch (Exception ex)
             {
                 _logger.LogInfo($"CheckoutService: could not read D for refresh: {ex.Message}");
                 return RefreshOutcome.SourceUnavailable;
             }
 
-            try { CopyWithSharing(SourcePath, tmpPath); }
+            try
+            {
+                var copyCompleted = await WithNetworkTimeout(
+                    () => CopyWithSharing(SourcePath, tmpPath), "read-only refresh copy");
+
+                if (!copyCompleted)
+                {
+                    _logger.LogInfo("CheckoutService: refresh copy timed out — network unreachable");
+                    try { File.Delete(tmpPath); } catch { }
+                    return RefreshOutcome.SourceUnavailable;
+                }
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp during refresh");
@@ -734,28 +859,6 @@ public sealed class CheckoutService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Discards D' and switches to read-only mode without saving. Called when the
-    /// write lock is lost (e.g., session timeout after wake from sleep).
-    /// </summary>
-    public async Task DiscardAndGoReadonlyAsync()
-    {
-        StopAutoSave();
-        _lockService.WakeDetected -= OnWake;
-
-        if (WorkingPath != SourcePath)
-        {
-            if (File.Exists(WorkingPath))
-                try { File.Delete(WorkingPath); } catch { }
-            DeleteDirtyMarker();
-        }
-
-        Mode         = CheckoutMode.ReadOnly;
-        SessionDirty = false;
-
-        await Task.CompletedTask;
-    }
-
     // ── Autosave ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -808,30 +911,238 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Called when <see cref="WriteLockService.WakeDetected"/> fires.
-    /// Re-reads the lock file to verify this session still owns it.
+    /// Called when <see cref="WriteLockService.WakeDetected"/> fires — i.e., the
+    /// wake-detection timer saw a gap long enough to infer the machine was
+    /// asleep. Re-reads the lock file to verify this session still owns it.
+    /// If yes, forces an immediate heartbeat renewal so the lock looks fresh to
+    /// other readers. If no, routes through
+    /// <see cref="HandleSessionTimeoutAsync"/>, which raises
+    /// <see cref="SessionTimedOut"/> so MainWindow can demote in place.
+    ///
+    /// <para>The event is dispatched on the UI thread, but the verification work
+    /// (reading the <c>.lock</c> file on a network share) can block for 20–30
+    /// seconds right after a wake while the SMB client reconnects. Running that
+    /// synchronously on the UI thread would freeze the window. We therefore hop
+    /// to a background thread immediately and only touch the UI — via
+    /// <see cref="_dispatch"/> inside <see cref="HandleSessionTimeoutAsync"/> —
+    /// after the decision is made.</para>
+    ///
+    /// <para>No-op when not in write mode — readers don't own a lock, so there's
+    /// nothing to verify.</para>
     /// </summary>
     private void OnWake()
     {
         if (Mode != CheckoutMode.WriteAccess) return;
 
-        if (!VerifyLockIsOurs())
+        // Fire-and-forget onto a background thread so the UI stays responsive
+        // during the SMB reconnect delay inside VerifyLockIsOurs.
+        _ = Task.Run(async () =>
         {
-            _logger.LogInfo("CheckoutService: wake check — lock is no longer ours. Timing out session.");
-            _ = HandleSessionTimeoutAsync();
-        }
-        else
-        {
-            _logger.LogInfo("CheckoutService: wake check — lock confirmed. Renewing heartbeat.");
-            _lockService.ForceRenewHeartbeat();
-        }
+            try
+            {
+                if (!VerifyLockIsOurs())
+                {
+                    _logger.LogInfo("CheckoutService: wake check — lock is no longer ours. Timing out session.");
+                    await HandleSessionTimeoutAsync();
+                }
+                else
+                {
+                    _logger.LogInfo("CheckoutService: wake check — lock confirmed. Renewing heartbeat.");
+                    _lockService.ForceRenewHeartbeat();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CheckoutService: wake-check task failed");
+            }
+        });
     }
 
-    /// <summary>Discards D' and raises <see cref="SessionTimedOut"/> on the UI thread.</summary>
-    private async Task HandleSessionTimeoutAsync()
+    /// <summary>
+    /// Stops autosave and unhooks the wake handler, then raises
+    /// <see cref="SessionTimedOut"/> on the UI thread. Does NOT transition
+    /// <see cref="Mode"/>, release the lock, delete D', or set up D''.
+    ///
+    /// <para>The handler of <see cref="SessionTimedOut"/> is responsible for the
+    /// full demotion via <see cref="DemoteToReadOnlyAsync"/>, which closes the
+    /// <c>DatabaseContext</c> connection at the right moment, releases the lock
+    /// (without deleting it if it is no longer ours), deletes D', creates D'',
+    /// and reopens the connection. Keeping state transitions in the handler means
+    /// the UI stays consistent with <see cref="CheckoutService"/> state, and the
+    /// existing view-model / banner is preserved.</para>
+    /// </summary>
+    private Task HandleSessionTimeoutAsync()
     {
-        await DiscardAndGoReadonlyAsync();
+        StopAutoSave();
+        _lockService.WakeDetected -= OnWake;
         _dispatch(() => SessionTimedOut?.Invoke());
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Demotes the current write-access session to read-only in place, without
+    /// rebuilding the DI container or swapping the main view-model. Intended for
+    /// the <see cref="SessionTimedOut"/> handler and any other "lock lost" flow
+    /// that needs to keep the UI alive.
+    ///
+    /// <para>Sequence:</para>
+    /// <list type="number">
+    ///   <item>Stop autosave and unhook the wake handler (idempotent — also done
+    ///         by <see cref="HandleSessionTimeoutAsync"/>).</item>
+    ///   <item>Release the write lock. <see cref="WriteLockService.Release"/>
+    ///         re-reads the lock file and skips the delete if the <c>SessionGuid</c>
+    ///         is no longer ours, so a foreign holder's claim is preserved.</item>
+    ///   <item>Invoke <paramref name="beforeClose"/> so the caller can close the
+    ///         <c>DatabaseContext</c> connection to D'.</item>
+    ///   <item>Delete D' and its dirty marker (the Windows file-lock no longer
+    ///         blocks the delete once the connection is closed).</item>
+    ///   <item>Copy D → D'' via <see cref="SetupReadOnlySnapshotAsync"/>, which
+    ///         also flips <see cref="Mode"/> to <see cref="CheckoutMode.ReadOnly"/>,
+    ///         sets <see cref="IsReadOnlyMode"/>, and updates
+    ///         <see cref="WorkingPath"/> to point at D''.</item>
+    ///   <item>Call <see cref="WriteLockService.EnterReaderMode"/> so the reader
+    ///         poll timer is started against D's lock file. This is what lets a
+    ///         demoted session later be offered an in-app takeover prompt if the
+    ///         current holder releases the lock cleanly — without it, the only
+    ///         way back to write mode would be exiting and restarting the app.</item>
+    ///   <item>Invoke <paramref name="afterOpen"/> so the caller can reopen the
+    ///         <c>DatabaseContext</c> connection to the new <see cref="WorkingPath"/>
+    ///         (= D'').</item>
+    /// </list>
+    ///
+    /// <para>Returns <c>true</c> on successful demotion. Returns <c>false</c> if
+    /// this instance was not in write mode, or if <see cref="SetupReadOnlySnapshotAsync"/>
+    /// could not produce D'' (e.g., D is unreachable). On failure, <paramref name="afterOpen"/>
+    /// is still invoked — but the caller should check the return value and surface an
+    /// error, because the <c>DatabaseContext</c> has already been closed and may have
+    /// no valid file to reopen against.</para>
+    /// </summary>
+    /// <param name="beforeClose">
+    /// Async callback invoked after the lock is released but before D' is deleted.
+    /// The caller must close the <c>DatabaseContext</c> connection here so that D'
+    /// can be deleted cleanly on Windows.
+    /// </param>
+    /// <param name="afterOpen">
+    /// Async callback invoked after D'' has been created and <see cref="WorkingPath"/>
+    /// updated. The caller must reopen the <c>DatabaseContext</c> connection to
+    /// <see cref="WorkingPath"/> here.
+    /// </param>
+    public async Task<bool> DemoteToReadOnlyAsync(
+        Func<Task>? beforeClose = null,
+        Func<Task>? afterOpen = null)
+    {
+        if (Mode != CheckoutMode.WriteAccess)
+            return false;
+
+        // 1 & 2 — stop timers and release the lock (safe against foreign holders).
+        StopAutoSave();
+        _lockService.WakeDetected -= OnWake;
+        _lockService.Release();
+
+        // 3 — let the caller close the DatabaseContext connection to D'.
+        if (beforeClose is not null)
+        {
+            try { await beforeClose(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CheckoutService: DemoteToReadOnly — beforeClose callback threw");
+            }
+        }
+
+        // 4 — delete D' and the dirty marker now that the connection is closed.
+        if (WorkingPath != SourcePath && !string.IsNullOrEmpty(WorkingPath))
+        {
+            if (File.Exists(WorkingPath))
+            {
+                try { File.Delete(WorkingPath); }
+                catch (Exception ex)
+                {
+                    _logger.LogInfo($"CheckoutService: DemoteToReadOnly — could not delete D': {ex.Message}");
+                }
+            }
+            DeleteDirtyMarker();
+        }
+
+        SessionDirty = false;
+
+        // 5 — create D''. SetupReadOnlySnapshotAsync updates WorkingPath and Mode.
+        var readOnlyPath = await SetupReadOnlySnapshotAsync();
+        var success = readOnlyPath is not null;
+
+        if (!success)
+        {
+            _logger.LogInfo("CheckoutService: DemoteToReadOnly — SetupReadOnlySnapshotAsync failed.");
+            // Still flip Mode so nothing else tries to write.
+            Mode = CheckoutMode.ReadOnly;
+            SessionDirty = false;
+        }
+
+        // 5b — enter reader mode so the poll timer starts. Without this, a session
+        // that lost write access would never notice the current holder releasing
+        // cleanly and would stay stuck in read-only until restart.
+        _lockService.EnterReaderMode(SourcePath);
+
+        // 6 — let the caller reopen the DatabaseContext connection. Called even on
+        // failure so the caller can decide how to surface the problem, but WorkingPath
+        // may not point at a valid file.
+        if (afterOpen is not null)
+        {
+            try { await afterOpen(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CheckoutService: DemoteToReadOnly — afterOpen callback threw");
+                return false;
+            }
+        }
+
+        return success;
+    }
+
+    /// <summary>
+    /// Runs a synchronous operation that touches the network share on a thread-pool
+    /// thread and races it against a <see cref="NetworkTimeoutMs"/> deadline. Returns
+    /// <c>(true, result)</c> on success, or <c>(false, default)</c> on timeout. Exceptions
+    /// thrown by <paramref name="operation"/> propagate to the caller unchanged.
+    /// </summary>
+    /// <param name="operation">Synchronous file-IO action to run (e.g. <see cref="ComputeHash"/>).</param>
+    /// <param name="operationName">Human-readable label for log messages.</param>
+    private async Task<(bool Completed, T? Result)> WithNetworkTimeout<T>(
+        Func<T> operation, string operationName)
+    {
+        var task = Task.Run(operation);
+        var winner = await Task.WhenAny(task, Task.Delay(NetworkTimeoutMs));
+
+        if (winner == task)
+        {
+            // Propagate any exception thrown by the operation.
+            return (true, await task);
+        }
+
+        _logger.LogInfo(
+            $"CheckoutService: {operationName} timed out after {NetworkTimeoutMs}ms " +
+            "— network may be unavailable");
+        return (false, default);
+    }
+
+    /// <summary>
+    /// Void variant of <see cref="WithNetworkTimeout{T}"/>. Returns <c>true</c> when the
+    /// operation completed within the deadline, <c>false</c> on timeout.
+    /// </summary>
+    private async Task<bool> WithNetworkTimeout(Action operation, string operationName)
+    {
+        var task = Task.Run(operation);
+        var winner = await Task.WhenAny(task, Task.Delay(NetworkTimeoutMs));
+
+        if (winner == task)
+        {
+            await task; // propagate exceptions
+            return true;
+        }
+
+        _logger.LogInfo(
+            $"CheckoutService: {operationName} timed out after {NetworkTimeoutMs}ms " +
+            "— network may be unavailable");
+        return false;
     }
 
     /// <summary>

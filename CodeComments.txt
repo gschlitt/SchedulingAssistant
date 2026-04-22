@@ -1,7 +1,11 @@
 Bugs:
 
+DB open in laptop as writer, and on desktop as reader. Laptop sleeps. Desktop offered to become writer,
+becomes writer. Laptop awakes, continues as writer, no notice given. Can see that the lock was not updated
+when the desktop became writer.
 
-Colors in Courses off again
+
+
 
 
 

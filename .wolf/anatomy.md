@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-21T16:53:23.186Z
-> Files: 18 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-22T17:08:16.696Z
+> Files: 4 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,16 +29,13 @@
 
 ## ../../../.claude/plans/
 
-- `partitioned-prancing-gosling.md` — Plan: Responsive Menu Bar with Dynamic Overflow (~2307 tok)
+- `zesty-brewing-feigenbaum.md` — Plan: Network Timeout Wrappers for CheckoutService (~1299 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 
 ## ./
 
-- `.gitignore` — Git ignore rules (~137 tok)
-- `publish.ps1` (~798 tok)
-- `spec_responsive_menu_overflow.md` — Responsive Menu Bar with Dynamic Overflow — Specification (~3404 tok)
 
 ## .claude/
 
@@ -174,16 +171,13 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1720 tok)
-- `MainWindow.axaml` — Declares applied (~6695 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~13760 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14400 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
-- `ResponsiveMenuPanel.cs` — Single-row horizontal panel that dynamically hides low-priority children into a trailing "More…" but (~2214 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -199,17 +193,14 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2304 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~16975 tok)
+- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~6857 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7740 tok)
-- `MoreMenuEntry.cs` — Represents one overflow entry shown in the More flyout's left rail. Created by <see cref="MoreMenuVi (~239 tok)
-- `MoreMenuViewModel.cs` — Hosts the "More" flyout. Its left rail lists whichever low-priority top-bar items are currently over (~1566 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each  (~6615 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
@@ -222,17 +213,12 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `MoreMenuView.axaml` (~563 tok)
-- `MoreMenuView.axaml.cs` — Class: MoreMenuView (~50 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~6644 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `MoreMenuView.axaml` (~566 tok)
-- `MoreMenuView.axaml.cs` — Class: MoreMenuView (~53 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

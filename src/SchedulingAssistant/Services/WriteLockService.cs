@@ -178,6 +178,15 @@ public sealed class WriteLockService : IDisposable
     /// timer and deleting the lock file. Also stops the poll timer if this instance
     /// is in read-only mode. Safe to call multiple times or when in read-only mode
     /// — both are no-ops for the lock file deletion step.
+    ///
+    /// <para><b>Ownership re-check:</b> Before deleting the lock file, this method
+    /// re-reads it and verifies the stored <c>SessionGuid</c> still matches our own.
+    /// If the file is gone, corrupted, or owned by a different session, the deletion
+    /// is skipped — we must never trample a rightful holder's claim even though we
+    /// locally believe <see cref="IsWriter"/> is true. (This can happen after another
+    /// user has modified the lock file out from under us; our <see cref="IsWriter"/>
+    /// flag won't have been reset because we only learn about the lock theft when
+    /// <see cref="CheckoutService.SaveAsync"/> does its own verification.)</para>
     /// </summary>
     public void Release()
     {
@@ -190,20 +199,58 @@ public sealed class WriteLockService : IDisposable
 
         if (IsWriter && _lockFilePath is not null)
         {
-            try
+            if (LockFileStillOurs(_lockFilePath))
             {
-                File.Delete(_lockFilePath);
-                App.Logger.LogInfo($"[WriteLockService] Released write lock: {_lockFilePath}");
+                try
+                {
+                    File.Delete(_lockFilePath);
+                    App.Logger.LogInfo($"[WriteLockService] Released write lock: {_lockFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.LogInfo($"[WriteLockService] Warning — could not delete lock file on release: {ex.Message}");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                App.Logger.LogInfo($"[WriteLockService] Warning — could not delete lock file on release: {ex.Message}");
+                App.Logger.LogInfo($"[WriteLockService] Release: lock file at {_lockFilePath} is no longer ours; skipping delete.");
             }
         }
+
+        var wasWriter = IsWriter;
 
         IsWriter = false;
         CurrentHolder = null;
         _lockFilePath = null;
+
+        // Notify subscribers (MainWindowViewModel, SubjectListViewModel, etc.) so any
+        // UI enablement bound to IsWriter re-evaluates. Without this, a demotion from
+        // write → read would leave write-gated controls (Add Section, Delete, etc.)
+        // enabled until the next time TryAcquire/ForceAcquire happens to fire the event.
+        if (wasWriter)
+            Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+    }
+
+    /// <summary>
+    /// Returns true when the lock file at <paramref name="path"/> exists and contains
+    /// a JSON payload whose <see cref="LockFileData.SessionGuid"/> matches ours.
+    /// Returns false for a missing file, unreadable file, parse error, or a mismatched
+    /// or missing <c>SessionGuid</c> — in all those cases the caller must treat the
+    /// lock as not-ours and avoid touching it.
+    /// </summary>
+    private bool LockFileStillOurs(string path)
+    {
+        if (!File.Exists(path)) return false;
+        try
+        {
+            var json = File.ReadAllText(path);
+            var data = JsonSerializer.Deserialize<LockFileData>(json);
+            return data?.SessionGuid == SessionGuid;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -259,6 +306,49 @@ public sealed class WriteLockService : IDisposable
     /// the next scheduled heartbeat tick.
     /// </summary>
     internal void ForceRenewHeartbeat() => RenewHeartbeat();
+
+    /// <summary>
+    /// Enters reader mode for the given database path WITHOUT attempting to acquire
+    /// the lock. Used by <see cref="CheckoutService.DemoteToReadOnlyAsync"/> so a
+    /// session that has just lost write access still gets the reader polling timer
+    /// — that way, if the current holder later releases cleanly, this session is
+    /// offered the "switch to edit mode" prompt via <see cref="LockStateChanged"/>.
+    ///
+    /// <para>Safe to call while <see cref="IsWriter"/> is false. Populates
+    /// <see cref="CurrentHolder"/> from the current contents of the lock file (may
+    /// be null if the file is gone), starts the poll timer, and fires
+    /// <see cref="LockStateChanged"/> on the UI thread.</para>
+    /// </summary>
+    /// <param name="dbPath">Absolute path to the source database (D), not the working copy.</param>
+    public void EnterReaderMode(string dbPath)
+    {
+        // Shouldn't happen — caller (CheckoutService) always Releases first — but guard.
+        if (IsWriter)
+        {
+            App.Logger.LogInfo("[WriteLockService] EnterReaderMode called while IsWriter=true; ignoring.");
+            return;
+        }
+
+        _pollTimer?.Dispose();
+        _pollTimer = null;
+
+        _lockFilePath = Path.ChangeExtension(dbPath, ".lock");
+        WriteLockBecameAvailable = false;
+        IsStaleLock = false;
+
+        // Populate CurrentHolder from whatever's in the lock file right now. If the
+        // file is absent, CurrentHolder ends up null and the very first poll tick
+        // will classify the lock as available and raise LockStateChanged again.
+        if (File.Exists(_lockFilePath))
+            ReadCurrentHolder();
+        else
+            CurrentHolder = null;
+
+        StartPolling();
+        App.Logger.LogInfo($"[WriteLockService] Entered reader mode for {_lockFilePath}; polling started.");
+
+        Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+    }
 
     /// <summary>
     /// Top-level lock acquisition attempt. First tries to create the file

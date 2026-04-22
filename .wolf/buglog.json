@@ -5705,6 +5705,150 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-21T16:53:23.284Z"
+    },
+    {
+      "id": "bug-357",
+      "timestamp": "2026-04-22T02:10:23.566Z",
+      "error_message": "Missing error handling in Task",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T02:10:23.566Z"
+    },
+    {
+      "id": "bug-358",
+      "timestamp": "2026-04-22T02:11:44.072Z",
+      "error_message": "Missing error handling in void",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T02:11:44.072Z"
+    },
+    {
+      "id": "bug-359",
+      "timestamp": "2026-04-22T02:22:20.896Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Had \"Another user now has write access. You can attemp",
+      "fix": "Changed to \"You have lost write access. You can attempt to re",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T02:22:20.896Z"
+    },
+    {
+      "id": "bug-360",
+      "timestamp": "2026-04-22T03:05:20.433Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T03:05:20.433Z"
+    },
+    {
+      "id": "bug-361",
+      "timestamp": "2026-04-22T03:05:37.526Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T03:05:37.526Z"
+    },
+    {
+      "id": "bug-362",
+      "timestamp": "2026-04-22T04:03:48.169Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T04:03:48.169Z"
+    },
+    {
+      "id": "bug-363",
+      "timestamp": "2026-04-22T04:10:04.093Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→13 lines (3 removed) | Also: /// Called when <see cref=\"WriteLockService.WakeDe; /// Re-reads the lock file to verify this session ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-22T04:10:37.632Z"
+    },
+    {
+      "id": "bug-364",
+      "timestamp": "2026-04-22T17:07:06.490Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: string? sourceHash;; try",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-22T17:08:16.739Z"
+    },
+    {
+      "id": "bug-365",
+      "timestamp": "2026-04-22T17:07:57.069Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 87→141 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-22T17:07:57.069Z"
     }
   ]
 }
