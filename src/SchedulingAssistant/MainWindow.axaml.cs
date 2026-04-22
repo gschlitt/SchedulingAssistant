@@ -410,11 +410,11 @@ public partial class MainWindow : Window
         // to avoid accumulation across database switches.
         App.Checkout.SaveCompleted   -= OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      -= OnCheckoutSaveFailed;
-        App.Checkout.SessionTimedOut -= OnSessionTimedOut;
+        App.Checkout.WriteLockLost -= OnWriteLockLost;
         App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
         App.Checkout.SaveCompleted   += OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      += OnCheckoutSaveFailed;
-        App.Checkout.SessionTimedOut += OnSessionTimedOut;
+        App.Checkout.WriteLockLost += OnWriteLockLost;
         App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
 
         // Start autosave if it was enabled in settings.
@@ -813,7 +813,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles <see cref="CheckoutService.SessionTimedOut"/> — fired when
+    /// Handles <see cref="CheckoutService.WriteLockLost"/> — fired when
     /// <see cref="CheckoutService.SaveAsync"/> or the wake-check discovered that
     /// the write lock is no longer ours (deleted, stolen, or its <c>SessionGuid</c>
     /// was modified).
@@ -829,47 +829,48 @@ public partial class MainWindow : Window
     /// we deliberately do not auto-reacquire, because doing so would silently trample
     /// whoever now holds the lock.</para>
     /// </summary>
-    private async void OnSessionTimedOut()
+    private async void OnWriteLockLost()
     {
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            const string banner =
-                "You have lost write access. You can attempt to regain it " +
-                "by exiting and restarting TermPoint.";
-
-            var vm        = DataContext as MainWindowViewModel;
-            var dbContext = App.Services?.GetService<IDatabaseContext>() as DatabaseContext;
-
-            // Close the DatabaseContext connection before D' is deleted; reopen it
-            // against the new WorkingPath (= D'') after SetupReadOnlySnapshotAsync runs.
-            async Task BeforeClose()
+            try
             {
-                await Task.CompletedTask;
-                dbContext?.CloseConnection();
-            }
+                const string banner =
+                    "You have lost write access. You can attempt to regain it " +
+                    "by exiting and restarting TermPoint.";
 
-            async Task AfterOpen()
-            {
-                await Task.CompletedTask;
-                if (dbContext is not null && !string.IsNullOrEmpty(App.Checkout.WorkingPath))
-                    dbContext.ReinitializeConnection(App.Checkout.WorkingPath);
-            }
+                var vm       = DataContext as MainWindowViewModel;
+                var dbContext = App.Services?.GetService<IDatabaseContext>() as DatabaseContext;
 
-            var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);
-
-            // Surface the banner AFTER demotion so nothing wipes it mid-flight.
-            vm?.SetSaveError(banner);
-
-            // Reload so panels reflect D'' (which equals D) instead of the discarded D'.
-            // Failure here is non-fatal — we've already flipped to read-only; worst case
-            // the UI shows slightly stale data until the user manually refreshes.
-            if (ok && vm is not null)
-            {
-                try { vm.SectionListVm.ReloadFromDatabase(); }
-                catch (System.Exception ex)
+                async Task BeforeClose()
                 {
-                    App.Logger.LogError(ex, "OnSessionTimedOut: post-demote reload failed");
+                    await Task.CompletedTask;
+                    dbContext?.CloseConnection();
                 }
+
+                async Task AfterOpen()
+                {
+                    await Task.CompletedTask;
+                    if (dbContext is not null && !string.IsNullOrEmpty(App.Checkout.WorkingPath))
+                        dbContext.ReinitializeConnection(App.Checkout.WorkingPath);
+                }
+
+                var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);
+
+                vm?.SetSaveError(banner);
+
+                if (ok && vm is not null)
+                {
+                    try { vm.SectionListVm.ReloadFromDatabase(); }
+                    catch (System.Exception ex)
+                    {
+                        App.Logger.LogError(ex, "OnWriteLockLost: post-demote reload failed");
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                App.Logger.LogError(ex, "OnWriteLockLost: demotion failed");
             }
         });
     }

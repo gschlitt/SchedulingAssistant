@@ -41,12 +41,18 @@ namespace SchedulingAssistant.Services;
 /// and a custom working directory. Production code passes <c>App.LockService</c> and
 /// <c>App.Logger</c>; unit tests supply their own isolated instances.</para>
 ///
-/// <para><b>Lock-loss scenarios — "write access disappears out from under us":</b>
-/// the app can discover it no longer owns the write lock in three ways. In all
+/// <para><b>Lock-loss scenarios — "Somehow, write access disappears out from under us":</b>
+/// The could possibly happen, for example, if a writer's network access goes down
+/// for a little while, another user starts up, the app notices the stale lock file
+/// and gives the second user write access. Now when the network comes back up
+/// the write access is gone. Other possibilities include someone accidently deleting 
+/// or corrupting the lock file.
+/// 
+/// The app can discover it no longer owns the write lock in three ways. In all
 /// three cases the session is demoted to read-only in place (without rebuilding
 /// the view-model) and a banner is shown instructing the user to exit and
 /// restart if they want to bid for write access again. The sequence is:
-/// <see cref="SessionTimedOut"/> raised → MainWindow handler calls
+/// <see cref="WriteLockLost"/> raised → MainWindow handler calls
 /// <see cref="DemoteToReadOnlyAsync"/> → banner surfaced → reader polling
 /// resumes so a later clean release by the new holder can still offer an
 /// in-app takeover prompt without a restart.</para>
@@ -55,7 +61,7 @@ namespace SchedulingAssistant.Services;
 ///   <item><b>Save-time verification.</b> <see cref="SaveAsync"/> calls
 ///         <see cref="VerifyLockIsOurs"/> before writing D' → D. If the lock
 ///         file is missing or its <c>SessionGuid</c> doesn't match ours, the
-///         save is aborted and <see cref="HandleSessionTimeoutAsync"/> fires.
+///         save is aborted and <see cref="HandleLockLossAsync"/> fires.
 ///         Triggers: lock file manually deleted, or contents rewritten by
 ///         another process.</item>
 ///   <item><b>Wake-from-sleep check.</b> <see cref="WriteLockService.WakeDetected"/>
@@ -63,7 +69,7 @@ namespace SchedulingAssistant.Services;
 ///         "we were asleep" signal. <see cref="OnWake"/> verifies the lock on a
 ///         background thread (the SMB reconnect can take 30 s; doing it on the
 ///         UI thread froze the window) and, if we no longer own it, fires the
-///         same <see cref="HandleSessionTimeoutAsync"/> path. Triggers: another
+///         same <see cref="HandleLockLossAsync"/> path. Triggers: another
 ///         user took over via stale-lock prompt while this machine slept.</item>
 ///   <item><b>Heartbeat renewal failure.</b> Not yet treated as a lock-loss
 ///         signal — currently logged only. Future work could route it through
@@ -178,13 +184,13 @@ public sealed class CheckoutService : IDisposable
     /// "Lock-loss scenarios" section on <see cref="CheckoutService"/> for the
     /// full list (save-time verification, wake-from-sleep check, …).
     ///
-    /// <para>The handler (<c>MainWindow.OnSessionTimedOut</c>) is expected to
+    /// <para>The handler (<c>MainWindow.OnWriteLockLost</c>) is expected to
     /// call <see cref="DemoteToReadOnlyAsync"/> to transition into read-only
     /// mode, surface a banner to the user, and reload the panels from the fresh
     /// D'' snapshot. Unsaved changes in D' are lost by design — the alternative
     /// would be to trample whoever now holds the lock.</para>
     /// </summary>
-    public event Action? SessionTimedOut;
+    public event Action? WriteLockLost;
 
     /// <summary>
     /// Raised on the UI thread after each successful <see cref="SaveAsync"/> call.
@@ -476,7 +482,7 @@ public sealed class CheckoutService : IDisposable
 
         if (!lockIsOurs)
         {
-            await HandleSessionTimeoutAsync();
+            await HandleLockLossAsync();
             return SaveOutcome.LockLost;
         }
 
@@ -916,15 +922,15 @@ public sealed class CheckoutService : IDisposable
     /// asleep. Re-reads the lock file to verify this session still owns it.
     /// If yes, forces an immediate heartbeat renewal so the lock looks fresh to
     /// other readers. If no, routes through
-    /// <see cref="HandleSessionTimeoutAsync"/>, which raises
-    /// <see cref="SessionTimedOut"/> so MainWindow can demote in place.
+    /// <see cref="HandleLockLossAsync"/>, which raises
+    /// <see cref="WriteLockLost"/> so MainWindow can demote in place.
     ///
     /// <para>The event is dispatched on the UI thread, but the verification work
     /// (reading the <c>.lock</c> file on a network share) can block for 20–30
     /// seconds right after a wake while the SMB client reconnects. Running that
     /// synchronously on the UI thread would freeze the window. We therefore hop
     /// to a background thread immediately and only touch the UI — via
-    /// <see cref="_dispatch"/> inside <see cref="HandleSessionTimeoutAsync"/> —
+    /// <see cref="_dispatch"/> inside <see cref="HandleLockLossAsync"/> —
     /// after the decision is made.</para>
     ///
     /// <para>No-op when not in write mode — readers don't own a lock, so there's
@@ -943,7 +949,7 @@ public sealed class CheckoutService : IDisposable
                 if (!VerifyLockIsOurs())
                 {
                     _logger.LogInfo("CheckoutService: wake check — lock is no longer ours. Timing out session.");
-                    await HandleSessionTimeoutAsync();
+                    await HandleLockLossAsync();
                 }
                 else
                 {
@@ -960,10 +966,10 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Stops autosave and unhooks the wake handler, then raises
-    /// <see cref="SessionTimedOut"/> on the UI thread. Does NOT transition
+    /// <see cref="WriteLockLost"/> on the UI thread. Does NOT transition
     /// <see cref="Mode"/>, release the lock, delete D', or set up D''.
     ///
-    /// <para>The handler of <see cref="SessionTimedOut"/> is responsible for the
+    /// <para>The handler of <see cref="WriteLockLost"/> is responsible for the
     /// full demotion via <see cref="DemoteToReadOnlyAsync"/>, which closes the
     /// <c>DatabaseContext</c> connection at the right moment, releases the lock
     /// (without deleting it if it is no longer ours), deletes D', creates D'',
@@ -971,24 +977,24 @@ public sealed class CheckoutService : IDisposable
     /// the UI stays consistent with <see cref="CheckoutService"/> state, and the
     /// existing view-model / banner is preserved.</para>
     /// </summary>
-    private Task HandleSessionTimeoutAsync()
+    private Task HandleLockLossAsync()
     {
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
-        _dispatch(() => SessionTimedOut?.Invoke());
+        _dispatch(() => WriteLockLost?.Invoke());
         return Task.CompletedTask;
     }
 
     /// <summary>
     /// Demotes the current write-access session to read-only in place, without
     /// rebuilding the DI container or swapping the main view-model. Intended for
-    /// the <see cref="SessionTimedOut"/> handler and any other "lock lost" flow
+    /// the <see cref="WriteLockLost"/> handler and any other "lock lost" flow
     /// that needs to keep the UI alive.
     ///
     /// <para>Sequence:</para>
     /// <list type="number">
     ///   <item>Stop autosave and unhook the wake handler (idempotent — also done
-    ///         by <see cref="HandleSessionTimeoutAsync"/>).</item>
+    ///         by <see cref="HandleLockLossAsync"/>).</item>
     ///   <item>Release the write lock. <see cref="WriteLockService.Release"/>
     ///         re-reads the lock file and skips the delete if the <c>SessionGuid</c>
     ///         is no longer ours, so a foreign holder's claim is preserved.</item>
