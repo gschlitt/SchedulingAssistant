@@ -1172,32 +1172,74 @@ public sealed class CheckoutService : IDisposable
     /// Checks whether the lock file at D.lock still contains this session's
     /// <see cref="WriteLockService.SessionGuid"/>, distinguishing "network
     /// unreachable" from "lock genuinely lost."
+    ///
+    /// <para><b>Why this is tricky — the SMB caching trap:</b><br/>
+    /// <see cref="NetworkFileOps"/> wraps every call in a 5-second timeout, which
+    /// catches the obvious failure mode: the SMB client hangs for 20–60 seconds
+    /// waiting for a dead server. But there is a second, subtler failure mode:
+    /// after a few seconds of disconnection, the Windows SMB redirector flushes
+    /// its metadata cache and begins returning <c>false</c> from
+    /// <see cref="File.Exists"/> <i>immediately</i> — well within the 5-second
+    /// deadline. The call completes, reports "file not found," and our timeout
+    /// never fires. If we took that at face value, we would conclude the lock
+    /// file was deleted by another user and trigger a lock-loss demotion — even
+    /// though the file is still there on the (unreachable) server.</para>
+    ///
+    /// <para><b>The reachability probe:</b><br/>
+    /// Whenever an operation returns a "not found" or unparseable result, we
+    /// probe <see cref="SourcePath"/> (D) as a sanity check. D is the database
+    /// we checked out from — we <i>know</i> it exists. If the probe says D is
+    /// also missing or times out, the share is unreachable and we return
+    /// <see cref="LockVerificationResult.Unreachable"/> rather than
+    /// <see cref="LockVerificationResult.NotOurs"/>. Only when the probe
+    /// confirms D is reachable do we trust the lock-file result.</para>
+    ///
+    /// <para><b>Decision table:</b></para>
+    /// <list type="table">
+    ///   <listheader>
+    ///     <term>D.lock result</term>
+    ///     <term>D probe result</term>
+    ///     <term>Conclusion</term>
+    ///   </listheader>
+    ///   <item><term>Timeout</term><term>—</term><term>Unreachable</term></item>
+    ///   <item><term>Not found</term><term>Not found / timeout</term><term>Unreachable (SMB cache lie)</term></item>
+    ///   <item><term>Not found</term><term>Found</term><term>NotOurs (genuinely deleted)</term></item>
+    ///   <item><term>Found, ours</term><term>—</term><term>Ours</term></item>
+    ///   <item><term>Found, other GUID</term><term>—</term><term>NotOurs</term></item>
+    ///   <item><term>Found, parse error</term><term>Timeout</term><term>Unreachable</term></item>
+    ///   <item><term>Found, parse error</term><term>Found</term><term>NotOurs (corrupt lock file)</term></item>
+    /// </list>
     /// </summary>
     /// <returns>
-    /// <see cref="LockVerificationResult.Ours"/> — lock file exists and belongs to us.<br/>
-    /// <see cref="LockVerificationResult.NotOurs"/> — lock file is missing or belongs to another session.<br/>
-    /// <see cref="LockVerificationResult.Unreachable"/> — network timeout prevented the check.
+    /// <see cref="LockVerificationResult.Ours"/> — lock file exists and belongs to this session.<br/>
+    /// <see cref="LockVerificationResult.NotOurs"/> — lock file is missing or belongs to another session
+    ///     (and the network share is confirmed reachable, ruling out an SMB cache artifact).<br/>
+    /// <see cref="LockVerificationResult.Unreachable"/> — the network share could not be reached;
+    ///     the caller should treat this as a transient failure, not a lock-loss event.
     /// </returns>
     private async Task<LockVerificationResult> VerifyLockIsOursAsync()
     {
         var lockPath = Path.ChangeExtension(SourcePath, ".lock");
 
+        // ── Step 1: Does D.lock exist? ───────────────────────────────────────
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(lockPath);
         if (!existsCompleted)
             return LockVerificationResult.Unreachable;
 
         if (!exists)
         {
-            // SMB can return a cached "file not found" when the network is actually
-            // down. Sanity-check by probing D itself — we know it existed at checkout.
-            // If D is also missing or unreachable, the network is down, not the lock.
+            // D.lock appears missing — but is the share actually reachable?
+            // Probe D (the database itself) to distinguish a genuine deletion
+            // from an SMB cache returning a stale "not found."
             var (sourceCompleted, sourceExists) = await NetworkFileOps.ExistsAsync(SourcePath);
             if (!sourceCompleted || !sourceExists)
                 return LockVerificationResult.Unreachable;
 
+            // D is reachable and exists, so D.lock was genuinely deleted.
             return LockVerificationResult.NotOurs;
         }
 
+        // ── Step 2: Read and parse D.lock ────────────────────────────────────
         var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(lockPath);
         if (!readCompleted)
             return LockVerificationResult.Unreachable;
@@ -1211,17 +1253,30 @@ public sealed class CheckoutService : IDisposable
         }
         catch
         {
-            // Parse failure could also be a network corruption artifact.
-            // Same sanity check: if D is unreachable, blame the network.
+            // JSON parse failure — could be a truncated read from a flaky connection.
+            // Same reachability probe: if D is unreachable, blame the network.
             var (probeCompleted, _) = await NetworkFileOps.ExistsAsync(SourcePath);
             if (!probeCompleted)
                 return LockVerificationResult.Unreachable;
 
+            // Share is reachable but the lock file is genuinely unreadable.
             return LockVerificationResult.NotOurs;
         }
     }
 
-    private enum LockVerificationResult { Ours, NotOurs, Unreachable }
+    /// <summary>
+    /// Result of <see cref="VerifyLockIsOursAsync"/>. See that method's XML doc
+    /// for the full decision table.
+    /// </summary>
+    private enum LockVerificationResult
+    {
+        /// <summary>Lock file exists and contains this session's GUID.</summary>
+        Ours,
+        /// <summary>Lock file is missing or belongs to another session (share confirmed reachable).</summary>
+        NotOurs,
+        /// <summary>Network share could not be reached — treat as transient, not lock loss.</summary>
+        Unreachable
+    }
 
     /// <summary>
     /// Delegates to <see cref="BackupService.TakeDbSnapshot"/> when a backup service
