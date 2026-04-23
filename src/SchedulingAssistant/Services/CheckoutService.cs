@@ -1187,18 +1187,20 @@ public sealed class CheckoutService : IDisposable
     ///
     /// <para><b>The reachability probe:</b><br/>
     /// Whenever an operation returns a "not found" or unparseable result, we
-    /// probe <see cref="SourcePath"/> (D) as a sanity check. D is the database
-    /// we checked out from — we <i>know</i> it exists. If the probe says D is
-    /// also missing or times out, the share is unreachable and we return
+    /// probe the <i>parent directory</i> of <see cref="SourcePath"/> as a
+    /// sanity check. The directory is the share mount point — it will exist
+    /// as long as the share is accessible, regardless of whether individual
+    /// files have been created or deleted. If the directory probe times out
+    /// or returns false, the share is unreachable and we return
     /// <see cref="LockVerificationResult.Unreachable"/> rather than
     /// <see cref="LockVerificationResult.NotOurs"/>. Only when the probe
-    /// confirms D is reachable do we trust the lock-file result.</para>
+    /// confirms the directory is reachable do we trust the lock-file result.</para>
     ///
     /// <para><b>Decision table:</b></para>
     /// <list type="table">
     ///   <listheader>
     ///     <term>D.lock result</term>
-    ///     <term>D probe result</term>
+    ///     <term>Directory probe</term>
     ///     <term>Conclusion</term>
     ///   </listheader>
     ///   <item><term>Timeout</term><term>—</term><term>Unreachable</term></item>
@@ -1229,13 +1231,14 @@ public sealed class CheckoutService : IDisposable
         if (!exists)
         {
             // D.lock appears missing — but is the share actually reachable?
-            // Probe D (the database itself) to distinguish a genuine deletion
+            // Probe the parent directory to distinguish a genuine deletion
             // from an SMB cache returning a stale "not found."
-            var (sourceCompleted, sourceExists) = await NetworkFileOps.ExistsAsync(SourcePath);
-            if (!sourceCompleted || !sourceExists)
+            var sourceDir = Path.GetDirectoryName(SourcePath)!;
+            var (dirCompleted, dirExists) = await NetworkFileOps.DirectoryExistsAsync(sourceDir);
+            if (!dirCompleted || !dirExists)
                 return LockVerificationResult.Unreachable;
 
-            // D is reachable and exists, so D.lock was genuinely deleted.
+            // Share directory is reachable, so D.lock was genuinely deleted.
             return LockVerificationResult.NotOurs;
         }
 
@@ -1254,8 +1257,9 @@ public sealed class CheckoutService : IDisposable
         catch
         {
             // JSON parse failure — could be a truncated read from a flaky connection.
-            // Same reachability probe: if D is unreachable, blame the network.
-            var (probeCompleted, _) = await NetworkFileOps.ExistsAsync(SourcePath);
+            // Same reachability probe: if the share directory is unreachable, blame the network.
+            var sourceDir = Path.GetDirectoryName(SourcePath)!;
+            var (probeCompleted, _) = await NetworkFileOps.DirectoryExistsAsync(sourceDir);
             if (!probeCompleted)
                 return LockVerificationResult.Unreachable;
 

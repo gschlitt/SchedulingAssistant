@@ -48,6 +48,18 @@ public static class NetworkFileOps
         => RunAsync(() => File.Exists(path), "File.Exists");
 
     /// <summary>
+    /// Timeout-aware <see cref="Directory.Exists(string)"/>. Useful as a
+    /// lightweight reachability probe for a network share — the directory
+    /// will exist as long as the share is accessible.
+    /// </summary>
+    /// <returns>
+    /// <c>(true, exists)</c> when the operation completed within the deadline.
+    /// <c>(false, false)</c> on timeout.
+    /// </returns>
+    public static Task<(bool Completed, bool Exists)> DirectoryExistsAsync(string path)
+        => RunAsync(() => Directory.Exists(path), "Directory.Exists");
+
+    /// <summary>
     /// Timeout-aware SHA-256 hash of a file, opened with <see cref="FileShare.ReadWrite"/>
     /// so the hash succeeds even while another process holds the file open.
     /// </summary>

@@ -3,6 +3,7 @@ using SchedulingAssistant.Services;
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace SchedulingAssistant.Tests;
@@ -452,7 +453,7 @@ public sealed class WriteLockServiceTests : IDisposable
     /// is reset to false regardless of any prior state.
     /// </summary>
     [Fact]
-    public void TryAcquire_AfterSwitch_ResetsWriteLockBecameAvailable()
+    public async Task TryAcquire_AfterSwitch_ResetsWriteLockBecameAvailable()
     {
         var db1 = DbPath("first");
         var db2 = DbPath("second");
@@ -463,7 +464,8 @@ public sealed class WriteLockServiceTests : IDisposable
         using var svc = new WriteLockService();
         svc.TryAcquire(db1); // becomes reader
         other.Release();      // simulate other closing
-        svc.PollLockFile();   // sets WriteLockBecameAvailable = true
+
+        await svc.PollLockFile();      // sets WriteLockBecameAvailable = true
 
         Assert.True(svc.WriteLockBecameAvailable);
 
@@ -481,9 +483,10 @@ public sealed class WriteLockServiceTests : IDisposable
     /// sets <see cref="WriteLockService.WriteLockBecameAvailable"/> to true.
     /// </summary>
     [Fact]
-    public void PollLockFile_LockFileGone_SetsWriteLockBecameAvailable()
+    public async Task PollLockFile_LockFileGone_SetsWriteLockBecameAvailable()
     {
         var db = DbPath();
+
         using var writer = new WriteLockService();
         writer.TryAcquire(db);
 
@@ -491,7 +494,7 @@ public sealed class WriteLockServiceTests : IDisposable
         reader.TryAcquire(db);
 
         writer.Release(); // Deletes the lock file.
-        reader.PollLockFile();
+        await reader.PollLockFile();
 
         Assert.True(reader.WriteLockBecameAvailable);
     }
@@ -501,9 +504,10 @@ public sealed class WriteLockServiceTests : IDisposable
     /// <see cref="WriteLockService.LockStateChanged"/>.
     /// </summary>
     [Fact]
-    public void PollLockFile_LockFileGone_FiresLockStateChangedEvent()
+    public async Task PollLockFile_LockFileGone_FiresLockStateChangedEvent()
     {
         var db = DbPath();
+
         using var writer = new WriteLockService();
         writer.TryAcquire(db);
 
@@ -514,7 +518,7 @@ public sealed class WriteLockServiceTests : IDisposable
         reader.LockStateChanged += () => eventFired = true;
 
         writer.Release();
-        reader.PollLockFile();
+        await reader.PollLockFile();
 
         Assert.True(eventFired);
     }
@@ -524,7 +528,7 @@ public sealed class WriteLockServiceTests : IDisposable
     /// sets <see cref="WriteLockService.WriteLockBecameAvailable"/> to true.
     /// </summary>
     [Fact]
-    public void PollLockFile_StaleLock_SetsWriteLockBecameAvailable()
+    public async Task PollLockFile_StaleLock_SetsWriteLockBecameAvailable()
     {
         var db   = DbPath();
         var lock_ = LockPath(db);
@@ -537,7 +541,7 @@ public sealed class WriteLockServiceTests : IDisposable
 
         // Overwrite the lock file with a stale heartbeat (simulate crash).
         WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
-        reader.PollLockFile();
+        await reader.PollLockFile();
 
         Assert.True(reader.WriteLockBecameAvailable);
     }
@@ -547,7 +551,7 @@ public sealed class WriteLockServiceTests : IDisposable
     /// availability — the writer is still alive.
     /// </summary>
     [Fact]
-    public void PollLockFile_FreshLock_DoesNotSetAvailable()
+    public async Task PollLockFile_FreshLock_DoesNotSetAvailable()
     {
         var db = DbPath();
         using var writer = new WriteLockService();
@@ -556,7 +560,7 @@ public sealed class WriteLockServiceTests : IDisposable
         using var reader = new WriteLockService();
         reader.TryAcquire(db);
 
-        reader.PollLockFile(); // Writer is still alive.
+        await reader.PollLockFile(); // Writer is still alive.
 
         Assert.False(reader.WriteLockBecameAvailable);
     }
@@ -566,9 +570,10 @@ public sealed class WriteLockServiceTests : IDisposable
     /// subsequent polls are no-ops — the event does not fire a second time.
     /// </summary>
     [Fact]
-    public void PollLockFile_AlreadyAvailable_EventNotFiredAgain()
+    public async Task PollLockFile_AlreadyAvailable_EventNotFiredAgain()
     {
         var db = DbPath();
+
         using var writer = new WriteLockService();
         writer.TryAcquire(db);
 
@@ -576,11 +581,11 @@ public sealed class WriteLockServiceTests : IDisposable
         reader.TryAcquire(db);
         writer.Release();
 
-        reader.PollLockFile(); // First poll — sets available, fires event.
+        await reader.PollLockFile(); // First poll — sets available, fires event.
 
         var eventCount = 0;
         reader.LockStateChanged += () => eventCount++;
-        reader.PollLockFile(); // Second poll — should be a no-op.
+        await reader.PollLockFile(); // Second poll — should be a no-op.
 
         Assert.Equal(0, eventCount);
     }
@@ -590,7 +595,7 @@ public sealed class WriteLockServiceTests : IDisposable
     /// directly is a no-op — it is not a reader and should not change state.
     /// </summary>
     [Fact]
-    public void PollLockFile_CalledOnWriter_DoesNothing()
+    public async Task PollLockFile_CalledOnWriter_DoesNothing()
     {
         using var svc = new WriteLockService();
         svc.TryAcquire(DbPath());
@@ -598,7 +603,7 @@ public sealed class WriteLockServiceTests : IDisposable
 
         var eventFired = false;
         svc.LockStateChanged += () => eventFired = true;
-        svc.PollLockFile();
+        await svc.PollLockFile();
 
         Assert.True(svc.IsWriter);
         Assert.False(svc.WriteLockBecameAvailable);
@@ -611,9 +616,10 @@ public sealed class WriteLockServiceTests : IDisposable
     /// formerly read-only instance become the writer.
     /// </summary>
     [Fact]
-    public void PollLockFile_ThenTryAcquire_BecomesWriter()
+    public async Task PollLockFile_ThenTryAcquire_BecomesWriter()
     {
         var db = DbPath();
+
         using var writer = new WriteLockService();
         writer.TryAcquire(db);
 
@@ -622,7 +628,7 @@ public sealed class WriteLockServiceTests : IDisposable
         Assert.False(reader.IsWriter);
 
         writer.Release();
-        reader.PollLockFile();
+        await reader.PollLockFile();
         Assert.True(reader.WriteLockBecameAvailable);
 
         // User clicks "Switch to edit mode" — re-acquire.

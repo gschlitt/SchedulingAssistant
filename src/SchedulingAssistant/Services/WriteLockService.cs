@@ -515,7 +515,7 @@ public sealed class WriteLockService : IDisposable
     private void StartPolling()
     {
         var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
-        _pollTimer = new Timer(_ => Dispatcher.UIThread.Post(PollLockFile), null, interval, interval);
+        _pollTimer = new Timer(_ => Dispatcher.UIThread.Post(async () => await PollLockFile()), null, interval, interval);
     }
 
     /// <summary>
@@ -553,18 +553,49 @@ public sealed class WriteLockService : IDisposable
     /// stops the polling timer, and raises <see cref="LockStateChanged"/> so the
     /// UI can offer the "Switch to edit mode" prompt.
     ///
+    /// <para><b>Network-awareness:</b> Uses <see cref="NetworkFileOps"/> for all
+    /// file I/O so the poll does not hang when the share is unreachable. When a
+    /// "lock file gone" result comes back, the same reachability probe used by
+    /// <see cref="CheckoutService.VerifyLockIsOursAsync"/> is applied: we check
+    /// whether D itself is reachable before concluding the lock was genuinely
+    /// released. Without this, the SMB redirector's cached negative response
+    /// would cause a false "write access available" offer during a network
+    /// outage. See the decision table on <c>VerifyLockIsOursAsync</c> for the
+    /// full rationale.</para>
+    ///
     /// <para>Exposed as <c>internal</c> so that unit tests can invoke it directly,
     /// bypassing the timer and the UI-thread dispatch.</para>
     /// </summary>
-    internal void PollLockFile()
+    internal async Task PollLockFile()
     {
         if (IsWriter || _lockFilePath is null) return;
         if (WriteLockBecameAvailable) return; // Already notified — wait for user action.
 
         bool available;
 
-        if (!File.Exists(_lockFilePath))
+        var (existsCompleted, lockExists) = await NetworkFileOps.ExistsAsync(_lockFilePath);
+
+        if (!existsCompleted)
         {
+            // Network timeout — cannot determine lock state. Skip this cycle.
+            App.Logger.LogInfo("[WriteLockService] Poll: network timeout — skipping cycle.");
+            return;
+        }
+
+        if (!lockExists)
+        {
+            // Lock file appears gone — but is the share actually reachable?
+            // Probe the parent directory to distinguish genuine release from
+            // an SMB cache artifact. The directory is the share mount point —
+            // it will exist as long as the share is accessible.
+            var shareDir = Path.GetDirectoryName(_lockFilePath)!;
+            var (dirCompleted, dirExists) = await NetworkFileOps.DirectoryExistsAsync(shareDir);
+            if (!dirCompleted || !dirExists)
+            {
+                App.Logger.LogInfo("[WriteLockService] Poll: lock file gone but share directory unreachable — network down, skipping.");
+                return;
+            }
+
             available = true;
             App.Logger.LogInfo("[WriteLockService] Poll: lock file gone — write access available.");
         }
