@@ -1185,8 +1185,18 @@ public sealed class CheckoutService : IDisposable
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(lockPath);
         if (!existsCompleted)
             return LockVerificationResult.Unreachable;
+
         if (!exists)
+        {
+            // SMB can return a cached "file not found" when the network is actually
+            // down. Sanity-check by probing D itself — we know it existed at checkout.
+            // If D is also missing or unreachable, the network is down, not the lock.
+            var (sourceCompleted, sourceExists) = await NetworkFileOps.ExistsAsync(SourcePath);
+            if (!sourceCompleted || !sourceExists)
+                return LockVerificationResult.Unreachable;
+
             return LockVerificationResult.NotOurs;
+        }
 
         var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(lockPath);
         if (!readCompleted)
@@ -1201,6 +1211,12 @@ public sealed class CheckoutService : IDisposable
         }
         catch
         {
+            // Parse failure could also be a network corruption artifact.
+            // Same sanity check: if D is unreachable, blame the network.
+            var (probeCompleted, _) = await NetworkFileOps.ExistsAsync(SourcePath);
+            if (!probeCompleted)
+                return LockVerificationResult.Unreachable;
+
             return LockVerificationResult.NotOurs;
         }
     }
