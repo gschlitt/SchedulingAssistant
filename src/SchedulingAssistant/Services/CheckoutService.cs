@@ -537,17 +537,16 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Step 1: Verify we still hold the lock ─────────────────────────────
-        var (lockCheckCompleted, lockIsOurs) = await NetworkFileOps.RunAsync(
-            () => VerifyLockIsOurs(), "lock verification");
+        var lockResult = await VerifyLockIsOursAsync();
 
-        if (!lockCheckCompleted)
+        if (lockResult == LockVerificationResult.Unreachable)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
             _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
             return SaveOutcome.CopyError;
         }
 
-        if (!lockIsOurs)
+        if (lockResult == LockVerificationResult.NotOurs)
         {
             await HandleLockLossAsync();
             return SaveOutcome.LockLost;
@@ -1000,21 +999,26 @@ public sealed class CheckoutService : IDisposable
     {
         if (Mode != CheckoutMode.WriteAccess) return;
 
-        // Fire-and-forget onto a background thread so the UI stays responsive
-        // during the SMB reconnect delay inside VerifyLockIsOurs.
+        // Fire-and-forget — VerifyLockIsOursAsync uses NetworkFileOps internally
+        // so the UI stays responsive during the SMB reconnect delay.
         _ = Task.Run(async () =>
         {
             try
             {
-                if (!VerifyLockIsOurs())
+                var result = await VerifyLockIsOursAsync();
+                switch (result)
                 {
-                    _logger.LogInfo("CheckoutService: wake check — lock is no longer ours. Timing out session.");
-                    await HandleLockLossAsync();
-                }
-                else
-                {
-                    _logger.LogInfo("CheckoutService: wake check — lock confirmed. Renewing heartbeat.");
-                    _lockService.ForceRenewHeartbeat();
+                    case LockVerificationResult.NotOurs:
+                        _logger.LogInfo("CheckoutService: wake check — lock is no longer ours. Timing out session.");
+                        await HandleLockLossAsync();
+                        break;
+                    case LockVerificationResult.Unreachable:
+                        _logger.LogInfo("CheckoutService: wake check — network unreachable, keeping current state.");
+                        break;
+                    case LockVerificationResult.Ours:
+                        _logger.LogInfo("CheckoutService: wake check — lock confirmed. Renewing heartbeat.");
+                        _lockService.ForceRenewHeartbeat();
+                        break;
                 }
             }
             catch (Exception ex)
@@ -1165,21 +1169,43 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Returns true when the lock file at D.lock still contains this session's
-    /// <see cref="WriteLockService.SessionGuid"/>.
+    /// Checks whether the lock file at D.lock still contains this session's
+    /// <see cref="WriteLockService.SessionGuid"/>, distinguishing "network
+    /// unreachable" from "lock genuinely lost."
     /// </summary>
-    private bool VerifyLockIsOurs()
+    /// <returns>
+    /// <see cref="LockVerificationResult.Ours"/> — lock file exists and belongs to us.<br/>
+    /// <see cref="LockVerificationResult.NotOurs"/> — lock file is missing or belongs to another session.<br/>
+    /// <see cref="LockVerificationResult.Unreachable"/> — network timeout prevented the check.
+    /// </returns>
+    private async Task<LockVerificationResult> VerifyLockIsOursAsync()
     {
         var lockPath = Path.ChangeExtension(SourcePath, ".lock");
-        if (!File.Exists(lockPath)) return false;
+
+        var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(lockPath);
+        if (!existsCompleted)
+            return LockVerificationResult.Unreachable;
+        if (!exists)
+            return LockVerificationResult.NotOurs;
+
+        var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(lockPath);
+        if (!readCompleted)
+            return LockVerificationResult.Unreachable;
+
         try
         {
-            var json = File.ReadAllText(lockPath);
-            var data = JsonSerializer.Deserialize<LockFileData>(json);
-            return data?.SessionGuid == _lockService.SessionGuid;
+            var data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
+            return data?.SessionGuid == _lockService.SessionGuid
+                ? LockVerificationResult.Ours
+                : LockVerificationResult.NotOurs;
         }
-        catch { return false; }
+        catch
+        {
+            return LockVerificationResult.NotOurs;
+        }
     }
+
+    private enum LockVerificationResult { Ours, NotOurs, Unreachable }
 
     /// <summary>
     /// Delegates to <see cref="BackupService.TakeDbSnapshot"/> when a backup service
