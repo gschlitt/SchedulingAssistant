@@ -177,7 +177,7 @@ public partial class DatabaseRecoveryViewModel : ObservableObject
         var path = await PickDatabaseFileAsync();
         if (path is null) return;
 
-        var result = DatabaseValidator.Validate(path);
+        var result = await DatabaseValidator.ValidateAsync(path);
         if (result == DatabaseValidationResult.Ok)
         {
             BrowsedPath = path;
@@ -186,9 +186,12 @@ public partial class DatabaseRecoveryViewModel : ObservableObject
         else
         {
             BrowsedPath = null;
-            BrowseError = result == DatabaseValidationResult.Corrupt
-                ? "That file does not appear to be a valid database — please try another."
-                : "The selected file could not be found.";
+            BrowseError = result switch
+            {
+                DatabaseValidationResult.Corrupt     => "That file does not appear to be a valid database — please try another.",
+                DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
+                _                                    => "The selected file could not be found."
+            };
         }
     }
 
@@ -236,7 +239,13 @@ public partial class DatabaseRecoveryViewModel : ObservableObject
         var path = await PickBackupFileAsync();
         if (path is null) return;
 
-        if (DatabaseValidator.Validate(path) != DatabaseValidationResult.Ok)
+        var backupValidation = await DatabaseValidator.ValidateAsync(path);
+        if (backupValidation == DatabaseValidationResult.Unreachable)
+        {
+            RestoreError = NetworkFileOps.UnreachableMessage;
+            return;
+        }
+        if (backupValidation != DatabaseValidationResult.Ok)
         {
             RestoreError = "That file could not be opened as a valid database backup.";
             return;

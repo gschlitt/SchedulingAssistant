@@ -229,11 +229,17 @@ public partial class MainWindow : Window
     private async Task RunReturningUserStartupAsync(AppSettings settings)
     {
         string dbPath;
-        var validation = DatabaseValidator.Validate(settings.DatabasePath);
+        var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
         if (validation == DatabaseValidationResult.Ok)
         {
             // Happy path — file exists and passes integrity check.
             dbPath = settings.DatabasePath!;
+        }
+        else if (validation == DatabaseValidationResult.Unreachable)
+        {
+            await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
+            Close();
+            return;
         }
         else
         {
@@ -279,13 +285,21 @@ public partial class MainWindow : Window
         // an orphaned working copy (crash recovery), then acquire the write lock
         // and copy D → D' (or D → D'' for read-only mode).
         // The result determines which path is passed to InitializeServices.
-        App.Checkout.CleanupOrphanedTmp(dbPath);
+        await App.Checkout.CleanupOrphanedTmpAsync(dbPath);
         App.Checkout.CleanupStaleCrashArtifacts(dbPath);
 
         if (App.Checkout.DetectCrashRecovery(dbPath))
             await HandleCrashRecoveryAsync(dbPath);
 
-        dbPath = await RunCheckoutAsync(dbPath);
+        var checkoutResult = await RunCheckoutAsync(dbPath);
+        if (checkoutResult is null)
+        {
+            // Network unreachable — dialog already shown. Close the app since this
+            // is the initial startup path; there is no previous DB to fall back to.
+            Close();
+            return;
+        }
+        dbPath = checkoutResult;
         // ─────────────────────────────────────────────────────────────────────
 
         // Resolve the canonical source path D for the title bar and backup service.
@@ -334,7 +348,7 @@ public partial class MainWindow : Window
     /// D'' via <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/>, or D as a last resort if that also fails.</description></item>
     /// </list>
     /// </returns>
-    private async Task<string> RunCheckoutAsync(string sourcePath)
+    private async Task<string?> RunCheckoutAsync(string sourcePath)
     {
         var outcome = await App.Checkout.CheckoutAsync(sourcePath);
 
@@ -366,6 +380,12 @@ public partial class MainWindow : Window
                         var forceOutcome = await App.Checkout.ForceCheckoutAsync();
                         if (forceOutcome == CheckoutOutcome.WriteAccess)
                             return App.Checkout.WorkingPath;
+                        if (forceOutcome == CheckoutOutcome.NetworkUnreachable)
+                        {
+                            await ShowMessageAsync("Network Unreachable",
+                                "Cannot reach the database — check your network connection and try again.");
+                            return null;
+                        }
                         // Lost the race to another instance — fall through to read-only setup.
                     }
 
@@ -373,6 +393,11 @@ public partial class MainWindow : Window
                     // Set up D'' so we never hold D open directly.
                     return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
                 }
+
+            case CheckoutOutcome.NetworkUnreachable:
+                await ShowMessageAsync("Network Unreachable",
+                    "Cannot reach the database — check your network connection and try again.");
+                return null;
 
             default: // Failed
                 await ShowMessageAsync("Checkout Failed",
@@ -484,12 +509,14 @@ public partial class MainWindow : Window
             App.Checkout.CleanupWorkingCopy();
 
             // Run crash recovery + checkout for the new path.
-            App.Checkout.CleanupOrphanedTmp(newDatabasePath);
+            await App.Checkout.CleanupOrphanedTmpAsync(newDatabasePath);
             App.Checkout.CleanupStaleCrashArtifacts(newDatabasePath);
             if (App.Checkout.DetectCrashRecovery(newDatabasePath))
                 await HandleCrashRecoveryAsync(newDatabasePath);
 
-            newDatabasePath = await RunCheckoutAsync(newDatabasePath);
+            var checkoutPath = await RunCheckoutAsync(newDatabasePath);
+            if (checkoutPath is null) return; // Network unreachable — dialog already shown.
+            newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.
             // DatabaseContext will create the file if it doesn't exist.

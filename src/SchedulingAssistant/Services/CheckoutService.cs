@@ -105,18 +105,6 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     private readonly string _workingDir;
 
-    // ── Constants ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Maximum time to wait for a single file operation that touches the network
-    /// (D, D.lock, D.tmp). Operations that exceed this threshold are presumed to
-    /// be blocked by an unreachable network share.
-    /// </summary>
-    private const int NetworkTimeoutMs = 5000;
-
-    private const string NetworkUnreachableMessage =
-        "Cannot reach the database — check your network connection and try again.";
-
     // ── State ──────────────────────────────────────────────────────────────────
 
     private Timer?  _autoSaveTimer;
@@ -276,17 +264,26 @@ public sealed class CheckoutService : IDisposable
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists; use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
-    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, then call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
+    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
     /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/> to open read-only.
     /// </returns>
     public async Task<CheckoutOutcome> CheckoutAsync(string sourcePath)
     {
         SourcePath = sourcePath;
 
+        //ensure the network location is reachable and that the database exists
+        var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(sourcePath);
+
+        if (!existsCompleted)
+        {
+            _logger.LogInfo("CheckoutService: File.Exists timed out — network unreachable");
+            return CheckoutOutcome.NetworkUnreachable;
+        }
+
         // ── New-database shortcut ──────────────────────────────────────────────
         // D does not exist yet. Use SourcePath as WorkingPath (degenerate mode):
         // DatabaseContext creates the schema directly at SourcePath and SaveAsync is a no-op.
-        if (!File.Exists(sourcePath))
+        if (!exists)
         {
             WorkingPath     = sourcePath;
             HashAtCheckout  = null;
@@ -294,7 +291,15 @@ public sealed class CheckoutService : IDisposable
             SessionDirty    = true;
             CurrentHolder   = null;
 
-            _lockService.TryAcquire(sourcePath);
+            var lockCompleted = await NetworkFileOps.RunAsync(
+                () => _lockService.TryAcquire(sourcePath), "lock acquire (new DB)");
+
+            if (!lockCompleted)
+            {
+                _logger.LogInfo("CheckoutService: lock acquire timed out — network unreachable");
+                return CheckoutOutcome.NetworkUnreachable;
+            }
+
             if (!_lockService.IsWriter)
             {
                 // Extremely unlikely — someone locked a file that doesn't exist yet.
@@ -308,7 +313,14 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Normal path — D exists ────────────────────────────────────────────
-        _lockService.TryAcquire(sourcePath);
+        var lockAcquireCompleted = await NetworkFileOps.RunAsync(
+            () => _lockService.TryAcquire(sourcePath), "lock acquire");
+
+        if (!lockAcquireCompleted)
+        {
+            _logger.LogInfo("CheckoutService: lock acquire timed out — network unreachable");
+            return CheckoutOutcome.NetworkUnreachable;
+        }
 
         if (_lockService.IsStaleLock)
         {
@@ -331,11 +343,29 @@ public sealed class CheckoutService : IDisposable
 
         // We hold the lock — copy D to D'.
         Directory.CreateDirectory(_workingDir);
-        HashAtCheckout = ComputeHash(sourcePath);
+
+        var (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(sourcePath);
+
+        if (!hashCompleted)
+        {
+            _logger.LogInfo("CheckoutService: checkout hash timed out — network unreachable");
+            _lockService.Release();
+            return CheckoutOutcome.NetworkUnreachable;
+        }
+
+        HashAtCheckout = sourceHash;
 
         try
         {
-            CopyWithSharing(sourcePath, WorkingPath);
+            var copyCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
+
+            if (!copyCompleted)
+            {
+                _logger.LogInfo("CheckoutService: checkout copy timed out — network unreachable");
+                _lockService.Release();
+                DeleteDirtyMarker();
+                return CheckoutOutcome.NetworkUnreachable;
+            }
         }
         catch (Exception ex)
         {
@@ -345,12 +375,23 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.Failed;
         }
 
-        // Verify the copy.
+        // Verify the copy. WorkingPath is local — no timeout needed.
         var copyHash = ComputeHash(WorkingPath);
         if (copyHash != HashAtCheckout)
         {
             _logger.LogInfo("CheckoutService: hash mismatch after copy — retrying once.");
-            try { CopyWithSharing(sourcePath, WorkingPath); } catch { /* hash check on next line catches this */ }
+
+            var retryCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
+
+            if (!retryCompleted)
+            {
+                _logger.LogInfo("CheckoutService: checkout retry copy timed out — network unreachable");
+                _lockService.Release();
+                DeleteDirtyMarker();
+                try { File.Delete(WorkingPath); } catch { }
+                return CheckoutOutcome.NetworkUnreachable;
+            }
+
             copyHash = ComputeHash(WorkingPath);
 
             if (copyHash != HashAtCheckout)
@@ -382,7 +423,14 @@ public sealed class CheckoutService : IDisposable
     /// </returns>
     public async Task<CheckoutOutcome> ForceCheckoutAsync()
     {
-        _lockService.ForceAcquire();
+        var forceCompleted = await NetworkFileOps.RunAsync(
+            () => _lockService.ForceAcquire(), "force lock acquire");
+
+        if (!forceCompleted)
+        {
+            _logger.LogInfo("CheckoutService: ForceCheckout lock acquire timed out — network unreachable");
+            return CheckoutOutcome.NetworkUnreachable;
+        }
 
         if (!_lockService.IsWriter)
         {
@@ -393,11 +441,29 @@ public sealed class CheckoutService : IDisposable
 
         // Lock acquired — now copy D to D' (same as CheckoutAsync write path).
         Directory.CreateDirectory(_workingDir);
-        HashAtCheckout = ComputeHash(SourcePath);
+
+        var (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+
+        if (!hashCompleted)
+        {
+            _logger.LogInfo("CheckoutService: ForceCheckout hash timed out — network unreachable");
+            _lockService.Release();
+            return CheckoutOutcome.NetworkUnreachable;
+        }
+
+        HashAtCheckout = sourceHash;
 
         try
         {
-            CopyWithSharing(SourcePath, WorkingPath);
+            var copyCompleted = await NetworkFileOps.CopyAsync(SourcePath, WorkingPath);
+
+            if (!copyCompleted)
+            {
+                _logger.LogInfo("CheckoutService: ForceCheckout copy timed out — network unreachable");
+                _lockService.Release();
+                DeleteDirtyMarker();
+                return CheckoutOutcome.NetworkUnreachable;
+            }
         }
         catch (Exception ex)
         {
@@ -407,6 +473,7 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.Failed;
         }
 
+        // WorkingPath is local — no timeout needed.
         var copyHash = ComputeHash(WorkingPath);
         if (copyHash != HashAtCheckout)
         {
@@ -470,13 +537,13 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Step 1: Verify we still hold the lock ─────────────────────────────
-        var (lockCheckCompleted, lockIsOurs) = await WithNetworkTimeout(
+        var (lockCheckCompleted, lockIsOurs) = await NetworkFileOps.RunAsync(
             () => VerifyLockIsOurs(), "lock verification");
 
         if (!lockCheckCompleted)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+            _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
             return SaveOutcome.CopyError;
         }
 
@@ -489,13 +556,12 @@ public sealed class CheckoutService : IDisposable
         // ── Step 2: Verify D has not been externally modified ─────────────────
         if (HashAtCheckout is not null)
         {
-            var (hashCompleted, currentSourceHash) = await WithNetworkTimeout(
-                () => ComputeHash(SourcePath), "source hash verification");
+            var (hashCompleted, currentSourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
 
             if (!hashCompleted)
             {
                 _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-                _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+                _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
                 return SaveOutcome.CopyError;
             }
 
@@ -519,14 +585,14 @@ public sealed class CheckoutService : IDisposable
         var tmpPath = SourcePath + ".tmp";
         try
         {
-            var backupCompleted = await WithNetworkTimeout(
+            var backupCompleted = await NetworkFileOps.RunAsync(
                 () => BackupSqliteDatabase(WorkingPath, tmpPath), "D' → D.tmp backup");
 
             if (!backupCompleted)
             {
                 _logger.LogInfo("CheckoutService: D.tmp backup timed out — network unreachable");
-                try { File.Delete(tmpPath); } catch { }
-                _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+                await NetworkFileOps.DeleteAsync(tmpPath);
+                _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
                 return SaveOutcome.CopyError;
             }
         }
@@ -544,27 +610,25 @@ public sealed class CheckoutService : IDisposable
         // We therefore hash D.tmp itself — the file that will become the new D —
         // so that HashAtCheckout matches D after the rename and conflict detection
         // on the next save works correctly.
-        var (hashTmpCompleted, newSourceHash) = await WithNetworkTimeout(
-            () => ComputeHash(tmpPath), "D.tmp hash");
+        var (hashTmpCompleted, newSourceHash) = await NetworkFileOps.ComputeHashAsync(tmpPath);
 
         if (!hashTmpCompleted)
         {
             _logger.LogInfo("CheckoutService: D.tmp hash timed out — network unreachable");
-            try { File.Delete(tmpPath); } catch { }
-            _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+            await NetworkFileOps.DeleteAsync(tmpPath);
+            _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
             return SaveOutcome.CopyError;
         }
 
         // ── Step 6: Atomically rename D.tmp → D ──────────────────────────────
         try
         {
-            var renameCompleted = await WithNetworkTimeout(
-                () => File.Move(tmpPath, SourcePath, overwrite: true), "D.tmp → D rename");
+            var renameCompleted = await NetworkFileOps.MoveAsync(tmpPath, SourcePath);
 
             if (!renameCompleted)
             {
                 _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                _dispatch(() => SaveFailed?.Invoke(NetworkUnreachableMessage));
+                _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
                 return SaveOutcome.CopyError;
             }
         }
@@ -572,7 +636,7 @@ public sealed class CheckoutService : IDisposable
         {
             var msg = $"Failed to finalize save: {ex.Message}";
             _logger.LogError(ex, "CheckoutService: D.tmp rename failed");
-            try { File.Delete(tmpPath); } catch { }
+            await NetworkFileOps.DeleteAsync(tmpPath);
             _dispatch(() => SaveFailed?.Invoke(msg));
             return SaveOutcome.CopyError;
         }
@@ -640,8 +704,7 @@ public sealed class CheckoutService : IDisposable
             try
             {
                 bool hashCompleted;
-                (hashCompleted, sourceHash) = await WithNetworkTimeout(
-                    () => ComputeHash(SourcePath), "read-only refresh hash");
+                (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
 
                 if (!hashCompleted)
                 {
@@ -657,13 +720,12 @@ public sealed class CheckoutService : IDisposable
 
             try
             {
-                var copyCompleted = await WithNetworkTimeout(
-                    () => CopyWithSharing(SourcePath, tmpPath), "read-only refresh copy");
+                var copyCompleted = await NetworkFileOps.CopyAsync(SourcePath, tmpPath);
 
                 if (!copyCompleted)
                 {
                     _logger.LogInfo("CheckoutService: refresh copy timed out — network unreachable");
-                    try { File.Delete(tmpPath); } catch { }
+                    await NetworkFileOps.DeleteAsync(tmpPath);
                     return RefreshOutcome.SourceUnavailable;
                 }
             }
@@ -816,19 +878,17 @@ public sealed class CheckoutService : IDisposable
     /// crashed save. Call at startup before <see cref="CheckoutAsync"/>.
     /// </summary>
     /// <param name="sourcePath">The database path to check for an orphaned tmp file.</param>
-    public void CleanupOrphanedTmp(string sourcePath)
+    public async Task CleanupOrphanedTmpAsync(string sourcePath)
     {
         var tmpPath = sourcePath + ".tmp";
-        if (!File.Exists(tmpPath)) return;
-        try
-        {
-            File.Delete(tmpPath);
+        var (completed, exists) = await NetworkFileOps.ExistsAsync(tmpPath);
+        if (!completed || !exists) return;
+
+        var deleted = await NetworkFileOps.DeleteAsync(tmpPath);
+        if (deleted)
             _logger.LogInfo($"CheckoutService: cleaned up orphaned tmp file: {tmpPath}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogInfo($"CheckoutService: could not delete orphaned tmp: {ex.Message}");
-        }
+        else
+            _logger.LogInfo($"CheckoutService: could not delete orphaned tmp (timeout or error)");
     }
 
     /// <summary>
@@ -1105,53 +1165,6 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Runs a synchronous operation that touches the network share on a thread-pool
-    /// thread and races it against a <see cref="NetworkTimeoutMs"/> deadline. Returns
-    /// <c>(true, result)</c> on success, or <c>(false, default)</c> on timeout. Exceptions
-    /// thrown by <paramref name="operation"/> propagate to the caller unchanged.
-    /// </summary>
-    /// <param name="operation">Synchronous file-IO action to run (e.g. <see cref="ComputeHash"/>).</param>
-    /// <param name="operationName">Human-readable label for log messages.</param>
-    private async Task<(bool Completed, T? Result)> WithNetworkTimeout<T>(
-        Func<T> operation, string operationName)
-    {
-        var task = Task.Run(operation);
-        var winner = await Task.WhenAny(task, Task.Delay(NetworkTimeoutMs));
-
-        if (winner == task)
-        {
-            // Propagate any exception thrown by the operation.
-            return (true, await task);
-        }
-
-        _logger.LogInfo(
-            $"CheckoutService: {operationName} timed out after {NetworkTimeoutMs}ms " +
-            "— network may be unavailable");
-        return (false, default);
-    }
-
-    /// <summary>
-    /// Void variant of <see cref="WithNetworkTimeout{T}"/>. Returns <c>true</c> when the
-    /// operation completed within the deadline, <c>false</c> on timeout.
-    /// </summary>
-    private async Task<bool> WithNetworkTimeout(Action operation, string operationName)
-    {
-        var task = Task.Run(operation);
-        var winner = await Task.WhenAny(task, Task.Delay(NetworkTimeoutMs));
-
-        if (winner == task)
-        {
-            await task; // propagate exceptions
-            return true;
-        }
-
-        _logger.LogInfo(
-            $"CheckoutService: {operationName} timed out after {NetworkTimeoutMs}ms " +
-            "— network may be unavailable");
-        return false;
-    }
-
-    /// <summary>
     /// Returns true when the lock file at D.lock still contains this session's
     /// <see cref="WriteLockService.SessionGuid"/>.
     /// </summary>
@@ -1221,33 +1234,58 @@ public sealed class CheckoutService : IDisposable
     /// <c>null</c> if D'' cannot be created (e.g. D is inaccessible or the copy hash never
     /// matches); the caller should fall back to opening <see cref="SourcePath"/> directly.
     /// </returns>
-    public Task<string?> SetupReadOnlySnapshotAsync()
+    public async Task<string?> SetupReadOnlySnapshotAsync()
     {
         ReadOnlyWorkingPath = ComputeReadOnlyWorkingPath(SourcePath);
         Directory.CreateDirectory(_workingDir);
         var roTmpPath = ReadOnlyWorkingPath + ".tmp";
 
-        try { CopyWithSharing(SourcePath, roTmpPath); }
+        try
+        {
+            var copyCompleted = await NetworkFileOps.CopyAsync(SourcePath, roTmpPath);
+
+            if (!copyCompleted)
+            {
+                _logger.LogInfo("CheckoutService: read-only setup copy timed out — network unreachable");
+                return null;
+            }
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp");
             try { File.Delete(roTmpPath); } catch { }
-            return Task.FromResult<string?>(null);
+            return null;
         }
 
-        var roSourceHash = ComputeHash(SourcePath);
-        var roCopyHash   = ComputeHash(roTmpPath);
+        var (hashCompleted, roSourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+
+        if (!hashCompleted)
+        {
+            _logger.LogInfo("CheckoutService: read-only setup hash timed out — network unreachable");
+            return null;
+        }
+
+        // roTmpPath is local — no timeout needed.
+        var roCopyHash = ComputeHash(roTmpPath);
         if (roCopyHash != roSourceHash)
         {
             _logger.LogInfo("CheckoutService: D'' copy hash mismatch — retrying once.");
-            try { CopyWithSharing(SourcePath, roTmpPath); } catch { }
+
+            var retryCompleted = await NetworkFileOps.CopyAsync(SourcePath, roTmpPath);
+
+            if (!retryCompleted)
+            {
+                _logger.LogInfo("CheckoutService: read-only setup retry timed out — network unreachable");
+                return null;
+            }
+
             roCopyHash = ComputeHash(roTmpPath);
 
             if (roCopyHash != roSourceHash)
             {
                 _logger.LogInfo("CheckoutService: D'' hash mismatch on retry — aborting.");
                 try { File.Delete(roTmpPath); } catch { }
-                return Task.FromResult<string?>(null);
+                return null;
             }
         }
 
@@ -1256,7 +1294,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp to D''");
             try { File.Delete(roTmpPath); } catch { }
-            return Task.FromResult<string?>(null);
+            return null;
         }
 
         WorkingPath    = ReadOnlyWorkingPath;
@@ -1264,7 +1302,7 @@ public sealed class CheckoutService : IDisposable
         Mode           = CheckoutMode.ReadOnly;
         IsReadOnlyMode = true;
         _logger.LogInfo("CheckoutService: read-only setup — D'' created.");
-        return Task.FromResult<string?>(ReadOnlyWorkingPath);
+        return ReadOnlyWorkingPath;
     }
 
     /// <summary>
@@ -1310,7 +1348,7 @@ public sealed class CheckoutService : IDisposable
     /// using the SQLite Online Backup API. Unlike a raw file copy, this coordinates with
     /// the database engine and always produces a valid snapshot regardless of concurrent
     /// write activity on the existing <c>DatabaseContext</c> connection.
-    /// Use this whenever D' is the source; use <see cref="CopyWithSharing"/> when
+    /// Use this whenever D' is the source; use <see cref="NetworkFileOps.CopyAsync"/> when
     /// copying a file that is not being actively written by <c>DatabaseContext</c>
     /// (e.g., D → D' at checkout time, or D → D'' at snapshot time).
     /// </summary>
@@ -1330,23 +1368,6 @@ public sealed class CheckoutService : IDisposable
         source.BackupDatabase(dest);
     }
 
-    /// <summary>
-    /// Copies <paramref name="source"/> to <paramref name="dest"/>, opening the
-    /// source with <see cref="FileShare.ReadWrite"/> so the copy succeeds even while
-    /// a <c>DatabaseContext</c> holds the source file open — the common case for
-    /// D (being checked out to D' or snapshotted to D'') and D' (being saved back to D).
-    /// </summary>
-    /// <param name="source">Path of the file to read.</param>
-    /// <param name="dest">Path of the file to create or overwrite.</param>
-    /// <exception cref="IOException">Thrown when either file cannot be accessed.</exception>
-    private static void CopyWithSharing(string source, string dest)
-    {
-        using var src = new FileStream(
-            source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var dst = new FileStream(
-            dest, FileMode.Create, FileAccess.Write, FileShare.None);
-        src.CopyTo(dst);
-    }
 }
 
 /// <summary>Indicates whether this app instance holds the write lock.</summary>
@@ -1368,7 +1389,9 @@ public enum CheckoutOutcome
     /// <summary>A stale lock exists. Prompt the user, then call <see cref="CheckoutService.ForceCheckoutAsync"/> if confirmed.</summary>
     StaleHolder,
     /// <summary>Fatal error (hash mismatch or copy failure). Caller should attempt <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> as a fallback.</summary>
-    Failed
+    Failed,
+    /// <summary>Network share is unreachable (operation timed out). Do not attempt read-only fallback — D is inaccessible.</summary>
+    NetworkUnreachable
 }
 
 /// <summary>Result of a <see cref="CheckoutService.SaveAsync"/> call.</summary>

@@ -215,11 +215,15 @@ public class DatabaseContext : IDatabaseContext
             using var cmd = _conn.CreateCommand();
             cmd.Transaction = tx;
 
-            // Rename SectionPropertyValues to SchedulingEnvironmentValues if the old table still exists
+            // Rename SectionPropertyValues to SchedulingEnvironmentValues if the old table still exists.
+            // InitializeSchema may have already created an empty SchedulingEnvironmentValues via
+            // CREATE TABLE IF NOT EXISTS — drop it first so the rename succeeds.
             cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SectionPropertyValues'";
             var oldTableExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
             if (oldTableExists)
             {
+                cmd.CommandText = "DROP TABLE IF EXISTS SchedulingEnvironmentValues";
+                cmd.ExecuteNonQuery();
                 cmd.CommandText = "ALTER TABLE SectionPropertyValues RENAME TO SchedulingEnvironmentValues";
                 cmd.ExecuteNonQuery();
             }

@@ -923,10 +923,10 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// CleanupOrphanedTmp deletes D.tmp when it exists alongside D.
+    /// CleanupOrphanedTmpAsync deletes D.tmp when it exists alongside D.
     /// </summary>
     [Fact]
-    public void CleanupOrphanedTmp_WhenTmpExists_DeletesIt()
+    public async Task CleanupOrphanedTmp_WhenTmpExists_DeletesIt()
     {
         var (svc, _) = CreateService();
         var db      = DbPath();
@@ -934,22 +934,22 @@ public sealed class CheckoutServiceTests : IDisposable
         CreateFile(db);
         CreateFile(tmpPath, "partial-write-content");
 
-        svc.CleanupOrphanedTmp(db);
+        await svc.CleanupOrphanedTmpAsync(db);
 
         Assert.False(File.Exists(tmpPath));
     }
 
     /// <summary>
-    /// CleanupOrphanedTmp does not throw when there is no D.tmp to delete.
+    /// CleanupOrphanedTmpAsync does not throw when there is no D.tmp to delete.
     /// </summary>
     [Fact]
-    public void CleanupOrphanedTmp_WhenNoTmp_NoException()
+    public async Task CleanupOrphanedTmp_WhenNoTmp_NoException()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
         CreateFile(db);
 
-        var ex = Record.Exception(() => svc.CleanupOrphanedTmp(db));
+        var ex = await Record.ExceptionAsync(() => svc.CleanupOrphanedTmpAsync(db));
         Assert.Null(ex);
     }
 

@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace SchedulingAssistant.Services;
 
 /// <summary>
@@ -14,7 +12,10 @@ public enum DatabaseValidationResult
     Missing,
 
     /// <summary>The file exists but is not a valid SQLite database or fails integrity check.</summary>
-    Corrupt
+    Corrupt,
+
+    /// <summary>The file could not be checked because the network share is unreachable.</summary>
+    Unreachable
 }
 
 /// <summary>
@@ -29,6 +30,8 @@ public static class DatabaseValidator
 {
     /// <summary>
     /// Validates the database file at <paramref name="path"/>.
+    /// Uses <see cref="NetworkFileOps"/> for timeout-aware I/O so the caller does not
+    /// hang when the path is on an unreachable network share.
     /// </summary>
     /// <param name="path">
     /// Full path to the SQLite file to validate. May be <c>null</c> or empty.
@@ -39,14 +42,26 @@ public static class DatabaseValidator
     /// <see cref="DatabaseValidationResult.Missing"/> when <paramref name="path"/> is
     /// null, empty, or the file does not exist;
     /// <see cref="DatabaseValidationResult.Corrupt"/> when the file exists but is not
-    /// a valid SQLite database or fails the integrity check.
+    /// a valid SQLite database or fails the integrity check;
+    /// <see cref="DatabaseValidationResult.Unreachable"/> when a network timeout
+    /// prevented the check from completing.
     /// </returns>
-    public static DatabaseValidationResult Validate(string? path)
+    public static async Task<DatabaseValidationResult> ValidateAsync(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        if (string.IsNullOrWhiteSpace(path))
             return DatabaseValidationResult.Missing;
 
-        return BackupService.CheckIntegrity(path)
+        var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(path);
+        if (!existsCompleted)
+            return DatabaseValidationResult.Unreachable;
+        if (!exists)
+            return DatabaseValidationResult.Missing;
+
+        var (integrityCompleted, passed) = await NetworkFileOps.CheckIntegrityAsync(path);
+        if (!integrityCompleted)
+            return DatabaseValidationResult.Unreachable;
+
+        return passed
             ? DatabaseValidationResult.Ok
             : DatabaseValidationResult.Corrupt;
     }

@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SchedulingAssistant.Services;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace SchedulingAssistant.Tests;
@@ -73,42 +74,42 @@ public sealed class DatabaseValidatorTests : IDisposable
     // ── Missing path tests ────────────────────────────────────────────────────
 
     [Fact]
-    public void Validate_NullPath_ReturnsMissing()
+    public async Task Validate_NullPath_ReturnsMissing()
     {
-        var result = DatabaseValidator.Validate(null);
+        var result = await DatabaseValidator.ValidateAsync(null);
         Assert.Equal(DatabaseValidationResult.Missing, result);
     }
 
     [Fact]
-    public void Validate_EmptyPath_ReturnsMissing()
+    public async Task Validate_EmptyPath_ReturnsMissing()
     {
-        var result = DatabaseValidator.Validate(string.Empty);
+        var result = await DatabaseValidator.ValidateAsync(string.Empty);
         Assert.Equal(DatabaseValidationResult.Missing, result);
     }
 
     [Fact]
-    public void Validate_WhitespacePath_ReturnsMissing()
+    public async Task Validate_WhitespacePath_ReturnsMissing()
     {
-        var result = DatabaseValidator.Validate("   ");
+        var result = await DatabaseValidator.ValidateAsync("   ");
         Assert.Equal(DatabaseValidationResult.Missing, result);
     }
 
     [Fact]
-    public void Validate_FileDoesNotExist_ReturnsMissing()
+    public async Task Validate_FileDoesNotExist_ReturnsMissing()
     {
-        var result = DatabaseValidator.Validate(DbPath("nonexistent.db"));
+        var result = await DatabaseValidator.ValidateAsync(DbPath("nonexistent.db"));
         Assert.Equal(DatabaseValidationResult.Missing, result);
     }
 
     // ── Valid database ────────────────────────────────────────────────────────
 
     [Fact]
-    public void Validate_ValidDatabase_ReturnsOk()
+    public async Task Validate_ValidDatabase_ReturnsOk()
     {
         var path = DbPath();
         CreateValidDatabase(path);
 
-        var result = DatabaseValidator.Validate(path);
+        var result = await DatabaseValidator.ValidateAsync(path);
         Assert.Equal(DatabaseValidationResult.Ok, result);
     }
 
@@ -119,12 +120,12 @@ public sealed class DatabaseValidatorTests : IDisposable
     /// SQLite rejects the file immediately — not a valid database header.
     /// </summary>
     [Fact]
-    public void Validate_GarbageTextFile_ReturnsCorrupt()
+    public async Task Validate_GarbageTextFile_ReturnsCorrupt()
     {
         var path = DbPath("garbage.db");
         File.WriteAllText(path, "this is not a sqlite database");
 
-        var result = DatabaseValidator.Validate(path);
+        var result = await DatabaseValidator.ValidateAsync(path);
         Assert.Equal(DatabaseValidationResult.Corrupt, result);
     }
 
@@ -136,12 +137,12 @@ public sealed class DatabaseValidatorTests : IDisposable
     /// This test documents that behaviour rather than asserting Corrupt.
     /// </summary>
     [Fact]
-    public void Validate_ZeroByteFile_ReturnsOk()
+    public async Task Validate_ZeroByteFile_ReturnsOk()
     {
         var path = DbPath("empty.db");
         File.WriteAllBytes(path, []);
 
-        var result = DatabaseValidator.Validate(path);
+        var result = await DatabaseValidator.ValidateAsync(path);
         Assert.Equal(DatabaseValidationResult.Ok, result);
     }
 
@@ -151,7 +152,7 @@ public sealed class DatabaseValidatorTests : IDisposable
     /// page data is missing — integrity_check fails.
     /// </summary>
     [Fact]
-    public void Validate_TruncatedFile_ReturnsCorrupt()
+    public async Task Validate_TruncatedFile_ReturnsCorrupt()
     {
         var sourcePath = DbPath("source.db");
         var truncPath  = DbPath("truncated.db");
@@ -160,7 +161,7 @@ public sealed class DatabaseValidatorTests : IDisposable
         var bytes = File.ReadAllBytes(sourcePath);
         File.WriteAllBytes(truncPath, bytes[..Math.Min(512, bytes.Length)]);
 
-        var result = DatabaseValidator.Validate(truncPath);
+        var result = await DatabaseValidator.ValidateAsync(truncPath);
         Assert.Equal(DatabaseValidationResult.Corrupt, result);
     }
 
@@ -169,7 +170,7 @@ public sealed class DatabaseValidatorTests : IDisposable
     /// The file opens as SQLite, but integrity_check reports structural errors.
     /// </summary>
     [Fact]
-    public void Validate_SchemaPoisoned_ReturnsCorrupt()
+    public async Task Validate_SchemaPoisoned_ReturnsCorrupt()
     {
         var path = DbPath("poisoned.db");
         CreateValidDatabase(path);
@@ -199,7 +200,7 @@ public sealed class DatabaseValidatorTests : IDisposable
         conn.Close();
         SqliteConnection.ClearAllPools();
 
-        var result = DatabaseValidator.Validate(path);
+        var result = await DatabaseValidator.ValidateAsync(path);
         Assert.Equal(DatabaseValidationResult.Corrupt, result);
     }
 }
