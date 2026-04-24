@@ -673,7 +673,7 @@
 					Padding="6,0"
 					VerticalAlignment="Center"
 					Content="Events"
-					FontSize="{StaticResource FontSizeNormal}"
+					FontSize="{StaticResource FontSizeMedium}"
 					IsChecked="{Binding ShowMeetings, Mode=TwoWay}"
 					ToolTip.Tip="Show or hide events on the schedule grid" />
 			</Border>

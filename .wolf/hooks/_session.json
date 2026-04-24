@@ -8,7 +8,7 @@
       "first_read": "2026-04-24T19:47:38.811Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1": {
-      "count": 1,
+      "count": 2,
       "tokens": 0,
       "first_read": "2026-04-24T19:47:42.185Z"
     },
@@ -116,6 +116,16 @@
       "count": 1,
       "tokens": 0,
       "first_read": "2026-04-24T19:56:52.650Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": {
+      "count": 1,
+      "tokens": 14217,
+      "first_read": "2026-04-24T21:31:08.142Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-24T21:31:08.573Z"
     }
   },
   "files_written": [
@@ -208,6 +218,12 @@
       "action": "edit",
       "tokens": 49,
       "at": "2026-04-24T20:02:57.409Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+      "action": "create",
+      "tokens": 1118,
+      "at": "2026-04-24T23:24:02.720Z"
     }
   ],
   "edit_counts": {
@@ -220,11 +236,12 @@
     "src/SchedulingAssistant/SchedulingAssistant.csproj": 2,
     "src/SchedulingAssistant/MainWindow.axaml.cs": 1,
     "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs": 1,
-    "src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs": 1
+    "src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs": 1,
+    "publish.ps1": 1
   },
-  "anatomy_hits": 6,
-  "anatomy_misses": 17,
-  "repeated_reads_warned": 17,
+  "anatomy_hits": 7,
+  "anatomy_misses": 18,
+  "repeated_reads_warned": 18,
   "cerebrum_warnings": 0,
-  "stop_count": 14
+  "stop_count": 28
 }
