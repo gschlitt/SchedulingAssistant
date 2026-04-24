@@ -22,10 +22,9 @@ if (-not $Version) {
 }
 
 # Update the last <Version> tag in the csproj.
-$lastMatch  = $versionMatches[$versionMatches.Count - 1]
-$oldTag     = "<Version>$currentVersion</Version>"
-$newTag     = "<Version>$Version</Version>"
-$lastIndex  = $csprojContent.LastIndexOf($oldTag)
+$oldTag    = "<Version>$currentVersion</Version>"
+$newTag    = "<Version>$Version</Version>"
+$lastIndex = $csprojContent.LastIndexOf($oldTag)
 $csprojContent = $csprojContent.Substring(0, $lastIndex) + $newTag + $csprojContent.Substring($lastIndex + $oldTag.Length)
 [System.IO.File]::WriteAllText((Resolve-Path $CsprojPath), $csprojContent)
 Write-Host "csproj version set to $Version" -ForegroundColor Cyan
@@ -52,32 +51,29 @@ Write-Host "`nPublishing Windows $Version..." -ForegroundColor Cyan
 dotnet publish $CsprojPath -c Release -r win-x64 --self-contained -o ./publish/win
 if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish (win-x64) failed"; exit 1 }
 
-Write-Host "`nPublishing macOS $Version..." -ForegroundColor Cyan
-dotnet publish $CsprojPath -c Release -r osx-x64 --self-contained -o ./publish/osx
-if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish (osx-x64) failed"; exit 1 }
-
 # ── Pack ─────────────────────────────────────────────────────────────────────
 
 Write-Host "`nPacking Windows..." -ForegroundColor Cyan
 vpk pack --packId $PackId --packVersion $Version --packDir ./publish/win --mainExe TermPoint.exe --outputDir ./releases/win
 if ($LASTEXITCODE -ne 0) { Write-Error "vpk pack (win) failed"; exit 1 }
 
-Write-Host "`nPacking macOS..." -ForegroundColor Cyan
-vpk pack --packId $PackId --packVersion $Version --packDir ./publish/osx --mainExe TermPoint --outputDir ./releases/osx --runtime osx-x64
-if ($LASTEXITCODE -ne 0) { Write-Error "vpk pack (osx) failed"; exit 1 }
+# ── Upload Windows ───────────────────────────────────────────────────────────
 
-# ── Upload ───────────────────────────────────────────────────────────────────
-
-# Both platforms upload to the same GitHub release tag so clients get the right package for their OS.
 Write-Host "`nUploading Windows to GitHub..." -ForegroundColor Cyan
 vpk upload github --repoUrl $RepoUrl --token $token --outputDir ./releases/win --tag "v$Version" --releaseName "v$Version"
 if ($LASTEXITCODE -ne 0) { Write-Error "vpk upload (win) failed"; exit 1 }
 
-Write-Host "`nUploading macOS to GitHub..." -ForegroundColor Cyan
-vpk upload github --repoUrl $RepoUrl --token $token --outputDir ./releases/osx --tag "v$Version" --releaseName "v$Version"
-if ($LASTEXITCODE -ne 0) { Write-Error "vpk upload (osx) failed"; exit 1 }
+# ── Push git tag (triggers macOS GitHub Actions workflow) ────────────────────
+
+Write-Host "`nPushing git tag v$Version..." -ForegroundColor Cyan
+git tag "v$Version"
+git push origin "v$Version"
+if ($LASTEXITCODE -ne 0) { Write-Error "git push tag failed"; exit 1 }
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 
-Write-Host "`nDone! Publish the draft release at:" -ForegroundColor Green
+Write-Host "`nDone! Windows package uploaded and macOS build triggered." -ForegroundColor Green
+Write-Host "  Monitor the macOS build at:" -ForegroundColor Green
+Write-Host "  https://github.com/gschlitt/SchedulingAssistant/actions" -ForegroundColor Green
+Write-Host "  Then publish the draft release at:" -ForegroundColor Green
 Write-Host "  https://github.com/gschlitt/SchedulingAssistant/releases" -ForegroundColor Green

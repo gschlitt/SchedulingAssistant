@@ -3601,3 +3601,15 @@
 | 16:23 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~65253 tok |
 | 16:24 | Created publish.ps1 | — | ~1044 |
 | 16:24 | Session end: 16 writes across 11 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~66371 tok |
+| 16:30 | Edited publish.ps1 | inline fix | ~32 |
+| 16:30 | Session end: 17 writes across 11 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~66405 tok |
+| 16:31 | Edited publish.ps1 | inline fix | ~33 |
+| 16:31 | Session end: 18 writes across 11 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~66441 tok |
+| 16:34 | Edited publish.ps1 | publish() → nDone() | ~261 |
+| 16:34 | Created publish-mac.sh | — | ~487 |
+| 16:34 | Session end: 20 writes across 12 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~67242 tok |
+| 16:35 | Session end: 20 writes across 12 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~67242 tok |
+| 16:37 | Created publish.ps1 | — | ~936 |
+| 16:37 | Created .github/workflows/publish-macos.yml | — | ~446 |
+| 16:37 | Session end: 22 writes across 13 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~69516 tok |
+| 16:40 | Session end: 22 writes across 13 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 25 reads | ~69516 tok |

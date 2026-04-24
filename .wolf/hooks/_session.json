@@ -8,8 +8,8 @@
       "first_read": "2026-04-24T19:47:38.811Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1": {
-      "count": 2,
-      "tokens": 0,
+      "count": 3,
+      "tokens": 825,
       "first_read": "2026-04-24T19:47:42.185Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj": {
@@ -224,6 +224,42 @@
       "action": "create",
       "tokens": 1118,
       "at": "2026-04-24T23:24:02.720Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+      "action": "edit",
+      "tokens": 34,
+      "at": "2026-04-24T23:30:10.005Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+      "action": "edit",
+      "tokens": 36,
+      "at": "2026-04-24T23:31:57.423Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+      "action": "edit",
+      "tokens": 279,
+      "at": "2026-04-24T23:34:07.572Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish-mac.sh",
+      "action": "create",
+      "tokens": 522,
+      "at": "2026-04-24T23:34:16.765Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+      "action": "create",
+      "tokens": 1003,
+      "at": "2026-04-24T23:37:09.510Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/publish-macos.yml",
+      "action": "create",
+      "tokens": 446,
+      "at": "2026-04-24T23:37:19.942Z"
     }
   ],
   "edit_counts": {
@@ -237,11 +273,13 @@
     "src/SchedulingAssistant/MainWindow.axaml.cs": 1,
     "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs": 1,
     "src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs": 1,
-    "publish.ps1": 1
+    "publish.ps1": 5,
+    "publish-mac.sh": 1,
+    ".github/workflows/publish-macos.yml": 1
   },
   "anatomy_hits": 7,
   "anatomy_misses": 18,
-  "repeated_reads_warned": 18,
+  "repeated_reads_warned": 19,
   "cerebrum_warnings": 0,
-  "stop_count": 28
+  "stop_count": 34
 }

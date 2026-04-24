@@ -1,0 +1,55 @@
+name: Publish macOS
+
+# Triggered when publish.ps1 pushes a version tag (e.g. v1.0.14).
+# Builds, packs, and uploads the macOS package to the same draft release
+# that publish.ps1 already created for Windows.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # required to upload assets to the GitHub release
+
+jobs:
+  publish-osx:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Publish macOS
+        run: |
+          dotnet publish src/SchedulingAssistant/SchedulingAssistant.csproj \
+            -c Release -r osx-x64 --self-contained -o ./publish/osx
+
+      - name: Pack macOS
+        run: |
+          vpk pack \
+            --packId TermPoint \
+            --packVersion ${{ steps.version.outputs.VERSION }} \
+            --packDir ./publish/osx \
+            --mainExe TermPoint \
+            --outputDir ./releases/osx
+
+      - name: Upload macOS to GitHub release
+        run: |
+          vpk upload github \
+            --repoUrl https://github.com/gschlitt/SchedulingAssistant \
+            --token ${{ secrets.GITHUB_TOKEN }} \
+            --outputDir ./releases/osx \
+            --tag ${{ github.ref_name }} \
+            --releaseName ${{ github.ref_name }}

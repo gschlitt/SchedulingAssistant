@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T23:24:02.659Z
-> Files: 34 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T23:37:19.901Z
+> Files: 36 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -39,7 +39,8 @@
 
 ## ./
 
-- `publish.ps1` (~1044 tok)
+- `publish-mac.sh` (~487 tok)
+- `publish.ps1` (~936 tok)
 
 ## .claude/
 
@@ -154,6 +155,10 @@
 
 ## .claude/worktrees/interesting-wilbur/src/SchedulingAssistant/Views/Management/
 
+
+## .github/workflows/
+
+- `publish-macos.yml` — CI: Publish macOS (~446 tok)
 
 ## .vs/SchedulingAssistant/DesignTimeBuild/
 

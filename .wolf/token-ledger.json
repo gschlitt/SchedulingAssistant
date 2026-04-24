@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-03-24T16:24:53.559Z",
   "lifetime": {
-    "total_tokens_estimated": 17585155,
-    "total_reads": 6409,
-    "total_writes": 6626,
+    "total_tokens_estimated": 17991517,
+    "total_reads": 6559,
+    "total_writes": 6745,
     "total_sessions": 235,
-    "anatomy_hits": 1824,
-    "anatomy_misses": 4501,
-    "repeated_reads_blocked": 5499,
-    "estimated_savings_vs_bare_cli": 43632609
+    "anatomy_hits": 1866,
+    "anatomy_misses": 4609,
+    "repeated_reads_blocked": 5609,
+    "estimated_savings_vs_bare_cli": 43917813
   },
   "sessions": [
     {
@@ -83316,6 +83316,1603 @@
         "reads_count": 25,
         "writes_count": 16,
         "repeated_reads_blocked": 18,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-04-24-1247",
+      "started": "2026-04-24T19:47:13.854Z",
+      "ended": "2026-04-24T23:30:12.658Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 754,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/CLAUDE.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/app.manifest",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/assets.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/releases.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 7324,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+          "tokens_estimated": 18750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+          "tokens_estimated": 2341,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 14692,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/UpdateService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+          "tokens_estimated": 5963,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 14217,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/PlatformProcess.cs",
+          "tokens_estimated": 627,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 148,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1118,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 34,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 64041,
+        "output_tokens_estimated": 2364,
+        "reads_count": 25,
+        "writes_count": 17,
+        "repeated_reads_blocked": 18,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-04-24-1247",
+      "started": "2026-04-24T19:47:13.854Z",
+      "ended": "2026-04-24T23:31:59.491Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 754,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/CLAUDE.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/app.manifest",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/assets.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/releases.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 7324,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+          "tokens_estimated": 18750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+          "tokens_estimated": 2341,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 14692,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/UpdateService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+          "tokens_estimated": 5963,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 14217,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/PlatformProcess.cs",
+          "tokens_estimated": 627,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 148,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1118,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 36,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 64041,
+        "output_tokens_estimated": 2400,
+        "reads_count": 25,
+        "writes_count": 18,
+        "repeated_reads_blocked": 18,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-04-24-1247",
+      "started": "2026-04-24T19:47:13.854Z",
+      "ended": "2026-04-24T23:34:22.731Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 754,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/CLAUDE.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/app.manifest",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/assets.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/releases.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 7324,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+          "tokens_estimated": 18750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+          "tokens_estimated": 2341,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 14692,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/UpdateService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+          "tokens_estimated": 5963,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 14217,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/PlatformProcess.cs",
+          "tokens_estimated": 627,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 148,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1118,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 279,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish-mac.sh",
+          "tokens_estimated": 522,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 64041,
+        "output_tokens_estimated": 3201,
+        "reads_count": 25,
+        "writes_count": 20,
+        "repeated_reads_blocked": 18,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-04-24-1247",
+      "started": "2026-04-24T19:47:13.854Z",
+      "ended": "2026-04-24T23:35:34.163Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 754,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/CLAUDE.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/app.manifest",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/assets.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/releases.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 7324,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+          "tokens_estimated": 18750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+          "tokens_estimated": 2341,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 14692,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/UpdateService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+          "tokens_estimated": 5963,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 14217,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/PlatformProcess.cs",
+          "tokens_estimated": 627,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 148,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1118,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 279,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish-mac.sh",
+          "tokens_estimated": 522,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 64041,
+        "output_tokens_estimated": 3201,
+        "reads_count": 25,
+        "writes_count": 20,
+        "repeated_reads_blocked": 18,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-04-24-1247",
+      "started": "2026-04-24T19:47:13.854Z",
+      "ended": "2026-04-24T23:37:25.360Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 754,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 825,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/CLAUDE.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/app.manifest",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/assets.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/releases.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 7324,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+          "tokens_estimated": 18750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+          "tokens_estimated": 2341,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 14692,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/UpdateService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+          "tokens_estimated": 5963,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 14217,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/PlatformProcess.cs",
+          "tokens_estimated": 627,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 148,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1118,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 279,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish-mac.sh",
+          "tokens_estimated": 522,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1003,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/publish-macos.yml",
+          "tokens_estimated": 446,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 64866,
+        "output_tokens_estimated": 4650,
+        "reads_count": 25,
+        "writes_count": 22,
+        "repeated_reads_blocked": 19,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-04-24-1247",
+      "started": "2026-04-24T19:47:13.854Z",
+      "ended": "2026-04-24T23:40:36.818Z",
+      "reads": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 754,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 825,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/CLAUDE.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/app.manifest",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/assets.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/releases/win/releases.win.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs",
+          "tokens_estimated": 7324,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+          "tokens_estimated": 18750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/AppSettings.cs",
+          "tokens_estimated": 2341,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 14692,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/UpdateService.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs",
+          "tokens_estimated": 5963,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+          "tokens_estimated": 14217,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/RightClickCommandBehavior.cs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/PlatformProcess.cs",
+          "tokens_estimated": 627,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/HelpTip.cs",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs",
+          "tokens_estimated": 13,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewLocator.cs",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 148,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1118,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 279,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish-mac.sh",
+          "tokens_estimated": 522,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1",
+          "tokens_estimated": 1003,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/publish-macos.yml",
+          "tokens_estimated": 446,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 64866,
+        "output_tokens_estimated": 4650,
+        "reads_count": 25,
+        "writes_count": 22,
+        "repeated_reads_blocked": 19,
         "anatomy_lookups": 7
       }
     }

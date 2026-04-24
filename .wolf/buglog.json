@@ -6409,6 +6409,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T19:57:49.746Z"
+    },
+    {
+      "id": "bug-401",
+      "timestamp": "2026-04-24T23:34:07.585Z",
+      "error_message": "Significant refactor of ",
+      "file": "publish.ps1",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 29→16 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ps1"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T23:34:07.585Z"
     }
   ]
 }
