@@ -2,9 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
+using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -131,18 +130,9 @@ public sealed partial class HelpViewModel : ViewModelBase
 
     /// <summary>
     /// Launches a URL in the platform's default browser.
-    /// Works on Windows, macOS, and Linux.
     /// </summary>
     /// <param name="url">The URL to open.</param>
-    private static void OpenInBrowser(string url)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            Process.Start("open", url);
-        else
-            Process.Start("xdg-open", url);
-    }
+    private static void OpenInBrowser(string url) => PlatformProcess.OpenUri(url);
 
     // ── Topic tree definition ──────────────────────────────────────────────
 

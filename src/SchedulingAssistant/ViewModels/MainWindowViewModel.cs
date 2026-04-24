@@ -269,8 +269,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (string.IsNullOrEmpty(url)) return;
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
-                { UseShellExecute = true });
+            Services.PlatformProcess.OpenUri(url);
         }
         catch { /* non-critical — link open failure should not crash the app */ }
     }
@@ -603,8 +602,7 @@ public partial class MainWindowViewModel : ViewModelBase
             // Restart the application so it opens the restored database cleanly.
             var exePath = Environment.ProcessPath;
             if (exePath is not null)
-                System.Diagnostics.Process.Start(
-                    new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = true });
+                Services.PlatformProcess.LaunchExecutable(exePath);
         }
         catch (Exception ex)
         {

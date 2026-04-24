@@ -32,7 +32,7 @@ public class ViewLocator : IDataTemplate
                     Foreground = Avalonia.Media.Brushes.Red,
                     TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                     Margin = new Avalonia.Thickness(16),
-                    FontFamily = new Avalonia.Media.FontFamily("Consolas")
+                    FontFamily = new Avalonia.Media.FontFamily("Consolas, Menlo, Courier New, monospace")
                 }
             };
         }

@@ -56,8 +56,8 @@ public partial class MeetingListView : UserControl
             }
         }
 
-        // Ctrl+S to save
-        if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        // Ctrl+S (Windows/Linux) or Cmd+S (macOS) to save
+        if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
         {
             if (_vm.EditVm.SaveCommand.CanExecute(null))
             {

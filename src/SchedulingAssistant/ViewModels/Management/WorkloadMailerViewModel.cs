@@ -5,7 +5,7 @@ using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
+using SchedulingAssistant.Services;
 using System.Text;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -311,7 +311,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
 
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = mailto, UseShellExecute = true });
+            PlatformProcess.OpenUri(mailto);
         }
         catch (Exception ex)
         {

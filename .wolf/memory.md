@@ -3556,3 +3556,33 @@
 | 12:02 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 4→4 lines | ~44 |
 | 12:02 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 14→14 lines | ~158 |
 | 12:02 | Session end: 5 writes across 2 files (WorkloadRowViewModel.cs, WorkloadPanelView.axaml) | 2 reads | ~3452 tok |
+
+## Session: 2026-04-24 12:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:57 | Created src/SchedulingAssistant/Services/PlatformProcess.cs | — | ~585 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs | 3→2 lines | ~14 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs | reduced (-9 lines) | ~61 |
+| 12:57 | Edited src/SchedulingAssistant/Behaviors/HelpTip.cs | 3→3 lines | ~21 |
+| 12:57 | Edited src/SchedulingAssistant/Behaviors/HelpTip.cs | inline fix | ~16 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 2→1 lines | ~14 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 4→3 lines | ~42 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs | inline fix | ~10 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadMailerViewModel.cs | inline fix | ~12 |
+| 12:57 | Edited src/SchedulingAssistant/ViewLocator.cs | "Consolas" → "Consolas, Menlo, Courier " | ~23 |
+| 12:57 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 10→10 lines | ~139 |
+| 12:57 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~53 |
+| 12:57 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | 2→2 lines | ~49 |
+| 12:57 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs | 2→2 lines | ~49 |
+| 12:58 | Session end: 14 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~50987 tok |
+| 13:01 | Session end: 14 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~50987 tok |
+| 13:02 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 1→2 lines | ~46 |
+| 13:03 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:04 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:05 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:07 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:08 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:08 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:09 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |
+| 13:14 | Session end: 15 writes across 10 files (PlatformProcess.cs, HelpViewModel.cs, HelpTip.cs, MainWindowViewModel.cs, WorkloadMailerViewModel.cs) | 23 reads | ~51036 tok |

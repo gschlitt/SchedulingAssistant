@@ -48,8 +48,8 @@ public partial class MainWindow : Window
         // Ctrl+S is handled here to save editors in management views (works globally, not dependent on focus).
         KeyDown += (_, e) =>
         {
-            // Handle Ctrl+S to save the current editor in any management view
-            if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            // Handle Ctrl+S (Windows/Linux) or Cmd+S (macOS) to save
+            if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
             {
                 if (DataContext is MainWindowViewModel vm)
                 {

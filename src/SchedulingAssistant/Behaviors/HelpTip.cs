@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
-using System.Diagnostics;
+using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Behaviors;
 
@@ -128,7 +128,7 @@ public static class HelpTip
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo(capturedUrl) { UseShellExecute = true });
+                    PlatformProcess.OpenUri(capturedUrl);
                 }
                 catch
                 {

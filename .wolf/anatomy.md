@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T19:02:09.105Z
-> Files: 25 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T20:02:57.340Z
+> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -178,11 +178,13 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3644 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14692 tok)
-- `SchedulingAssistant.csproj` (~754 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14702 tok)
+- `SchedulingAssistant.csproj` (~804 tok)
+- `ViewLocator.cs` — Class: ViewLocator (~370 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~1775 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -206,11 +208,13 @@
 - `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~18750 tok)
 - `DatabaseValidator.cs` — The result of a database file validation check. (~706 tok)
 - `NetworkFileOps.cs` — Timeout-aware wrappers for file operations against paths that may be on a network share (D, D.lock, (~2384 tok)
+- `PlatformProcess.cs` — Cross-platform helpers for launching URLs, URIs, and executables via the OS default handler. (~585 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~7324 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
 - `DatabaseRecoveryViewModel.cs` — Indicates why the database recovery window was shown. (~3654 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7696 tok)
 - `WorkloadRowViewModel.cs` — Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)" (~492 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
@@ -220,6 +224,8 @@
 
 - `CourseHistoryExportViewModel.cs` — Exports the teaching history of a single course as a CSV file. One row per instructor assignment per (~2379 tok)
 - `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~425 tok)
+- `HelpViewModel.cs` — Represents a single node in the help documentation tree. A node may be a navigable article (when <se (~2562 tok)
+- `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5485 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -239,6 +245,8 @@
 
 - `CourseHistoryExportView.axaml` (~495 tok)
 - `CourseHistoryExportView.axaml.cs` — Class: CourseHistoryExportView (~59 tok)
+- `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1040 tok)
+- `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2649 tok)
 - `WorkloadMailerView.axaml` (~2542 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

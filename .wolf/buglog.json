@@ -6313,6 +6313,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T18:54:21.904Z"
+    },
+    {
+      "id": "bug-395",
+      "timestamp": "2026-04-24T19:57:23.702Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 14→5 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T19:57:23.702Z"
+    },
+    {
+      "id": "bug-396",
+      "timestamp": "2026-04-24T19:57:29.843Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T19:57:29.843Z"
+    },
+    {
+      "id": "bug-397",
+      "timestamp": "2026-04-24T19:57:33.530Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewLocator.cs",
+      "root_cause": "Had \"Consolas\"",
+      "fix": "Changed to \"Consolas, Menlo, Courier New, monospace\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T19:57:33.530Z"
+    },
+    {
+      "id": "bug-398",
+      "timestamp": "2026-04-24T19:57:46.589Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Condition was: if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifi)",
+      "fix": "Changed to: if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModif)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T19:57:46.589Z"
+    },
+    {
+      "id": "bug-399",
+      "timestamp": "2026-04-24T19:57:48.226Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "root_cause": "Condition was: if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifi)",
+      "fix": "Changed to: if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModif)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T19:57:48.226Z"
+    },
+    {
+      "id": "bug-400",
+      "timestamp": "2026-04-24T19:57:49.746Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs",
+      "root_cause": "Condition was: if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifi)",
+      "fix": "Changed to: if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModif)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T19:57:49.746Z"
     }
   ]
 }
