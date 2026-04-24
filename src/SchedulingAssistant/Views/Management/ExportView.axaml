@@ -1,30 +1,41 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
-             x:Class="SchedulingAssistant.Views.Management.ExportView"
-             x:DataType="vm:ExportViewModel"
-             x:CompileBindings="False">
+<UserControl
+	x:Class="SchedulingAssistant.Views.Management.ExportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:ExportViewModel">
 
-    <StackPanel Spacing="16" MaxWidth="420">
+	<StackPanel MaxWidth="420" Spacing="16">
 
-        <TextBlock Text="Export Schedule PNG" FontSize="13" FontWeight="SemiBold" />
+		<TextBlock
+			FontSize="{StaticResource FontSizeLarge}"
+			FontWeight="SemiBold"
+			Text="Export Schedule" />
 
-        <Border Background="{StaticResource FilterBarBackground}"
-                CornerRadius="4" Padding="12">
-            <StackPanel Spacing="6">
-                <TextBlock FontSize="11" TextWrapping="Wrap"
-                           Text="Exports the full weekly grid as a PNG image at 2× resolution — all days and the full time range, regardless of current scroll or zoom." />
-                <Button Content="Choose file and export…"
-                        Command="{Binding ExportSchedulePngCommand}"
-                        IsEnabled="{Binding !IsExporting}"
-                        Margin="0,4,0,0" />
-            </StackPanel>
-        </Border>
+		<Border
+			Padding="12"
+			Background="{StaticResource FilterBarBackground}"
+			CornerRadius="4">
+			<StackPanel Spacing="6">
+				<TextBlock
+					FontSize="{StaticResource FontSizeNormal}"
+					Text="Exports the full weekly grid as a PNG image at 2× resolution — all days and the full time range, regardless of current scroll or zoom."
+					TextWrapping="Wrap" />
+				<Button
+					Margin="0,4,0,0"
+					Command="{Binding ExportSchedulePngCommand}"
+					Content="Choose file and export…"
+					IsEnabled="{Binding !IsExporting}" />
+			</StackPanel>
+		</Border>
 
-        <TextBlock Text="{Binding StatusMessage}"
-                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                   FontSize="11" TextWrapping="Wrap" />
+		<TextBlock
+			FontSize="11"
+			IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+			Text="{Binding StatusMessage}"
+			TextWrapping="Wrap" />
 
-    </StackPanel>
+	</StackPanel>
 
 </UserControl>

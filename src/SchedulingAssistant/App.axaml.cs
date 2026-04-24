@@ -246,6 +246,7 @@ public partial class App : Application
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
         services.AddTransient<WorkloadMailerViewModel>();
+        services.AddTransient<CourseHistoryExportViewModel>();
         services.AddTransient<CampusListViewModel>();
         services.AddTransient<HelpViewModel>();
         services.AddTransient<ShareViewModel>();

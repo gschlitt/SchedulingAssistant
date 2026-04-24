@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-22T17:08:16.696Z
-> Files: 4 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T19:02:09.105Z
+> Files: 25 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,10 +29,13 @@
 
 ## ../../../.claude/plans/
 
-- `zesty-brewing-feigenbaum.md` — Plan: Network Timeout Wrappers for CheckoutService (~1299 tok)
+- `cheeky-orbiting-patterson.md` — Course History CSV Export (~993 tok)
+- `zesty-brewing-feigenbaum.md` — Plan: NetworkFileOps — Centralized Network Timeout Utility (~1780 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
+- `MEMORY.md` — SchedulingAssistant Project Memory (~6152 tok)
+- `network_timeout_wrappers.md` — Problem (discovered April 2026) (~936 tok)
 
 ## ./
 
@@ -168,10 +171,15 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~18366 tok)
+- `DatabaseValidatorTests.cs` — Unit tests for <see cref="DatabaseValidator"/>. <para>Each test operates on a fresh temporary direct (~2103 tok)
+- `WriteLockServiceTests.cs` — Unit tests for <see cref="WriteLockService"/>. <para>Each test fixture creates an isolated temporary (~6028 tok)
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14400 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3644 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14692 tok)
+- `SchedulingAssistant.csproj` (~754 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -184,6 +192,7 @@
 
 ## src/SchedulingAssistant/Data/
 
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~5963 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
@@ -193,17 +202,24 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~16975 tok)
-- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~6857 tok)
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2341 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~18750 tok)
+- `DatabaseValidator.cs` — The result of a database file validation check. (~706 tok)
+- `NetworkFileOps.cs` — Timeout-aware wrappers for file operations against paths that may be on a network share (D, D.lock, (~2384 tok)
+- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~7324 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `DatabaseRecoveryViewModel.cs` — Indicates why the database recovery window was shown. (~3654 tok)
+- `WorkloadRowViewModel.cs` — Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)" (~492 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `CourseHistoryExportViewModel.cs` — Exports the teaching history of a single course as a CSV file. One row per instructor assignment per (~2379 tok)
+- `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~425 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -213,12 +229,17 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `WorkloadPanelView.axaml` (~2733 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14217 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `CourseHistoryExportView.axaml` (~495 tok)
+- `CourseHistoryExportView.axaml.cs` — Class: CourseHistoryExportView (~59 tok)
+- `WorkloadMailerView.axaml` (~2542 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

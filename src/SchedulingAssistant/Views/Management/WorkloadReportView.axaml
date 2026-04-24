@@ -1,30 +1,41 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
-             x:Class="SchedulingAssistant.Views.Management.WorkloadReportView"
-             x:DataType="vm:WorkloadReportViewModel"
-             x:CompileBindings="False">
+<UserControl
+	x:Class="SchedulingAssistant.Views.Management.WorkloadReportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:WorkloadReportViewModel">
 
-    <StackPanel Spacing="16" MaxWidth="420">
+	<StackPanel MaxWidth="420" Spacing="16">
 
-        <TextBlock Text="Workload Report" FontSize="13" FontWeight="SemiBold" />
+		<TextBlock
+			FontSize="{StaticResource FontSizeLarge}"
+			FontWeight="SemiBold"
+			Text="Workload Report" />
 
-        <Border Background="{StaticResource FilterBarBackground}"
-                CornerRadius="4" Padding="12">
-            <StackPanel Spacing="6">
-                <TextBlock FontSize="11" TextWrapping="Wrap"
-                           Text="Exports a CSV summary of credited workload for all active instructors across semesters in the current academic year." />
-                <Button Content="Choose file and export…"
-                        Command="{Binding ExportWorkloadReportCommand}"
-                        IsEnabled="{Binding !IsExporting}"
-                        Margin="0,4,0,0" />
-            </StackPanel>
-        </Border>
+		<Border
+			Padding="12"
+			Background="{StaticResource FilterBarBackground}"
+			CornerRadius="4">
+			<StackPanel Spacing="6">
+				<TextBlock
+					FontSize="{StaticResource FontSizeNormal}"
+					Text="Exports a CSV summary of credited workload for all active instructors across semesters in the current academic year."
+					TextWrapping="Wrap" />
+				<Button
+					Margin="0,4,0,0"
+					Command="{Binding ExportWorkloadReportCommand}"
+					Content="Choose file and export…"
+					IsEnabled="{Binding !IsExporting}" />
+			</StackPanel>
+		</Border>
 
-        <TextBlock Text="{Binding StatusMessage}"
-                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                   FontSize="11" TextWrapping="Wrap" />
+		<TextBlock
+			FontSize="11"
+			IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+			Text="{Binding StatusMessage}"
+			TextWrapping="Wrap" />
 
-    </StackPanel>
+	</StackPanel>
 
 </UserControl>

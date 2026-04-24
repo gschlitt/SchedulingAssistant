@@ -11,7 +11,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class ExportViewModel : ViewModelBase
 {
     /// <summary>Category label shown in the Export flyout sidebar.</summary>
-    public string DisplayName => "Export PNG";
+    public string DisplayName => "Export Schedule";
 
     private readonly MainWindowViewModel _mainVm;
 

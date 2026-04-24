@@ -61,7 +61,7 @@
 					b:HelpTip.Text="Add a new section"
 					Command="{Binding AddCommand}"
 					Content="Add"
-					FontSize="14" />
+					FontSize="{StaticResource FontSizeNormal}" />
 				<Button
 					MinWidth="0"
 					MinHeight="0"
@@ -69,7 +69,7 @@
 					b:HelpTip.Text="Edit the selected section. You can also begin editing by double-clicking a section or by pressing 'Enter' with a section selected."
 					Command="{Binding EditCommand}"
 					Content="Edit"
-					FontSize="14"
+					FontSize="{StaticResource FontSizeNormal}"
 					IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
 				<Button
 					MinWidth="0"
@@ -78,7 +78,7 @@
 					b:HelpTip.Text="Copy the selected section, incrementing the section code"
 					Command="{Binding CopyCommand}"
 					Content="Copy"
-					FontSize="14"
+					FontSize="{StaticResource FontSizeNormal}"
 					IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
 				<Button
 					MinWidth="0"
@@ -86,7 +86,7 @@
 					Padding="5,1"
 					Command="{Binding DeleteCommand}"
 					Content="Delete"
-					FontSize="14"
+					FontSize="{StaticResource FontSizeNormal}"
 					IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
 				<TextBlock
 					VerticalAlignment="Center"
@@ -99,7 +99,7 @@
 					Background="{StaticResource ButtonBackground}"
 					BorderThickness="0"
 					CornerRadius="4"
-					FontSize="14"
+					FontSize="{StaticResource FontSizeNormal}"
 					ItemsSource="{Binding SortModeOptions}"
 					SelectedIndex="{Binding SelectedSortModeIndex}" />
 			</StackPanel>

@@ -67,8 +67,7 @@
 			BorderThickness="0,0,0,1">
 			<Grid>
 				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
-					<ColumnDefinition Width="30" />
+					<ColumnDefinition Width="150" SharedSizeGroup="NameCol" />
 					<ColumnDefinition Width="*" />
 					<ColumnDefinition Width="35" />
 					<ColumnDefinition Width="20" />
@@ -80,23 +79,17 @@
 					Text="Instructor" />
 				<TextBlock
 					Grid.Column="1"
-					Margin="5,3"
-					HorizontalAlignment="Left"
-					FontWeight="SemiBold"
-					Text="Init." />
-				<TextBlock
-					Grid.Column="2"
 					Margin="4,3"
 					FontWeight="SemiBold"
 					Text="Workload" />
 				<TextBlock
-					Grid.Column="3"
+					Grid.Column="2"
 					Margin="0,3"
 					HorizontalAlignment="Center"
 					FontWeight="SemiBold"
 					Text="Sem." />
 				<TextBlock
-					Grid.Column="4"
+					Grid.Column="3"
 					Margin="0,3"
 					HorizontalAlignment="Center"
 					FontWeight="SemiBold"
@@ -133,34 +126,24 @@
 								<Grid>
 									<Grid Margin="6,4">
 										<Grid.ColumnDefinitions>
-											<ColumnDefinition Width="Auto" SharedSizeGroup="NameCol" />
-											<ColumnDefinition Width="30" />
+											<ColumnDefinition Width="150" SharedSizeGroup="NameCol" />
 											<ColumnDefinition Width="*" />
 											<ColumnDefinition Width="35" />
 											<ColumnDefinition Width="20" />
 										</Grid.ColumnDefinitions>
 
-										<!--  Name  -->
+										<!--  Name with initials, e.g. "Jim Bertrand (JB)"  -->
 										<TextBlock
 											Grid.Column="0"
 											Margin="4,2"
 											VerticalAlignment="Top"
-											Text="{Binding FullName}"
+											Text="{Binding NameWithInitials}"
 											TextTrimming="CharacterEllipsis"
-											TextWrapping="NoWrap" />
-
-										<!--  Initials  -->
-										<TextBlock
-											Grid.Column="1"
-											Margin="5,2"
-											HorizontalAlignment="Left"
-											VerticalAlignment="Top"
-											Foreground="{StaticResource TextMuted}"
-											Text="{Binding Initials}" />
+											TextWrapping="Wrap" />
 
 										<!--  Single-semester mode: flat chips (horizontal, wrapping)  -->
 										<ItemsControl
-											Grid.Column="2"
+											Grid.Column="1"
 											Margin="2,0"
 											HorizontalAlignment="Left"
 											IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
@@ -186,7 +169,7 @@
 
 										<!--  Multi-semester mode: grouped by semester with colored frames  -->
 										<ItemsControl
-											Grid.Column="2"
+											Grid.Column="1"
 											Grid.ColumnSpan="2"
 											Margin="2,0"
 											IsVisible="{Binding IsMultiSemesterMode}"
@@ -245,7 +228,7 @@
 
 										<!--  Semester total (single-semester mode only)  -->
 										<TextBlock
-											Grid.Column="3"
+											Grid.Column="2"
 											HorizontalAlignment="Center"
 											VerticalAlignment="Top"
 											IsVisible="{Binding IsMultiSemesterMode, Converter={x:Static BoolConverters.Not}}"
@@ -253,7 +236,7 @@
 
 										<!--  Academic year total  -->
 										<TextBlock
-											Grid.Column="4"
+											Grid.Column="3"
 											HorizontalAlignment="Center"
 											VerticalAlignment="Top"
 											Text="{Binding AcademicYearTotal, StringFormat={}{0:0.##}}" />

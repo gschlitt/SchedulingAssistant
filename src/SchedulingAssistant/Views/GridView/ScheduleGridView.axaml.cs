@@ -825,16 +825,21 @@ public partial class ScheduleGridView : UserControl
         _canvas.Children.Add(tb);
     }
 
+    /// <summary>
+    /// Exports the full schedule grid canvas to a PNG file. Minimal implementation:
+    /// captures the canvas at its natural logical size with no transforms or DPI
+    /// scaling. Output quality matches on-screen rendering at 1× zoom; resolution
+    /// and super-sampling can be added later once basic capture is confirmed working.
+    /// </summary>
+    /// <param name="outputPath">Absolute path for the output PNG file.</param>
     public void ExportToPng(string outputPath)
     {
         _canvas ??= this.FindControl<Canvas>("GridCanvas");
         if (_canvas is null || double.IsNaN(_canvas.Width) || _canvas.Width <= 0) return;
 
-        const double scale = 2.0;
-        var pixelSize = new PixelSize((int)(_canvas.Width * scale), (int)(_canvas.Height * scale));
-        var dpi = new Vector(96 * scale, 96 * scale);
+        var pixelSize = new PixelSize((int)_canvas.Width, (int)_canvas.Height);
 
-        using var bitmap = new RenderTargetBitmap(pixelSize, dpi);
+        using var bitmap = new RenderTargetBitmap(pixelSize);
         bitmap.Render(_canvas);
         bitmap.Save(outputPath);
     }

@@ -4,6 +4,7 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:b="using:SchedulingAssistant.Behaviors"
 	xmlns:conv="using:SchedulingAssistant.Converters"
+	xmlns:gb="clr-namespace:GroupBox.Avalonia;assembly=GroupBox.Avalonia"
 	xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
 	xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
 	x:Name="FilterRoot"
@@ -36,10 +37,10 @@
 		<Style Selector="ToggleButton.FilterDim">
 			<Setter Property="Background" Value="Transparent" />
 			<Setter Property="BorderThickness" Value="0" />
-			<Setter Property="Padding" Value="6,0" />
+			<Setter Property="Padding" Value="6,1,0,0" />
 			<Setter Property="MinHeight" Value="0" />
 			<Setter Property="MinWidth" Value="0" />
-			<Setter Property="FontSize" Value="{StaticResource FontSizeLarge}" />
+			<Setter Property="FontSize" Value="{StaticResource FontSizeNormal}" />
 			<Setter Property="Cursor" Value="Hand" />
 		</Style>
 		<Style Selector="ToggleButton.FilterDim:pointerover">
@@ -54,7 +55,7 @@
 			<Setter Property="Padding" Value="6,0" />
 			<Setter Property="MinHeight" Value="0" />
 			<Setter Property="MinWidth" Value="0" />
-			<Setter Property="FontSize" Value="{StaticResource FontSizeLarge}" />
+			<Setter Property="FontSize" Value="{StaticResource FontSizeNormal}" />
 			<Setter Property="Cursor" Value="Hand" />
 			<Setter Property="Foreground" Value="Black" />
 		</Style>
@@ -91,8 +92,17 @@
 
 		<WrapPanel VerticalAlignment="Center">
 
-			<!--  ── Filter chooser group ─────────────────────────────────────────  -->
+			<Button Margin="4,0,0,0" Command="{Binding ClearAllCommand}">
+				<Button.Content>
+					<StackPanel>
+						<TextBlock Text="Clear all" />
 
+					</StackPanel>
+				</Button.Content>
+			</Button>
+
+			<!--  ── Filter chooser group ─────────────────────────────────────────  -->
+			<Grid RowDefinitions="Auto,*" />
 			<Border
 				Margin="5,0,5,0"
 				Background="{StaticResource FilterSelectorBackground}"
@@ -663,7 +673,7 @@
 					Padding="6,0"
 					VerticalAlignment="Center"
 					Content="Events"
-					FontSize="{StaticResource FontSizeLarge}"
+					FontSize="{StaticResource FontSizeNormal}"
 					IsChecked="{Binding ShowMeetings, Mode=TwoWay}"
 					ToolTip.Tip="Show or hide events on the schedule grid" />
 			</Border>

@@ -73,6 +73,9 @@ public class AppSettings
     /// <summary>Last path used for workload report CSV export.</summary>
     public string? LastWorkloadReportPath { get; set; }
 
+    /// <summary>Last path used for course history CSV export.</summary>
+    public string? LastCourseHistoryExportPath { get; set; }
+
     /// <summary>
     /// The academic year ID that was selected when the app was last closed.
     /// Restored on startup so the user returns to where they left off.

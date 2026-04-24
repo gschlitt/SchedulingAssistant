@@ -19,16 +19,19 @@ public partial class ExportHubViewModel : ViewModelBase, IDismissableEditor
     /// <param name="exportVm">PNG export category.</param>
     /// <param name="workloadReportVm">Workload report category.</param>
     /// <param name="workloadMailerVm">Workload mailer category.</param>
+    /// <param name="courseHistoryExportVm">Course history CSV export category.</param>
     public ExportHubViewModel(
         ExportViewModel exportVm,
         WorkloadReportViewModel workloadReportVm,
-        WorkloadMailerViewModel workloadMailerVm)
+        WorkloadMailerViewModel workloadMailerVm,
+        CourseHistoryExportViewModel courseHistoryExportVm)
     {
         Categories = new ObservableCollection<ViewModelBase>
         {
             exportVm,
             workloadReportVm,
             workloadMailerVm,
+            courseHistoryExportVm,
         };
 
         SelectedCategory = Categories[0];

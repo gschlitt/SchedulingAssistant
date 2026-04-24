@@ -8,6 +8,9 @@ public class WorkloadRowViewModel
     public required string FullName { get; init; }
     public required string Initials { get; init; }
 
+    /// <summary>Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)".</summary>
+    public string NameWithInitials => string.IsNullOrWhiteSpace(Initials) ? FullName : $"{FullName} ({Initials})";
+
     /// <summary>
     /// Sections and releases for this instructor in the current semester(s).
     /// In single-semester mode, this contains all items for that semester.

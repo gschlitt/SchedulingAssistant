@@ -14,7 +14,7 @@
 
 
   <PropertyGroup>
-    <Version>1.0.9</Version>
+    <Version>1.0.13</Version>
   </PropertyGroup>
   
   
@@ -28,6 +28,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
     <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.12" />
     <PackageReference Include="Avalonia.Svg.Skia" Version="11.3.0" />
+    <PackageReference Include="GroupBox.Avalonia" Version="11.0.0" />
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.12" />
     <PackageReference Include="Bugsnag" Version="4.1.0" />
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Newtonsoft.Json" Version="13.0.3" />

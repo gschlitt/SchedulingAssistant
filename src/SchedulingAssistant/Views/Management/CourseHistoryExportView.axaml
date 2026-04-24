@@ -1,0 +1,63 @@
+<UserControl
+	x:Class="SchedulingAssistant.Views.Management.CourseHistoryExportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:CourseHistoryExportViewModel">
+
+	<StackPanel MaxWidth="420" Spacing="16">
+
+		<TextBlock
+			FontSize="{StaticResource FontSizeLarge}"
+			FontWeight="SemiBold"
+			Text="Course History" />
+
+		<Border
+			Padding="12"
+			Background="{StaticResource FilterBarBackground}"
+			CornerRadius="4">
+			<StackPanel Spacing="10">
+				<TextBlock
+					FontSize="{StaticResource FontSizeNormal}"
+					Text="Exports a CSV listing every section of the selected course across all semesters, with instructor assignments and workload values."
+					TextWrapping="Wrap" />
+
+				<StackPanel Spacing="4">
+					<TextBlock
+						FontSize="{StaticResource FontSizeSmall}"
+						FontWeight="SemiBold"
+						Text="Course" />
+					<ComboBox
+						MinWidth="280"
+						ItemsSource="{Binding Courses}"
+						SelectedItem="{Binding SelectedCourse}">
+						<ComboBox.ItemTemplate>
+							<DataTemplate>
+								<TextBlock FontSize="{StaticResource FontSizeNormal}">
+									<Run Text="{Binding CalendarCode}" />
+									<Run Text=" — " />
+									<Run Text="{Binding Title}" />
+								</TextBlock>
+							</DataTemplate>
+						</ComboBox.ItemTemplate>
+					</ComboBox>
+				</StackPanel>
+
+				<Button
+					Margin="0,4,0,0"
+					Command="{Binding ExportCourseHistoryCommand}"
+					Content="Choose file and export…"
+					IsEnabled="{Binding !IsExporting}" />
+			</StackPanel>
+		</Border>
+
+		<TextBlock
+			FontSize="11"
+			IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+			Text="{Binding StatusMessage}"
+			TextWrapping="Wrap" />
+
+	</StackPanel>
+
+</UserControl>

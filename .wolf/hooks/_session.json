@@ -1,82 +1,57 @@
 {
-  "session_id": "session-2026-04-22-0916",
-  "started": "2026-04-22T16:16:56.378Z",
+  "session_id": "session-2026-04-24-1201",
+  "started": "2026-04-24T19:01:19.848Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs": {
-      "count": 12,
-      "tokens": 16975,
-      "first_read": "2026-04-22T16:17:01.271Z"
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml": {
+      "count": 4,
+      "tokens": 2733,
+      "first_read": "2026-04-24T19:01:26.969Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/WriteLockService.cs": {
-      "count": 2,
-      "tokens": 6857,
-      "first_read": "2026-04-22T16:30:43.458Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml.cs": {
-      "count": 2,
-      "tokens": 14400,
-      "first_read": "2026-04-22T16:30:58.840Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/WorkloadRowViewModel.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-22T16:30:58.908Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/DatabaseContext.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-22T16:31:02.455Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/BackupService.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-22T16:31:02.663Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-22T16:52:50.872Z"
+      "first_read": "2026-04-24T19:01:27.314Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/.claude/plans/zesty-brewing-feigenbaum.md",
-      "action": "create",
-      "tokens": 1484,
-      "at": "2026-04-22T16:54:35.891Z"
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/WorkloadRowViewModel.cs",
+      "action": "edit",
+      "tokens": 99,
+      "at": "2026-04-24T19:01:35.451Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 202,
-      "at": "2026-04-22T17:06:51.783Z"
+      "tokens": 204,
+      "at": "2026-04-24T19:01:43.806Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 600,
-      "at": "2026-04-22T17:07:06.477Z"
+      "tokens": 200,
+      "at": "2026-04-24T19:01:51.803Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 1641,
-      "at": "2026-04-22T17:07:57.046Z"
+      "tokens": 47,
+      "at": "2026-04-24T19:02:03.201Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/CheckoutService.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml",
       "action": "edit",
-      "tokens": 442,
-      "at": "2026-04-22T17:08:16.727Z"
+      "tokens": 169,
+      "at": "2026-04-24T19:02:09.139Z"
     }
   ],
   "edit_counts": {
-    "../../../.claude/plans/zesty-brewing-feigenbaum.md": 1,
-    "src/SchedulingAssistant/Services/CheckoutService.cs": 4
+    "src/SchedulingAssistant/ViewModels/WorkloadRowViewModel.cs": 1,
+    "src/SchedulingAssistant/Views/WorkloadPanelView.axaml": 4
   },
-  "anatomy_hits": 3,
-  "anatomy_misses": 4,
-  "repeated_reads_warned": 13,
+  "anatomy_hits": 0,
+  "anatomy_misses": 2,
+  "repeated_reads_warned": 3,
   "cerebrum_warnings": 0,
-  "stop_count": 7
+  "stop_count": 1
 }
