@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using System.Collections.ObjectModel;
 
@@ -16,6 +17,22 @@ public partial class CourseHistoryViewModel : ViewModelBase
     private readonly IInstructorRepository _instructorRepo;
 
     [ObservableProperty] private ObservableCollection<CourseHistoryItemViewModel> _items = new();
+
+    /// <summary>Expands all academic year rows.</summary>
+    [RelayCommand]
+    private void ExpandAll()
+    {
+        foreach (var item in Items)
+            item.IsExpanded = true;
+    }
+
+    /// <summary>Collapses all academic year rows.</summary>
+    [RelayCommand]
+    private void CollapseAll()
+    {
+        foreach (var item in Items)
+            item.IsExpanded = false;
+    }
 
     public CourseHistoryViewModel(
         ISectionRepository sectionRepo,

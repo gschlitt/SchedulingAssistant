@@ -29,4 +29,7 @@ public partial class CourseHistoryItemViewModel : ObservableObject
 
     /// <summary>Total section count for academic year items (displayed in header as "Year (N sections)").</summary>
     public int SectionCount { get; set; }
+
+    /// <summary>Controls the collapsed/expanded state of the Expander for this year item.</summary>
+    [ObservableProperty] private bool _isExpanded;
 }

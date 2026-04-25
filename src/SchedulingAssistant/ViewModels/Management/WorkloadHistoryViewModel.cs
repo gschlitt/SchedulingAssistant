@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using System.Collections.ObjectModel;
@@ -15,6 +16,14 @@ public class WorkloadHistoryItemViewModel : ObservableObject
     public bool IsSection { get; set; }
     public bool IsRelease { get; set; }
     public decimal WorkloadValue { get; set; }
+
+    private bool _isExpanded;
+    /// <summary>Controls the collapsed/expanded state of the Expander for this year item.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
 }
 
 public partial class WorkloadHistoryViewModel : ViewModelBase
@@ -26,6 +35,22 @@ public partial class WorkloadHistoryViewModel : ViewModelBase
     private readonly IReleaseRepository _releaseRepo;
 
     [ObservableProperty] private ObservableCollection<WorkloadHistoryItemViewModel> _items = new();
+
+    /// <summary>Expands all academic year rows.</summary>
+    [RelayCommand]
+    private void ExpandAll()
+    {
+        foreach (var item in Items)
+            item.IsExpanded = true;
+    }
+
+    /// <summary>Collapses all academic year rows.</summary>
+    [RelayCommand]
+    private void CollapseAll()
+    {
+        foreach (var item in Items)
+            item.IsExpanded = false;
+    }
 
     public WorkloadHistoryViewModel(
         ISectionRepository sectionRepo,

@@ -3650,3 +3650,12 @@
 | 13:52 | Edited src/SchedulingAssistant/MainWindow.axaml | "{Binding SectionListVm.Is" → "{Binding IsAnyPanelEditin" | ~21 |
 | 13:52 | Edited src/SchedulingAssistant/MainWindow.axaml | 3→4 lines | ~83 |
 | 13:52 | Session end: 11 writes across 6 files (AppColors.axaml, AppLayout.axaml, MeetingListView.axaml, MeetingListViewModel.cs, MainWindowViewModel.cs) | 8 reads | ~8511 tok |
+| 14:02 | Edited src/SchedulingAssistant/ViewModels/Management/CourseHistoryItemViewModel.cs | 3→6 lines | ~84 |
+| 14:02 | Edited src/SchedulingAssistant/ViewModels/Management/CourseHistoryViewModel.cs | 3→4 lines | ~43 |
+| 14:02 | Edited src/SchedulingAssistant/ViewModels/Management/CourseHistoryViewModel.cs | modified ExpandAll() | ~140 |
+| 14:02 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs | 4→5 lines | ~52 |
+| 14:02 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs | expanded (+8 lines) | ~193 |
+| 14:03 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs | modified ExpandAll() | ~141 |
+| 14:03 | Edited src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml | expanded (+11 lines) | ~330 |
+| 14:03 | Edited src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml | expanded (+11 lines) | ~337 |
+| 14:03 | Session end: 19 writes across 11 files (AppColors.axaml, AppLayout.axaml, MeetingListView.axaml, MeetingListViewModel.cs, MainWindowViewModel.cs) | 13 reads | ~9924 tok |

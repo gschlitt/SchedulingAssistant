@@ -41,6 +41,31 @@
       "count": 1,
       "tokens": 0,
       "first_read": "2026-04-25T20:52:03.822Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-25T21:02:03.656Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-25T21:02:04.061Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseHistoryItemViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-25T21:02:11.446Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseHistoryViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-25T21:02:14.406Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-25T21:02:14.647Z"
     }
   },
   "files_written": [
@@ -109,6 +134,54 @@
       "action": "edit",
       "tokens": 88,
       "at": "2026-04-25T20:52:14.860Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseHistoryItemViewModel.cs",
+      "action": "edit",
+      "tokens": 90,
+      "at": "2026-04-25T21:02:34.351Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseHistoryViewModel.cs",
+      "action": "edit",
+      "tokens": 46,
+      "at": "2026-04-25T21:02:40.165Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseHistoryViewModel.cs",
+      "action": "edit",
+      "tokens": 150,
+      "at": "2026-04-25T21:02:45.377Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs",
+      "action": "edit",
+      "tokens": 56,
+      "at": "2026-04-25T21:02:50.542Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs",
+      "action": "edit",
+      "tokens": 206,
+      "at": "2026-04-25T21:02:57.541Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs",
+      "action": "edit",
+      "tokens": 151,
+      "at": "2026-04-25T21:03:03.069Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml",
+      "action": "edit",
+      "tokens": 353,
+      "at": "2026-04-25T21:03:13.423Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml",
+      "action": "edit",
+      "tokens": 361,
+      "at": "2026-04-25T21:03:20.647Z"
     }
   ],
   "edit_counts": {
@@ -117,11 +190,16 @@
     "src/SchedulingAssistant/Views/Management/MeetingListView.axaml": 1,
     "src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs": 2,
     "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs": 2,
-    "src/SchedulingAssistant/MainWindow.axaml": 2
+    "src/SchedulingAssistant/MainWindow.axaml": 2,
+    "src/SchedulingAssistant/ViewModels/Management/CourseHistoryItemViewModel.cs": 1,
+    "src/SchedulingAssistant/ViewModels/Management/CourseHistoryViewModel.cs": 2,
+    "src/SchedulingAssistant/ViewModels/Management/WorkloadHistoryViewModel.cs": 3,
+    "src/SchedulingAssistant/Views/Management/CourseHistoryView.axaml": 1,
+    "src/SchedulingAssistant/Views/Management/WorkloadHistoryView.axaml": 1
   },
   "anatomy_hits": 1,
-  "anatomy_misses": 7,
+  "anatomy_misses": 12,
   "repeated_reads_warned": 2,
   "cerebrum_warnings": 0,
-  "stop_count": 6
+  "stop_count": 7
 }

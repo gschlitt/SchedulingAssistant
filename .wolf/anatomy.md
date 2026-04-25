@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T20:52:14.827Z
-> Files: 41 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T21:03:20.589Z
+> Files: 46 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -232,9 +232,12 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `CourseHistoryExportViewModel.cs` — Exports the teaching history of a single course as a CSV file. One row per instructor assignment per (~2379 tok)
+- `CourseHistoryItemViewModel.cs` — Represents a hierarchical item in the course history tree. Three levels: Academic Year (IsYear), Sem (~418 tok)
+- `CourseHistoryViewModel.cs` — Loads and displays the historical sections of a course, organized by academic year and semester. Hie (~1502 tok)
 - `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~425 tok)
 - `HelpViewModel.cs` — Represents a single node in the help documentation tree. A node may be a navigable article (when <se (~2562 tok)
 - `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5307 tok)
+- `WorkloadHistoryViewModel.cs` — Controls the collapsed/expanded state of the Expander for this year item. (~2027 tok)
 - `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5485 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -255,9 +258,11 @@
 
 - `CourseHistoryExportView.axaml` (~495 tok)
 - `CourseHistoryExportView.axaml.cs` — Class: CourseHistoryExportView (~59 tok)
+- `CourseHistoryView.axaml` (~1091 tok)
 - `MeetingListView.axaml` (~10809 tok)
 - `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1040 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2649 tok)
+- `WorkloadHistoryView.axaml` (~984 tok)
 - `WorkloadMailerView.axaml` (~2542 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
