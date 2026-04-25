@@ -720,7 +720,7 @@ public partial class ScheduleGridView : UserControl
                             e.Handled = true;
                             return;
                         }
-                        if (e.ClickCount >= 2)
+                        if (e.ClickCount >= 2 && _vm?.IsWriteEnabled == true)
                         {
                             if (entry.IsMeeting)
                                 _vm?.MeetingEditRequested?.Invoke(entryId);
