@@ -71,6 +71,9 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
 
     // ── Computed Properties ───────────────────────────────────────────────────
 
+    /// <summary>True when an inline editor is open (Add or Edit mode).</summary>
+    public bool IsEditing => EditVm is not null;
+
     /// <summary>True when write operations are permitted (the write lock is held).</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
@@ -88,6 +91,9 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
     public IReadOnlyList<SemesterPromptItem> AddSemesterOptions { get; private set; } = [];
 
     // ── Property-Changed Hooks ────────────────────────────────────────────────
+
+    partial void OnEditVmChanged(MeetingEditViewModel? value) =>
+        OnPropertyChanged(nameof(IsEditing));
 
     partial void OnSelectedItemChanged(IMeetingListEntry? value)
     {

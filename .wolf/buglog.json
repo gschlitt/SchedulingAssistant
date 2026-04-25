@@ -6425,6 +6425,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T23:34:07.585Z"
+    },
+    {
+      "id": "bug-402",
+      "timestamp": "2026-04-25T20:33:18.819Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "Had \"#a0a6ad\"",
+      "fix": "Changed to \"#757d87\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T20:33:18.819Z"
+    },
+    {
+      "id": "bug-403",
+      "timestamp": "2026-04-25T20:48:33.717Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T20:48:33.717Z"
+    },
+    {
+      "id": "bug-404",
+      "timestamp": "2026-04-25T20:52:08.471Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Had \"{Binding SectionListVm.IsEditing}\"",
+      "fix": "Changed to \"{Binding IsAnyPanelEditing}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T20:52:08.471Z"
     }
   ]
 }

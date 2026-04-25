@@ -44,6 +44,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>True when the Section View is active in the left panel.</summary>
     public bool IsShowingSections => !IsShowingMeetings;
 
+    /// <summary>
+    /// True when either the section editor or the meeting editor is open.
+    /// Drives the left-panel column width via ConditionalColumnWidthBehavior.
+    /// </summary>
+    public bool IsAnyPanelEditing => SectionListVm.IsEditing || MeetingListVm.IsEditing;
+
     /// <summary>Title shown in the left panel header — changes with the active view.</summary>
     public string LeftPanelTitle => IsShowingMeetings ? "Events View" : "Section View";
 
@@ -326,6 +332,12 @@ public partial class MainWindowViewModel : ViewModelBase
         WorkloadPanelVm       = workloadPanelVm;
         _lockService          = lockService;
         _notificationService  = notificationService;
+
+        // Re-raise IsAnyPanelEditing when either child editor opens or closes.
+        sectionListVm.PropertyChanged += (_, e) =>
+        { if (e.PropertyName == nameof(SectionListViewModel.IsEditing)) OnPropertyChanged(nameof(IsAnyPanelEditing)); };
+        meetingListVm.PropertyChanged += (_, e) =>
+        { if (e.PropertyName == nameof(MeetingListViewModel.IsEditing)) OnPropertyChanged(nameof(IsAnyPanelEditing)); };
 
         // React to lock state changes (e.g., writer released the lock while we are
         // in read-only mode) so the banner updates automatically.

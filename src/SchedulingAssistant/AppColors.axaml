@@ -121,7 +121,7 @@
 
 	<!--  Schedule View Structure  -->
 	<!--  Vertical lines separating day columns on the schedule grid  -->
-	<SolidColorBrush x:Key="DaySeparators" Color="#a0a6ad" />
+	<SolidColorBrush x:Key="DaySeparators" Color="#757d87" />
 	<SolidColorBrush x:Key="GridRuleLine" Color="#c3ccda" />
 	<SolidColorBrush x:Key="GridHourRuleLine" Color="#c3ccda" />
 	<SolidColorBrush x:Key="GridGutterBackground" Color="#F2F5FA" />

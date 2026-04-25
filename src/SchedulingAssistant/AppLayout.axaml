@@ -15,7 +15,7 @@
         Horizontal gap between the day-column edge and tile edges;
         also used as the slot-allocation gap when scaling tile widths
     -->
-    <x:Double x:Key="TilePaddingHorizontal">5</x:Double>
+    <x:Double x:Key="TilePaddingHorizontal">8</x:Double>
 
     <!--
         Spacing inserted on each side of an internal semester boundary in multi-semester

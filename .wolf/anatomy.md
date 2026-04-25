@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T00:30:53.094Z
-> Files: 36 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T20:52:14.827Z
+> Files: 41 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -184,6 +184,9 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3644 tok)
+- `AppColors.axaml` (~3048 tok)
+- `AppLayout.axaml` (~337 tok)
+- `MainWindow.axaml` — Declares applied (~6712 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14702 tok)
 - `SchedulingAssistant.csproj` (~804 tok)
 - `ViewLocator.cs` — Class: ViewLocator (~370 tok)
@@ -220,7 +223,7 @@
 ## src/SchedulingAssistant/ViewModels/
 
 - `DatabaseRecoveryViewModel.cs` — Indicates why the database recovery window was shown. (~3654 tok)
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7696 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7887 tok)
 - `WorkloadRowViewModel.cs` — Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)" (~492 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
@@ -231,6 +234,7 @@
 - `CourseHistoryExportViewModel.cs` — Exports the teaching history of a single course as a CSV file. One row per instructor assignment per (~2379 tok)
 - `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~425 tok)
 - `HelpViewModel.cs` — Represents a single node in the help documentation tree. A node may be a navigable article (when <se (~2562 tok)
+- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5307 tok)
 - `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5485 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -251,6 +255,7 @@
 
 - `CourseHistoryExportView.axaml` (~495 tok)
 - `CourseHistoryExportView.axaml.cs` — Class: CourseHistoryExportView (~59 tok)
+- `MeetingListView.axaml` (~10809 tok)
 - `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1040 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2649 tok)
 - `WorkloadMailerView.axaml` (~2542 tok)

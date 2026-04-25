@@ -429,13 +429,14 @@
 			<!--
 				Layer 0: permanent three-panel grid.
 				ConditionalColumnWidthBehavior toggles column 0 between 370px (collapsed)
-				and 650px (editor open) by watching SectionListVm.IsEditing. This replaces
-				the UpdateLeftColumnWidth code-behind method and its PropertyChanged subscription.
+				and 650px (editor open) by watching IsAnyPanelEditing (true when either the
+				section editor or the meeting editor is open). This replaces the
+				UpdateLeftColumnWidth code-behind method and its PropertyChanged subscription.
 			-->
 			<Grid
 				x:Name="ThreePanelGrid"
 				b:ConditionalColumnWidthBehavior.ColumnIndex="0"
-				b:ConditionalColumnWidthBehavior.Condition="{Binding SectionListVm.IsEditing}"
+				b:ConditionalColumnWidthBehavior.Condition="{Binding IsAnyPanelEditing}"
 				b:ConditionalColumnWidthBehavior.FalseWidth="370"
 				b:ConditionalColumnWidthBehavior.TrueWidth="650"
 				ColumnDefinitions="370,4,*">

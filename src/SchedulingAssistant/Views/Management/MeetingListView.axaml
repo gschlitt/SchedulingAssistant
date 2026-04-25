@@ -708,10 +708,14 @@
                             </StackPanel>
 
                             <!--  Inline editor (shown when this card is being edited)  -->
-                            <ContentControl
-                                Content="{Binding DataContext.EditVm, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                ContentTemplate="{StaticResource InlineMeetingEditTemplate}"
-                                IsVisible="{Binding IsExpanded}" />
+                            <Border
+                                Background="{StaticResource AppBackground}"
+                                BorderThickness="0"
+                                IsVisible="{Binding IsExpanded}">
+                                <ContentControl
+                                    Content="{Binding DataContext.EditVm, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    ContentTemplate="{StaticResource InlineMeetingEditTemplate}" />
+                            </Border>
 
                         </StackPanel>
                     </Border>
