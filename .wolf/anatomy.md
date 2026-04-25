@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T23:37:19.901Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T00:00:37.253Z
 > Files: 36 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -158,7 +158,7 @@
 
 ## .github/workflows/
 
-- `publish-macos.yml` — CI: Publish macOS (~446 tok)
+- `publish-macos.yml` — CI: Publish macOS (~452 tok)
 
 ## .vs/SchedulingAssistant/DesignTimeBuild/
 

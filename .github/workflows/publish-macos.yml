@@ -52,4 +52,5 @@ jobs:
             --token ${{ secrets.GITHUB_TOKEN }} \
             --outputDir ./releases/osx \
             --tag ${{ github.ref_name }} \
-            --releaseName ${{ github.ref_name }}
+            --releaseName ${{ github.ref_name }} \
+            --merge

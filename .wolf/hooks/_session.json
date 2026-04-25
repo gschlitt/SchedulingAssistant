@@ -260,6 +260,12 @@
       "action": "create",
       "tokens": 446,
       "at": "2026-04-24T23:37:19.942Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/publish-macos.yml",
+      "action": "edit",
+      "tokens": 105,
+      "at": "2026-04-25T00:00:37.309Z"
     }
   ],
   "edit_counts": {
@@ -275,11 +281,11 @@
     "src/SchedulingAssistant/Views/Management/MeetingListView.axaml.cs": 1,
     "publish.ps1": 5,
     "publish-mac.sh": 1,
-    ".github/workflows/publish-macos.yml": 1
+    ".github/workflows/publish-macos.yml": 2
   },
   "anatomy_hits": 7,
   "anatomy_misses": 18,
   "repeated_reads_warned": 19,
   "cerebrum_warnings": 0,
-  "stop_count": 35
+  "stop_count": 36
 }
