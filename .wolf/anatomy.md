@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T22:49:13.918Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T22:57:57.909Z
 > Files: 56 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -34,7 +34,7 @@
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `MEMORY.md` — SchedulingAssistant Project Memory (~6152 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~6638 tok)
 - `network_timeout_wrappers.md` — Problem (discovered April 2026) (~936 tok)
 
 ## ./

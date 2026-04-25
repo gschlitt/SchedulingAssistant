@@ -3688,3 +3688,21 @@
 | 15:45 | Edited src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs | inline fix | ~8 |
 | 15:47 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~21 |
 | 15:49 | Edited src/SchedulingAssistant/MainWindow.axaml | inline fix | ~5 |
+
+## 2026-04-25 — Avalonia 12.0.1 Upgrade
+- Upgraded all Avalonia packages from 11.3.12 to 12.0.1 (DataGrid to 12.0.0)
+- Renamed package: Avalonia.Svg.Skia -> Svg.Controls.Skia.Avalonia 12.0.0
+- Renamed package: Avalonia.Diagnostics -> AvaloniaUI.DiagnosticsSupport 2.2.1
+- Upgraded GroupBox.Avalonia 11.0.0 -> 12.0.0
+- XAML: SystemDecorations -> WindowDecorations (4 files)
+- XAML: PlacementMode -> Placement on Popup (1 file)
+- XAML: Watermark -> PlaceholderText (17 files)
+- XAML: SVG assembly reference updated (3 files)
+- C#: RoutedEventArgs -> FocusChangedEventArgs on LostFocus handlers (2 behavior files)
+- Build clean, 512 tests pass
+| 15:56 | Session end: 14 writes across 13 files (SchedulingAssistant.csproj, SplashScreen.axaml, DatabaseRecoveryWindow.axaml, StartupWizardWindow.axaml, ConfirmDialog.axaml) | 17 reads | ~20585 tok |
+| 15:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→3 lines | ~89 |
+| 15:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+24 lines) | ~426 |
+| 15:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 7→7 lines | ~146 |
+| 15:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→3 lines | ~49 |
+| 15:58 | Session end: 18 writes across 14 files (SchedulingAssistant.csproj, SplashScreen.axaml, DatabaseRecoveryWindow.axaml, StartupWizardWindow.axaml, ConfirmDialog.axaml) | 18 reads | ~21344 tok |

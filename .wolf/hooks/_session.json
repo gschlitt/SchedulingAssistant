@@ -86,6 +86,11 @@
       "count": 1,
       "tokens": 6712,
       "first_read": "2026-04-25T22:48:53.402Z"
+    },
+    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-25T22:57:08.422Z"
     }
   },
   "files_written": [
@@ -172,6 +177,30 @@
       "action": "edit",
       "tokens": 6,
       "at": "2026-04-25T22:49:13.969Z"
+    },
+    {
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "action": "edit",
+      "tokens": 95,
+      "at": "2026-04-25T22:57:22.196Z"
+    },
+    {
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "action": "edit",
+      "tokens": 456,
+      "at": "2026-04-25T22:57:42.523Z"
+    },
+    {
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "action": "edit",
+      "tokens": 156,
+      "at": "2026-04-25T22:57:51.129Z"
+    },
+    {
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "action": "edit",
+      "tokens": 52,
+      "at": "2026-04-25T22:57:57.952Z"
     }
   ],
   "edit_counts": {
@@ -187,11 +216,12 @@
     "src/SchedulingAssistant/Behaviors/LostFocusCommandBehavior.cs": 1,
     "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml.cs": 1,
     "src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs": 1,
-    "src/SchedulingAssistant/MainWindow.axaml": 1
+    "src/SchedulingAssistant/MainWindow.axaml": 1,
+    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": 4
   },
   "anatomy_hits": 3,
-  "anatomy_misses": 14,
+  "anatomy_misses": 15,
   "repeated_reads_warned": 4,
   "cerebrum_warnings": 0,
-  "stop_count": 0
+  "stop_count": 2
 }

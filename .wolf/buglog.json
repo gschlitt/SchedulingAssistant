@@ -6681,6 +6681,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T22:49:13.991Z"
+    },
+    {
+      "id": "bug-418",
+      "timestamp": "2026-04-25T22:57:51.150Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→7 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:57:51.150Z"
     }
   ]
 }
