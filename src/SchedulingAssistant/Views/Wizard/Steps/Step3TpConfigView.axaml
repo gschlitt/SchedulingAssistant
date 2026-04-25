@@ -51,7 +51,7 @@
                     Grid.Column="0"
                     IsReadOnly="True"
                     Text="{Binding TpConfigPath}"
-                    Watermark="Path to .tpconfig file…" />
+                    PlaceholderText="Path to .tpconfig file…" />
                 <Button
                     Grid.Column="2"
                     Command="{Binding BrowseTpConfigCommand}"

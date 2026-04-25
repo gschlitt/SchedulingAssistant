@@ -33,7 +33,7 @@
                 FontSize="{StaticResource FontSizeSmall}"
                 Text="A short label used as the filename (e.g. CS → CS-TT.db)."
                 TextWrapping="Wrap" />
-            <TextBox Text="{Binding DbName}" Watermark="e.g. CS" />
+            <TextBox Text="{Binding DbName}" PlaceholderText="e.g. CS" />
             <TextBlock
                 FontSize="{StaticResource FontSizeSmall}"
                 Foreground="{StaticResource MutedText}"
@@ -56,7 +56,7 @@
                 <TextBox
                     IsReadOnly="True"
                     Text="{Binding DbFolder}"
-                    Watermark="Choose a folder…" />
+                    PlaceholderText="Choose a folder…" />
             </DockPanel>
         </StackPanel>
 
@@ -79,7 +79,7 @@
                 <TextBox
                     IsReadOnly="True"
                     Text="{Binding BackupFolder}"
-                    Watermark="Choose a folder…" />
+                    PlaceholderText="Choose a folder…" />
             </DockPanel>
             <TextBlock
                 FontSize="{StaticResource FontSizeSmall}"
@@ -128,7 +128,7 @@
                         <TextBox
                             b:LostFocusCommandBehavior.Command="{Binding CommitFirstAcademicYearNameCommand}"
                             Text="{Binding FirstAcademicYearName}"
-                            Watermark="e.g. 2025  or  2025-2026" />
+                            PlaceholderText="e.g. 2025  or  2025-2026" />
                         <TextBlock
                             FontSize="{StaticResource FontSizeSmall}"
                             Foreground="{StaticResource NotificationInfoText}"

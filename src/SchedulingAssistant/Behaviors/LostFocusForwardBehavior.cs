@@ -80,7 +80,7 @@ public static class LostFocusForwardBehavior
     /// Filters the bubbled LostFocus event by the source control's Name, then
     /// executes the command if it matches.
     /// </summary>
-    private static void OnLostFocus(object? sender, RoutedEventArgs e)
+    private static void OnLostFocus(object? sender, FocusChangedEventArgs e)
     {
         if (sender is not Control parent)
             return;

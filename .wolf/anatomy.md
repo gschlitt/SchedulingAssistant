@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T21:03:20.589Z
-> Files: 46 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T22:49:13.918Z
+> Files: 56 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -186,14 +186,16 @@
 - `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. Set early in InitializeServices (~3644 tok)
 - `AppColors.axaml` (~3048 tok)
 - `AppLayout.axaml` (~337 tok)
-- `MainWindow.axaml` — Declares applied (~6712 tok)
+- `MainWindow.axaml` — Declares applied (~6711 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14702 tok)
-- `SchedulingAssistant.csproj` (~804 tok)
+- `SchedulingAssistant.csproj` (~806 tok)
 - `ViewLocator.cs` — Class: ViewLocator (~370 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 - `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~1775 tok)
+- `LostFocusCommandBehavior.cs` — Attached behavior that executes a command when focus leaves the control it is attached to. Unlike <s (~775 tok)
+- `LostFocusForwardBehavior.cs` — Attached behavior that listens for the bubbling LostFocus event from any descendant whose Name match (~1066 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -248,25 +250,33 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `DatabaseRecoveryWindow.axaml` (~4056 tok)
+- `DatabaseRecoveryWindow.axaml.cs` — Shown at startup when the configured database is missing or corrupt. Presents three options: browse (~1000 tok)
+- `SplashScreen.axaml` (~212 tok)
 - `WorkloadPanelView.axaml` (~2733 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~6371 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14226 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `ConfirmDialog.axaml` (~326 tok)
 - `CourseHistoryExportView.axaml` (~495 tok)
 - `CourseHistoryExportView.axaml.cs` — Class: CourseHistoryExportView (~59 tok)
 - `CourseHistoryView.axaml` (~1091 tok)
-- `MeetingListView.axaml` (~10809 tok)
+- `MeetingListView.axaml` (~10811 tok)
 - `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1040 tok)
+- `SectionListView.axaml` (~20783 tok)
 - `SectionListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Two cases are ha (~2649 tok)
 - `WorkloadHistoryView.axaml` (~984 tok)
 - `WorkloadMailerView.axaml` (~2542 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
+- `StartupWizardWindow.axaml` (~1284 tok)
+- `StartupWizardWindow.axaml.cs` — The startup wizard window. Shown on first run (when IsInitialSetupComplete is false). The window set (~514 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 

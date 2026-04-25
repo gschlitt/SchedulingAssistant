@@ -45,7 +45,7 @@
                                 Grid.Column="0"
                                 FontSize="{DynamicResource FontSizeNormal}"
                                 Text="{Binding Name}"
-                                Watermark="Semester name (e.g. Fall)" />
+                                PlaceholderText="Semester name (e.g. Fall)" />
                             <Button
                                 Grid.Column="2"
                                 Padding="6,4"
@@ -86,7 +86,7 @@
             <TextBox
                 b:LostFocusCommandBehavior.Command="{Binding CommitAcademicYearNameCommand}"
                 Text="{Binding AcademicYearName}"
-                Watermark="e.g. 2025  or  2025-2026" />
+                PlaceholderText="e.g. 2025  or  2025-2026" />
             <!--  Validation hint — only visible when there is an error message  -->
             <TextBlock
                 FontSize="{DynamicResource FontSizeSmall}"

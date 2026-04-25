@@ -24,7 +24,7 @@
                 <TextBox Grid.Column="0"
                          IsReadOnly="True"
                          Text="{Binding YearsCsvPath}"
-                         Watermark="No file chosen — click Browse…"
+                         PlaceholderText="No file chosen — click Browse…"
                          FontSize="{StaticResource FontSizeNormal}" />
                 <Button Grid.Column="1" Margin="8,0,0,0"
                         Content="Browse…"
@@ -76,7 +76,7 @@
                 <TextBox Grid.Column="0"
                          IsReadOnly="True"
                          Text="{Binding UnitsCsvPath}"
-                         Watermark="No file chosen — click Browse…"
+                         PlaceholderText="No file chosen — click Browse…"
                          FontSize="{StaticResource FontSizeNormal}" />
                 <Button Grid.Column="1" Margin="8,0,0,0"
                         Content="Browse…"
@@ -134,7 +134,7 @@
                 <TextBox Grid.Column="0"
                          IsReadOnly="True"
                          Text="{Binding Phase2UnitsJsonDir}"
-                         Watermark="No folder chosen — click Browse…"
+                         PlaceholderText="No folder chosen — click Browse…"
                          FontSize="{StaticResource FontSizeNormal}" />
                 <Button Grid.Column="1" Margin="8,0,0,0"
                         Content="Browse…"
@@ -153,7 +153,7 @@
                 <TextBox Grid.Column="0"
                          IsReadOnly="True"
                          Text="{Binding Phase2YearsJsonDir}"
-                         Watermark="No folder chosen — click Browse…"
+                         PlaceholderText="No folder chosen — click Browse…"
                          FontSize="{StaticResource FontSizeNormal}" />
                 <Button Grid.Column="1" Margin="8,0,0,0"
                         Content="Browse…"

@@ -69,7 +69,7 @@
                         FontSize="11"
                         IsReadOnly="False"
                         Text="{Binding BackupFolderPath, Mode=TwoWay}"
-                        Watermark="No backup folder configured" />
+                        PlaceholderText="No backup folder configured" />
                 </DockPanel>
 
                 <TextBlock

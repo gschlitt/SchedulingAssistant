@@ -6,7 +6,7 @@
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
         CanResize="False"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Background="{StaticResource ChromeBackground}">
 
     <Grid VerticalAlignment="Center" HorizontalAlignment="Center">

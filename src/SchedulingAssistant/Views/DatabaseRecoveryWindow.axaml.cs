@@ -88,7 +88,7 @@ public partial class DatabaseRecoveryWindow : Window
 
     /// <summary>
     /// Enables dragging the window by its custom header bar.
-    /// Required because <see cref="SystemDecorations.BorderOnly"/> hides the OS title bar.
+    /// Required because <see cref="WindowDecorations.BorderOnly"/> hides the OS title bar.
     /// </summary>
     private void OnHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
     {

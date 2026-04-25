@@ -179,7 +179,7 @@
 				<TextBox
 					FontSize="11"
 					Text="{Binding SubjectTemplate, Mode=TwoWay}"
-					Watermark="e.g. Your Workload — {AcademicYear} {Semester}" />
+					PlaceholderText="e.g. Your Workload — {AcademicYear} {Semester}" />
 
 				<!--  Body  -->
 				<TextBlock
@@ -251,7 +251,7 @@
 				Grid.Row="4"
 				FontSize="11"
 				Text="{Binding RenderedSubject, Mode=TwoWay}"
-				Watermark="Subject" />
+				PlaceholderText="Subject" />
 
 			<!--  Body (editable)  -->
 			<TextBox

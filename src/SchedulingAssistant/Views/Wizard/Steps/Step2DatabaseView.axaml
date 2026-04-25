@@ -29,7 +29,7 @@
                     Grid.Column="0"
                     IsReadOnly="True"
                     Text="{Binding DbFolder}"
-                    Watermark="Choose a folder…" />
+                    PlaceholderText="Choose a folder…" />
                 <Button
                     Grid.Column="2"
                     Command="{Binding BrowseDbFolderCommand}"
@@ -49,7 +49,7 @@
                 TextWrapping="Wrap">
                 This filename was suggested from your abbreviation. You may edit it before continuing.
             </TextBlock>
-            <TextBox Text="{Binding DbFilename}" Watermark="e.g. CS-TT.db" />
+            <TextBox Text="{Binding DbFilename}" PlaceholderText="e.g. CS-TT.db" />
             <!--  Inline validation error  -->
             <TextBlock
                 FontSize="{DynamicResource FontSizeSmall}"
@@ -86,7 +86,7 @@
                     Grid.Column="0"
                     IsReadOnly="True"
                     Text="{Binding BackupFolder}"
-                    Watermark="Choose a folder…" />
+                    PlaceholderText="Choose a folder…" />
                 <Button
                     Grid.Column="2"
                     Command="{Binding BrowseBackupFolderCommand}"

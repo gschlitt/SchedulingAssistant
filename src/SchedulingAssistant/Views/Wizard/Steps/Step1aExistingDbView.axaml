@@ -46,7 +46,7 @@
                             Grid.Column="0"
                             IsReadOnly="True"
                             Text="{Binding DbPath}"
-                            Watermark="Choose the .db file…" />
+                            PlaceholderText="Choose the .db file…" />
                         <Button
                             Grid.Column="2"
                             Command="{Binding BrowseDbFileCommand}"
@@ -70,7 +70,7 @@
                             Grid.Column="0"
                             IsReadOnly="True"
                             Text="{Binding BackupFolder}"
-                            Watermark="Choose a folder…" />
+                            PlaceholderText="Choose a folder…" />
                         <Button
                             Grid.Column="2"
                             Command="{Binding BrowseBackupFolderCommand}"

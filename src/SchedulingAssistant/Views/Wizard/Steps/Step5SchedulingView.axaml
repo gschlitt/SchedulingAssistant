@@ -108,7 +108,7 @@
                                         Width="80"
                                         FontSize="{DynamicResource FontSizeSmall}"
                                         Text="{Binding NewTimeInput}"
-                                        Watermark="HHMM" />
+                                        PlaceholderText="HHMM" />
                                     <Button
                                         Command="{Binding AddTimeCommand}"
                                         Content="Add time"
@@ -148,7 +148,7 @@
                         FontFamily="Consolas"
                         FontSize="{DynamicResource FontSizeSmall}"
                         Text="{Binding NewBlockLengthInput}"
-                        Watermark="{Binding NewBlockLengthWatermark}" />
+                        PlaceholderText="{Binding NewBlockLengthWatermark}" />
                     <TextBlock
                         VerticalAlignment="Center"
                         FontSize="{DynamicResource FontSizeSmall}"

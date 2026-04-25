@@ -31,12 +31,12 @@
                     Grid.Row="2"
                     Grid.Column="0"
                     Text="{Binding InstitutionName}"
-                    Watermark="e.g. Greendale Community College" />
+                    PlaceholderText="e.g. Greendale Community College" />
                 <TextBox
                     Grid.Row="2"
                     Grid.Column="2"
                     Text="{Binding InstitutionAbbrev}"
-                    Watermark="Abbrev (e.g. GCC)" />
+                    PlaceholderText="Abbrev (e.g. GCC)" />
             </Grid>
         </Border>
 
@@ -62,12 +62,12 @@
                 Grid.Row="4"
                 Grid.Column="0"
                 Text="{Binding AcUnitName}"
-                Watermark="e.g. School of Business" />
+                PlaceholderText="e.g. School of Business" />
             <TextBox
                 Grid.Row="4"
                 Grid.Column="2"
                 Text="{Binding AcUnitAbbrev}"
-                Watermark="Abbrev (e.g. BUS)" />
+                PlaceholderText="Abbrev (e.g. BUS)" />
         </Grid>
 
     </StackPanel>

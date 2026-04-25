@@ -9,7 +9,7 @@
     x:CompileBindings="False"
     Background="{StaticResource AppBackground}"
     CanResize="False"
-    SystemDecorations="BorderOnly"
+    WindowDecorations="BorderOnly"
     WindowStartupLocation="CenterScreen">
 
     <!--

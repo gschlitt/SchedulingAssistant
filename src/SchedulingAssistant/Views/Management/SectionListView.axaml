@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:models="using:SchedulingAssistant.Models"
-    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
+    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     b:LostFocusForwardBehavior.Command="{Binding CommitEditSectionCodeCommand}"
     b:LostFocusForwardBehavior.TargetName="SectionCodeBox"
@@ -302,7 +302,7 @@
                                             MinimumPrefixLength="0"
                                             Text="{Binding StartTimeText, Mode=TwoWay}"
                                             ToolTip.Tip="{Binding StartTimeError}"
-                                            Watermark="HHMM" />
+                                            PlaceholderText="HHMM" />
 
                                         <!--
                                             Length — same pattern. ItemsSource populated by RefreshBlockLengths()
@@ -326,7 +326,7 @@
                                             MinimumPrefixLength="0"
                                             Text="{Binding BlockLengthText, Mode=TwoWay}"
                                             ToolTip.Tip="{Binding BlockLengthError}"
-                                            Watermark="{Binding BlockLengthWatermark}" />
+                                            PlaceholderText="{Binding BlockLengthWatermark}" />
 
                                         <!--  Frequency  -->
                                         <ComboBox
@@ -357,7 +357,7 @@
                                                 FontSize="11"
                                                 Text="{Binding CustomWeeksText}"
                                                 ToolTip.Tip="{Binding CustomWeeksError}"
-                                                Watermark="e.g. 1,3,5" />
+                                                PlaceholderText="e.g. 1,3,5" />
                                             <TextBlock
                                                 FontSize="9"
                                                 Foreground="{StaticResource ErrorText}"
@@ -524,7 +524,7 @@
                                                                 IsVisible="{Binding IsSelected}"
                                                                 Text="{Binding WorkloadText}"
                                                                 TextAlignment="Center"
-                                                                Watermark="1" />
+                                                                PlaceholderText="1" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -648,7 +648,7 @@
                                                                 IsVisible="{Binding IsSelected}"
                                                                 Text="{Binding CodeText}"
                                                                 TextAlignment="Center"
-                                                                Watermark="#" />
+                                                                PlaceholderText="#" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

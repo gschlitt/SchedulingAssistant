@@ -192,7 +192,7 @@
 							<Popup
 								IsLightDismissEnabled="True"
 								IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
-								PlacementMode="Bottom"
+								Placement="Bottom"
 								PlacementTarget="{Binding ElementName=SemesterPickerButton}">
 								<Border
 									MinWidth="150"

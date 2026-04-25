@@ -49,7 +49,7 @@ public static class LostFocusCommandBehavior
             c.AddHandler(InputElement.LostFocusEvent, OnLostFocus, RoutingStrategies.Bubble);
     }
 
-    private static void OnLostFocus(object? sender, RoutedEventArgs e)
+    private static void OnLostFocus(object? sender, FocusChangedEventArgs e)
     {
         if (sender is not Control c) return;
         // The LostFocus event bubbles from inner elements (e.g. the TextBox inside an

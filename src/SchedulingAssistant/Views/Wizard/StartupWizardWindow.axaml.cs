@@ -43,7 +43,7 @@ public partial class StartupWizardWindow : Window
 
     /// <summary>
     /// Allows the window to be dragged by its custom header bar.
-    /// Required because <see cref="SystemDecorations.BorderOnly"/> hides the OS title bar.
+    /// Required because <see cref="WindowDecorations.BorderOnly"/> hides the OS title bar.
     /// </summary>
     private void OnHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
     {

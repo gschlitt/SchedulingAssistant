@@ -9,7 +9,7 @@
         SizeToContent="Height"
         MinHeight="300"
         CanResize="False"
-        SystemDecorations="BorderOnly"
+        WindowDecorations="BorderOnly"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource AppBackground}">
 
@@ -104,7 +104,7 @@
                                 <TextBox Grid.Column="0"
                                          Text="{Binding BrowsedPath}"
                                          IsReadOnly="True"
-                                         Watermark="No file selected"
+                                         PlaceholderText="No file selected"
                                          VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
                                         Content="Browse…"
@@ -163,7 +163,7 @@
                                 <TextBox Grid.Column="0"
                                          Text="{Binding BackupPath}"
                                          IsReadOnly="True"
-                                         Watermark="No backup selected"
+                                         PlaceholderText="No backup selected"
                                          VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
                                         Content="Browse…"

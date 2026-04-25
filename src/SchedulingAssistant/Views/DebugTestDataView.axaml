@@ -33,7 +33,7 @@
         <StackPanel Spacing="8">
             <TextBlock Text="Number of sections to generate:" FontSize="13" FontWeight="SemiBold" />
             <TextBox Text="{Binding SectionCount}"
-                     Watermark="Enter count (1-1000)"
+                     PlaceholderText="Enter count (1-1000)"
                      FontSize="12" />
         </StackPanel>
 

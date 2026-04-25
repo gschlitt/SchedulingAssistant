@@ -27,7 +27,7 @@
                 <StackPanel Spacing="4">
                     <TextBlock Text="Database name:" FontSize="13" />
                     <TextBox x:Name="NameBox"
-                             Watermark="e.g. Psychology Dept."
+                             PlaceholderText="e.g. Psychology Dept."
                              TextChanged="OnNameOrFolderChanged" />
                     <TextBlock x:Name="NameValidation"
                                FontSize="11" Foreground="{StaticResource TextValidationError}"
@@ -40,7 +40,7 @@
                         <TextBox x:Name="FolderBox"
                                  Grid.Column="0"
                                  IsReadOnly="True"
-                                 Watermark="No folder selected"
+                                 PlaceholderText="No folder selected"
                                  VerticalAlignment="Center"  />
                         <Button Grid.Column="1"
                                 Content="Browse…"
@@ -62,7 +62,7 @@
                     <TextBox x:Name="ExistingPathBox"
                              Grid.Column="0"
                              IsReadOnly="True"
-                             Watermark="No file selected"
+                             PlaceholderText="No file selected"
                              VerticalAlignment="Center" />
                     <Button Grid.Column="1"
                             Content="Browse…"

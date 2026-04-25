@@ -6473,6 +6473,214 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T20:52:08.471Z"
+    },
+    {
+      "id": "bug-405",
+      "timestamp": "2026-04-25T22:44:40.612Z",
+      "error_message": "Wrong reference: SystemDecorations should be WindowDecorations",
+      "file": "src/SchedulingAssistant/Views/SplashScreen.axaml",
+      "root_cause": "Used \"SystemDecorations\" instead of \"WindowDecorations\"",
+      "fix": "Changed SystemDecorations → WindowDecorations",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:40.612Z"
+    },
+    {
+      "id": "bug-406",
+      "timestamp": "2026-04-25T22:44:42.285Z",
+      "error_message": "Wrong reference: SystemDecorations should be WindowDecorations",
+      "file": "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml",
+      "root_cause": "Used \"SystemDecorations\" instead of \"WindowDecorations\"",
+      "fix": "Changed SystemDecorations → WindowDecorations",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:42.285Z"
+    },
+    {
+      "id": "bug-407",
+      "timestamp": "2026-04-25T22:44:43.735Z",
+      "error_message": "Wrong reference: SystemDecorations should be WindowDecorations",
+      "file": "src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml",
+      "root_cause": "Used \"SystemDecorations\" instead of \"WindowDecorations\"",
+      "fix": "Changed SystemDecorations → WindowDecorations",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:43.735Z"
+    },
+    {
+      "id": "bug-408",
+      "timestamp": "2026-04-25T22:44:45.638Z",
+      "error_message": "Wrong reference: SystemDecorations should be WindowDecorations",
+      "file": "src/SchedulingAssistant/Views/Management/ConfirmDialog.axaml",
+      "root_cause": "Used \"SystemDecorations\" instead of \"WindowDecorations\"",
+      "fix": "Changed SystemDecorations → WindowDecorations",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:45.638Z"
+    },
+    {
+      "id": "bug-409",
+      "timestamp": "2026-04-25T22:44:47.878Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia",
+      "fix": "Changed to \"clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Cont",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:47.878Z"
+    },
+    {
+      "id": "bug-410",
+      "timestamp": "2026-04-25T22:44:49.262Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "Had \"clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia",
+      "fix": "Changed to \"clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Cont",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:49.262Z"
+    },
+    {
+      "id": "bug-411",
+      "timestamp": "2026-04-25T22:44:51.015Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia",
+      "fix": "Changed to \"clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Cont",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:51.015Z"
+    },
+    {
+      "id": "bug-412",
+      "timestamp": "2026-04-25T22:44:52.523Z",
+      "error_message": "Wrong reference: RoutedEventArgs should be FocusChangedEventArgs",
+      "file": "src/SchedulingAssistant/Behaviors/LostFocusForwardBehavior.cs",
+      "root_cause": "Used \"RoutedEventArgs\" instead of \"FocusChangedEventArgs\"",
+      "fix": "Changed RoutedEventArgs → FocusChangedEventArgs",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:52.523Z"
+    },
+    {
+      "id": "bug-413",
+      "timestamp": "2026-04-25T22:44:53.599Z",
+      "error_message": "Wrong reference: RoutedEventArgs should be FocusChangedEventArgs",
+      "file": "src/SchedulingAssistant/Behaviors/LostFocusCommandBehavior.cs",
+      "root_cause": "Used \"RoutedEventArgs\" instead of \"FocusChangedEventArgs\"",
+      "fix": "Changed RoutedEventArgs → FocusChangedEventArgs",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:44:53.599Z"
+    },
+    {
+      "id": "bug-414",
+      "timestamp": "2026-04-25T22:45:30.262Z",
+      "error_message": "Wrong reference: SystemDecorations should be WindowDecorations",
+      "file": "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml.cs",
+      "root_cause": "Used \"SystemDecorations\" instead of \"WindowDecorations\"",
+      "fix": "Changed SystemDecorations → WindowDecorations",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:45:30.263Z"
+    },
+    {
+      "id": "bug-415",
+      "timestamp": "2026-04-25T22:45:32.030Z",
+      "error_message": "Wrong reference: SystemDecorations should be WindowDecorations",
+      "file": "src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs",
+      "root_cause": "Used \"SystemDecorations\" instead of \"WindowDecorations\"",
+      "fix": "Changed SystemDecorations → WindowDecorations",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:45:32.030Z"
+    },
+    {
+      "id": "bug-416",
+      "timestamp": "2026-04-25T22:47:39.173Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Had \"12.0.1\"",
+      "fix": "Changed to \"12.0.0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:47:39.173Z"
+    },
+    {
+      "id": "bug-417",
+      "timestamp": "2026-04-25T22:49:13.991Z",
+      "error_message": "Wrong reference: PlacementMode should be Placement",
+      "file": "src/SchedulingAssistant/MainWindow.axaml",
+      "root_cause": "Used \"PlacementMode\" instead of \"Placement\"",
+      "fix": "Changed PlacementMode → Placement",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T22:49:13.991Z"
     }
   ]
 }
