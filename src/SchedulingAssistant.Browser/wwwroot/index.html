@@ -23,9 +23,11 @@
     <script type="module">
         import { dotnet } from './_framework/dotnet.js';
 
-        await dotnet
+        const runtime = await dotnet
             .withConfig({ applicationArguments: [] })
-            .run();
+            .create();
+
+        await runtime.runMain();
     </script>
 </body>
 </html>

@@ -211,6 +211,7 @@ public partial class App : Application
 
         services.AddSingleton<SemesterContext>();
         services.AddSingleton<WriteLockService>();
+        services.AddSingleton<AppNotificationService>();
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();
         services.AddTransient<IDialogService, NullDialogService>();
