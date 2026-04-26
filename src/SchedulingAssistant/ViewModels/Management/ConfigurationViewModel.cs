@@ -13,11 +13,13 @@ public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor
     /// <summary>Ordered list of configuration category ViewModels shown in the left sidebar.</summary>
     public ObservableCollection<ViewModelBase> Categories { get; }
 
+#if !BROWSER
     /// <summary>
     /// The Save &amp; Backup category VM, exposed so the caller can wire
     /// <see cref="SaveAndBackupViewModel.RestoreCallback"/> before opening the flyout.
     /// </summary>
     public SaveAndBackupViewModel SaveAndBackupVm { get; }
+#endif
 
     [ObservableProperty]
     private ViewModelBase? _selectedCategory;
@@ -31,10 +33,15 @@ public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor
         LegalStartTimeListViewModel schedulingVm,
         BlockPatternListViewModel blockPatternsVm,
         AcademicUnitListViewModel academicUnitsVm,
-        SectionPrefixListViewModel sectionPrefixesVm,
-        SaveAndBackupViewModel saveAndBackupVm)
+        SectionPrefixListViewModel sectionPrefixesVm
+#if !BROWSER
+        , SaveAndBackupViewModel saveAndBackupVm
+#endif
+    )
     {
+#if !BROWSER
         SaveAndBackupVm = saveAndBackupVm;
+#endif
 
         Categories = new ObservableCollection<ViewModelBase>
         {
@@ -42,7 +49,9 @@ public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor
             blockPatternsVm,
             academicUnitsVm,
             sectionPrefixesVm,
+#if !BROWSER
             saveAndBackupVm,
+#endif
         };
 
         SelectedCategory = Categories[0];

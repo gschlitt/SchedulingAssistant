@@ -108,11 +108,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<RecentDatabaseItem> _recentDatabases = new();
 
+#if !BROWSER
     /// <summary>
     /// Reference to the main window for file operations.
     /// Set by MainWindow.axaml.cs after instantiation.
     /// </summary>
     public MainWindow? MainWindowReference { get; set; }
+#endif
 
     // ── Save / checkout properties ────────────────────────────────────────────
 
@@ -140,6 +142,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>True when the save-error banner should be visible.</summary>
     public bool ShowSaveError => !string.IsNullOrEmpty(SaveErrorMessage);
 
+#if !BROWSER
     /// <summary>
     /// Whether the autosave timer is enabled. Persisted to <see cref="AppSettings"/>.
     /// Setting this starts or stops the timer in <see cref="CheckoutService"/> immediately.
@@ -168,6 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await App.Checkout.SaveAsync();
         // SaveCompleted / SaveFailed events update SaveErrorMessage via MainWindow handlers.
     }
+#endif
 
     /// <summary>Dismisses the save-error banner.</summary>
     [RelayCommand]
@@ -297,6 +301,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public void LoadRecentDatabases()
     {
+#if !BROWSER
         RecentDatabases.Clear();
         var settings = AppSettings.Current;
         foreach (var path in settings.RecentDatabases)
@@ -312,6 +317,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 });
             }
         }
+#endif
     }
 
     public MainWindowViewModel(
@@ -350,7 +356,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // lifetime of the main window; content pane is resolved on demand.
         MoreMenuVm = new MoreMenuViewModel(_services);
         MoreMenuVm.TitleChangeRequested += OnMoreMenuTitleChangeRequested;
+#if !BROWSER
         MoreMenuVm.ConfigurationRestoreCallback = RestoreFromBackupAsync;
+#endif
     }
 
     /// <summary>
@@ -432,6 +440,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// The fix is to pass the canonical source path D and let SwitchDatabaseAsync own
     /// the entire checkout sequence via <c>RunCheckoutAsync</c>.
     /// </remarks>
+#if !BROWSER
     [RelayCommand]
     private async Task AcquireWriteLock()
     {
@@ -442,14 +451,9 @@ public partial class MainWindowViewModel : ViewModelBase
             sourcePath = AppSettings.Current.DatabasePath;
         if (sourcePath is null) return;
 
-        // Delegate the full release → checkout → re-initialize cycle to
-        // SwitchDatabaseAsync, passing D (the canonical source path).
-        // SwitchDatabaseAsync calls RunCheckoutAsync(D) internally, which acquires
-        // the write lock, copies D → D', and re-initializes DI against D'.
-        // If the lock is no longer free (someone else grabbed it between the poll
-        // and this click), RunCheckoutAsync falls back to read-only mode gracefully.
         await MainWindowReference.SwitchDatabaseAsync(sourcePath);
     }
+#endif
 
     /// <summary>
     /// Reloads all section data from the database. In read-only snapshot mode, first refreshes D'' from D,
@@ -460,6 +464,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task RefreshData()
     {
+#if !BROWSER
         // If in read-only snapshot mode, re-copy D → D'' to fetch latest data.
         if (App.Checkout.IsReadOnlyMode)
         {
@@ -467,8 +472,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
             try
             {
-                // beforeOverwrite: close the connection so CheckoutService can overwrite D''.
-                // afterOverwrite: reopen the connection to the now-refreshed D''.
                 async Task BeforeOverwrite()
                 {
                     await Task.CompletedTask;
@@ -496,10 +499,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 App.Logger.LogError(ex, "MainWindowViewModel: refresh failed");
             }
         }
+#else
+        await Task.CompletedTask;
+#endif
 
-        // ReloadFromDatabase re-queries the DB and updates the SectionStore cache.
-        // The SectionsChanged event then cascades automatically to the schedule grid
-        // and workload panel — no additional calls required here.
         SectionListVm.ReloadFromDatabase();
         _lastRefreshedAt = DateTime.Now;
         OnPropertyChanged(nameof(RefreshButtonTooltip));
@@ -576,7 +579,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToConfiguration()
     {
         var vm = _services.GetRequiredService<ConfigurationViewModel>();
+#if !BROWSER
         vm.SaveAndBackupVm.RestoreCallback = RestoreFromBackupAsync;
+#endif
         FlyoutPage  = vm;
         FlyoutTitle = "Configuration";
     }
@@ -590,12 +595,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToShare() => OpenFlyout<ShareViewModel>("Share");
 
-    /// <summary>
-    /// Restores a backup by copying it over the main database file, then restarting
-    /// the application. The write lock is released and the DI container is disposed
-    /// before the file copy so the SQLite connection is cleanly closed first.
-    /// </summary>
-    /// <param name="backupDbPath">Full path to the .db backup file to restore from.</param>
+#if !BROWSER
     private async Task RestoreFromBackupAsync(string backupDbPath)
     {
         var mainDbPath = AppSettings.Current.DatabasePath;
@@ -603,15 +603,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            // Release the write lock and close the database connection.
             _services.GetRequiredService<BackupService>().StopSession();
             _services.GetRequiredService<WriteLockService>().Release();
             (App.Services as IDisposable)?.Dispose();
 
-            // Overwrite the main database with the selected backup.
             File.Copy(backupDbPath, mainDbPath, overwrite: true);
 
-            // Restart the application so it opens the restored database cleanly.
             var exePath = Environment.ProcessPath;
             if (exePath is not null)
                 Services.PlatformProcess.LaunchExecutable(exePath);
@@ -619,8 +616,6 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "Restore failed — DI may be disposed; showing plain error window");
-            // DI is disposed at this point so we cannot use IDialogService.
-            // Delegate to MainWindow.ShowFatalAsync so the VM stays free of Avalonia.Controls construction.
             if (MainWindowReference is { } win)
             {
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -637,8 +632,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 ?.Shutdown();
         }
     }
+#endif
 
-#if DEBUG
+#if !BROWSER && DEBUG
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
 
@@ -647,6 +643,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OpenMigration() => OpenFlyout<MigrationViewModel>("Migration: CSV → JSON (one-time utility)");
 #endif
 
+#if !BROWSER
     // ── File menu commands ────────────────────────────────────────────────────
 
     [RelayCommand]
@@ -694,11 +691,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await MainWindowReference.SwitchDatabaseAsync(databasePath);
     }
 
-    /// <summary>
-    /// Closes the main window via the Files → Exit menu item.
-    /// Triggers the same <see cref="MainWindow.OnClosing"/> path as clicking the title-bar X,
-    /// so all shutdown logic lives in one place.
-    /// </summary>
     [RelayCommand]
     private void Exit() => MainWindowReference?.Close();
+#endif
 }

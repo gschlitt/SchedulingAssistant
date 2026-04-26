@@ -75,6 +75,11 @@ public partial class CourseHistoryExportViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanExport))]
     private async Task ExportCourseHistory()
     {
+#if BROWSER
+        await Task.CompletedTask;
+        StatusMessage = "Export is not available in the browser demo.";
+        return;
+#else
         var window = _mainVm.MainWindowReference;
         if (window is null || SelectedCourse is null) return;
 
@@ -218,6 +223,7 @@ public partial class CourseHistoryExportViewModel : ViewModelBase
         {
             IsExporting = false;
         }
+#endif
     }
 
     private bool CanExport() => !IsExporting && SelectedCourse is not null;

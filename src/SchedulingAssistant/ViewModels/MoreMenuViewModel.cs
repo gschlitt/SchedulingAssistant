@@ -126,9 +126,11 @@ public partial class MoreMenuViewModel : ViewModelBase
         {
             var vm = _services.GetRequiredService(newValue.ViewModelType);
 
+#if !BROWSER
             // Configuration has a callback the host normally wires before display; replicate it.
             if (vm is ConfigurationViewModel cfg && ConfigurationRestoreCallback is not null)
                 cfg.SaveAndBackupVm.RestoreCallback = ConfigurationRestoreCallback;
+#endif
 
             ContentPage = vm;
         }

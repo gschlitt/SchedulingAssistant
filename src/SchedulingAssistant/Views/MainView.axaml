@@ -1,0 +1,607 @@
+<UserControl
+	x:Class="SchedulingAssistant.Views.MainView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:b="using:SchedulingAssistant.Behaviors"
+	xmlns:controls="using:SchedulingAssistant.Controls"
+	xmlns:gridViews="using:SchedulingAssistant.Views.GridView"
+	xmlns:panelViews="using:SchedulingAssistant.Views"
+	xmlns:views="using:SchedulingAssistant.Views.Management"
+	xmlns:vm="using:SchedulingAssistant.ViewModels"
+	x:Name="RootView"
+	x:CompileBindings="False"
+	x:DataType="vm:MainWindowViewModel"
+	b:DismissBehaviors.EscapeCommand="{Binding CloseFlyoutCommand}">
+
+	<UserControl.Styles>
+		<Style Selector="Border.notification_info">
+			<Setter Property="Background" Value="{StaticResource NotificationInfoBackground}" />
+			<Setter Property="BorderBrush" Value="{StaticResource NotificationInfoBorder}" />
+		</Style>
+		<Style Selector="Border.notification_info TextBlock">
+			<Setter Property="Foreground" Value="{StaticResource NotificationInfoText}" />
+		</Style>
+		<Style Selector="Border.notification_warning">
+			<Setter Property="Background" Value="{StaticResource NotificationWarningBackground}" />
+			<Setter Property="BorderBrush" Value="{StaticResource NotificationWarningBorder}" />
+		</Style>
+		<Style Selector="Border.notification_warning TextBlock">
+			<Setter Property="Foreground" Value="{StaticResource NotificationWarningText}" />
+		</Style>
+		<Style Selector="Border.notification_error">
+			<Setter Property="Background" Value="{StaticResource NotificationErrorBackground}" />
+			<Setter Property="BorderBrush" Value="{StaticResource NotificationErrorBorder}" />
+		</Style>
+		<Style Selector="Border.notification_error TextBlock">
+			<Setter Property="Foreground" Value="{StaticResource NotificationErrorText}" />
+		</Style>
+	</UserControl.Styles>
+
+	<Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+
+		<!--  Top menu bar  -->
+		<Border
+			Grid.Row="0"
+			Padding="12,0"
+			Background="{StaticResource ChromeBackground}"
+			BorderBrush="{StaticResource ChromeBorder}"
+			BorderThickness="0,0,0,1"
+			ClipToBounds="True">
+			<DockPanel>
+				<controls:ResponsiveMenuPanel x:Name="TopMenuPanel" VerticalAlignment="Center">
+
+					<!--  Files menu (far left)  -->
+					<Menu
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,2,8,1.5"
+						VerticalAlignment="Center"
+						Background="Transparent">
+						<MenuItem
+							Padding="4,5.5"
+							Classes="nav"
+							Header="Files">
+							<MenuItem Command="{Binding OpenDatabaseCommand}" Header="Open..." />
+							<MenuItem Command="{Binding NewDatabaseCommand}" Header="New..." />
+							<MenuItem Command="{Binding SaveCommand}" Header="Save" />
+							<Separator IsVisible="{Binding RecentDatabases.Count}" />
+							<MenuItem
+								b:CloseMenuOnClickBehavior.IsEnabled="True"
+								Header="Recent Files"
+								IsVisible="{Binding RecentDatabases.Count}"
+								ItemsSource="{Binding RecentDatabases}">
+								<MenuItem.Styles>
+									<Style Selector="MenuItem">
+										<Setter Property="Header" Value="{Binding DisplayName}" />
+										<Setter Property="Command" Value="{Binding OpenCommand}" />
+										<Setter Property="ToolTip.Tip" Value="{Binding Path}" />
+									</Style>
+								</MenuItem.Styles>
+							</MenuItem>
+							<Separator />
+							<MenuItem Command="{Binding NavigateToShareCommand}" Header="Share..." />
+							<Separator />
+							<MenuItem Command="{Binding ExitCommand}" Header="Exit" />
+						</MenuItem>
+					</Menu>
+
+					<Border
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Width="1"
+						Height="20"
+						Margin="0,6,10,6"
+						Background="{StaticResource SeparatorLine}" />
+
+					<TextBlock
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,10,4"
+						VerticalAlignment="Center"
+						FontSize="13"
+						FontWeight="SemiBold"
+						Text="{Binding DatabaseName}"
+						ToolTip.Tip="{Binding DatabasePath}" />
+
+					<!--  Save button + autosave checkbox  -->
+					<StackPanel
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,6,4"
+						VerticalAlignment="Center"
+						IsVisible="{Binding IsWriteEnabled}"
+						Orientation="Horizontal"
+						Spacing="6">
+						<Button
+							Padding="8,4"
+							Background="{StaticResource ButtonBackground}"
+							Command="{Binding SaveCommand}"
+							Content="Save"
+							FontSize="12"
+							FontWeight="SemiBold"
+							ToolTip.Tip="Save changes to the database" />
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="11"
+							FontStyle="Italic"
+							Foreground="Red"
+							IsVisible="{Binding IsDirty}"
+							Text="Unsaved changes"
+							ToolTip.Tip="You have unsaved changes" />
+						<CheckBox
+							VerticalAlignment="Center"
+							Content="Auto-save"
+							FontSize="{StaticResource FontSizeNormal}"
+							IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
+							ToolTip.Tip="Automatically save at the interval configured under Settings" />
+					</StackPanel>
+
+					<Border
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Width="1"
+						Height="20"
+						Margin="0,6,6,6"
+						Background="{StaticResource SeparatorLine}" />
+
+					<!--  Academic Year + Semester pickers  -->
+					<StackPanel
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,1.5,6,1.5"
+						VerticalAlignment="Center"
+						Orientation="Horizontal"
+						Spacing="8">
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="12"
+							Foreground="{StaticResource TextSemesterLabel}"
+							Text="Academic Year:" />
+						<ComboBox
+							Height="24"
+							MinWidth="120"
+							VerticalAlignment="Center"
+							CornerRadius="4"
+							DisplayMemberBinding="{Binding Name}"
+							FontSize="12"
+							ItemsSource="{Binding SemesterContext.AcademicYears}"
+							SelectedItem="{Binding SemesterContext.SelectedAcademicYear}" />
+
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="12"
+							Foreground="{StaticResource TextSemesterLabel}"
+							Text="Semester:" />
+						<Panel VerticalAlignment="Center">
+							<Button
+								x:Name="SemesterPickerButton"
+								Height="24"
+								MinWidth="120"
+								Padding="8,4"
+								VerticalAlignment="Center"
+								Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
+								Content="{Binding SemesterContext.SelectedSemestersLabel}"
+								FontSize="12" />
+							<Popup
+								IsLightDismissEnabled="True"
+								IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
+								Placement="Bottom"
+								PlacementTarget="{Binding ElementName=SemesterPickerButton}">
+								<Border
+									MinWidth="150"
+									Padding="4,4"
+									Background="{StaticResource FlyoutBackground}"
+									BorderBrush="{StaticResource ChromeBorder}"
+									BorderThickness="1"
+									CornerRadius="2">
+									<ItemsControl ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
+										<ItemsControl.ItemTemplate>
+											<DataTemplate>
+												<CheckBox
+													Padding="4,3"
+													Content="{Binding DisplayName}"
+													FontSize="12"
+													IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+											</DataTemplate>
+										</ItemsControl.ItemTemplate>
+									</ItemsControl>
+								</Border>
+							</Popup>
+						</Panel>
+					</StackPanel>
+
+					<Border
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Width="1"
+						Height="20"
+						Margin="0,6,6,6"
+						Background="{StaticResource SeparatorLine}" />
+
+					<Button
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,6,4"
+						Classes="nav"
+						Command="{Binding NavigateToCoursesCommand}"
+						Content="Courses" />
+					<Button
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToInstructorsCommand}"
+						Content="Instructors" />
+
+					<Button
+						x:Name="NavSchedulingEnvironment"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToSchedulingEnvironmentCommand}"
+						Content="Scheduling Environment" />
+
+					<Button
+						x:Name="NavAcademicYears"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToAcademicYearsCommand}"
+						Content="Academic Years" />
+
+					<Button
+						x:Name="NavConfiguration"
+						Margin="0,4,9,4"
+						Classes="nav"
+						Command="{Binding NavigateToConfigurationCommand}"
+						Content="Configuration" />
+
+					<Button
+						x:Name="NavExport"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToExportHubCommand}"
+						Content="Export" />
+
+					<Button
+						x:Name="NavHelp"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToHelpCommand}"
+						Content="Help" />
+
+					<Menu
+						x:Name="DebugMenu"
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,4"
+						VerticalAlignment="Center"
+						Background="Transparent"
+						IsVisible="False">
+						<MenuItem
+							Padding="14,5.5"
+							Classes="nav"
+							Header="Debug">
+							<MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View..." />
+							<Separator />
+							<MenuItem Command="{Binding OpenMigrationCommand}" Header="Migration: CSV -> JSON..." />
+						</MenuItem>
+					</Menu>
+
+					<Button
+						x:Name="MoreButton"
+						controls:ResponsiveMenuPanel.IsMoreButton="True"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Classes.active="{Binding IsMoreOpen}"
+						Command="{Binding OpenMoreMenuCommand}"
+						Content="More..."
+						IsVisible="False"
+						ToolTip.Tip="Show additional menu items" />
+				</controls:ResponsiveMenuPanel>
+			</DockPanel>
+		</Border>
+
+		<!--  Write-lock banner  -->
+		<Border
+			Grid.Row="1"
+			Padding="12,4"
+			Background="{StaticResource ErrorBannerBackground}"
+			BorderBrush="{StaticResource ErrorBannerBorder}"
+			BorderThickness="0,0,0,1"
+			IsVisible="{Binding ShowLockBanner}">
+			<DockPanel>
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding AcquireWriteLockCommand}"
+					Content="Switch to edit mode"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					IsVisible="{Binding ShowWriteLockAvailablePrompt}"
+					ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding RefreshDataCommand}"
+					Content="Refresh View"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					ToolTip.Tip="{Binding RefreshButtonTooltip}" />
+				<TextBlock
+					VerticalAlignment="Center"
+					FontSize="{StaticResource FontSizeNormal}"
+					Foreground="{StaticResource ErrorBannerText}"
+					Text="{Binding LockStatusMessage}" />
+			</DockPanel>
+		</Border>
+
+		<!--  Save-error banner  -->
+		<Border
+			Grid.Row="2"
+			Padding="12,4"
+			Background="{StaticResource NotificationWarningBackground}"
+			BorderBrush="{StaticResource NotificationWarningBorder}"
+			BorderThickness="0,0,0,1"
+			IsVisible="{Binding ShowSaveError}">
+			<DockPanel>
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding DismissSaveErrorCommand}"
+					Content="Dismiss"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}" />
+				<TextBlock
+					VerticalAlignment="Center"
+					FontSize="{StaticResource FontSizeNormal}"
+					Foreground="{StaticResource NotificationWarningText}"
+					Text="{Binding SaveErrorMessage}"
+					TextWrapping="NoWrap" />
+			</DockPanel>
+		</Border>
+
+		<!--  Notification banner  -->
+		<Border
+			Grid.Row="3"
+			Padding="12,4"
+			BorderThickness="0,0,0,1"
+			Classes.notification_error="{Binding NotificationIsError}"
+			Classes.notification_info="{Binding NotificationIsInfo}"
+			Classes.notification_warning="{Binding NotificationIsWarning}"
+			IsVisible="{Binding HasNotification}">
+			<DockPanel>
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding DismissNotificationCommand}"
+					Content="Dismiss"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					IsVisible="{Binding NotificationIsDismissable}" />
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding OpenNotificationLinkCommand}"
+					Content="{Binding NotificationLinkText}"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					IsVisible="{Binding NotificationHasLink}" />
+				<TextBlock
+					VerticalAlignment="Center"
+					FontSize="{StaticResource FontSizeNormal}"
+					Text="{Binding NotificationMessage}"
+					TextWrapping="NoWrap" />
+			</DockPanel>
+		</Border>
+
+		<!--  Main body: layered panel  -->
+		<Panel Grid.Row="4">
+
+			<!--  Layer 0: three-panel grid  -->
+			<Grid
+				x:Name="ThreePanelGrid"
+				b:ConditionalColumnWidthBehavior.ColumnIndex="0"
+				b:ConditionalColumnWidthBehavior.Condition="{Binding IsAnyPanelEditing}"
+				b:ConditionalColumnWidthBehavior.FalseWidth="370"
+				b:ConditionalColumnWidthBehavior.TrueWidth="650"
+				ColumnDefinitions="370,4,*">
+
+				<!--  Left column: Section Editor (top) + Workload (bottom)  -->
+				<Grid Grid.Column="0" RowDefinitions="*,4,200">
+
+					<controls:DetachablePanel
+						x:Name="SectionViewPanel"
+						Grid.Row="0"
+						Header="{Binding LeftPanelTitle}">
+						<controls:DetachablePanel.HeaderContext>
+							<Button
+								MinWidth="0"
+								MinHeight="0"
+								Padding="4,1"
+								HorizontalAlignment="Right"
+								VerticalAlignment="Center"
+								Background="{StaticResource ButtonBackground}"
+								BorderThickness="0"
+								Command="{Binding ToggleMeetingViewCommand}"
+								Content="{Binding ToggleMeetingViewLabel}"
+								FontSize="10"
+								Foreground="{StaticResource TextFaint}"
+								ToolTip.Tip="Switch between Section View and Events View" />
+						</controls:DetachablePanel.HeaderContext>
+						<controls:DetachablePanel.PanelContent>
+							<panelViews:SectionPanelContent />
+						</controls:DetachablePanel.PanelContent>
+					</controls:DetachablePanel>
+
+					<GridSplitter
+						Grid.Row="1"
+						Height="4"
+						HorizontalAlignment="Stretch"
+						Background="{StaticResource GridSplitterColor}"
+						ResizeDirection="Rows" />
+
+					<controls:DetachablePanel
+						x:Name="WorkloadPanel"
+						Grid.Row="2"
+						Header="Workload View">
+						<controls:DetachablePanel.PanelContent>
+							<panelViews:WorkloadPanelView DataContext="{Binding WorkloadPanelVm}" />
+						</controls:DetachablePanel.PanelContent>
+					</controls:DetachablePanel>
+
+				</Grid>
+
+				<GridSplitter
+					Grid.Column="1"
+					Width="4"
+					VerticalAlignment="Stretch"
+					Background="{StaticResource GridSplitterColor}"
+					ResizeDirection="Columns" />
+
+				<!--  Right column: Schedule Grid  -->
+				<controls:DetachablePanel
+					x:Name="ScheduleGridPanel"
+					Grid.Column="2"
+					Header="Schedule View">
+					<controls:DetachablePanel.HeaderContext>
+						<StackPanel
+							Height="30"
+							Margin="3,0,0,0"
+							VerticalAlignment="Top"
+							Orientation="Horizontal"
+							Spacing="6">
+
+							<TextBlock
+								VerticalAlignment="Center"
+								FontSize="{StaticResource FontSizeLarge}"
+								IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ScheduleGridVm.AcademicUnitName}" />
+
+							<Border
+								Width="1"
+								Margin="0,3"
+								Background="{StaticResource SeparatorLine}"
+								IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+							<ItemsControl VerticalAlignment="Center" ItemsSource="{Binding ScheduleGridVm.SemesterLineSegments}">
+								<ItemsControl.ItemsPanel>
+									<ItemsPanelTemplate>
+										<StackPanel Orientation="Horizontal" Spacing="4" />
+									</ItemsPanelTemplate>
+								</ItemsControl.ItemsPanel>
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<Border
+											Padding="6,2"
+											BorderThickness="1"
+											CornerRadius="2">
+											<Border.Background>
+												<MultiBinding Converter="{StaticResource SemesterBackgroundBrushConverter}">
+													<Binding Path="SemesterName" />
+													<Binding Path="HexColor" />
+												</MultiBinding>
+											</Border.Background>
+											<Border.BorderBrush>
+												<MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+													<Binding Path="SemesterName" />
+													<Binding Path="HexColor" />
+												</MultiBinding>
+											</Border.BorderBrush>
+											<TextBlock FontSize="{StaticResource FontSizeLarge}" Text="{Binding DisplayText}" />
+										</Border>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+
+							<Border
+								Width="1"
+								Margin="0,3"
+								Background="{StaticResource SeparatorLine}"
+								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+							<TextBlock
+								VerticalAlignment="Center"
+								FontSize="{StaticResource FontSizeLarge}"
+								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ScheduleGridVm.StatsLine}" />
+
+							<Border
+								Width="1"
+								Margin="0,3"
+								Background="{StaticResource SeparatorLine}"
+								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
+							<TextBlock
+								VerticalAlignment="Center"
+								FontSize="{StaticResource FontSizeLarge}"
+								FontWeight="Bold"
+								Foreground="{StaticResource FilterBadgeText}"
+								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
+								Text="Filtered by:" />
+							<TextBlock
+								MaxWidth="400"
+								VerticalAlignment="Center"
+								FontSize="{StaticResource FontSizeLarge}"
+								FontWeight="Bold"
+								Foreground="{StaticResource FilterBadgeText}"
+								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
+								Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
+								TextTrimming="CharacterEllipsis" />
+
+							<Border
+								Width="1"
+								Margin="0,3"
+								Background="{StaticResource SeparatorLine}"
+								IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+							<TextBlock
+								VerticalAlignment="Center"
+								FontSize="{StaticResource FontSizeLarge}"
+								FontWeight="SemiBold"
+								Foreground="{StaticResource OverlayBadgeText}"
+								IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ScheduleGridVm.Filter.OverlaySummary}" />
+						</StackPanel>
+					</controls:DetachablePanel.HeaderContext>
+					<controls:DetachablePanel.PanelContent>
+						<gridViews:ScheduleGridView x:Name="ScheduleGridViewControl" DataContext="{Binding ScheduleGridVm}" />
+					</controls:DetachablePanel.PanelContent>
+				</controls:DetachablePanel>
+
+			</Grid>
+
+			<!--  Layer 1: management flyout overlay  -->
+			<Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+				<Border b:DismissBehaviors.ClickCommand="{Binding CloseFlyoutCommand}" Background="{StaticResource FlyoutScrim}" />
+
+				<Border
+					MaxHeight="650"
+					Margin="8,0,8,0"
+					HorizontalAlignment="Stretch"
+					VerticalAlignment="Top"
+					Background="{StaticResource AppBackground}"
+					BoxShadow="{StaticResource PanelBoxShadow}"
+					CornerRadius="0,0,6,6">
+					<Grid RowDefinitions="Auto,*">
+
+						<Border
+							Grid.Row="0"
+							Padding="16,10"
+							Background="{StaticResource FlyoutHeaderBackground}"
+							BorderBrush="{StaticResource FlyoutHeaderBorder}"
+							BorderThickness="0,0,0,1">
+							<DockPanel>
+								<Button
+									Padding="8,4"
+									Background="Transparent"
+									BorderThickness="0"
+									Command="{Binding CloseFlyoutCommand}"
+									Content="X"
+									DockPanel.Dock="Right" />
+								<TextBlock
+									VerticalAlignment="Top"
+									FontSize="{StaticResource FontSizeLarge}"
+									FontWeight="SemiBold"
+									Text="{Binding FlyoutTitle}" />
+							</DockPanel>
+						</Border>
+
+						<ScrollViewer Grid.Row="1" Margin="0,15">
+							<ContentControl Content="{Binding FlyoutPage}" />
+						</ScrollViewer>
+
+					</Grid>
+				</Border>
+
+			</Panel>
+
+		</Panel>
+
+	</Grid>
+</UserControl>

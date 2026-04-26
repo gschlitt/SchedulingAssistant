@@ -676,11 +676,7 @@
                                     IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                     Orientation="Horizontal"
                                     Spacing="4">
-                                    <svg:Svg
-                                        Width="12"
-                                        Height="12"
-                                        VerticalAlignment="Center"
-                                        Path="/Assets/tag.svg" />
+                                    <Panel Width="12" Height="12" VerticalAlignment="Center" />
                                     <TextBlock
                                         VerticalAlignment="Center"
                                         FontSize="10"
@@ -693,11 +689,7 @@
                                     IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                     Orientation="Horizontal"
                                     Spacing="4">
-                                    <svg:Svg
-                                        Width="12"
-                                        Height="12"
-                                        VerticalAlignment="Center"
-                                        Path="/Assets/tools.svg" />
+                                    <Panel Width="12" Height="12" VerticalAlignment="Center" />
                                     <TextBlock
                                         VerticalAlignment="Center"
                                         FontSize="10"

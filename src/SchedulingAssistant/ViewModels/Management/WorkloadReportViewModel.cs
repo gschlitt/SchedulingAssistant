@@ -56,6 +56,11 @@ public partial class WorkloadReportViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanExport))]
     private async Task ExportWorkloadReport()
     {
+#if BROWSER
+        await Task.CompletedTask;
+        StatusMessage = "Export is not available in the browser demo.";
+        return;
+#else
         var window = _mainVm.MainWindowReference;
         if (window is null) return;
 
@@ -214,6 +219,7 @@ public partial class WorkloadReportViewModel : ViewModelBase
         {
             IsExporting = false;
         }
+#endif
     }
 
     private bool CanExport() => !IsExporting;

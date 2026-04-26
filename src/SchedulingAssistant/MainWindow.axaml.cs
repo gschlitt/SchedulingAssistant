@@ -17,7 +17,6 @@ using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.GridView;
 using SchedulingAssistant.Views.Wizard;
-using System.ComponentModel;
 using System.Reflection;
 
 namespace SchedulingAssistant;
@@ -27,37 +26,26 @@ public partial class MainWindow : Window
     private DetachedPanelWindow? _sectionViewWindow;
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
-    private MainWindowViewModel? _previousVm;
 
-    public ScheduleGridView? ScheduleGridViewInstance { get; private set; }
+    public ScheduleGridView? ScheduleGridViewInstance => MainViewControl?.ScheduleGridViewInstance;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        // Subscribe to overflow-set changes on the top menu panel so we can mirror them
-        // into MoreMenuViewModel. DataContext isn't set yet; the handler guards for null.
-        if (this.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is { } topPanel)
-            topPanel.HiddenOverflowItemsChanged += OnTopMenuOverflowChanged;
-
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         Title = $"TermPoint v{version?.Major}.{version?.Minor}.{version?.Build}";
 
-        // Escape-to-close-flyout is handled declaratively by DismissBehaviors.EscapeCommand
-        // on the Window element in AXAML.
-        // Ctrl+S is handled here to save editors in management views (works globally, not dependent on focus).
+        // Ctrl+S is handled here to save editors in management views (works globally).
         KeyDown += (_, e) =>
         {
-            // Handle Ctrl+S (Windows/Linux) or Cmd+S (macOS) to save
             if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
             {
                 if (DataContext is MainWindowViewModel vm)
                 {
-                    // Always-visible panels: Section View and Meeting View
                     if (TrySaveEditor(vm.SectionListVm?.EditVm?.SaveCommand, ref e)) return;
                     if (TrySaveEditor(vm.MeetingListVm?.EditVm?.SaveCommand, ref e)) return;
 
-                    // Flyout panels: check the currently open flyout ViewModel
                     if (vm.FlyoutPage is CourseListViewModel courseVm)
                     {
                         if (TrySaveEditor(courseVm.EditVm?.SaveCommand, ref e)) return;
@@ -69,7 +57,6 @@ public partial class MainWindow : Window
                     }
                     else if (vm.FlyoutPage is SchedulingEnvironmentViewModel schedEnvVm)
                     {
-                        // SelectedCategory can be SchedulingEnvironmentListViewModel, RoomListViewModel, or CampusListViewModel
                         if (schedEnvVm.SelectedCategory is SchedulingEnvironmentListViewModel listVm)
                             if (TrySaveEditor(listVm.EditVm?.SaveCommand, ref e)) return;
                         if (schedEnvVm.SelectedCategory is RoomListViewModel roomVm)
@@ -81,9 +68,6 @@ public partial class MainWindow : Window
             }
 
 #if DEBUG
-            // DEV-ONLY hotkeys for testing error banners. Remove before shipping.
-            // Ctrl+Shift+E → simulate schedule grid error
-            // Ctrl+Shift+W → simulate section list error
             if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)
                 && DataContext is MainWindowViewModel debugVm)
             {
@@ -458,13 +442,16 @@ public partial class MainWindow : Window
         // SizeChanged fires after Avalonia measures and arranges the control; by then
         // ScheduleGridView's own SizeChanged handler has already called Render(), so the
         // canvas is fully populated before the curtain lifts.
-        EventHandler<SizeChangedEventArgs>? curtainHandler = null;
-        curtainHandler = (_, _) =>
+        var gridView = MainViewControl?.ScheduleGridViewInstance;
+        if (gridView is not null)
         {
-            ScheduleGridViewControl.SizeChanged -= curtainHandler;
-        //    LoadingCurtain.IsVisible = false;
-        };
-        ScheduleGridViewControl.SizeChanged += curtainHandler;
+            EventHandler<SizeChangedEventArgs>? curtainHandler = null;
+            curtainHandler = (_, _) =>
+            {
+                gridView.SizeChanged -= curtainHandler;
+            };
+            gridView.SizeChanged += curtainHandler;
+        }
 
         IsVisible = true;
         Activate();
@@ -934,6 +921,8 @@ public partial class MainWindow : Window
 
     private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;
 
+    private bool _detachWired;
+
     // ── Data-context wiring ──────────────────────────────────────────────────
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -942,52 +931,35 @@ public partial class MainWindow : Window
 
         if (DataContext is MainWindowViewModel vm)
         {
-            // Unsubscribe from the old VM to prevent memory leaks and stale event callbacks
-            // when the DataContext is replaced (e.g. on database switch).
-            if (_previousVm is not null)
+            // Wire DetachRequested events on the panels inside MainView (once).
+            // MainView.axaml doesn't declare these handlers since WASM doesn't support
+            // secondary windows; the desktop shell wires them programmatically.
+            if (!_detachWired && MainViewControl is not null)
             {
-                _previousVm.PropertyChanged -= OnMainWindowVmPropertyChanged;
-                _previousVm.WorkloadPanelVm.ItemClicked -= OnWorkloadItemClicked;
+                if (MainViewControl.FindControl<DetachablePanel>("SectionViewPanel") is { } svp)
+                    svp.DetachRequested += OnSectionViewDetach;
+                if (MainViewControl.FindControl<DetachablePanel>("WorkloadPanel") is { } wp)
+                    wp.DetachRequested += OnWorkloadDetach;
+                if (MainViewControl.FindControl<DetachablePanel>("ScheduleGridPanel") is { } sgp)
+                    sgp.DetachRequested += OnScheduleGridDetach;
+
+                // Subscribe to overflow-set changes on the top menu panel.
+                if (MainViewControl.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is { } topPanel)
+                    topPanel.HiddenOverflowItemsChanged += OnTopMenuOverflowChanged;
+
+                _detachWired = true;
             }
 
-            // Wire the grid's double-click-to-edit callback at the view level.
-            // This keeps SectionListViewModel and ScheduleGridViewModel decoupled —
-            // neither holds a reference to the other.
-            vm.ScheduleGridVm.EditRequested        = vm.SectionListVm.EditSectionById;
-            vm.ScheduleGridVm.MeetingEditRequested  = vm.MeetingListVm.EditMeetingById;
-
-            vm.PropertyChanged += OnMainWindowVmPropertyChanged;
-            vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
-
-            _previousVm = vm;
-
-            ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
-
-#if DEBUG
-            // Show debug menu in DEBUG mode
-            var debugMenu = this.FindControl<Menu>("DebugMenu");
-            if (debugMenu is not null)
-                debugMenu.IsVisible = true;
-#endif
-
-            // Push the panel's current overflow set into the freshly-attached
-            // MoreMenuViewModel. Early measure passes may have fired before the VM
-            // existed; this catches that case (and DB-switch refreshes the new VM too).
             SyncOverflowToViewModel();
         }
     }
 
-    /// <summary>
-    /// Forwards the top menu panel's current hidden-items list into the active
-    /// <see cref="MoreMenuViewModel"/>. Called from both the panel's change event and
-    /// from <see cref="OnDataContextChanged"/> to handle timing ordering.
-    /// </summary>
     private void OnTopMenuOverflowChanged(object? sender, EventArgs e) => SyncOverflowToViewModel();
 
     private void SyncOverflowToViewModel()
     {
         if (DataContext is not MainWindowViewModel vm) return;
-        if (this.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is not { } panel) return;
+        if (MainViewControl?.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is not { } panel) return;
 
         var keys = new List<string>(panel.HiddenOverflowItems.Count);
         foreach (var c in panel.HiddenOverflowItems)
@@ -995,31 +967,6 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(c.Name)) keys.Add(c.Name);
         }
         vm.MoreMenuVm.SetHiddenKeys(keys);
-    }
-
-    private void OnMainWindowVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // When flyout closes (FlyoutPage becomes null), refresh workload to catch any release changes
-        if (e.PropertyName == nameof(MainWindowViewModel.FlyoutPage) && Vm.FlyoutPage is null)
-            Vm.WorkloadPanelVm.Reload();
-    }
-
-    private void OnWorkloadItemClicked(WorkloadItemViewModel item)
-    {
-        // Only handle section items; releases don't have a direct display in Section View
-        if (item.Kind != WorkloadItemKind.Section)
-            return;
-
-        // Find the corresponding section in the section list and select it
-        var sectionId = item.Id;
-        var sectionItem = Vm.SectionListVm.SectionItems.OfType<SectionListItemViewModel>()
-            .FirstOrDefault(s => s.Section.Id == sectionId);
-
-        if (sectionItem is not null)
-        {
-            Vm.SectionListVm.SelectedItem = sectionItem;
-            // SelectedItem change will automatically sync to ScheduleGridViewModel.SelectedSectionId
-        }
     }
 
     // ── Detach handlers ─────────────────────────────────────────────────────
@@ -1086,7 +1033,7 @@ public partial class MainWindow : Window
                 // On reattach, create a fresh view and update the instance reference
                 // used by ExportViewModel for PNG export.
                 var freshView = new ScheduleGridView { DataContext = Vm.ScheduleGridVm };
-                ScheduleGridViewInstance = freshView;
+                if (MainViewControl is not null) MainViewControl.ScheduleGridViewInstance = freshView;
                 slot.PanelContent = freshView;
                 slot.IsVisible = true;
                 _scheduleGridWindow = null;

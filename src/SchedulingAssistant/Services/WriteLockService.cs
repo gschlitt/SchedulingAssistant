@@ -132,6 +132,15 @@ public sealed class WriteLockService : IDisposable
     // ── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Grants write access without acquiring a file lock. Used in the browser (WASM)
+    /// demo build, where there is no file system and no competing processes.
+    /// </summary>
+    public void AcquireDemo()
+    {
+        IsWriter = true;
+    }
+
+    /// <summary>
     /// Attempts to acquire the write lock for the given database file. If this
     /// instance already holds a lock (e.g., the user is switching databases),
     /// the previous lock is released first.
@@ -514,8 +523,10 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     private void StartPolling()
     {
+#if !BROWSER
         var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
         _pollTimer = new Timer(_ => Dispatcher.UIThread.Post(async () => await PollLockFile()), null, interval, interval);
+#endif
     }
 
     /// <summary>
@@ -566,6 +577,7 @@ public sealed class WriteLockService : IDisposable
     /// <para>Exposed as <c>internal</c> so that unit tests can invoke it directly,
     /// bypassing the timer and the UI-thread dispatch.</para>
     /// </summary>
+#if !BROWSER
     internal async Task PollLockFile()
     {
         if (IsWriter || _lockFilePath is null) return;
@@ -618,4 +630,5 @@ public sealed class WriteLockService : IDisposable
             LockStateChanged?.Invoke();
         }
     }
+#endif
 }

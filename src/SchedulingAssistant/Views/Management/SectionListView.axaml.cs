@@ -119,7 +119,7 @@ public partial class SectionListView : UserControl
         // owns the column width in that state.
         if (_vm?.IsEditing ?? false) return;
 
-        var mainWindow = TopLevel.GetTopLevel(this) as MainWindow;
+        var mainWindow = TopLevel.GetTopLevel(this) as TopLevel;
         if (mainWindow is null) return;
 
         // Reset uniform card width to NaN so cards report their natural content width

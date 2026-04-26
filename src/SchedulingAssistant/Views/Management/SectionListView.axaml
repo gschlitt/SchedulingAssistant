@@ -550,11 +550,7 @@
                                     FontSize="10"
                                     Foreground="{StaticResource TextLabel}"
                                     Text="Tags" />
-                                <svg:Svg
-                                    Width="16"
-                                    Height="16"
-                                    VerticalAlignment="Center"
-                                    Path="/Assets/tag.svg" />
+                                <Panel Width="16" Height="16" VerticalAlignment="Center" />
                             </StackPanel>
                             <Panel>
                                 <ToggleButton
@@ -601,11 +597,7 @@
                                     FontSize="10"
                                     Foreground="{StaticResource TextLabel}"
                                     Text="Reserve Codes" />
-                                <svg:Svg
-                                    Width="16"
-                                    Height="16"
-                                    VerticalAlignment="Center"
-                                    Path="/Assets/ticket.svg" />
+                                <Panel Width="16" Height="16" VerticalAlignment="Center" />
                             </StackPanel>
                             <Panel>
                                 <ToggleButton
@@ -667,11 +659,7 @@
                                     FontSize="10"
                                     Foreground="{StaticResource TextLabel}"
                                     Text="Resources" />
-                                <svg:Svg
-                                    Width="16"
-                                    Height="16"
-                                    VerticalAlignment="Center"
-                                    Path="/Assets/tools.svg" />
+                                <Panel Width="16" Height="16" VerticalAlignment="Center" />
                             </StackPanel>
                             <Panel>
                                 <ToggleButton
@@ -1141,11 +1129,7 @@
                                                     IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Orientation="Horizontal"
                                                     Spacing="4">
-                                                    <svg:Svg
-                                                        Width="16"
-                                                        Height="16"
-                                                        VerticalAlignment="Center"
-                                                        Path="/Assets/tag.svg" />
+                                                    <Panel Width="16" Height="16" VerticalAlignment="Center" />
                                                     <TextBlock
                                                         VerticalAlignment="Center"
                                                         FontSize="11"
@@ -1156,11 +1140,7 @@
                                                     IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Orientation="Horizontal"
                                                     Spacing="4">
-                                                    <svg:Svg
-                                                        Width="16"
-                                                        Height="16"
-                                                        VerticalAlignment="Center"
-                                                        Path="/Assets/ticket.svg" />
+                                                    <Panel Width="16" Height="16" VerticalAlignment="Center" />
                                                     <TextBlock
                                                         VerticalAlignment="Center"
                                                         FontSize="11"
@@ -1171,11 +1151,7 @@
                                                     IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Orientation="Horizontal"
                                                     Spacing="4">
-                                                    <svg:Svg
-                                                        Width="16"
-                                                        Height="16"
-                                                        VerticalAlignment="Center"
-                                                        Path="/Assets/tools.svg" />
+                                                    <Panel Width="16" Height="16" VerticalAlignment="Center" />
                                                     <TextBlock
                                                         VerticalAlignment="Center"
                                                         FontSize="11"

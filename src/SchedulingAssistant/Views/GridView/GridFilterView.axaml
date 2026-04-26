@@ -4,7 +4,6 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:b="using:SchedulingAssistant.Behaviors"
 	xmlns:conv="using:SchedulingAssistant.Converters"
-	xmlns:gb="clr-namespace:GroupBox.Avalonia;assembly=GroupBox.Avalonia"
 	xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
 	xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
 	x:Name="FilterRoot"
@@ -115,12 +114,7 @@
 						Margin="4,0,0,0"
 						VerticalAlignment="Center"
 						Orientation="Horizontal">
-						<svg:Svg
-							Width="16"
-							Height="16"
-							VerticalAlignment="Center"
-							b:HelpTip.Text="Overlay chosen sections (regardless of filter) "
-							Path="/Assets/filter-icon.svg" />
+						<Panel Width="16" Height="16" VerticalAlignment="Center" />
 					</StackPanel>
 
 
@@ -480,12 +474,7 @@
 						Margin="4,0,4,0"
 						VerticalAlignment="Center"
 						Orientation="Horizontal">
-						<svg:Svg
-							Width="16"
-							Height="16"
-							VerticalAlignment="Center"
-							b:HelpTip.Text="Overlay chosen sections (regardless of filter) "
-							Path="/Assets/overlay-icon.svg" />
+						<Panel Width="16" Height="16" VerticalAlignment="Center" />
 					</StackPanel>
 
 					<!--  Overlay: Instructor  -->

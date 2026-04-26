@@ -3706,3 +3706,134 @@
 | 15:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 7→7 lines | ~146 |
 | 15:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→3 lines | ~49 |
 | 15:58 | Session end: 18 writes across 14 files (SchedulingAssistant.csproj, SplashScreen.axaml, DatabaseRecoveryWindow.axaml, StartupWizardWindow.axaml, ConfirmDialog.axaml) | 18 reads | ~21344 tok |
+
+## Session: 2026-04-25 16:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:04 | Created src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | — | ~204 |
+| 16:04 | Created src/SchedulingAssistant.Browser/Program.cs | — | ~96 |
+| 16:04 | Created src/SchedulingAssistant.Browser/wwwroot/index.html | — | ~189 |
+| 16:05 | Created src/SchedulingAssistant/Services/NullDialogService.cs | — | ~157 |
+| 16:05 | Created src/SchedulingAssistant/Services/ConsoleAppLogger.cs | — | ~474 |
+| 16:05 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified AcquireDemo() | ~159 |
+| 16:07 | Created src/SchedulingAssistant/Views/MainView.axaml | — | ~5422 |
+| 16:07 | Created src/SchedulingAssistant/Views/MainView.axaml.cs | — | ~1172 |
+| 16:07 | Created src/SchedulingAssistant/MainWindow.axaml | — | ~135 |
+| 16:08 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified MainWindow() | ~758 |
+| 21:27 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added optional chaining | ~562 |
+| 21:27 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added optional chaining | ~122 |
+| 21:27 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→1 lines | ~7 |
+| 21:28 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoDatabaseContext.cs | — | ~182 |
+| 21:28 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoAcademicUnitRepository.cs | — | ~261 |
+| 21:28 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoAcademicYearRepository.cs | — | ~259 |
+| 21:28 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoBlockPatternRepository.cs | — | ~216 |
+| 21:28 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoCourseRepository.cs | — | ~413 |
+| 21:28 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoInstructorRepository.cs | — | ~358 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoInstructorCommitmentRepository.cs | — | ~216 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoLegalStartTimeRepository.cs | — | ~336 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoReleaseRepository.cs | — | ~206 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoRoomRepository.cs | — | ~223 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSectionPrefixRepository.cs | — | ~275 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSectionRepository.cs | — | ~672 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSemesterRepository.cs | — | ~298 |
+| 21:29 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSubjectRepository.cs | — | ~384 |
+| 21:30 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingEnvironmentRepository.cs | — | ~528 |
+| 21:30 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoCampusRepository.cs | — | ~274 |
+| 21:30 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoMeetingRepository.cs | — | ~219 |
+| 21:30 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoAppConfigurationRepository.cs | — | ~121 |
+| 21:30 | Created src/SchedulingAssistant/Demo/DemoData.cs | — | ~198 |
+| 21:30 | Created src/SchedulingAssistant/Demo/DemoData.AcademicYear.cs | — | ~66 |
+| 21:31 | Created src/SchedulingAssistant/Demo/DemoData.Semesters.cs | — | ~155 |
+| 21:31 | Created src/SchedulingAssistant/Demo/DemoData.Instructors.cs | — | ~154 |
+| 21:31 | Created src/SchedulingAssistant/Demo/DemoData.Rooms.cs | — | ~120 |
+| 21:31 | Created src/SchedulingAssistant/Demo/DemoData.Subjects.cs | — | ~146 |
+| 21:32 | Created src/SchedulingAssistant/Demo/DemoData.Courses.cs | — | ~249 |
+| 21:32 | Created src/SchedulingAssistant/Demo/DemoData.SchedulingEnvironment.cs | — | ~303 |
+| 21:32 | Created src/SchedulingAssistant/Demo/DemoData.SectionPrefixes.cs | — | ~90 |
+| 21:32 | Created src/SchedulingAssistant/Demo/DemoData.BlockPatterns.cs | — | ~167 |
+| 21:32 | Created src/SchedulingAssistant/Demo/DemoData.LegalStartTimes.cs | — | ~124 |
+| 21:32 | Created src/SchedulingAssistant/Demo/DemoData.Campuses.cs | — | ~97 |
+| 21:33 | Created src/SchedulingAssistant/Demo/DemoData.Sections.cs | — | ~665 |
+| 21:34 | Created src/SchedulingAssistant/App.axaml.cs | — | ~3814 |
+| 21:36 | Created src/SchedulingAssistant/SchedulingAssistant.csproj | — | ~1114 |
+| 21:37 | Edited src/SchedulingAssistant/Services/ConsoleAppLogger.cs | 5→8 lines | ~61 |
+| 21:39 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | inline fix | ~18 |
+| 21:39 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~52 |
+| 21:39 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | modified OnSectionViewHeaderPointerPressed() | ~288 |
+| 21:39 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | 12→9 lines | ~73 |
+| 21:39 | Edited src/SchedulingAssistant/App.axaml.cs | 6→7 lines | ~75 |
+| 21:39 | Edited src/SchedulingAssistant/App.axaml.cs | 4→5 lines | ~39 |
+
+## Session: 2026-04-26 21:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:42 | Edited src/SchedulingAssistant/App.axaml.cs | inline fix | ~26 |
+| 21:42 | Edited src/SchedulingAssistant/App.axaml.cs | 2→1 lines | ~15 |
+| 21:42 | Edited src/SchedulingAssistant/App.axaml.cs | — | ~0 |
+| 21:44 | Edited src/SchedulingAssistant/App.axaml.cs | modified if() | ~64 |
+| 21:44 | Created src/SchedulingAssistant/Demo/DemoData.BlockPatterns.cs | — | ~116 |
+| 21:44 | Created src/SchedulingAssistant/Demo/DemoData.LegalStartTimes.cs | — | ~121 |
+| 21:44 | Created src/SchedulingAssistant/Demo/DemoData.Sections.cs | — | ~614 |
+| 21:46 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 2→4 lines | ~57 |
+| 21:47 | Created src/SchedulingAssistant/ViewModels/Management/ConfigurationViewModel.cs | — | ~582 |
+| 21:47 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 3→5 lines | ~50 |
+| 21:47 | Edited src/SchedulingAssistant/ViewModels/MoreMenuViewModel.cs | 3→5 lines | ~79 |
+| 21:48 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 1→3 lines | ~25 |
+| 21:49 | Edited src/SchedulingAssistant/App.axaml.cs | modified if() | ~140 |
+| 21:50 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | expanded (+6 lines) | ~123 |
+| 21:51 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 5→7 lines | ~61 |
+| 21:51 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 2→3 lines | ~33 |
+| 21:52 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified PollLockFile() | ~346 |
+| 21:52 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified if() | ~56 |
+| 21:52 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified Save() | ~284 |
+| 21:52 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified AcquireWriteLock() | ~108 |
+| 08:25 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified RefreshData() | ~424 |
+| 08:26 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified RestoreFromBackupAsync() | ~391 |
+| 08:26 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified OpenDatabase() | ~507 |
+| 08:26 | Edited src/SchedulingAssistant/ViewModels/Management/CourseHistoryExportViewModel.cs | modified ExportCourseHistory() | ~78 |
+| 08:26 | Edited src/SchedulingAssistant/ViewModels/Management/CourseHistoryExportViewModel.cs | modified catch() | ~70 |
+| 08:27 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified StartPolling() | ~68 |
+| 08:27 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified LoadRecentDatabases() | ~163 |
+| 08:28 | Edited src/SchedulingAssistant/ViewModels/Management/ExportViewModel.cs | modified ExportSchedulePng() | ~87 |
+| 08:28 | Edited src/SchedulingAssistant/ViewModels/Management/ExportViewModel.cs | 7→8 lines | ~35 |
+| 08:28 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadReportViewModel.cs | modified ExportWorkloadReport() | ~88 |
+| 08:28 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadReportViewModel.cs | modified catch() | ~62 |
+| 08:28 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 2→3 lines | ~40 |
+| 08:28 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | 2→2 lines | ~28 |
+| 09:14 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→1 lines | ~25 |
+| 09:14 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→1 lines | ~25 |
+| 09:14 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→1 lines | ~25 |
+| 09:14 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 9→5 lines | ~110 |
+| 09:14 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 9→5 lines | ~111 |
+| 09:14 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | removed 5 lines | ~30 |
+| 09:15 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 6→1 lines | ~18 |
+| 09:15 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 6→1 lines | ~18 |
+| 09:15 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 5→1 lines | ~26 |
+| 09:15 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 5→1 lines | ~26 |
+| 09:15 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 2→3 lines | ~39 |
+| 09:16 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 2→7 lines | ~103 |
+| 09:18 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | expanded (+13 lines) | ~242 |
+| 10:54 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | Target() → build() | ~157 |
+| 10:54 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 1→2 lines | ~32 |
+
+## Session: 2026-04-26 10:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:57 | Edited src/SchedulingAssistant/App.axaml | 2→1 lines | ~9 |
+| 10:57 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 2→1 lines | ~22 |
+| 10:57 | Edited src/SchedulingAssistant/App.axaml | 4→3 lines | ~27 |
+| 11:05 | Session end: 3 writes across 2 files (App.axaml, GridFilterView.axaml) | 4 reads | ~6658 tok |
+| 11:06 | Session end: 3 writes across 2 files (App.axaml, GridFilterView.axaml) | 4 reads | ~6658 tok |
+| 11:10 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~18 |
+| 11:10 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~17 |
+| 11:10 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~16 |
+| 11:10 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | inline fix | ~15 |
+| 11:11 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~25 |
+| 11:11 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~20 |
+| 11:11 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |
+| 11:11 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |
+| 11:13 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |
+| 11:19 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |

@@ -6697,6 +6697,310 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T22:57:51.150Z"
+    },
+    {
+      "id": "bug-419",
+      "timestamp": "2026-04-26T04:27:09.719Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: var gridView = MainViewControl?.ScheduleGridViewInstance;; if (gridView is not null)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-26T04:27:29.829Z"
+    },
+    {
+      "id": "bug-420",
+      "timestamp": "2026-04-26T04:27:52.364Z",
+      "error_message": "Wrong reference: ComponentModel should be Reflection",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Used \"ComponentModel\" instead of \"Reflection\"",
+      "fix": "Changed ComponentModel → Reflection",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T04:27:52.364Z"
+    },
+    {
+      "id": "bug-421",
+      "timestamp": "2026-04-26T04:39:03.333Z",
+      "error_message": "Wrong reference: private should be set",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml.cs",
+      "root_cause": "Used \"private\" instead of \"set\"",
+      "fix": "Changed private → set",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T04:39:03.333Z"
+    },
+    {
+      "id": "bug-422",
+      "timestamp": "2026-04-26T04:42:24.113Z",
+      "error_message": "Wrong reference: IMeetingRepository should be MeetingStore",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Used \"IMeetingRepository\" instead of \"MeetingStore\"",
+      "fix": "Changed IMeetingRepository → MeetingStore",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-26T04:42:36.837Z"
+    },
+    {
+      "id": "bug-423",
+      "timestamp": "2026-04-26T04:51:35.574Z",
+      "error_message": "Wrong reference: ItemGroup should be Compile",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Used \"ItemGroup\" instead of \"Compile\"",
+      "fix": "Changed ItemGroup → Compile",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T04:51:35.574Z"
+    },
+    {
+      "id": "bug-424",
+      "timestamp": "2026-04-26T04:52:51.018Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 18→14 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T04:52:51.018Z"
+    },
+    {
+      "id": "bug-425",
+      "timestamp": "2026-04-26T15:26:02.212Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 47→38 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:26:02.212Z"
+    },
+    {
+      "id": "bug-426",
+      "timestamp": "2026-04-26T15:26:42.908Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/ViewModels/Management/CourseHistoryExportViewModel.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:26:42.908Z"
+    },
+    {
+      "id": "bug-427",
+      "timestamp": "2026-04-26T15:28:08.672Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/ViewModels/Management/ExportViewModel.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:28:08.672Z"
+    },
+    {
+      "id": "bug-428",
+      "timestamp": "2026-04-26T15:28:32.436Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/ViewModels/Management/WorkloadReportViewModel.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:28:32.436Z"
+    },
+    {
+      "id": "bug-429",
+      "timestamp": "2026-04-26T15:28:47.592Z",
+      "error_message": "Wrong reference: ItemGroup should be Compile",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Used \"ItemGroup\" instead of \"Compile\"",
+      "fix": "Changed ItemGroup → Compile",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:28:47.592Z"
+    },
+    {
+      "id": "bug-430",
+      "timestamp": "2026-04-26T15:28:59.545Z",
+      "error_message": "Wrong reference: MainWindow should be TopLevel",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "root_cause": "Used \"MainWindow\" instead of \"TopLevel\"",
+      "fix": "Changed MainWindow → TopLevel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:28:59.545Z"
+    },
+    {
+      "id": "bug-431",
+      "timestamp": "2026-04-26T16:14:45.771Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 9→5 lines (4 removed) | Also: <svg:Svg; Width=\"16\"",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-26T16:14:52.172Z"
+    },
+    {
+      "id": "bug-432",
+      "timestamp": "2026-04-26T16:15:53.032Z",
+      "error_message": "Wrong reference: ItemGroup should be AvaloniaResource",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Used \"ItemGroup\" instead of \"AvaloniaResource\"",
+      "fix": "Changed ItemGroup → AvaloniaResource",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T16:15:53.032Z"
+    },
+    {
+      "id": "bug-433",
+      "timestamp": "2026-04-26T17:54:05.649Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "17 lines replaced/restructured",
+      "fix": "Rewrote 18→10 lines (17 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:54:05.649Z"
+    },
+    {
+      "id": "bug-434",
+      "timestamp": "2026-04-26T17:57:47.233Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"clr-namespace:GroupBox.Avalonia;assembly=GroupBox",
+      "fix": "Changed to \"Light\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:57:47.233Z"
+    },
+    {
+      "id": "bug-435",
+      "timestamp": "2026-04-26T17:57:49.036Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"clr-namespace:GroupBox.Avalonia;assembly=GroupBox",
+      "fix": "Changed to \"clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Cont",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:57:49.036Z"
+    },
+    {
+      "id": "bug-436",
+      "timestamp": "2026-04-26T18:10:46.261Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Had 'net8.0'",
+      "fix": "Changed to 'net10.0'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-04-26T18:11:02.320Z"
+    },
+    {
+      "id": "bug-437",
+      "timestamp": "2026-04-26T18:10:56.016Z",
+      "error_message": "Wrong reference: net8 should be net10",
+      "file": "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
+      "root_cause": "Used \"net8\" instead of \"net10\"",
+      "fix": "Changed net8 → net10",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T18:10:56.016Z"
     }
   ]
 }

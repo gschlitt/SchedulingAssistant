@@ -1,19 +1,25 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-#if DEBUG
+#if !BROWSER
 using HotAvalonia;
+using Bugsnag;
 #endif
 using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
+#if BROWSER
+using SchedulingAssistant.Data.Repositories.Demo;
+#endif
 using SchedulingAssistant.Services;
+#if !BROWSER
 using SchedulingAssistant.Exceptions;
+#endif
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
+using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.Management;
-using Bugsnag;
 
 namespace SchedulingAssistant;
 
@@ -23,56 +29,64 @@ public partial class App : Application
 
     /// <summary>
     /// Logger available app-wide, including before DI is fully initialized.
-    /// Set early in InitializeServices so it can be used during startup error handling.
     /// </summary>
+#if !BROWSER
     public static IAppLogger Logger { get; private set; } = new FileAppLogger
-    {        
+    {
         BugsnagClient = new Bugsnag.Client(new Configuration("0433a4d8b6fc7e95c43cbb6a87935c31")
         {
             ReleaseStage="production"
         })
     };
+#else
+    public static IAppLogger Logger { get; private set; } = new ConsoleAppLogger();
+#endif
 
+#if !BROWSER
     /// <summary>
     /// Write-lock service, created once at app startup and shared across all DI containers.
-    /// Registered into DI as a pre-existing instance so the container does not dispose it
-    /// when the container is rebuilt on a database switch.
     /// </summary>
     public static WriteLockService LockService { get; } = new WriteLockService();
 
     /// <summary>
-    /// Checkout service, created once at app startup. Manages the D → D' copy (write mode),
-    /// the D → D'' snapshot (read-only mode), write lock acquisition, save-back, autosave,
-    /// and crash recovery for every database the app opens. Lives outside DI because checkout
-    /// must complete before <see cref="InitializeServices"/> is called.
+    /// Checkout service — manages D to D' copy, write lock, save-back, autosave, and crash recovery.
     /// </summary>
     public static CheckoutService Checkout { get; } = new CheckoutService(LockService, Logger);
+#endif
 
     public override void Initialize()
     {
+#if !BROWSER
 #if DEBUG
         this.UseHotReload();
+#endif
 #endif
         AvaloniaXamlLoader.Load(this);
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
+#if !BROWSER
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Show MainWindow hidden — it will run async startup in OnOpened,
-            // initialize the DB, then make itself visible.
             var win = new MainWindow();
             win.IsVisible = false;
             desktop.MainWindow = win;
 
-            // Check for updates in the background. Failures are non-fatal.
             _ = new UpdateService().CheckForUpdatesAsync(Logger);
         }
+#else
+        if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            var vm = InitializeDemoServices();
+            singleView.MainView = new MainView { DataContext = vm };
+        }
+#endif
 
         base.OnFrameworkInitializationCompleted();
     }
 
+#if !BROWSER
     /// <summary>
     /// Called by MainWindow once a database path has been resolved.
     /// Builds the full DI container and returns the root view model.
@@ -82,42 +96,19 @@ public partial class App : Application
         var services = new ServiceCollection();
         ConfigureServices(services, dbPath);
 
-        // Dispose the previous container before replacing it. This triggers Dispose() on every
-        // IDisposable singleton — most importantly DatabaseContext, which closes the SqliteConnection
-        // and releases the file lock on the old database. Safe on first call: Services is null!,
-        // and (null as IDisposable) is null, so ?.Dispose() is a no-op.
         (Services as IDisposable)?.Dispose();
 
         Services = services.BuildServiceProvider();
 
-        // Expose the singleton logger from DI so any code using App.Logger
-        // gets the same instance.
         Logger = Services.GetRequiredService<IAppLogger>();
-
-        // Prune old log files (non-throwing).
         if (Logger is FileAppLogger fal) fal.PruneOldLogs();
 
-        // Integrity check — run before acquiring the write lock or touching the schema,
-        // so any corruption is surfaced on a pristine connection. The check is a no-op
-        // when the file does not yet exist (brand-new database).
         if (File.Exists(dbPath) && !BackupService.CheckIntegrity(dbPath))
-        {
-            // Signal the caller; MainWindow.RunStartupAsync handles the restore dialog.
             throw new DatabaseCorruptException(dbPath);
-        }
 
-        // The write lock was already acquired by App.Checkout.CheckoutAsync() before
-        // this method was called.  App.LockService is the pre-DI singleton registered
-        // into the container, so all code that resolves WriteLockService from DI gets
-        // the instance that already has the correct IsWriter / CurrentHolder state.
-
-        // Eagerly initialize the database (schema creation + seeding).
-        // Wire SaveCompleted → ResetDirty so the next user write after a save re-arms MarkDirty.
         var dbCtx = Services.GetRequiredService<IDatabaseContext>();
         App.Checkout.SaveCompleted += dbCtx.ResetDirty;
 
-        // Seed the global semester context from the database,
-        // restoring the last-used academic year and semester(s) from local settings.
         var startupSettings = AppSettings.Current;
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
@@ -128,7 +119,6 @@ public partial class App : Application
                                        ? startupSettings.LastSelectedSemesterIds.ToHashSet()
                                        : null);
 
-        // Seed the section store so ViewModels can read from the cache on first load.
         var sectionStore = Services.GetRequiredService<SectionStore>();
         sectionStore.Reload(
             Services.GetRequiredService<ISectionRepository>(),
@@ -141,27 +131,16 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services, string dbPath)
     {
-        // Logger — singleton so the same instance is used everywhere.
-        // Swap FileAppLogger for a remote/database implementation here when ready.
         services.AddSingleton<IAppLogger>(App.Logger);
 
-        // Services
         services.AddSingleton<SemesterContext>();
-        // Register the pre-DI WriteLockService instance. Using the overload that
-        // takes an existing instance means the container will NOT dispose it when
-        // the container is rebuilt on a database switch.
         services.AddSingleton(App.LockService);
         services.AddSingleton<BackupService>();
         services.AddSingleton<AppNotificationService>();
-        // These services are stateless wrappers; singletons match their actual lifetime.
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();
         services.AddTransient<IDialogService, DialogService>();
 
-        // Data layer — DatabaseContext receives the resolved path directly.
-        // Repositories are stateless wrappers around the singleton DatabaseContext,
-        // so they are registered as singletons to accurately reflect their actual lifetime.
-        // Must use factory (not instance) so the container owns and disposes it on shutdown.
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath, App.Checkout.MarkDirty));
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
@@ -181,10 +160,91 @@ public partial class App : Application
         services.AddSingleton<IAppConfigurationRepository, AppConfigurationRepository>();
         services.AddSingleton<AppConfigurationService>();
 
-        // ViewModels
+        RegisterViewModels(services);
+
+        services.AddTransient<SaveAndBackupViewModel>();
+        services.AddTransient<NewDatabaseViewModel>();
+
+#if DEBUG
+        services.AddTransient<DebugTestDataGenerator>();
+        services.AddTransient<DebugTestDataViewModel>();
+        services.AddTransient<MigrationViewModel>();
+#endif
+    }
+#endif // !BROWSER
+
+#if BROWSER
+    // ── Demo / Browser DI ──────────────────────────────────────��─────────────
+
+    /// <summary>
+    /// Browser (WASM) entry point — builds a DI container backed by static demo data.
+    /// </summary>
+    public static MainWindowViewModel InitializeDemoServices()
+    {
+        var services = new ServiceCollection();
+        ConfigureDemoServices(services);
+
+        (Services as IDisposable)?.Dispose();
+        Services = services.BuildServiceProvider();
+        Logger = Services.GetRequiredService<IAppLogger>();
+
+        Services.GetRequiredService<WriteLockService>().AcquireDemo();
+
+        var semesterContext = Services.GetRequiredService<SemesterContext>();
+        semesterContext.Reload(
+            Services.GetRequiredService<IAcademicYearRepository>(),
+            Services.GetRequiredService<ISemesterRepository>());
+
+        var sectionStore = Services.GetRequiredService<SectionStore>();
+        sectionStore.Reload(
+            Services.GetRequiredService<ISectionRepository>(),
+            semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
+
+        var vm = Services.GetRequiredService<MainWindowViewModel>();
+        vm.SetDatabaseName("Demo");
+        return vm;
+    }
+
+    private static void ConfigureDemoServices(IServiceCollection services)
+    {
+        services.AddSingleton<IAppLogger>(new ConsoleAppLogger());
+
+        services.AddSingleton<SemesterContext>();
+        services.AddSingleton<WriteLockService>();
+        services.AddSingleton<AcademicUnitService>();
+        services.AddSingleton<ScheduleValidationService>();
+        services.AddTransient<IDialogService, NullDialogService>();
+
+        services.AddSingleton<IDatabaseContext, DemoDatabaseContext>();
+        services.AddSingleton<IAcademicYearRepository,        DemoAcademicYearRepository>();
+        services.AddSingleton<ISemesterRepository,            DemoSemesterRepository>();
+        services.AddSingleton<IInstructorRepository,          DemoInstructorRepository>();
+        services.AddSingleton<IRoomRepository,                DemoRoomRepository>();
+        services.AddSingleton<ILegalStartTimeRepository,      DemoLegalStartTimeRepository>();
+        services.AddSingleton<IBlockPatternRepository,        DemoBlockPatternRepository>();
+        services.AddSingleton<ISubjectRepository,             DemoSubjectRepository>();
+        services.AddSingleton<ICourseRepository,              DemoCourseRepository>();
+        services.AddSingleton<ISectionRepository,             DemoSectionRepository>();
+        services.AddSingleton<ISchedulingEnvironmentRepository, DemoSchedulingEnvironmentRepository>();
+        services.AddSingleton<IAcademicUnitRepository,        DemoAcademicUnitRepository>();
+        services.AddSingleton<IReleaseRepository,             DemoReleaseRepository>();
+        services.AddSingleton<IInstructorCommitmentRepository,DemoInstructorCommitmentRepository>();
+        services.AddSingleton<ISectionPrefixRepository,       DemoSectionPrefixRepository>();
+        services.AddSingleton<ICampusRepository,              DemoCampusRepository>();
+        services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
+        services.AddSingleton<IAppConfigurationRepository,    DemoAppConfigurationRepository>();
+        services.AddSingleton<AppConfigurationService>();
+
+        RegisterViewModels(services);
+    }
+#endif // BROWSER
+
+    // ── Shared ViewModel registration ────────────────────────────────────────
+
+    private static void RegisterViewModels(IServiceCollection services)
+    {
         services.AddSingleton<SectionStore>();
         services.AddSingleton<MeetingStore>();
-        services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<SectionChangeNotifier>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
@@ -236,7 +296,6 @@ public partial class App : Application
         services.AddTransient<SubjectListViewModel>();
         services.AddTransient<CourseListViewModel>();
         services.AddTransient<CourseHistoryViewModel>();
-        services.AddTransient<SaveAndBackupViewModel>();
         services.AddTransient<SchedulingEnvironmentViewModel>();
         services.AddTransient<ConfigurationViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
@@ -250,19 +309,7 @@ public partial class App : Application
         services.AddTransient<CampusListViewModel>();
         services.AddTransient<HelpViewModel>();
         services.AddTransient<ShareViewModel>();
-        services.AddTransient<NewDatabaseViewModel>();
 
-        // Views
         services.AddTransient<CourseHistoryView>();
-
-        //Dialogs
-
-
-#if DEBUG
-        services.AddTransient<DebugTestDataGenerator>();
-        services.AddTransient<DebugTestDataViewModel>();
-        // ONE-TIME MIGRATION UTILITY — remove after migration is complete
-        services.AddTransient<MigrationViewModel>();
-#endif
     }
 }

@@ -30,6 +30,11 @@ public partial class ExportViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanExport))]
     private async Task ExportSchedulePng()
     {
+#if BROWSER
+        await Task.CompletedTask;
+        StatusMessage = "Export is not available in the browser demo.";
+        return;
+#else
         var window = _mainVm.MainWindowReference;
         if (window is null) return;
 
@@ -79,6 +84,7 @@ public partial class ExportViewModel : ViewModelBase
         {
             IsExporting = false;
         }
+#endif
     }
 
     private bool CanExport() => !IsExporting;

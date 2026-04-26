@@ -1,52 +1,98 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ── Shared settings ──────────────────────────────────────────────────── -->
   <PropertyGroup>
-    <OutputType Condition="$([MSBuild]::IsOSPlatform('Windows'))">WinExe</OutputType>
-    <OutputType Condition="!$([MSBuild]::IsOSPlatform('Windows'))">Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <Version>1.0.0</Version>
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
+    <Version>1.0.18</Version>
     <AssemblyName>TermPoint</AssemblyName>
     <Product>TermPoint</Product>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
-
-  <PropertyGroup>
-    <Version>1.0.18</Version>
+  <!-- ── Desktop-only settings ────────────────────────────────────────────── -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <OutputType Condition="$([MSBuild]::IsOSPlatform('Windows'))">WinExe</OutputType>
+    <OutputType Condition="!$([MSBuild]::IsOSPlatform('Windows'))">Exe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
   </PropertyGroup>
-  
-  
 
+  <!-- Define BROWSER for #if guards in shared code -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('browser'))">
+    <DefineConstants>$(DefineConstants);BROWSER</DefineConstants>
+  </PropertyGroup>
+
+  <!-- ── Cross-platform packages ──────────────────────────────────────────── -->
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.0.1" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
     <PackageReference Include="Avalonia.Themes.Simple" Version="12.0.1" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
     <PackageReference Include="Avalonia.Controls.ColorPicker" Version="12.0.1" />
-    <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0" />
-    <PackageReference Include="GroupBox.Avalonia" Version="12.0.0" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
-    <PackageReference Include="Bugsnag" Version="4.1.0" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="HotAvalonia" Version="3.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
-    <PackageReference Include="Velopack" Version="0.0.1298" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- ── Desktop-only packages ────────────────────────────────────────────── -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
+    <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0" />
+    <PackageReference Include="GroupBox.Avalonia" Version="12.0.0" />
+    <PackageReference Include="Bugsnag" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="Velopack" Version="0.0.1298" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="HotAvalonia" Version="3.1.0" />
+  </ItemGroup>
+
+  <!--
+    Exclude files from the browser build that depend on desktop-only packages.
+    The WASM build uses Demo* repositories and ConsoleAppLogger instead.
+  -->
+  <ItemGroup Condition="$(TargetFramework.Contains('browser'))">
+    <Compile Remove="Program.cs" />
+    <Compile Remove="Data\DatabaseContext.cs" />
+    <Compile Remove="Migration\**\*.cs" />
+    <Compile Remove="ViewModels\MigrationViewModel.cs" />
+    <Compile Remove="Services\FileAppLogger.cs" />
+    <Compile Remove="Services\CheckoutService.cs" />
+    <Compile Remove="Services\BackupService.cs" />
+    <Compile Remove="Services\UpdateService.cs" />
+    <Compile Remove="Services\NetworkFileOps.cs" />
+    <Compile Remove="Services\DatabaseValidator.cs" />
+    <Compile Remove="ViewModels\Management\SaveAndBackupViewModel.cs" />
+    <Compile Remove="ViewModels\Management\NewDatabaseViewModel.cs" />
+    <Compile Remove="MainWindow.axaml.cs" />
+    <Compile Remove="Views\SplashScreen.axaml.cs" />
+    <Compile Remove="Views\DatabaseRecoveryWindow.axaml.cs" />
+    <Compile Remove="Views\Wizard\**\*.cs" />
+    <Compile Remove="ViewModels\Wizard\**\*.cs" />
+    <Compile Remove="Exceptions\**\*.cs" />
+    <Compile Remove="ViewModels\DatabaseRecoveryViewModel.cs" />
+    <Compile Remove="Views\MigrationView.axaml.cs" />
+    <Compile Remove="Views\Management\SaveAndBackupView.axaml.cs" />
+  </ItemGroup>
+
+  <!-- Remove desktop-only AXAML files from the browser build (AvaloniaXaml item type) -->
+  <ItemGroup Condition="$(TargetFramework.Contains('browser'))">
+    <AvaloniaXaml Remove="MainWindow.axaml" />
+    <AvaloniaXaml Remove="Views\MigrationView.axaml" />
+    <AvaloniaXaml Remove="Views\SplashScreen.axaml" />
+    <AvaloniaXaml Remove="Views\DatabaseRecoveryWindow.axaml" />
+    <AvaloniaXaml Remove="Views\Management\SaveAndBackupView.axaml" />
+    <AvaloniaXaml Remove="Views\Management\NewDatabaseView.axaml" />
+    <AvaloniaXaml Remove="Views\Wizard\**\*.axaml" />
+  </ItemGroup>
+
+  <!-- ── Assets ───────────────────────────────────────────────────────────── -->
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
 
-  <!--  Help documentation: HTML/CSS files copied to the output directory so the
-        "Open in Browser" feature can locate them by absolute path at runtime.
-        They live in Help/ (not Assets/) to avoid being embedded as AvaloniaResources.  -->
   <ItemGroup>
     <Content Include="Help/**">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -63,4 +109,5 @@
       <DependentUpon>ConfirmDialog.axaml</DependentUpon>
     </Compile>
   </ItemGroup>
+
 </Project>

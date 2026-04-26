@@ -1,227 +1,98 @@
 {
-  "session_id": "session-2026-04-25-1537",
-  "started": "2026-04-25T22:37:57.226Z",
+  "session_id": "session-2026-04-26-1057",
+  "started": "2026-04-26T17:57:25.310Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj": {
-      "count": 2,
-      "tokens": 806,
-      "first_read": "2026-04-25T22:40:14.356Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Program.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:40:20.851Z"
-    },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-25T22:40:21.946Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:40:25.422Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/SplashScreen.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:44:24.405Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:44:24.564Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:44:24.897Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/ConfirmDialog.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:44:25.327Z"
+      "first_read": "2026-04-26T17:57:31.008Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": {
       "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:44:25.662Z"
+      "tokens": 6297,
+      "first_read": "2026-04-26T17:57:31.365Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj": {
       "count": 1,
-      "tokens": 10809,
-      "first_read": "2026-04-25T22:44:26.026Z"
+      "tokens": 204,
+      "first_read": "2026-04-26T17:58:46.459Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/Program.cs": {
       "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:44:28.393Z"
+      "tokens": 96,
+      "first_read": "2026-04-26T17:58:52.113Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/LostFocusForwardBehavior.cs": {
-      "count": 2,
-      "tokens": 1066,
-      "first_read": "2026-04-25T22:44:28.600Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/LostFocusCommandBehavior.cs": {
-      "count": 2,
-      "tokens": 775,
-      "first_read": "2026-04-25T22:44:28.994Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml.cs": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj": {
       "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:45:16.781Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:45:16.931Z"
-    },
-    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/aaa80de1-f4f8-45b3-ab4f-3935c6fbb44f/tool-results/b72nuaj2e.txt": {
-      "count": 2,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:48:41.745Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml": {
-      "count": 1,
-      "tokens": 6712,
-      "first_read": "2026-04-25T22:48:53.402Z"
-    },
-    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-04-25T22:57:08.422Z"
+      "tokens": 1441,
+      "first_read": "2026-04-26T18:10:49.046Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
-      "action": "edit",
-      "tokens": 225,
-      "at": "2026-04-25T22:44:04.416Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/SplashScreen.axaml",
-      "action": "edit",
-      "tokens": 7,
-      "at": "2026-04-25T22:44:40.577Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml",
       "action": "edit",
       "tokens": 9,
-      "at": "2026-04-25T22:44:42.271Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml",
-      "action": "edit",
-      "tokens": 9,
-      "at": "2026-04-25T22:44:43.716Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/ConfirmDialog.axaml",
-      "action": "edit",
-      "tokens": 9,
-      "at": "2026-04-25T22:44:45.625Z"
+      "at": "2026-04-26T17:57:47.219Z"
     },
     {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
       "action": "edit",
       "tokens": 23,
-      "at": "2026-04-25T22:44:47.846Z"
+      "at": "2026-04-26T17:57:49.025Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml",
       "action": "edit",
-      "tokens": 23,
-      "at": "2026-04-25T22:44:49.251Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 23,
-      "at": "2026-04-25T22:44:50.934Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/LostFocusForwardBehavior.cs",
-      "action": "edit",
-      "tokens": 22,
-      "at": "2026-04-25T22:44:52.510Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/LostFocusCommandBehavior.cs",
-      "action": "edit",
-      "tokens": 22,
-      "at": "2026-04-25T22:44:53.569Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml.cs",
-      "action": "edit",
-      "tokens": 8,
-      "at": "2026-04-25T22:45:30.143Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs",
-      "action": "edit",
-      "tokens": 8,
-      "at": "2026-04-25T22:45:31.987Z"
+      "tokens": 29,
+      "at": "2026-04-26T17:57:53.956Z"
     },
     {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
       "action": "edit",
-      "tokens": 23,
-      "at": "2026-04-25T22:47:39.142Z"
+      "tokens": 19,
+      "at": "2026-04-26T18:10:44.531Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/MainWindow.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
       "action": "edit",
-      "tokens": 6,
-      "at": "2026-04-25T22:49:13.969Z"
+      "tokens": 18,
+      "at": "2026-04-26T18:10:46.244Z"
     },
     {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
       "action": "edit",
-      "tokens": 95,
-      "at": "2026-04-25T22:57:22.196Z"
+      "tokens": 17,
+      "at": "2026-04-26T18:10:54.301Z"
     },
     {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
       "action": "edit",
-      "tokens": 456,
-      "at": "2026-04-25T22:57:42.523Z"
+      "tokens": 16,
+      "at": "2026-04-26T18:10:55.984Z"
     },
     {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
       "action": "edit",
-      "tokens": 156,
-      "at": "2026-04-25T22:57:51.129Z"
+      "tokens": 27,
+      "at": "2026-04-26T18:11:01.375Z"
     },
     {
-      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
       "action": "edit",
-      "tokens": 52,
-      "at": "2026-04-25T22:57:57.952Z"
+      "tokens": 21,
+      "at": "2026-04-26T18:11:02.298Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/SchedulingAssistant.csproj": 2,
-    "src/SchedulingAssistant/Views/SplashScreen.axaml": 1,
-    "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml": 1,
-    "src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/ConfirmDialog.axaml": 1,
+    "src/SchedulingAssistant/App.axaml": 2,
     "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/MeetingListView.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 1,
-    "src/SchedulingAssistant/Behaviors/LostFocusForwardBehavior.cs": 1,
-    "src/SchedulingAssistant/Behaviors/LostFocusCommandBehavior.cs": 1,
-    "src/SchedulingAssistant/Views/DatabaseRecoveryWindow.axaml.cs": 1,
-    "src/SchedulingAssistant/Views/Wizard/StartupWizardWindow.axaml.cs": 1,
-    "src/SchedulingAssistant/MainWindow.axaml": 1,
-    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md": 4
+    "src/SchedulingAssistant/SchedulingAssistant.csproj": 5,
+    "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj": 1
   },
-  "anatomy_hits": 3,
-  "anatomy_misses": 15,
-  "repeated_reads_warned": 4,
+  "anatomy_hits": 4,
+  "anatomy_misses": 1,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 2
+  "stop_count": 6
 }
