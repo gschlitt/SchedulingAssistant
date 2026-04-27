@@ -4,18 +4,21 @@ using SchedulingAssistant.Models;
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
-/// Read-only demo implementation of <see cref="ISubjectRepository"/>
-/// backed by <see cref="DemoData.Subjects"/>. Write operations are no-ops.
+/// In-memory demo implementation of <see cref="ISubjectRepository"/> backed by a
+/// mutable copy of <see cref="DemoData.Subjects"/>. All CRUD operations update the
+/// in-memory list; changes are lost on page reload.
 /// </summary>
 public class DemoSubjectRepository : ISubjectRepository
 {
+    private readonly List<Subject> _subjects = [.. DemoData.Subjects];
+
     /// <inheritdoc/>
     public List<Subject> GetAll() =>
-        [.. DemoData.Subjects.OrderBy(s => s.Name)];
+        [.. _subjects.OrderBy(s => s.Name)];
 
     /// <inheritdoc/>
     public Subject? GetById(string id) =>
-        DemoData.Subjects.FirstOrDefault(s => s.Id == id);
+        _subjects.FirstOrDefault(s => s.Id == id);
 
     /// <inheritdoc/>
     public bool HasCourses(string subjectId) =>
@@ -23,22 +26,26 @@ public class DemoSubjectRepository : ISubjectRepository
 
     /// <inheritdoc/>
     public bool ExistsByName(string name, string? excludeId = null) =>
-        DemoData.Subjects.Any(s =>
+        _subjects.Any(s =>
             string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase) &&
             s.Id != excludeId);
 
     /// <inheritdoc/>
     public bool ExistsByAbbreviation(string abbreviation, string? excludeId = null) =>
-        DemoData.Subjects.Any(s =>
+        _subjects.Any(s =>
             string.Equals(s.CalendarAbbreviation, abbreviation, StringComparison.OrdinalIgnoreCase) &&
             s.Id != excludeId);
 
     /// <inheritdoc/>
-    public void Insert(Subject subject) { }
+    public void Insert(Subject subject) => _subjects.Add(subject);
 
     /// <inheritdoc/>
-    public void Update(Subject subject) { }
+    public void Update(Subject subject)
+    {
+        int i = _subjects.FindIndex(s => s.Id == subject.Id);
+        if (i >= 0) _subjects[i] = subject;
+    }
 
     /// <inheritdoc/>
-    public void Delete(string id) { }
+    public void Delete(string id) => _subjects.RemoveAll(s => s.Id == id);
 }

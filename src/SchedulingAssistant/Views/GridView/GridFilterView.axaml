@@ -114,7 +114,11 @@
 						Margin="4,0,0,0"
 						VerticalAlignment="Center"
 						Orientation="Horizontal">
-						<Panel Width="16" Height="16" VerticalAlignment="Center" />
+						<Viewbox Width="14" Height="14" VerticalAlignment="Center">
+							<Path
+								Fill="{StaticResource TextLabel}"
+								Data="M3 4h18l-7 9v5l-4-2v-3L3 4z" />
+						</Viewbox>
 					</StackPanel>
 
 

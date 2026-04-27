@@ -5,26 +5,29 @@ using SchedulingAssistant.Models;
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
-/// Read-only demo implementation of <see cref="ICourseRepository"/>
-/// backed by <see cref="DemoData.Courses"/>. Write operations are no-ops.
+/// In-memory demo implementation of <see cref="ICourseRepository"/> backed by a
+/// mutable copy of <see cref="DemoData.Courses"/>. All CRUD operations update the
+/// in-memory list; changes are lost on page reload.
 /// </summary>
 public class DemoCourseRepository : ICourseRepository
 {
+    private readonly List<Course> _courses = [.. DemoData.Courses];
+
     /// <inheritdoc/>
     public List<Course> GetAll() =>
-        [.. DemoData.Courses.OrderBy(c => c.CalendarCode)];
+        [.. _courses.OrderBy(c => c.CalendarCode)];
 
     /// <inheritdoc/>
     public List<Course> GetBySubject(string subjectId) =>
-        [.. DemoData.Courses.Where(c => c.SubjectId == subjectId).OrderBy(c => c.CalendarCode)];
+        [.. _courses.Where(c => c.SubjectId == subjectId).OrderBy(c => c.CalendarCode)];
 
     /// <inheritdoc/>
     public List<Course> GetAllActive() =>
-        [.. DemoData.Courses.Where(c => c.IsActive).OrderBy(c => c.CalendarCode)];
+        [.. _courses.Where(c => c.IsActive).OrderBy(c => c.CalendarCode)];
 
     /// <inheritdoc/>
     public Course? GetById(string id) =>
-        DemoData.Courses.FirstOrDefault(c => c.Id == id);
+        _courses.FirstOrDefault(c => c.Id == id);
 
     /// <inheritdoc/>
     public bool HasSections(string courseId) =>
@@ -32,16 +35,20 @@ public class DemoCourseRepository : ICourseRepository
 
     /// <inheritdoc/>
     public bool ExistsByCalendarCode(string code, string? excludeId = null) =>
-        DemoData.Courses.Any(c =>
+        _courses.Any(c =>
             string.Equals(c.CalendarCode, code, StringComparison.OrdinalIgnoreCase) &&
             c.Id != excludeId);
 
     /// <inheritdoc/>
-    public void Insert(Course course) { }
+    public void Insert(Course course) => _courses.Add(course);
 
     /// <inheritdoc/>
-    public void Update(Course course, DbTransaction? tx = null) { }
+    public void Update(Course course, DbTransaction? tx = null)
+    {
+        int i = _courses.FindIndex(c => c.Id == course.Id);
+        if (i >= 0) _courses[i] = course;
+    }
 
     /// <inheritdoc/>
-    public void Delete(string id) { }
+    public void Delete(string id) => _courses.RemoveAll(c => c.Id == id);
 }

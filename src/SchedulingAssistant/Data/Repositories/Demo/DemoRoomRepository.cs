@@ -5,25 +5,33 @@ using SchedulingAssistant.Models;
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
-/// Read-only demo implementation of <see cref="IRoomRepository"/>
-/// backed by <see cref="DemoData.Rooms"/>. Write operations are no-ops.
+/// In-memory demo implementation of <see cref="IRoomRepository"/> backed by a
+/// mutable copy of <see cref="DemoData.Rooms"/>. All CRUD operations update the
+/// in-memory list; changes are lost on page reload.
 /// </summary>
 public class DemoRoomRepository : IRoomRepository
 {
+    private readonly List<Room> _rooms = [.. DemoData.Rooms];
+
     /// <inheritdoc/>
     public List<Room> GetAll() =>
-        [.. DemoData.Rooms.OrderBy(r => r.Building).ThenBy(r => r.RoomNumber)];
+        [.. _rooms.OrderBy(r => r.Building).ThenBy(r => r.RoomNumber)];
 
     /// <inheritdoc/>
     public Room? GetById(string id) =>
-        DemoData.Rooms.FirstOrDefault(r => r.Id == id);
+        _rooms.FirstOrDefault(r => r.Id == id);
 
     /// <inheritdoc/>
-    public void Insert(Room room) { }
+    public void Insert(Room room) => _rooms.Add(room);
 
     /// <inheritdoc/>
-    public void Update(Room room) { }
+    public void Update(Room room)
+    {
+        int i = _rooms.FindIndex(r => r.Id == room.Id);
+        if (i >= 0) _rooms[i] = room;
+    }
 
     /// <inheritdoc/>
-    public void Delete(string id, DbTransaction? tx = null) { }
+    public void Delete(string id, DbTransaction? tx = null) =>
+        _rooms.RemoveAll(r => r.Id == id);
 }
