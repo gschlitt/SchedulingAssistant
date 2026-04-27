@@ -6,7 +6,7 @@
     <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <NoWarn>$(NoWarn);CS8632</NoWarn>
+    <NoWarn>$(NoWarn);CS8632;IL2026;IL2057;IL2075;IL2104</NoWarn>
     <TrimMode>partial</TrimMode>
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <WasmNativeOptimization>-O1</WasmNativeOptimization>
