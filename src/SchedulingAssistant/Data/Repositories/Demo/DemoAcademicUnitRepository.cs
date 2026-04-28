@@ -3,33 +3,40 @@ using SchedulingAssistant.Models;
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
-/// Read-only demo implementation of <see cref="IAcademicUnitRepository"/>.
-/// Returns a single hard-coded demo university. Write operations are no-ops.
+/// In-memory demo implementation of <see cref="IAcademicUnitRepository"/>.
+/// Seeded with a single demo university; all CRUD operations update the in-memory list.
+/// Changes are lost on page reload.
 /// </summary>
 public class DemoAcademicUnitRepository : IAcademicUnitRepository
 {
-    private static readonly AcademicUnit DemoUnit = new()
-    {
-        Id   = "demo-academic-unit",
-        Name = "Demo University"
-    };
+    private readonly List<AcademicUnit> _units =
+    [
+        new() { Id = "demo-academic-unit", Name = "Demo University" }
+    ];
 
     /// <inheritdoc/>
-    public List<AcademicUnit> GetAll() => [DemoUnit];
+    public List<AcademicUnit> GetAll() => [.. _units];
 
     /// <inheritdoc/>
     public AcademicUnit? GetById(string id) =>
-        id == DemoUnit.Id ? DemoUnit : null;
+        _units.FirstOrDefault(u => u.Id == id);
 
     /// <inheritdoc/>
-    public bool ExistsByName(string name, string? excludeId = null) => false;
+    public bool ExistsByName(string name, string? excludeId = null) =>
+        _units.Any(u =>
+            string.Equals(u.Name, name, StringComparison.OrdinalIgnoreCase) &&
+            u.Id != excludeId);
 
     /// <inheritdoc/>
-    public void Insert(AcademicUnit unit) { }
+    public void Insert(AcademicUnit unit) => _units.Add(unit);
 
     /// <inheritdoc/>
-    public void Update(AcademicUnit unit) { }
+    public void Update(AcademicUnit unit)
+    {
+        int i = _units.FindIndex(u => u.Id == unit.Id);
+        if (i >= 0) _units[i] = unit;
+    }
 
     /// <inheritdoc/>
-    public void Delete(string id) { }
+    public void Delete(string id) => _units.RemoveAll(u => u.Id == id);
 }

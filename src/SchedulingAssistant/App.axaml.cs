@@ -157,6 +157,7 @@ public partial class App : Application
         services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
         services.AddSingleton<ISectionPrefixRepository, SectionPrefixRepository>();
         services.AddSingleton<ICampusRepository, CampusRepository>();
+        services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<IAppConfigurationRepository, AppConfigurationRepository>();
         services.AddSingleton<AppConfigurationService>();
 
