@@ -7001,6 +7001,184 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T18:10:56.016Z"
+    },
+    {
+      "id": "bug-438",
+      "timestamp": "2026-04-26T19:06:05.492Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
+      "root_cause": "Had \"SchedulingAssistant\"",
+      "fix": "Changed to \"TermPoint\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T19:06:05.492Z"
+    },
+    {
+      "id": "bug-439",
+      "timestamp": "2026-04-26T20:53:26.661Z",
+      "error_message": "Missing await",
+      "file": "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:53:26.661Z"
+    },
+    {
+      "id": "bug-440",
+      "timestamp": "2026-04-26T21:30:00.000Z",
+      "error_message": "MONO_WASM: Assert failed: .NET runtime already exited with 0",
+      "file": "src/SchedulingAssistant.Browser/wwwroot/index.html",
+      "root_cause": ".NET 10 changed WASM bootstrap API: dotnet.run() exits runtime after Main returns. Avalonia needs runtime to stay alive.",
+      "fix": "Changed index.html from `await dotnet.run()` to `const runtime = await dotnet.create(); await runtime.runMain();`",
+      "tags": [
+        "wasm",
+        "dotnet10",
+        "runtime",
+        "index-html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T21:30:00.000Z"
+    },
+    {
+      "id": "bug-441",
+      "timestamp": "2026-04-26T21:00:00.000Z",
+      "error_message": "CannotResolveService: AppNotificationService",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "ConfigureDemoServices was missing AppNotificationService registration that desktop ConfigureServices had.",
+      "fix": "Added services.AddSingleton<AppNotificationService>() to ConfigureDemoServices",
+      "tags": [
+        "wasm",
+        "di",
+        "missing-registration"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T21:00:00.000Z"
+    },
+    {
+      "id": "bug-442",
+      "timestamp": "2026-04-26T20:45:00.000Z",
+      "error_message": "JsonSerializerIsReflectionDisabled — System.Text.Json reflection not available",
+      "file": "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
+      "root_cause": ".NET 10 trimmed WASM disables reflection-based System.Text.Json by default",
+      "fix": "Added <TrimMode>partial</TrimMode> and <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault> to browser csproj",
+      "tags": [
+        "wasm",
+        "dotnet10",
+        "trimming",
+        "json"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:45:00.000Z"
+    },
+    {
+      "id": "bug-443",
+      "timestamp": "2026-04-26T20:30:00.000Z",
+      "error_message": "IL1032: Root assembly 'SchedulingAssistant' could not be found / NETSDK1144: Optimizing assemblies for size failed",
+      "file": "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
+      "root_cause": "TrimmerRootAssembly used project folder name 'SchedulingAssistant' but AssemblyName is 'TermPoint'",
+      "fix": "Changed <TrimmerRootAssembly Include=\"TermPoint\" />",
+      "tags": [
+        "wasm",
+        "trimming",
+        "assembly-name"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:30:00.000Z"
+    },
+    {
+      "id": "bug-444",
+      "timestamp": "2026-04-27T02:21:56.893Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs",
+      "root_cause": "Had \"{dimensionName} ({selected}) ▾\"",
+      "fix": "Changed to \"{dimensionName} ({selected}) ▼\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:21:56.893Z"
+    },
+    {
+      "id": "bug-445",
+      "timestamp": "2026-04-27T02:23:41.423Z",
+      "error_message": "Wrong reference: StrokeLineJoin should be StrokeJoin",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Used \"StrokeLineJoin\" instead of \"StrokeJoin\"",
+      "fix": "Changed StrokeLineJoin → StrokeJoin",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:23:41.423Z"
+    },
+    {
+      "id": "bug-446",
+      "timestamp": "2026-04-27T02:40:28.889Z",
+      "error_message": "Wrong reference: NoWarn should be IL2026",
+      "file": "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
+      "root_cause": "Used \"NoWarn\" instead of \"IL2026\"",
+      "fix": "Changed NoWarn → IL2026",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:40:28.890Z"
+    },
+    {
+      "id": "bug-447",
+      "timestamp": "2026-04-27T02:49:38.208Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/Repositories/Demo/DemoReleaseRepository.cs",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 24→34 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:49:38.208Z"
+    },
+    {
+      "id": "bug-448",
+      "timestamp": "2026-04-27T03:11:30.034Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md",
+      "root_cause": "Had `DemoData.*`",
+      "fix": "Changed to `List<T>`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-27T03:11:48.786Z"
     }
   ]
 }

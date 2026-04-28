@@ -3837,3 +3837,127 @@
 | 11:11 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |
 | 11:13 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |
 | 11:19 | Session end: 9 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 5 reads | ~8217 tok |
+| 12:04 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | 4→5 lines | ~60 |
+| 12:06 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | "SchedulingAssistant" → "TermPoint" | ~13 |
+| 12:13 | Session end: 11 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 9 reads | ~8091 tok |
+| 12:14 | Session end: 11 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 10 reads | ~8091 tok |
+| 13:21 | Session end: 11 writes across 4 files (App.axaml, GridFilterView.axaml, SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj) | 10 reads | ~8091 tok |
+| 13:24 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | 2→3 lines | ~34 |
+| 13:29 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | 2→3 lines | ~50 |
+| 13:33 | Edited src/SchedulingAssistant/App.axaml.cs | 3→4 lines | ~64 |
+
+## Session: 2026-04-26 13:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:38 | Created .claude/launch.json | — | ~86 |
+| 13:39 | Created .claude/launch.json | — | ~91 |
+| 13:39 | Created .claude/launch.json | — | ~107 |
+
+## Session: 2026-04-26 13:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-26 13:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:45 | Edited src/SchedulingAssistant.Browser/wwwroot/index.html | 7→9 lines | ~66 |
+| 13:46 | Session end: 1 writes across 1 files (index.html) | 0 reads | ~71 tok |
+| 13:52 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→3 lines | ~139 |
+| 13:52 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~22 |
+| 13:52 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~28 |
+| 13:53 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+10 lines) | ~1039 |
+| 13:55 | Session end: 5 writes across 2 files (index.html, MEMORY.md) | 1 reads | ~1387 tok |
+
+## Session: 2026-04-26 13:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:20 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoCourseRepository.cs | — | ~485 |
+| 19:20 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoInstructorRepository.cs | — | ~445 |
+| 19:21 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoRoomRepository.cs | — | ~298 |
+| 19:21 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSubjectRepository.cs | — | ~461 |
+| 19:21 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoCampusRepository.cs | — | ~351 |
+| 19:21 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSemesterRepository.cs | — | ~398 |
+| 19:21 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingEnvironmentRepository.cs | — | ~871 |
+| 19:21 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs | "{dimensionName} ({selecte" → "{dimensionName} ({selecte" | ~27 |
+| 19:21 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs | 7→7 lines | ~67 |
+| 19:22 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+8 lines) | ~305 |
+| 19:22 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+8 lines) | ~294 |
+| 19:22 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+8 lines) | ~584 |
+| 19:22 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 6→10 lines | ~82 |
+| 19:23 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | inline fix | ~5 |
+| 19:26 | Session end: 14 writes across 10 files (DemoCourseRepository.cs, DemoInstructorRepository.cs, DemoRoomRepository.cs, DemoSubjectRepository.cs, DemoCampusRepository.cs) | 23 reads | ~9356 tok |
+| 19:31 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoInstructorCommitmentRepository.cs | — | ~329 |
+| 19:31 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoMeetingRepository.cs | — | ~349 |
+| 19:32 | Session end: 16 writes across 12 files (DemoCourseRepository.cs, DemoInstructorRepository.cs, DemoRoomRepository.cs, DemoSubjectRepository.cs, DemoCampusRepository.cs) | 25 reads | ~10082 tok |
+| 19:33 | Session end: 16 writes across 12 files (DemoCourseRepository.cs, DemoInstructorRepository.cs, DemoRoomRepository.cs, DemoSubjectRepository.cs, DemoCampusRepository.cs) | 25 reads | ~10082 tok |
+| 19:33 | Created publish-wasm.ps1 | — | ~264 |
+| 19:34 | Session end: 17 writes across 13 files (DemoCourseRepository.cs, DemoInstructorRepository.cs, DemoRoomRepository.cs, DemoSubjectRepository.cs, DemoCampusRepository.cs) | 25 reads | ~10364 tok |
+| 19:40 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | inline fix | ~18 |
+| 19:41 | Session end: 18 writes across 14 files (DemoCourseRepository.cs, DemoInstructorRepository.cs, DemoRoomRepository.cs, DemoSubjectRepository.cs, DemoCampusRepository.cs) | 25 reads | ~10383 tok |
+| 19:43 | Created publish-wasm.ps1 | — | ~358 |
+| 19:44 | Created publish-wasm.ps1 | — | ~416 |
+| 19:44 | Session end: 20 writes across 14 files (DemoCourseRepository.cs, DemoInstructorRepository.cs, DemoRoomRepository.cs, DemoSubjectRepository.cs, DemoCampusRepository.cs) | 26 reads | ~11477 tok |
+
+## Session: 2026-04-27 19:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:49 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoReleaseRepository.cs | added 1 condition(s) | ~307 |
+| 19:50 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoAcademicUnitRepository.cs | — | ~347 |
+| 19:50 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSectionPrefixRepository.cs | — | ~339 |
+| 19:50 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoBlockPatternRepository.cs | — | ~279 |
+| 19:50 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoLegalStartTimeRepository.cs | — | ~608 |
+| 19:51 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoAcademicYearRepository.cs | — | ~321 |
+| 19:51 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 19:54 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 19:59 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 19:59 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 20:07 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 20:08 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 20:09 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 20:09 | Session end: 6 writes across 6 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 8 reads | ~2358 tok |
+| 20:11 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~75 |
+| 20:11 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~146 |
+| 20:11 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~71 |
+| 20:11 | Session end: 9 writes across 7 files (DemoReleaseRepository.cs, DemoAcademicUnitRepository.cs, DemoSectionPrefixRepository.cs, DemoBlockPatternRepository.cs, DemoLegalStartTimeRepository.cs) | 9 reads | ~2671 tok |
+
+## Session: 2026-04-27 20:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-27 20:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:26 | Created src/SchedulingAssistant.Anonymizer/SchedulingAssistant.Anonymizer.csproj | — | ~108 |
+| 22:28 | Created src/SchedulingAssistant.Anonymizer/Program.cs | — | ~5456 |
+| 22:28 | Session end: 2 writes across 2 files (SchedulingAssistant.Anonymizer.csproj, Program.cs) | 30 reads | ~6643 tok |
+
+## Session: 2026-04-27 08:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-28 16:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-04-28 16:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:43 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~62 |
+| 16:43 | Session end: 1 writes across 1 files (App.axaml.cs) | 1 reads | ~3944 tok |
+| 16:44 | Session end: 1 writes across 1 files (App.axaml.cs) | 1 reads | ~3944 tok |
+| 16:46 | Session end: 1 writes across 1 files (App.axaml.cs) | 1 reads | ~3944 tok |
+| 16:48 | Session end: 1 writes across 1 files (App.axaml.cs) | 1 reads | ~3944 tok |
+| 16:49 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wasm_demo_build.md | expanded (+15 lines) | ~255 |
+| 16:49 | Session end: 2 writes across 2 files (App.axaml.cs, wasm_demo_build.md) | 2 reads | ~4217 tok |
+| 16:54 | Session end: 2 writes across 2 files (App.axaml.cs, wasm_demo_build.md) | 2 reads | ~4217 tok |
+| 16:55 | Session end: 2 writes across 2 files (App.axaml.cs, wasm_demo_build.md) | 2 reads | ~4217 tok |

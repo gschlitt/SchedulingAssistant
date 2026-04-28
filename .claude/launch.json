@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wasm-demo",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8091", "--directory", "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/bin/Release/net10.0-browser/browser-wasm/AppBundle"],
+      "port": 8091,
+      "autoPort": false
+    }
+  ]
+}

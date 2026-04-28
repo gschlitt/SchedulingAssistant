@@ -17,6 +17,11 @@
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 
+- [2026-04-26] .NET 10 WASM: `dotnet.run()` exits the runtime after Main returns. Use `const runtime = await dotnet.create(); await runtime.runMain();` in index.html instead.
+- [2026-04-26] .NET 10 WASM trimming: `TrimMode=partial` required for Avalonia — full trimming breaks reflection-based bindings and JSON serialization. Also set `JsonSerializerIsReflectionEnabledByDefault=true`.
+- [2026-04-26] `TrimmerRootAssembly` must use the `AssemblyName` (e.g. `TermPoint`), not the project folder name (`SchedulingAssistant`).
+- [2026-04-26] When adding DI registrations to `ConfigureDemoServices`, compare against desktop `ConfigureServices` — easy to miss services like `AppNotificationService`.
+
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->

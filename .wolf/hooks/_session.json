@@ -1,98 +1,39 @@
 {
-  "session_id": "session-2026-04-26-1057",
-  "started": "2026-04-26T17:57:25.310Z",
+  "session_id": "session-2026-04-28-1642",
+  "started": "2026-04-28T23:42:56.633Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
+      "count": 1,
+      "tokens": 3878,
+      "first_read": "2026-04-28T23:43:13.018Z"
+    },
+    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wasm_demo_build.md": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-04-26T17:57:31.008Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": {
-      "count": 1,
-      "tokens": 6297,
-      "first_read": "2026-04-26T17:57:31.365Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj": {
-      "count": 1,
-      "tokens": 204,
-      "first_read": "2026-04-26T17:58:46.459Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/Program.cs": {
-      "count": 1,
-      "tokens": 96,
-      "first_read": "2026-04-26T17:58:52.113Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj": {
-      "count": 1,
-      "tokens": 1441,
-      "first_read": "2026-04-26T18:10:49.046Z"
+      "first_read": "2026-04-28T23:49:37.497Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs",
       "action": "edit",
-      "tokens": 9,
-      "at": "2026-04-26T17:57:47.219Z"
+      "tokens": 66,
+      "at": "2026-04-28T23:43:16.838Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "file": "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wasm_demo_build.md",
       "action": "edit",
-      "tokens": 23,
-      "at": "2026-04-26T17:57:49.025Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml",
-      "action": "edit",
-      "tokens": 29,
-      "at": "2026-04-26T17:57:53.956Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
-      "action": "edit",
-      "tokens": 19,
-      "at": "2026-04-26T18:10:44.531Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
-      "action": "edit",
-      "tokens": 18,
-      "at": "2026-04-26T18:10:46.244Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
-      "action": "edit",
-      "tokens": 17,
-      "at": "2026-04-26T18:10:54.301Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj",
-      "action": "edit",
-      "tokens": 16,
-      "at": "2026-04-26T18:10:55.984Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
-      "action": "edit",
-      "tokens": 27,
-      "at": "2026-04-26T18:11:01.375Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj",
-      "action": "edit",
-      "tokens": 21,
-      "at": "2026-04-26T18:11:02.298Z"
+      "tokens": 273,
+      "at": "2026-04-28T23:49:52.498Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/App.axaml": 2,
-    "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 1,
-    "src/SchedulingAssistant/SchedulingAssistant.csproj": 5,
-    "src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj": 1
+    "src/SchedulingAssistant/App.axaml.cs": 1,
+    "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wasm_demo_build.md": 1
   },
-  "anatomy_hits": 4,
+  "anatomy_hits": 1,
   "anatomy_misses": 1,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 6
+  "stop_count": 7
 }
