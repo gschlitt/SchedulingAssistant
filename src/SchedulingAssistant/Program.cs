@@ -17,7 +17,12 @@ class Program
         // Must be the very first call — handles installer hooks and applies any staged updates.
         VelopackApp.Build().Run();
 
-
+        // ── Avalonia bug #19892: suppress PointToScreen crash ────────────────
+        // AutoCompleteBox dropdown click triggers a delayed crash from
+        // PlatformImpl-null + IsPointerEventWithinBounds → PointToScreen.
+        // The selection has already committed, so the exception is cosmetic.
+        // Harmony patches PointToScreen to swallow this specific exception.
+        AvaloniaPatches.Apply();
 
         // ── Global exception handlers ────────────────────────────────────────
         // These are last-resort nets. They log the exception and then let the
@@ -37,7 +42,7 @@ class Program
             e.SetObserved(); // prevent process termination for fire-and-forget tasks
         };
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-        
+
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

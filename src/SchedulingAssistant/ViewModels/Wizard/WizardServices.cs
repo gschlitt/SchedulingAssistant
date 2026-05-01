@@ -26,7 +26,6 @@ namespace SchedulingAssistant.ViewModels.Wizard;
 /// <param name="AcademicYears">Factory for <see cref="IAcademicYearRepository"/>.</param>
 /// <param name="Semesters">Factory for <see cref="ISemesterRepository"/>.</param>
 /// <param name="Campuses">Factory for <see cref="ICampusRepository"/>.</param>
-/// <param name="SectionPrefixes">Factory for <see cref="ISectionPrefixRepository"/>.</param>
 /// <param name="BlockPatterns">Factory for <see cref="IBlockPatternRepository"/>.</param>
 /// <param name="Database">Factory for <see cref="IDatabaseContext"/>.</param>
 /// <param name="SemesterContext">Factory for <see cref="Services.SemesterContext"/>.</param>
@@ -38,23 +37,17 @@ namespace SchedulingAssistant.ViewModels.Wizard;
 ///   Factory for the <see cref="BlockPatternListViewModel"/> embedded in the manual-path
 ///   Block Patterns wizard step.
 /// </param>
-/// <param name="SectionPrefixListVm">
-///   Factory for the <see cref="SectionPrefixListViewModel"/> embedded in the manual-path
-///   Section Prefixes wizard step.
-/// </param>
 public record WizardServices(
     Action<string>                      InitializeServices,
     Func<IAcademicUnitRepository>       AcademicUnits,
     Func<IAcademicYearRepository>       AcademicYears,
     Func<ISemesterRepository>           Semesters,
     Func<ICampusRepository>             Campuses,
-    Func<ISectionPrefixRepository>      SectionPrefixes,
     Func<IBlockPatternRepository>       BlockPatterns,
     Func<IDatabaseContext>              Database,
     Func<SemesterContext>               SemesterContext,
     Func<CampusListViewModel>           CampusListVm,
-    Func<BlockPatternListViewModel>     BlockPatternListVm,
-    Func<SectionPrefixListViewModel>    SectionPrefixListVm)
+    Func<BlockPatternListViewModel>     BlockPatternListVm)
 {
     /// <summary>
     /// Creates a <see cref="WizardServices"/> instance wired to the live application
@@ -62,17 +55,15 @@ public record WizardServices(
     /// so this method is safe to call before <c>App.InitializeServices</c> has run.
     /// </summary>
     public static WizardServices FromApp() => new(
-        InitializeServices:  path => App.InitializeServices(path),
-        AcademicUnits:       () => App.Services.GetRequiredService<IAcademicUnitRepository>(),
-        AcademicYears:       () => App.Services.GetRequiredService<IAcademicYearRepository>(),
-        Semesters:           () => App.Services.GetRequiredService<ISemesterRepository>(),
-        Campuses:            () => App.Services.GetRequiredService<ICampusRepository>(),
-        SectionPrefixes:     () => App.Services.GetRequiredService<ISectionPrefixRepository>(),
-        BlockPatterns:       () => App.Services.GetRequiredService<IBlockPatternRepository>(),
-        Database:            () => App.Services.GetRequiredService<IDatabaseContext>(),
-        SemesterContext:     () => App.Services.GetRequiredService<SemesterContext>(),
-        CampusListVm:        () => App.Services.GetRequiredService<CampusListViewModel>(),
-        BlockPatternListVm:  () => App.Services.GetRequiredService<BlockPatternListViewModel>(),
-        SectionPrefixListVm: () => App.Services.GetRequiredService<SectionPrefixListViewModel>()
+        InitializeServices: path => App.InitializeServices(path),
+        AcademicUnits:      () => App.Services.GetRequiredService<IAcademicUnitRepository>(),
+        AcademicYears:      () => App.Services.GetRequiredService<IAcademicYearRepository>(),
+        Semesters:          () => App.Services.GetRequiredService<ISemesterRepository>(),
+        Campuses:           () => App.Services.GetRequiredService<ICampusRepository>(),
+        BlockPatterns:      () => App.Services.GetRequiredService<IBlockPatternRepository>(),
+        Database:           () => App.Services.GetRequiredService<IDatabaseContext>(),
+        SemesterContext:    () => App.Services.GetRequiredService<SemesterContext>(),
+        CampusListVm:       () => App.Services.GetRequiredService<CampusListViewModel>(),
+        BlockPatternListVm: () => App.Services.GetRequiredService<BlockPatternListViewModel>()
     );
 }

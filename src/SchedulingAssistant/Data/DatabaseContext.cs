@@ -165,12 +165,6 @@ public class DatabaseContext : IDatabaseContext
                 data            TEXT NOT NULL DEFAULT '{}'
             );
 
-            CREATE TABLE IF NOT EXISTS SectionPrefixes (
-                id     TEXT PRIMARY KEY,
-                prefix TEXT NOT NULL,
-                data   TEXT NOT NULL DEFAULT '{}'
-            );
-
             CREATE TABLE IF NOT EXISTS Campuses (
                 id   TEXT PRIMARY KEY,
                 name TEXT,
@@ -187,6 +181,13 @@ public class DatabaseContext : IDatabaseContext
             CREATE TABLE IF NOT EXISTS AppConfiguration (
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS SectionCodePatterns (
+                id         TEXT PRIMARY KEY,
+                name       TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                data       TEXT NOT NULL DEFAULT '{}'
             );
             """;
         cmd.ExecuteNonQuery();

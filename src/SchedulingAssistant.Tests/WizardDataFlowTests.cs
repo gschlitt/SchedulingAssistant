@@ -68,7 +68,6 @@ public class WizardDataFlowTests : IDisposable
         Mock<IAcademicYearRepository>    mockAy,
         Mock<ISemesterRepository>        mockSem,
         Mock<ICampusRepository>          mockCampus,
-        Mock<ISectionPrefixRepository>   mockPrefix,
         Mock<IBlockPatternRepository>    mockPattern)
     {
         // Real in-file DB so SeedData SQL commands have a live schema to write to.
@@ -82,19 +81,17 @@ public class WizardDataFlowTests : IDisposable
         mockAu.Setup(r => r.GetAll()).Returns(new List<AcademicUnit>());
 
         return new WizardServices(
-            InitializeServices:  _ => { /* no-op */ },
-            AcademicUnits:       () => mockAu.Object,
-            AcademicYears:       () => mockAy.Object,
-            Semesters:           () => mockSem.Object,
-            Campuses:            () => mockCampus.Object,
-            SectionPrefixes:     () => mockPrefix.Object,
-            BlockPatterns:       () => mockPattern.Object,
-            Database:            () => dbContext,
-            SemesterContext:     () => new SemesterContext(),
+            InitializeServices: _ => { /* no-op */ },
+            AcademicUnits:      () => mockAu.Object,
+            AcademicYears:      () => mockAy.Object,
+            Semesters:          () => mockSem.Object,
+            Campuses:           () => mockCampus.Object,
+            BlockPatterns:      () => mockPattern.Object,
+            Database:           () => dbContext,
+            SemesterContext:    () => new SemesterContext(),
             // Import path never navigates to the manual-config steps; these will not be invoked.
-            CampusListVm:        () => throw new NotSupportedException("Not used on import path"),
-            BlockPatternListVm:  () => throw new NotSupportedException("Not used on import path"),
-            SectionPrefixListVm: () => throw new NotSupportedException("Not used on import path")
+            CampusListVm:       () => throw new NotSupportedException("Not used on import path"),
+            BlockPatternListVm: () => throw new NotSupportedException("Not used on import path")
         );
     }
 
@@ -141,14 +138,14 @@ public class WizardDataFlowTests : IDisposable
         var step5 = Assert.IsType<Step3TpConfigViewModel>(vm.CurrentStep);
         step5.IsImportChoice = true;
         step5.TpConfigPath   = tpConfigPath;
-        await vm.NextCommand.ExecuteAsync(null); // ValidateAndImport reads the file; skips to step 10
+        await vm.NextCommand.ExecuteAsync(null); // ValidateAndImport reads the file; skips to step 9
 
-        // Step 10 — Academic Year
+        // Step 9 — Academic Year
         var step10 = Assert.IsType<Step5AcademicYearViewModel>(vm.CurrentStep);
         step10.AcademicYearName = academicYearName;
-        await vm.NextCommand.ExecuteAsync(null); // skips step 11 (import path); goes to step 12
+        await vm.NextCommand.ExecuteAsync(null); // skips step 10 (import path); goes to step 11
 
-        // Step 12 — Closing panel; Finish calls WriteDbRecordsAsync
+        // Step 11 — Closing panel; Finish calls WriteDbRecordsAsync
         Assert.IsType<Step10ClosingViewModel>(vm.CurrentStep);
         await vm.NextCommand.ExecuteAsync(null);
 
@@ -166,10 +163,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var tpConfig = new TpConfigData
         {
@@ -193,13 +189,12 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
         // When GetAll returns empty, the AU is inserted (not updated)
         mockAu.Setup(r => r.GetAll()).Returns(new List<AcademicUnit>());
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         // Override the step 2 values by running the path with custom fields;
         // helper sets InstitutionName="Test University", AcUnitName="Engineering".
@@ -224,10 +219,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var tpConfig = new TpConfigData
         {
@@ -248,10 +242,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var inserted = new List<Campus>();
         mockCampus.Setup(r => r.Insert(It.IsAny<Campus>()))
@@ -281,10 +274,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var tpConfig = new TpConfigData
         {
@@ -301,75 +293,6 @@ public class WizardDataFlowTests : IDisposable
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Section prefixes (import path)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task ImportPath_InsertsSectionPrefix_WithResolvedCampusId()
-    {
-        var mockAu      = new Mock<IAcademicUnitRepository>();
-        var mockAy      = new Mock<IAcademicYearRepository>();
-        var mockSem     = new Mock<ISemesterRepository>();
-        var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
-        var mockPattern = new Mock<IBlockPatternRepository>();
-
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
-
-        // Capture the campus ID assigned at insert time
-        string? insertedCampusId = null;
-        mockCampus.Setup(r => r.Insert(It.Is<Campus>(c => c.Name == "Main")))
-                  .Callback<Campus>(c => insertedCampusId = c.Id);
-
-        SectionPrefix? insertedPrefix = null;
-        mockPrefix.Setup(r => r.Insert(It.IsAny<SectionPrefix>()))
-                  .Callback<SectionPrefix>(p => insertedPrefix = p);
-
-        var tpConfig = new TpConfigData
-        {
-            Campuses        = ["Main"],
-            SectionPrefixes = [new TpConfigSectionPrefix { Prefix = "AB", CampusName = "Main" }],
-            SemesterDefs    = [new TpConfigSemesterDef { Name = "Fall" }]
-        };
-
-        await RunImportPathAsync(services, WriteTpConfig(tpConfig));
-
-        Assert.NotNull(insertedPrefix);
-        Assert.Equal("AB", insertedPrefix!.Prefix);
-        Assert.NotNull(insertedCampusId);
-        Assert.Equal(insertedCampusId, insertedPrefix.CampusId);
-    }
-
-    [Fact]
-    public async Task ImportPath_InsertsSectionPrefix_WithNullCampusId_WhenCampusNameUnknown()
-    {
-        var mockAu      = new Mock<IAcademicUnitRepository>();
-        var mockAy      = new Mock<IAcademicYearRepository>();
-        var mockSem     = new Mock<ISemesterRepository>();
-        var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
-        var mockPattern = new Mock<IBlockPatternRepository>();
-
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
-
-        SectionPrefix? insertedPrefix = null;
-        mockPrefix.Setup(r => r.Insert(It.IsAny<SectionPrefix>()))
-                  .Callback<SectionPrefix>(p => insertedPrefix = p);
-
-        var tpConfig = new TpConfigData
-        {
-            Campuses        = [],   // no campuses defined
-            SectionPrefixes = [new TpConfigSectionPrefix { Prefix = "AB", CampusName = "Unknown" }],
-            SemesterDefs    = [new TpConfigSemesterDef { Name = "Fall" }]
-        };
-
-        await RunImportPathAsync(services, WriteTpConfig(tpConfig));
-
-        Assert.NotNull(insertedPrefix);
-        Assert.Null(insertedPrefix!.CampusId);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
     // Block patterns (import path)
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -380,10 +303,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var tpConfig = new TpConfigData
         {
@@ -411,10 +333,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var tpConfig = new TpConfigData
         {
@@ -441,10 +362,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var tpConfig = new TpConfigData
         {
@@ -471,10 +391,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         var inserted = new List<Semester>();
         mockSem.Setup(r => r.Insert(It.IsAny<Semester>()))
@@ -506,10 +425,9 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
-        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPrefix, mockPattern);
+        var services = BuildServices(mockAu, mockAy, mockSem, mockCampus, mockPattern);
 
         // Capture the AY ID assigned at insert
         string? insertedAyId = null;
@@ -542,7 +460,6 @@ public class WizardDataFlowTests : IDisposable
         var mockAy      = new Mock<IAcademicYearRepository>();
         var mockSem     = new Mock<ISemesterRepository>();
         var mockCampus  = new Mock<ICampusRepository>();
-        var mockPrefix  = new Mock<ISectionPrefixRepository>();
         var mockPattern = new Mock<IBlockPatternRepository>();
 
         var dbPath    = Path.Combine(_tempDir, "seed_exitnow.db");
@@ -552,18 +469,16 @@ public class WizardDataFlowTests : IDisposable
         mockAu.Setup(r => r.GetAll()).Returns(new List<AcademicUnit>());
 
         var services = new WizardServices(
-            InitializeServices:  _ => { },
-            AcademicUnits:       () => mockAu.Object,
-            AcademicYears:       () => mockAy.Object,
-            Semesters:           () => mockSem.Object,
-            Campuses:            () => mockCampus.Object,
-            SectionPrefixes:     () => mockPrefix.Object,
-            BlockPatterns:       () => mockPattern.Object,
-            Database:            () => dbContext,
-            SemesterContext:     () => new SemesterContext(),
-            CampusListVm:        () => throw new NotSupportedException("Not used on ExitNow path"),
-            BlockPatternListVm:  () => throw new NotSupportedException("Not used on ExitNow path"),
-            SectionPrefixListVm: () => throw new NotSupportedException("Not used on ExitNow path")
+            InitializeServices: _ => { },
+            AcademicUnits:      () => mockAu.Object,
+            AcademicYears:      () => mockAy.Object,
+            Semesters:          () => mockSem.Object,
+            Campuses:           () => mockCampus.Object,
+            BlockPatterns:      () => mockPattern.Object,
+            Database:           () => dbContext,
+            SemesterContext:    () => new SemesterContext(),
+            CampusListVm:       () => throw new NotSupportedException("Not used on ExitNow path"),
+            BlockPatternListVm: () => throw new NotSupportedException("Not used on ExitNow path")
         );
 
         var vm = new StartupWizardViewModel(null!, services);

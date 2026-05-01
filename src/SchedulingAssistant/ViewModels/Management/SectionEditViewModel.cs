@@ -9,17 +9,28 @@ using System.ComponentModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-/// <summary>
-/// Wrapper used by the Section Prefix picker ComboBox in the section editor.
-/// The sentinel item (<see cref="Prefix"/> == null) represents "no prefix selected".
-/// </summary>
-public record SectionPrefixPickerItem(SectionPrefix? Prefix, string Label);
-
 public partial class SectionEditViewModel : ViewModelBase
 {
     [ObservableProperty] private string? _selectedCourseId;
     [ObservableProperty] private string _sectionCode = string.Empty;
     [ObservableProperty] private string _notes = string.Empty;
+
+    // ── Section code pattern chooser ─────────────────────────────────────────
+
+    /// <summary>
+    /// Available code patterns for this session, loaded once at editor construction.
+    /// Only relevant for new sections; editing an existing section ignores patterns.
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<SectionCodePattern> _codePatterns = new();
+
+    /// <summary>
+    /// The currently selected code pattern, or null when the user wants to type the code manually.
+    /// Setting this auto-fills the section code, campus, and section type.
+    /// </summary>
+    [ObservableProperty] private SectionCodePattern? _selectedPattern;
+
+    /// <summary>True when at least one code pattern is configured; shows the pattern chooser row.</summary>
+    public bool HasCodePatterns => IsNew && CodePatterns.Count > 0;
     [ObservableProperty] private ObservableCollection<SectionMeetingViewModel> _meetings = new();
     [ObservableProperty] private ObservableCollection<Course> _courses;
 
@@ -36,17 +47,6 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
     private string? _selectedCourseNumber;
-
-    // Section Prefix picker — optional shortcut that auto-suggests the next available code
-    [ObservableProperty] private List<SectionPrefixPickerItem> _prefixOptions = new();
-    [ObservableProperty] private SectionPrefixPickerItem? _selectedPrefixOption;
-
-    /// <summary>
-    /// True when the institution uses section prefixes and at least one prefix is configured.
-    /// When false, the prefix picker column is hidden in the view.
-    /// Set once at construction from <see cref="AppConfigurationService.UseSectionPrefixes"/>.
-    /// </summary>
-    public bool IsPrefixPickerVisible { get; }
 
     // ── Step-gate state ──────────────────────────────────────────────────────
 
@@ -152,7 +152,6 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly bool _includeSunday;
     private readonly double? _defaultBlockLength;
     private readonly IReadOnlyList<Subject> _allSubjects;
-    private readonly AppConfigurationService _appConfigService = null!;
 
     /// <summary>
     /// True once the constructor has finished. Used to suppress course-tag merging
@@ -208,9 +207,6 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <summary>True when Pattern 5 is configured and can be applied.</summary>
     public bool HasPattern5 => _pattern5 is { Days.Count: > 0 };
 
-    /// <summary>All configured section prefixes, loaded once at construction for prefix matching.</summary>
-    private readonly IReadOnlyList<SectionPrefix> _prefixes;
-
     /// <summary>
     /// Set by the view to close the hosting window when Save or Cancel is invoked.
     /// </summary>
@@ -229,7 +225,6 @@ public partial class SectionEditViewModel : ViewModelBase
     partial void OnSelectedCourseIdChanged(string? value)
     {
         SectionCodeError = null;
-        SelectedPrefixOption = null;
         OnPropertyChanged(nameof(IsSectionCodeEnabled));
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
 
@@ -238,22 +233,6 @@ public partial class SectionEditViewModel : ViewModelBase
         // tags the user may have already chosen.
         if (_isConstructed && !string.IsNullOrEmpty(value))
             MergeCourseTags(value);
-
-        // When section prefixes are disabled and a course is chosen for a new section,
-        // auto-populate the section code with the next available bare designator so the
-        // user does not have to type one manually.  The step-gate validation still applies.
-        if (!IsPrefixPickerVisible && !string.IsNullOrEmpty(value) && string.IsNullOrEmpty(SectionCode))
-        {
-            var next = SectionPrefixHelper.FindNextAvailableCode(
-                "",
-                code => _isSectionCodeDuplicate(value, code),
-                _appConfigService.GlobalDesignatorType);
-            if (next is not null)
-            {
-                SectionCode = next;
-                CommitSectionCode();
-            }
-        }
     }
 
     partial void OnSelectedSubjectChanged(Subject? value)
@@ -297,29 +276,48 @@ public partial class SectionEditViewModel : ViewModelBase
         }
     }
 
-    partial void OnSelectedPrefixOptionChanged(SectionPrefixPickerItem? value)
-    {
-        // Guard: do nothing when cleared (e.g. on course change) or no course yet selected.
-        if (value?.Prefix is null || string.IsNullOrEmpty(SelectedCourseId))
-            return;
-
-        // Find the first available code for this prefix in the current course+semester.
-        // DesignatorType must be forwarded so Letter prefixes generate letter codes (e.g.
-        // "TUTA") and Number prefixes generate numeric codes (e.g. "AB1").
-        var next = SectionPrefixHelper.FindNextAvailableCode(
-            value.Prefix.Prefix,
-            code => _isSectionCodeDuplicate(SelectedCourseId, code),
-            value.Prefix.DesignatorType);
-
-        if (next is null) return; // all 1-999 slots taken
-
-        SectionCode = next;
-        CommitSectionCode();
-    }
-
     partial void OnSectionCodeChanged(string value)
     {
         SectionCodeError = null;
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    /// <summary>
+    /// Called when the user selects a code pattern from the chooser.
+    /// Generates the next unused code for the selected course and semester,
+    /// pre-fills campus and section type if the pattern specifies them,
+    /// and immediately validates the code snapshot so all other fields unlock.
+    /// </summary>
+    partial void OnSelectedPatternChanged(SectionCodePattern? value)
+    {
+        if (value is null || string.IsNullOrEmpty(SelectedCourseId)) return;
+
+        var nextCode = SectionCodeGenerator.GetNextCode(
+            value,
+            code => _isSectionCodeDuplicate(SelectedCourseId, code));
+
+        if (nextCode is not null)
+        {
+            SectionCode      = nextCode;
+            SectionCodeError = null;
+            _validatedCourseId    = SelectedCourseId;
+            _validatedSectionCode = nextCode;
+        }
+        else
+        {
+            // All codes in sequence already taken — leave code blank for manual entry.
+            SectionCode      = string.Empty;
+            SectionCodeError = "All codes in this pattern are already taken for this course.";
+            _validatedCourseId    = null;
+            _validatedSectionCode = null;
+        }
+
+        // Pre-fill campus and section type when the pattern specifies them.
+        if (!string.IsNullOrEmpty(value.CampusId))
+            SelectedCampusId = value.CampusId;
+        if (!string.IsNullOrEmpty(value.SectionTypeId))
+            SelectedSectionTypeId = value.SectionTypeId;
+
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
     }
 
@@ -348,12 +346,6 @@ public partial class SectionEditViewModel : ViewModelBase
             SectionCodeError = null;
             _validatedCourseId = SelectedCourseId;
             _validatedSectionCode = code;
-
-            // Auto-set (or clear) campus based on whether the code starts with a
-            // known section prefix.  This runs on both manual entry and picker-driven
-            // auto-fill so the campus is always consistent with the committed code.
-            var matched = SectionPrefixHelper.MatchPrefix(code, _prefixes);
-            SelectedCampusId = matched?.CampusId ?? "";
         }
         OnPropertyChanged(nameof(AreOtherFieldsEnabled));
     }
@@ -372,18 +364,20 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="includeSunday">Whether Sunday is shown as a meeting day.</param>
     /// <param name="sectionTypes">All section-type property values.</param>
     /// <param name="meetingTypes">All meeting-type property values.</param>
-    /// <param name="campuses">All campus entities (used to build prefix picker labels).</param>
+    /// <param name="campuses">All campus entities.</param>
     /// <param name="allTags">All tag property values.</param>
     /// <param name="allResources">All resource property values.</param>
     /// <param name="allReserves">All reserve property values.</param>
+    /// <param name="codePatterns">
+    /// Available section code patterns for the pattern chooser.
+    /// Only used when <paramref name="isNew"/> is true; ignored for existing sections.
+    /// </param>
     /// <param name="isSectionCodeDuplicate">
     /// Delegate that returns true when a given (courseId, code) pair already exists
     /// in the target semester.  Scoped by the caller to the correct semester.
     /// </param>
     /// <param name="onSave">Async callback invoked when the user saves.</param>
     /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
-    /// <param name="prefixRepository">Repository used to load section prefixes for code auto-suggest.</param>
-    /// <param name="appConfigService">App configuration service providing the UseSectionPrefixes setting.</param>
     /// <param name="defaultBlockLength">Optional preferred block length pre-filled on new meetings.</param>
     public SectionEditViewModel(
         Section section,
@@ -401,19 +395,17 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SchedulingEnvironmentValue> allTags,
         IReadOnlyList<SchedulingEnvironmentValue> allResources,
         IReadOnlyList<SchedulingEnvironmentValue> allReserves,
+        IReadOnlyList<SectionCodePattern> codePatterns,
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
         Func<string, Task> onValidationError,
         IBlockPatternRepository blockPatternRepository,
-        ISectionPrefixRepository prefixRepository,
-        AppConfigurationService appConfigService,
         double? defaultBlockLength = null)
     {
         _section = section;
         IsNew = isNew;
         _onSave = onSave;
         _onValidationError = onValidationError;
-        _appConfigService = appConfigService;
         _legalStartTimes = legalStartTimes;
         _meetingTypes = meetingTypes;
         _rooms = rooms;
@@ -430,17 +422,8 @@ public partial class SectionEditViewModel : ViewModelBase
         _pattern4 = allPatterns.Count > 3 ? allPatterns[3] : null;
         _pattern5 = allPatterns.Count > 4 ? allPatterns[4] : null;
 
-        // Load all configured section prefixes for use by the prefix picker and CommitSectionCode.
-        _prefixes = prefixRepository.GetAll();
-
-        // Build the prefix picker items: sentinel "(none)" first, then one per prefix.
-        var pickerItems = new List<SectionPrefixPickerItem> { new(null, "(none)") };
-        foreach (var p in _prefixes)
-            pickerItems.Add(new(p, p.Prefix));
-        PrefixOptions = pickerItems;
-
-        // Prefix picker is shown only when the institution uses prefixes and has at least one configured.
-        IsPrefixPickerVisible = appConfigService.UseSectionPrefixes && _prefixes.Count > 0;
+        // Populate the code pattern chooser (only used for new sections).
+        CodePatterns = new ObservableCollection<SectionCodePattern>(codePatterns);
 
         Courses = new ObservableCollection<Course>(courses);
         _allSubjects = subjects;
@@ -484,24 +467,6 @@ public partial class SectionEditViewModel : ViewModelBase
         {
             _validatedCourseId = section.CourseId;
             _validatedSectionCode = section.SectionCode;
-        }
-
-        // Derive the prefix picker display from the section code via MatchPrefix.
-        // We set the backing field directly to bypass OnSelectedPrefixOptionChanged, which is a
-        // generator (finds next available code, overwrites SectionCode) and must only fire on
-        // explicit user interaction — not on programmatic restore.
-        // If no prefix matches (manual entry, no-prefix institution, or code from digit-increment
-        // fallback), the picker correctly shows "(none)".
-        if (!string.IsNullOrEmpty(section.SectionCode) && IsPrefixPickerVisible)
-        {
-            var matched = SectionPrefixHelper.MatchPrefix(section.SectionCode, _prefixes);
-            _selectedPrefixOption = matched is not null
-                ? PrefixOptions.FirstOrDefault(p => p.Prefix?.Id == matched.Id)
-                : null;
-        }
-        else
-        {
-            _selectedPrefixOption = null;
         }
 
         // Instructor multi-select with workload

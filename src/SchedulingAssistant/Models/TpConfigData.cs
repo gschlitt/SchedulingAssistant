@@ -11,9 +11,6 @@ public class TpConfigData
     /// <summary>Block length definitions with their legal start times.</summary>
     public List<TpConfigBlockLength> BlockLengths { get; set; } = [];
 
-    /// <summary>Section prefix definitions (e.g. "AB", "CH").</summary>
-    public List<TpConfigSectionPrefix> SectionPrefixes { get; set; } = [];
-
     /// <summary>Campus name definitions.</summary>
     public List<string> Campuses { get; set; } = [];
 
@@ -38,13 +35,6 @@ public class TpConfigBlockLength
 
     /// <summary>Valid start times as minutes-from-midnight (e.g. 510 = 08:30).</summary>
     public List<int> StartTimes { get; set; } = [];
-}
-
-/// <summary>A section prefix entry.</summary>
-public class TpConfigSectionPrefix
-{
-    public string Prefix { get; set; } = string.Empty;
-    public string? CampusName { get; set; }
 }
 
 /// <summary>A named day-pattern entry (e.g. "MWF" with days [1,3,5]).</summary>

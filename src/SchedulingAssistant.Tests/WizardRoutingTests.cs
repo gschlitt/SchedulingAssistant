@@ -13,7 +13,7 @@ namespace SchedulingAssistant.Tests;
 /// Tests for <see cref="StartupWizardViewModel"/> navigation, routing logic,
 /// step caching, and button-label state.
 ///
-/// Current step sequence (indices 0–12):
+/// Current step sequence (indices 0–11):
 ///   0  Step0WelcomeViewModel
 ///   1  StepLicenseViewModel           ← license agreement
 ///   2  Step1aExistingDbViewModel       ← existing-DB vs new-setup choice
@@ -23,10 +23,9 @@ namespace SchedulingAssistant.Tests;
 ///   6  Step4CampusesViewModel          ↘ manual path only
 ///   7  Step5SchedulingViewModel        ↘
 ///   8  Step6BlockPatternsViewModel     ↘
-///   9  Step7SectionPrefixesViewModel   ↘
-///  10  Step5AcademicYearViewModel
-///  11  Step6SemesterColorsViewModel    (skipped on import path)
-///  12  Step10ClosingViewModel
+///   9  Step5AcademicYearViewModel
+///  10  Step6SemesterColorsViewModel    (skipped on import path)
+///  11  Step10ClosingViewModel
 ///
 /// These tests do not exercise the full finish flow (which writes to disk and
 /// builds the DI container). Tests that would cross the database-creation boundary
@@ -52,19 +51,17 @@ public class WizardRoutingTests
         mockSem.Setup(r => r.GetAll()).Returns(new List<Semester>());
 
         return new WizardServices(
-            InitializeServices:  _ => { /* no-op in tests */ },
-            AcademicUnits:       () => new Mock<IAcademicUnitRepository>().Object,
-            AcademicYears:       () => mockAy.Object,
-            Semesters:           () => mockSem.Object,
-            Campuses:            () => new Mock<ICampusRepository>().Object,
-            SectionPrefixes:     () => new Mock<ISectionPrefixRepository>().Object,
-            BlockPatterns:       () => new Mock<IBlockPatternRepository>().Object,
-            Database:            () => new Mock<IDatabaseContext>().Object,
-            SemesterContext:     () => new SemesterContext(),
+            InitializeServices: _ => { /* no-op in tests */ },
+            AcademicUnits:      () => new Mock<IAcademicUnitRepository>().Object,
+            AcademicYears:      () => mockAy.Object,
+            Semesters:          () => mockSem.Object,
+            Campuses:           () => new Mock<ICampusRepository>().Object,
+            BlockPatterns:      () => new Mock<IBlockPatternRepository>().Object,
+            Database:           () => new Mock<IDatabaseContext>().Object,
+            SemesterContext:    () => new SemesterContext(),
             // Routing tests never reach manual-config steps; these will not be invoked.
-            CampusListVm:        () => throw new NotSupportedException("Not used in routing tests"),
-            BlockPatternListVm:  () => throw new NotSupportedException("Not used in routing tests"),
-            SectionPrefixListVm: () => throw new NotSupportedException("Not used in routing tests")
+            CampusListVm:       () => throw new NotSupportedException("Not used in routing tests"),
+            BlockPatternListVm: () => throw new NotSupportedException("Not used in routing tests")
         );
     }
 

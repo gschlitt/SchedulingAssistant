@@ -359,7 +359,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     /// <summary>
     /// When the start-time text changes, auto-commits if the text exactly matches a preset.
-    /// This provides immediate feedback when the user selects from the suggestion dropdown.
+    /// This provides immediate feedback when the user selects from the suggestion dropdown —
+    /// the block-length list refreshes immediately without requiring the user to tab away first.
     /// </summary>
     partial void OnStartTimeTextChanged(string value)
     {

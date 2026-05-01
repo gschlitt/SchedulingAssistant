@@ -14,7 +14,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 ///
 /// Collects the new database name, location, and backup folder from the user,
 /// and optionally transfers the current database's scheduling configuration
-/// (campuses, section prefixes, block patterns, block lengths / legal start times,
+/// (campuses, block patterns, block lengths / legal start times,
 /// and semester templates from the currently selected academic year) into the new DB.
 ///
 /// The config-transfer path works by snapshotting the current DB before switching,
@@ -119,7 +119,7 @@ public partial class NewDatabaseViewModel : ViewModelBase
     public string ConfigSourceLabel =>
         _semesterContext.SelectedAcademicYear is { } ay
             ? $"The academic year \"{ay.Name}\" and its semester configuration will be recreated in the new database."
-            : "No academic year is currently selected. Campuses, section prefixes, and block patterns will still be transferred. Enter the starting academic year for your new database below.";
+            : "No academic year is currently selected. Campuses and block patterns will still be transferred. Enter the starting academic year for your new database below.";
 
     /// <summary>True when the currently selected academic year is available for transfer.</summary>
     public bool HasConfigSource => _semesterContext.SelectedAcademicYear is not null;
@@ -341,7 +341,6 @@ public partial class NewDatabaseViewModel : ViewModelBase
     private void ApplyConfig(TpConfigData config, string ayName)
     {
         var campusRepo  = App.Services.GetRequiredService<ICampusRepository>();
-        var prefixRepo  = App.Services.GetRequiredService<ISectionPrefixRepository>();
         var patternRepo = App.Services.GetRequiredService<IBlockPatternRepository>();
         var ayRepo      = App.Services.GetRequiredService<IAcademicYearRepository>();
         var semRepo     = App.Services.GetRequiredService<ISemesterRepository>();
@@ -357,19 +356,6 @@ public partial class NewDatabaseViewModel : ViewModelBase
             var campus = new Campus { Name = name.Trim(), SortOrder = campusSortOrder++ };
             campusRepo.Insert(campus);
             campusNameToId[campus.Name] = campus.Id;
-        }
-
-        // ── Section prefixes ─────────────────────────────────────────────────
-        foreach (var spDef in config.SectionPrefixes)
-        {
-            if (string.IsNullOrWhiteSpace(spDef.Prefix)) continue;
-            var prefix = new SectionPrefix
-            {
-                Prefix   = spDef.Prefix.Trim(),
-                CampusId = spDef.CampusName is not null
-                           && campusNameToId.TryGetValue(spDef.CampusName, out var cid) ? cid : null
-            };
-            prefixRepo.Insert(prefix);
         }
 
         // ── Block patterns ────────────────────────────────────────────────────

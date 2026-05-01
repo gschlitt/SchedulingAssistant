@@ -19,13 +19,12 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
     private readonly ISemesterRepository _semesterRepo;
     private readonly IBlockPatternRepository _blockPatternRepo;
-    private readonly ISectionPrefixRepository _prefixRepo;
+    private readonly ISectionCodePatternRepository _codePatternRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
     private readonly WriteLockService _lockService;
-    private readonly AppConfigurationService _appConfig;
 
     // ── Observable Properties ──────────────────────────────────────────────────
 
@@ -158,14 +157,13 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         ILegalStartTimeRepository legalStartTimeRepo,
         ISemesterRepository semesterRepo,
         IBlockPatternRepository blockPatternRepo,
-        ISectionPrefixRepository prefixRepo,
+        ISectionCodePatternRepository codePatternRepo,
         SemesterContext semesterContext,
         SectionStore sectionStore,
         ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
         IDialogService dialog,
-        WriteLockService lockService,
-        AppConfigurationService appConfig)
+        WriteLockService lockService)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -175,14 +173,13 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _legalStartTimeRepo = legalStartTimeRepo;
         _semesterRepo = semesterRepo;
         _blockPatternRepo = blockPatternRepo;
-        _prefixRepo = prefixRepo;
+        _codePatternRepo = codePatternRepo;
         _semesterContext = semesterContext;
         _sectionStore = sectionStore;
         _propertyRepo = propertyRepo;
         _campusRepo = campusRepo;
         _dialog = dialog;
         _lockService = lockService;
-        _appConfig = appConfig;
         _lockService.LockStateChanged += OnLockStateChanged;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
@@ -644,7 +641,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         List<Campus> Campuses,
         List<SchedulingEnvironmentValue> AllTags,
         List<SchedulingEnvironmentValue> AllResources,
-        List<SchedulingEnvironmentValue> AllReserves);
+        List<SchedulingEnvironmentValue> AllReserves,
+        List<SectionCodePattern>   SectionCodePatterns);
 
     /// <summary>
     /// Loads all data needed to open the inline editor and returns it as an
@@ -658,21 +656,22 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
         var settings = AppSettings.Current;
         return new EditorContext(
-            Courses:            _courseRepo.GetAllActive(),
-            AllCourses:         _courseRepo.GetAll(),
-            Subjects:           _subjectRepo.GetAll(),
-            Instructors:        _instructorRepo.GetAll(),
-            Rooms:              _roomRepo.GetAll(),
-            LegalStartTimes:    _legalStartTimeRepo.GetAll(ayId),
-            IncludeSaturday:    settings.IncludeSaturday,
-            IncludeSunday:      settings.IncludeSunday,
-            DefaultBlockLength: settings.PreferredBlockLength,
-            SectionTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType),
-            MeetingTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType),
-            Campuses:           _campusRepo.GetAll(),
-            AllTags:            _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag),
-            AllResources:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource),
-            AllReserves:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve));
+            Courses:             _courseRepo.GetAllActive(),
+            AllCourses:          _courseRepo.GetAll(),
+            Subjects:            _subjectRepo.GetAll(),
+            Instructors:         _instructorRepo.GetAll(),
+            Rooms:               _roomRepo.GetAll(),
+            LegalStartTimes:     _legalStartTimeRepo.GetAll(ayId),
+            IncludeSaturday:     settings.IncludeSaturday,
+            IncludeSunday:       settings.IncludeSunday,
+            DefaultBlockLength:  settings.PreferredBlockLength,
+            SectionTypes:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType),
+            MeetingTypes:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType),
+            Campuses:            _campusRepo.GetAll(),
+            AllTags:             _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag),
+            AllResources:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource),
+            AllReserves:         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve),
+            SectionCodePatterns: _codePatternRepo.GetAll());
     }
 
     /// <summary>
@@ -727,6 +726,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             ctx.LegalStartTimes, ctx.IncludeSaturday, ctx.IncludeSunday,
             ctx.SectionTypes, ctx.MeetingTypes, ctx.Campuses,
             ctx.AllTags, ctx.AllResources, ctx.AllReserves,
+            ctx.SectionCodePatterns,
             isSectionCodeDuplicate: (courseId, code) =>
                 _sectionRepo.ExistsBySectionCode(
                     semesterId, courseId, code,
@@ -749,8 +749,6 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             },
             onValidationError: msg => _dialog.ShowError(msg),
             _blockPatternRepo,
-            _prefixRepo,
-            _appConfig,
             defaultBlockLength: ctx.DefaultBlockLength);
     }
 
@@ -860,38 +858,13 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         var semesterId = source.SemesterId;
         if (string.IsNullOrEmpty(semesterId)) return;
 
-        // Derive the next available section code using the shared prefix helper.
-        // - If the source code starts with a known prefix, gap-fill that prefix's sequence.
-        // - Otherwise, increment the trailing integer by one (simple advance fallback).
-        // Campus is taken from the matched prefix's association (or null if no prefix matched).
-        string? newCode    = null;
-        string? newCampusId = null;
-
-        if (!string.IsNullOrEmpty(source.CourseId))
-        {
-            var prefixes = _prefixRepo.GetAll();
-            Func<string, bool> codeExists =
-                code => _sectionRepo.ExistsBySectionCode(semesterId, source.CourseId, code, excludeId: null);
-
-            // When section prefixes are disabled, pass the global designator type so that
-            // bare letter codes (e.g. "A" → "B") are advanced correctly.  When prefixes
-            // are enabled the parameter is unused (prefix matching handles letter codes).
-            var fallback = _appConfig.UseSectionPrefixes ? null : (DesignatorType?)_appConfig.GlobalDesignatorType;
-            (newCode, newCampusId) = SectionPrefixHelper.AdvanceSectionCode(
-                source.SectionCode, prefixes, codeExists, fallback);
-
-            if (newCode is null)
-                await _dialog.ShowError(
-                    "Could not auto-assign a section code: the next candidate is already taken. " +
-                    "The section code has been left blank — please enter one before saving.");
-        }
-
+        // Leave the section code blank; the user will enter one manually in the editor.
         var newSection = new Section
         {
             SemesterId  = semesterId,
             CourseId    = source.CourseId,
-            SectionCode = newCode ?? string.Empty,
-            CampusId    = newCampusId,
+            SectionCode = string.Empty,
+            CampusId    = source.CampusId,
         };
 
         OpenCopy(newSection, afterItem: SelectedSectionItem);

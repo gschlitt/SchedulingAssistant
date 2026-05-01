@@ -78,8 +78,8 @@
                         Content="Cancel" />
                 </StackPanel>
 
-                <!--  Subject + Course Number + Campus + Section Code + Section Type side by side  -->
-                <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,Auto,80,90">
+                <!--  Subject + Course Number + Section Code + Section Type side by side  -->
+                <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,80,90">
                     <!--  Subject dropdown  -->
                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
                         <TextBlock
@@ -110,32 +110,8 @@
                             SelectedItem="{Binding SelectedCourseNumber}" />
                     </StackPanel>
 
-                    <!--
-                        Section Prefix shortcut (optional; auto-fills the Section Code with the
-                        next available integer slot for the chosen prefix, and sets the campus)
-                    -->
-                    <StackPanel
-                        Grid.Column="2"
-                        Margin="0,0,4,0"
-                        IsEnabled="{Binding IsSectionCodeEnabled}"
-                        IsVisible="{Binding IsPrefixPickerVisible}">
-                        <TextBlock
-                            FontSize="10"
-                            Foreground="{StaticResource TextLabel}"
-                            Text="Prefix" />
-                        <ComboBox
-                            MinWidth="80"
-                            HorizontalAlignment="Stretch"
-                            b:HelpTip.Text="Choosing a prefix will automatically choose the next available section code. Prefixes can be set under the Configuration tab."
-                            CornerRadius="4"
-                            DisplayMemberBinding="{Binding Label}"
-                            FontSize="11"
-                            ItemsSource="{Binding PrefixOptions}"
-                            SelectedItem="{Binding SelectedPrefixOption}" />
-                    </StackPanel>
-
                     <!--  Section Code  -->
-                    <StackPanel Grid.Column="3" Margin="0,0,4,0">
+                    <StackPanel Grid.Column="2" Margin="0,0,4,0">
                         <TextBlock
                             FontSize="10"
                             Foreground="{StaticResource TextLabel}"
@@ -159,7 +135,7 @@
                     </StackPanel>
 
                     <!--  Section Type  -->
-                    <StackPanel Grid.Column="4" IsEnabled="{Binding AreOtherFieldsEnabled}">
+                    <StackPanel Grid.Column="3" IsEnabled="{Binding AreOtherFieldsEnabled}">
                         <TextBlock
                             FontSize="10"
                             Foreground="{StaticResource TextLabel}"
@@ -173,6 +149,28 @@
                             SelectedValue="{Binding SelectedSectionTypeId}"
                             SelectedValueBinding="{Binding Id}" />
                     </StackPanel>
+                </Grid>
+
+                <!--  Code pattern chooser (new sections only; hidden when no patterns are configured)  -->
+                <Grid ColumnDefinitions="Auto,*"
+                      IsVisible="{Binding HasCodePatterns}"
+                      Margin="0,2,0,0">
+                    <TextBlock Grid.Column="0"
+                               FontSize="10"
+                               Foreground="{StaticResource TextLabel}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"
+                               Text="Code pattern" />
+                    <ComboBox Grid.Column="1"
+                              HorizontalAlignment="Left"
+                              MinWidth="130"
+                              CornerRadius="4"
+                              FontSize="11"
+                              IsEnabled="{Binding IsSectionCodeEnabled}"
+                              ItemsSource="{Binding CodePatterns}"
+                              SelectedItem="{Binding SelectedPattern}"
+                              DisplayMemberBinding="{Binding Name}"
+                              PlaceholderText="(pick to auto-fill)" />
                 </Grid>
 
                 <!--  Fields below Course+Code are disabled until course and unique code are committed  -->

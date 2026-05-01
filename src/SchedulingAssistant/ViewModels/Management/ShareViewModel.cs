@@ -13,14 +13,12 @@ namespace SchedulingAssistant.ViewModels.Management;
 ///
 /// The file is written to the same folder as the currently open database.
 /// Block lengths, legal start times, semester definitions, and block patterns are
-/// drawn from the currently selected academic year; campuses and section prefixes
-/// span all years.
+/// drawn from the currently selected academic year; campuses span all years.
 /// </summary>
 public partial class ShareViewModel : ViewModelBase
 {
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
     private readonly ICampusRepository         _campusRepo;
-    private readonly ISectionPrefixRepository  _prefixRepo;
     private readonly ISemesterRepository       _semesterRepo;
     private readonly IBlockPatternRepository   _patternRepo;
     private readonly SemesterContext           _semesterContext;
@@ -37,14 +35,12 @@ public partial class ShareViewModel : ViewModelBase
     public ShareViewModel(
         ILegalStartTimeRepository legalStartTimeRepo,
         ICampusRepository         campusRepo,
-        ISectionPrefixRepository  prefixRepo,
         ISemesterRepository       semesterRepo,
         IBlockPatternRepository   patternRepo,
         SemesterContext           semesterContext)
     {
         _legalStartTimeRepo = legalStartTimeRepo;
         _campusRepo         = campusRepo;
-        _prefixRepo         = prefixRepo;
         _semesterRepo       = semesterRepo;
         _patternRepo        = patternRepo;
         _semesterContext    = semesterContext;
@@ -106,6 +102,7 @@ public partial class ShareViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// <summary>
     /// Builds a <see cref="TpConfigData"/> snapshot from the current database for the given
     /// academic year. Used both for writing the file and as the source for the New Database
     /// config-transfer flow.
@@ -131,19 +128,8 @@ public partial class ShareViewModel : ViewModelBase
             .ToList();
 
         // ── Campuses (all, institution-wide) ─────────────────────────────────
-        var campuses       = _campusRepo.GetAll();
-        var campusNames    = campuses.Select(c => c.Name).ToList();
-        var campusIdToName = campuses.ToDictionary(c => c.Id, c => c.Name);
-
-        // ── Section prefixes (all) ────────────────────────────────────────────
-        var sectionPrefixes = _prefixRepo.GetAll()
-            .Select(p => new TpConfigSectionPrefix
-            {
-                Prefix     = p.Prefix,
-                CampusName = p.CampusId is not null
-                             && campusIdToName.TryGetValue(p.CampusId, out var cn) ? cn : null
-            })
-            .ToList();
+        var campuses    = _campusRepo.GetAll();
+        var campusNames = campuses.Select(c => c.Name).ToList();
 
         // ── Block patterns (day patterns, all) ───────────────────────────────
         var blockPatterns = _patternRepo.GetAll()
@@ -154,13 +140,12 @@ public partial class ShareViewModel : ViewModelBase
 
         return new TpConfigData
         {
-            BlockLengths     = blockLengths,
-            SemesterDefs     = semesterDefs,
-            Campuses         = campusNames,
-            SectionPrefixes  = sectionPrefixes,
-            BlockPatterns    = blockPatterns,
-            IncludeSaturday  = settings.IncludeSaturday,
-            IncludeSunday    = settings.IncludeSunday
+            BlockLengths    = blockLengths,
+            SemesterDefs    = semesterDefs,
+            Campuses        = campusNames,
+            BlockPatterns   = blockPatterns,
+            IncludeSaturday = settings.IncludeSaturday,
+            IncludeSunday   = settings.IncludeSunday
         };
     }
 

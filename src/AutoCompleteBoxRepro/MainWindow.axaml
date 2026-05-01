@@ -1,0 +1,164 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:b="using:AutoCompleteBoxRepro"
+        x:Class="AutoCompleteBoxRepro.MainWindow"
+        Title="AutoCompleteBox Repro"
+        Width="600" Height="800">
+
+    <ScrollViewer>
+    <StackPanel Margin="20" Spacing="16">
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 1: Plain AutoCompleteBox — baseline. If this crashes on
+             item click, it's a pure Avalonia 12 bug.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 1 — Plain AutoCompleteBox" FontWeight="Bold" />
+        <AutoCompleteBox
+            x:Name="Test1"
+            FilterMode="None"
+            MinimumPrefixLength="0"
+            ItemsSource="{Binding Times}"
+            PlaceholderText="Click and pick an item" />
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 2: Same settings as TermPoint's Start Time field.
+             FilterMode=None, MinimumPrefixLength=0, two-way Text binding.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 2 — TermPoint-style (FilterMode=None, MinPrefixLen=0)" FontWeight="Bold" />
+        <AutoCompleteBox
+            x:Name="Test2"
+            FilterMode="None"
+            MinimumPrefixLength="0"
+            ItemsSource="{Binding Times}"
+            Text="{Binding SelectedText, Mode=TwoWay}"
+            PlaceholderText="Click and pick an item" />
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 3: Inside a DataTemplate (like TermPoint's meeting editor).
+             The AutoCompleteBox is in an ItemsControl DataTemplate.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 3 — Inside DataTemplate (ItemsControl)" FontWeight="Bold" />
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Width="60" />
+                        <AutoCompleteBox
+                            FilterMode="None"
+                            MinimumPrefixLength="0"
+                            ItemsSource="{Binding Times}"
+                            Text="{Binding SelectedText, Mode=TwoWay}"
+                            Width="120"
+                            PlaceholderText="HHMM" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 4: OpenDropDownOnFocusBehavior attached.
+             This is the TermPoint behavior that forces IsDropDownOpen=true
+             on a tunneled PointerPressed. PRIME SUSPECT.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 4 — With OpenDropDownOnFocusBehavior" FontWeight="Bold" />
+        <AutoCompleteBox
+            x:Name="Test4"
+            FilterMode="None"
+            MinimumPrefixLength="0"
+            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+            ItemsSource="{Binding Times}"
+            Text="{Binding SelectedText, Mode=TwoWay}"
+            PlaceholderText="Click to open dropdown, then pick" />
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 5: Behavior + DataTemplate (full TermPoint setup).
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 5 — Behavior + DataTemplate" FontWeight="Bold" />
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Width="60" />
+                        <AutoCompleteBox
+                            FilterMode="None"
+                            MinimumPrefixLength="0"
+                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                            ItemsSource="{Binding Times}"
+                            Text="{Binding SelectedText, Mode=TwoWay}"
+                            Width="120"
+                            PlaceholderText="HHMM" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 6: Both behaviors + LostFocusCommandBehavior + cascade.
+             LostFocusCommandBehavior fires CommitStartTime when focus leaves
+             the AutoCompleteBox — which may happen when clicking the popup
+             (separate visual tree). The cascade rebuilds the sibling
+             AutoCompleteBox's ItemsSource synchronously.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 6 — Both behaviors + LostFocus + sibling cascade" FontWeight="Bold" />
+        <ItemsControl ItemsSource="{Binding MeetingRows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Width="40" />
+                        <AutoCompleteBox
+                            FilterMode="None"
+                            MinimumPrefixLength="0"
+                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                            b:LostFocusCommandBehavior.Command="{Binding CommitStartTimeCommand}"
+                            ItemsSource="{Binding Times}"
+                            Text="{Binding StartTimeText, Mode=TwoWay}"
+                            Width="100"
+                            PlaceholderText="HHMM" />
+                        <AutoCompleteBox
+                            FilterMode="None"
+                            MinimumPrefixLength="0"
+                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                            b:LostFocusCommandBehavior.Command="{Binding CommitBlockLengthCommand}"
+                            ItemsSource="{Binding BlockLengths}"
+                            Text="{Binding BlockLengthText, Mode=TwoWay}"
+                            Width="80"
+                            PlaceholderText="hrs" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TEST 7: Same as 6 but WITHOUT LostFocusCommandBehavior.
+             If 6 crashes but 7 doesn't, LostFocusCommandBehavior is the trigger.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <TextBlock Text="Test 7 — Both behaviors + sibling cascade, NO LostFocus" FontWeight="Bold" />
+        <ItemsControl ItemsSource="{Binding MeetingRows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Width="40" />
+                        <AutoCompleteBox
+                            FilterMode="None"
+                            MinimumPrefixLength="0"
+                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                            ItemsSource="{Binding Times}"
+                            Text="{Binding StartTimeText, Mode=TwoWay}"
+                            Width="100"
+                            PlaceholderText="HHMM" />
+                        <AutoCompleteBox
+                            FilterMode="None"
+                            MinimumPrefixLength="0"
+                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                            ItemsSource="{Binding BlockLengths}"
+                            Text="{Binding BlockLengthText, Mode=TwoWay}"
+                            Width="80"
+                            PlaceholderText="hrs" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+    </StackPanel>
+    </ScrollViewer>
+</Window>

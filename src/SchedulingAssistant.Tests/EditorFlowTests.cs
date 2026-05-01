@@ -57,22 +57,10 @@ public class EditorFlowTests
         Section section,
         bool isNew = true,
         Func<string, string, bool>? isDuplicate = null,
-        Func<Section, Task>? onSave = null,
-        IReadOnlyList<SectionPrefix>? prefixes = null)
+        Func<Section, Task>? onSave = null)
     {
         var blockPatternRepo = new Mock<IBlockPatternRepository>();
         blockPatternRepo.Setup(r => r.GetAll()).Returns(new List<BlockPattern>());
-
-        var prefixRepo = new Mock<ISectionPrefixRepository>();
-        prefixRepo.Setup(r => r.GetAll()).Returns(prefixes?.ToList() ?? new List<SectionPrefix>());
-
-        // When prefixes are provided, turn on UseSectionPrefixes so IsPrefixPickerVisible
-        // evaluates to true (UseSectionPrefixes && _prefixes.Count > 0). This prevents the
-        // auto-assign-and-commit path that fires when the picker is hidden.
-        var configRepo = new Mock<IAppConfigurationRepository>();
-        if (prefixes is { Count: > 0 })
-            configRepo.Setup(r => r.Get("UseSectionPrefixes")).Returns("true");
-        var appConfig = new AppConfigurationService(configRepo.Object);
 
         return new SectionEditViewModel(
             section,
@@ -90,12 +78,11 @@ public class EditorFlowTests
             allTags:           new List<SchedulingEnvironmentValue>(),
             allResources:      new List<SchedulingEnvironmentValue>(),
             allReserves:       new List<SchedulingEnvironmentValue>(),
+            codePatterns:      new List<SectionCodePattern>(),
             isSectionCodeDuplicate: isDuplicate ?? ((_, _) => false),
             onSave:            onSave ?? (_ => Task.CompletedTask),
             onValidationError: _ => Task.CompletedTask,
             blockPatternRepository: blockPatternRepo.Object,
-            prefixRepository:  prefixRepo.Object,
-            appConfigService:  appConfig,
             defaultBlockLength: null);
     }
 
@@ -153,11 +140,7 @@ public class EditorFlowTests
     public void SectionEdit_AfterCourseSelected_SectionCode_IsEnabled_OtherFields_StillLocked()
     {
         var course = new Course { Id = "c-1", CalendarCode = "HIST101" };
-        // Supply a prefix so IsPrefixPickerVisible=true, preventing the auto-assign-and-commit
-        // path that fires when no prefixes are configured. That path would immediately unlock
-        // other fields, which is correct behaviour but not what this test is verifying.
-        var prefixes = new List<SectionPrefix> { new() { Id = "p-1", Prefix = "AB" } };
-        var vm = MakeSectionEditVm(new Section(), prefixes: prefixes);
+        var vm = MakeSectionEditVm(new Section());
 
         // Manually simulate the bindings that OnSelectedSubjectChanged ultimately drives.
         // For the step-gate test we only need SelectedCourseId.

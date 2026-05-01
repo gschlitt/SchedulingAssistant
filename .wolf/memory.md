@@ -3961,3 +3961,352 @@
 | 16:49 | Session end: 2 writes across 2 files (App.axaml.cs, wasm_demo_build.md) | 2 reads | ~4217 tok |
 | 16:54 | Session end: 2 writes across 2 files (App.axaml.cs, wasm_demo_build.md) | 2 reads | ~4217 tok |
 | 16:55 | Session end: 2 writes across 2 files (App.axaml.cs, wasm_demo_build.md) | 2 reads | ~4217 tok |
+
+## Session: 2026-04-29 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:16 | Edited src/SchedulingAssistant/Models/TpConfigData.cs | 4→1 lines | ~14 |
+| 17:16 | Edited src/SchedulingAssistant/Models/TpConfigData.cs | removed 8 lines | ~11 |
+| 17:16 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | removed 7 lines | ~14 |
+| 17:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 8→6 lines | ~91 |
+| 17:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified SectionListViewModel() | ~261 |
+| 17:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 7→6 lines | ~62 |
+| 17:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 5→3 lines | ~40 |
+| 17:17 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | removed 33 lines | ~83 |
+| 17:18 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | reduced (-6 lines) | ~30 |
+| 17:18 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | removed 12 lines | ~22 |
+| 17:18 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 5→4 lines | ~52 |
+| 17:18 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | removed 4 lines | ~5 |
+| 17:18 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | modified OnSelectedCourseIdChanged() | ~144 |
+| 17:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | removed 21 lines | ~14 |
+| 17:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | reduced (-6 lines) | ~44 |
+| 17:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 27→23 lines | ~308 |
+| 17:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 6→5 lines | ~45 |
+| 17:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | removed 13 lines | ~16 |
+| 17:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | removed 19 lines | ~13 |
+| 17:20 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | inline fix | ~16 |
+| 17:21 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 2→2 lines | ~45 |
+| 17:21 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | removed 26 lines | ~30 |
+| 17:21 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 2→2 lines | ~37 |
+| 17:21 | Edited src/SchedulingAssistant/ViewModels/Management/ConfigurationViewModel.cs | modified ConfigurationViewModel() | ~226 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | 4→3 lines | ~63 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | 6→5 lines | ~84 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | modified ShareViewModel() | ~136 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | modified SnapshotConfig() | ~534 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | 4→4 lines | ~83 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | "No academic year is curre" → "No academic year is curre" | ~47 |
+| 17:22 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | 3→2 lines | ~44 |
+| 17:23 | Edited src/SchedulingAssistant/ViewModels/Management/NewDatabaseViewModel.cs | removed 14 lines | ~22 |
+| 17:23 | Edited src/SchedulingAssistant/ViewModels/Wizard/WizardServices.cs | modified WizardServices() | ~682 |
+| 17:23 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified path() | ~170 |
+| 17:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 5→5 lines | ~65 |
+| 17:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 5→5 lines | ~67 |
+| 17:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified steps() | ~266 |
+| 17:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | BuildStep11() → BuildStep9() | ~367 |
+| 17:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 2→2 lines | ~39 |
+| 17:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified if() | ~252 |
+| 17:25 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 6→6 lines | ~95 |
+| 17:25 | Edited src/SchedulingAssistant/App.axaml.cs | 5→2 lines | ~38 |
+| 17:25 | Edited src/SchedulingAssistant/App.axaml.cs | 5→2 lines | ~47 |
+| 17:26 | Edited src/SchedulingAssistant/App.axaml.cs | 4→3 lines | ~46 |
+| 17:26 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 2→1 lines | ~18 |
+| 17:26 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 2→1 lines | ~19 |
+| 17:26 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 7→6 lines | ~107 |
+| 17:26 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 3→2 lines | ~35 |
+| 17:26 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 3→2 lines | ~16 |
+| 17:27 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 6→5 lines | ~106 |
+| 17:27 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | removed 27 lines | ~34 |
+| 17:27 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | modified BuildServices() | ~443 |
+| 17:27 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 14→14 lines | ~204 |
+| 17:28 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 18→17 lines | ~217 |
+| 17:28 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 11→10 lines | ~144 |
+| 17:28 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | removed 71 lines | ~31 |
+| 17:28 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 4→3 lines | ~41 |
+| 17:29 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 27→24 lines | ~352 |
+| 17:29 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | modified sequence() | ~171 |
+| 17:29 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | 15→13 lines | ~235 |
+| 17:30 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | modified MakeSectionEditVm() | ~400 |
+| 17:30 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 6→2 lines | ~34 |
+
+## Session: 2026-04-29 17:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:33 | Edited src/SchedulingAssistant/ViewModels/Management/RoomEditViewModel.cs | 4→9 lines | ~112 |
+| 17:34 | Edited src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj | inline fix | ~13 |
+| 18:13 | Session end: 2 writes across 2 files (RoomEditViewModel.cs, SchedulingAssistant.Tests.csproj) | 3 reads | ~134 tok |
+| 18:17 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | modified implemented() | ~446 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~108 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~29 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 6→6 lines | ~132 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~64 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~144 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~43 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~100 |
+| 18:18 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~43 |
+| 18:19 | Session end: 11 writes across 3 files (RoomEditViewModel.cs, SchedulingAssistant.Tests.csproj, MEMORY.md) | 4 reads | ~1321 tok |
+
+## Session: 2026-04-29 18:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:15 | Created src/SchedulingAssistant/Models/SectionCodePattern.cs | — | ~733 |
+| 20:16 | Created src/SchedulingAssistant/Data/Repositories/ISectionCodePatternRepository.cs | — | ~331 |
+| 20:16 | Created src/SchedulingAssistant/Data/Repositories/SectionCodePatternRepository.cs | — | ~966 |
+| 20:16 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSectionCodePatternRepository.cs | — | ~359 |
+| 20:16 | Created src/SchedulingAssistant/Services/SectionCodeGenerator.cs | — | ~750 |
+| 20:16 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | expanded (+7 lines) | ~120 |
+| 20:18 | Created src/SchedulingAssistant/ViewModels/Management/SectionCodePatternListViewModel.cs | — | ~4731 |
+| 20:19 | Created src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | — | ~2723 |
+| 20:19 | Created src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml.cs | — | ~416 |
+| 20:19 | Edited src/SchedulingAssistant/ViewModels/Management/ConfigurationViewModel.cs | modified ConfigurationViewModel() | ~275 |
+| 20:19 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 13→14 lines | ~214 |
+| 20:20 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified SectionListViewModel() | ~297 |
+| 20:20 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 16→17 lines | ~222 |
+| 20:20 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 16→17 lines | ~304 |
+| 20:20 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified catch() | ~413 |
+| 20:20 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 8→10 lines | ~105 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 10→8 lines | ~80 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | expanded (+17 lines) | ~279 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | added 4 condition(s) | ~464 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 29→34 lines | ~479 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 7→10 lines | ~164 |
+| 20:22 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+22 lines) | ~370 |
+| 20:22 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~63 |
+| 20:22 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~73 |
+| 20:22 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~50 |
+| 20:22 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 14→15 lines | ~267 |
+| 20:22 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 14→15 lines | ~237 |
+| 20:22 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 5→9 lines | ~182 |
+| 20:23 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | modified SchedulingEnvironment_MoveDownCommand_CanExecuteIsFalseInReaderMode() | ~333 |
+| 20:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | modified OnSelectedPatternChanged() | ~328 |
+| 20:25 | Session end: 30 writes across 15 files (SectionCodePattern.cs, ISectionCodePatternRepository.cs, SectionCodePatternRepository.cs, DemoSectionCodePatternRepository.cs, SectionCodeGenerator.cs) | 22 reads | ~77613 tok |
+
+## Session: 2026-04-29 20:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:39 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 21→22 lines | ~316 |
+| 20:41 | Session end: 1 writes across 1 files (EditorFlowTests.cs) | 9 reads | ~33678 tok |
+| 20:42 | Edited src/SchedulingAssistant/ViewModels/Management/SectionCodePatternListViewModel.cs | "Section Code Patterns" → "Section Codes" | ~14 |
+| 20:42 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 5→10 lines | ~140 |
+| 20:42 | Session end: 3 writes across 3 files (EditorFlowTests.cs, SectionCodePatternListViewModel.cs, SectionCodePatternListView.axaml) | 11 reads | ~41296 tok |
+| 20:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionCodePatternListViewModel.cs | 30→34 lines | ~412 |
+| 20:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionCodePatternListViewModel.cs | added 1 condition(s) | ~397 |
+| 20:52 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | expanded (+15 lines) | ~1428 |
+| 20:53 | Session end: 6 writes across 3 files (EditorFlowTests.cs, SectionCodePatternListViewModel.cs, SectionCodePatternListView.axaml) | 11 reads | ~43690 tok |
+| 20:57 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | reduced (-6 lines) | ~62 |
+| 20:57 | Session end: 7 writes across 3 files (EditorFlowTests.cs, SectionCodePatternListViewModel.cs, SectionCodePatternListView.axaml) | 11 reads | ~43756 tok |
+| 08:40 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | expanded (+8 lines) | ~129 |
+| 08:40 | Session end: 8 writes across 3 files (EditorFlowTests.cs, SectionCodePatternListViewModel.cs, SectionCodePatternListView.axaml) | 11 reads | ~44227 tok |
+| 08:40 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→3 lines | ~116 |
+| 08:40 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~24 |
+| 08:41 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~56 |
+| 08:41 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | removed() → selection() | ~179 |
+| 08:41 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+25 lines) | ~497 |
+| 08:41 | Session end: 13 writes across 4 files (EditorFlowTests.cs, SectionCodePatternListViewModel.cs, SectionCodePatternListView.axaml, MEMORY.md) | 12 reads | ~45160 tok |
+
+## Session: 2026-04-29 08:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:02 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 6→7 lines | ~64 |
+| 09:02 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified WORKAROUND() | ~604 |
+| 09:02 | Created WORKAROUNDS.md | — | ~788 |
+| 09:03 | Session end: 3 writes across 2 files (SectionMeetingViewModel.cs, WORKAROUNDS.md) | 3 reads | ~32713 tok |
+| 14:08 | Session end: 3 writes across 2 files (SectionMeetingViewModel.cs, WORKAROUNDS.md) | 4 reads | ~32713 tok |
+| 14:09 | Created src/AutoCompleteBoxRepro/AutoCompleteBoxRepro.csproj | — | ~206 |
+| 14:09 | Created src/AutoCompleteBoxRepro/Program.cs | — | ~93 |
+| 14:09 | Created src/AutoCompleteBoxRepro/App.axaml | — | ~69 |
+| 14:09 | Created src/AutoCompleteBoxRepro/App.axaml.cs | — | ~132 |
+| 14:10 | Created src/AutoCompleteBoxRepro/MainWindow.axaml | — | ~725 |
+| 14:10 | Created src/AutoCompleteBoxRepro/MainWindow.axaml.cs | — | ~791 |
+| 14:11 | Session end: 9 writes across 8 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 5 reads | ~34872 tok |
+| 14:13 | Edited src/AutoCompleteBoxRepro/MainWindow.axaml | 4→6 lines | ~58 |
+| 14:14 | Session end: 10 writes across 8 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 6 reads | ~35659 tok |
+| 14:17 | Edited src/AutoCompleteBoxRepro/OpenDropDownOnFocusBehavior.cs | inline fix | ~9 |
+| 14:17 | Edited src/AutoCompleteBoxRepro/MainWindow.axaml | 7→8 lines | ~85 |
+| 14:17 | Edited src/AutoCompleteBoxRepro/MainWindow.axaml | expanded (+37 lines) | ~535 |
+| 14:17 | Session end: 13 writes across 9 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 7 reads | ~36350 tok |
+| 14:22 | Edited src/AutoCompleteBoxRepro/LostFocusCommandBehavior.cs | inline fix | ~9 |
+| 14:23 | Created src/AutoCompleteBoxRepro/MainWindow.axaml.cs | — | ~1770 |
+| 14:23 | Edited src/AutoCompleteBoxRepro/MainWindow.axaml | expanded (+67 lines) | ~1046 |
+| 14:23 | Edited src/AutoCompleteBoxRepro/MainWindow.axaml | 3→4 lines | ~26 |
+| 14:23 | Edited src/AutoCompleteBoxRepro/MainWindow.axaml | 2→3 lines | ~13 |
+| 14:24 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:29 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:38 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:39 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:43 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:43 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:46 | Session end: 18 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~40749 tok |
+| 14:51 | Edited src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs | added optional chaining | ~308 |
+| 14:51 | Session end: 19 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~41079 tok |
+| 14:52 | Edited src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs | added 1 condition(s) | ~167 |
+| 14:53 | Session end: 20 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 10 reads | ~41258 tok |
+| 14:59 | Edited src/SchedulingAssistant/Program.cs | 5→6 lines | ~32 |
+| 14:59 | Edited src/SchedulingAssistant/Program.cs | expanded (+10 lines) | ~206 |
+| 15:00 | Session end: 22 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~41512 tok |
+| 15:04 | Edited src/SchedulingAssistant/Program.cs | 10→10 lines | ~159 |
+| 15:04 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+| 15:07 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+| 15:13 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+| 15:19 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+| 16:13 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+| 16:17 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+| 16:20 | Session end: 23 writes across 10 files (SectionMeetingViewModel.cs, WORKAROUNDS.md, AutoCompleteBoxRepro.csproj, Program.cs, App.axaml) | 11 reads | ~42326 tok |
+
+## Session: 2026-04-29 16:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:27 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 2→1 lines | ~12 |
+| 16:27 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified OnStartTimeTextChanged() | ~203 |
+| 16:27 | Edited src/SchedulingAssistant/Behaviors/OpenDropDownOnFocusBehavior.cs | reduced (-12 lines) | ~48 |
+| 16:28 | Created WORKAROUNDS.md | — | ~915 |
+| 21:03 | Session end: 4 writes across 3 files (SectionMeetingViewModel.cs, OpenDropDownOnFocusBehavior.cs, WORKAROUNDS.md) | 2 reads | ~9290 tok |
+| 21:03 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/avalonia12_overlay_popups.md | — | ~462 |
+| 21:04 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→4 lines | ~118 |
+| 21:04 | Session end: 6 writes across 5 files (SectionMeetingViewModel.cs, OpenDropDownOnFocusBehavior.cs, WORKAROUNDS.md, avalonia12_overlay_popups.md, MEMORY.md) | 3 reads | ~9911 tok |
+
+## Session: 2026-04-30 21:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:06 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 43→47 lines | ~990 |
+| 21:07 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~4219 tok |
+| 21:08 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~5411 tok |
+| 21:12 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~5411 tok |
+| 21:14 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~5411 tok |
+| 21:17 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~5411 tok |
+| 21:17 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~5411 tok |
+| 21:19 | Session end: 1 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~5411 tok |
+| 21:20 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 43→47 lines | ~990 |
+| 21:20 | Session end: 2 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~6471 tok |
+| 21:21 | Session end: 2 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~6471 tok |
+| 21:25 | Session end: 2 writes across 1 files (SectionCodePatternListView.axaml) | 2 reads | ~6471 tok |
+| 21:25 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~37 |
+| 21:25 | Session end: 3 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 3 reads | ~6511 tok |
+| 21:28 | Session end: 3 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 3 reads | ~6511 tok |
+| 21:29 | Session end: 3 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 3 reads | ~6511 tok |
+| 21:33 | Session end: 3 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 4 reads | ~10332 tok |
+| 21:49 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | expanded (+6 lines) | ~1194 |
+| 21:50 | Session end: 4 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 4 reads | ~11612 tok |
+| 21:58 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 5→7 lines | ~95 |
+| 21:58 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 6→6 lines | ~128 |
+| 21:58 | Session end: 6 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 4 reads | ~12060 tok |
+| 22:00 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 9→9 lines | ~228 |
+| 22:00 | Session end: 7 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 4 reads | ~12297 tok |
+| 22:03 | Edited src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml | 2→3 lines | ~61 |
+| 22:03 | Session end: 8 writes across 2 files (SectionCodePatternListView.axaml, SchedulingAssistant.csproj) | 4 reads | ~12357 tok |
+
+## Session: 2026-04-30 22:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:04 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 6→6 lines | ~119 |
+| 07:04 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | inline fix | ~19 |
+| 07:05 | Edited src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj | inline fix | ~19 |
+| 07:05 | Edited src/AutoCompleteBoxRepro/AutoCompleteBoxRepro.csproj | "12.0.1" → "12.0.2" | ~5 |
+| 07:06 | Edited src/SchedulingAssistant/Program.cs | 3→2 lines | ~8 |
+| 07:06 | Edited src/SchedulingAssistant/Program.cs | removed 14 lines | ~34 |
+| 07:07 | Edited WORKAROUNDS.md | 7→7 lines | ~109 |
+| 07:07 | Edited WORKAROUNDS.md | reduced (-11 lines) | ~272 |
+| 07:07 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~44 |
+| 07:08 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 9→9 lines | ~186 |
+| 07:08 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~29 |
+| 07:08 | Session end: 11 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 7 reads | ~25310 tok |
+| 07:10 | Edited src/SchedulingAssistant/Program.cs | 2→3 lines | ~14 |
+| 07:10 | Edited src/SchedulingAssistant/Program.cs | expanded (+6 lines) | ~109 |
+| 07:10 | Edited WORKAROUNDS.md | 7→7 lines | ~111 |
+| 07:10 | Edited WORKAROUNDS.md | expanded (+11 lines) | ~282 |
+| 07:11 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→2 lines | ~107 |
+| 07:11 | Session end: 16 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 7 reads | ~25977 tok |
+| 07:15 | Session end: 16 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 7 reads | ~25977 tok |
+| 07:19 | Session end: 16 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 7 reads | ~25977 tok |
+| 07:23 | Session end: 16 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 7 reads | ~25977 tok |
+| 07:25 | Created src/SchedulingAssistant/Program.cs | — | ~787 |
+| 07:26 | Created WORKAROUNDS.md | — | ~1001 |
+| 07:27 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | added error handling | ~152 |
+| 07:27 | Session end: 19 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 8 reads | ~28087 tok |
+| 07:30 | Session end: 19 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 8 reads | ~28087 tok |
+| 07:32 | Session end: 19 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 8 reads | ~28087 tok |
+| 07:37 | Session end: 19 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 8 reads | ~28087 tok |
+| 08:31 | Session end: 19 writes across 6 files (SchedulingAssistant.csproj, SchedulingAssistant.Browser.csproj, AutoCompleteBoxRepro.csproj, Program.cs, WORKAROUNDS.md) | 8 reads | ~28087 tok |
+
+## Session: 2026-04-30 08:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:40 | Created src/SchedulingAssistant/Program.cs | — | ~573 |
+| 12:03 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 3→2 lines | ~44 |
+| 12:03 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 1→2 lines | ~35 |
+| 12:03 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 1→2 lines | ~22 |
+| 12:04 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~740 |
+| 12:06 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | 6→6 lines | ~53 |
+| 12:07 | Created WORKAROUNDS.md | — | ~1215 |
+| 12:07 | Session end: 7 writes across 4 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md) | 1 reads | ~3662 tok |
+| 12:10 | Created src/FindPointToScreen/FindPointToScreen.csproj | — | ~68 |
+| 12:10 | Created src/FindPointToScreen/Program.cs | — | ~177 |
+| 12:10 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | modified Apply() | ~579 |
+| 12:11 | Session end: 10 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 1 reads | ~4543 tok |
+| 12:13 | Session end: 10 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 1 reads | ~4543 tok |
+| 12:15 | Session end: 10 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 1 reads | ~4543 tok |
+| 12:15 | Session end: 10 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 1 reads | ~4543 tok |
+| 12:17 | Created src/FindPointToScreen/FindPointToScreen.csproj | — | ~86 |
+| 12:17 | Created src/FindPointToScreen/Program.cs | — | ~360 |
+| 12:17 | Edited src/FindPointToScreen/Program.cs | 3→4 lines | ~20 |
+| 12:20 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~928 |
+| 12:20 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~1050 |
+| 12:21 | Session end: 15 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 2 reads | ~7922 tok |
+| 12:24 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~892 |
+| 12:24 | Session end: 16 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 2 reads | ~8878 tok |
+| 12:26 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | added 1 condition(s) | ~227 |
+| 12:27 | Session end: 17 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 2 reads | ~9121 tok |
+| 12:29 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~754 |
+| 12:29 | Session end: 18 writes across 5 files (Program.cs, SchedulingAssistant.csproj, AvaloniaPatches.cs, WORKAROUNDS.md, FindPointToScreen.csproj) | 2 reads | ~9929 tok |
+| 12:32 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~856 |
+
+## Session: 2026-04-30 12:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:37 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | MouseUp() → ProcessRawEvent() | ~220 |
+| 12:38 | Session end: 1 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~1092 tok |
+| 12:40 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | 4→7 lines | ~82 |
+| 12:40 | Session end: 2 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~1180 tok |
+| 12:45 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~1129 |
+| 12:45 | Session end: 3 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~2423 tok |
+| 12:51 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~1085 |
+| 17:01 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~1072 |
+| 17:02 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | inline fix | ~14 |
+| 17:02 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | added error handling | ~385 |
+| 17:03 | Session end: 7 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~5162 tok |
+| 17:06 | Session end: 7 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~5162 tok |
+| 17:07 | Created src/SchedulingAssistant/AvaloniaPatches.cs | — | ~791 |
+| 17:08 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | added optional chaining | ~140 |
+| 17:09 | Session end: 9 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~6159 tok |
+| 17:14 | Session end: 9 writes across 1 files (AvaloniaPatches.cs) | 1 reads | ~6159 tok |
+| 17:17 | Created WORKAROUNDS.md | — | ~1513 |
+| 17:17 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→2 lines | ~169 |
+| 17:17 | Session end: 11 writes across 3 files (AvaloniaPatches.cs, WORKAROUNDS.md, MEMORY.md) | 3 reads | ~9061 tok |
+| 17:18 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | added 1 condition(s) | ~216 |
+| 17:18 | Edited src/SchedulingAssistant/AvaloniaPatches.cs | modified PointToScreenPrefix() | ~82 |
+| 17:19 | Session end: 13 writes across 3 files (AvaloniaPatches.cs, WORKAROUNDS.md, MEMORY.md) | 3 reads | ~9380 tok |
+| 17:25 | Session end: 13 writes across 3 files (AvaloniaPatches.cs, WORKAROUNDS.md, MEMORY.md) | 3 reads | ~9380 tok |
+| 17:25 | Session end: 13 writes across 3 files (AvaloniaPatches.cs, WORKAROUNDS.md, MEMORY.md) | 3 reads | ~9380 tok |
+| 17:27 | Session end: 13 writes across 3 files (AvaloniaPatches.cs, WORKAROUNDS.md, MEMORY.md) | 3 reads | ~9380 tok |
+
+## Session: 2026-05-01 17:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:39 | Edited src/SchedulingAssistant/SchedulingAssistant.csproj | 1→2 lines | ~70 |
+| 17:40 | Session end: 1 writes across 1 files (SchedulingAssistant.csproj) | 3 reads | ~5978 tok |
+| 17:50 | Session end: 1 writes across 1 files (SchedulingAssistant.csproj) | 3 reads | ~5978 tok |
+
+## Session: 2026-05-01 20:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

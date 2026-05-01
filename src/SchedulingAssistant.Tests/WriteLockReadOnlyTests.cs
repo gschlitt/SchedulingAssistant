@@ -35,7 +35,6 @@ namespace SchedulingAssistant.Tests;
 ///   <item>BlockPatternListViewModel (slots 1–5) — Edit, Clear</item>
 ///   <item>CopySemesterViewModel — Copy, ContinueCopy</item>
 ///   <item>EmptySemesterViewModel — Empty</item>
-///   <item>SectionPrefixListViewModel — Add, Edit, Delete</item>
 ///   <item>LegalStartTimeListViewModel — Add, Edit, Delete</item>
 ///   <item>AcademicYearListViewModel — Add, Delete</item>
 ///   <item>AcademicUnitListViewModel — Save</item>
@@ -75,7 +74,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly LegalStartTimeRepository      _legalStartTimeRepo;
     private readonly SemesterRepository            _semesterRepo;
     private readonly BlockPatternRepository        _blockPatternRepo;
-    private readonly SectionPrefixRepository       _prefixRepo;
+    private readonly SectionCodePatternRepository  _codePatternRepo;
     private readonly SchedulingEnvironmentRepository     _propertyRepo;
     private readonly CampusRepository              _campusRepo;
     private readonly AcademicYearRepository        _ayRepo;
@@ -91,7 +90,6 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly AcademicUnitService          _academicUnitService;
     private readonly ScheduleValidationService    _scheduleValidation;
     private readonly IDialogService               _dialog;
-    private readonly AppConfigurationService      _appConfig;
 
     /// <summary>
     /// Creates an isolated temporary directory, initialises a fresh SQLite schema
@@ -115,7 +113,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _legalStartTimeRepo = new LegalStartTimeRepository(_db);
         _semesterRepo    = new SemesterRepository(_db);
         _blockPatternRepo = new BlockPatternRepository(_db);
-        _prefixRepo      = new SectionPrefixRepository(_db);
+        _codePatternRepo = new SectionCodePatternRepository(_db);
         _propertyRepo    = new SchedulingEnvironmentRepository(_db);
         _campusRepo      = new CampusRepository(_db);
         _ayRepo          = new AcademicYearRepository(_db);
@@ -129,7 +127,6 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _academicUnitService = new AcademicUnitService(_academicUnitRepo);
         _scheduleValidation  = new ScheduleValidationService(_legalStartTimeRepo);
         _dialog             = new NullDialogService();
-        _appConfig          = new AppConfigurationService(new AppConfigurationRepository(_db));
     }
 
     /// <summary>Disposes the lock service, database connection, and temp directory.</summary>
@@ -159,9 +156,12 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates a fully-wired <see cref="SectionListViewModel"/> in reader mode.</summary>
     private SectionListViewModel CreateSectionListVm() =>
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
-            _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _prefixRepo,
-            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock,
-            _appConfig);
+            _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
+            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock);
+
+    /// <summary>Creates a fully-wired <see cref="SectionCodePatternListViewModel"/> in reader mode.</summary>
+    private SectionCodePatternListViewModel CreateSectionCodePatternListVm() =>
+        new(_codePatternRepo, _campusRepo, _propertyRepo, _dialog, _lock);
 
     /// <summary>Creates a fully-wired <see cref="CourseListViewModel"/> in reader mode.</summary>
     private CourseListViewModel CreateCourseListVm() =>
@@ -353,32 +353,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Group 8 — SectionPrefixListViewModel
-    // ═════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public void SectionPrefix_AddCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock, _appConfig);
-        Assert.False(vm.AddCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public void SectionPrefix_EditCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock, _appConfig);
-        Assert.False(vm.EditCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public void SectionPrefix_DeleteCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new SectionPrefixListViewModel(_prefixRepo, _campusRepo, _dialog, _lock, _appConfig);
-        Assert.False(vm.DeleteCommand.CanExecute(null));
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Group 9 — LegalStartTimeListViewModel
+    // Group 8 — LegalStartTimeListViewModel
     // ═════════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -595,5 +570,37 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     {
         var vm = CreateSchedulingEnvironmentVm();
         Assert.False(vm.MoveDownCommand.CanExecute(null));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 16 — SectionCodePatternListViewModel
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void SectionCodePattern_IsWriteEnabled_FalseInReaderMode()
+    {
+        var vm = CreateSectionCodePatternListVm();
+        Assert.False(vm.IsWriteEnabled);
+    }
+
+    [Fact]
+    public void SectionCodePattern_AddCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateSectionCodePatternListVm();
+        Assert.False(vm.AddCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void SectionCodePattern_EditCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateSectionCodePatternListVm();
+        Assert.False(vm.EditCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void SectionCodePattern_DeleteCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateSectionCodePatternListVm();
+        Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 }

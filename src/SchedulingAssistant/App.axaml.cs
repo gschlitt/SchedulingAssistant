@@ -155,11 +155,9 @@ public partial class App : Application
         services.AddSingleton<IAcademicUnitRepository, AcademicUnitRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
-        services.AddSingleton<ISectionPrefixRepository, SectionPrefixRepository>();
         services.AddSingleton<ICampusRepository, CampusRepository>();
         services.AddSingleton<IMeetingRepository, MeetingRepository>();
-        services.AddSingleton<IAppConfigurationRepository, AppConfigurationRepository>();
-        services.AddSingleton<AppConfigurationService>();
+        services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
 
         RegisterViewModels(services);
 
@@ -231,11 +229,9 @@ public partial class App : Application
         services.AddSingleton<IAcademicUnitRepository,        DemoAcademicUnitRepository>();
         services.AddSingleton<IReleaseRepository,             DemoReleaseRepository>();
         services.AddSingleton<IInstructorCommitmentRepository,DemoInstructorCommitmentRepository>();
-        services.AddSingleton<ISectionPrefixRepository,       DemoSectionPrefixRepository>();
         services.AddSingleton<ICampusRepository,              DemoCampusRepository>();
         services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
-        services.AddSingleton<IAppConfigurationRepository,    DemoAppConfigurationRepository>();
-        services.AddSingleton<AppConfigurationService>();
+        services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
 
         RegisterViewModels(services);
     }
@@ -301,8 +297,8 @@ public partial class App : Application
         services.AddTransient<SchedulingEnvironmentViewModel>();
         services.AddTransient<ConfigurationViewModel>();
         services.AddTransient<BlockPatternListViewModel>();
+        services.AddTransient<SectionCodePatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();
-        services.AddTransient<SectionPrefixListViewModel>();
         services.AddTransient<ExportHubViewModel>();
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();

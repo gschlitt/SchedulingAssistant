@@ -561,7 +561,7 @@
 				<Border b:DismissBehaviors.ClickCommand="{Binding CloseFlyoutCommand}" Background="{StaticResource FlyoutScrim}" />
 
 				<Border
-					MaxHeight="650"
+					MaxHeight="750"
 					Margin="8,0,8,0"
 					HorizontalAlignment="Stretch"
 					VerticalAlignment="Top"

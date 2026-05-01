@@ -4,6 +4,11 @@ using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
+/// <summary>A campus item for campus dropdown pickers, with a sentinel "none" option.</summary>
+/// <param name="Id">Campus GUID, or null for the "(none)" sentinel entry.</param>
+/// <param name="Name">Display name.</param>
+public record CampusOption(string? Id, string Name);
+
 /// <summary>
 /// ViewModel for the inline Add/Edit form in the Rooms management panel.
 /// Communicates results back to the parent list via callbacks.
