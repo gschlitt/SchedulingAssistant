@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SchedulingAssistant.Models;
 
 /// <summary>
@@ -68,4 +70,26 @@ public class SectionCodePattern
 
     /// <summary>Display order within the pattern chooser list.</summary>
     public int SortOrder { get; set; } = 0;
+
+    /// <summary>
+    /// Comma-joined first two codes in the sequence (e.g. "AB1, AB2"), computed and persisted
+    /// each time the pattern is saved. Used in the list view instead of raw Prefix/Suffix.
+    /// </summary>
+    public string Examples { get; set; } = string.Empty;
+
+    // ── Display-only (not persisted) ─────────────────────────────────────────
+
+    /// <summary>
+    /// Resolved campus name for list display. Populated by the list VM after loading;
+    /// not stored in the database.
+    /// </summary>
+    [JsonIgnore]
+    public string? CampusName { get; set; }
+
+    /// <summary>
+    /// Resolved section-type name for list display. Populated by the list VM after loading;
+    /// not stored in the database.
+    /// </summary>
+    [JsonIgnore]
+    public string? SectionTypeName { get; set; }
 }

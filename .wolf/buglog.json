@@ -7790,6 +7790,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-01T00:18:31.947Z"
+    },
+    {
+      "id": "bug-487",
+      "timestamp": "2026-05-01T04:04:22.915Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/SectionCodeGenerator.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T04:04:22.915Z"
+    },
+    {
+      "id": "bug-488",
+      "timestamp": "2026-05-01T04:04:50.788Z",
+      "error_message": "Incorrect value in code",
+      "file": "CLAUDE.md",
+      "root_cause": "Had \"AB1\"",
+      "fix": "Changed to `SectionCodeGenerator.MatchesPattern`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T04:04:50.788Z"
+    },
+    {
+      "id": "bug-489",
+      "timestamp": "2026-05-01T04:18:26.699Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"Pattern\"",
+      "fix": "Changed to \"Section Code type\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T04:18:26.699Z"
+    },
+    {
+      "id": "bug-490",
+      "timestamp": "2026-05-01T04:36:11.213Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionCodePatternListViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T04:36:11.213Z"
+    },
+    {
+      "id": "bug-491",
+      "timestamp": "2026-05-01T04:36:35.263Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T04:36:35.263Z"
+    },
+    {
+      "id": "bug-492",
+      "timestamp": "2026-05-01T04:42:54.682Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionCodePatternListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T04:42:54.682Z"
     }
   ]
 }

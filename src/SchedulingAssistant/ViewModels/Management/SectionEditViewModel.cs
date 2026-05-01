@@ -30,7 +30,7 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private SectionCodePattern? _selectedPattern;
 
     /// <summary>True when at least one code pattern is configured; shows the pattern chooser row.</summary>
-    public bool HasCodePatterns => IsNew && CodePatterns.Count > 0;
+    public bool HasCodePatterns => IsNew && !IsCopy && CodePatterns.Count > 0;
     [ObservableProperty] private ObservableCollection<SectionMeetingViewModel> _meetings = new();
     [ObservableProperty] private ObservableCollection<Course> _courses;
 
@@ -142,6 +142,7 @@ public partial class SectionEditViewModel : ViewModelBase
 
     public string FormTitle => IsNew ? "Add Section" : "Edit Section";
     public bool IsNew { get; }
+    public bool IsCopy { get; }
 
     private readonly Section _section;
     private readonly Func<Section, Task> _onSave;
@@ -382,6 +383,7 @@ public partial class SectionEditViewModel : ViewModelBase
     public SectionEditViewModel(
         Section section,
         bool isNew,
+        bool isCopy,
         IReadOnlyList<Course> courses,
         IReadOnlyList<Subject> subjects,
         IReadOnlyList<Instructor> instructors,
@@ -404,6 +406,7 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         _section = section;
         IsNew = isNew;
+        IsCopy = isCopy;
         _onSave = onSave;
         _onValidationError = onValidationError;
         _legalStartTimes = legalStartTimes;

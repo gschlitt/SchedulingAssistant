@@ -1,6 +1,9 @@
 Bugs:
 
 Vacuum Into is failing?
+When you open a new db within file, the backup folder defaults to usersettings?
+
+In WASM deleting a section type causes a crash
 
 
 

@@ -60,9 +60,21 @@ public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissab
         Load();
     }
 
-    /// <summary>Reloads the pattern list from the database.</summary>
-    public void Load() =>
-        Items = new ObservableCollection<SectionCodePattern>(_repo.GetAll());
+    /// <summary>Reloads the pattern list from the database, resolving campus and section-type names for display.</summary>
+    public void Load()
+    {
+        var campuses     = _campusRepo.GetAll().ToDictionary(c => c.Id);
+        var sectionTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).ToDictionary(v => v.Id);
+        var patterns     = _repo.GetAll();
+        foreach (var p in patterns)
+        {
+            if (p.CampusId is not null && campuses.TryGetValue(p.CampusId, out var campus))
+                p.CampusName = campus.Name;
+            if (p.SectionTypeId is not null && sectionTypes.TryGetValue(p.SectionTypeId, out var st))
+                p.SectionTypeName = st.Name;
+        }
+        Items = new ObservableCollection<SectionCodePattern>(patterns);
+    }
 
     private void OnLockStateChanged()
     {
@@ -433,6 +445,8 @@ public partial class SectionCodePatternEditViewModel : ViewModelBase
             _target.PadWidth    = padWidth;
             _target.Increment   = increment;
         }
+
+        _target.Examples = string.Join(", ", SectionCodeGenerator.GetPreviewCodes(_target, 2));
 
         _onSave(_target);
     }

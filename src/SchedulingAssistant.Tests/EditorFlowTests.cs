@@ -65,6 +65,7 @@ public class EditorFlowTests
         return new SectionEditViewModel(
             section,
             isNew,
+            isCopy:            false,
             courses:           new List<Course>(),
             subjects:          new List<Subject>(),
             instructors:       new List<Instructor>(),

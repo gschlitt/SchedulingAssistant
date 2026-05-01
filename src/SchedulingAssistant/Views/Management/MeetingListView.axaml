@@ -96,6 +96,46 @@
                     FontWeight="SemiBold"
                     Foreground="{StaticResource TextLabel}"
                     Text="Schedule" />
+                <!--  Column headers (rendered once above all slots)  -->
+                <Grid Margin="5,0,0,1" ColumnDefinitions="80,80,80,90,70,80,24">
+                    <TextBlock
+                        Grid.Column="0"
+                        Margin="0,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Day" />
+                    <TextBlock
+                        Grid.Column="1"
+                        Margin="2,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Start" />
+                    <TextBlock
+                        Grid.Column="2"
+                        Margin="2,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Length" />
+                    <TextBlock
+                        Grid.Column="3"
+                        Margin="2,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Freq" />
+                    <TextBlock
+                        Grid.Column="4"
+                        Margin="2,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Mtg Type" />
+                    <TextBlock
+                        Grid.Column="5"
+                        Margin="2,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Room" />
+                </Grid>
+
                 <ItemsControl ItemsSource="{Binding Slots}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:SectionMeetingViewModel}">
@@ -105,59 +145,15 @@
                                 Background="{StaticResource SubtleBackground}"
                                 CornerRadius="3">
                                 <!--
-                                    Col 3 hosts both the Frequency ComboBox (row 1) and the Custom
-                                    weeks TextBox (row 2, shown only when Frequency="Custom"). Row 2
+                                    Col 3 hosts both the Frequency ComboBox (row 0) and the Custom
+                                    weeks TextBox (row 1, shown only when Frequency="Custom"). Row 1
                                     occupies only col 3 so both controls share the same column width.
                                 -->
-                                <Grid ColumnDefinitions="80,80,80,90,70,80,24" RowDefinitions="Auto,Auto,Auto">
-
-                                    <!--  Column headers  -->
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Grid.Column="0"
-                                        Margin="0,0,2,1"
-                                        FontSize="9"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="Day" />
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Grid.Column="1"
-                                        Margin="2,0,2,1"
-                                        FontSize="9"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="Start" />
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Grid.Column="2"
-                                        Margin="2,0,2,1"
-                                        FontSize="9"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="Length" />
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Grid.Column="3"
-                                        Margin="2,0,2,1"
-                                        FontSize="9"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="Freq" />
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Grid.Column="4"
-                                        Margin="2,0,2,1"
-                                        FontSize="9"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="Mtg Type" />
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Grid.Column="5"
-                                        Margin="2,0,2,1"
-                                        FontSize="9"
-                                        Foreground="{StaticResource TextMuted}"
-                                        Text="Room" />
+                                <Grid ColumnDefinitions="80,80,80,90,70,80,24" RowDefinitions="Auto,Auto">
 
                                     <!--  Day  -->
                                     <ComboBox
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="0"
                                         Margin="0,0,2,0"
                                         Padding="3,1"
@@ -176,7 +172,7 @@
 
                                     <!--  Start  -->
                                     <AutoCompleteBox
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="1"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
@@ -193,7 +189,7 @@
 
                                     <!--  Length  -->
                                     <AutoCompleteBox
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="2"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
@@ -210,7 +206,7 @@
 
                                     <!--  Frequency  -->
                                     <ComboBox
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="3"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
@@ -226,7 +222,7 @@
                                         in the same column (col 3). Only visible when Frequency="Custom".
                                     -->
                                     <StackPanel
-                                        Grid.Row="2"
+                                        Grid.Row="1"
                                         Grid.Column="3"
                                         Margin="2,2,2,0"
                                         IsVisible="{Binding IsCustomFrequency}">
@@ -247,7 +243,7 @@
 
                                     <!--  Meeting Type  -->
                                     <ComboBox
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="4"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
@@ -261,7 +257,7 @@
 
                                     <!--  Room  -->
                                     <ComboBox
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="5"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
@@ -280,7 +276,7 @@
 
                                     <!--  Remove slot button  -->
                                     <Button
-                                        Grid.Row="1"
+                                        Grid.Row="0"
                                         Grid.Column="6"
                                         Width="20"
                                         Padding="2,1"

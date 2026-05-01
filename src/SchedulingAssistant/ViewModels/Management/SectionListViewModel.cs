@@ -718,10 +718,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// <returns>A <see cref="SectionEditViewModel"/> ready to be assigned to <see cref="EditVm"/>.</returns>
     private SectionEditViewModel CreateEditVm(
         Section section, bool isNew, EditorContext ctx,
-        string semesterId, string callerTag)
+        string semesterId, string callerTag, bool isCopy = false)
     {
         return new SectionEditViewModel(
-            section, isNew,
+            section, isNew, isCopy,
             ctx.Courses, ctx.Subjects, ctx.Instructors, ctx.Rooms,
             ctx.LegalStartTimes, ctx.IncludeSaturday, ctx.IncludeSunday,
             ctx.SectionTypes, ctx.MeetingTypes, ctx.Campuses,
@@ -858,7 +858,6 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         var semesterId = source.SemesterId;
         if (string.IsNullOrEmpty(semesterId)) return;
 
-        // Leave the section code blank; the user will enter one manually in the editor.
         var newSection = new Section
         {
             SemesterId  = semesterId,
@@ -866,6 +865,24 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             SectionCode = string.Empty,
             CampusId    = source.CampusId,
         };
+
+        // If the source code matches a configured pattern, pre-fill the next available code
+        // in that pattern's sequence so the editor opens with all fields already unlocked.
+        if (!string.IsNullOrEmpty(source.SectionCode) && !string.IsNullOrEmpty(source.CourseId))
+        {
+            var patterns = _codePatternRepo.GetAll();
+            var matched  = patterns.FirstOrDefault(p =>
+                SectionCodeGenerator.MatchesPattern(source.SectionCode, p));
+            if (matched is not null)
+            {
+                var nextCode = SectionCodeGenerator.GetNextCode(
+                    matched,
+                    code => _sectionRepo.ExistsBySectionCode(semesterId, source.CourseId, code, excludeId: null));
+                if (nextCode is not null)
+                    newSection.SectionCode = nextCode;
+                // If all codes are exhausted, leave blank and let the user enter one.
+            }
+        }
 
         OpenCopy(newSection, afterItem: SelectedSectionItem);
     }
@@ -882,7 +899,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         int insertIndex = SectionItems.IndexOf(afterItem) + 1;
         SectionItems.Insert(insertIndex, placeholder);
 
-        var editVm = CreateEditVm(section, isNew: true, ctx, section.SemesterId, callerTag: "Copy");
+        var editVm = CreateEditVm(section, isNew: true, ctx, section.SemesterId, callerTag: "Copy", isCopy: true);
         editVm.RequestClose = () =>
         {
             SectionItems.Remove(placeholder);

@@ -90,7 +90,7 @@ This design is immune to Avalonia's binding lifecycle, which re-fires `SelectedV
 The Section Code TextBox lives inside a `DataTemplate`, so it cannot be reached directly. `SectionListView.axaml.cs` registers a bubbled `LostFocusEvent` handler on the `UserControl` itself and forwards it to `EditVm.CommitSectionCode()` when the source control's name is `"SectionCodeBox"`.
 
 ### Copy operation
-"Copy" adds a new section immediately below the selected one in the list, pre-setting its course and (if derivable) its section code. The code derivation increments the trailing integer suffix of the source section code (e.g. "AB1" → "AB2"). If the candidate code is already taken, a notice is shown and the code is left blank. The editor opens in the same step-gate mode; if both course and code are pre-populated, the snapshot is set at construction so all fields are immediately editable.
+"Copy" adds a new section immediately below the selected one in the list, pre-setting its course and (if derivable) its section code. Code derivation: `SectionCodeGenerator.MatchesPattern` checks the source code against each configured `SectionCodePattern` (in sort order); if a match is found, `GetNextCode` returns the next unused code in that pattern's sequence. If no pattern matches, or all codes are exhausted, the section code is left blank. The editor opens in the same step-gate mode; if both course and code are pre-populated, the snapshot is set at construction so all fields are immediately editable.
 
 ## Decisions Not Yet Made
 - Exact fields on Section, Instructor, Room (beyond what's described above)
