@@ -453,14 +453,13 @@
 					Grid.Column="2"
 					Header="Schedule View">
 					<controls:DetachablePanel.HeaderContext>
-						<StackPanel
-							Height="30"
+						<WrapPanel
 							Margin="3,0,0,0"
 							VerticalAlignment="Top"
-							Orientation="Horizontal"
-							Spacing="6">
+							Orientation="Horizontal">
 
 							<TextBlock
+								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
 								IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -468,10 +467,13 @@
 
 							<Border
 								Width="1"
-								Margin="0,3"
+								Margin="0,3,6,3"
 								Background="{StaticResource SeparatorLine}"
 								IsVisible="{Binding ScheduleGridVm.AcademicUnitName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-							<ItemsControl VerticalAlignment="Center" ItemsSource="{Binding ScheduleGridVm.SemesterLineSegments}">
+							<ItemsControl
+								Margin="0,0,6,0"
+								VerticalAlignment="Center"
+								ItemsSource="{Binding ScheduleGridVm.SemesterLineSegments}">
 								<ItemsControl.ItemsPanel>
 									<ItemsPanelTemplate>
 										<StackPanel Orientation="Horizontal" Spacing="4" />
@@ -503,10 +505,11 @@
 
 							<Border
 								Width="1"
-								Margin="0,3"
+								Margin="0,3,6,3"
 								Background="{StaticResource SeparatorLine}"
 								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 							<TextBlock
+								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
 								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -514,10 +517,11 @@
 
 							<Border
 								Width="1"
-								Margin="0,3"
+								Margin="0,3,6,3"
 								Background="{StaticResource SeparatorLine}"
 								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}" />
 							<TextBlock
+								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
 								FontWeight="Bold"
@@ -526,6 +530,7 @@
 								Text="Filtered by:" />
 							<TextBlock
 								MaxWidth="400"
+								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
 								FontWeight="Bold"
@@ -536,7 +541,7 @@
 
 							<Border
 								Width="1"
-								Margin="0,3"
+								Margin="0,3,6,3"
 								Background="{StaticResource SeparatorLine}"
 								IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 							<TextBlock
@@ -546,7 +551,7 @@
 								Foreground="{StaticResource OverlayBadgeText}"
 								IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
 								Text="{Binding ScheduleGridVm.Filter.OverlaySummary}" />
-						</StackPanel>
+						</WrapPanel>
 					</controls:DetachablePanel.HeaderContext>
 					<controls:DetachablePanel.PanelContent>
 						<gridViews:ScheduleGridView x:Name="ScheduleGridViewControl" DataContext="{Binding ScheduleGridVm}" />

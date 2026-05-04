@@ -1067,14 +1067,27 @@ public partial class ScheduleGridViewModel : ViewModelBase
             : string.Empty;
 
         // ── Stats line ─────────────────────────────────────────────────────────
-        // Counts distinct section IDs (not commitment blocks) and total meeting slots.
+        // Counts distinct section IDs (not commitment blocks), total meeting slots,
+        // and event (MeetingBlock) count when events are visible.
         var sectionBlocks = allBlocks.OfType<SectionMeetingBlock>().ToList();
         int sectionCount  = sectionBlocks.Select(b => b.SectionId).Distinct().Count();
         int meetingCount  = sectionBlocks.Count;
-        StatsLine = sectionCount == 0
-            ? "No sections shown"
-            : $"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · " +
-              $"{meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")} shown";
+        int eventCount    = allBlocks.OfType<MeetingBlock>().Count();
+
+        if (sectionCount == 0)
+        {
+            StatsLine = "No sections shown";
+        }
+        else
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · ");
+            sb.Append($"{meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")}");
+            if (eventCount > 0)
+                sb.Append($" · {eventCount} {(eventCount == 1 ? "event" : "events")}");
+            sb.Append(" shown");
+            StatsLine = sb.ToString();
+        }
     }
 
     /// <summary>

@@ -8030,6 +8030,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-04T04:39:54.341Z"
+    },
+    {
+      "id": "bug-502",
+      "timestamp": "2026-05-04T05:32:52.012Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 12→41 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T05:32:52.012Z"
+    },
+    {
+      "id": "bug-503",
+      "timestamp": "2026-05-04T05:33:51.641Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"White\"",
+      "fix": "Changed to \"Black\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-04T05:35:09.699Z"
+    },
+    {
+      "id": "bug-504",
+      "timestamp": "2026-05-04T05:53:36.546Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→22 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T05:53:36.546Z"
+    },
+    {
+      "id": "bug-505",
+      "timestamp": "2026-05-04T05:59:47.174Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 33→57 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T05:59:47.174Z"
+    },
+    {
+      "id": "bug-506",
+      "timestamp": "2026-05-04T06:17:02.214Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→17 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T06:17:02.214Z"
     }
   ]
 }

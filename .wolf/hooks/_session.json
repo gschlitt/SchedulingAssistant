@@ -1,50 +1,18 @@
 {
-  "session_id": "session-2026-05-04-2157",
-  "started": "2026-05-04T04:57:49.059Z",
+  "session_id": "session-2026-05-04-2337",
+  "started": "2026-05-04T06:37:54.198Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": {
-      "count": 2,
-      "tokens": 7131,
-      "first_read": "2026-05-04T04:57:53.903Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
       "count": 1,
-      "tokens": 1744,
-      "first_read": "2026-05-04T05:07:11.556Z"
+      "tokens": 21185,
+      "first_read": "2026-05-04T06:38:06.633Z"
     }
   },
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
-      "action": "edit",
-      "tokens": 132,
-      "at": "2026-05-04T04:58:04.825Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
-      "action": "edit",
-      "tokens": 346,
-      "at": "2026-05-04T05:00:26.018Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
-      "action": "edit",
-      "tokens": 80,
-      "at": "2026-05-04T05:00:32.771Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
-      "action": "edit",
-      "tokens": 65,
-      "at": "2026-05-04T05:23:59.817Z"
-    }
-  ],
-  "edit_counts": {
-    "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 4
-  },
-  "anatomy_hits": 2,
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 1,
   "anatomy_misses": 0,
-  "repeated_reads_warned": 1,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 5
+  "stop_count": 1
 }

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-04T05:23:59.749Z
-> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-04T06:30:31.083Z
+> Files: 22 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -199,14 +199,14 @@
 
 ## src/SchedulingAssistant/Assets/
 
-- `Icons.axaml` (~768 tok)
+- `Icons.axaml` (~1309 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
-- `DetachablePanel.axaml` (~709 tok)
+- `DetachablePanel.axaml` (~710 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -236,6 +236,7 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~17663 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
@@ -251,18 +252,18 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `MainView.axaml` (~5579 tok)
+- `MainView.axaml` (~5616 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~7146 tok)
+- `GridFilterView.axaml` (~7384 tok)
 - `GridFilterView.axaml.cs` — Updates a filter dimension's header ToggleButton to show how many items are selected, with active co (~1915 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
 - `MeetingListView.axaml` (~10507 tok)
 - `SectionCodePatternListView.axaml` (~4688 tok)
-- `SectionListView.axaml` (~20494 tok)
+- `SectionListView.axaml` (~21185 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
