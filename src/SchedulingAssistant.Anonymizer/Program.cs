@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Bogus;
 using Microsoft.Data.Sqlite;
 
@@ -108,44 +109,87 @@ public static class Program
     // ── Subjects & Courses ───────────────────────────────────────────────────
 
     /// <summary>
-    /// Replaces all subjects with "Geography" (GEOG) and assigns each course a
-    /// geography-themed title matched to its level (1xx, 2xx, 3xx, 4xx).
+    /// Describes how a subject should be anonymized.
+    /// </summary>
+    private record SubjectMapping(string Name, string Abbreviation,
+        Dictionary<string, string[]> TitlePool);
+
+    /// <summary>
+    /// The anonymization assignments applied to subjects in the order they appear in the DB.
+    /// First subject  → Geography / GEOG
+    /// Second subject → Environmental Studies / ENV
+    /// Additional subjects cycle through these two.
+    /// Declared as a property so the title pool fields are guaranteed initialized first.
+    /// </summary>
+    private static SubjectMapping[] SubjectMappings =>
+    [
+        new("Geography",             "GEOG", GeographyTitles),
+        new("Environmental Studies", "ENV",  EnvironmentalTitles),
+    ];
+
+    /// <summary>
+    /// Replaces each subject with a fake academic department (Geography, then Environmental
+    /// Studies for the second subject) and assigns each course a matching title.
     /// Course numbers are preserved; only the subject prefix and title change.
     /// </summary>
     private static void AnonymizeSubjectsAndCourses(SqliteConnection conn)
     {
-        // Remap all subjects to Geography
-        var subjectRows = ReadAll(conn, "SELECT id, data FROM Subjects");
-        Console.WriteLine($"Anonymizing {subjectRows.Count} subjects -> Geography...");
+        var subjectRows = ReadAll(conn, "SELECT id, data FROM Subjects ORDER BY rowid");
+        Console.WriteLine($"Anonymizing {subjectRows.Count} subjects...");
 
-        foreach (var (id, json) in subjectRows)
+        // Build a map of subject ID → SubjectMapping so courses know which pool to use
+        var subjectMappingById = new Dictionary<string, SubjectMapping>();
+
+        for (var i = 0; i < subjectRows.Count; i++)
         {
+            var (id, json) = subjectRows[i];
+            var mapping = SubjectMappings[i % SubjectMappings.Length];
+            subjectMappingById[id] = mapping;
+
             var node = JsonNode.Parse(json)!;
-            node["name"] = "Geography";
-            node["calendarAbbreviation"] = "GEOG";
+            node["name"] = mapping.Name;
+            node["calendarAbbreviation"] = mapping.Abbreviation;
+
+            Console.WriteLine($"  Subject {i + 1}: -> {mapping.Name} ({mapping.Abbreviation})");
 
             Execute(conn,
                 "UPDATE Subjects SET name=$n, abbreviation=$a, data=$d WHERE id=$id",
-                ("$n", "Geography"), ("$a", "GEOG"),
+                ("$n", mapping.Name), ("$a", mapping.Abbreviation),
                 ("$d", node.ToJsonString(JsonOpts)), ("$id", id));
         }
 
-        // Remap courses: keep number, change prefix to GEOG, assign geography title
-        var courseRows = ReadAll(conn, "SELECT id, data FROM Courses");
+        // Remap courses: keep number, change prefix, assign title from the subject's pool
+        // Read subject_id alongside course data so we can look up the right mapping
+        var courseRows = ReadAll(conn,
+            "SELECT id, subject_id, data FROM Courses ORDER BY calendar_code",
+            columnCount: 3);
         Console.WriteLine($"Anonymizing {courseRows.Count} courses...");
 
-        var usedTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Each subject gets its own used-titles set so pools don't collide
+        var usedTitlesBySubject = new Dictionary<string, HashSet<string>>();
 
-        foreach (var (id, json) in courseRows)
+        foreach (var row in courseRows)
         {
+            var id = row[0];
+            var subjectId = row[1];
+            var json = row[2];
+
             var node = JsonNode.Parse(json)!;
             var oldCode = node["calendarCode"]?.GetValue<string>() ?? "";
-
-            // Extract the numeric part (e.g. "HIST 112" -> "112")
             var number = ExtractCourseNumber(oldCode);
-            var newCode = $"GEOG {number}";
+
+            if (!subjectMappingById.TryGetValue(subjectId, out var mapping))
+                mapping = SubjectMappings[0]; // fallback to GEOG
+
+            if (!usedTitlesBySubject.TryGetValue(subjectId, out var usedTitles))
+            {
+                usedTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                usedTitlesBySubject[subjectId] = usedTitles;
+            }
+
+            var newCode = $"{mapping.Abbreviation}{number}";
             var level = GuessCourseLevel(number);
-            var title = PickTitle(level, usedTitles);
+            var title = PickTitle(level, usedTitles, mapping.TitlePool);
 
             node["calendarCode"] = newCode;
             node["title"] = title;
@@ -464,35 +508,126 @@ public static class Program
         ],
     };
 
+    // ── Environmental Studies Course Title Pool ──────────────────────────────
+
+    private static readonly Dictionary<string, string[]> EnvironmentalTitles = new()
+    {
+        ["100"] =
+        [
+            "Introduction to Environmental Science",
+            "Environmental Issues and Solutions",
+            "Principles of Ecology",
+            "Earth Systems Science",
+            "Introduction to Sustainability",
+            "Environmental Challenges of the 21st Century",
+            "Humans and the Natural World",
+            "Introduction to Climate Science",
+            "Food, Agriculture, and the Environment",
+            "Freshwater Resources and Society",
+            "Air Quality and Human Health",
+            "Introduction to Conservation Biology",
+            "Environmental Ethics",
+            "Energy and the Environment",
+            "Global Environmental Change",
+        ],
+        ["200"] =
+        [
+            "Ecology",
+            "Environmental Chemistry",
+            "Soil and Water Conservation",
+            "Wildlife Biology",
+            "Environmental Policy and Law",
+            "Restoration Ecology",
+            "Environmental Toxicology",
+            "Forest Ecology",
+            "Wetlands Science",
+            "Climate and Society",
+            "Environmental Data Analysis",
+            "Marine Ecology",
+            "Urban Ecology",
+            "Environmental Economics",
+            "Biodiversity and Ecosystems",
+            "Renewable Energy Systems",
+            "Waste Management and Pollution Control",
+            "Environmental Risk Assessment",
+            "Grassland and Dryland Ecology",
+            "Environmental Communication",
+        ],
+        ["300"] =
+        [
+            "Advanced Ecology",
+            "Environmental Impact Assessment",
+            "Conservation Planning",
+            "Watershed Management",
+            "Climate Change Adaptation",
+            "Environmental Monitoring and Assessment",
+            "Sustainable Resource Management",
+            "Population and Community Ecology",
+            "Environmental Modelling",
+            "Land Use and Ecosystem Services",
+            "Advanced Environmental Policy",
+            "Ecological Restoration Practice",
+            "Environmental Geochemistry",
+            "Urban Environmental Management",
+            "International Environmental Agreements",
+            "Advanced Conservation Biology",
+            "Applied Environmental Statistics",
+            "Carbon and Nutrient Cycles",
+            "Environmental Governance",
+            "Ecosystem Management",
+        ],
+        ["400"] =
+        [
+            "Research Methods in Environmental Science",
+            "Senior Seminar in Environmental Studies",
+            "Environmental Science Capstone",
+            "Honours Thesis in Environmental Studies",
+            "Directed Studies in Ecology",
+            "Advanced Topics in Climate Change",
+            "Advanced Topics in Conservation",
+            "Environmental Policy Practicum",
+            "Ecological Modelling and Simulation",
+            "Sustainable Development Theory and Practice",
+            "Environmental Leadership and Communication",
+            "Applied Conservation Genetics",
+            "Environmental Risk and Decision Making",
+            "Advanced Water Resource Management",
+            "Interdisciplinary Environmental Problem Solving",
+        ],
+    };
+
     /// <summary>
-    /// Picks a geography title appropriate for the course level.
-    /// Avoids reusing titles within the same anonymization run.
+    /// Picks a title from the given pool appropriate for the course level.
+    /// Avoids reusing titles within the same subject's anonymization run.
     /// Falls back to a generic numbered title if the pool is exhausted.
     /// </summary>
-    private static string PickTitle(string level, HashSet<string> usedTitles)
+    private static string PickTitle(string level, HashSet<string> usedTitles,
+        Dictionary<string, string[]> pool)
     {
-        if (!GeographyTitles.TryGetValue(level, out var pool))
-            pool = GeographyTitles["100"];
+        if (!pool.TryGetValue(level, out var titles))
+            titles = pool["100"];
 
-        foreach (var title in pool)
+        foreach (var title in titles)
         {
             if (usedTitles.Add(title))
                 return title;
         }
 
         // Pool exhausted — generate a unique fallback
-        var fallback = $"Special Topics in Geography ({level}-level, {usedTitles.Count})";
+        var fallback = $"Special Topics ({level}-level) [{usedTitles.Count}]";
         usedTitles.Add(fallback);
         return fallback;
     }
 
     /// <summary>
-    /// Extracts the numeric portion from a calendar code (e.g. "HIST 112" -> "112").
+    /// Extracts the numeric portion from a calendar code.
+    /// Handles both spaced formats ("HIST 112" → "112") and
+    /// concatenated formats ("MATH221" → "221").
     /// </summary>
     private static string ExtractCourseNumber(string calendarCode)
     {
-        var parts = calendarCode.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 2 ? parts[^1] : calendarCode;
+        var match = Regex.Match(calendarCode, @"\d+");
+        return match.Success ? match.Value : calendarCode;
     }
 
     /// <summary>

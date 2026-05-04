@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-01T05:22:30.412Z
-> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-04T04:13:42.020Z
+> Files: 20 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -33,7 +33,8 @@
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 - `feedback_axaml_warning.md` (~200 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~7881 tok)
+- `feedback_icons_in_axaml.md` (~273 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~7929 tok)
 
 ## ./
 
@@ -179,6 +180,7 @@
 
 ## src/SchedulingAssistant.Anonymizer/
 
+- `Program.cs` — Reads a TermPoint SQLite database and produces an anonymized copy. All instructor names, course titl (~7106 tok)
 
 ## src/SchedulingAssistant.Browser/
 
@@ -192,12 +194,18 @@
 
 ## src/SchedulingAssistant/
 
+- `App.axaml` (~1744 tok)
+
+## src/SchedulingAssistant/Assets/
+
+- `Icons.axaml` (~768 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
+- `DetachablePanel.axaml` (~709 tok)
 
 ## src/SchedulingAssistant/Converters/
 
@@ -242,15 +250,18 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `MainView.axaml` (~5579 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~7006 tok)
+- `GridFilterView.axaml.cs` — Updates a filter dimension's header ToggleButton to show how many items are selected, with active co (~1915 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
 - `MeetingListView.axaml` (~10507 tok)
 - `SectionCodePatternListView.axaml` (~4688 tok)
-- `SectionListView.axaml` (~20953 tok)
+- `SectionListView.axaml` (~20494 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

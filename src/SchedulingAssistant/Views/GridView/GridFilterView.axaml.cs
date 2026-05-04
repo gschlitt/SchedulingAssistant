@@ -106,7 +106,7 @@ public partial class GridFilterView : UserControl
         panel.IsVisible = true;
         var list = items.ToList();
         int selected = list.Count(i => i.IsSelected);
-        toggle.Content    = selected > 0 ? $"{dimensionName} ({selected}) ▼" : $"{dimensionName} ▼";
+        toggle.Content    = selected > 0 ? $"{dimensionName} ({selected})" : dimensionName;
         toggle.Foreground = selected > 0 ? ActiveFilterHeaderBrush : InactiveFilterHeaderBrush;
         toggle.FontWeight = selected > 0 ? FontWeight.Bold : FontWeight.Normal;
     }
@@ -145,13 +145,13 @@ public partial class GridFilterView : UserControl
 
         if (isActive)
         {
-            toggle.Content    = $"{inactiveLabel} ▼";
+            toggle.Content    = inactiveLabel;
             toggle.Foreground = ActiveOverlayHeaderBrush;
             toggle.FontWeight = FontWeight.SemiBold;
         }
         else
         {
-            toggle.Content    = $"{inactiveLabel} ▼";
+            toggle.Content    = inactiveLabel;
             toggle.Foreground = InactiveOverlayHeaderBrush;
             toggle.FontWeight = FontWeight.Normal;
         }

@@ -7886,6 +7886,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-01T04:42:54.682Z"
+    },
+    {
+      "id": "bug-493",
+      "timestamp": "2026-05-01T15:47:12.405Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Anonymizer/Program.cs",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 51→93 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T15:47:12.405Z"
+    },
+    {
+      "id": "bug-494",
+      "timestamp": "2026-05-01T21:00:29.096Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"M3 4h18l-7 9v5l-4-2v-3L3 4z\"",
+      "fix": "Changed to \"{StaticResource FilterIcon}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T21:00:29.096Z"
+    },
+    {
+      "id": "bug-495",
+      "timestamp": "2026-05-01T21:00:35.856Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"M15.583 8.445h.01M10.86 19.71l-6.573-6.63a.993.99",
+      "fix": "Changed to \"{StaticResource TagIcon}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-01T21:01:24.556Z"
+    },
+    {
+      "id": "bug-496",
+      "timestamp": "2026-05-01T22:48:45.321Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs",
+      "root_cause": "Had \"{dimensionName} ({selected}) ▼\"",
+      "fix": "Changed to \"{dimensionName} ({selected}) ∨\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-01T22:48:52.053Z"
+    },
+    {
+      "id": "bug-497",
+      "timestamp": "2026-05-04T03:35:25.066Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs",
+      "root_cause": "Had \"{dimensionName} ({selected})▾\"",
+      "fix": "Changed to \"{dimensionName} ({selected})\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T03:35:25.066Z"
+    },
+    {
+      "id": "bug-498",
+      "timestamp": "2026-05-04T04:13:42.106Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Controls/DetachablePanel.axaml",
+      "root_cause": "Had \"Auto,Auto\"",
+      "fix": "Changed to \"*,Auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T04:13:42.106Z"
     }
   ]
 }

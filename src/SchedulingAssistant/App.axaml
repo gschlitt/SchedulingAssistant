@@ -12,7 +12,8 @@
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceInclude Source="avares://TermPoint/AppColors.axaml" />
-				<ResourceInclude Source="avares://TermPoint/AppLayout.axaml" />				
+				<ResourceInclude Source="avares://TermPoint/AppLayout.axaml" />
+				<ResourceInclude Source="avares://TermPoint/Assets/Icons.axaml" />				
 			</ResourceDictionary.MergedDictionaries>
       
 			<!--  Font sizes  -->

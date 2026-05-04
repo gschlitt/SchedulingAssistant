@@ -36,11 +36,33 @@
 		<Style Selector="ToggleButton.FilterDim">
 			<Setter Property="Background" Value="Transparent" />
 			<Setter Property="BorderThickness" Value="0" />
-			<Setter Property="Padding" Value="6,1,0,0" />
+			<Setter Property="Padding" Value="3,1,0,0" />
 			<Setter Property="MinHeight" Value="0" />
 			<Setter Property="MinWidth" Value="0" />
 			<Setter Property="FontSize" Value="{StaticResource FontSizeNormal}" />
 			<Setter Property="Cursor" Value="Hand" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						Padding="{TemplateBinding Padding}">
+						<StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+							<ContentPresenter
+								VerticalAlignment="Center"
+								Content="{TemplateBinding Content}"
+								ContentTemplate="{TemplateBinding ContentTemplate}"
+								FontSize="{TemplateBinding FontSize}"
+								FontWeight="{TemplateBinding FontWeight}"
+								Foreground="{TemplateBinding Foreground}" />
+							<Viewbox Width="9" Height="5" VerticalAlignment="Center" Margin="0,1,2,0">
+								<Path Data="{StaticResource caretdown}" Fill="{TemplateBinding Foreground}" />
+							</Viewbox>
+						</StackPanel>
+					</Border>
+				</ControlTemplate>
+			</Setter>
 		</Style>
 		<Style Selector="ToggleButton.FilterDim:pointerover">
 			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
@@ -57,6 +79,28 @@
 			<Setter Property="FontSize" Value="{StaticResource FontSizeNormal}" />
 			<Setter Property="Cursor" Value="Hand" />
 			<Setter Property="Foreground" Value="Black" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						Padding="{TemplateBinding Padding}">
+						<StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+							<ContentPresenter
+								VerticalAlignment="Center"
+								Content="{TemplateBinding Content}"
+								ContentTemplate="{TemplateBinding ContentTemplate}"
+								FontSize="{TemplateBinding FontSize}"
+								FontWeight="{TemplateBinding FontWeight}"
+								Foreground="{TemplateBinding Foreground}" />
+							<Viewbox Width="9" Height="5" VerticalAlignment="Center" Margin="0,1,2,0">
+								<Path Data="{StaticResource caretdown}" Fill="{TemplateBinding Foreground}" />
+							</Viewbox>
+						</StackPanel>
+					</Border>
+				</ControlTemplate>
+			</Setter>
 		</Style>
 		<Style Selector="ToggleButton.OverlayDim:pointerover">
 			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
@@ -85,43 +129,38 @@
 		</Style>
 	</UserControl.Styles>
 
-
-
-	<DockPanel Margin="0,0,0,0" VerticalAlignment="Top">
-
-		<WrapPanel VerticalAlignment="Center">
-
-			<Button Margin="4,0,0,0" Command="{Binding ClearAllCommand}">
-				<Button.Content>
-					<StackPanel>
-						<TextBlock Text="Clear all" />
-
-					</StackPanel>
-				</Button.Content>
-			</Button>
-
-			<!--  ── Filter chooser group ─────────────────────────────────────────  -->
-			<Grid RowDefinitions="Auto,*" />
-			<Border
+		<WrapPanel VerticalAlignment="Center" >	
+		
+			<!--  ── Filter chooser group ─────────────────────────────────────────  -->			
+			<GroupBox
 				Margin="5,0,5,0"
 				Background="{StaticResource FilterSelectorBackground}"
-				BorderBrush="{StaticResource FilterGroupBorder}"
-				BorderThickness="1"
-				CornerRadius="4">
-				<WrapPanel>
-
-					<StackPanel
-						Margin="4,0,0,0"
-						VerticalAlignment="Center"
-						Orientation="Horizontal">
-						<Viewbox Width="14" Height="14" VerticalAlignment="Center">
-							<Path
-								Fill="{StaticResource TextLabel}"
-								Data="M3 4h18l-7 9v5l-4-2v-3L3 4z" />
+				BorderThickness="0"
+				>
+				<GroupBox.Header>
+					<Border Background="{StaticResource FilterSelectorBackground}" CornerRadius="4" Padding="0,0,0,0">
+						<StackPanel Orientation="Horizontal">
+						<Viewbox Width="13" Height="14" Margin="3,-7,0,0" >
+							 <Path
+							Fill="Transparent"
+							 Stroke="Black"
+							  StrokeThickness="1.5"
+							StrokeLineCap="Round"
+							 StrokeJoin="Round"
+							Data="{StaticResource FilterIcon2}" />
 						</Viewbox>
-					</StackPanel>
-
-
+					    <TextBlock Text="Filters" FontSize="13" Margin="5,0,0,0"/>
+						<Button  Command="{Binding ClearAllCommand}">
+						<Button.Content>
+						<StackPanel>
+						<TextBlock Text="Clear all" Foreground="Red" FontSize="13" FontWeight="SemiBold" Margin="6,-3.5,0,0"/>
+						</StackPanel>
+						</Button.Content>
+			</Button>
+							</StackPanel>
+						</Border>
+				</GroupBox.Header>
+				<WrapPanel>
 					<!--  Instructor  -->
 					<Panel x:Name="InstructorPanel" IsVisible="True">
 						<ToggleButton
@@ -459,28 +498,46 @@
 							</Border>
 						</Popup>
 					</Panel>
-
+				
 				</WrapPanel>
-			</Border>
-
+				
+			</GroupBox>
+				
 
 
 			<!--  ── Overlay chooser group ──────────────────────────────────────────  -->
-			<Border
-				Margin="4,0,0,0"
+			<GroupBox
+				Margin="5,0,5,0"
 				Background="{StaticResource FilterSelectorBackground}"
-				BorderBrush="{StaticResource FilterGroupBorder}"
-				BorderThickness="1"
-				CornerRadius="4">
-				<StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+				BorderThickness="0"
+				>
+				<GroupBox.Header>
+					<Border Background="{StaticResource FilterSelectorBackground}" CornerRadius="4" Padding="0,0,0,0">
+						<StackPanel Orientation="Horizontal">
+						<Viewbox Width="13" Height="14" Margin="3,-7,0,0" >
+							 <Path
+							Fill="Black"
+							 Stroke="Black"
+							  StrokeThickness="1.5"
+							StrokeLineCap="Round"
+							 StrokeJoin="Round"
+							Data="{StaticResource Overlay}" />
+						</Viewbox>
+					    <TextBlock Text="Overlays" FontSize="13" Margin="5,-1,0,0"/>
+						<Button  Command="{Binding ClearAllCommand}">
+						<Button.Content>
+						<StackPanel>
+						<TextBlock Text="Clear all" Foreground="Red" FontSize="13" FontWeight="SemiBold" Margin="6,-3.5,0,0"/>
+						</StackPanel>
+						</Button.Content>
+			</Button>
+							</StackPanel>
+						</Border>
+				</GroupBox.Header>
+					
 
-					<StackPanel
-						Margin="4,0,4,0"
-						VerticalAlignment="Center"
-						Orientation="Horizontal">
-						<Panel Width="16" Height="16" VerticalAlignment="Center" />
-					</StackPanel>
-
+					
+				<WrapPanel>
 					<!--  Overlay: Instructor  -->
 					<Panel x:Name="InstructorOverlayPanel" IsVisible="False">
 						<ToggleButton
@@ -650,12 +707,13 @@
 						</Popup>
 					</Panel>
 
-				</StackPanel>
-			</Border>
+				</WrapPanel>
+			</GroupBox>
 
-			<!--  Events visibility toggle  -->
+			<!--  Events visibility toggle 
 			<Border
-				Margin="4,0,0,0"
+			    Height="35"
+				Margin="4,8,0,0"
 				Padding="4,0"
 				Background="{StaticResource FilterSelectorBackground}"
 				BorderBrush="{StaticResource FilterGroupBorder}"
@@ -669,11 +727,11 @@
 					FontSize="{StaticResource FontSizeMedium}"
 					IsChecked="{Binding ShowMeetings, Mode=TwoWay}"
 					ToolTip.Tip="Show or hide events on the schedule grid" />
-			</Border>
+			</Border>-->
 
 		</WrapPanel>
 
-	</DockPanel>
+
 
 
 </UserControl>

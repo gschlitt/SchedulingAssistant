@@ -20,7 +20,7 @@
                 Text="Scheduling" />
             <TextBlock TextWrapping="Wrap">
                 <Span>
-                    TermPoint uses the 24-hour clock to specify time of day (so that 1:30 pm = 1330). A typical 'block'  is scheduled using the start time (e.g. 1330) and a length, measured either in minutes or hours (e.g. 80 minutes or 1.25 hours) as you prefer.
+                    TermPoint uses the 24-hour clock to specify time of day (so that 1:30 pm = 1330). A typical 'block'  is scheduled using the start time (e.g. 1330) and a length, measured either in minutes or hours (e.g. 75 minutes or 1.25 hours) as you prefer.
                 </Span>
                 <LineBreak />
                 <LineBreak />

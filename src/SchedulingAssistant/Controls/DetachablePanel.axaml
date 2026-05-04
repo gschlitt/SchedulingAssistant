@@ -27,19 +27,21 @@
 				Background="{StaticResource ViewHeaderBackground}"
 				BorderBrush="Red"
 				BorderThickness="0,0,0,0">
-				<Grid RowDefinitions="Auto,Auto">
+				<Grid RowDefinitions="*,Auto">
 					<!--  Row 0: Title row with detach button  -->
 					<DockPanel Grid.Row="0">
 						<Button
-							Padding="4,0,0,6"
-							Background="Transparent"
-							BorderThickness="0"
-							Click="OnDetachClicked"
-							Content="⧉"
-							Cursor="Hand"
-							DockPanel.Dock="Right"
-							FontSize="13"
-							ToolTip.Tip="Pop out into window" />
+					   Padding="4,0,0,6"
+						 Background="Transparent"
+					   BorderThickness="0"
+			    Click="OnDetachClicked"
+			   Cursor="Hand"
+			   DockPanel.Dock="Right"
+			    ToolTip.Tip="Pop out into window">
+					    <Viewbox Width="13" Height="13">
+					     <Path Data="{StaticResource detachwindow}" Fill="Black" />
+				 </Viewbox>
+				</Button>
 						<!--  Panel title  -->
 						<TextBlock
 							Margin="0,0,12,0"
