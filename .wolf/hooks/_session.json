@@ -1,38 +1,49 @@
 {
-  "session_id": "session-2026-05-04-2038",
-  "started": "2026-05-04T03:38:24.913Z",
+  "session_id": "session-2026-05-04-2157",
+  "started": "2026-05-04T04:57:49.059Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Controls/DetachablePanel.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": {
       "count": 2,
-      "tokens": 0,
-      "first_read": "2026-05-04T03:51:59.753Z"
+      "tokens": 7131,
+      "first_read": "2026-05-04T04:57:53.903Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml": {
       "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-04T04:09:05.872Z"
+      "tokens": 1744,
+      "first_read": "2026-05-04T05:07:11.556Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
       "action": "edit",
-      "tokens": 36,
-      "at": "2026-05-04T04:09:26.428Z"
+      "tokens": 132,
+      "at": "2026-05-04T04:58:04.825Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Controls/DetachablePanel.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
       "action": "edit",
-      "tokens": 10,
-      "at": "2026-05-04T04:13:42.091Z"
+      "tokens": 346,
+      "at": "2026-05-04T05:00:26.018Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "action": "edit",
+      "tokens": 80,
+      "at": "2026-05-04T05:00:32.771Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "action": "edit",
+      "tokens": 65,
+      "at": "2026-05-04T05:23:59.817Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/Views/MainView.axaml": 1,
-    "src/SchedulingAssistant/Controls/DetachablePanel.axaml": 1
+    "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 4
   },
-  "anatomy_hits": 0,
-  "anatomy_misses": 2,
+  "anatomy_hits": 2,
+  "anatomy_misses": 0,
   "repeated_reads_warned": 1,
   "cerebrum_warnings": 0,
   "stop_count": 5

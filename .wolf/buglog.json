@@ -7982,6 +7982,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-04T04:13:42.106Z"
+    },
+    {
+      "id": "bug-499",
+      "timestamp": "2026-05-04T04:32:24.408Z",
+      "error_message": "Wrong reference: Instructor should be x",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Used \"Instructor\" instead of \"x\"",
+      "fix": "Changed Instructor → x",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T04:32:24.408Z"
+    },
+    {
+      "id": "bug-500",
+      "timestamp": "2026-05-04T04:32:25.574Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"28\"",
+      "fix": "Changed to \"{Binding #FilterBody.Bounds.Height}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T04:32:25.574Z"
+    },
+    {
+      "id": "bug-501",
+      "timestamp": "2026-05-04T04:39:54.341Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"{Binding #FilterBody.Bounds.Height}\"",
+      "fix": "Changed to \"{Binding #InstructorToggle.Bounds.Height}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-04T04:39:54.341Z"
     }
   ]
 }

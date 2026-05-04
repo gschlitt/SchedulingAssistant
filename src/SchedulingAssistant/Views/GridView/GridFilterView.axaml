@@ -32,6 +32,18 @@
 			<Setter Property="Width" Value="14" />
 			<Setter Property="Height" Value="14" />
 		</Style>
+		<!--  Compact checkbox for the Events toggle  -->
+		<Style Selector="CheckBox.EventsToggle">
+			<Setter Property="MinHeight" Value="0" />
+		</Style>
+		<Style Selector="CheckBox.EventsToggle /template/ Border#NormalRectangle">
+			<Setter Property="Width" Value="10" />
+			<Setter Property="Height" Value="10" />
+		</Style>
+		<Style Selector="CheckBox.EventsToggle /template/ Border#CheckedRectangle">
+			<Setter Property="Width" Value="10" />
+			<Setter Property="Height" Value="10" />
+		</Style>
 		<!--  Filter dimension toggle buttons: look like a label, highlight when active  -->
 		<Style Selector="ToggleButton.FilterDim">
 			<Setter Property="Background" Value="Transparent" />
@@ -160,7 +172,7 @@
 							</StackPanel>
 						</Border>
 				</GroupBox.Header>
-				<WrapPanel>
+				<WrapPanel x:Name="FilterBody">
 					<!--  Instructor  -->
 					<Panel x:Name="InstructorPanel" IsVisible="True">
 						<ToggleButton
@@ -710,24 +722,23 @@
 				</WrapPanel>
 			</GroupBox>
 
-			<!--  Events visibility toggle 
+			<!--  Events visibility toggle -->
 			<Border
-			    Height="35"
-				Margin="4,8,0,0"
-				Padding="4,0"
+				Margin="4,4.5,0,0"
+				Padding="2,2,2,2"
+				VerticalAlignment="Bottom"
 				Background="{StaticResource FilterSelectorBackground}"
-				BorderBrush="{StaticResource FilterGroupBorder}"
-				BorderThickness="1"
+				BorderThickness="0"
 				CornerRadius="4">
 				<CheckBox
-					MinHeight="0"
-					Padding="6,0"
+					Classes="EventsToggle"
+					BorderBrush="Black" BorderThickness="1"
 					VerticalAlignment="Center"
 					Content="Events"
-					FontSize="{StaticResource FontSizeMedium}"
+					FontSize="{StaticResource FontSizeNormal}"
 					IsChecked="{Binding ShowMeetings, Mode=TwoWay}"
 					ToolTip.Tip="Show or hide events on the schedule grid" />
-			</Border>-->
+			</Border>
 
 		</WrapPanel>
 

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-04T04:13:42.020Z
-> Files: 20 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-04T05:23:59.749Z
+> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -33,8 +33,9 @@
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 - `feedback_axaml_warning.md` (~200 tok)
-- `feedback_icons_in_axaml.md` (~273 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~7929 tok)
+- `feedback_icons_in_axaml.md` (~409 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~7969 tok)
+- `project_styling_branch.md` (~409 tok)
 
 ## ./
 
@@ -254,7 +255,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `GridFilterView.axaml` (~7006 tok)
+- `GridFilterView.axaml` (~7146 tok)
 - `GridFilterView.axaml.cs` — Updates a filter dimension's header ToggleButton to show how many items are selected, with active co (~1915 tok)
 
 ## src/SchedulingAssistant/Views/Management/
