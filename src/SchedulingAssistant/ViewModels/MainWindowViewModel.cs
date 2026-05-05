@@ -142,36 +142,56 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>True when the save-error banner should be visible.</summary>
     public bool ShowSaveError => !string.IsNullOrEmpty(SaveErrorMessage);
 
-#if !BROWSER
+    /// <summary>
+    /// True when the platform supports saving to the database file.
+    /// Drives <see cref="SaveCommand"/> CanExecute and the enabled state of the
+    /// Auto-save checkbox in the toolbar. Always false in the browser demo.
+    /// </summary>
+    public bool SupportsSave => PlatformCapabilities.SupportsSave;
+
     /// <summary>
     /// Whether the autosave timer is enabled. Persisted to <see cref="AppSettings"/>.
     /// Setting this starts or stops the timer in <see cref="CheckoutService"/> immediately.
+    /// Always false and a no-op in the browser demo.
     /// </summary>
     public bool AutoSaveEnabled
     {
-        get => AppSettings.Current.AutoSaveEnabled;
+        get =>
+#if !BROWSER
+            AppSettings.Current.AutoSaveEnabled;
+#else
+            false;
+#endif
         set
         {
+#if !BROWSER
             if (AppSettings.Current.AutoSaveEnabled == value) return;
             AppSettings.Current.AutoSaveEnabled = value;
             AppSettings.Current.Save();
             if (value) App.Checkout.StartAutoSave();
             else        App.Checkout.StopAutoSave();
             OnPropertyChanged();
+#endif
         }
     }
+
+    private bool CanSave() => PlatformCapabilities.SupportsSave;
 
     /// <summary>
     /// Saves D' back to D. Delegates to <see cref="CheckoutService.SaveAsync"/>.
     /// Outcome feedback is delivered through <see cref="SaveErrorMessage"/>.
+    /// Disabled in the browser demo (<see cref="SupportsSave"/> is false).
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
     {
+#if !BROWSER
         await App.Checkout.SaveAsync();
         // SaveCompleted / SaveFailed events update SaveErrorMessage via MainWindow handlers.
-    }
+#else
+        await Task.CompletedTask;
 #endif
+    }
 
     /// <summary>Dismisses the save-error banner.</summary>
     [RelayCommand]

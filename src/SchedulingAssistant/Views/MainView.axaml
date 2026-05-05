@@ -121,6 +121,7 @@
 							FontSize="11"
 							FontStyle="Italic"
 							Foreground="Red"
+							IsEnabled="{Binding SupportsSave}"
 							IsVisible="{Binding IsDirty}"
 							Text="Unsaved changes"
 							ToolTip.Tip="You have unsaved changes" />
@@ -129,6 +130,7 @@
 							Content="Auto-save"
 							FontSize="{StaticResource FontSizeNormal}"
 							IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
+							IsEnabled="{Binding SupportsSave}"
 							ToolTip.Tip="Automatically save at the interval configured under Settings" />
 					</StackPanel>
 
