@@ -100,6 +100,17 @@
 						Text="{Binding DatabaseName}"
 						ToolTip.Tip="{Binding DatabasePath}" />
 
+					<!--  Reader Mode indicator (shown after lock banner is dismissed)  -->
+					<TextBlock
+						controls:ResponsiveMenuPanel.IsPriority="True"
+						Margin="0,0,6,0"
+						VerticalAlignment="Center"
+						FontSize="{StaticResource FontSizeNormal}"
+						Foreground="{StaticResource TextError}"
+						IsVisible="{Binding ShowReaderModeIndicator}"
+						Text="Reader Mode"
+						ToolTip.Tip="{Binding LockStatusMessage}" />
+
 					<!--  Save button + autosave checkbox  -->
 					<StackPanel
 						controls:ResponsiveMenuPanel.IsPriority="True"
@@ -305,11 +316,19 @@
 					Margin="8,0,0,0"
 					Padding="8,2"
 					Command="{Binding AcquireWriteLockCommand}"
-					Content="Switch to edit mode"
+					Content="Take over as writer"
 					DockPanel.Dock="Right"
 					FontSize="{StaticResource FontSizeNormal}"
 					IsVisible="{Binding ShowWriteLockAvailablePrompt}"
 					ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding DismissLockBannerCommand}"
+					Content="Dismiss"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					ToolTip.Tip="Dismiss this banner. A Reader Mode indicator will appear in the toolbar." />
 				<Button
 					Margin="8,0,0,0"
 					Padding="8,2"

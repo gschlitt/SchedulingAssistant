@@ -90,8 +90,19 @@ public partial class App : Application
     /// <summary>
     /// Called by MainWindow once a database path has been resolved.
     /// Builds the full DI container and returns the root view model.
+    /// <para>
+    /// When <paramref name="restoreAcademicYearId"/> and <paramref name="restoreSemesterIds"/>
+    /// are supplied (e.g. when switching from read-only to write mode), they take precedence
+    /// over the persisted <see cref="AppSettings"/> values, so the semester the user was
+    /// viewing is preserved across the DI teardown/rebuild cycle.
+    /// </para>
     /// </summary>
-    public static MainWindowViewModel InitializeServices(string dbPath)
+    /// <param name="dbPath">Path to the working-copy database file (D').</param>
+    /// <param name="restoreAcademicYearId">Academic year ID to restore. Defaults to the AppSettings value.</param>
+    /// <param name="restoreSemesterIds">Semester IDs to restore. Defaults to the AppSettings value.</param>
+    public static MainWindowViewModel InitializeServices(string dbPath,
+        string? restoreAcademicYearId = null,
+        IReadOnlySet<string>? restoreSemesterIds = null)
     {
         var services = new ServiceCollection();
         ConfigureServices(services, dbPath);
@@ -109,15 +120,19 @@ public partial class App : Application
         var dbCtx = Services.GetRequiredService<IDatabaseContext>();
         App.Checkout.SaveCompleted += dbCtx.ResetDirty;
 
+        // Fall back to persisted AppSettings values when no in-memory IDs were passed.
         var startupSettings = AppSettings.Current;
+        restoreAcademicYearId ??= startupSettings.LastSelectedAcademicYearId;
+        restoreSemesterIds    ??= startupSettings.LastSelectedSemesterIds.Count > 0
+                                      ? startupSettings.LastSelectedSemesterIds.ToHashSet()
+                                      : null;
+
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
             Services.GetRequiredService<IAcademicYearRepository>(),
             Services.GetRequiredService<ISemesterRepository>(),
-            restoreAcademicYearId: startupSettings.LastSelectedAcademicYearId,
-            restoreSemesterIds:    startupSettings.LastSelectedSemesterIds.Count > 0
-                                       ? startupSettings.LastSelectedSemesterIds.ToHashSet()
-                                       : null);
+            restoreAcademicYearId: restoreAcademicYearId,
+            restoreSemesterIds:    restoreSemesterIds);
 
         var sectionStore = Services.GetRequiredService<SectionStore>();
         sectionStore.Reload(

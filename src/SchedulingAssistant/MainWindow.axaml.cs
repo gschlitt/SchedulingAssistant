@@ -482,6 +482,18 @@ public partial class MainWindow : Window
             App.Checkout.StopAutoSave();
             await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
 
+            // Capture the current semester selection before DI teardown so it can be
+            // restored after reinit without touching AppSettings (avoids a disk round-trip
+            // and preserves the live in-memory state, e.g. when upgrading read→write).
+            string? savedYearId = null;
+            IReadOnlySet<string>? savedSemesterIds = null;
+            if (App.Services.GetService(typeof(SemesterContext)) is SemesterContext priorCtx
+                && priorCtx.SelectedAcademicYear is not null)
+            {
+                savedYearId      = priorCtx.SelectedAcademicYear.Id;
+                savedSemesterIds = priorCtx.SelectedSemesters.Select(s => s.Semester.Id).ToHashSet();
+            }
+
             // Close the old DatabaseContext (and all other DI singletons) NOW, before
             // CheckoutAsync copies D to D'.  InitializeServices also calls Dispose on
             // App.Services, but that runs after the copy — too late on Windows, where
@@ -506,8 +518,9 @@ public partial class MainWindow : Window
             newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.
-            // DatabaseContext will create the file if it doesn't exist.
-            var vm = App.InitializeServices(newDatabasePath);
+            // Pass the captured semester IDs so the selection is preserved across the
+            // teardown/rebuild cycle; falls back to AppSettings if nothing was captured.
+            var vm = App.InitializeServices(newDatabasePath, savedYearId, savedSemesterIds);
 
             // Resolve the canonical source path D for the title bar and backup service.
             // newDatabasePath is D' or D'' (the working copy), never the user-facing path.
@@ -520,6 +533,14 @@ public partial class MainWindow : Window
             // checkout event (re-)subscription, autosave restart, etc.) to the
             // shared helper used by every startup path.
             await SetupMainWindowAsync(canonicalPath, vm);
+
+            // Re-apply the semester selection after the DataContext swap. Avalonia
+            // re-fires the SelectedAcademicYear setter when it re-initialises the
+            // ComboBox binding, which resets the semester to nothing. Calling
+            // RestoreSelection here — after all binding initialisation has completed —
+            // overrides that reset without touching the database again.
+            if (savedYearId != null && savedSemesterIds != null)
+                vm.SemesterContext.RestoreSelection(savedYearId, savedSemesterIds);
         }
         catch (Exception ex)
         {

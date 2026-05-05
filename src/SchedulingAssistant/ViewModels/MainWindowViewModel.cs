@@ -214,6 +214,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private DateTime? _lastRefreshedAt;
 
     /// <summary>
+    /// Set to true when the user dismisses the lock banner. Reset to false when the
+    /// write lock becomes available so the banner (now with a "take over" prompt) reappears.
+    /// </summary>
+    private bool _lockBannerDismissed;
+
+    /// <summary>
     /// True when this instance holds the write lock and the user may make edits.
     /// False in read-only mode. Bound by container <c>IsEnabled</c> in the view
     /// to gate all write-capable UI in a single binding per container.
@@ -221,15 +227,21 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsWriteEnabled => _lockService.IsWriter;
 
     /// <summary>
-    /// True when the lock banner should be displayed (i.e., this instance is in
-    /// read-only mode).
+    /// True when the lock advisory banner should be shown. Hidden once the user
+    /// dismisses it, but reappears when the write lock becomes available.
     /// </summary>
-    public bool ShowLockBanner => !_lockService.IsWriter;
+    public bool ShowLockBanner => !_lockService.IsWriter && !_lockBannerDismissed;
 
     /// <summary>
-    /// Human-readable description of the current lock state for the banner.
-    /// Shows who holds the lock and since when.
-    /// Returns null when this instance is the writer (banner is hidden).
+    /// True when the user has dismissed the lock banner but is still in read-only
+    /// mode. Drives the "Reader Mode" indicator in the toolbar.
+    /// </summary>
+    public bool ShowReaderModeIndicator => !_lockService.IsWriter && _lockBannerDismissed;
+
+    /// <summary>
+    /// Human-readable description of the current lock state.
+    /// Used by both the banner text and the toolbar "Reader Mode" hover tooltip.
+    /// Returns null when this instance is the writer.
     /// </summary>
     public string? LockStatusMessage
     {
@@ -256,6 +268,19 @@ public partial class MainWindowViewModel : ViewModelBase
     /// held and the user should be prompted to switch to edit mode.
     /// </summary>
     public bool ShowWriteLockAvailablePrompt => _lockService.WriteLockBecameAvailable;
+
+    /// <summary>
+    /// Dismisses the lock advisory banner. A compact "Reader Mode" indicator
+    /// appears in the toolbar instead. The banner reappears automatically when
+    /// the write lock becomes available.
+    /// </summary>
+    [RelayCommand]
+    private void DismissLockBanner()
+    {
+        _lockBannerDismissed = true;
+        OnPropertyChanged(nameof(ShowLockBanner));
+        OnPropertyChanged(nameof(ShowReaderModeIndicator));
+    }
 
     // ── Notification banner properties ────────────────────────────────────────
 
@@ -419,11 +444,17 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// Called on the UI thread when the lock state changes. Re-raises all lock-derived
     /// properties so the banner and control containers update via data binding.
+    /// When the write lock becomes available, resets the dismiss flag so the banner
+    /// reappears with the "take over" prompt.
     /// </summary>
     private void OnLockStateChanged()
     {
+        if (_lockService.WriteLockBecameAvailable)
+            _lockBannerDismissed = false;
+
         OnPropertyChanged(nameof(IsWriteEnabled));
         OnPropertyChanged(nameof(ShowLockBanner));
+        OnPropertyChanged(nameof(ShowReaderModeIndicator));
         OnPropertyChanged(nameof(LockStatusMessage));
         OnPropertyChanged(nameof(ShowWriteLockAvailablePrompt));
     }

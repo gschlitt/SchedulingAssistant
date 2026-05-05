@@ -44,17 +44,6 @@ public class SemesterCheckItem : ObservableObject
     }
 
     /// <summary>
-    /// Sets IsSelected and updates the UI, but does NOT fire <see cref="SelectionChanged"/>.
-    /// Used by <see cref="SemesterContext"/> to forcibly re-select the last semester
-    /// without causing a re-entrant selection-changed callback.
-    /// </summary>
-    internal void SetSelectedSilent(bool value)
-    {
-        if (SetProperty(ref _isSelected, value))
-            OnPropertyChanged(nameof(IsSelected));
-    }
-
-    /// <summary>
     /// Fired when <see cref="IsSelected"/> changes.
     /// Wired by <see cref="SemesterContext"/> to rebuild <see cref="SemesterContext.SelectedSemesters"/>.
     /// </summary>
@@ -147,6 +136,29 @@ public partial class SemesterContext : ObservableObject
 
     private Dictionary<string, AcademicYear> _yearLookup = new();
     private Dictionary<string, List<SemesterDisplay>> _semestersByYear = new();
+
+    /// <summary>
+    /// Re-applies a previously captured academic year and semester selection using
+    /// already-loaded data. Does NOT re-query the database.
+    /// <para>
+    /// Call this after a DataContext swap that may have re-fired the
+    /// <see cref="SelectedAcademicYear"/> setter (resetting the selection) as a
+    /// side-effect of Avalonia re-initialising ComboBox bindings. Passing the IDs
+    /// captured just before the swap guarantees the correct state is restored.
+    /// </para>
+    /// </summary>
+    /// <param name="yearId">Academic year ID to restore.</param>
+    /// <param name="semesterIds">Semester IDs to restore as checked.</param>
+    public void RestoreSelection(string yearId, IReadOnlySet<string> semesterIds)
+    {
+        if (!_yearLookup.TryGetValue(yearId, out var year)) return;
+
+        // Bypass the setter to suppress OnSelectedAcademicYearChanged, then
+        // rebuild check items with the explicit IDs.
+        _selectedAcademicYear = year;
+        OnPropertyChanged(nameof(SelectedAcademicYear));
+        RebuildCheckItems(semesterIds);
+    }
 
     // ── Commands ───────────────────────────────────────────────────────────────
 
@@ -258,16 +270,14 @@ public partial class SemesterContext : ObservableObject
             ? list
             : new List<SemesterDisplay>();
 
-        // Build items, marking restorable ones as selected
+        // Build items, marking restorable ones as selected.
+        // When switching academic years (previousIds is null), nothing is pre-selected
+        // and the grid shows an empty timetable until the user picks a semester.
         var newItems = filtered.Select(d =>
         {
             bool selected = previousIds != null && previousIds.Contains(d.Semester.Id);
             return new SemesterCheckItem(d, selected);
         }).ToList();
-
-        // If nothing was restored (or no previousIds), auto-select the first semester
-        if (newItems.Count > 0 && !newItems.Any(ci => ci.IsSelected))
-            newItems[0].SetSelectedSilent(true);
 
         // Wire new event handlers
         foreach (var ci in newItems)
@@ -279,24 +289,11 @@ public partial class SemesterContext : ObservableObject
 
     /// <summary>
     /// Called when any <see cref="SemesterCheckItem.IsSelected"/> changes.
-    /// Prevents the last selected semester from being deselected.
-    /// Then rebuilds <see cref="SelectedSemesters"/> and fires change notifications.
+    /// Rebuilds <see cref="SelectedSemesters"/> and fires change notifications.
+    /// Zero selected semesters is valid — the grid shows an empty timetable.
     /// </summary>
-    /// <param name="changed">The item whose selection state just changed.</param>
     private void OnCheckItemSelectionChanged(SemesterCheckItem changed)
     {
-        // Guard: at least one semester must remain selected
-        if (!changed.IsSelected)
-        {
-            int otherSelected = FilteredCheckItems.Count(ci => ci != changed && ci.IsSelected);
-            if (otherSelected == 0)
-            {
-                // Silently re-select; avoid re-entrant SelectionChanged
-                changed.SetSelectedSilent(true);
-                return;
-            }
-        }
-
         UpdateSelectedSemesters();
     }
 
