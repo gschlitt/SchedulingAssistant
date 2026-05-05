@@ -21,8 +21,6 @@ public partial class ReleaseManagementViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<ReleaseWorkload> _releases = new();
     [ObservableProperty] private ReleaseWorkload? _selectedRelease;
     [ObservableProperty] private ReleaseEditViewModel? _editVm;
-    [ObservableProperty] private string? _lastErrorMessage;
-
     /// <summary>Fired when releases are added/edited/deleted to notify parent to refresh workload display.</summary>
     public event Action? ReleasesChanged;
 

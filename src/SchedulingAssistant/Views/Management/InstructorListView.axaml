@@ -236,6 +236,14 @@
                     Content="Delete"
                     IsEnabled="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
+            <!--  Inline error message  -->
+            <TextBlock
+                FontSize="10"
+                Foreground="{StaticResource TextError}"
+                IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding LastErrorMessage}"
+                TextWrapping="Wrap"
+                Margin="0,4,0,0" />
         </StackPanel>
 
         <!--  Semester picker + Semester Activity label with workload units  -->

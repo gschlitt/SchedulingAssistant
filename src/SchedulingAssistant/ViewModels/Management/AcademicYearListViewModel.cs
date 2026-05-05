@@ -23,7 +23,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
     public bool IsWriteEnabled => _lockService.IsWriter;
 
     /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
-    private bool CanWrite() => _lockService.IsWriter;
+    private bool CanWrite() => _lockService.IsWriter && PlatformCapabilities.SupportsSemesterMutations;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _selectedAcademicYear;
@@ -104,16 +104,18 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
         OnPropertyChanged(nameof(IsWriteEnabled));
         AddCommand.NotifyCanExecuteChanged();
         DeleteCommand.NotifyCanExecuteChanged();
+        CopySemesterCommand.NotifyCanExecuteChanged();
+        EmptySemesterCommand.NotifyCanExecuteChanged();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void CopySemester()
     {
         var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
         mainVm.NavigateToCopySemesterCommand.Execute(null);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void EmptySemester()
     {
         var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
@@ -180,7 +182,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "AcademicYearListViewModel.Add");
-                    await _dialog.ShowError("The save could not be completed. Please try again.");
+                    LastErrorMessage = "The save could not be completed. Please try again.";
                 }
             });
     }
@@ -190,6 +192,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
     {
         if (SelectedAcademicYear is null) return;
 
+        LastErrorMessage = null;
         var sectionCount = _sectionRepo.CountByAcademicYear(SelectedAcademicYear.Id);
         var bodyText = sectionCount > 0
             ? $"Delete academic year \"{SelectedAcademicYear.Name}\"?\n\nWarning: this academic year has {sectionCount} section{(sectionCount == 1 ? "" : "s")} across its semesters. They will all be permanently deleted."
@@ -207,7 +210,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "AcademicYearListViewModel.Delete");
-            await _dialog.ShowError("The delete could not be completed. Please try again.");
+            LastErrorMessage = "The delete could not be completed. Please try again.";
         }
     }
 

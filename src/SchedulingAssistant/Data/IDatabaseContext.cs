@@ -17,6 +17,15 @@ public interface IDatabaseContext : IDisposable
     DbConnection Connection { get; }
 
     /// <summary>
+    /// True when the context is backed by a real database connection that supports
+    /// <see cref="DbConnection.BeginTransaction()"/>. False for in-memory demo
+    /// implementations (e.g. WASM) where <see cref="Connection"/> is unavailable.
+    /// ViewModels that wrap multi-repo writes in a transaction must check this first;
+    /// demo repositories already accept <c>tx = null</c> and operate without one.
+    /// </summary>
+    bool SupportsTransactions { get; }
+
+    /// <summary>
     /// Signals that a user-initiated write is about to occur. On the first call per session
     /// this triggers the dirty marker so crash recovery detection works correctly.
     /// Subsequent calls are no-ops. Ignored in read-only and demo contexts.

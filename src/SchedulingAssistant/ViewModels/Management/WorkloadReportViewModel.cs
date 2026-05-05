@@ -56,11 +56,13 @@ public partial class WorkloadReportViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanExport))]
     private async Task ExportWorkloadReport()
     {
-#if BROWSER
+        if (!PlatformCapabilities.SupportsFileDialogs)
+        {
+            StatusMessage = "File export is not available in the browser demo.";
+            return;
+        }
         await Task.CompletedTask;
-        StatusMessage = "Export is not available in the browser demo.";
-        return;
-#else
+#if !BROWSER
         var window = _mainVm.MainWindowReference;
         if (window is null) return;
 

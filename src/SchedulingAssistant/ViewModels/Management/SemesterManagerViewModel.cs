@@ -72,7 +72,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
-    private bool CanWrite() => _lockService.IsWriter;
+    private bool CanWrite() => _lockService.IsWriter && PlatformCapabilities.SupportsSemesterMutations;
 
     /// <summary>Semesters belonging to the academic year, ordered by SortOrder; wrapped in row VMs for color-picker binding.</summary>
     [ObservableProperty] private ObservableCollection<SemesterRowViewModel> _semesters = new();
@@ -198,6 +198,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
+        LastErrorMessage = null;
         var semester = new Semester
         {
             AcademicYearId = _academicYearId,
@@ -216,7 +217,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SemesterManagerViewModel.Add");
-                    _ = _dialog.ShowError("The save could not be completed. Please try again.");
+                    LastErrorMessage = "The save could not be completed. Please try again.";
                 }
             },
             onCancel: () => EditVm = null);
@@ -226,6 +227,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Rename()
     {
+        LastErrorMessage = null;
         if (SelectedSemester is null) return;
         // Work on a copy so Cancel leaves the original untouched.
         var copy = new Semester
@@ -249,7 +251,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SemesterManagerViewModel.Rename");
-                    _ = _dialog.ShowError("The save could not be completed. Please try again.");
+                    LastErrorMessage = "The save could not be completed. Please try again.";
                 }
             },
             onCancel: () => EditVm = null);
@@ -264,12 +266,13 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     {
         if (SelectedSemester is null) return;
 
+        LastErrorMessage = null;
         var count = _sectionRepo.CountBySemesterId(SelectedSemester.Semester.Id);
         if (count > 0)
         {
-            await _dialog.ShowError(
+            LastErrorMessage =
                 $"\"{SelectedSemester.Name}\" contains {count} section{(count == 1 ? "" : "s")}. " +
-                "Use the Empty Semester tool to remove all sections before deleting a semester.");
+                "Use the Empty Semester tool to remove all sections before deleting a semester.";
             return;
         }
 
@@ -285,7 +288,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "SemesterManagerViewModel.Delete");
-            await _dialog.ShowError("The delete could not be completed. Please try again.");
+            LastErrorMessage = "The delete could not be completed. Please try again.";
         }
     }
 

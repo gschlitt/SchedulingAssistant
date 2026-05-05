@@ -76,7 +76,13 @@ public partial class SectionEditViewModel : ViewModelBase
     private string? _validatedSectionCode;
 
     private readonly Func<string, string, bool> _isSectionCodeDuplicate;
-    private readonly Func<string, Task> _onValidationError;
+
+    /// <summary>
+    /// Callback passed to each <see cref="SectionMeetingViewModel"/> so that meeting-level
+    /// warnings (e.g. clamped start time) surface in this editor's <see cref="ViewModelBase.LastErrorMessage"/>
+    /// rather than being routed through the parent list VM.
+    /// </summary>
+    private readonly Func<string, Task> _showMeetingWarning;
 
     // Instructor multi-select
     [ObservableProperty] private ObservableCollection<InstructorSelectionViewModel> _instructorSelections = new();
@@ -400,7 +406,6 @@ public partial class SectionEditViewModel : ViewModelBase
         IReadOnlyList<SectionCodePattern> codePatterns,
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
-        Func<string, Task> onValidationError,
         IBlockPatternRepository blockPatternRepository,
         double? defaultBlockLength = null)
     {
@@ -408,7 +413,11 @@ public partial class SectionEditViewModel : ViewModelBase
         IsNew = isNew;
         IsCopy = isCopy;
         _onSave = onSave;
-        _onValidationError = onValidationError;
+
+        // Route meeting-level warnings (e.g. clamped start time) to this editor's LastErrorMessage
+        // so the feedback appears inline in the editor, close to where the user is working.
+        _showMeetingWarning = msg => { LastErrorMessage = msg; return Task.CompletedTask; };
+
         _legalStartTimes = legalStartTimes;
         _meetingTypes = meetingTypes;
         _rooms = rooms;
@@ -513,7 +522,7 @@ public partial class SectionEditViewModel : ViewModelBase
         // Meetings — pass rooms down so each meeting can show its own room picker.
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
-            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, entry, defaultBlockLength, _onValidationError,
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, entry, defaultBlockLength, _showMeetingWarning,
                 unit: AppSettings.Current.BlockLengthUnit));
 
         // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
@@ -591,7 +600,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private void AddMeeting()
     {
         Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
-            defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError,
+            defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
             unit: AppSettings.Current.BlockLengthUnit));
     }
 
@@ -646,7 +655,7 @@ public partial class SectionEditViewModel : ViewModelBase
             // the auto-fill fires OnSelectedBlockLengthChanged and the coupling propagates
             // it to all follower meetings just like a manual change would.
             var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
-                defaultBlockLength: _defaultBlockLength, onWarning: _onValidationError,
+                defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
                 unit: AppSettings.Current.BlockLengthUnit);
             meeting.SelectedDay = day;
             created.Add(meeting);
@@ -742,6 +751,9 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private async Task Save()
     {
+        // Clear any prior validation advisory so it does not persist across save attempts.
+        LastErrorMessage = null;
+
         var trimmedCode = SectionCode.Trim();
 
         // Guard: must have course and section code
@@ -755,17 +767,18 @@ public partial class SectionEditViewModel : ViewModelBase
             return;
         }
 
-        // Guard: validate all meetings have both start time and block length
+        // Guard: validate all meetings have both start time and block length.
+        // The error is set on this VM's LastErrorMessage so it appears inside the editor,
+        // close to where the user is working, rather than at the top of the section list.
         var incomplete = Meetings
             .Where(m => (m.SelectedStartTime.HasValue && !m.SelectedBlockLength.HasValue) ||
                         (!m.SelectedStartTime.HasValue && m.SelectedBlockLength.HasValue))
             .ToList();
         if (incomplete.Any())
         {
-            var msg = incomplete.Count == 1
+            LastErrorMessage = incomplete.Count == 1
                 ? "One meeting has a start time but no block length. Please complete it or delete it."
                 : $"{incomplete.Count} meetings are incomplete. Each needs both a start time and block length.";
-            await _onValidationError(msg);
             return;
         }
 

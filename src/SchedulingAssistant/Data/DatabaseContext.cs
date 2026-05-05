@@ -22,6 +22,9 @@ public class DatabaseContext : IDatabaseContext
     public DbConnection Connection => _conn;
 
     /// <inheritdoc/>
+    public bool SupportsTransactions => true;
+
+    /// <inheritdoc/>
     public void MarkDirty()
     {
         if (Interlocked.CompareExchange(ref _dirtyFired, 1, 0) == 0)

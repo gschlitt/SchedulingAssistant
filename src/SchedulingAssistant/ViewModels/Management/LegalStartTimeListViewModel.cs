@@ -279,13 +279,15 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
+        LastErrorMessage = null;
         if (string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var entry = new LegalStartTime();
         EditVm = new LegalStartTimeEditViewModel(entry, isNew: true, _blockLengthUnit,
             onSave: async e =>
             {
                 try { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
             isDuplicateBlockLength: bl => Entries.Any(e => Math.Abs(e.BlockLength - bl) < 0.0001));
@@ -294,21 +296,24 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
+        LastErrorMessage = null;
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
         var copy = new LegalStartTime { BlockLength = SelectedEntry.BlockLength, StartTimes = new List<int>(SelectedEntry.StartTimes) };
         EditVm = new LegalStartTimeEditViewModel(copy, isNew: false, _blockLengthUnit,
             onSave: async e =>
             {
                 try { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); await _dialog.ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                await Task.CompletedTask;
             },
             onCancel: () => EditVm = null);
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
-    private async Task Delete()
+    private void Delete()
     {
         if (SelectedEntry is null || string.IsNullOrEmpty(_currentAcademicYearId)) return;
+        LastErrorMessage = null;
         try
         {
             _repo.Delete(_currentAcademicYearId, SelectedEntry.BlockLength);
@@ -317,7 +322,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "LegalStartTimeListViewModel.Delete");
-            await _dialog.ShowError("The delete could not be completed. Please try again.");
+            LastErrorMessage = "The delete could not be completed. Please try again.";
         }
     }
 

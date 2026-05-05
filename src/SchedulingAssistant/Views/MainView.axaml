@@ -550,7 +550,6 @@
 								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
 								Text="Filtered by:" />
 							<TextBlock
-								MaxWidth="400"
 								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
@@ -558,7 +557,7 @@
 								Foreground="{StaticResource FilterBadgeText}"
 								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
 								Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
-								TextTrimming="CharacterEllipsis" />
+								TextWrapping="Wrap" />
 
 							<Border
 								Width="1"
@@ -571,7 +570,8 @@
 								FontWeight="SemiBold"
 								Foreground="{StaticResource OverlayBadgeText}"
 								IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-								Text="{Binding ScheduleGridVm.Filter.OverlaySummary}" />
+								Text="{Binding ScheduleGridVm.Filter.OverlaySummary}"
+								TextWrapping="Wrap" />
 						</WrapPanel>
 					</controls:DetachablePanel.HeaderContext>
 					<controls:DetachablePanel.PanelContent>

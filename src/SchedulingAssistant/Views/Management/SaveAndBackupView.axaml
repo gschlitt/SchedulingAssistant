@@ -27,18 +27,18 @@
                 <!--  Autosave interval  -->
                 <TextBlock
                     Margin="0,4,0,0"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     FontWeight="SemiBold"
                     Text="Auto-save interval (minutes)" />
                 <TextBlock
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextDimLabel}"
                     Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval."
                     TextWrapping="Wrap" />
                 <NumericUpDown
                     MaxWidth="140"
                     HorizontalAlignment="Left"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     FormatString="0"
                     Increment="5"
                     Maximum="120"
@@ -47,7 +47,7 @@
 
                 <TextBlock
                     Margin="0,8,0,0"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextDimLabel}"
                     Text="Backups are taken immediately before each save and at the interval below. "
                     TextWrapping="Wrap" />
@@ -55,7 +55,7 @@
                 <!--  Backup folder  -->
                 <TextBlock
                     Margin="0,4,0,0"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     FontWeight="SemiBold"
                     Text="Backup Folder" />
                 <DockPanel LastChildFill="True">
@@ -66,14 +66,14 @@
                         Content="Browse…"
                         DockPanel.Dock="Right" />
                     <TextBox
-                        FontSize="11"
+                        FontSize="{StaticResource FontSizeNormal}"
                         IsReadOnly="False"
                         Text="{Binding BackupFolderPath, Mode=TwoWay}"
                         PlaceholderText="No backup folder configured" />
                 </DockPanel>
 
                 <TextBlock
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource NotificationWarningText}"
                     IsVisible="{Binding !IsBackupConfigured}"
                     Text="No backup folder is configured. Backups will not run until a folder is set."
@@ -84,11 +84,11 @@
 
                     <StackPanel Grid.Column="0" Spacing="4">
                         <TextBlock
-                            FontSize="11"
+                            FontSize="{StaticResource FontSizeNormal}"
                             FontWeight="SemiBold"
                             Text="Backup interval (minutes)" />
                         <NumericUpDown
-                            FontSize="11"
+                            FontSize="{StaticResource FontSizeNormal}"
                             FormatString="0"
                             Increment="5"
                             Maximum="480"
@@ -98,11 +98,11 @@
 
                     <StackPanel Grid.Column="2" Spacing="4">
                         <TextBlock
-                            FontSize="11"
+                            FontSize="{StaticResource FontSizeNormal}"
                             FontWeight="SemiBold"
                             Text="Backups to keep" />
                         <NumericUpDown
-                            FontSize="11"
+                            FontSize="{StaticResource FontSizeNormal}"
                             FormatString="0"
                             Increment="1"
                             Maximum="50"
@@ -126,7 +126,7 @@
                             IsEnabled="{Binding IsBackupConfigured}" />
                         <TextBlock
                             VerticalAlignment="Center"
-                            FontSize="11"
+                            FontSize="{StaticResource FontSizeNormal}"
                             Text="{Binding LastBackupStatus}"
                             TextWrapping="Wrap" />
                     </DockPanel>
@@ -140,19 +140,19 @@
             -->
             <StackPanel Spacing="10">
                 <TextBlock
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeLarge}"
                     FontWeight="SemiBold"
                     Text="Restore from Backup" />
 
                 <TextBlock
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextDimLabel}"
                     Text="Restoring replaces the current database with the selected backup and restarts the application. The current database is not kept."
                     TextWrapping="Wrap" />
 
                 <!--  Empty state — shown when backup entries list is empty  -->
                 <TextBlock
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeNormal}"
                     FontStyle="Italic"
                     Foreground="{StaticResource TextDimLabel}"
                     IsVisible="{Binding HasNoBackups}"
@@ -175,14 +175,14 @@
                                         CommandParameter="{Binding}"
                                         Content="Restore…"
                                         DockPanel.Dock="Right"
-                                        FontSize="11" />
+                                        FontSize="{StaticResource FontSizeNormal}" />
                                     <StackPanel VerticalAlignment="Center" Spacing="1">
                                         <TextBlock
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeNormal}"
                                             FontWeight="SemiBold"
                                             Text="{Binding TimestampDisplay}" />
                                         <TextBlock
-                                            FontSize="10"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             Foreground="{StaticResource TextDimLabel}"
                                             Text="{Binding Detail}" />
                                     </StackPanel>

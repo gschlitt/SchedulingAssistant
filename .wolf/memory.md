@@ -4548,3 +4548,182 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 07:57 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 1→2 lines | ~40 |
+| 07:57 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | expanded (+48 lines) | ~646 |
+| 07:58 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 5→2 lines | ~19 |
+| 07:58 | Edited src/SchedulingAssistant/Views/GridView/GridFilterView.axaml | 1→5 lines | ~39 |
+| 07:58 | Session end: 4 writes across 1 files (GridFilterView.axaml) | 2 reads | ~30072 tok |
+| 08:00 | Session end: 4 writes across 1 files (GridFilterView.axaml) | 2 reads | ~30072 tok |
+
+## Session: 2026-05-04 08:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:34 | Edited src/SchedulingAssistant/Data/IDatabaseContext.cs | expanded (+9 lines) | ~162 |
+| 08:34 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 5→8 lines | ~50 |
+| 08:35 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoDatabaseContext.cs | modified MarkDirty() | ~90 |
+| 08:35 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | added optional chaining | ~773 |
+| 08:35 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | 7→8 lines | ~78 |
+| 08:35 | Edited src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs | 7→8 lines | ~78 |
+| 08:35 | Edited src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs | added optional chaining | ~290 |
+| 08:37 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 08:46 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 08:47 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 08:49 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 08:51 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 08:52 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 08:59 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 09:13 | Session end: 7 writes across 5 files (IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs, SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs) | 9 reads | ~4646 tok |
+| 10:20 | Created src/SchedulingAssistant/Services/PlatformCapabilities.cs | — | ~270 |
+| 10:20 | Edited src/SchedulingAssistant/ViewModels/Management/ExportViewModel.cs | added 1 condition(s) | ~77 |
+| 10:21 | Edited src/SchedulingAssistant/ViewModels/Management/ExportViewModel.cs | modified if() | ~117 |
+| 10:21 | Edited src/SchedulingAssistant/ViewModels/Management/WorkloadReportViewModel.cs | added 1 condition(s) | ~100 |
+| 10:21 | Edited src/SchedulingAssistant/ViewModels/Management/CourseHistoryExportViewModel.cs | added 1 condition(s) | ~100 |
+
+## Session: 2026-05-04 10:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/ViewModelBase.cs | expanded (+9 lines) | ~197 |
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→1 lines | ~16 |
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/Management/ReleaseManagementViewModel.cs | 3→1 lines | ~32 |
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentsManagementViewModel.cs | 3→1 lines | ~26 |
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→2 lines | ~47 |
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | inline fix | ~25 |
+| 12:44 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→2 lines | ~42 |
+| 12:45 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 5→5 lines | ~78 |
+| 12:45 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | modified Add() | ~723 |
+| 12:46 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | modified Add() | ~1461 |
+| 12:46 | Edited src/SchedulingAssistant/ViewModels/Management/SubjectListViewModel.cs | modified Add() | ~578 |
+| 12:46 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 2→2 lines | ~46 |
+| 12:46 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | modified Delete() | ~69 |
+| 12:46 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 2→2 lines | ~43 |
+| 12:47 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | modified Add() | ~926 |
+| 12:47 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | modified Add() | ~578 |
+| 12:47 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | inline fix | ~29 |
+| 12:47 | Edited src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs | inline fix | ~29 |
+| 12:47 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentListViewModel.cs | 5→6 lines | ~58 |
+| 12:47 | Edited src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs | 5→6 lines | ~65 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | expanded (+8 lines) | ~214 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/RoomListView.axaml | expanded (+8 lines) | ~153 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/SchedulingEnvironmentListView.axaml | expanded (+8 lines) | ~161 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml | expanded (+8 lines) | ~153 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml | expanded (+8 lines) | ~162 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/SubjectListView.axaml | expanded (+8 lines) | ~154 |
+| 12:48 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | expanded (+8 lines) | ~168 |
+| 12:49 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | expanded (+8 lines) | ~222 |
+| 12:50 | Session end: 28 writes across 20 files (ViewModelBase.cs, SectionListViewModel.cs, ReleaseManagementViewModel.cs, CommitmentsManagementViewModel.cs, InstructorListViewModel.cs) | 19 reads | ~25509 tok |
+
+## Session: 2026-05-04 12:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | expanded (+6 lines) | ~117 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 4→3 lines | ~40 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→7 lines | ~96 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~75 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | inline fix | ~23 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | modified Save() | ~412 |
+| 12:57 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | removed 2 lines | ~8 |
+| 12:58 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+8 lines) | ~292 |
+| 12:59 | Session end: 8 writes across 3 files (SectionEditViewModel.cs, SectionListViewModel.cs, SectionListView.axaml) | 3 reads | ~45362 tok |
+| 13:01 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→3 lines | ~73 |
+| 13:01 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | added optional chaining | ~788 |
+
+## Session: 2026-05-04 — WASM compatibility + inline errors + section editor validation
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Added SupportsTransactions to IDatabaseContext; fixed WASM delete hang | IDatabaseContext.cs, DatabaseContext.cs, DemoDatabaseContext.cs | WASM delete no longer crashes |
+| Nullable tx pattern in SchedulingEnvironmentListViewModel + RoomListViewModel | SchedulingEnvironmentListViewModel.cs, RoomListViewModel.cs | Atomicity on desktop, safe skip in WASM |
+| Added LastErrorMessage to ViewModelBase; removed all ShowError dialog calls from 11 VMs | ViewModelBase.cs, 10 management VMs | Inline errors everywhere; WASM-safe |
+| Added LastErrorMessage TextBlock to 8 management views | InstructorListView, RoomListView, SchedulingEnvironmentListView, AcademicYearListView, SemesterManagerView, SubjectListView, LegalStartTimeListView, CourseListView | Errors visible in UI |
+| Created PlatformCapabilities.cs; replaced scattered #if BROWSER in 3 export VMs | Services/PlatformCapabilities.cs, ExportViewModel.cs, WorkloadReportViewModel.cs, CourseHistoryExportViewModel.cs | Single capability registry |
+| Moved section editor validation error into editor (SectionEditViewModel.LastErrorMessage) | SectionEditViewModel.cs, SectionListViewModel.cs, SectionListView.axaml | Error appears inside editor, not list top |
+| 13:02 | Session end: 10 writes across 4 files (SectionEditViewModel.cs, SectionListViewModel.cs, SectionListView.axaml, MEMORY.md) | 4 reads | ~46285 tok |
+
+## Session: 2026-05-04 13:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:06 | Edited src/SchedulingAssistant/Services/PlatformCapabilities.cs | expanded (+9 lines) | ~369 |
+| 13:06 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | 2→2 lines | ~65 |
+| 13:06 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | modified CopySemester() | ~124 |
+| 13:06 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicYearListViewModel.cs | modified OnLockStateChanged() | ~82 |
+| 13:07 | Edited src/SchedulingAssistant/ViewModels/Management/SemesterManagerViewModel.cs | inline fix | ~28 |
+| 13:09 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_styling_branch.md | modified guard() | ~286 |
+| 13:09 | Session end: 6 writes across 4 files (PlatformCapabilities.cs, AcademicYearListViewModel.cs, SemesterManagerViewModel.cs, project_styling_branch.md) | 5 reads | ~7179 tok |
+
+## Session: 2026-05-04 13:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:12 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | modified OnCheckItemSelectionChanged() | ~104 |
+| 13:13 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | 10→8 lines | ~120 |
+| 13:13 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | removed 12 lines | ~5 |
+| 13:14 | Session end: 3 writes across 1 files (SemesterContext.cs) | 2 reads | ~17908 tok |
+
+## Session: 2026-05-04 13:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-04 14:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-04 14:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:46 | Edited src/SchedulingAssistant/Services/PlatformCapabilities.cs | expanded (+9 lines) | ~289 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified Save() | ~447 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 7→7 lines | ~93 |
+| 14:47 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 7→9 lines | ~112 |
+| 14:47 | Edited src/SchedulingAssistant/Views/MainView.axaml | 14→16 lines | ~158 |
+| 14:47 | Session end: 5 writes across 3 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml) | 3 reads | ~14782 tok |
+| 17:49 | Session end: 5 writes across 3 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml) | 3 reads | ~14782 tok |
+| 17:50 | Session end: 5 writes across 3 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml) | 3 reads | ~14782 tok |
+| 17:52 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified ToLocalTime() | ~888 |
+| 17:52 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 1 condition(s) | ~204 |
+| 17:52 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+8 lines) | ~371 |
+| 17:52 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+11 lines) | ~179 |
+| 17:56 | Edited src/SchedulingAssistant/App.axaml.cs | modified InitializeServices() | ~647 |
+| 17:57 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~389 |
+| 17:57 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 3→4 lines | ~87 |
+| 17:58 | Session end: 12 writes across 5 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml, App.axaml.cs, MainWindow.axaml.cs) | 6 reads | ~21733 tok |
+| 18:00 | Edited src/SchedulingAssistant/Views/MainView.axaml | 10→10 lines | ~114 |
+| 18:01 | Session end: 13 writes across 5 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml, App.axaml.cs, MainWindow.axaml.cs) | 6 reads | ~21855 tok |
+| 18:08 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | added 1 condition(s) | ~316 |
+| 18:09 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~222 |
+| 18:10 | Session end: 15 writes across 6 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml, App.axaml.cs, MainWindow.axaml.cs) | 6 reads | ~40917 tok |
+| 18:36 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_styling_branch.md | modified guard() | ~1064 |
+| 18:36 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→2 lines | ~116 |
+| 18:36 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~43 |
+| 18:36 | Session end: 18 writes across 8 files (PlatformCapabilities.cs, MainWindowViewModel.cs, MainView.axaml, App.axaml.cs, MainWindow.axaml.cs) | 8 reads | ~42227 tok |
+
+## Session: 2026-05-05 19:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:25 | Edited src/SchedulingAssistant/Services/BackupService.cs | 4→5 lines | ~72 |
+| 19:25 | Edited src/SchedulingAssistant/Services/BackupService.cs | added 2 condition(s) | ~509 |
+| 19:25 | Edited src/SchedulingAssistant/Services/BackupService.cs | 3→4 lines | ~45 |
+| 19:25 | Session end: 3 writes across 1 files (BackupService.cs) | 1 reads | ~671 tok |
+| 19:28 | Edited src/SchedulingAssistant/Views/Management/SaveAndBackupView.axaml | 107→107 lines | ~1334 |
+| 19:28 | Edited src/SchedulingAssistant/Views/Management/SaveAndBackupView.axaml | 18→18 lines | ~250 |
+| 19:28 | Edited src/SchedulingAssistant/Views/Management/SaveAndBackupView.axaml | 17→17 lines | ~314 |
+| 19:28 | Session end: 6 writes across 2 files (BackupService.cs, SaveAndBackupView.axaml) | 2 reads | ~2704 tok |
+
+## Session: 2026-05-05 20:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:06 | Edited src/SchedulingAssistant/Views/MainView.axaml | 23→23 lines | ~267 |
+| 20:06 | Session end: 1 writes across 1 files (MainView.axaml) | 1 reads | ~6123 tok |
+
+## Session: 2026-05-05 20:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

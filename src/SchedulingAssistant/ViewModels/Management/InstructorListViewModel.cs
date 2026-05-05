@@ -307,13 +307,14 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
+        LastErrorMessage = null;
         var instructor = new Instructor();
         EditVm = new InstructorEditViewModel(instructor, isNew: true,
             staffTypes: GetStaffTypes(),
             onSave: i =>
             {
                 try { _repo.Insert(i); Load(); SelectedInstructor = Instructors.FirstOrDefault(x => x.Id == i.Id); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Add"); _ = _dialog.ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Add"); LastErrorMessage = "The save could not be completed. Please try again."; }
             },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials));
@@ -322,6 +323,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
+        LastErrorMessage = null;
         if (SelectedInstructor is null) return;
         var s = SelectedInstructor;
         var copy = new Instructor
@@ -340,7 +342,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
             onSave: i =>
             {
                 try { _repo.Update(i); Load(); SelectedInstructor = Instructors.FirstOrDefault(x => x.Id == i.Id); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Edit"); _ = _dialog.ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "InstructorListViewModel.Edit"); LastErrorMessage = "The save could not be completed. Please try again."; }
             },
             onCancel: () => EditVm = null,
             initialsExist: initials => _repo.ExistsByInitials(initials, excludeId: copy.Id));
@@ -351,9 +353,11 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     {
         if (SelectedInstructor is null) return;
 
+        LastErrorMessage = null;
+
         if (_repo.HasSections(SelectedInstructor.Id))
         {
-            await _dialog.ShowError("The selected instructor has assigned workload and cannot be deleted. Consider deactivating the instructor instead.");
+            LastErrorMessage = "This instructor has assigned workload and cannot be deleted. Consider deactivating them instead.";
             return;
         }
 
@@ -368,7 +372,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "InstructorListViewModel.Delete");
-            await _dialog.ShowError("The delete could not be completed. Please try again.");
+            LastErrorMessage = "The delete could not be completed. Please try again.";
         }
     }
 }

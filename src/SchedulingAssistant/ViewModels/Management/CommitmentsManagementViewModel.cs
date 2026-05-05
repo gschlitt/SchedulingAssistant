@@ -39,8 +39,6 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
     /// <summary>Non-null while an Add or Edit form is open inline. Null when no form is active.</summary>
     [ObservableProperty] private CommitmentEditViewModel? _editVm;
 
-    [ObservableProperty] private string? _lastErrorMessage;
-
     /// <summary>Exposed to XAML to bind button panels' IsEnabled in read-only mode.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 

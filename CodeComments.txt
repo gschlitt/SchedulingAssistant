@@ -3,23 +3,23 @@ Bugs:
 Vacuum Into is failing?
 When you open a new db within file, the backup folder defaults to usersettings?
 
-In WASM deleting a section type causes a crash, as well as other things in scheduling environment
+After invitation to take over write, null semester is chosen, also saw a crash here
 
-Workloads not being reported properly, (0) Wasm version only?
 
-Filter/Overlay notification needs to wrap (just goes off screen now)
 
-Icons in WASM version off for filters.
 
-Move "show events" inside events editor, make default on with advisory
-"20 sections, 8 meetings, 3 events shown"
 
-Move "readonly" banner notification replace save button substitute "refresh"
+
+
+
+
 
 Delete key operational across lists?
 
+Vacuum Into is failing randomly
 
 Guided tour?
+
 
 
 WorkFlows?

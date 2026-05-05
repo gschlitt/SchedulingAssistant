@@ -30,11 +30,15 @@ public partial class ExportViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanExport))]
     private async Task ExportSchedulePng()
     {
-#if BROWSER
+        if (!PlatformCapabilities.SupportsFileDialogs)
+        {
+            StatusMessage = "File export is not available in the browser demo.";
+            return;
+        }
+        // The await below is unreachable on desktop but satisfies the async signature
+        // in WASM builds where the #if !BROWSER block is excluded entirely.
         await Task.CompletedTask;
-        StatusMessage = "Export is not available in the browser demo.";
-        return;
-#else
+#if !BROWSER
         var window = _mainVm.MainWindowReference;
         if (window is null) return;
 

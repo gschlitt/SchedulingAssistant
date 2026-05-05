@@ -5,6 +5,7 @@ using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
+using System.Data.Common;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -190,6 +191,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     private async Task Delete()
     {
         if (SelectedItem is null) return;
+        LastErrorMessage = null;
         var id = SelectedItem.Id;
         var name = SelectedItem.Name;
 
@@ -202,7 +204,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         if (!await _dialog.Confirm($"Delete \"{name}\"?\n\nThis will also remove it from {affected}."))
             return;
 
-        using var tx = _db.Connection.BeginTransaction();
+        // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
+        // uses in-memory repositories with no real connection, so tx is null there.
+        DbTransaction? tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
         try
         {
             var sections = _sectionRepo.GetAll();
@@ -258,14 +262,18 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             }
 
             _repo.Delete(id, tx);
-            tx.Commit();
+            tx?.Commit();
             Load();
             _sectionListVm.Reload();
         }
         catch (Exception)
         {
-            tx.Rollback();
-            await _dialog.ShowError("The delete could not be completed. No changes were made. Please try again.");
+            tx?.Rollback();
+            LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
+        }
+        finally
+        {
+            tx?.Dispose();
         }
     }
 }

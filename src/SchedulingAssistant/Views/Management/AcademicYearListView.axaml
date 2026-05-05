@@ -99,6 +99,14 @@
             <Button Command="{Binding CopySemesterCommand}" Content="Copy Semester" />
             <Button Command="{Binding EmptySemesterCommand}" Content="Empty Semester" />
         </StackPanel>
+        <!--  Inline error message  -->
+        <TextBlock
+            FontSize="10"
+            Foreground="{StaticResource TextError}"
+            IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Text="{Binding LastErrorMessage}"
+            TextWrapping="Wrap"
+            Margin="0,4,0,0" />
 
     </Grid>
 </UserControl>

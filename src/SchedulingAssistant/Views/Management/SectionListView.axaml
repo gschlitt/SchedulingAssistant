@@ -78,6 +78,14 @@
                         Content="Cancel" />
                 </StackPanel>
 
+                <!--  Inline validation error — shown inside the editor so it's near the failing field  -->
+                <TextBlock
+                    FontSize="10"
+                    Foreground="{StaticResource TextError}"
+                    IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Text="{Binding LastErrorMessage}"
+                    TextWrapping="Wrap" />
+
                 <!--  Subject + Course Number + Pattern + Section Code + Section Type side by side  -->
                 <!--  The Pattern column (col 2) is Auto-width and collapses when HasCodePatterns is false  -->
                 <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,Auto,80,90">

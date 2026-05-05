@@ -48,6 +48,7 @@ public class BackupService : IDisposable
     private readonly SemaphoreSlim _backupGuard = new(1, 1);
     private string? _dbName;   // filename-without-extension prefix for backup filenames
     private bool _disposed;
+    private DateTime _lastTimerFire = DateTime.MinValue;
 
     /// <summary>
     /// Result of the most recent backup attempt, or null if no backup has been attempted
@@ -106,6 +107,7 @@ public class BackupService : IDisposable
     {
         _dbName = Path.GetFileNameWithoutExtension(dbPath);
         await PerformBackupAsync();
+        _lastTimerFire = DateTime.UtcNow;
         StartPeriodicTimer();
     }
 
@@ -582,12 +584,33 @@ public class BackupService : IDisposable
     /// Runs <see cref="PerformBackupAsync"/> inside a semaphore guard so that overlapping
     /// timer ticks are skipped rather than executing concurrently. Exceptions are caught
     /// and logged to prevent unobserved task exceptions on the thread pool.
+    ///
+    /// <para>Wake-from-sleep guard: if the timer fires more than one minute later than
+    /// expected (indicating the machine was suspended), the backup is deferred by 60 seconds
+    /// to give network shares time to reconnect before VACUUM INTO is attempted.</para>
     /// </summary>
     private async Task RunGuardedBackupAsync()
     {
         if (!_backupGuard.Wait(0)) return; // previous backup still running — skip this tick
         try
         {
+            // Detect wake-from-sleep: the timer interval is BackupIntervalMinutes, but
+            // System.Threading.Timer fires immediately after resume if the deadline passed
+            // while the machine was asleep.  A gap > interval + 1 min is a reliable signal.
+            var intervalMinutes = Math.Max(AppSettings.Current.BackupIntervalMinutes, 1);
+            var expectedInterval = TimeSpan.FromMinutes(intervalMinutes);
+            var now = DateTime.UtcNow;
+
+            if (_lastTimerFire != DateTime.MinValue &&
+                (now - _lastTimerFire) > expectedInterval + TimeSpan.FromMinutes(1))
+            {
+                _logger.LogInfo("BackupService: wake-from-sleep detected, deferring backup 60 s");
+                _backupGuard.Release();
+                await Task.Delay(TimeSpan.FromSeconds(60));
+                if (!_backupGuard.Wait(0)) return;
+            }
+
+            _lastTimerFire = now;
             await PerformBackupAsync();
         }
         catch (Exception ex)

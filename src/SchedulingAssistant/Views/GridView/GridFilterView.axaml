@@ -5,10 +5,15 @@
 	xmlns:b="using:SchedulingAssistant.Behaviors"
 	xmlns:conv="using:SchedulingAssistant.Converters"
 	xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+	xmlns:converters="clr-namespace:Avalonia.Controls.Converters;assembly=Avalonia.Controls"
 	xmlns:vm="using:SchedulingAssistant.ViewModels.GridView"
 	x:Name="FilterRoot"
 	x:CompileBindings="False"
 	x:DataType="vm:GridFilterViewModel">
+
+	<UserControl.Resources>
+		<converters:BorderGapMaskConverter x:Key="BorderGapMaskConverter" />
+	</UserControl.Resources>
 
 	<UserControl.Styles>
 		<!--  Compact checkbox style inside popups  -->
@@ -168,6 +173,54 @@
 		<Style Selector="ListBox.FilterList ListBoxItem:pointerover /template/ ContentPresenter">
 			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
 		</Style>
+		<!--  GroupBox template override: tighten the 6px structural padding to 2px  -->
+		<Style Selector="GroupBox">
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Grid x:Name="RootGrid" UseLayoutRounding="true"
+						  ColumnDefinitions="2,Auto,*,2"
+						  RowDefinitions="Auto,Auto,*,2">
+						<Border Grid.Row="1" Grid.RowSpan="3"
+								Grid.Column="0" Grid.ColumnSpan="4"
+								CornerRadius="{TemplateBinding CornerRadius}"
+								BorderThickness="{TemplateBinding BorderThickness}"
+								BorderBrush="Transparent"
+								Background="{TemplateBinding Background}" />
+						<Border Grid.Row="1" Grid.RowSpan="3"
+								Grid.ColumnSpan="4"
+								CornerRadius="{TemplateBinding CornerRadius}"
+								BorderThickness="{TemplateBinding BorderThickness}"
+								BorderBrush="{TemplateBinding BorderBrush}">
+							<Border.OpacityMask>
+								<MultiBinding Converter="{StaticResource BorderGapMaskConverter}"
+											  ConverterParameter="2">
+									<Binding ElementName="Header" Path="Bounds.Width" />
+									<Binding RelativeSource="{RelativeSource Self}" Path="Bounds.Width" />
+									<Binding RelativeSource="{RelativeSource Self}" Path="Bounds.Height" />
+								</MultiBinding>
+							</Border.OpacityMask>
+						</Border>
+						<Border x:Name="Header" Padding="2,0,2,0"
+								Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
+							<ContentPresenter Name="PART_HeaderPresenter"
+											  Content="{TemplateBinding Header}"
+											  ContentTemplate="{TemplateBinding HeaderTemplate}"
+											  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+											  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+											  UseLayoutRounding="{TemplateBinding UseLayoutRounding}" />
+						</Border>
+						<ContentPresenter Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+										  Name="PART_ContentPresenter"
+										  ContentTemplate="{TemplateBinding ContentTemplate}"
+										  Content="{TemplateBinding Content}"
+										  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+										  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+										  UseLayoutRounding="{TemplateBinding UseLayoutRounding}"
+										  Margin="{TemplateBinding Padding}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter>
+		</Style>
 	</UserControl.Styles>
 
 		<WrapPanel VerticalAlignment="Center" >	
@@ -176,6 +229,7 @@
 			<GroupBox
 				Margin="5,0,5,0"
 				Background="{StaticResource FilterSelectorBackground}"
+				Padding="0,-3,0,0"
 				BorderThickness="0"
 				>
 				<GroupBox.Header>
@@ -551,6 +605,7 @@
 				Margin="5,0,5,0"
 				Background="{StaticResource FilterSelectorBackground}"
 				BorderThickness="0"
+				Padding="0,-3,0,0"
 				>
 				<GroupBox.Header>
 					<Border Background="{StaticResource FilterSelectorBackground}" CornerRadius="4" Padding="0,0,0,0">
@@ -754,7 +809,7 @@
 			<!--  Events visibility toggle -->
 			<Border
 				Margin="4,4.5,0,0"
-				Padding="2,2,2,4"
+				Padding="2,2,2,3"
 				VerticalAlignment="Bottom"
 				Background="{StaticResource FilterSelectorBackground}"
 				BorderThickness="0"

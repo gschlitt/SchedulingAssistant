@@ -45,7 +45,6 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private SectionListItemViewModel? _expandedItem;
     [ObservableProperty] private SectionEditViewModel? _editVm;
-    [ObservableProperty] private string? _lastErrorMessage;
     [ObservableProperty] private int _selectedSortModeIndex;
 
     /// <summary>
@@ -744,10 +743,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, $"SectionListViewModel.{callerTag}");
-                    await _dialog.ShowError("The save could not be completed. Please try again.");
+                    LastErrorMessage = "The save could not be completed. Please try again.";
                 }
             },
-            onValidationError: msg => _dialog.ShowError(msg),
             _blockPatternRepo,
             defaultBlockLength: ctx.DefaultBlockLength);
     }
@@ -931,7 +929,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "SectionListViewModel.Delete");
-            await _dialog.ShowError("The delete could not be completed. Please try again.");
+            LastErrorMessage = "The delete could not be completed. Please try again.";
         }
     }
 
@@ -959,10 +957,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         if (!IsEditing) return false;
         var heading = ExpandedItem?.Heading;
         var subject = string.IsNullOrEmpty(heading) ? "a new section" : heading;
-        await _dialog.ShowError(
+        LastErrorMessage =
             $"You are currently editing {subject}. " +
             "Please save or close the section editor before editing another section. " +
-            "Use Apply (or Enter) to save your changes, or press Cancel (or Esc) to discard them.");
+            "Use Apply (or Enter) to save your changes, or press Cancel (or Esc) to discard them.";
         return true;
     }
 

@@ -5,6 +5,7 @@ using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using System.Collections.ObjectModel;
+using System.Data.Common;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -200,6 +201,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
     private async Task Delete()
     {
         if (SelectedRoom is null) return;
+        LastErrorMessage = null;
         var id          = SelectedRoom.Id;
         var displayName = $"{SelectedRoom.Building} {SelectedRoom.RoomNumber}".Trim();
 
@@ -207,7 +209,9 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
             $"Delete room \"{displayName}\"?\n\nThis will also remove it from all sections in all semesters that reference it."))
             return;
 
-        using var tx = _db.Connection.BeginTransaction();
+        // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
+        // uses in-memory repositories with no real connection, so tx is null there.
+        DbTransaction? tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
         try
         {
             var sections = _sectionRepo.GetAll();
@@ -222,14 +226,18 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
                 if (changed) _sectionRepo.Update(section, tx);
             }
             _repo.Delete(id, tx);
-            tx.Commit();
+            tx?.Commit();
             Load();
             _sectionListVm.Reload();
         }
         catch (Exception)
         {
-            tx.Rollback();
-            await _dialog.ShowError("The delete could not be completed. No changes were made. Please try again.");
+            tx?.Rollback();
+            LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
+        }
+        finally
+        {
+            tx?.Dispose();
         }
     }
 }

@@ -53,12 +53,14 @@ public partial class SubjectListViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
+        LastErrorMessage = null;
         var subject = new Subject();
         EditVm = new SubjectEditViewModel(subject, isNew: true,
             onSave: async s =>
             {
                 try { _repo.Insert(s); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); await _dialog.ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name),
@@ -68,6 +70,7 @@ public partial class SubjectListViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Edit()
     {
+        LastErrorMessage = null;
         if (SelectedSubject is null) return;
         var clone = new Subject
         {
@@ -79,7 +82,8 @@ public partial class SubjectListViewModel : ViewModelBase
             onSave: async s =>
             {
                 try { _repo.Update(s); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); await _dialog.ShowError("The save could not be completed. Please try again."); }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(name, excludeId: clone.Id),
@@ -87,13 +91,15 @@ public partial class SubjectListViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
-    private async Task Delete()
+    private void Delete()
     {
         if (SelectedSubject is null) return;
 
+        LastErrorMessage = null;
+
         if (_repo.HasCourses(SelectedSubject.Id))
         {
-            await _dialog.ShowError($"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.");
+            LastErrorMessage = $"Cannot delete \"{SelectedSubject.Name}\" — it has courses. Remove all courses from this subject first.";
             return;
         }
 
