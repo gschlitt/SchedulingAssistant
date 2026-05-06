@@ -1,11 +1,12 @@
 Bugs:
 
-Vacuum Into is failing?
+Vacuum Into is failing?! Not just during sleep.
+
+
 When you open a new db within file, the backup folder defaults to usersettings?
 
-After invitation to take over write, null semester is chosen, also saw a crash here
 
-
+ChatGPT comments.
 
 
 
