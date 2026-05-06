@@ -250,7 +250,7 @@
 				</GroupBox.Header>
 			
 				<WrapPanel x:Name="FilterBody">
-					<Button  Command="{Binding ClearAllCommand}" FontSize="{StaticResource FontSizeSmall}" Background="Transparent" Content="Clear"/> 										
+					<Button  Command="{Binding ClearFiltersCommand}" FontSize="{StaticResource FontSizeSmall}" Background="Transparent" Content="Clear"/>
 					<!--  Instructor  -->
 					<Panel x:Name="InstructorPanel" IsVisible="True">
 						<ToggleButton
@@ -623,6 +623,7 @@
 
 					
 				<WrapPanel>
+					<Button  Command="{Binding ClearOverlayCommand}" FontSize="{StaticResource FontSizeSmall}" Background="Transparent" Content="Clear"/>
 					<!--  Overlay: Instructor  -->
 					<Panel x:Name="InstructorOverlayPanel" IsVisible="False">
 						<ToggleButton
