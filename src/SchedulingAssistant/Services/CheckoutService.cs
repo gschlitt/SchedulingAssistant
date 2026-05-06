@@ -71,9 +71,10 @@ namespace SchedulingAssistant.Services;
 ///         UI thread froze the window) and, if we no longer own it, fires the
 ///         same <see cref="HandleLockLossAsync"/> path. Triggers: another
 ///         user took over via stale-lock prompt while this machine slept.</item>
-///   <item><b>Heartbeat renewal failure.</b> Not yet treated as a lock-loss
-///         signal — currently logged only. Future work could route it through
-///         the same path.</item>
+///   <item><b>Heartbeat renewal failure.</b> After <see cref="WriteLockService.HeartbeatFailureThreshold"/>
+///         consecutive failures, <see cref="WriteLockService.HeartbeatFailed"/> fires and
+///         <see cref="OnHeartbeatFailed"/> routes it through the same
+///         <see cref="HandleLockLossAsync"/> path. (F11, 2026-05-04.)</item>
 /// </list>
 /// </summary>
 public sealed class CheckoutService : IDisposable
@@ -430,7 +431,8 @@ public sealed class CheckoutService : IDisposable
         SessionDirty  = true;
         CurrentHolder = null;
 
-        _lockService.WakeDetected += OnWake;
+        _lockService.WakeDetected    += OnWake;
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
         return CheckoutOutcome.WriteAccess;
     }
 
@@ -510,7 +512,8 @@ public sealed class CheckoutService : IDisposable
         SessionDirty  = true;
         CurrentHolder = null;
 
-        _lockService.WakeDetected += OnWake;
+        _lockService.WakeDetected    += OnWake;
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
         return CheckoutOutcome.WriteAccess;
     }
 
@@ -1082,9 +1085,33 @@ public sealed class CheckoutService : IDisposable
     private Task HandleLockLossAsync()
     {
         StopAutoSave();
-        _lockService.WakeDetected -= OnWake;
+        _lockService.WakeDetected    -= OnWake;
+        _lockService.HeartbeatFailed -= OnHeartbeatFailed;   // F11 — unsubscribe on first loss
         _dispatch(() => WriteLockLost?.Invoke());
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Called when <see cref="WriteLockService.HeartbeatFailed"/> fires — i.e., the heartbeat
+    /// timer has failed to renew the lock file <see cref="WriteLockService.HeartbeatFailureThreshold"/>
+    /// consecutive times. The lock is likely stale from the perspective of other readers, who
+    /// may attempt a takeover.
+    ///
+    /// <para>Routes through <see cref="HandleLockLossAsync"/> — the same path used for
+    /// save-time verification failures and wake-from-sleep checks — which raises
+    /// <see cref="WriteLockLost"/> so MainWindow can demote the session in place.
+    /// (F11, data-integrity-agenda 2026-05-04.)</para>
+    ///
+    /// <para>This handler is called from the heartbeat timer thread (not the UI thread);
+    /// <see cref="HandleLockLossAsync"/> dispatches to the UI thread via
+    /// <see cref="_dispatch"/> before raising <see cref="WriteLockLost"/>.</para>
+    /// </summary>
+    private void OnHeartbeatFailed()
+    {
+        if (Mode != CheckoutMode.WriteAccess) return;
+        _logger.LogInfo("CheckoutService: HeartbeatFailed — treating as lock-loss; demoting session.");
+        // Fire-and-forget: HandleLockLossAsync is synchronous today but marked Task for future use.
+        _ = HandleLockLossAsync();
     }
 
     /// <summary>

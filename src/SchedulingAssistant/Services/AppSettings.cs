@@ -19,6 +19,14 @@ public class AppSettings
         Path.Combine(SettingsDir, "settings.json");
 
     /// <summary>
+    /// Guards <see cref="_instance"/> initialization and all <see cref="Save"/> /
+    /// <see cref="AddRecentDatabase"/> mutations so that concurrent callers (e.g. the
+    /// autosave timer and the UI thread) cannot interleave writes to <see cref="RecentDatabases"/>
+    /// or produce partially-written settings files. (F15, F12 — data-integrity-agenda 2026-05-04.)
+    /// </summary>
+    private static readonly object _settingsLock = new object();
+
+    /// <summary>
     /// In-memory singleton. Populated on first access or by an explicit <see cref="Load"/> call.
     /// Mutations made to the returned instance are reflected in all subsequent <see cref="Current"/>
     /// accesses until the app restarts, so callers only need to call <see cref="Save"/> after mutating.
@@ -28,8 +36,16 @@ public class AppSettings
     /// <summary>
     /// Returns the cached <see cref="AppSettings"/> instance, loading from disk on first access.
     /// This is the preferred accessor — it reads the file at most once per app session.
+    /// Uses double-checked locking so the common (already-loaded) path is lock-free. (F15.)
     /// </summary>
-    public static AppSettings Current => _instance ??= Load();
+    public static AppSettings Current
+    {
+        get
+        {
+            if (_instance is not null) return _instance;
+            lock (_settingsLock) { return _instance ??= Load(); }
+        }
+    }
 
     /// <summary>
     /// True after the first-run wizard has successfully created a database.
@@ -178,16 +194,29 @@ public class AppSettings
         return result;
     }
 
+    /// <summary>
+    /// Persists this instance to disk using an atomic write-to-temp-then-rename pattern.
+    /// Writes to <c>settings.json.tmp</c> first, then renames to <c>settings.json</c>.
+    /// If the process crashes between the write and the rename, the original file is intact.
+    /// Thread-safe: serialises concurrent callers via <see cref="_settingsLock"/>. (F12, F15.)
+    /// </summary>
     public void Save()
     {
-        Directory.CreateDirectory(SettingsDir);
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(SettingsPath, json);
+        lock (_settingsLock)
+        {
+            Directory.CreateDirectory(SettingsDir);
+            var tmp = SettingsPath + ".tmp";
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, SettingsPath, overwrite: true);
+        }
     }
 
     /// <summary>
     /// Add a database to the recent list. Moves to front if already present, keeps max 10 entries.
-    /// Only adds if the file exists.
+    /// Only adds if the file exists. Thread-safe: serialises list mutation and the subsequent
+    /// <see cref="Save"/> call via <see cref="_settingsLock"/> so concurrent callers cannot
+    /// interleave list writes. (F15, data-integrity-agenda 2026-05-04.)
     /// </summary>
     public void AddRecentDatabase(string databasePath)
     {
@@ -196,16 +225,21 @@ public class AppSettings
         // Normalize path for comparison
         var normalized = Path.GetFullPath(databasePath);
 
-        // Remove if already exists
-        RecentDatabases.RemoveAll(p => Path.GetFullPath(p).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        lock (_settingsLock)
+        {
+            // Remove if already exists
+            RecentDatabases.RemoveAll(p =>
+                Path.GetFullPath(p).Equals(normalized, StringComparison.OrdinalIgnoreCase));
 
-        // Add to front
-        RecentDatabases.Insert(0, normalized);
+            // Add to front
+            RecentDatabases.Insert(0, normalized);
 
-        // Keep only last 10
-        if (RecentDatabases.Count > 10)
-            RecentDatabases.RemoveRange(10, RecentDatabases.Count - 10);
+            // Keep only last 10
+            if (RecentDatabases.Count > 10)
+                RecentDatabases.RemoveRange(10, RecentDatabases.Count - 10);
 
-        Save();
+            // Save() acquires _settingsLock — re-entrant on same thread, so no deadlock.
+            Save();
+        }
     }
 }

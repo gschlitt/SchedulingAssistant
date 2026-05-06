@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 #if !BROWSER
+#if DEBUG
 using HotAvalonia;
+#endif
 using Bugsnag;
 #endif
 using Microsoft.Extensions.DependencyInjection;

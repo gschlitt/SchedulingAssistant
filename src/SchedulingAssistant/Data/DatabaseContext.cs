@@ -9,6 +9,16 @@ namespace SchedulingAssistant.Data;
 /// </summary>
 public class DatabaseContext : IDatabaseContext
 {
+    /// <summary>
+    /// Monotonically increasing schema version written to <c>PRAGMA user_version</c> at the
+    /// end of every successful <see cref="Migrate"/> run. <see cref="IsMigrationNeeded"/>
+    /// returns <c>false</c> immediately when the stored version equals this constant,
+    /// skipping all per-column proxy checks. Increment this constant whenever a new
+    /// <c>AddColumnIfMissing</c> call or any other migration step is added to
+    /// <see cref="Migrate"/> — that is the only update required to make the check robust.
+    /// (F6, data-integrity-agenda 2026-05-04.)
+    /// </summary>
+    internal const int CurrentSchemaVersion = 1;
     // Stored as SqliteConnection so internal helpers (SeedData, schema migrations) can use it
     // directly without casting. Exposed publicly as the base DbConnection type.
     // Not readonly because ReinitializeConnection needs to reassign it after a file refresh.
@@ -232,6 +242,24 @@ public class DatabaseContext : IDatabaseContext
             var oldTableExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
             if (oldTableExists)
             {
+                // Guard: if SchedulingEnvironmentValues already contains rows, dropping it
+                // would silently destroy real data. This indicates a partially-failed migration
+                // where the rename completed on a previous run but SectionPropertyValues was
+                // not cleaned up, or some other unexpected state. Abort rather than data-loss.
+                // (F7, data-integrity-agenda 2026-05-04.)
+                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SchedulingEnvironmentValues'";
+                var newTableAlreadyExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                if (newTableAlreadyExists)
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM SchedulingEnvironmentValues";
+                    var existingRowCount = Convert.ToInt32(cmd.ExecuteScalar());
+                    if (existingRowCount > 0)
+                        throw new InvalidOperationException(
+                            $"Migration conflict: both SectionPropertyValues and SchedulingEnvironmentValues " +
+                            $"exist, and SchedulingEnvironmentValues already contains {existingRowCount} row(s). " +
+                            "Dropping it would destroy data. Database may be in a partially-migrated state.");
+                }
+
                 cmd.CommandText = "DROP TABLE IF EXISTS SchedulingEnvironmentValues";
                 cmd.ExecuteNonQuery();
                 cmd.CommandText = "ALTER TABLE SectionPropertyValues RENAME TO SchedulingEnvironmentValues";
@@ -270,6 +298,14 @@ public class DatabaseContext : IDatabaseContext
 
             BackfillReadableColumns(_conn, tx);
 
+            // Stamp the schema version so IsMigrationNeeded can return false immediately on
+            // the next startup, without re-running every proxy check. This is the last write
+            // inside the migration transaction — if anything above fails and we rollback,
+            // the stamp is also rolled back, so the DB correctly shows as un-migrated.
+            // (F6, data-integrity-agenda 2026-05-04.)
+            cmd.CommandText = $"PRAGMA user_version = {CurrentSchemaVersion}";
+            cmd.ExecuteNonQuery();
+
             tx.Commit();
         }
         catch
@@ -283,17 +319,32 @@ public class DatabaseContext : IDatabaseContext
     /// Quick read-only check for whether any migration work is pending.
     /// Returns false when the database is fully up-to-date, avoiding unnecessary
     /// pre-migration backups on every startup.
+    ///
+    /// <para><b>Fast path (F6):</b> when <c>PRAGMA user_version</c> equals
+    /// <see cref="CurrentSchemaVersion"/>, migration has already run and this method
+    /// returns <c>false</c> immediately without inspecting individual tables or columns.
+    /// <see cref="Migrate"/> writes the stamp at the end of its transaction, so the fast
+    /// path is taken on every subsequent open of a fully-migrated database.</para>
+    ///
+    /// <para><b>Legacy path:</b> databases opened before the version stamp was introduced
+    /// have <c>user_version = 0</c>. The legacy checks below remain for those databases;
+    /// after one successful migration run they are superseded by the version stamp.</para>
     /// </summary>
     private bool IsMigrationNeeded()
     {
         using var cmd = _conn.CreateCommand();
 
+        // Fast path: version stamp is current — nothing to do.
+        cmd.CommandText = "PRAGMA user_version";
+        if (Convert.ToInt32(cmd.ExecuteScalar()) >= CurrentSchemaVersion) return false;
+
         // Old table name still present → rename migration needed
         cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SectionPropertyValues'";
         if (Convert.ToInt32(cmd.ExecuteScalar()) > 0) return true;
 
-        // Check a late-stage readable column as a proxy for "all columns added".
-        // If this column exists, all earlier AddColumnIfMissing calls are also complete.
+        // Legacy proxy: check for the last AddColumnIfMissing column added before the
+        // version stamp was introduced. This check is superseded by user_version for any
+        // database migrated after the F6 fix; kept for databases migrated earlier.
         cmd.CommandText = "PRAGMA table_info(InstructorCommitments)";
         var hasInstructorName = false;
         using (var r = cmd.ExecuteReader())

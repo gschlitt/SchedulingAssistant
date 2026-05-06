@@ -1,3 +1,4 @@
+using System.Data.Common;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories;
@@ -125,10 +126,19 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 
-    public void Delete(string id)
+    /// <summary>
+    /// Deletes the section with the given <paramref name="id"/>.
+    /// </summary>
+    /// <param name="id">The section GUID to delete.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in. When provided, the delete participates
+    /// in the caller's atomic operation — pass null (the default) for a standalone delete.
+    /// </param>
+    public void Delete(string id, DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Sections WHERE id = $id";
         cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-06T04:06:20.360Z
-> Files: 7 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-06T18:20:18.883Z
+> Files: 20 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -35,6 +35,7 @@
 
 ## ./
 
+- `data-integrity-agenda.md` — Data Integrity & Concurrency Bug — Implementation Agenda (~8678 tok)
 
 ## .claude/
 
@@ -185,11 +186,19 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~20008 tok)
+- `AppSettingsTests.cs` — Tests for F12 and F15 from the data-integrity audit (2026-05-04). <list type="bullet"> <item> <descr (~2646 tok)
+- `BackupServiceTests.cs` — Tests for <see cref="BackupService"/>. <para>Tests in this file focus on the F1 fix from the data-in (~4853 tok)
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~20518 tok)
+- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~4891 tok)
+- `MigrationGuardTests.cs` — Tests for F7 from the data-integrity audit (2026-05-04): the <c>SectionPropertyValues → SchedulingEn (~1983 tok)
+- `RepositoryTransactionTests.cs` — Tests for F5 and F14 from the data-integrity audit (2026-05-04). <list type="bullet"> <item> <descri (~2247 tok)
+- `SchemaVersionTests.cs` — Tests for F6 from the data-integrity audit (2026-05-04): <c>PRAGMA user_version</c> is written at th (~2445 tok)
+- `WriteLockServiceTests.cs` — Unit tests for <see cref="WriteLockService"/>. <para>Each test fixture creates an isolated temporary (~7252 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4205 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4210 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14569 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -205,15 +214,16 @@
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~6045 tok)
-- `IDatabaseContext.cs` — Abstraction over the application database connection. The SQLite desktop implementation opens a file (~634 tok)
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~7007 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
+- `ISectionRepository.cs` — Data access contract for <see cref="Section"/> entities (the core scheduling entity). (~692 tok)
+- `SectionRepository.cs` — Returns all sections for the given course across all semesters, ordered by section code. (~2153 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/Demo/
 
-- `DemoDatabaseContext.cs` — No-op <see cref="IDatabaseContext"/> for the WASM demo build. Demo repositories serve static data an (~228 tok)
+- `DemoSectionRepository.cs` — In-memory demo implementation of <see cref="ISectionRepository"/> backed by a mutable copy of <see c (~698 tok)
 
 ## src/SchedulingAssistant/Demo/
 
@@ -223,8 +233,10 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~9904 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~19415 tok)
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2796 tok)
+- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~10280 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~19870 tok)
+- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~8117 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -234,6 +246,7 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `CopySemesterViewModel.cs` — True when the current user holds the write lock; gates all Copy Semester controls. (~4525 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 

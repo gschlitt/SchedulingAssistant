@@ -604,17 +604,20 @@ finally { tx?.Dispose(); }
 
 **Priority:** P3  
 **File:** `src/SchedulingAssistant/Services/WriteLockService.cs`  
-**Lines:** heartbeat timer callback (look for `LogError` on heartbeat failure)
+**Lines:** `RenewHeartbeat()` catch block (~line 500), `StartHeartbeat()` (~line 513)
 
 **Scenario:**
 If the heartbeat write fails (e.g., transient network hiccup, disk full), the `.lock` file's
-`Heartbeat` field becomes stale. Another instance polls the lock, sees a stale heartbeat,
-concludes the session is dead, and acquires write access — while this instance continues editing.
-Both instances now believe they hold the write lock. On the next save from either instance,
-one of them wins the atomic rename. The loser's edits are silently discarded.
+`Heartbeat` field becomes stale. Another instance polls the lock, sees a stale heartbeat (older
+than `StaleLockThresholdSeconds` = 180 s), concludes the session is dead, and acquires write
+access — while this instance continues editing. Both instances now believe they hold the write
+lock. On the next save from either instance, one of them wins the atomic rename. The loser's
+edits are silently discarded.
 
-This is the most catastrophic multi-user scenario. Currently, the app's only defence is that
-the polling interval (60 s) vs the stale threshold would need to align perfectly.
+This is the most catastrophic multi-user scenario. Currently `RenewHeartbeat` silently logs the
+failure via `App.Logger.LogInfo` (not even `LogError`) and returns. The `CheckoutService`
+comment at line 74 explicitly notes: *"Heartbeat renewal failure. Not yet treated as a lock-loss
+signal — currently logged only. Future work could route it through the same path."*
 
 **Test to write:**
 ```csharp
@@ -623,17 +626,28 @@ public async Task WriteLockService_HeartbeatFailure_RaisesHeartbeatFailedEvent()
 {
     // Arrange: WriteLockService with a lock file path on a read-only directory.
     //          Use a 1ms heartbeat interval.
-    // Act: let the heartbeat fire.
-    // Assert: a HeartbeatFailed event is raised (once added).
-    //         IsWriter transitions to false OR a warning flag is set.
+    // Act: let the heartbeat fire (3 times to hit the consecutive threshold).
+    // Assert: HeartbeatFailed event is raised; IsWriter transitions to false.
 }
 ```
 
 **Fix:**
-Add a `HeartbeatFailed` event to `WriteLockService`. After N consecutive failures (e.g., 3),
-raise it. `CheckoutService` subscribes and routes through `HandleLockLossAsync` — the same
-path already used for wake-check failures. This surfaces a banner without an immediate save
-attempt, giving the user a chance to react.
+1. Add a consecutive-failure counter to `WriteLockService` (reset to 0 on each successful
+   `RenewHeartbeat` call).
+2. After `N` consecutive failures (recommended: 3, matching `StaleLockThresholdSeconds /
+   HeartbeatIntervalSeconds`), raise a new `HeartbeatFailed` event.
+3. In `CheckoutService`, subscribe to `HeartbeatFailed` in the same place `WriteLockLost` is
+   wired, routing it through the existing `HandleLockLossAsync` method.
+
+**What the user sees:**
+`HandleLockLossAsync` raises `WriteLockLost` → `MainWindow.OnWriteLockLost` is called →
+`DemoteToReadOnlyAsync` runs, which:
+- Transitions `CheckoutMode` from `WriteAccess` to `ReadOnly`
+- Surfaces the existing "Write lock lost" banner (the same one shown after wake-from-sleep
+  lock-loss detection), instructing the user to exit and restart if they want edit access again
+- Reloads all panels from a fresh read-only snapshot of D (the working copy, not the network source)
+- Starts the reader poll timer so a later clean release by the new holder can offer an
+  in-app takeover prompt without requiring a restart
 
 **Effort:** ~3 hours
 
@@ -763,25 +777,49 @@ the recent list. Since `AppSettings` is simple JSON, a `lock` is sufficient and 
 
 ---
 
+## Implementation Status (updated 2026-05-06)
+
+| Finding | Priority | Status | Group | Test file |
+|---------|----------|--------|-------|-----------|
+| F3 | P1 | ✅ Done | A | `CheckoutServiceTests.cs` (Group 9) |
+| F9 | P1 | ✅ Done | A | `CheckoutServiceTests.cs` (Group 9) |
+| F1 | P0 | ✅ Done | B | `BackupServiceTests.cs` (Group 1) |
+| F2 | P0 | ✅ Done | B | `CheckoutServiceTests.cs` (Group 8) |
+| F8 | P1 | ✅ Done | C | `BackupServiceTests.cs` (Group 2), `CheckoutServiceTests.cs` (Group 10) |
+| F10 | P2 | ✅ Done | C | `BackupServiceTests.cs` (Group 2) |
+| F5 | P2 | ✅ Done | D | `RepositoryTransactionTests.cs` (Group 1) |
+| F14 | P2 | ✅ Done | D | `RepositoryTransactionTests.cs` (Group 2) |
+| F7 | P2 | ✅ Done | E | `MigrationGuardTests.cs` |
+| F6 | P2 | ✅ Done | F | `SchemaVersionTests.cs` |
+| F4 | P2 | ✅ Done | G | `BackupServiceTests.cs` (Group 3) |
+| F12 | P3 | ✅ Done | H | `AppSettingsTests.cs` (Groups 1–2) |
+| F15 | P3 | ✅ Done | H | `AppSettingsTests.cs` (Group 3) |
+| F11 | P3 | ✅ Done | I | `WriteLockServiceTests.cs` (Group 6) |
+| F13 | P3 | ⏭ Skipped (deferred) | — | — |
+
+**Test count progression:** 466 → 483 after all Groups A–I (17 new tests).
+
+---
+
 ## Suggested Implementation Order
 
-| Step | Findings | Why |
-|------|----------|-----|
-| 1 | F3 | Unblocks F9; needed before any concurrency testing |
-| 2 | F1 | P0, independent, straightforward fix |
-| 3 | F2 | P0, requires F1-style `DatabasePath` property first |
-| 4 | F9 | P1, resolved by F3; add test to confirm |
-| 5 | F8 | P1, requires coordination with MainWindow |
-| 6 | F10 | P2, same MainWindow pass as F8 |
-| 7 | F5 | P2, trivial; do it while in SectionRepository |
-| 8 | F14 | P2, trivial; do it while reviewing CopySemesterViewModel |
-| 9 | F7 | P2, one-time migration hazard |
-| 10 | F6 | P2, requires schema version decision |
-| 11 | F4 | P2, purely cosmetic naming in BackupService |
-| 12 | F12 | P3, atomic settings write |
-| 13 | F11 | P3, heartbeat escalation (small feature) |
-| 14 | F15 | P3, settings concurrency |
-| 15 | F13 | P3, migration progress UI |
+| Step | Findings | Why | Status |
+|------|----------|-----|--------|
+| 1 | F3 | Unblocks F9; needed before any concurrency testing | ✅ Done |
+| 2 | F1 | P0, independent, straightforward fix | ✅ Done |
+| 3 | F2 | P0, requires F1-style `DatabasePath` property first | ✅ Done |
+| 4 | F9 | P1, resolved by F3; add test to confirm | ✅ Done |
+| 5 | F8 | P1, requires coordination with MainWindow | ✅ Done |
+| 6 | F10 | P2, same MainWindow pass as F8 | ✅ Done |
+| 7 | F5 | P2, trivial; do it while in SectionRepository | ✅ Done |
+| 8 | F14 | P2, trivial; do it while reviewing CopySemesterViewModel | ✅ Done |
+| 9 | F7 | P2, one-time migration hazard | ✅ Done |
+| 10 | F6 | P2, requires schema version decision | ✅ Done |
+| 11 | F4 | P2, purely cosmetic naming in BackupService | ✅ Done |
+| 12 | F12 | P3, atomic settings write | ✅ Done |
+| 13 | F11 | P3, heartbeat escalation (small feature) | ✅ Done |
+| 14 | F15 | P3, settings concurrency | ✅ Done |
+| 15 | F13 | P3, migration progress UI | ⏭ Skipped (deferred) |
 
 ---
 

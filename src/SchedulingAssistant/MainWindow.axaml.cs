@@ -494,6 +494,17 @@ public partial class MainWindow : Window
                 savedSemesterIds = priorCtx.SelectedSemesters.Select(s => s.Semester.Id).ToHashSet();
             }
 
+            // Stop the periodic backup timer BEFORE disposing the DI container.
+            // Timer.Dispose() does not wait for in-flight timer callbacks, so the
+            // BackupService's periodic backup could still be mid-execution when
+            // BackupService.Dispose() returns. An in-flight PerformBackupAsync would
+            // open a fresh Pooling=False connection to D' (F1 fix) and write to the
+            // backup folder — harmless, but unnecessary. Calling StopSession() here,
+            // before the DI disposal below, mirrors the OnClosing shutdown sequence
+            // and removes this race window. (F10, data-integrity-agenda 2026-05-04.)
+            if (App.Services?.GetService(typeof(BackupService)) is BackupService oldBackup)
+                oldBackup.StopSession();
+
             // Close the old DatabaseContext (and all other DI singletons) NOW, before
             // CheckoutAsync copies D to D'.  InitializeServices also calls Dispose on
             // App.Services, but that runs after the copy — too late on Windows, where

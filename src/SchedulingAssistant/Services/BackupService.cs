@@ -253,6 +253,10 @@ public class BackupService : IDisposable
     /// snapshot by <see cref="CheckoutService"/> immediately before writing D' → D.
     /// Non-throwing — failures are logged but do not propagate.
     /// </summary>
+    /// <summary>Suffix appended to the filename of pre-save snapshots so that <see cref="RotateBackups"/>
+    /// can distinguish them from periodic backups and exclude them from the rotation count.</summary>
+    internal const string PresaveSuffix = "_presave";
+
     public void TakeDbSnapshot()
     {
         var folder = AppSettings.Current.BackupFolderPath;
@@ -262,7 +266,10 @@ public class BackupService : IDisposable
         {
             var prefix    = _dbName ?? "backup";
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            var dest      = Path.Combine(folder, $"{prefix}_{timestamp}.db");
+            // Distinct suffix so RotateBackups and GetBackups can exclude these files.
+            // A pre-save snapshot is a safety net for a single save operation; it is not
+            // a periodic backup and must not consume a rotation slot. (F4, 2026-05-04.)
+            var dest = Path.Combine(folder, $"{prefix}_{timestamp}{PresaveSuffix}.db");
 
             // Fresh unpooled connection — see F1 rationale on PerformBackupAsync.
             VacuumIntoFreshConnection(dest);
@@ -321,6 +328,10 @@ public class BackupService : IDisposable
 
         return Directory
             .GetFiles(folder, $"{prefix}_*.db")
+            // Exclude pre-save snapshots — they are safety nets for individual saves,
+            // not user-visible periodic backups. (F4, 2026-05-04.)
+            .Where(f => !Path.GetFileNameWithoutExtension(f)
+                             .EndsWith(PresaveSuffix, StringComparison.OrdinalIgnoreCase))
             .Select(f =>
             {
                 return new BackupEntry
@@ -560,17 +571,23 @@ public class BackupService : IDisposable
     /// <summary>
     /// Enforces the backup retention limit. Oldest backup pairs (db + csv) are deleted
     /// until the count is at or below <paramref name="maxCount"/>.
+    /// Pre-save snapshots (<c>*_presave.db</c>) are excluded from the count and are
+    /// never deleted by rotation — they are managed separately. (F4, 2026-05-04.)
     /// </summary>
     /// <param name="folder">Backup folder path.</param>
     /// <param name="prefix">Database name prefix, e.g. "ComputerScience".</param>
-    /// <param name="maxCount">Maximum number of backup pairs to retain.</param>
-    private static void RotateBackups(string folder, string prefix, int maxCount)
+    /// <param name="maxCount">Maximum number of periodic backup pairs to retain.</param>
+    internal static void RotateBackups(string folder, string prefix, int maxCount)
     {
         // Clamp to a sensible minimum to prevent accidental deletion of everything.
         maxCount = Math.Max(maxCount, 1);
 
-        // File pattern: {prefix}_{yyyy-MM-dd_HH-mm-ss}.db
+        // File pattern: {prefix}_{yyyy-MM-dd_HH-mm-ss}.db  — excludes *_presave.db.
+        // Pre-save snapshots have the PresaveSuffix between the timestamp and ".db";
+        // they must not consume rotation slots. (F4, 2026-05-04.)
         var files = Directory.GetFiles(folder, $"{prefix}_*.db")
+                             .Where(f => !Path.GetFileNameWithoutExtension(f)
+                                              .EndsWith(PresaveSuffix, StringComparison.OrdinalIgnoreCase))
                              .OrderBy(f => f)   // ascending = oldest first
                              .ToList();
 

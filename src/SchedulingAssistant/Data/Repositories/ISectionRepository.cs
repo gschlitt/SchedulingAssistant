@@ -42,8 +42,12 @@ public interface ISectionRepository
     /// </summary>
     bool ExistsBySectionCode(string semesterId, string courseId, string sectionCode, string? excludeId);
 
-    /// <summary>Deletes the section with the given <paramref name="id"/>.</summary>
-    void Delete(string id);
+    /// <summary>
+    /// Deletes the section with the given <paramref name="id"/>.
+    /// An optional <paramref name="tx"/> may be supplied to include this delete in a larger
+    /// transaction, consistent with <see cref="Insert"/> and <see cref="Update"/>. (F5.)
+    /// </summary>
+    void Delete(string id, DbTransaction? tx = null);
 
     /// <summary>Returns the number of sections in the given semester.</summary>
     int CountBySemesterId(string semesterId);
