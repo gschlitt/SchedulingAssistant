@@ -84,7 +84,7 @@
 	<SolidColorBrush x:Key="FilterExpanderBorder" Color="#C8DAEF" />
 
 	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
-	<SolidColorBrush x:Key="FilterGroupBorder" Color="#8AAAC8" />
+	<SolidColorBrush x:Key="FilterGroupBorder" Color="#C8D5E4" />
 
 	<SolidColorBrush x:Key="FilterExpanderContent" Color="{StaticResource UserInteractionColor}" />
 
