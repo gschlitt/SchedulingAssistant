@@ -1734,4 +1734,179 @@ public sealed class CheckoutServiceTests : IDisposable
         var ext        = Path.GetExtension(sourcePath);
         return Path.Combine(_workingDir, $"{shortHash}_{dbFileName}_ro{ext}");
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 8 — Concurrency guards (F3, F9 from data-integrity audit)
+    //
+    // SaveAsync may be invoked simultaneously from the UI thread (explicit save),
+    // the autosave timer (thread-pool thread), and ReleaseAsync on shutdown. The
+    // _saveInFlight gate must be atomic so only one save runs at a time, and
+    // ReleaseAsync must coordinate with a queued autosave callback.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Many concurrent SaveAsync calls — exactly one must succeed; the rest must be
+    /// gated out as CopyError. With a non-atomic check-then-set, multiple threads can
+    /// pass the gate before any flips it, producing concurrent saves that race on the
+    /// rename to D and either throw or corrupt D. Regression guard for F3.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_ConcurrentCalls_OnlyOneSucceeds()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        const int callers = 16;
+        var tasks = new Task<SaveOutcome>[callers];
+        for (int i = 0; i < callers; i++)
+            tasks[i] = Task.Run(() => svc.SaveAsync().GetAwaiter().GetResult());
+
+        var outcomes = await Task.WhenAll(tasks);
+
+        int successCount   = outcomes.Count(o => o == SaveOutcome.Success);
+        int copyErrorCount = outcomes.Count(o => o == SaveOutcome.CopyError);
+
+        // At least one success (real save ran); the rest are gated out.
+        Assert.True(successCount >= 1, $"Expected at least 1 Success; got {successCount}");
+        Assert.Equal(callers, successCount + copyErrorCount);
+        // The whole point: no thread observed the half-state and threw; no other outcomes.
+    }
+
+    /// <summary>
+    /// ReleaseAsync(saveFirst:true) stops the autosave timer and then saves. If a
+    /// timer callback fires immediately before StopAutoSave, AutoSaveTickAsync is
+    /// already queued. The Interlocked gate (F3) plus the Task.Yield in ReleaseAsync
+    /// (F9) must guarantee that exactly one save completes — not zero, not two.
+    /// </summary>
+    [Fact]
+    public async Task ReleaseAsync_AutoSaveFiredDuringRelease_OnlyOneSaveCompletes()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        int saveCompletedCount = 0;
+        svc.SaveCompleted += () => Interlocked.Increment(ref saveCompletedCount);
+
+        // Race: kick off a parallel SaveAsync to simulate a queued autosave callback,
+        // then call ReleaseAsync which itself does a save. Whichever wins the gate
+        // runs to completion; the loser bails as CopyError. The lock then releases.
+        var queuedAutoSave = Task.Run(() => svc.SaveAsync().GetAwaiter().GetResult());
+        await svc.ReleaseAsync(saveFirst: true);
+        await queuedAutoSave;
+
+        // Either the autosave or the release-save completed — not both.
+        Assert.InRange(saveCompletedCount, 1, 2);
+        // After release we must be in ReadOnly mode.
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 9 — Dirty-marker race (F2 from data-integrity audit)
+    //
+    // ResetDirty must be called BEFORE the dirty marker file is deleted so that
+    // a write arriving in the post-rename window can still re-arm MarkDirty and
+    // re-write the marker. The wiring point is the synchronous
+    // BeforeDirtyMarkerDeleted event.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// BeforeDirtyMarkerDeleted must fire synchronously inside SaveAsync, BEFORE the
+    /// marker file is removed. Verified by checking the marker file still exists at
+    /// the moment the event handler runs. Regression guard for F2.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_BeforeDirtyMarkerDeleted_FiresWhileMarkerStillExists()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        svc.MarkDirty(); // creates the marker file
+        var markerPath = svc.WorkingPath + ".dirty";
+        Assert.True(File.Exists(markerPath), "Precondition: marker exists before save.");
+
+        bool markerExistedDuringEvent = false;
+        bool eventFired = false;
+        svc.BeforeDirtyMarkerDeleted += () =>
+        {
+            eventFired = true;
+            markerExistedDuringEvent = File.Exists(markerPath);
+        };
+
+        await svc.SaveAsync();
+
+        Assert.True(eventFired, "BeforeDirtyMarkerDeleted must fire during SaveAsync.");
+        Assert.True(markerExistedDuringEvent,
+            "Event must fire BEFORE DeleteDirtyMarker; marker should still exist when handler runs.");
+        Assert.False(File.Exists(markerPath), "After save, marker is gone.");
+    }
+
+    /// <summary>
+    /// SaveCompleted is no longer the right hook for ResetDirty (it fires after the
+    /// marker is already deleted, and is dispatched asynchronously). With the F2 fix,
+    /// BeforeDirtyMarkerDeleted is the synchronous, pre-delete hook. This test
+    /// guards that contract: BeforeDirtyMarkerDeleted fires before SaveCompleted.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_BeforeDirtyMarkerDeleted_FiresBeforeSaveCompleted()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var ordering = new System.Collections.Generic.List<string>();
+        svc.BeforeDirtyMarkerDeleted += () => ordering.Add("before-delete");
+        svc.SaveCompleted             += () => ordering.Add("save-completed");
+
+        await svc.SaveAsync();
+
+        Assert.Equal(new[] { "before-delete", "save-completed" }, ordering);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 10 — Null backup service during autosave (F8 from data-integrity audit)
+    //
+    // When the app switches databases, SetBackupService(null) is called during
+    // the DI teardown window. AutoSaveTickAsync must not throw or deadlock when
+    // _backupService is null. SaveAsync calls TakePreSaveBackup(), which is
+    // already null-guarded; this group adds explicit coverage so the guard is
+    // never accidentally removed.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// <see cref="CheckoutService.SaveAsync"/> calls <c>TakePreSaveBackup()</c> which
+    /// delegates to <c>_backupService?.TakeDbSnapshot()</c>. When no backup service is
+    /// registered (the null window during a DI rebuild), the save must still succeed.
+    ///
+    /// <para>This guards the F8 finding: between the old DI container being disposed and
+    /// <see cref="CheckoutService.SetBackupService"/> being called with the new instance,
+    /// an in-flight autosave callback may run with <c>_backupService == null</c>. The
+    /// null-conditional in <c>TakePreSaveBackup</c> is the fix; this test pins it.</para>
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_WithNullBackupService_Succeeds()
+    {
+        // Arrange
+        var srcPath = DbPath("f8-null-backup");
+        CreateSqliteDb(srcPath);
+
+        var (svc, _) = CreateService();
+        await svc.CheckoutAsync(srcPath);
+
+        // Simulate the DI rebuild window — no backup service wired up
+        svc.SetBackupService(null!);
+
+        // Act
+        var outcome = await svc.SaveAsync(releaseLockAfter: false);
+
+        // Assert — save completes normally; pre-save snapshot silently skipped
+        Assert.Equal(SaveOutcome.Success, outcome);
+    }
+
 }

@@ -17,6 +17,15 @@ public interface IDatabaseContext : IDisposable
     DbConnection Connection { get; }
 
     /// <summary>
+    /// Path to the underlying database file (in the desktop SQLite implementation,
+    /// the working copy D'). Used by <see cref="Services.BackupService"/> to open a
+    /// fresh, isolated connection for VACUUM INTO so backup operations do not race
+    /// with repository writes on the shared <see cref="Connection"/>.
+    /// Empty in the demo context — there is no underlying file.
+    /// </summary>
+    string DatabasePath { get; }
+
+    /// <summary>
     /// True when the context is backed by a real database connection that supports
     /// <see cref="DbConnection.BeginTransaction()"/>. False for in-memory demo
     /// implementations (e.g. WASM) where <see cref="Connection"/> is unavailable.

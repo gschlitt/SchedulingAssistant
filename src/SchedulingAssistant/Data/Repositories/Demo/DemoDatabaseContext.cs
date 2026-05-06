@@ -13,6 +13,9 @@ public class DemoDatabaseContext : IDatabaseContext
         throw new NotSupportedException("No database connection is available in the demo build.");
 
     /// <inheritdoc/>
+    public string DatabasePath => string.Empty;
+
+    /// <inheritdoc/>
     public bool SupportsTransactions => false;
 
     /// <inheritdoc/>

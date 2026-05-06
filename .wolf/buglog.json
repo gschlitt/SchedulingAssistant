@@ -8334,6 +8334,342 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-05T01:36:12.293Z"
+    },
+    {
+      "id": "bug-521",
+      "timestamp": "2026-05-06T03:53:53.751Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 18→20 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T03:53:53.751Z"
+    },
+    {
+      "id": "bug-522",
+      "timestamp": "2026-05-06T03:54:34.899Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T03:54:34.899Z"
+    },
+    {
+      "id": "bug-523",
+      "timestamp": "2026-05-06T04:03:16.609Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/BackupService.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 14→15 lines (7 removed) | Also: using var cmd = _db.Connection.CreateCommand();; p.Value = dest;",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-06T04:03:29.530Z"
+    },
+    {
+      "id": "bug-524",
+      "timestamp": "2026-05-06T04:05:51.387Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T04:05:51.387Z"
+    },
+    {
+      "id": "bug-525",
+      "timestamp": "2026-05-06T04:06:20.426Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T04:06:20.426Z"
+    },
+    {
+      "id": "bug-526",
+      "timestamp": "2026-05-06T17:29:19.568Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:29:19.568Z"
+    },
+    {
+      "id": "bug-527",
+      "timestamp": "2026-05-06T17:29:44.419Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/BackupServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:29:44.419Z"
+    },
+    {
+      "id": "bug-528",
+      "timestamp": "2026-05-06T17:30:51.091Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/BackupServiceTests.cs",
+      "root_cause": "26 lines replaced/restructured",
+      "fix": "Rewrote 48→71 lines (26 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:30:51.091Z"
+    },
+    {
+      "id": "bug-529",
+      "timestamp": "2026-05-06T17:35:02.300Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/CopySemesterViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:35:02.300Z"
+    },
+    {
+      "id": "bug-530",
+      "timestamp": "2026-05-06T17:42:05.975Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/RepositoryTransactionTests.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 17→41 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:42:05.976Z"
+    },
+    {
+      "id": "bug-531",
+      "timestamp": "2026-05-06T17:45:09.236Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "No early return/throw for edge case: oldTableExists",
+      "fix": "Added guard clause: if (oldTableExists)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:45:09.236Z"
+    },
+    {
+      "id": "bug-532",
+      "timestamp": "2026-05-06T17:53:33.446Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 28→43 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T17:53:33.446Z"
+    },
+    {
+      "id": "bug-533",
+      "timestamp": "2026-05-06T18:01:00.052Z",
+      "error_message": "Significant refactor of ",
+      "file": "data-integrity-agenda.md",
+      "root_cause": "17 lines replaced/restructured",
+      "fix": "Rewrote 19→43 lines (17 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:01:00.052Z"
+    },
+    {
+      "id": "bug-534",
+      "timestamp": "2026-05-06T18:01:27.693Z",
+      "error_message": "Missing error handling in Task",
+      "file": "data-integrity-agenda.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:01:27.693Z"
+    },
+    {
+      "id": "bug-535",
+      "timestamp": "2026-05-06T18:06:19.168Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/BackupService.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→22 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:06:19.168Z"
+    },
+    {
+      "id": "bug-536",
+      "timestamp": "2026-05-06T18:10:30.871Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/AppSettings.cs",
+      "root_cause": "No early return/throw for edge case: _instance is not null",
+      "fix": "Added guard clause: if (_instance is not null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:10:30.871Z"
+    },
+    {
+      "id": "bug-537",
+      "timestamp": "2026-05-06T18:10:50.938Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/AppSettings.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 23→30 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:10:50.938Z"
+    },
+    {
+      "id": "bug-538",
+      "timestamp": "2026-05-06T18:16:14.972Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:16:14.972Z"
+    },
+    {
+      "id": "bug-539",
+      "timestamp": "2026-05-06T18:16:49.239Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "No early return/throw for edge case: Mode != CheckoutMode.WriteAccess",
+      "fix": "Added guard clause: if (Mode != CheckoutMode.WriteAccess)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:16:49.239Z"
+    },
+    {
+      "id": "bug-540",
+      "timestamp": "2026-05-06T18:16:56.375Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:16:56.375Z"
+    },
+    {
+      "id": "bug-541",
+      "timestamp": "2026-05-06T18:20:12.185Z",
+      "error_message": "Significant refactor of ",
+      "file": "data-integrity-agenda.md",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→7 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T18:20:12.185Z"
     }
   ]
 }

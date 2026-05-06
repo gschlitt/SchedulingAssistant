@@ -3,6 +3,37 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
+## Session: 2026-05-06 — Data integrity audit implementation (Groups A–F)
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| F3 (Group A): `_saveInFlight` bool → `Interlocked.CompareExchange` | `CheckoutService.cs` | Race-free concurrent save guard |
+| F9 (Group A): `ReleaseAsync` + `await Task.Yield()` after `StopAutoSave` | `CheckoutService.cs` | In-flight timer callback drains before explicit save |
+| F1 (Group B): `VacuumIntoFreshConnection` helper; both backup paths use fresh non-pooled conn | `BackupService.cs` | VACUUM INTO no longer races shared `_db.Connection` |
+| F2 (Group B): `BeforeDirtyMarkerDeleted` event fires before step 7; wired to `ResetDirty` | `CheckoutService.cs`, `App.axaml.cs` | Dirty marker gap eliminated |
+| F8+F10 (Group C): `StopSession()` called before DI dispose in `SwitchDatabaseAsync` | `MainWindow.axaml.cs` | No stale backup timer during DI rebuild |
+| F5 (Group D): `SectionRepository.Delete` gains `DbTransaction? tx` param | `SectionRepository.cs`, `ISectionRepository.cs`, `DemoSectionRepository.cs` | Delete participates in caller transactions |
+| F14 (Group D): `ExecuteCopy` nullable-tx pattern | `CopySemesterViewModel.cs` | WASM demo no longer crashes on copy |
+| F7 (Group E): Guard before DROP checks row count, throws if > 0 | `DatabaseContext.cs` | Partial-migration data-loss prevented |
+| F6 (Group F): `PRAGMA user_version` stamp in `Migrate()`; fast-path in `IsMigrationNeeded` | `DatabaseContext.cs` | Proxy check replaced with robust version stamp |
+| Tests: 5 new test files, 471 total (was 466) | `BackupServiceTests.cs`, `CheckoutServiceTests.cs` (groups 8-10), `RepositoryTransactionTests.cs`, `MigrationGuardTests.cs`, `SchemaVersionTests.cs` | All green |
+| Agenda updated | `data-integrity-agenda.md` | Status table + F11 notification description added |
+
+---
+
+## Session: 2026-05-04 — Data integrity & concurrency audit
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Full codebase audit for timing bugs, race conditions, data loss | CheckoutService, BackupService, DatabaseContext, AppSettings, BackupService, SectionRepository, CopySemesterViewModel | 15 findings (F1–F15), P0–P3. Agenda written to `.wolf/data-integrity-agenda.md` |
+
+### Summary of findings
+- **P0 (data loss):** F1 — BackupService VACUUM INTO on shared `_db.Connection` from background thread (not thread-safe). F2 — `DeleteDirtyMarker` gap: writes between step 4 and step 7 of SaveAsyncCore go undetected because `_dirtyFired` isn't reset until after the marker is deleted.
+- **P1 (high):** F3 — `_saveInFlight` plain bool (needs `Interlocked`). F8 — autosave timer fires against disposed BackupService during DI rebuild. F9 — `ReleaseAsync`+autosave timer race (resolved by F3).
+- **P2 (moderate):** F4 — `RotateBackups` eats pre-save snapshots. F5 — `SectionRepository.Delete` missing tx param. F6 — `IsMigrationNeeded` proxy goes stale when new migrations added. F7 — migrate drops `SchedulingEnvironmentValues` before rename (data loss if both exist with data). F10 — connection pool holds D' open after DI rebuild. F14 — `CopySemesterViewModel.BeginTransaction` without WASM guard.
+- **P3 (low):** F11 — heartbeat failures not escalated. F12 — `AppSettings.Save` non-atomic. F13 — `BackfillReadableColumns` unbounded on large DBs. F15 — `RecentDatabases` not thread-safe.
+- Full agenda with test strategies, fix locations, effort estimates: `.wolf/data-integrity-agenda.md`
+
 ## Session: 2026-03-28 — Shared DB architecture design
 
 | Action | Files | Outcome |
@@ -4747,3 +4778,99 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-05-06 20:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-06 20:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:53 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+7 lines) | ~112 |
+| 20:53 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 18→20 lines | ~193 |
+| 20:54 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified ReleaseAsync() | ~229 |
+| 20:54 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified ComputeReadOnlyPath() | ~1059 |
+| 20:54 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | inline fix | ~11 |
+| 20:55 | Session end: 5 writes across 2 files (CheckoutService.cs, CheckoutServiceTests.cs) | 3 reads | ~1718 tok |
+| 20:57 | Session end: 5 writes across 2 files (CheckoutService.cs, CheckoutServiceTests.cs) | 3 reads | ~1718 tok |
+| 20:58 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 3→2 lines | ~35 |
+| 21:00 | Session end: 6 writes across 3 files (CheckoutService.cs, CheckoutServiceTests.cs, EditorFlowTests.cs) | 4 reads | ~1755 tok |
+| 21:02 | Edited src/SchedulingAssistant/Data/IDatabaseContext.cs | expanded (+9 lines) | ~160 |
+| 21:02 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 11→16 lines | ~130 |
+| 21:02 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | modified DatabaseContext() | ~74 |
+| 21:02 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 2→3 lines | ~46 |
+| 21:03 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoDatabaseContext.cs | 2→5 lines | ~38 |
+| 21:03 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified catch() | ~211 |
+| 21:03 | Edited src/SchedulingAssistant/Services/BackupService.cs | added 1 condition(s) | ~470 |
+| 21:05 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+15 lines) | ~338 |
+| 21:05 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added optional chaining | ~157 |
+| 21:06 | Edited src/SchedulingAssistant/App.axaml.cs | 2→7 lines | ~149 |
+| 21:06 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_BeforeDirtyMarkerDeleted_FiresWhileMarkerStillExists() | ~799 |
+
+## Session: 2026-05-06 21:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-06 10:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:13 | Created src/SchedulingAssistant.Tests/BackupServiceTests.cs | — | ~2669 |
+| 10:17 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 6→10 lines | ~217 |
+| 10:23 | Edited src/SchedulingAssistant/App.axaml.cs | 4→4 lines | ~17 |
+| 10:23 | Edited src/SchedulingAssistant/App.axaml.cs | 4→6 lines | ~19 |
+| 10:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~412 |
+| 10:29 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | added optional chaining | ~1221 |
+| 10:29 | Edited src/SchedulingAssistant.Tests/BackupServiceTests.cs | modified StopSession_PreventsSubsequentTimerFires() | ~680 |
+| 10:30 | Edited src/SchedulingAssistant.Tests/BackupServiceTests.cs | modified TakeDbSnapshot_ReleasesSourceFileHandleImmediately() | ~864 |
+| 10:31 | Edited src/SchedulingAssistant.Tests/BackupServiceTests.cs | modified TakeDbSnapshot_CalledRepeatedly_NoHandlesRemain() | ~411 |
+| 10:31 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | removed 50 lines | ~1 |
+| 10:33 | Edited src/SchedulingAssistant/Data/Repositories/SectionRepository.cs | 3→4 lines | ~30 |
+| 10:34 | Edited src/SchedulingAssistant/Data/Repositories/SectionRepository.cs | modified Delete() | ~188 |
+| 10:34 | Edited src/SchedulingAssistant/Data/Repositories/ISectionRepository.cs | 2→6 lines | ~91 |
+| 10:34 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoSectionRepository.cs | 3→3 lines | ~35 |
+| 10:35 | Edited src/SchedulingAssistant/ViewModels/Management/CopySemesterViewModel.cs | added optional chaining | ~212 |
+| 10:38 | Created src/SchedulingAssistant.Tests/RepositoryTransactionTests.cs | — | ~1921 |
+| 10:42 | Edited src/SchedulingAssistant.Tests/RepositoryTransactionTests.cs | modified TestDatabaseContext() | ~544 |
+| 10:45 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | added 2 condition(s) | ~450 |
+| 10:46 | Created src/SchedulingAssistant.Tests/MigrationGuardTests.cs | — | ~1983 |
+| 10:47 | Session end: 19 writes across 12 files (BackupServiceTests.cs, EditorFlowTests.cs, App.axaml.cs, MainWindow.axaml.cs, CheckoutServiceTests.cs) | 16 reads | ~50158 tok |
+| 10:52 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | expanded (+10 lines) | ~244 |
+| 10:53 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | expanded (+8 lines) | ~188 |
+| 10:53 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | added 1 condition(s) | ~633 |
+
+## Session: 2026-05-06 10:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:58 | Created src/SchedulingAssistant.Tests/SchemaVersionTests.cs | — | ~2445 |
+| 11:01 | Edited data-integrity-agenda.md | expanded (+24 lines) | ~565 |
+| 11:01 | Edited data-integrity-agenda.md | modified WriteLockService_HeartbeatFailure_RaisesHeartbeatFailedEvent() | ~706 |
+| 11:02 | Session end: 3 writes across 2 files (SchemaVersionTests.cs, data-integrity-agenda.md) | 3 reads | ~19639 tok |
+| 11:05 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified TakeDbSnapshot() | ~332 |
+| 11:06 | Edited src/SchedulingAssistant/Services/BackupService.cs | 13→17 lines | ~205 |
+| 11:06 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified RotateBackups() | ~377 |
+| 11:06 | Edited src/SchedulingAssistant/Services/BackupService.cs | reduced (-7 lines) | ~180 |
+| 11:07 | Edited src/SchedulingAssistant.Tests/BackupServiceTests.cs | modified TakeDbSnapshot_WritesPresaveSuffix() | ~1362 |
+| 11:10 | Edited src/SchedulingAssistant/Services/AppSettings.cs | added 1 condition(s) | ~444 |
+| 11:10 | Edited src/SchedulingAssistant/Services/AppSettings.cs | modified Save() | ~211 |
+| 11:10 | Edited src/SchedulingAssistant/Services/AppSettings.cs | modified AddRecentDatabase() | ~316 |
+| 11:11 | Created src/SchedulingAssistant.Tests/AppSettingsTests.cs | — | ~2646 |
+| 11:15 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+16 lines) | ~286 |
+| 11:16 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+17 lines) | ~335 |
+| 11:16 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added optional chaining | ~455 |
+| 11:16 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 2→3 lines | ~43 |
+| 11:16 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added 1 condition(s) | ~423 |
+| 11:16 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 3→4 lines | ~93 |
+| 11:17 | Edited src/SchedulingAssistant.Tests/WriteLockServiceTests.cs | modified HeartbeatFailed_RaisedAfterThresholdConsecutiveFailures() | ~1230 |
+| 11:20 | Edited data-integrity-agenda.md | 7→7 lines | ~99 |
+| 11:20 | Edited data-integrity-agenda.md | 5→5 lines | ~79 |
+
+## Session: 2026-05-06 11:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| — | Groups G-I summary: F4 presave suffix+rotation exclusion; F12+F15 atomic Save+lock; F11 heartbeat failure counter+event | BackupService.cs, AppSettings.cs, WriteLockService.cs, CheckoutService.cs | 483 tests passing |

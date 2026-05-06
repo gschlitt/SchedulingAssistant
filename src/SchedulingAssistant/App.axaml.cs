@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 #if !BROWSER
+#if DEBUG
 using HotAvalonia;
+#endif
 using Bugsnag;
 #endif
 using Microsoft.Extensions.DependencyInjection;
@@ -118,7 +120,12 @@ public partial class App : Application
             throw new DatabaseCorruptException(dbPath);
 
         var dbCtx = Services.GetRequiredService<IDatabaseContext>();
-        App.Checkout.SaveCompleted += dbCtx.ResetDirty;
+        // Subscribe ResetDirty to BeforeDirtyMarkerDeleted (synchronous, fires inside
+        // SaveAsyncCore step 7 right before the marker file is deleted). The previous
+        // wiring used SaveCompleted, which is dispatched to the UI thread AFTER the
+        // marker is already gone — opening a window during which a write could fail
+        // to re-arm the marker, leading to silent data loss on crash. (F2.)
+        App.Checkout.BeforeDirtyMarkerDeleted += dbCtx.ResetDirty;
 
         // Fall back to persisted AppSettings values when no in-memory IDs were passed.
         var startupSettings = AppSettings.Current;

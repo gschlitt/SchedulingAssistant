@@ -71,9 +71,10 @@ namespace SchedulingAssistant.Services;
 ///         UI thread froze the window) and, if we no longer own it, fires the
 ///         same <see cref="HandleLockLossAsync"/> path. Triggers: another
 ///         user took over via stale-lock prompt while this machine slept.</item>
-///   <item><b>Heartbeat renewal failure.</b> Not yet treated as a lock-loss
-///         signal — currently logged only. Future work could route it through
-///         the same path.</item>
+///   <item><b>Heartbeat renewal failure.</b> After <see cref="WriteLockService.HeartbeatFailureThreshold"/>
+///         consecutive failures, <see cref="WriteLockService.HeartbeatFailed"/> fires and
+///         <see cref="OnHeartbeatFailed"/> routes it through the same
+///         <see cref="HandleLockLossAsync"/> path. (F11, 2026-05-04.)</item>
 /// </list>
 /// </summary>
 public sealed class CheckoutService : IDisposable
@@ -109,7 +110,14 @@ public sealed class CheckoutService : IDisposable
 
     private Timer?  _autoSaveTimer;
     private bool    _disposed;
-    private bool    _saveInFlight;
+
+    /// <summary>
+    /// 0 = idle, 1 = a save is currently in flight. Mutated only via
+    /// <see cref="Interlocked.CompareExchange(ref int, int, int)"/> so concurrent
+    /// callers (UI button + autosave timer + ReleaseAsync) cannot pass the
+    /// "is a save running?" gate simultaneously.
+    /// </summary>
+    private int     _saveInFlight;
 
     /// <summary>Current checkout mode.</summary>
     public CheckoutMode Mode { get; private set; } = CheckoutMode.ReadOnly;
@@ -191,6 +199,21 @@ public sealed class CheckoutService : IDisposable
     /// checkout or save. The UI can use this to show an "Unsaved changes" indicator.
     /// </summary>
     public event Action? BecameDirty;
+
+    /// <summary>
+    /// Raised <b>synchronously</b> on the calling thread, inside step 7 of
+    /// <c>SaveAsyncCore</c>, immediately before the dirty marker file is deleted.
+    /// <para><see cref="Data.IDatabaseContext.ResetDirty"/> subscribes to this so that
+    /// <c>_dirtyFired</c> is reset to 0 BEFORE the marker is removed. Any user-initiated
+    /// write that arrives in the very small window between reset and delete will be able
+    /// to re-fire <c>MarkDirty</c> (CAS 0→1 succeeds), giving the post-save edit a chance
+    /// to re-write the marker. This closes the F2 race documented in
+    /// <c>data-integrity-agenda.md</c>: the previous wiring (via the post-step-7
+    /// <see cref="SaveCompleted"/> event, dispatched to the UI thread) could leave a
+    /// hundred-millisecond gap during which writes silently failed to re-arm the marker,
+    /// causing crash recovery to misreport "clean exit" and discard real edits.</para>
+    /// </summary>
+    public event Action? BeforeDirtyMarkerDeleted;
 
     /// <summary>
     /// Raised on the UI thread when <see cref="SaveAsync"/> fails for a reason
@@ -408,7 +431,8 @@ public sealed class CheckoutService : IDisposable
         SessionDirty  = true;
         CurrentHolder = null;
 
-        _lockService.WakeDetected += OnWake;
+        _lockService.WakeDetected    += OnWake;
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
         return CheckoutOutcome.WriteAccess;
     }
 
@@ -488,7 +512,8 @@ public sealed class CheckoutService : IDisposable
         SessionDirty  = true;
         CurrentHolder = null;
 
-        _lockService.WakeDetected += OnWake;
+        _lockService.WakeDetected    += OnWake;
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
         return CheckoutOutcome.WriteAccess;
     }
 
@@ -507,20 +532,22 @@ public sealed class CheckoutService : IDisposable
         if (Mode != CheckoutMode.WriteAccess)
             return SaveOutcome.NotInWriteMode;
 
-        if (_saveInFlight)
+        // Atomic check-then-set: if another thread already set _saveInFlight to 1,
+        // CompareExchange returns its old value (1) and we bail. Only one caller
+        // can transition 0 → 1 across all threads.
+        if (Interlocked.CompareExchange(ref _saveInFlight, 1, 0) != 0)
         {
             _logger.LogInfo("CheckoutService: SaveAsync skipped — a save is already in progress.");
             return SaveOutcome.CopyError;
         }
 
-        _saveInFlight = true;
         try
         {
             return await SaveAsyncCore(releaseLockAfter);
         }
         finally
         {
-            _saveInFlight = false;
+            Volatile.Write(ref _saveInFlight, 0);
         }
     }
 
@@ -647,6 +674,11 @@ public sealed class CheckoutService : IDisposable
         // D' now matches D — delete the dirty marker. If the user makes further
         // edits, DatabaseContext.MarkDirty() will re-write it (after ResetDirty rearms it).
         // This keeps the marker as an accurate signal: present = unsaved changes exist.
+        //
+        // Fire BeforeDirtyMarkerDeleted SYNCHRONOUSLY first so subscribers (notably
+        // DatabaseContext.ResetDirty) can rearm MarkDirty before the marker file is
+        // removed. See the event docstring for the F2 race rationale.
+        BeforeDirtyMarkerDeleted?.Invoke();
         DeleteDirtyMarker();
         if (releaseLockAfter)
             _lockService.Release();
@@ -901,6 +933,15 @@ public sealed class CheckoutService : IDisposable
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
 
+        // Timer.Dispose() does not wait for an in-flight callback. If the
+        // autosave fired moments before StopAutoSave(), AutoSaveTickAsync is
+        // already queued on the thread pool. Yield so it has a chance to run
+        // and either complete its save or, if our SaveAsync below grabs the
+        // gate first, observe _saveInFlight=1 and bail. The Interlocked guard
+        // in SaveAsync guarantees correctness either way; this just shortens
+        // the window during which the queued autosave is competing with us.
+        await Task.Yield();
+
         if (saveFirst && Mode == CheckoutMode.WriteAccess)
             await SaveAsync(releaseLockAfter: true);
         else
@@ -1044,9 +1085,33 @@ public sealed class CheckoutService : IDisposable
     private Task HandleLockLossAsync()
     {
         StopAutoSave();
-        _lockService.WakeDetected -= OnWake;
+        _lockService.WakeDetected    -= OnWake;
+        _lockService.HeartbeatFailed -= OnHeartbeatFailed;   // F11 — unsubscribe on first loss
         _dispatch(() => WriteLockLost?.Invoke());
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Called when <see cref="WriteLockService.HeartbeatFailed"/> fires — i.e., the heartbeat
+    /// timer has failed to renew the lock file <see cref="WriteLockService.HeartbeatFailureThreshold"/>
+    /// consecutive times. The lock is likely stale from the perspective of other readers, who
+    /// may attempt a takeover.
+    ///
+    /// <para>Routes through <see cref="HandleLockLossAsync"/> — the same path used for
+    /// save-time verification failures and wake-from-sleep checks — which raises
+    /// <see cref="WriteLockLost"/> so MainWindow can demote the session in place.
+    /// (F11, data-integrity-agenda 2026-05-04.)</para>
+    ///
+    /// <para>This handler is called from the heartbeat timer thread (not the UI thread);
+    /// <see cref="HandleLockLossAsync"/> dispatches to the UI thread via
+    /// <see cref="_dispatch"/> before raising <see cref="WriteLockLost"/>.</para>
+    /// </summary>
+    private void OnHeartbeatFailed()
+    {
+        if (Mode != CheckoutMode.WriteAccess) return;
+        _logger.LogInfo("CheckoutService: HeartbeatFailed — treating as lock-loss; demoting session.");
+        // Fire-and-forget: HandleLockLossAsync is synchronous today but marked Task for future use.
+        _ = HandleLockLossAsync();
     }
 
     /// <summary>

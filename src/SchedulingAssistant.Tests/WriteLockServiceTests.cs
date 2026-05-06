@@ -636,4 +636,113 @@ public sealed class WriteLockServiceTests : IDisposable
         Assert.True(reader.IsWriter);
         Assert.False(reader.WriteLockBecameAvailable);
     }
+
+    // ── Group 6 — F11: HeartbeatFailed escalation ─────────────────────────
+
+    /// <summary>
+    /// <see cref="WriteLockService.HeartbeatFailed"/> must be raised after exactly
+    /// <see cref="WriteLockService.HeartbeatFailureThreshold"/> consecutive renewal
+    /// failures. Earlier failures must not fire the event.
+    ///
+    /// <para>The test uses <see cref="WriteLockService.ForceRenewHeartbeat"/> (internal,
+    /// exposed via <c>InternalsVisibleTo</c>) to drive <c>RenewHeartbeat</c> directly
+    /// without waiting for the timer, and deletes the lock file after acquisition so each
+    /// renewal fails with <see cref="FileNotFoundException"/>. (F11, 2026-05-04.)</para>
+    /// </summary>
+    [Fact]
+    public void HeartbeatFailed_RaisedAfterThresholdConsecutiveFailures()
+    {
+        // Arrange — acquire the lock so IsWriter = true, then delete the file
+        var db = DbPath();
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        Assert.True(svc.IsWriter);
+
+        var lockPath = LockPath(db);
+        File.Delete(lockPath);   // makes every RenewHeartbeat call fail
+
+        var eventFired = false;
+        svc.HeartbeatFailed += () => eventFired = true;
+
+        // Act — call ForceRenewHeartbeat threshold minus one times; event must NOT fire yet
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+        {
+            svc.ForceRenewHeartbeat();
+            Assert.False(eventFired,
+                $"HeartbeatFailed fired too early on failure #{i + 1} " +
+                $"(threshold = {WriteLockService.HeartbeatFailureThreshold}).");
+        }
+
+        // One more — now at the threshold
+        svc.ForceRenewHeartbeat();
+
+        // Assert — event fires exactly at the threshold
+        Assert.True(eventFired, "HeartbeatFailed must be raised after the threshold is reached.");
+    }
+
+    /// <summary>
+    /// A single successful heartbeat renewal must reset the consecutive-failure counter.
+    /// This means the threshold-count restarts from zero after each success, so a
+    /// transient failure (e.g., brief network blip) does not cause a false escalation.
+    /// </summary>
+    [Fact]
+    public void HeartbeatFailed_SuccessfulRenewalResetsCounter()
+    {
+        // Arrange — acquire the lock normally
+        var db       = DbPath();
+        var lockPath = LockPath(db);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        Assert.True(svc.IsWriter);
+
+        var eventFired = false;
+        svc.HeartbeatFailed += () => eventFired = true;
+
+        // Fail threshold - 1 times
+        File.Delete(lockPath);
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+            svc.ForceRenewHeartbeat();
+        Assert.False(eventFired, "Precondition: event must not fire before threshold.");
+
+        // Succeed once — writes a fresh lock file and resets the counter
+        svc.TryAcquire(db);   // re-acquires and writes the lock file
+        // Now succeed via ForceRenewHeartbeat (file exists again from TryAcquire)
+        svc.ForceRenewHeartbeat();
+
+        // Fail threshold - 1 more times — counter was reset so event still should not fire
+        File.Delete(lockPath);
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+            svc.ForceRenewHeartbeat();
+
+        Assert.False(eventFired,
+            "HeartbeatFailed must not fire if the counter was reset by a successful renewal.");
+    }
+
+    /// <summary>
+    /// After <see cref="WriteLockService.HeartbeatFailed"/> fires once,
+    /// the failure counter is reset so a further run of consecutive failures triggers
+    /// the event again after another full threshold-window.
+    /// </summary>
+    [Fact]
+    public void HeartbeatFailed_FiresAgainAfterCounterReset()
+    {
+        var db = DbPath();
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        File.Delete(LockPath(db));
+
+        int eventCount = 0;
+        svc.HeartbeatFailed += () => eventCount++;
+
+        // First threshold — event fires once
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+            svc.ForceRenewHeartbeat();
+        Assert.Equal(1, eventCount);
+
+        // Second threshold — event fires a second time
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+            svc.ForceRenewHeartbeat();
+        Assert.Equal(2, eventCount);
+    }
 }

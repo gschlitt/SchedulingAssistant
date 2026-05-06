@@ -67,10 +67,26 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     public const int StaleLockThresholdSeconds = 180;
 
+    /// <summary>
+    /// Number of consecutive heartbeat renewal failures before
+    /// <see cref="HeartbeatFailed"/> is raised. Set to 3 (matching
+    /// <c>StaleLockThresholdSeconds / HeartbeatIntervalSeconds</c>) so the event
+    /// fires at roughly the same moment an external reader would classify the lock as
+    /// stale and attempt a takeover. (F11, data-integrity-agenda 2026-05-04.)
+    /// </summary>
+    public const int HeartbeatFailureThreshold = 3;
+
     // ── State ──────────────────────────────────────────────────────────────────
 
     private string? _lockFilePath;
     private Timer? _heartbeatTimer;
+    /// <summary>
+    /// Running count of consecutive heartbeat renewal failures. Reset to zero on
+    /// any successful renewal. When it reaches <see cref="HeartbeatFailureThreshold"/>,
+    /// <see cref="HeartbeatFailed"/> is raised and the counter is reset so the event
+    /// fires at most once per threshold-window.
+    /// </summary>
+    private int _heartbeatConsecutiveFailures;
     private Timer? _pollTimer;
     private Timer? _wakeDetectionTimer;
     private DateTime _lastWakeTick = DateTime.UtcNow;
@@ -128,6 +144,23 @@ public sealed class WriteLockService : IDisposable
     /// expected interval by a significant margin).
     /// </summary>
     public event Action? WakeDetected;
+
+    /// <summary>
+    /// Raised on the heartbeat timer thread (NOT the UI thread) after
+    /// <see cref="HeartbeatFailureThreshold"/> consecutive heartbeat renewal failures.
+    /// Signals that the lock file is likely stale from the perspective of other
+    /// readers, who may attempt a takeover. Subscribers should route this through
+    /// the same lock-loss handling path used for save-time and wake-check failures.
+    /// (F11, data-integrity-agenda 2026-05-04.)
+    ///
+    /// <para>Fired at most once per threshold-window: the failure counter is reset to
+    /// zero after the event, so a further uninterrupted run of failures triggers the
+    /// event again after another <see cref="HeartbeatFailureThreshold"/> beats.</para>
+    ///
+    /// <para>Not fired on the UI thread — handlers must dispatch to the UI thread
+    /// themselves if they need to update observable state.</para>
+    /// </summary>
+    public event Action? HeartbeatFailed;
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -496,10 +529,25 @@ public sealed class WriteLockService : IDisposable
             var tmp = _lockFilePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(data));
             File.Move(tmp, _lockFilePath, overwrite: true);
+
+            // Successful renewal: reset the consecutive-failure counter. (F11.)
+            _heartbeatConsecutiveFailures = 0;
         }
         catch (Exception ex)
         {
             App.Logger.LogInfo($"[WriteLockService] Heartbeat renewal failed: {ex.Message}");
+
+            // Escalate after enough consecutive failures: the lock file is likely stale
+            // from the perspective of readers. (F11, data-integrity-agenda 2026-05-04.)
+            _heartbeatConsecutiveFailures++;
+            if (_heartbeatConsecutiveFailures >= HeartbeatFailureThreshold)
+            {
+                _heartbeatConsecutiveFailures = 0; // reset so a second run fires again
+                App.Logger.LogInfo(
+                    $"[WriteLockService] {HeartbeatFailureThreshold} consecutive heartbeat " +
+                    "failures — raising HeartbeatFailed.");
+                HeartbeatFailed?.Invoke();
+            }
         }
     }
 

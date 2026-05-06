@@ -75,7 +75,7 @@
 				</ControlTemplate>
 			</Setter>
 		</Style>
-		<Style Selector="CheckBox.EventsToggle:checked /template/ Path#Checkmark">
+				<Style Selector="CheckBox.EventsToggle:checked /template/ Path#Checkmark">
 			<Setter Property="IsVisible" Value="True" />
 		</Style>
 		<!--  Filter dimension toggle buttons: look like a label, highlight when active  -->

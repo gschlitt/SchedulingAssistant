@@ -185,15 +185,16 @@ public class BackupService : IDisposable
         var csvDest   = Path.Combine(folder, $"{prefix}_{timestamp}_{aySlug}_sections.csv");
 
         // Step 1 — VACUUM INTO
+        // Open a FRESH unpooled connection rather than reusing _db.Connection.
+        // Backups can fire from a thread-pool thread (periodic timer) or from a
+        // CheckoutService.SaveAsync caller. SqliteConnection is not thread-safe;
+        // sharing the live repository connection from a background thread risks
+        // SQLITE_MISUSE if a UI write transaction is in flight at the same moment.
+        // SQLite serialises across separate connections to the same file, so a
+        // fresh handle is the safe path. (F1, data-integrity-agenda 2026-05-04.)
         try
         {
-            using var cmd = _db.Connection.CreateCommand();
-            cmd.CommandText = "VACUUM INTO $path";
-            var p = cmd.CreateParameter();
-            p.ParameterName = "$path";
-            p.Value = dbDest;
-            cmd.Parameters.Add(p);
-            cmd.ExecuteNonQuery();
+            VacuumIntoFreshConnection(dbDest);
         }
         catch (Exception ex)
         {
@@ -252,6 +253,10 @@ public class BackupService : IDisposable
     /// snapshot by <see cref="CheckoutService"/> immediately before writing D' → D.
     /// Non-throwing — failures are logged but do not propagate.
     /// </summary>
+    /// <summary>Suffix appended to the filename of pre-save snapshots so that <see cref="RotateBackups"/>
+    /// can distinguish them from periodic backups and exclude them from the rotation count.</summary>
+    internal const string PresaveSuffix = "_presave";
+
     public void TakeDbSnapshot()
     {
         var folder = AppSettings.Current.BackupFolderPath;
@@ -261,20 +266,47 @@ public class BackupService : IDisposable
         {
             var prefix    = _dbName ?? "backup";
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            var dest      = Path.Combine(folder, $"{prefix}_{timestamp}.db");
+            // Distinct suffix so RotateBackups and GetBackups can exclude these files.
+            // A pre-save snapshot is a safety net for a single save operation; it is not
+            // a periodic backup and must not consume a rotation slot. (F4, 2026-05-04.)
+            var dest = Path.Combine(folder, $"{prefix}_{timestamp}{PresaveSuffix}.db");
 
-            using var cmd = _db.Connection.CreateCommand();
-            cmd.CommandText = "VACUUM INTO $path";
-            var p = cmd.CreateParameter();
-            p.ParameterName = "$path";
-            p.Value = dest;
-            cmd.Parameters.Add(p);
-            cmd.ExecuteNonQuery();
+            // Fresh unpooled connection — see F1 rationale on PerformBackupAsync.
+            VacuumIntoFreshConnection(dest);
         }
         catch (Exception ex)
         {
             _logger.LogInfo($"BackupService: pre-save snapshot failed (non-critical): {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Runs <c>VACUUM INTO</c> against <see cref="IDatabaseContext.DatabasePath"/> using
+    /// a freshly-opened, unpooled <see cref="SqliteConnection"/>. SQLite serialises
+    /// concurrent connections to the same file, so this is safe to call from a
+    /// background thread while the live repository connection is mid-write.
+    /// <para><c>Pooling=False</c> ensures the connection (and its OS file handle) is
+    /// fully released on <see cref="IDisposable.Dispose"/> rather than being returned
+    /// to the pool — important on Windows so subsequent file operations in
+    /// <see cref="CheckoutService"/> are not blocked by a lingering handle.</para>
+    /// </summary>
+    /// <param name="destPath">Destination file for the VACUUM INTO output.</param>
+    private void VacuumIntoFreshConnection(string destPath)
+    {
+        var sourcePath = _db.DatabasePath;
+        if (string.IsNullOrEmpty(sourcePath))
+            throw new InvalidOperationException(
+                "BackupService: IDatabaseContext.DatabasePath is empty — cannot run VACUUM INTO.");
+
+        using var conn = new SqliteConnection($"Data Source={sourcePath};Pooling=False");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "VACUUM INTO $path";
+        var p = cmd.CreateParameter();
+        p.ParameterName = "$path";
+        p.Value = destPath;
+        cmd.Parameters.Add(p);
+        cmd.ExecuteNonQuery();
     }
 
     // ── Backup list ──────────────────────────────────────────────────────────
@@ -296,6 +328,10 @@ public class BackupService : IDisposable
 
         return Directory
             .GetFiles(folder, $"{prefix}_*.db")
+            // Exclude pre-save snapshots — they are safety nets for individual saves,
+            // not user-visible periodic backups. (F4, 2026-05-04.)
+            .Where(f => !Path.GetFileNameWithoutExtension(f)
+                             .EndsWith(PresaveSuffix, StringComparison.OrdinalIgnoreCase))
             .Select(f =>
             {
                 return new BackupEntry
@@ -535,17 +571,23 @@ public class BackupService : IDisposable
     /// <summary>
     /// Enforces the backup retention limit. Oldest backup pairs (db + csv) are deleted
     /// until the count is at or below <paramref name="maxCount"/>.
+    /// Pre-save snapshots (<c>*_presave.db</c>) are excluded from the count and are
+    /// never deleted by rotation — they are managed separately. (F4, 2026-05-04.)
     /// </summary>
     /// <param name="folder">Backup folder path.</param>
     /// <param name="prefix">Database name prefix, e.g. "ComputerScience".</param>
-    /// <param name="maxCount">Maximum number of backup pairs to retain.</param>
-    private static void RotateBackups(string folder, string prefix, int maxCount)
+    /// <param name="maxCount">Maximum number of periodic backup pairs to retain.</param>
+    internal static void RotateBackups(string folder, string prefix, int maxCount)
     {
         // Clamp to a sensible minimum to prevent accidental deletion of everything.
         maxCount = Math.Max(maxCount, 1);
 
-        // File pattern: {prefix}_{yyyy-MM-dd_HH-mm-ss}.db
+        // File pattern: {prefix}_{yyyy-MM-dd_HH-mm-ss}.db  — excludes *_presave.db.
+        // Pre-save snapshots have the PresaveSuffix between the timestamp and ".db";
+        // they must not consume rotation slots. (F4, 2026-05-04.)
         var files = Directory.GetFiles(folder, $"{prefix}_*.db")
+                             .Where(f => !Path.GetFileNameWithoutExtension(f)
+                                              .EndsWith(PresaveSuffix, StringComparison.OrdinalIgnoreCase))
                              .OrderBy(f => f)   // ascending = oldest first
                              .ToList();
 

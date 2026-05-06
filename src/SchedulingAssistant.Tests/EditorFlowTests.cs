@@ -82,7 +82,6 @@ public class EditorFlowTests
             codePatterns:      new List<SectionCodePattern>(),
             isSectionCodeDuplicate: isDuplicate ?? ((_, _) => false),
             onSave:            onSave ?? (_ => Task.CompletedTask),
-            onValidationError: _ => Task.CompletedTask,
             blockPatternRepository: blockPatternRepo.Object,
             defaultBlockLength: null);
     }
@@ -383,11 +382,15 @@ public class EditorFlowTests
         if (semester is not null && academicYear is not null)
         {
             // Populate SemesterContext via its normal Reload path so SelectedSemesters is set.
+            // Pass restoreSemesterIds so the test semester is marked selected after reload;
+            // otherwise Reload restores the previous selection (empty) and SelectedSemesters
+            // stays empty, causing AddCommand to return early without opening the editor.
             var ayRepo  = new Mock<IAcademicYearRepository>();
             var semRepo = new Mock<ISemesterRepository>();
             ayRepo.Setup(r => r.GetAll()).Returns(new List<AcademicYear> { academicYear });
             semRepo.Setup(r => r.GetAll()).Returns(new List<Semester> { semester });
-            semesterContext.Reload(ayRepo.Object, semRepo.Object);
+            semesterContext.Reload(ayRepo.Object, semRepo.Object,
+                restoreSemesterIds: new HashSet<string> { semester.Id });
         }
 
         var store       = new MeetingStore();

@@ -65,7 +65,7 @@ public class DemoSectionRepository : ISectionRepository
     }
 
     /// <inheritdoc/>
-    public void Delete(string id) =>
+    public void Delete(string id, DbTransaction? tx = null) =>
         _sections.RemoveAll(s => s.Id == id);
 
     /// <inheritdoc/>
