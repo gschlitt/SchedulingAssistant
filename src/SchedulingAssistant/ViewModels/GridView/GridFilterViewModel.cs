@@ -396,12 +396,36 @@ public partial class GridFilterViewModel : ViewModelBase
 
     // ── Clear ──────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Clears every filter selection AND the active overlay. Used when the
+    /// active semester changes, so the new semester opens with a clean slate.
+    /// </summary>
     [RelayCommand]
     public void ClearAll()
     {
-        // Suppress FilterChanged while unchecking — each IsSelected change would
-        // otherwise trigger Reload() → PopulateOptions() → RebuildList(), which
-        // clears and replaces the collections while we're still iterating them.
+        ClearFiltersAndOverlay(clearOverlay: true);
+    }
+
+    /// <summary>
+    /// Clears every filter dimension's selections but preserves the active
+    /// overlay. Bound to the "Clear" button inside the Filters group in
+    /// GridFilterView.
+    /// </summary>
+    [RelayCommand]
+    public void ClearFilters()
+    {
+        ClearFiltersAndOverlay(clearOverlay: false);
+    }
+
+    /// <summary>
+    /// Shared core for ClearAll and ClearFilters. Suppresses FilterChanged
+    /// while unchecking items so each IsSelected change does not trigger
+    /// Reload() → PopulateOptions() → RebuildList(), which would clear and
+    /// replace the collections while we're still iterating them.
+    /// </summary>
+    /// <param name="clearOverlay">When true, also clears the active overlay.</param>
+    private void ClearFiltersAndOverlay(bool clearOverlay)
+    {
         var handler = FilterChanged;
         FilterChanged = null;
         try
@@ -409,15 +433,19 @@ public partial class GridFilterViewModel : ViewModelBase
             foreach (var col in AllCollections())
                 foreach (var item in col.ToList())   // ToList() snapshots so iteration is safe
                     item.IsSelected = false;
-            ClearOverlayCore();
+            if (clearOverlay)
+                ClearOverlayCore();
         }
         finally
         {
             FilterChanged = handler;
         }
         RefreshDerived();
-        RefreshOverlaySummary();
-        RefreshOverlayActiveStates();
+        if (clearOverlay)
+        {
+            RefreshOverlaySummary();
+            RefreshOverlayActiveStates();
+        }
         FilterChanged?.Invoke();
         HeadersChanged?.Invoke();
     }
