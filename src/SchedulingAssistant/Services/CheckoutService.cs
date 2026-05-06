@@ -109,7 +109,14 @@ public sealed class CheckoutService : IDisposable
 
     private Timer?  _autoSaveTimer;
     private bool    _disposed;
-    private bool    _saveInFlight;
+
+    /// <summary>
+    /// 0 = idle, 1 = a save is currently in flight. Mutated only via
+    /// <see cref="Interlocked.CompareExchange(ref int, int, int)"/> so concurrent
+    /// callers (UI button + autosave timer + ReleaseAsync) cannot pass the
+    /// "is a save running?" gate simultaneously.
+    /// </summary>
+    private int     _saveInFlight;
 
     /// <summary>Current checkout mode.</summary>
     public CheckoutMode Mode { get; private set; } = CheckoutMode.ReadOnly;
@@ -191,6 +198,21 @@ public sealed class CheckoutService : IDisposable
     /// checkout or save. The UI can use this to show an "Unsaved changes" indicator.
     /// </summary>
     public event Action? BecameDirty;
+
+    /// <summary>
+    /// Raised <b>synchronously</b> on the calling thread, inside step 7 of
+    /// <c>SaveAsyncCore</c>, immediately before the dirty marker file is deleted.
+    /// <para><see cref="Data.IDatabaseContext.ResetDirty"/> subscribes to this so that
+    /// <c>_dirtyFired</c> is reset to 0 BEFORE the marker is removed. Any user-initiated
+    /// write that arrives in the very small window between reset and delete will be able
+    /// to re-fire <c>MarkDirty</c> (CAS 0→1 succeeds), giving the post-save edit a chance
+    /// to re-write the marker. This closes the F2 race documented in
+    /// <c>data-integrity-agenda.md</c>: the previous wiring (via the post-step-7
+    /// <see cref="SaveCompleted"/> event, dispatched to the UI thread) could leave a
+    /// hundred-millisecond gap during which writes silently failed to re-arm the marker,
+    /// causing crash recovery to misreport "clean exit" and discard real edits.</para>
+    /// </summary>
+    public event Action? BeforeDirtyMarkerDeleted;
 
     /// <summary>
     /// Raised on the UI thread when <see cref="SaveAsync"/> fails for a reason
@@ -507,20 +529,22 @@ public sealed class CheckoutService : IDisposable
         if (Mode != CheckoutMode.WriteAccess)
             return SaveOutcome.NotInWriteMode;
 
-        if (_saveInFlight)
+        // Atomic check-then-set: if another thread already set _saveInFlight to 1,
+        // CompareExchange returns its old value (1) and we bail. Only one caller
+        // can transition 0 → 1 across all threads.
+        if (Interlocked.CompareExchange(ref _saveInFlight, 1, 0) != 0)
         {
             _logger.LogInfo("CheckoutService: SaveAsync skipped — a save is already in progress.");
             return SaveOutcome.CopyError;
         }
 
-        _saveInFlight = true;
         try
         {
             return await SaveAsyncCore(releaseLockAfter);
         }
         finally
         {
-            _saveInFlight = false;
+            Volatile.Write(ref _saveInFlight, 0);
         }
     }
 
@@ -647,6 +671,11 @@ public sealed class CheckoutService : IDisposable
         // D' now matches D — delete the dirty marker. If the user makes further
         // edits, DatabaseContext.MarkDirty() will re-write it (after ResetDirty rearms it).
         // This keeps the marker as an accurate signal: present = unsaved changes exist.
+        //
+        // Fire BeforeDirtyMarkerDeleted SYNCHRONOUSLY first so subscribers (notably
+        // DatabaseContext.ResetDirty) can rearm MarkDirty before the marker file is
+        // removed. See the event docstring for the F2 race rationale.
+        BeforeDirtyMarkerDeleted?.Invoke();
         DeleteDirtyMarker();
         if (releaseLockAfter)
             _lockService.Release();
@@ -900,6 +929,15 @@ public sealed class CheckoutService : IDisposable
     {
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
+
+        // Timer.Dispose() does not wait for an in-flight callback. If the
+        // autosave fired moments before StopAutoSave(), AutoSaveTickAsync is
+        // already queued on the thread pool. Yield so it has a chance to run
+        // and either complete its save or, if our SaveAsync below grabs the
+        // gate first, observe _saveInFlight=1 and bail. The Interlocked guard
+        // in SaveAsync guarantees correctness either way; this just shortens
+        // the window during which the queued autosave is competing with us.
+        await Task.Yield();
 
         if (saveFirst && Mode == CheckoutMode.WriteAccess)
             await SaveAsync(releaseLockAfter: true);

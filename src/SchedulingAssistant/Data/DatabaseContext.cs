@@ -18,8 +18,13 @@ public class DatabaseContext : IDatabaseContext
     private readonly Action? _onFirstWrite;
     private int _dirtyFired; // 0 = not yet fired; 1 = fired. Interlocked for thread safety.
 
+    private string _dbPath;
+
     /// <inheritdoc/>
     public DbConnection Connection => _conn;
+
+    /// <inheritdoc/>
+    public string DatabasePath => _dbPath;
 
     /// <inheritdoc/>
     public bool SupportsTransactions => true;
@@ -44,6 +49,7 @@ public class DatabaseContext : IDatabaseContext
     public DatabaseContext(string dbPath, Action? onFirstWrite = null)
     {
         _onFirstWrite = onFirstWrite;
+        _dbPath       = dbPath;
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
         _conn = new SqliteConnection($"Data Source={dbPath}");
@@ -464,7 +470,8 @@ public class DatabaseContext : IDatabaseContext
         SqliteConnection.ClearAllPools();
 
         // Open a new connection to the (possibly replaced) database file.
-        _conn = new SqliteConnection($"Data Source={newDbPath}");
+        _dbPath = newDbPath;
+        _conn   = new SqliteConnection($"Data Source={newDbPath}");
         try
         {
             _conn.Open();

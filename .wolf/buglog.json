@@ -8334,6 +8334,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-05T01:36:12.293Z"
+    },
+    {
+      "id": "bug-521",
+      "timestamp": "2026-05-06T03:53:53.751Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 18→20 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T03:53:53.751Z"
+    },
+    {
+      "id": "bug-522",
+      "timestamp": "2026-05-06T03:54:34.899Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T03:54:34.899Z"
+    },
+    {
+      "id": "bug-523",
+      "timestamp": "2026-05-06T04:03:16.609Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/BackupService.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 14→15 lines (7 removed) | Also: using var cmd = _db.Connection.CreateCommand();; p.Value = dest;",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-06T04:03:29.530Z"
+    },
+    {
+      "id": "bug-524",
+      "timestamp": "2026-05-06T04:05:51.387Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T04:05:51.387Z"
+    },
+    {
+      "id": "bug-525",
+      "timestamp": "2026-05-06T04:06:20.426Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T04:06:20.426Z"
     }
   ]
 }

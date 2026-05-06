@@ -82,7 +82,6 @@ public class EditorFlowTests
             codePatterns:      new List<SectionCodePattern>(),
             isSectionCodeDuplicate: isDuplicate ?? ((_, _) => false),
             onSave:            onSave ?? (_ => Task.CompletedTask),
-            onValidationError: _ => Task.CompletedTask,
             blockPatternRepository: blockPatternRepo.Object,
             defaultBlockLength: null);
     }

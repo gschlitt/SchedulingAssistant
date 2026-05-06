@@ -3,6 +3,19 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
+## Session: 2026-05-04 — Data integrity & concurrency audit
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Full codebase audit for timing bugs, race conditions, data loss | CheckoutService, BackupService, DatabaseContext, AppSettings, BackupService, SectionRepository, CopySemesterViewModel | 15 findings (F1–F15), P0–P3. Agenda written to `.wolf/data-integrity-agenda.md` |
+
+### Summary of findings
+- **P0 (data loss):** F1 — BackupService VACUUM INTO on shared `_db.Connection` from background thread (not thread-safe). F2 — `DeleteDirtyMarker` gap: writes between step 4 and step 7 of SaveAsyncCore go undetected because `_dirtyFired` isn't reset until after the marker is deleted.
+- **P1 (high):** F3 — `_saveInFlight` plain bool (needs `Interlocked`). F8 — autosave timer fires against disposed BackupService during DI rebuild. F9 — `ReleaseAsync`+autosave timer race (resolved by F3).
+- **P2 (moderate):** F4 — `RotateBackups` eats pre-save snapshots. F5 — `SectionRepository.Delete` missing tx param. F6 — `IsMigrationNeeded` proxy goes stale when new migrations added. F7 — migrate drops `SchedulingEnvironmentValues` before rename (data loss if both exist with data). F10 — connection pool holds D' open after DI rebuild. F14 — `CopySemesterViewModel.BeginTransaction` without WASM guard.
+- **P3 (low):** F11 — heartbeat failures not escalated. F12 — `AppSettings.Save` non-atomic. F13 — `BackfillReadableColumns` unbounded on large DBs. F15 — `RecentDatabases` not thread-safe.
+- Full agenda with test strategies, fix locations, effort estimates: `.wolf/data-integrity-agenda.md`
+
 ## Session: 2026-03-28 — Shared DB architecture design
 
 | Action | Files | Outcome |
@@ -4744,6 +4757,41 @@
 |------|--------|---------|---------|--------|
 
 ## Session: 2026-05-05 21:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-06 20:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-06 20:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:53 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+7 lines) | ~112 |
+| 20:53 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 18→20 lines | ~193 |
+| 20:54 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified ReleaseAsync() | ~229 |
+| 20:54 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified ComputeReadOnlyPath() | ~1059 |
+| 20:54 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | inline fix | ~11 |
+| 20:55 | Session end: 5 writes across 2 files (CheckoutService.cs, CheckoutServiceTests.cs) | 3 reads | ~1718 tok |
+| 20:57 | Session end: 5 writes across 2 files (CheckoutService.cs, CheckoutServiceTests.cs) | 3 reads | ~1718 tok |
+| 20:58 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 3→2 lines | ~35 |
+| 21:00 | Session end: 6 writes across 3 files (CheckoutService.cs, CheckoutServiceTests.cs, EditorFlowTests.cs) | 4 reads | ~1755 tok |
+| 21:02 | Edited src/SchedulingAssistant/Data/IDatabaseContext.cs | expanded (+9 lines) | ~160 |
+| 21:02 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 11→16 lines | ~130 |
+| 21:02 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | modified DatabaseContext() | ~74 |
+| 21:02 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 2→3 lines | ~46 |
+| 21:03 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoDatabaseContext.cs | 2→5 lines | ~38 |
+| 21:03 | Edited src/SchedulingAssistant/Services/BackupService.cs | modified catch() | ~211 |
+| 21:03 | Edited src/SchedulingAssistant/Services/BackupService.cs | added 1 condition(s) | ~470 |
+| 21:05 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+15 lines) | ~338 |
+| 21:05 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added optional chaining | ~157 |
+| 21:06 | Edited src/SchedulingAssistant/App.axaml.cs | 2→7 lines | ~149 |
+| 21:06 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified SaveAsync_BeforeDirtyMarkerDeleted_FiresWhileMarkerStillExists() | ~799 |
+
+## Session: 2026-05-06 21:09
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|

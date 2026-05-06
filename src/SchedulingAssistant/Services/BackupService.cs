@@ -185,15 +185,16 @@ public class BackupService : IDisposable
         var csvDest   = Path.Combine(folder, $"{prefix}_{timestamp}_{aySlug}_sections.csv");
 
         // Step 1 — VACUUM INTO
+        // Open a FRESH unpooled connection rather than reusing _db.Connection.
+        // Backups can fire from a thread-pool thread (periodic timer) or from a
+        // CheckoutService.SaveAsync caller. SqliteConnection is not thread-safe;
+        // sharing the live repository connection from a background thread risks
+        // SQLITE_MISUSE if a UI write transaction is in flight at the same moment.
+        // SQLite serialises across separate connections to the same file, so a
+        // fresh handle is the safe path. (F1, data-integrity-agenda 2026-05-04.)
         try
         {
-            using var cmd = _db.Connection.CreateCommand();
-            cmd.CommandText = "VACUUM INTO $path";
-            var p = cmd.CreateParameter();
-            p.ParameterName = "$path";
-            p.Value = dbDest;
-            cmd.Parameters.Add(p);
-            cmd.ExecuteNonQuery();
+            VacuumIntoFreshConnection(dbDest);
         }
         catch (Exception ex)
         {
@@ -263,18 +264,42 @@ public class BackupService : IDisposable
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
             var dest      = Path.Combine(folder, $"{prefix}_{timestamp}.db");
 
-            using var cmd = _db.Connection.CreateCommand();
-            cmd.CommandText = "VACUUM INTO $path";
-            var p = cmd.CreateParameter();
-            p.ParameterName = "$path";
-            p.Value = dest;
-            cmd.Parameters.Add(p);
-            cmd.ExecuteNonQuery();
+            // Fresh unpooled connection — see F1 rationale on PerformBackupAsync.
+            VacuumIntoFreshConnection(dest);
         }
         catch (Exception ex)
         {
             _logger.LogInfo($"BackupService: pre-save snapshot failed (non-critical): {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Runs <c>VACUUM INTO</c> against <see cref="IDatabaseContext.DatabasePath"/> using
+    /// a freshly-opened, unpooled <see cref="SqliteConnection"/>. SQLite serialises
+    /// concurrent connections to the same file, so this is safe to call from a
+    /// background thread while the live repository connection is mid-write.
+    /// <para><c>Pooling=False</c> ensures the connection (and its OS file handle) is
+    /// fully released on <see cref="IDisposable.Dispose"/> rather than being returned
+    /// to the pool — important on Windows so subsequent file operations in
+    /// <see cref="CheckoutService"/> are not blocked by a lingering handle.</para>
+    /// </summary>
+    /// <param name="destPath">Destination file for the VACUUM INTO output.</param>
+    private void VacuumIntoFreshConnection(string destPath)
+    {
+        var sourcePath = _db.DatabasePath;
+        if (string.IsNullOrEmpty(sourcePath))
+            throw new InvalidOperationException(
+                "BackupService: IDatabaseContext.DatabasePath is empty — cannot run VACUUM INTO.");
+
+        using var conn = new SqliteConnection($"Data Source={sourcePath};Pooling=False");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "VACUUM INTO $path";
+        var p = cmd.CreateParameter();
+        p.ParameterName = "$path";
+        p.Value = destPath;
+        cmd.Parameters.Add(p);
+        cmd.ExecuteNonQuery();
     }
 
     // ── Backup list ──────────────────────────────────────────────────────────
