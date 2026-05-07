@@ -1,25 +1,21 @@
 Bugs:
 
-Vacuum Into is failing?! Not just during sleep.
+Events view needs lock service
 
+Collapse uncollapse should be available in reader mode, so should sort
 
-When you open a new db within file, the backup folder defaults to usersettings?
-
-
-ChatGPT comments.
-
-
-
-
-
-
-
+When you open a new db within file, the backup folder defaults to usersettings
 
 Delete key operational across lists?
 
-Vacuum Into is failing randomly
-
 Guided tour?
+
+
+
+Test: 
+Semester copying
+multi-user across network, lock acquisition etc
+
 
 
 
@@ -46,12 +42,6 @@ Limit blocklength "names" to 5 characters
 
 
 
-SectionListView editor is kind of silly with the block patterns. 
-
-
-
-New via Wizard...
-Autosave should be by default, but turned off with preference persisted in local users.
 
 
 

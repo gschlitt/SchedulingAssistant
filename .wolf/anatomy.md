@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-06T18:20:18.883Z
-> Files: 20 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-07T19:35:02.054Z
+> Files: 22 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,13 +29,14 @@
 
 ## ../../../.claude/plans/
 
+- `i-d-like-to-further-declarative-origami.md` — Semester Selector: Single-Click Exclusive, Ctrl+Click Multi-Select (~1155 tok)
+- `some-revisions-needed-to-cozy-biscuit.md` — Plan: Reader Mode UX Fixes — Section View & Events View (~1193 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 
 ## ./
 
-- `data-integrity-agenda.md` — Data Integrity & Concurrency Bug — Implementation Agenda (~8678 tok)
 
 ## .claude/
 
@@ -186,25 +187,18 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `AppSettingsTests.cs` — Tests for F12 and F15 from the data-integrity audit (2026-05-04). <list type="bullet"> <item> <descr (~2646 tok)
-- `BackupServiceTests.cs` — Tests for <see cref="BackupService"/>. <para>Tests in this file focus on the F1 fix from the data-in (~4853 tok)
-- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~20518 tok)
-- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~4891 tok)
-- `MigrationGuardTests.cs` — Tests for F7 from the data-integrity audit (2026-05-04): the <c>SectionPropertyValues → SchedulingEn (~1983 tok)
-- `RepositoryTransactionTests.cs` — Tests for F5 and F14 from the data-integrity audit (2026-05-04). <list type="bullet"> <item> <descri (~2247 tok)
-- `SchemaVersionTests.cs` — Tests for F6 from the data-integrity audit (2026-05-04): <c>PRAGMA user_version</c> is written at th (~2445 tok)
-- `WriteLockServiceTests.cs` — Unit tests for <see cref="WriteLockService"/>. <para>Each test fixture creates an isolated temporary (~7252 tok)
+- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~6292 tok)
+- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~7958 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4210 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14569 tok)
 
 ## src/SchedulingAssistant/Assets/
 
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `SemesterClickBehavior.cs` — Attached behavior for semester picker rows. Intercepts left-clicks and routes them to <see cref="Sem (~1319 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -214,16 +208,12 @@
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~7007 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
-- `ISectionRepository.cs` — Data access contract for <see cref="Section"/> entities (the core scheduling entity). (~692 tok)
-- `SectionRepository.cs` — Returns all sections for the given course across all semesters, ordered by section code. (~2153 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/Demo/
 
-- `DemoSectionRepository.cs` — In-memory demo implementation of <see cref="ISectionRepository"/> backed by a mutable copy of <see c (~698 tok)
 
 ## src/SchedulingAssistant/Demo/
 
@@ -233,20 +223,25 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~2796 tok)
-- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~10280 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~19870 tok)
-- `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~8117 tok)
+- `SectionStore.cs` — Singleton service that holds the in-memory cache of sections for the currently selected semester(s) (~2250 tok)
+- `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4296 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7961 tok)
+- `WorkloadPanelViewModel.cs` — Public method to reload workload data (e.g., after release changes). (~3254 tok)
+- `WorkloadRowViewModel.cs` — Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)" (~678 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~17726 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `CopySemesterViewModel.cs` — True when the current user holds the write lock; gates all Copy Semester controls. (~4525 tok)
+- `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~457 tok)
+- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5588 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13064 tok)
+- `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~1844 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -256,12 +251,19 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `MainView.axaml` (~6048 tok)
+- `MainView.axaml.cs` — Top-level UserControl containing the full application UI. Extracted from MainWindow so the same UI c (~926 tok)
+- `SectionPanelContent.axaml` (~1510 tok)
+- `WorkloadPanelView.axaml` (~3121 tok)
+- `WorkloadPanelView.axaml.cs` — Tunnel-phase PointerPressed handler. When Ctrl is held on a left-click over a chip Button, calls <se (~481 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14331 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3127 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

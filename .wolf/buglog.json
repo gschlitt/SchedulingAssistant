@@ -8670,6 +8670,166 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-06T18:20:12.185Z"
+    },
+    {
+      "id": "bug-542",
+      "timestamp": "2026-05-06T22:21:52.023Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→13 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T22:21:52.023Z"
+    },
+    {
+      "id": "bug-543",
+      "timestamp": "2026-05-06T22:22:04.085Z",
+      "error_message": "Wrong reference: SelectedSectionId should be SelectedSectionIds",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Used \"SelectedSectionId\" instead of \"SelectedSectionIds\"",
+      "fix": "Changed SelectedSectionId → SelectedSectionIds",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T22:22:04.085Z"
+    },
+    {
+      "id": "bug-544",
+      "timestamp": "2026-05-06T22:22:16.341Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: var selectedIds       = _vm?.SelectedSectionIds ?? new HashS",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-06T22:22:21.699Z"
+    },
+    {
+      "id": "bug-545",
+      "timestamp": "2026-05-06T22:23:20.597Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 14→27 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T22:23:20.597Z"
+    },
+    {
+      "id": "bug-546",
+      "timestamp": "2026-05-06T22:24:12.842Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-06T22:24:12.842Z"
+    },
+    {
+      "id": "bug-547",
+      "timestamp": "2026-05-07T16:18:52.019Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant.Tests/EditorFlowTests.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-07T16:18:52.019Z"
+    },
+    {
+      "id": "bug-548",
+      "timestamp": "2026-05-07T18:49:20.961Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/SemesterContext.cs",
+      "root_cause": "No early return/throw for edge case: _isSelected == value",
+      "fix": "Added guard clause: if (_isSelected == value)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-07T18:49:20.961Z"
+    },
+    {
+      "id": "bug-549",
+      "timestamp": "2026-05-07T18:49:46.950Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 19→49 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-07T18:49:46.950Z"
+    },
+    {
+      "id": "bug-550",
+      "timestamp": "2026-05-07T19:27:19.728Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 10→6 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-07T19:27:19.728Z"
+    },
+    {
+      "id": "bug-551",
+      "timestamp": "2026-05-07T19:35:02.105Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 16→10 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-07T19:35:02.105Z"
     }
   ]
 }

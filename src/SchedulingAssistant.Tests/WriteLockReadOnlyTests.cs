@@ -1,9 +1,11 @@
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Xunit;
@@ -81,12 +83,14 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly AcademicUnitRepository        _academicUnitRepo;
     private readonly ReleaseRepository             _releaseRepo;
     private readonly InstructorCommitmentRepository _commitmentRepo;
+    private readonly MeetingRepository              _meetingRepo;
 
     // ── Services ──────────────────────────────────────────────────────────────
 
     private readonly SemesterContext              _semesterContext;
     private readonly SectionChangeNotifier        _changeNotifier;
     private readonly SectionStore                 _sectionStore;
+    private readonly MeetingStore                 _meetingStore;
     private readonly AcademicUnitService          _academicUnitService;
     private readonly ScheduleValidationService    _scheduleValidation;
     private readonly IDialogService               _dialog;
@@ -120,10 +124,12 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _academicUnitRepo = new AcademicUnitRepository(_db);
         _releaseRepo     = new ReleaseRepository(_db);
         _commitmentRepo  = new InstructorCommitmentRepository(_db);
+        _meetingRepo     = new MeetingRepository(_db);
 
         _semesterContext    = new SemesterContext();
         _changeNotifier     = new SectionChangeNotifier();
         _sectionStore       = new SectionStore();
+        _meetingStore       = new MeetingStore();
         _academicUnitService = new AcademicUnitService(_academicUnitRepo);
         _scheduleValidation  = new ScheduleValidationService(_legalStartTimeRepo);
         _dialog             = new NullDialogService();
@@ -158,6 +164,11 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock);
+
+    /// <summary>Creates a fully-wired <see cref="MeetingListViewModel"/> in reader mode.</summary>
+    private MeetingListViewModel CreateMeetingListVm() =>
+        new(_meetingRepo, _instructorRepo, _roomRepo, _propertyRepo, _campusRepo,
+            _legalStartTimeRepo, _semesterContext, _meetingStore, _lock);
 
     /// <summary>Creates a fully-wired <see cref="SectionCodePatternListViewModel"/> in reader mode.</summary>
     private SectionCodePatternListViewModel CreateSectionCodePatternListVm() =>
@@ -236,6 +247,25 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 
+    /// <summary>
+    /// CollapseAll and ExpandAll only change in-memory card state — they never write
+    /// to the database. They must remain executable in reader mode so users can still
+    /// navigate the section list while the write lock is held by someone else.
+    /// </summary>
+    [Fact]
+    public void SectionList_CollapseAllCommand_CanExecuteIsTrueInReaderMode()
+    {
+        var vm = CreateSectionListVm();
+        Assert.True(vm.CollapseAllCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void SectionList_ExpandAllCommand_CanExecuteIsTrueInReaderMode()
+    {
+        var vm = CreateSectionListVm();
+        Assert.True(vm.ExpandAllCommand.CanExecute(null));
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Group 2 — SectionContextMenuViewModel
     // Right-click context menu on schedule-grid tiles. Confirm patches the section.
@@ -278,6 +308,90 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     {
         var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock);
         Assert.False(vm.DeleteCommand.CanExecute(null));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 4 — MeetingListViewModel
+    // The Events / Meetings left panel. Previously Add/Edit/Delete commands lacked
+    // CanWrite guards; they were added as part of the reader-mode UX fix.
+    // Edit is also triggered by double-click, so its CanExecute gate is critical.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void MeetingList_IsWriteEnabled_FalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        Assert.False(vm.IsWriteEnabled);
+    }
+
+    [Fact]
+    public void MeetingList_AddCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        Assert.False(vm.AddCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void MeetingList_AddToSemesterCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        Assert.False(vm.AddToSemesterCommand.CanExecute("sem-1"));
+    }
+
+    [Fact]
+    public void MeetingList_EditCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        // No selection — both guards (IsWriter and selection) are unsatisfied.
+        Assert.False(vm.EditCommand.CanExecute(null));
+    }
+
+    /// <summary>
+    /// Key regression test: even when a card IS selected, Edit must be blocked in
+    /// reader mode. Before the fix, CanEdit only checked selection — a selected card
+    /// would have returned CanExecute == true, allowing double-click to open the editor.
+    /// </summary>
+    [Fact]
+    public void MeetingList_EditCommand_WithSelection_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        var card = new MeetingListItemViewModel(
+            new Meeting { Id = "m-1", SemesterId = "s-1" },
+            new Dictionary<string, Instructor>(),
+            new Dictionary<string, Room>(),
+            new Dictionary<string, SchedulingEnvironmentValue>(),
+            new Dictionary<string, SchedulingEnvironmentValue>());
+        vm.SelectedItem = card;
+
+        Assert.False(vm.EditCommand.CanExecute(null),
+            "Edit must be blocked in reader mode even when a card is selected.");
+    }
+
+    [Fact]
+    public void MeetingList_DeleteCommand_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        Assert.False(vm.DeleteCommand.CanExecute(null));
+    }
+
+    /// <summary>
+    /// Key regression test: even when a card IS selected, Delete must be blocked in
+    /// reader mode. Before the fix, CanDelete only checked selection.
+    /// </summary>
+    [Fact]
+    public void MeetingList_DeleteCommand_WithSelection_CanExecuteIsFalseInReaderMode()
+    {
+        var vm = CreateMeetingListVm();
+        var card = new MeetingListItemViewModel(
+            new Meeting { Id = "m-1", SemesterId = "s-1" },
+            new Dictionary<string, Instructor>(),
+            new Dictionary<string, Room>(),
+            new Dictionary<string, SchedulingEnvironmentValue>(),
+            new Dictionary<string, SchedulingEnvironmentValue>());
+        vm.SelectedItem = card;
+
+        Assert.False(vm.DeleteCommand.CanExecute(null),
+            "Delete must be blocked in reader mode even when a card is selected.");
     }
 
     // ═════════════════════════════════════════════════════════════════════════

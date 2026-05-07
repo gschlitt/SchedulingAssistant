@@ -223,7 +223,7 @@
 		</Style>
 	</UserControl.Styles>
 
-		<WrapPanel VerticalAlignment="Center" >	
+		<WrapPanel VerticalAlignment="Top" >	
 		
 			<!--  ── Filter chooser group ─────────────────────────────────────────  -->			
 			<GroupBox

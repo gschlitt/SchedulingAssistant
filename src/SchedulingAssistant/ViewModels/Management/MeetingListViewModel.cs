@@ -77,6 +77,9 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
     /// <summary>True when write operations are permitted (the write lock is held).</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    /// <summary>CanExecute predicate shared by all write commands.</summary>
+    private bool CanWrite() => _lockService.IsWriter;
+
     /// <summary>True when more than one semester is currently loaded.</summary>
     public bool IsMultiSemesterMode => _semesterContext.IsMultiSemesterMode;
 
@@ -130,6 +133,7 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
         // Reload when the meeting data changes (after any save) or semester selection changes.
         _meetingStore.MeetingsChanged += LoadFromStore;
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
+        _lockService.LockStateChanged  += OnLockStateChanged;
 
         LoadFromStore();
     }
@@ -209,13 +213,30 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
+    // ── Lock State ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fired by <see cref="WriteLockService.LockStateChanged"/>; re-evaluates
+    /// <see cref="IsWriteEnabled"/> and all write-command CanExecute predicates.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        AddCommand.NotifyCanExecuteChanged();
+        AddToSemesterCommand.NotifyCanExecuteChanged();
+        EditCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
+
     /// <summary>
     /// Opens a blank inline editor for a new event.
     /// In multi-semester mode: if an event is selected, defaults to its semester without
     /// prompting; otherwise shows the "Add to which semester?" inline prompt.
     /// Matches the pattern used by <see cref="SectionListViewModel.Add"/>.
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
         if (_semesterContext.IsMultiSemesterMode)
@@ -254,7 +275,7 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
     /// and opens the inline editor.
     /// </summary>
     /// <param name="semesterId">The ID of the semester to add to.</param>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanWrite))]
     private void AddToSemester(string semesterId)
     {
         IsAddSemesterPromptVisible = false;
@@ -358,7 +379,7 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
         OpenEditor(SelectedMeetingItem.Meeting, isNew: false);
     }
 
-    private bool CanEdit() => SelectedMeetingItem is not null;
+    private bool CanEdit() => _lockService.IsWriter && SelectedMeetingItem is not null;
 
     /// <summary>Deletes the currently selected event after confirmation.</summary>
     [RelayCommand(CanExecute = nameof(CanDelete))]
@@ -371,7 +392,7 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
         _meetingStore.Reload(_meetingRepo, semIds);
     }
 
-    private bool CanDelete() => SelectedMeetingItem is not null;
+    private bool CanDelete() => _lockService.IsWriter && SelectedMeetingItem is not null;
 
     // ── Editor lifecycle ──────────────────────────────────────────────────────
 
@@ -457,5 +478,6 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
     {
         _meetingStore.MeetingsChanged -= LoadFromStore;
         _semesterContext.PropertyChanged -= OnSemesterContextChanged;
+        _lockService.LockStateChanged  -= OnLockStateChanged;
     }
 }

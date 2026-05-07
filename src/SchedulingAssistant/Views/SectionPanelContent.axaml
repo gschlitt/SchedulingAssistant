@@ -12,24 +12,25 @@
 		Expects MainWindowViewModel as DataContext.
 		Used inside the DetachablePanel (docked) and in the detached window.
 	-->
-	<Grid RowDefinitions="Auto,*">
+	<Grid RowDefinitions="Auto,*" Background="{StaticResource AppBackground}">
 
 		<!--  Action buttons  -->
 		<StackPanel Grid.Row="0">
 
 			<!--
-				Section action buttons — the entire group is disabled in read-only mode
-				via a single IsEnabled binding on the container.
-				Visibility swaps with the Meeting action buttons based on IsShowingMeetings.
+				Section action buttons.
+				Collapse/expand and sort are always enabled (view-only operations).
+				Add/Edit/Copy/Delete are gated by IsWriteEnabled via an inner StackPanel.
+				Visibility of the whole row swaps with the Meeting action buttons.
 			-->
 			<StackPanel
-				Margin="0,4,0,4"
+				Margin="0,8,0,4"
 				VerticalAlignment="Top"
 				DataContext="{Binding SectionListVm}"
-				IsEnabled="{Binding IsWriteEnabled}"
 				IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}"
 				Orientation="Horizontal"
 				Spacing="3">
+				<!--  Always enabled: collapse/expand do not write to the database  -->
 				<Button
 					MinWidth="0"
 					MinHeight="0"
@@ -54,40 +55,47 @@
 					Width="1"
 					Margin="2,2"
 					Background="{StaticResource SeparatorLine}" />
-				<Button
-					MinWidth="0"
-					MinHeight="0"
-					Padding="5,1"
-					b:HelpTip.Text="Add a new section"
-					Command="{Binding AddCommand}"
-					Content="Add"
-					FontSize="{StaticResource FontSizeNormal}" />
-				<Button
-					MinWidth="0"
-					MinHeight="0"
-					Padding="5,1"
-					b:HelpTip.Text="Edit the selected section. You can also begin editing by double-clicking a section or by pressing 'Enter' with a section selected."
-					Command="{Binding EditCommand}"
-					Content="Edit"
-					FontSize="{StaticResource FontSizeNormal}"
-					IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-				<Button
-					MinWidth="0"
-					MinHeight="0"
-					Padding="5,1"
-					b:HelpTip.Text="Copy the selected section, incrementing the section code"
-					Command="{Binding CopyCommand}"
-					Content="Copy"
-					FontSize="{StaticResource FontSizeNormal}"
-					IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
-				<Button
-					MinWidth="0"
-					MinHeight="0"
-					Padding="5,1"
-					Command="{Binding DeleteCommand}"
-					Content="Delete"
-					FontSize="{StaticResource FontSizeNormal}"
-					IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+				<!--  Write-gated: Add/Edit/Copy/Delete  -->
+				<StackPanel
+					IsEnabled="{Binding IsWriteEnabled}"
+					Orientation="Horizontal"
+					Spacing="3">
+					<Button
+						MinWidth="0"
+						MinHeight="0"
+						Padding="5,1"
+						b:HelpTip.Text="Add a new section"
+						Command="{Binding AddCommand}"
+						Content="Add"
+						FontSize="{StaticResource FontSizeNormal}" />
+					<Button
+						MinWidth="0"
+						MinHeight="0"
+						Padding="5,1"
+						b:HelpTip.Text="Edit the selected section. You can also begin editing by double-clicking a section or by pressing 'Enter' with a section selected."
+						Command="{Binding EditCommand}"
+						Content="Edit"
+						FontSize="{StaticResource FontSizeNormal}"
+						IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+					<Button
+						MinWidth="0"
+						MinHeight="0"
+						Padding="5,1"
+						b:HelpTip.Text="Copy the selected section, incrementing the section code"
+						Command="{Binding CopyCommand}"
+						Content="Copy"
+						FontSize="{StaticResource FontSizeNormal}"
+						IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+					<Button
+						MinWidth="0"
+						MinHeight="0"
+						Padding="5,1"
+						Command="{Binding DeleteCommand}"
+						Content="Delete"
+						FontSize="{StaticResource FontSizeNormal}"
+						IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+				</StackPanel>
+				<!--  Always enabled: sort is a view preference, not a data write  -->
 				<TextBlock
 					VerticalAlignment="Center"
 					FontSize="{StaticResource FontSizeNormal}"

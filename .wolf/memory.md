@@ -4874,3 +4874,147 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | — | Groups G-I summary: F4 presave suffix+rotation exclusion; F12+F15 atomic Save+lock; F11 heartbeat failure counter+event | BackupService.cs, AppSettings.cs, WriteLockService.cs, CheckoutService.cs | 483 tests passing |
+
+## Session: 2026-05-06 12:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:21 | Created src/SchedulingAssistant/Services/SectionStore.cs | — | ~2249 |
+| 15:21 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→3 lines | ~61 |
+| 15:21 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→2 lines | ~43 |
+| 15:21 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | expanded (+6 lines) | ~148 |
+| 15:22 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→2 lines | ~34 |
+| 15:22 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added nullish coalescing | ~319 |
+| 15:22 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added nullish coalescing | ~78 |
+| 15:22 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | inline fix | ~22 |
+| 15:22 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 1 condition(s) | ~154 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | ApplySelectionHighlight() → subscribers() | ~152 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added 2 condition(s) | ~310 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified ApplySelectionHighlight() | ~146 |
+| 15:23 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | expanded (+9 lines) | ~126 |
+| 15:23 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | 6→8 lines | ~57 |
+| 15:24 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | 6→11 lines | ~193 |
+| 15:24 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | added optional chaining | ~402 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | OnSelectedSectionIdChanged() → OnSelectedSectionIdsChanged() | ~94 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | 2→2 lines | ~43 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | added 2 condition(s) | ~212 |
+| 15:24 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | modified UpdateItemSelection() | ~179 |
+| 15:25 | Created src/SchedulingAssistant/Views/WorkloadPanelView.axaml.cs | — | ~477 |
+| 15:25 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | modified if() | ~119 |
+| 15:25 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | removed 17 lines | ~5 |
+| 15:25 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | 9→7 lines | ~59 |
+| 15:27 | Edited src/SchedulingAssistant/Services/SectionStore.cs | IsSubsetOf() → SetEquals() | ~35 |
+| 15:27 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml.cs | 5→6 lines | ~42 |
+| 15:28 | Session end: 26 writes across 8 files (SectionStore.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, SectionListViewModel.cs, SectionListView.axaml.cs) | 12 reads | ~36552 tok |
+| 15:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadRowViewModel.cs | expanded (+13 lines) | ~248 |
+| 15:34 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | expanded (+9 lines) | ~143 |
+| 15:34 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | expanded (+27 lines) | ~333 |
+| 15:34 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | expanded (+6 lines) | ~164 |
+| 15:35 | Session end: 30 writes across 10 files (SectionStore.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, SectionListViewModel.cs, SectionListView.axaml.cs) | 15 reads | ~40652 tok |
+| 17:02 | Session end: 30 writes across 10 files (SectionStore.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, SectionListViewModel.cs, SectionListView.axaml.cs) | 15 reads | ~40652 tok |
+
+## Session: 2026-05-07 21:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-07 21:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-07 21:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-07 21:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-07 22:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-07 22:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-07 22:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:23 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | 2→4 lines | ~50 |
+| 22:23 | Edited src/SchedulingAssistant/ViewModels/Management/ExportHubViewModel.cs | modified ExportHubViewModel() | ~226 |
+| 22:23 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | removed 4 lines | ~4 |
+| 22:23 | Edited src/SchedulingAssistant/Views/MainView.axaml | 4→2 lines | ~23 |
+| 22:23 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | inline fix | ~16 |
+| 22:28 | Session end: 5 writes across 4 files (ShareViewModel.cs, ExportHubViewModel.cs, MainWindowViewModel.cs, MainView.axaml) | 5 reads | ~342 tok |
+| 22:29 | Session end: 5 writes across 4 files (ShareViewModel.cs, ExportHubViewModel.cs, MainWindowViewModel.cs, MainView.axaml) | 5 reads | ~342 tok |
+
+## Session: 2026-05-07 22:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:44 | Edited src/SchedulingAssistant/Views/SectionPanelContent.axaml | inline fix | ~20 |
+| 22:44 | Session end: 1 writes across 1 files (SectionPanelContent.axaml) | 2 reads | ~22 tok |
+| 22:45 | Session end: 1 writes across 1 files (SectionPanelContent.axaml) | 2 reads | ~22 tok |
+| 22:46 | Session end: 1 writes across 1 files (SectionPanelContent.axaml) | 4 reads | ~22 tok |
+| 22:47 | Session end: 1 writes across 1 files (SectionPanelContent.axaml) | 4 reads | ~22 tok |
+
+## Session: 2026-05-07 08:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:54 | Created ../../../.claude/plans/some-revisions-needed-to-cozy-biscuit.md | — | ~1272 |
+| 09:08 | Edited src/SchedulingAssistant/Views/SectionPanelContent.axaml | expanded (+8 lines) | ~847 |
+| 09:08 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 2→5 lines | ~76 |
+| 09:08 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 3→4 lines | ~76 |
+| 09:09 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | modified OnLockStateChanged() | ~286 |
+| 09:09 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 2→2 lines | ~27 |
+| 09:09 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | modified Delete() | ~160 |
+| 09:09 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | modified Dispose() | ~60 |
+| 09:10 | Session end: 8 writes across 3 files (some-revisions-needed-to-cozy-biscuit.md, SectionPanelContent.axaml, MeetingListViewModel.cs) | 12 reads | ~34377 tok |
+| 09:15 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 9→11 lines | ~94 |
+| 09:15 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 3→4 lines | ~58 |
+| 09:15 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 6→7 lines | ~125 |
+| 09:16 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 4→5 lines | ~62 |
+| 09:16 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 4→5 lines | ~77 |
+| 09:16 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 2→7 lines | ~135 |
+| 09:16 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | modified SectionList_DeleteCommand_CanExecuteIsFalseInReaderMode() | ~270 |
+| 09:16 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | modified MeetingList_IsWriteEnabled_FalseInReaderMode() | ~918 |
+| 09:18 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 8→10 lines | ~73 |
+| 09:18 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 3→3 lines | ~51 |
+| 09:18 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 15→15 lines | ~138 |
+| 09:18 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | added error handling | ~1628 |
+| 11:10 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | modified MeetingList_LockStateTransition_IsWriteEnabled_AndCanExecute_Reflect_LiveLockState() | ~519 |
+| 11:10 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 11→9 lines | ~154 |
+| 11:12 | Session end: 22 writes across 5 files (some-revisions-needed-to-cozy-biscuit.md, SectionPanelContent.axaml, MeetingListViewModel.cs, WriteLockReadOnlyTests.cs, EditorFlowTests.cs) | 24 reads | ~45329 tok |
+
+## Session: 2026-05-07 11:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:46 | Created ../../../.claude/plans/i-d-like-to-further-declarative-origami.md | — | ~1232 |
+| 11:49 | Created src/SchedulingAssistant/Behaviors/SemesterClickBehavior.cs | — | ~921 |
+| 11:49 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | added 1 condition(s) | ~221 |
+| 11:49 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | added 1 condition(s) | ~308 |
+| 11:49 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+30 lines) | ~474 |
+| 11:57 | Session end: 5 writes across 4 files (i-d-like-to-further-declarative-origami.md, SemesterClickBehavior.cs, SemesterContext.cs, MainView.axaml) | 8 reads | ~18075 tok |
+| 12:27 | Edited src/SchedulingAssistant/Views/MainView.axaml | 10→6 lines | ~55 |
+| 12:27 | Edited src/SchedulingAssistant/Views/MainView.axaml | 3→8 lines | ~108 |
+| 12:29 | Session end: 7 writes across 4 files (i-d-like-to-further-declarative-origami.md, SemesterClickBehavior.cs, SemesterContext.cs, MainView.axaml) | 9 reads | ~18554 tok |
+
+## Session: 2026-05-07 12:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:34 | Created src/SchedulingAssistant/Behaviors/SemesterClickBehavior.cs | — | ~1319 |
+| 12:35 | Edited src/SchedulingAssistant/Views/MainView.axaml | reduced (-6 lines) | ~107 |
+| 12:37 | Session end: 2 writes across 2 files (SemesterClickBehavior.cs, MainView.axaml) | 2 reads | ~8573 tok |
+| 12:38 | Session end: 2 writes across 2 files (SemesterClickBehavior.cs, MainView.axaml) | 2 reads | ~8573 tok |
+| 12:39 | Session end: 2 writes across 2 files (SemesterClickBehavior.cs, MainView.axaml) | 2 reads | ~8573 tok |
+| 12:41 | Session end: 2 writes across 2 files (SemesterClickBehavior.cs, MainView.axaml) | 2 reads | ~8573 tok |

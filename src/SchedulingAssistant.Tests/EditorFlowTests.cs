@@ -3,7 +3,9 @@ using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -358,7 +360,7 @@ public class EditorFlowTests
     /// are provided the <see cref="SemesterContext"/> is loaded via its normal
     /// <c>Reload</c> path so that <c>SelectedSemesters</c> is populated.
     /// </summary>
-    private static (MeetingListViewModel Vm, SemesterContext SemCtx) MakeMeetingListVm(
+    private static (MeetingListViewModel Vm, SemesterContext SemCtx, WriteLockService LockSvc) MakeMeetingListVm(
         Semester? semester = null,
         AcademicYear? academicYear = null)
     {
@@ -394,7 +396,7 @@ public class EditorFlowTests
         }
 
         var store       = new MeetingStore();
-        var lockService = new WriteLockService();   // IsWriter = false; Add has no CanExecute guard
+        var lockService = new WriteLockService();   // IsWriter = false by default; caller acquires if needed
 
         var vm = new MeetingListViewModel(
             meetingRepo.Object,
@@ -407,17 +409,19 @@ public class EditorFlowTests
             store,
             lockService);
 
-        return (vm, semesterContext);
+        return (vm, semesterContext, lockService);
     }
 
     [Fact]
     public void MeetingList_Add_WithNoSemesterSelected_LeavesEditVmNull()
     {
-        var (vm, _) = MakeMeetingListVm(semester: null, academicYear: null);
+        var (vm, _, _) = MakeMeetingListVm(semester: null, academicYear: null);
 
+        // Even in reader mode Execute is a no-op (CanExecute = false), and even if it
+        // ran, there is no semester to add to — either way EditVm stays null.
         vm.AddCommand.Execute(null);
 
-        Assert.Null(vm.EditVm);  // Add must be a no-op when no semester is selected
+        Assert.Null(vm.EditVm);
     }
 
     [Fact]
@@ -426,11 +430,130 @@ public class EditorFlowTests
         var ay       = new AcademicYear { Id = "ay-1", Name = "2025-2026" };
         var semester = new Semester     { Id = "sem-1", Name = "Fall", AcademicYearId = ay.Id };
 
-        var (vm, _) = MakeMeetingListVm(semester: semester, academicYear: ay);
+        var (vm, _, lockSvc) = MakeMeetingListVm(semester: semester, academicYear: ay);
 
-        vm.AddCommand.Execute(null);
+        // Add requires the write lock; acquire it for the duration of this test.
+        var tempDb = Path.GetTempFileName();
+        try
+        {
+            lockSvc.TryAcquire(tempDb);
 
-        Assert.NotNull(vm.EditVm);     // Add must open the inline editor
-        Assert.True(vm.EditVm!.IsNew); // editor opened by Add must have IsNew = true
+            vm.AddCommand.Execute(null);
+
+            Assert.NotNull(vm.EditVm);
+            Assert.True(vm.EditVm!.IsNew);
+        }
+        finally
+        {
+            lockSvc.Dispose();
+            try { File.Delete(tempDb); } catch { /* best-effort */ }
+            try { File.Delete(tempDb + ".lock"); } catch { /* best-effort */ }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // MeetingListViewModel — Writer-mode gate: Edit/Delete/LockStateChanged
+    // Complements the reader-mode tests in WriteLockReadOnlyTests. Together they
+    // prove the full guard: blocked when reader, open when writer + selection.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// With a card selected and the write lock held, EditCommand must be executable.
+    /// Before the fix, CanEdit only checked selection — this test would have passed
+    /// even in reader mode, masking the missing write guard.
+    /// </summary>
+    [Fact]
+    public void MeetingList_EditCommand_WriterMode_WithSelection_CanExecute()
+    {
+        var (vm, _, lockSvc) = MakeMeetingListVm();
+        var tempDb = Path.GetTempFileName();
+        try
+        {
+            lockSvc.TryAcquire(tempDb);
+
+            vm.SelectedItem = new MeetingListItemViewModel(
+                new Meeting { Id = "m-1", SemesterId = "s-1" },
+                new Dictionary<string, Instructor>(),
+                new Dictionary<string, Room>(),
+                new Dictionary<string, SchedulingEnvironmentValue>(),
+                new Dictionary<string, SchedulingEnvironmentValue>());
+
+            Assert.True(vm.EditCommand.CanExecute(null),
+                "EditCommand must be enabled when writer holds the lock and a card is selected.");
+        }
+        finally
+        {
+            lockSvc.Dispose();
+            try { File.Delete(tempDb); } catch { /* best-effort */ }
+            try { File.Delete(tempDb + ".lock"); } catch { /* best-effort */ }
+        }
+    }
+
+    /// <summary>
+    /// With a card selected and the write lock held, DeleteCommand must be executable.
+    /// </summary>
+    [Fact]
+    public void MeetingList_DeleteCommand_WriterMode_WithSelection_CanExecute()
+    {
+        var (vm, _, lockSvc) = MakeMeetingListVm();
+        var tempDb = Path.GetTempFileName();
+        try
+        {
+            lockSvc.TryAcquire(tempDb);
+
+            vm.SelectedItem = new MeetingListItemViewModel(
+                new Meeting { Id = "m-1", SemesterId = "s-1" },
+                new Dictionary<string, Instructor>(),
+                new Dictionary<string, Room>(),
+                new Dictionary<string, SchedulingEnvironmentValue>(),
+                new Dictionary<string, SchedulingEnvironmentValue>());
+
+            Assert.True(vm.DeleteCommand.CanExecute(null),
+                "DeleteCommand must be enabled when writer holds the lock and a card is selected.");
+        }
+        finally
+        {
+            lockSvc.Dispose();
+            try { File.Delete(tempDb); } catch { /* best-effort */ }
+            try { File.Delete(tempDb + ".lock"); } catch { /* best-effort */ }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that IsWriteEnabled and command CanExecute reflect the live lock state:
+    /// false before TryAcquire, true after. The CanExecute predicates read IsWriter directly,
+    /// so they update synchronously — no dispatcher pump needed.
+    /// (The CanExecuteChanged events are dispatched via Dispatcher.UIThread.Post and cannot
+    /// be tested reliably without a running Avalonia UI loop.)
+    /// </summary>
+    [Fact]
+    public void MeetingList_LockStateTransition_IsWriteEnabled_AndCanExecute_Reflect_LiveLockState()
+    {
+        var (vm, _, lockSvc) = MakeMeetingListVm();
+        var tempDb = Path.GetTempFileName();
+        try
+        {
+            // Reader mode: commands blocked.
+            Assert.False(vm.IsWriteEnabled);
+            Assert.False(vm.AddCommand.CanExecute(null));
+            Assert.False(vm.EditCommand.CanExecute(null));
+            Assert.False(vm.DeleteCommand.CanExecute(null));
+
+            lockSvc.TryAcquire(tempDb);
+
+            // Writer mode: IsWriteEnabled and Add CanExecute update immediately — both read
+            // IsWriter directly, so no event dispatch is needed. Edit/Delete also require a
+            // selection to return true; those are covered by the dedicated writer+selection tests.
+            Assert.True(vm.IsWriteEnabled,
+                "IsWriteEnabled must return true once the lock is acquired.");
+            Assert.True(vm.AddCommand.CanExecute(null),
+                "AddCommand.CanExecute must be true in writer mode.");
+        }
+        finally
+        {
+            lockSvc.Dispose();
+            try { File.Delete(tempDb); } catch { /* best-effort */ }
+            try { File.Delete(tempDb + ".lock"); } catch { /* best-effort */ }
+        }
     }
 }
