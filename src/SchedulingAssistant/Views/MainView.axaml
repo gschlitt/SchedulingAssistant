@@ -199,17 +199,42 @@
 									BorderBrush="{StaticResource ChromeBorder}"
 									BorderThickness="1"
 									CornerRadius="2">
-									<ItemsControl ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
-										<ItemsControl.ItemTemplate>
-											<DataTemplate>
-												<CheckBox
-													Padding="4,3"
-													Content="{Binding DisplayName}"
-													FontSize="12"
-													IsChecked="{Binding IsSelected, Mode=TwoWay}" />
-											</DataTemplate>
-										</ItemsControl.ItemTemplate>
-									</ItemsControl>
+									<StackPanel>
+										<ItemsControl
+											b:SemesterClickBehavior.Context="{Binding SemesterContext}"
+											ItemsSource="{Binding SemesterContext.FilteredCheckItems}">
+											<ItemsControl.ItemTemplate>
+												<DataTemplate>
+													<Border
+														b:SemesterClickBehavior.Enabled="True"
+														Background="Transparent"
+														Cursor="Hand"
+														Padding="6,4">
+														<StackPanel Orientation="Horizontal" Spacing="6">
+															<TextBlock
+																Width="14"
+																FontSize="12"
+																IsVisible="{Binding IsSelected}"
+																Text="&#x2713;" />
+															<TextBlock
+																Width="14"
+																FontSize="12"
+																IsVisible="{Binding !IsSelected}"
+																Text="" />
+															<TextBlock FontSize="12" Text="{Binding DisplayName}" />
+														</StackPanel>
+													</Border>
+												</DataTemplate>
+											</ItemsControl.ItemTemplate>
+										</ItemsControl>
+										<TextBlock
+											Margin="4,4,4,0"
+											HorizontalAlignment="Center"
+											FontSize="9"
+											Foreground="{StaticResource TextSemesterLabel}"
+											Opacity="0.6"
+											Text="Ctrl+click for multi-select" />
+									</StackPanel>
 								</Border>
 							</Popup>
 						</Panel>

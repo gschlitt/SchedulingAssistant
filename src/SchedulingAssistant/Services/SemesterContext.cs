@@ -49,6 +49,19 @@ public class SemesterCheckItem : ObservableObject
     /// </summary>
     internal event Action<SemesterCheckItem>? SelectionChanged;
 
+    /// <summary>
+    /// Sets <see cref="IsSelected"/> and raises PropertyChanged for UI binding,
+    /// but does NOT fire <see cref="SelectionChanged"/>. Used by
+    /// <see cref="SemesterContext.HandleItemClick"/> to batch-deselect items
+    /// without triggering N rebuild cycles.
+    /// </summary>
+    internal void SetSelectedSilently(bool value)
+    {
+        if (_isSelected == value) return;
+        _isSelected = value;
+        OnPropertyChanged(nameof(IsSelected));
+    }
+
     /// <param name="semDisplay">The semester this item wraps.</param>
     /// <param name="isSelected">Initial selected state; set directly to avoid firing the event.</param>
     public SemesterCheckItem(SemesterDisplay semDisplay, bool isSelected = false)
@@ -165,6 +178,30 @@ public partial class SemesterContext : ObservableObject
     /// <summary>Toggles the semester picker Popup open or closed.</summary>
     [RelayCommand]
     private void ToggleSemesterPicker() => IsSemesterPickerOpen = !IsSemesterPickerOpen;
+
+    /// <summary>
+    /// Handles a click on a semester item in the picker popup.
+    /// Plain click: exclusive select (deselect all others, select this one).
+    /// Ctrl/Cmd+click: toggle this item without affecting others.
+    /// </summary>
+    /// <param name="clicked">The semester item that was clicked.</param>
+    /// <param name="isMultiSelect">True when Ctrl (or Cmd on macOS) was held.</param>
+    public void HandleItemClick(SemesterCheckItem clicked, bool isMultiSelect)
+    {
+        if (isMultiSelect)
+        {
+            // Toggle just this item; the SelectionChanged event triggers UpdateSelectedSemesters
+            clicked.IsSelected = !clicked.IsSelected;
+        }
+        else
+        {
+            // Exclusive select: silently deselect all, then select the clicked item
+            foreach (var item in FilteredCheckItems)
+                item.SetSelectedSilently(item == clicked);
+
+            UpdateSelectedSemesters();
+        }
+    }
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
