@@ -643,9 +643,6 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
-    [RelayCommand]
-    private void NavigateToShare() => OpenFlyout<ShareViewModel>("Share");
-
 #if !BROWSER
     private async Task RestoreFromBackupAsync(string backupDbPath)
     {

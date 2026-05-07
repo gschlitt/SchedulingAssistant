@@ -7,7 +7,7 @@ using SchedulingAssistant.Services;
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
-/// ViewModel for the File → Share flyout.
+/// ViewModel for the Export → Share Configuration panel.
 /// Generates a .tpconfig file from the current database so the user can share
 /// their scheduling configuration with colleagues who are setting up a new instance.
 ///
@@ -17,6 +17,8 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// </summary>
 public partial class ShareViewModel : ViewModelBase
 {
+    /// <summary>Category label shown in the Export flyout sidebar.</summary>
+    public string DisplayName => "Share Configuration";
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
     private readonly ICampusRepository         _campusRepo;
     private readonly ISemesterRepository       _semesterRepo;
