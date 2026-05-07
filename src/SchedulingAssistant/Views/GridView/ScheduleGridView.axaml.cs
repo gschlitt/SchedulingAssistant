@@ -200,29 +200,29 @@ public partial class ScheduleGridView : UserControl
     {
         if (e.PropertyName == nameof(ScheduleGridViewModel.GridData))
             Render();
-        else if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionId))
+        else if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionIds))
             UpdateSelectionHighlight();
     }
 
     /// <summary>
     /// Repaints entry-row selection styling without a full layout pass. Called when only
-    /// <see cref="ScheduleGridViewModel.SelectedSectionId"/> changes — the tile geometry
+    /// <see cref="ScheduleGridViewModel.SelectedSectionIds"/> changes — the tile geometry
     /// is unchanged, so only Background, FontWeight, and Foreground need updating.
     /// </summary>
     private void UpdateSelectionHighlight()
     {
-        var selectedId = _vm?.SelectedSectionId;
+        var selectedIds = _vm?.SelectedSectionIds ?? new HashSet<string>();
 
         foreach (var info in _entryRowRegistry)
         {
-            bool isSelected = selectedId is not null && info.SectionId == selectedId;
+            bool isSelected = selectedIds.Contains(info.SectionId);
 
             info.Row.Background      = info.BaseBg;
             info.Row.BorderBrush     = isSelected ? UserSelectedBorder : Brushes.Transparent;
             info.Row.BorderThickness = new Thickness(isSelected ? TileSelectionBorderThickness : 0);
             info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
-            info.Label.Foreground = isSelected       ? SectionMeetingTextSelected
-                                  : info.IsOverlay    ? OverlayFrameBorder
+            info.Label.Foreground = isSelected         ? SectionMeetingTextSelected
+                                  : info.IsOverlay      ? OverlayFrameBorder
                                   : info.IsDeemphasized ? TileDeemphasizedText
                                   : TileText;
         }
@@ -265,7 +265,7 @@ public partial class ScheduleGridView : UserControl
         // 30-minute gridline slots in Phase 3 to push later rows down. Only the tallest
         // tile at each (start, end) pair is kept — hence the Max comparison at insert.
         var tileHeightMap     = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
-        var selectedId        = _vm?.SelectedSectionId;
+        var selectedIds       = _vm?.SelectedSectionIds ?? new HashSet<string>();
         var entryCursor       = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
 
         // Collect all tiles; used later for gridline expansion calculation.
@@ -286,7 +286,7 @@ public partial class ScheduleGridView : UserControl
                 for (int ei = 0; ei < tile.Entries.Count; ei++)
                 {
                     var entry = tile.Entries[ei];
-                    bool entrySelected = selectedId is not null && entry.SectionId == selectedId;
+                    bool entrySelected = selectedIds.Contains(entry.SectionId);
 
                     if (ei > 0)
                         stack.Children.Add(new Border
@@ -640,7 +640,7 @@ public partial class ScheduleGridView : UserControl
                 for (int ei = 0; ei < tile.Entries.Count; ei++)
                 {
                     var entry = tile.Entries[ei];
-                    bool entrySelected = selectedId is not null && entry.SectionId == selectedId;
+                    bool entrySelected = selectedIds.Contains(entry.SectionId);
 
                     if (ei > 0)
                         stack.Children.Add(new Border
@@ -730,7 +730,14 @@ public partial class ScheduleGridView : UserControl
                         else
                         {
                             if (!entry.IsMeeting)
-                                _vm?.SelectSection(entryId);
+                            {
+                                bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control)
+                                         || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+                                if (ctrl)
+                                    _vm?.ToggleSection(entryId);
+                                else
+                                    _vm?.SelectSection(entryId);
+                            }
                         }
                         e.Handled = true;
                     };

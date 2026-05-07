@@ -19,12 +19,9 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
     [ObservableProperty] private ObservableCollection<WorkloadRowViewModel> _rows = new();
     [ObservableProperty] private string? _lastErrorMessage;
-    [ObservableProperty] private string? _selectedSectionId;
+    [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
 
-    partial void OnSelectedSectionIdChanged(string? value) => UpdateItemSelection();
-
-    /// <summary>Fired when the user clicks a work item chip.</summary>
-    public event Action<WorkloadItemViewModel>? ItemClicked;
+    partial void OnSelectedSectionIdsChanged(IReadOnlySet<string> value) => UpdateItemSelection();
 
     public WorkloadPanelViewModel(
         IInstructorRepository instructorRepo,
@@ -48,8 +45,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         // calls sectionStore.Reload() after saves/deletes and on semester change.
         _sectionStore.SectionsChanged += Load;
 
-        // Keep SelectedSectionId in sync with the store's single source of truth.
-        _sectionStore.SelectionChanged += id => SelectedSectionId = id;
+        // Keep SelectedSectionIds in sync with the store's single source of truth.
+        _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
 
         Load();
     }
@@ -237,25 +234,53 @@ public partial class WorkloadPanelViewModel : ViewModelBase
             : $"{instructor.FirstName} {instructor.LastName}";
     }
 
+    /// <summary>
+    /// Called by the view on a plain chip click.
+    /// Replaces the selection with this section (single-select).
+    /// Non-section chips (releases) are ignored.
+    /// </summary>
     [RelayCommand]
-    private void HandleItemClick(WorkloadItemViewModel item) => ItemClicked?.Invoke(item);
+    private void HandleItemClick(WorkloadItemViewModel item)
+    {
+        if (item.Kind == WorkloadItemKind.Section)
+            _sectionStore.SetSelection(item.Id);
+    }
+
+    /// <summary>
+    /// Called by the view on a Ctrl+Click on a chip.
+    /// Toggles this section in/out of the multi-selection.
+    /// Non-section chips (releases) are ignored.
+    /// </summary>
+    [RelayCommand]
+    private void HandleItemCtrlClick(WorkloadItemViewModel item)
+    {
+        if (item.Kind == WorkloadItemKind.Section)
+            _sectionStore.ToggleSelection(item.Id);
+    }
+
+    /// <summary>
+    /// Called when the user clicks an instructor name.
+    /// Selects all section chips for that instructor across all loaded semesters.
+    /// Clears the selection if the instructor has no sections.
+    /// </summary>
+    [RelayCommand]
+    private void SelectInstructorSections(WorkloadRowViewModel row) =>
+        _sectionStore.SetMultiSelection(row.SectionIds);
 
     /// <summary>
     /// Updates the IsSelected flag on all workload items (both in single-semester Items and in multi-semester SemesterGroups).
-    /// Called whenever SelectedSectionId changes, to highlight the selected section or release across the view.
+    /// Called whenever SelectedSectionIds changes, to highlight all selected sections across the view.
     /// </summary>
     private void UpdateItemSelection()
     {
         foreach (var row in Rows)
         {
-            // Single-semester mode: items in row.Items
             foreach (var item in row.Items)
-                item.IsSelected = item.Id == SelectedSectionId;
+                item.IsSelected = SelectedSectionIds.Contains(item.Id);
 
-            // Multi-semester mode: items in each group
             foreach (var group in row.SemesterGroups)
                 foreach (var item in group.Items)
-                    item.IsSelected = item.Id == SelectedSectionId;
+                    item.IsSelected = SelectedSectionIds.Contains(item.Id);
         }
     }
 }

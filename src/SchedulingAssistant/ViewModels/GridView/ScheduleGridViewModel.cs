@@ -44,7 +44,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private string _lastSemesterKey = string.Empty;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
-    [ObservableProperty] private string? _selectedSectionId;
+    [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
     [ObservableProperty] private string? _lastErrorMessage;
 
     /// <summary>Display name of the selected semester, e.g. "2025-2026 — Fall"</summary>
@@ -129,8 +129,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // Commitment changes are not section-data changes and are not cached in SectionStore.
         _changeNotifier.SectionChanged += Reload;
 
-        // Keep SelectedSectionId in sync with the store's single source of truth.
-        _sectionStore.SelectionChanged += id => SelectedSectionId = id;
+        // Keep SelectedSectionIds in sync with the store's single source of truth.
+        _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
 
         Reload();
     }
@@ -142,12 +142,18 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Called by the view when a tile is clicked.
-    /// Pushes the selection to <see cref="SectionStore"/> so all views sync to the
-    /// same selection simultaneously via <see cref="SectionStore.SelectionChanged"/>.
+    /// Called by the view on a plain left-click on a tile.
+    /// Replaces the selection with this single section.
     /// </summary>
     [RelayCommand]
     public void SelectSection(string sectionId) => _sectionStore.SetSelection(sectionId);
+
+    /// <summary>
+    /// Called by the view on a Ctrl+Click on a tile.
+    /// Adds the section to the selection if absent, or removes it if already present.
+    /// </summary>
+    [RelayCommand]
+    public void ToggleSection(string sectionId) => _sectionStore.ToggleSelection(sectionId);
 
     /// <summary>
     /// Invoked by the view when an entry is double-clicked.

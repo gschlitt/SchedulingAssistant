@@ -140,9 +140,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         if (value is SectionListItemViewModel svm)
             _lastSelectedIndex = SectionItems.IndexOf(svm);
 
+        // Push the single selection to the store; subscribers (including this VM via
+        // OnStoreSelectionChanged) will update IsSelected flags on every card.
         var selectedId = (value as SectionListItemViewModel)?.Section.Id;
         _sectionStore.SetSelection(selectedId);
-        ApplySelectionHighlight(selectedId);
     }
 
     // ── Constructor ────────────────────────────────────────────────────────────
@@ -234,18 +235,31 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Called when the <see cref="SectionStore"/> selection changes from an external source
-    /// (e.g. a tile click in the Schedule Grid or a chip click in the Workload Panel).
-    /// Updates <see cref="SelectedItem"/> to match the new selection.
-    /// <see cref="OnSelectedItemChanged"/> will then call <see cref="SectionStore.SetSelection"/>
-    /// again, but the store's idempotency guard prevents a second event from firing.
+    /// Called when the <see cref="SectionStore"/> selection changes from any source
+    /// (tile click, chip click, or Ctrl+Click from any panel).
+    /// Syncs <see cref="SelectedItem"/> (ListBox focus indicator) and <see cref="SectionListItemViewModel.IsSelected"/>
+    /// (card highlight borders) across all items.
     /// </summary>
-    private void OnStoreSelectionChanged(string? sectionId)
+    private void OnStoreSelectionChanged(IReadOnlySet<string> ids)
     {
-        if (SelectedSectionItem?.Section.Id == sectionId) return;
-        SelectedItem = sectionId is null
-            ? null
-            : SectionItems.OfType<SectionListItemViewModel>().FirstOrDefault(i => i.Section.Id == sectionId);
+        // Keep the ListBox focus indicator in sync:
+        //   0 ids  — clear SelectedItem
+        //   1 id   — scroll to / focus that item
+        //   2+ ids — leave SelectedItem unchanged; visual comes from IsSelected flags on cards
+        if (ids.Count == 0)
+        {
+            SelectedItem = null;
+        }
+        else if (ids.Count == 1)
+        {
+            var id = ids.Single();
+            if (SelectedSectionItem?.Section.Id != id)
+                SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
+                                           .FirstOrDefault(i => i.Section.Id == id);
+        }
+        // else: multi-select; don't move ListBox focus
+
+        ApplySelectionHighlight(ids);
     }
 
     // ── Load / Reload ──────────────────────────────────────────────────────────
@@ -397,14 +411,13 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Updates <see cref="SectionListItemViewModel.IsSelected"/> on every section card to match
-    /// <paramref name="selectedSectionId"/>. Called whenever the selection changes from any view
-    /// (Schedule Grid, Workload panel, or Section List itself) so the accent border appears on the
-    /// correct card regardless of which panel drove the change.
+    /// the given set. Called whenever the selection changes from any view so the accent border
+    /// appears on every selected card regardless of which panel drove the change.
     /// </summary>
-    private void ApplySelectionHighlight(string? selectedSectionId)
+    private void ApplySelectionHighlight(IReadOnlySet<string> selectedIds)
     {
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
-            item.IsSelected = item.Section.Id == selectedSectionId;
+            item.IsSelected = selectedIds.Contains(item.Section.Id);
     }
 
     // ── Sorting ────────────────────────────────────────────────────────────────
@@ -521,6 +534,15 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
             item.IsCollapsed = false;
     }
+
+    // ── Selection ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by the view on a Ctrl+Click on a section card.
+    /// Adds the section to the multi-selection if absent, or removes it if already present.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleSection(string sectionId) => _sectionStore.ToggleSelection(sectionId);
 
     // ── Add ────────────────────────────────────────────────────────────────────
 

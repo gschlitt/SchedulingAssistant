@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.ComponentModel;
@@ -21,11 +23,49 @@ public partial class SectionListView : UserControl
         AttachedToVisualTree += (_, _) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
 
         // Handle keyboard shortcuts: Ctrl+S to save, Esc to cancel
-        AddHandler(InputElement.KeyDownEvent, OnKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+
+        // Intercept Ctrl+Click on section cards before the ListBox processes it.
+        // Tunnel fires first (outer → inner), so marking handled here suppresses
+        // the ListBox's bubble-phase selection-change handler.
+        AttachedToVisualTree += OnAttachedToVisualTree;
 
         // Note: DoubleTapped (open inline editor) and LostFocus forwarding (commit section
         // code) are handled declaratively via DoubleTapCommandBehavior and
         // LostFocusForwardBehavior attached to the AXAML elements. No code-behind needed.
+    }
+
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        var listBox = this.FindControl<ListBox>("SectionListBox");
+        listBox?.AddHandler(
+            InputElement.PointerPressedEvent,
+            OnSectionListCtrlClick,
+            RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>
+    /// Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over
+    /// a section card, toggles that section's membership in the multi-selection and marks
+    /// the event handled so the ListBox does not change <see cref="SectionListViewModel.SelectedItem"/>.
+    /// </summary>
+    private void OnSectionListCtrlClick(object? sender, PointerPressedEventArgs e)
+    {
+        if (_vm is null) return;
+        var point = e.GetCurrentPoint(null);
+        if (!point.Properties.IsLeftButtonPressed) return;
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta)) return;
+
+        // Walk up the visual tree from the clicked element to find the ListBoxItem.
+        Visual? visual = e.Source as Visual;
+        while (visual is not null && visual is not ListBoxItem)
+            visual = visual.GetVisualParent();
+
+        if (visual is ListBoxItem lbi && lbi.DataContext is SectionListItemViewModel svm)
+        {
+            _vm.ToggleSectionCommand.Execute(svm.Section.Id);
+            e.Handled = true;
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

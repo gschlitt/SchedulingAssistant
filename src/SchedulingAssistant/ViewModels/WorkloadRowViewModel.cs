@@ -12,6 +12,19 @@ public class WorkloadRowViewModel
     public string NameWithInitials => string.IsNullOrWhiteSpace(Initials) ? FullName : $"{FullName} ({Initials})";
 
     /// <summary>
+    /// All section IDs assigned to this instructor across all loaded semesters.
+    /// Spans both <see cref="Items"/> (single-semester) and <see cref="SemesterGroups"/> (multi-semester).
+    /// Used by the name-click command to multi-select all of their sections at once.
+    /// </summary>
+    public IReadOnlyList<string> SectionIds =>
+        Items.Where(i => i.Kind == WorkloadItemKind.Section).Select(i => i.Id)
+             .Concat(SemesterGroups.SelectMany(g => g.Items)
+                                   .Where(i => i.Kind == WorkloadItemKind.Section)
+                                   .Select(i => i.Id))
+             .Distinct()
+             .ToList();
+
+    /// <summary>
     /// Sections and releases for this instructor in the current semester(s).
     /// In single-semester mode, this contains all items for that semester.
     /// In multi-semester mode, this is empty; items live in SemesterGroups instead.

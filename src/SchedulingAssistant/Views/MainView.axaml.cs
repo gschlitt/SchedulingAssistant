@@ -1,12 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using SchedulingAssistant.Models;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views.GridView;
 using System;
 using System.ComponentModel;
-using System.Linq;
 
 namespace SchedulingAssistant.Views;
 
@@ -41,16 +39,12 @@ public partial class MainView : UserControl
         if (DataContext is MainWindowViewModel vm)
         {
             if (_previousVm is not null)
-            {
                 _previousVm.PropertyChanged -= OnMainWindowVmPropertyChanged;
-                _previousVm.WorkloadPanelVm.ItemClicked -= OnWorkloadItemClicked;
-            }
 
             vm.ScheduleGridVm.EditRequested = vm.SectionListVm.EditSectionById;
             vm.ScheduleGridVm.MeetingEditRequested = vm.MeetingListVm.EditMeetingById;
 
             vm.PropertyChanged += OnMainWindowVmPropertyChanged;
-            vm.WorkloadPanelVm.ItemClicked += OnWorkloadItemClicked;
 
             _previousVm = vm;
 
@@ -72,22 +66,6 @@ public partial class MainView : UserControl
         {
             vm.WorkloadPanelVm.Reload();
         }
-    }
-
-    private void OnWorkloadItemClicked(WorkloadItemViewModel item)
-    {
-        if (item.Kind != WorkloadItemKind.Section)
-            return;
-
-        if (DataContext is not MainWindowViewModel vm)
-            return;
-
-        var sectionItem = vm.SectionListVm.SectionItems
-            .OfType<SectionListItemViewModel>()
-            .FirstOrDefault(s => s.Section.Id == item.Id);
-
-        if (sectionItem is not null)
-            vm.SectionListVm.SelectedItem = sectionItem;
     }
 
     /// <summary>

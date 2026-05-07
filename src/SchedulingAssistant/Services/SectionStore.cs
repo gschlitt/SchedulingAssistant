@@ -16,9 +16,10 @@ namespace SchedulingAssistant.Services;
 /// </para>
 ///
 /// <para>
-/// Selection is also centralised here. Calling <see cref="SetSelection"/> propagates a
-/// single <see cref="SelectionChanged"/> notification to every subscriber, removing the
-/// need for direct ViewModel-to-ViewModel references and suppress-flag patterns.
+/// Selection is also centralised here. Calling <see cref="SetSelection"/>,
+/// <see cref="ToggleSelection"/>, or <see cref="SetMultiSelection"/> propagates a single
+/// <see cref="SelectionChanged"/> notification to every subscriber, removing the need for
+/// direct ViewModel-to-ViewModel references and suppress-flag patterns.
 /// </para>
 ///
 /// <para>
@@ -60,10 +61,10 @@ public class SectionStore
     public event Action? SectionsChanged;
 
     /// <summary>
-    /// Fired whenever <see cref="SelectedSectionId"/> changes.
-    /// The new section ID (or <c>null</c> for a deselect) is passed as the argument.
+    /// Fired whenever <see cref="SelectedSectionIds"/> changes.
+    /// The new set of selected section IDs is passed as the argument; never null (may be empty).
     /// </summary>
-    public event Action<string?>? SelectionChanged;
+    public event Action<IReadOnlySet<string>>? SelectionChanged;
 
     /// <summary>
     /// Fired whenever <see cref="FilteredSectionIds"/> is updated by
@@ -87,10 +88,11 @@ public class SectionStore
     // ── Selection ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The ID of the currently selected section, or <c>null</c> when nothing is selected.
-    /// Use <see cref="SetSelection"/> to change this value — do not set it directly.
+    /// The set of currently selected section IDs. Empty when nothing is selected.
+    /// Use <see cref="SetSelection"/>, <see cref="ToggleSelection"/>, or
+    /// <see cref="SetMultiSelection"/> to change this — do not set it directly.
     /// </summary>
-    public string? SelectedSectionId { get; private set; }
+    public IReadOnlySet<string> SelectedSectionIds { get; private set; } = new HashSet<string>();
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -132,15 +134,55 @@ public class SectionStore
     }
 
     /// <summary>
-    /// Sets <see cref="SelectedSectionId"/> and fires <see cref="SelectionChanged"/>.
-    /// Does nothing if <paramref name="sectionId"/> is equal to the current selection,
-    /// which prevents echo-back loops between subscribers.
+    /// Replaces the selection with a single section and fires <see cref="SelectionChanged"/>.
+    /// Clears the selection when <paramref name="sectionId"/> is <c>null</c>.
+    /// Does nothing if the set already equals {<paramref name="sectionId"/>}, preventing
+    /// echo-back loops between subscribers.
     /// </summary>
-    /// <param name="sectionId">The new selection, or <c>null</c> to deselect.</param>
+    /// <param name="sectionId">The section to select, or <c>null</c> to deselect all.</param>
     public void SetSelection(string? sectionId)
     {
-        if (SelectedSectionId == sectionId) return;
-        SelectedSectionId = sectionId;
-        SelectionChanged?.Invoke(sectionId);
+        var newSet = sectionId is null
+            ? (IReadOnlySet<string>)new HashSet<string>()
+            : new HashSet<string> { sectionId };
+        if (SetsEqual(SelectedSectionIds, newSet)) return;
+        SelectedSectionIds = newSet;
+        SelectionChanged?.Invoke(SelectedSectionIds);
     }
+
+    /// <summary>
+    /// Adds <paramref name="sectionId"/> to the selection if absent, or removes it if
+    /// already present, then fires <see cref="SelectionChanged"/>.
+    /// Used for Ctrl+Click multi-select across all panels.
+    /// </summary>
+    /// <param name="sectionId">The section ID to toggle.</param>
+    public void ToggleSelection(string sectionId)
+    {
+        var newSet = new HashSet<string>(SelectedSectionIds);
+        if (!newSet.Add(sectionId))
+            newSet.Remove(sectionId);
+        // SetsEqual will always be false here (we always changed the set), but guard anyway.
+        if (SetsEqual(SelectedSectionIds, newSet)) return;
+        SelectedSectionIds = newSet;
+        SelectionChanged?.Invoke(SelectedSectionIds);
+    }
+
+    /// <summary>
+    /// Replaces the selection with an arbitrary set of section IDs and fires
+    /// <see cref="SelectionChanged"/>. Does nothing when the new set equals the current one.
+    /// Intended for bulk-selection operations such as "highlight all sections for an instructor".
+    /// </summary>
+    /// <param name="sectionIds">The section IDs to select. Duplicates are silently removed.</param>
+    public void SetMultiSelection(IEnumerable<string> sectionIds)
+    {
+        var newSet = new HashSet<string>(sectionIds);
+        if (SetsEqual(SelectedSectionIds, newSet)) return;
+        SelectedSectionIds = newSet;
+        SelectionChanged?.Invoke(SelectedSectionIds);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private static bool SetsEqual(IReadOnlySet<string> a, IReadOnlySet<string> b) =>
+        a.Count == b.Count && a.SetEquals(b);
 }
