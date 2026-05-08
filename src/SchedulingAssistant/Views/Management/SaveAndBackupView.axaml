@@ -33,7 +33,7 @@
                 <TextBlock
                     FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextDimLabel}"
-                    Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval."
+                    Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval (in minutes)."
                     TextWrapping="Wrap" />
                 <NumericUpDown
                     MaxWidth="140"

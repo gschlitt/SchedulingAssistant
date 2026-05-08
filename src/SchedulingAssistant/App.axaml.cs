@@ -321,6 +321,7 @@ public partial class App : Application
         services.AddTransient<BlockPatternListViewModel>();
         services.AddTransient<SectionCodePatternListViewModel>();
         services.AddTransient<AcademicUnitListViewModel>();
+        services.AddTransient<PreferencesViewModel>();
         services.AddTransient<ExportHubViewModel>();
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();

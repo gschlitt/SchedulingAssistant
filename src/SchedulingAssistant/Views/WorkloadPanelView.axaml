@@ -3,6 +3,7 @@
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:conv="using:SchedulingAssistant.Converters"
+	xmlns:b="using:SchedulingAssistant.Behaviors"
 	x:Name="Root"
 	x:CompileBindings="False">
 
@@ -114,13 +115,15 @@
 					Margin="0,3"
 					HorizontalAlignment="Center"
 					FontWeight="SemiBold"
-					Text="Sem." />
+					Text="Sem." 
+					b:HelpTip.Text="Total workload for semester"/>
 				<TextBlock
 					Grid.Column="3"
 					Margin="0,3"
 					HorizontalAlignment="Center"
 					FontWeight="SemiBold"
-					Text="AY" />
+					Text="AY"
+					b:HelpTip.Text="Total workload for academic year"/>
 			</Grid>
 		</Border>
 

@@ -1,0 +1,26 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Management.PreferencesView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:PreferencesViewModel">
+
+    <StackPanel
+        MaxWidth="500"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="16">
+
+        <TextBlock
+            FontSize="{StaticResource FontSizeXLarge}"
+            FontWeight="SemiBold"
+            Text="Preferences" />
+
+        <TextBlock
+            Foreground="{StaticResource TextMuted}"
+            Text="User preferences will appear here."
+            TextWrapping="Wrap" />
+
+    </StackPanel>
+</UserControl>

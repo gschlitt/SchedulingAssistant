@@ -1,10 +1,15 @@
 Bugs:
 
-Events view needs lock service
+Academic year and semester manager bug:
+Confusion about roles here.
+Deleting a semester in semester manager seems to cause a crash, at least app becomes nonresponsive.
+Move semester manager into configuration.
 
-Collapse uncollapse should be available in reader mode, so should sort
+Todo:
+Section Code back in Wizard
+Finish wizard
 
-When you open a new db within file, the backup folder defaults to usersettings
+When you open a new db within file, the backup folder defaults to usersettings?
 
 Delete key operational across lists?
 
@@ -69,15 +74,6 @@ Walkthroughs:
 Notes:
 
 
-Agenda. (For release 1)
-
-Key board shortcuts
-Double-click to open editing in courses, instructors
-In the lists: section view, meeting view instructor view, courses view, and scheduling environment, one
-can now:
-double-click or Enter to open editor
-use arrow keys to move around.
-CtrlS to save 
 
 
 

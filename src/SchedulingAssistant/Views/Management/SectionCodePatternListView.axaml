@@ -166,11 +166,11 @@
         <TextBlock Text="Section Codes" FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold"/>
 
         <TextBlock Margin="0,10,0,0" MaxWidth="700" HorizontalAlignment="Left"
-                   Text="Section codes distinguish multiple offerings of the same course, or label different components of the same course (e.g. a lecture and a lab, or tutorial). Some examples are below.&#10;&#10;Set the section coding schemes your institution uses here and avoid having to enter them manually as you create or edit sections. Once configured, TermPoint will supply the section codes for new sections automatically. You can always over-ride if you wish."
+                   Text="Section codes distinguish multiple offerings of the same course, or label different components of the same course (e.g. a lecture and a lab, or tutorial). Some examples are below.&#10;&#10;Set the section coding schemes your institution uses here and avoid having to enter them manually as you create or edit sections. Once configured, TermPoint will supply the section codes for new sections automatically. You can always over-ride if you wish. &#10;&#10; If a section code format corresponds to a campus or a particular section type, you can set that here. When a section of that format is created, the campus and section types will be chosen automatically."
                    TextWrapping="Wrap"
                     />
 
-            <Expander Header="Examples" IsExpanded="False" Margin="0,4,0,20" MaxWidth="900" HorizontalAlignment="Left">
+            <Expander Header="Examples" IsExpanded="False" Margin="0,4,0,10" MaxWidth="900" HorizontalAlignment="Left">
                 <StackPanel Spacing="8" Margin="0,6,0,0">
                     <TextBlock TextWrapping="Wrap" local:InlineFormatter.Text="The following are examples of {red}section codes{/} in use at various universities." />
 
@@ -221,7 +221,8 @@
 
         <StackPanel Grid.Row="1" Width="400" HorizontalAlignment="Left"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
-        <TextBlock Text="Section Codes in use" FontSize="{StaticResource FontSizeLarge}" Margin="0,10"/>
+        <TextBlock Text="Section Codes" FontSize="{StaticResource FontSizeLarge}" Margin="0,10"/>
+        <TextBlock Text="Create and edit your section codes here. Two examples are provided to edit or delete as you wish." TextWrapping="Wrap"/>
         <!--  List (shown when EditVm is null)  -->
         <DataGrid x:Name="PatternsDataGrid"
                   
@@ -233,7 +234,7 @@
                   IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name"         Binding="{Binding Name}"            Width="*" />
-                <DataGridTextColumn Header="Examples"     Binding="{Binding Examples}"        Width="Auto" />
+                <DataGridTextColumn Header="Code preview"     Binding="{Binding Examples}"        Width="Auto" />
                 <DataGridTextColumn Header="Campus"       Binding="{Binding CampusName}"      Width="Auto" />
                 <DataGridTextColumn Header="Section Type" Binding="{Binding SectionTypeName}" Width="Auto" />
             </DataGrid.Columns>

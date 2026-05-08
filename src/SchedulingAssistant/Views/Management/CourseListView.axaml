@@ -108,6 +108,13 @@
                         </ContentControl.ContentTemplate>
                     </ContentControl>
 
+                    <TextBlock Text="Courses" FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold"/>
+
+                    <TextBlock>
+                        <Run Text="{Binding SelectedCourse.CalendarCode}" FontSize="{StaticResource FontSizeLarge}"/>
+                        <Run Text="{Binding SelectedCourse.Title}" FontSize="{StaticResource FontSizeLarge}"/>
+                        </TextBlock>
+
                     <!--  Show only active courses toggle  -->
                     <CheckBox
                         Content="Show only active courses"
@@ -116,6 +123,8 @@
                         IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}" />
 
                     <!--  Course list — columns auto-size to content  -->
+
+                    
 
                     <!--
                         HorizontalAlignment="Left" prevents the DataGrid from stretching beyond
@@ -197,7 +206,7 @@
 
                     <StackPanel Margin="0,20,0,0" Spacing="12">
                         <TextBlock
-                            FontSize="20"
+                            FontSize="{StaticResource FontSizeLarge}"
                             FontWeight="SemiBold"
                             Text="Subjects" />
 

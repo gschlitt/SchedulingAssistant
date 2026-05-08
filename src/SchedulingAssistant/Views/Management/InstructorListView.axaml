@@ -23,9 +23,13 @@
         <Border
             Grid.Row="0"
             Grid.Column="0"
-            Padding="8,12"
+            Padding="0,12"
             Background="{StaticResource AppBackground}"
             BorderThickness="0,0,0,0">
+            <StackPanel>
+                <TextBlock Text="Select Instructor to access workload and workload history"
+                           FontSize="{StaticResource FontSizeLarge}"
+                           IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNull}}"/>
             <StackPanel
                 IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"
                 Orientation="Horizontal"
@@ -38,14 +42,14 @@
                 <TextBlock
                     VerticalAlignment="Center"
                     FontSize="18"
-                    FontWeight="Bold"
+                    
                     Text="{Binding SelectedFirstName}" />
                 <TextBlock
                     VerticalAlignment="Center"
-                    FontSize="18"
-                    FontWeight="Bold"
+                    FontSize="18"                    
                     Text="{Binding SelectedLastName}" />
             </StackPanel>
+                </StackPanel>
         </Border>
 
 
@@ -302,8 +306,9 @@
                         <TextBlock
                             FontSize="14"
                             FontWeight="SemiBold"
-                            Text="Instructional Workload" />
-
+                            Text="Instructional Workload" 
+                            b:HelpTip.Text="Section assigned and corresponding workload for the selected semester "/>
+                            
                         <!--  Sections heading  -->
                         <TextBlock
                             Margin="0,4,0,0"
@@ -319,13 +324,13 @@
                                         <TextBlock
                                             Grid.Column="0"
                                             VerticalAlignment="Center"
-                                            FontSize="9"
+                                            FontSize="11"
                                             Text="{Binding Display}" />
                                         <TextBlock
                                             Grid.Column="1"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center"
-                                            FontSize="9"
+                                            FontSize="11"
                                             Text="{Binding WorkloadValue, StringFormat=0.##}" />
                                     </Grid>
                                 </DataTemplate>

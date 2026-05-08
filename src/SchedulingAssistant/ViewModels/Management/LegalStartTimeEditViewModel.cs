@@ -95,7 +95,7 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
         var input = NewStartTime.Trim();
         if (!TryParseTime(input, out int minutes))
         {
-            ValidationError = "Enter a time like 8:30 or 1430";
+            ValidationError = "Enter a time like 0830 or 1430";
             return;
         }
         if (minutes < SectionMeetingViewModel.MinStartMinutes)

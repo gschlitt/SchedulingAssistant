@@ -21,7 +21,7 @@
         <StackPanel IsVisible="{Binding !IsEditing}" Spacing="8">
 
             <Border
-                Padding="8,6"
+                Padding="0,0"
                 Background="{StaticResource ControlBackground}"
                 BorderBrush="{StaticResource ControlBorder}"
                 BorderThickness="1">

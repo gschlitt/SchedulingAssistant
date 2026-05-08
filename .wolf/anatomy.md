@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-07T19:35:02.054Z
-> Files: 22 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-07T20:29:38.501Z
+> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -192,6 +192,7 @@
 
 ## src/SchedulingAssistant/
 
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4225 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -238,8 +239,10 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `ConfigurationViewModel.cs` — ViewModel for the Configuration flyout hub. Hosts a left-sidebar list of configuration categories; s (~644 tok)
 - `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~457 tok)
 - `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5588 tok)
+- `PreferencesViewModel.cs` — ViewModel for the Preferences panel in the Configuration flyout. Exposes user-facing preferences suc (~111 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13064 tok)
 - `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~1844 tok)
 
@@ -263,6 +266,8 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `PreferencesView.axaml` (~207 tok)
+- `PreferencesView.axaml.cs` — Code-behind for <see cref="PreferencesView"/>. (~73 tok)
 - `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3127 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

@@ -19,9 +19,10 @@
 
         <TextBlock
             FontSize="{StaticResource FontSizeNormal}"
-            Foreground="{StaticResource TextLabel}"
+            
             TextWrapping="Wrap">
-            Save up to five favourite day patterns (e.g. "MW" for Monday/Wednesday) and apply them with one click when building a section schedule.
+            Sections with multiple meetings during the week may typically follow a pattern at your institution (meeting Monday, Wednesday and Friday, for example, or Tuesdays and Thursdays).
+            Save up to five favourite day patterns (e.g. "MW" for Monday/Wednesday) and create section meetings  with one click when building a schedule.
         </TextBlock>
 
         <ItemsControl ItemsSource="{Binding Slots}">

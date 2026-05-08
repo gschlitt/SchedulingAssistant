@@ -71,7 +71,8 @@
                     <Button
                         Padding="3,2"
                         Command="{Binding SaveCommand}"
-                        Content="Apply" />
+                        Content="Apply" 
+                        b:HelpTip.Text="Apply edits to this section"/>
                     <Button
                         Padding="3,2"
                         Command="{Binding CancelCommand}"
@@ -127,7 +128,8 @@
                         <TextBlock
                             FontSize="10"
                             Foreground="{StaticResource TextLabel}"
-                            Text="Section Code type" />
+                            Text="Section Code format" 
+                            b:HelpTip.Text="Section code formats are set under 'Configuration'"/>
                         <ComboBox
                             MinWidth="90"
                             CornerRadius="4"
@@ -441,35 +443,35 @@
                             Content="{Binding Pattern1Label}"
                             FontSize="{StaticResource FontSizeSmall}"
                             IsVisible="{Binding HasPattern1}"
-                            ToolTip.Tip="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
                         <Button
                             VerticalAlignment="Bottom"
                             Command="{Binding ApplyPattern2Command}"
                             Content="{Binding Pattern2Label}"
                             FontSize="{StaticResource FontSizeSmall}"
                             IsVisible="{Binding HasPattern2}"
-                            ToolTip.Tip="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
                         <Button
                             VerticalAlignment="Bottom"
                             Command="{Binding ApplyPattern3Command}"
                             Content="{Binding Pattern3Label}"
                             FontSize="{StaticResource FontSizeSmall}"
                             IsVisible="{Binding HasPattern3}"
-                            ToolTip.Tip="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings"/>
                         <Button
                             VerticalAlignment="Bottom"
                             Command="{Binding ApplyPattern4Command}"
                             Content="{Binding Pattern4Label}"
                             FontSize="{StaticResource FontSizeSmall}"
                             IsVisible="{Binding HasPattern4}"
-                            ToolTip.Tip="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
                         <Button
                             VerticalAlignment="Bottom"
                             Command="{Binding ApplyPattern5Command}"
                             Content="{Binding Pattern5Label}"
                             FontSize="{StaticResource FontSizeSmall}"
                             IsVisible="{Binding HasPattern5}"
-                            ToolTip.Tip="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
                     </StackPanel>
 
                     <!--  Instructor  -->
@@ -487,7 +489,7 @@
                             <Panel>
                                 <ToggleButton
                                     x:Name="InstructorToggle"
-                                    b:HelpTip.Text="Select instructor(s) and optionally associated workload"
+                                    b:HelpTip.Text="Select instructor(s) and optionally associated workload for this section"
                                     Classes="EditorPopupTrigger"
                                     Content="{Binding InstructorSummary}" />
                                 <Popup
@@ -566,7 +568,8 @@
                                 <ToggleButton
                                     x:Name="TagsToggle"
                                     Classes="EditorPopupTrigger"
-                                    Content="{Binding TagSummary}" />
+                                    Content="{Binding TagSummary}"
+                                    b:HelpTip.Text="Choose tags for this section. Tags are set under Scheduling Environment."/>
                                 <Popup
                                     IsLightDismissEnabled="True"
                                     IsOpen="{Binding #TagsToggle.IsChecked, Mode=TwoWay}"
@@ -621,7 +624,8 @@
                                 <ToggleButton
                                     x:Name="ReservesToggle"
                                     Classes="EditorPopupTrigger"
-                                    Content="{Binding ReserveSummary}" />
+                                    Content="{Binding ReserveSummary}"
+                                    b:HelpTip.Text="Choose reserve codes for this section. Reserve codes are set under Scheduling Environment."/>
                                 <Popup
                                     IsLightDismissEnabled="True"
                                     IsOpen="{Binding #ReservesToggle.IsChecked, Mode=TwoWay}"
@@ -691,7 +695,8 @@
                                 <ToggleButton
                                     x:Name="ResourcesToggle"
                                     Classes="EditorPopupTrigger"
-                                    Content="{Binding ResourceSummary}" />
+                                    Content="{Binding ResourceSummary}"
+                                    b:HelpTip.Text="Choose resources for this section. Resources are set under Scheduling Environment."/>
                                 <Popup
                                     IsLightDismissEnabled="True"
                                     IsOpen="{Binding #ResourcesToggle.IsChecked, Mode=TwoWay}"
