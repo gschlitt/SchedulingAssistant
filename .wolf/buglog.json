@@ -9182,6 +9182,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-11T21:45:05.331Z"
+    },
+    {
+      "id": "bug-574",
+      "timestamp": "2026-05-11T22:11:41.903Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Browser/wwwroot/index.html",
+      "root_cause": "Had './_framework/dotnet.js'",
+      "fix": "Changed to '_framework/dotnet.js'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T22:11:41.903Z"
+    },
+    {
+      "id": "bug-575",
+      "timestamp": "2026-05-11T22:22:36.210Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Browser/wwwroot/index.html",
+      "root_cause": "Had '_framework/dotnet.js'",
+      "fix": "Changed to '/SchedulingAssistant/_framework/dotnet.js'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T22:22:36.210Z"
     }
   ]
 }

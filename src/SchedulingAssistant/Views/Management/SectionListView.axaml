@@ -185,6 +185,53 @@
                 <!--  Fields below Course+Code are disabled until course and unique code are committed  -->
                 <StackPanel IsEnabled="{Binding AreOtherFieldsEnabled}" Spacing="0">
 
+                    <StackPanel
+                        Margin="0,2,0,0"
+                        IsEnabled="{Binding AreOtherFieldsEnabled}"
+                        Orientation="Horizontal"
+                        Spacing="4">
+                        <Button
+                            Margin="0,0,10,0"
+                            Padding="4,2,4,3"
+                            Command="{Binding AddMeetingCommand}"
+                            Content="+meeting" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern1Command}"
+                            Content="{Binding Pattern1Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern1}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern2Command}"
+                            Content="{Binding Pattern2Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern2}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern3Command}"
+                            Content="{Binding Pattern3Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern3}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings"/>
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern4Command}"
+                            Content="{Binding Pattern4Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern4}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern5Command}"
+                            Content="{Binding Pattern5Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern5}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                    </StackPanel>
+
                     <!--  Schedule  -->
                     <TextBlock
                         Margin="0,0,0,3"
@@ -427,52 +474,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <StackPanel
-                        Margin="0,2,0,0"
-                        IsEnabled="{Binding AreOtherFieldsEnabled}"
-                        Orientation="Horizontal"
-                        Spacing="4">
-                        <Button
-                            Margin="0,0,10,0"
-                            Padding="4,2,4,3"
-                            Command="{Binding AddMeetingCommand}"
-                            Content="+meeting" />
-                        <Button
-                            VerticalAlignment="Bottom"
-                            Command="{Binding ApplyPattern1Command}"
-                            Content="{Binding Pattern1Label}"
-                            FontSize="{StaticResource FontSizeSmall}"
-                            IsVisible="{Binding HasPattern1}"
-                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
-                        <Button
-                            VerticalAlignment="Bottom"
-                            Command="{Binding ApplyPattern2Command}"
-                            Content="{Binding Pattern2Label}"
-                            FontSize="{StaticResource FontSizeSmall}"
-                            IsVisible="{Binding HasPattern2}"
-                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
-                        <Button
-                            VerticalAlignment="Bottom"
-                            Command="{Binding ApplyPattern3Command}"
-                            Content="{Binding Pattern3Label}"
-                            FontSize="{StaticResource FontSizeSmall}"
-                            IsVisible="{Binding HasPattern3}"
-                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings"/>
-                        <Button
-                            VerticalAlignment="Bottom"
-                            Command="{Binding ApplyPattern4Command}"
-                            Content="{Binding Pattern4Label}"
-                            FontSize="{StaticResource FontSizeSmall}"
-                            IsVisible="{Binding HasPattern4}"
-                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
-                        <Button
-                            VerticalAlignment="Bottom"
-                            Command="{Binding ApplyPattern5Command}"
-                            Content="{Binding Pattern5Label}"
-                            FontSize="{StaticResource FontSizeSmall}"
-                            IsVisible="{Binding HasPattern5}"
-                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
-                    </StackPanel>
+                    
 
                     <!--  Instructor  -->
                     <Grid

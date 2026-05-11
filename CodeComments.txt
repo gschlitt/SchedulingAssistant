@@ -2,7 +2,15 @@ Bugs:
 
 In Instrutor flyout list should be able to colmn click to sort on fields
 
-Edge doesn't load WASM?
+InstructorList will not sort on header click
+So the fix (PR #230) was merged on April 15 but 12.0.0 shipped April 7 — the fix hasn't been released yet. There's no 12.0.1 DataGrid package.
+Here's the diagnosis:
+Root cause: Known bug in Avalonia.Controls.DataGrid 12.0.0 — column header clicks no longer trigger sorting. Filed as issue #232, fixed in PR #230, but the fix hasn't shipped in a NuGet release yet. Your project is on 12.0.0 (the only available version).
+Options:
+Wait for a 12.0.1 (or 12.1.0) DataGrid NuGet release that includes the fix
+Pin the DataGrid package back to 11.3.13 — it should still be compatible with Avalonia 12.0.2 core (DataGrid is a separate package). This is probably the simplest workaround.
+Build the DataGrid from source with the fix applied — more effort, probably not worth it
+I'd recommend option 2 (downgrade DataGrid to 11.3.13) as the quickest fix. Want me to write up the plan?
 
 Selection of a section can cause overflow in a section card. Minor issue. 
 

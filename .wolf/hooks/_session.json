@@ -1,38 +1,104 @@
 {
-  "session_id": "session-2026-05-11-1447",
-  "started": "2026-05-11T21:47:02.837Z",
+  "session_id": "session-2026-05-11-1507",
+  "started": "2026-05-11T22:07:02.378Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml": {
-      "count": 1,
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj": {
+      "count": 2,
       "tokens": 0,
-      "first_read": "2026-05-11T21:47:32.108Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-11T21:47:33.099Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-11T21:47:36.611Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-11T21:47:36.760Z"
+      "first_read": "2026-05-11T22:07:25.323Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-05-11T21:50:09.352Z"
+      "first_read": "2026-05-11T22:07:25.799Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/publish-macos.yml": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:07:25.939Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/wwwroot/index.html": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:07:40.926Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/Program.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:07:41.167Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/publish-wasm.ps1": {
+      "count": 2,
+      "tokens": 432,
+      "first_read": "2026-05-11T22:07:46.895Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/publish.ps1": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:07:46.912Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/publish-mac.sh": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:07:46.980Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/SchedulingAssistant.sln": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:08:04.483Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T22:08:11.193Z"
     }
   },
-  "files_written": [],
-  "edit_counts": {},
-  "anatomy_hits": 0,
-  "anatomy_misses": 5,
-  "repeated_reads_warned": 0,
+  "files_written": [
+    {
+      "file": "C:/Users/gregs/.claude/plans/ok-i-d-like-to-piped-hejlsberg.md",
+      "action": "create",
+      "tokens": 780,
+      "at": "2026-05-11T22:09:55.365Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/deploy-wasm.yml",
+      "action": "create",
+      "tokens": 333,
+      "at": "2026-05-11T22:11:35.108Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/wwwroot/index.html",
+      "action": "edit",
+      "tokens": 53,
+      "at": "2026-05-11T22:11:36.759Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/wwwroot/index.html",
+      "action": "edit",
+      "tokens": 14,
+      "at": "2026-05-11T22:11:41.893Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/deploy-wasm.yml",
+      "action": "edit",
+      "tokens": 76,
+      "at": "2026-05-11T22:16:03.800Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant.Browser/wwwroot/index.html",
+      "action": "edit",
+      "tokens": 20,
+      "at": "2026-05-11T22:22:36.185Z"
+    }
+  ],
+  "edit_counts": {
+    "../../../.claude/plans/ok-i-d-like-to-piped-hejlsberg.md": 1,
+    ".github/workflows/deploy-wasm.yml": 2,
+    "src/SchedulingAssistant.Browser/wwwroot/index.html": 3
+  },
+  "anatomy_hits": 1,
+  "anatomy_misses": 9,
+  "repeated_reads_warned": 4,
   "cerebrum_warnings": 0,
-  "stop_count": 0
+  "stop_count": 6
 }

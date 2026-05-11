@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T21:45:05.163Z
-> Files: 24 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T22:22:36.138Z
+> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,7 @@
 
 ## ../../../.claude/plans/
 
+- `ok-i-d-like-to-piped-hejlsberg.md` — Deploy WASM Demo to GitHub Pages (~682 tok)
 - `the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md` — Fix: Text wrapping in LegalStartTimeListView (~238 tok)
 - `there-is-a-demo-smooth-beaver.md` — Plan: DemoData Exporter Console Tool (~2290 tok)
 - `under-the-flyout-schedulingenvironment-r-linked-salamander.md` — Plan: Make Edit-Conflict Advisory Always Visible in Section List (~918 tok)
@@ -158,6 +159,7 @@
 
 ## .github/workflows/
 
+- `deploy-wasm.yml` — CI: Deploy WASM Demo (~358 tok)
 
 ## .vs/SchedulingAssistant/DesignTimeBuild/
 
@@ -189,6 +191,7 @@
 
 ## src/SchedulingAssistant.Browser/wwwroot/
 
+- `index.html` — TermPoint — Demo (~228 tok)
 
 ## src/SchedulingAssistant.DemoExporter/
 
