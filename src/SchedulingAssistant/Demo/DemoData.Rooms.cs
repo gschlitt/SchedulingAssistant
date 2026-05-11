@@ -9,14 +9,26 @@ public static partial class DemoData
         new()
         {
             Id         = "demo-room-1",
-            Building   = "Main",
-            RoomNumber = "101"
+            Building   = "",
+            RoomNumber = "A2111"
         },
         new()
         {
             Id         = "demo-room-2",
-            Building   = "Main",
-            RoomNumber = "102"
+            Building   = "",
+            RoomNumber = "A328"
+        },
+        new()
+        {
+            Id         = "demo-room-3",
+            Building   = "",
+            RoomNumber = "A331"
+        },
+        new()
+        {
+            Id         = "demo-room-4",
+            Building   = "",
+            RoomNumber = "A337"
         }
     ];
 }

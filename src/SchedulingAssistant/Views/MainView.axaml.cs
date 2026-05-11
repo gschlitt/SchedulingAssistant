@@ -1,9 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using SchedulingAssistant.Controls;
 using SchedulingAssistant.ViewModels;
 using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views.GridView;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace SchedulingAssistant.Views;
@@ -16,6 +18,7 @@ namespace SchedulingAssistant.Views;
 public partial class MainView : UserControl
 {
     private MainWindowViewModel? _previousVm;
+    private ResponsiveMenuPanel? _topMenuPanel;
 
     /// <summary>
     /// Reference to the schedule grid view, resolved after DataContext is set.
@@ -55,6 +58,16 @@ public partial class MainView : UserControl
             if (debugMenu is not null)
                 debugMenu.IsVisible = true;
 #endif
+
+            // Wire overflow-set changes so the More flyout populates in both desktop and WASM.
+            if (_topMenuPanel is not null)
+                _topMenuPanel.HiddenOverflowItemsChanged -= OnTopMenuOverflowChanged;
+
+            _topMenuPanel = this.FindControl<ResponsiveMenuPanel>("TopMenuPanel");
+            if (_topMenuPanel is not null)
+                _topMenuPanel.HiddenOverflowItemsChanged += OnTopMenuOverflowChanged;
+
+            SyncOverflowToViewModel();
         }
     }
 
@@ -66,6 +79,25 @@ public partial class MainView : UserControl
         {
             vm.WorkloadPanelVm.Reload();
         }
+    }
+
+    private void OnTopMenuOverflowChanged(object? sender, EventArgs e) => SyncOverflowToViewModel();
+
+    /// <summary>
+    /// Reads the currently-hidden overflow items from the menu panel and forwards
+    /// their x:Name keys to <see cref="MoreMenuViewModel.SetHiddenKeys"/>.
+    /// </summary>
+    private void SyncOverflowToViewModel()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (_topMenuPanel is null) return;
+
+        var keys = new List<string>(_topMenuPanel.HiddenOverflowItems.Count);
+        foreach (var c in _topMenuPanel.HiddenOverflowItems)
+        {
+            if (!string.IsNullOrEmpty(c.Name)) keys.Add(c.Name);
+        }
+        vm.MoreMenuVm.SetHiddenKeys(keys);
     }
 
     /// <summary>

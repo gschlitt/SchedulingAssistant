@@ -1,15 +1,16 @@
+using SchedulingAssistant.Demo;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
 /// In-memory demo implementation of <see cref="IMeetingRepository"/>.
-/// Starts empty; all CRUD operations update the in-memory list. Changes are lost on
-/// page reload.
+/// Seeded from <see cref="DemoData.Meetings"/>. All CRUD operations update the
+/// in-memory list. Changes are lost on page reload.
 /// </summary>
 public class DemoMeetingRepository : IMeetingRepository
 {
-    private readonly List<Meeting> _meetings = [];
+    private readonly List<Meeting> _meetings = [.. DemoData.Meetings];
 
     /// <inheritdoc/>
     public List<Meeting> GetAll(string semesterId) =>

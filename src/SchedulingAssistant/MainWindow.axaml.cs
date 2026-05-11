@@ -975,30 +975,9 @@ public partial class MainWindow : Window
                 if (MainViewControl.FindControl<DetachablePanel>("ScheduleGridPanel") is { } sgp)
                     sgp.DetachRequested += OnScheduleGridDetach;
 
-                // Subscribe to overflow-set changes on the top menu panel.
-                if (MainViewControl.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is { } topPanel)
-                    topPanel.HiddenOverflowItemsChanged += OnTopMenuOverflowChanged;
-
                 _detachWired = true;
             }
-
-            SyncOverflowToViewModel();
         }
-    }
-
-    private void OnTopMenuOverflowChanged(object? sender, EventArgs e) => SyncOverflowToViewModel();
-
-    private void SyncOverflowToViewModel()
-    {
-        if (DataContext is not MainWindowViewModel vm) return;
-        if (MainViewControl?.FindControl<ResponsiveMenuPanel>("TopMenuPanel") is not { } panel) return;
-
-        var keys = new List<string>(panel.HiddenOverflowItems.Count);
-        foreach (var c in panel.HiddenOverflowItems)
-        {
-            if (!string.IsNullOrEmpty(c.Name)) keys.Add(c.Name);
-        }
-        vm.MoreMenuVm.SetHiddenKeys(keys);
     }
 
     // ── Detach handlers ─────────────────────────────────────────────────────

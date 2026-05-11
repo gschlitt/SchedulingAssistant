@@ -8,17 +8,38 @@ public static partial class DemoData
     [
         new()
         {
-            Id              = "demo-sem-fall",
-            AcademicYearId  = "demo-ay-2025",
-            Name            = "Fall",
-            SortOrder       = 1
+            Id             = "demo-sem-1",
+            AcademicYearId = "demo-ay-1",
+            Name           = "Fall",
+            SortOrder      = 0
         },
         new()
         {
-            Id              = "demo-sem-spring",
-            AcademicYearId  = "demo-ay-2025",
-            Name            = "Spring",
-            SortOrder       = 2
+            Id             = "demo-sem-2",
+            AcademicYearId = "demo-ay-1",
+            Name           = "Winter",
+            SortOrder      = 1
+        },
+        new()
+        {
+            Id             = "demo-sem-3",
+            AcademicYearId = "demo-ay-1",
+            Name           = "Early Summer",
+            SortOrder      = 2
+        },
+        new()
+        {
+            Id             = "demo-sem-4",
+            AcademicYearId = "demo-ay-1",
+            Name           = "Summer",
+            SortOrder      = 3
+        },
+        new()
+        {
+            Id             = "demo-sem-5",
+            AcademicYearId = "demo-ay-1",
+            Name           = "Late Summer",
+            SortOrder      = 4
         }
     ];
 }

@@ -59,6 +59,7 @@ public static class Program
         AnonymizeAcademicUnits(conn);
         AnonymizeMeetings(conn);
         AnonymizeSections(conn);
+        AnonymizeSectionCodePatterns(conn);
         AnonymizeInstructorCommitments(conn, instructorMap);
         AnonymizeReleases(conn, instructorMap);
         AnonymizeAppConfiguration(conn);
@@ -322,31 +323,104 @@ public static class Program
         }
     }
 
+    // ── Section code prefix mapping ────────────────────────────────────────
+
+    /// <summary>
+    /// Maps real section code prefixes to anonymized equivalents.
+    /// Order matters: longer prefixes must appear before shorter ones so that
+    /// "AB" is matched before "A#" when both could apply.
+    /// </summary>
+    private static readonly (string From, string To)[] SectionCodePrefixMap =
+    [
+        ("AB", "WS"),
+        ("A#", "W#"),
+        ("CH", "LK"),
+        ("C#", "L#"),
+    ];
+
+    /// <summary>
+    /// Replaces the prefix of a section code using <see cref="SectionCodePrefixMap"/>.
+    /// If no mapping matches, the code is returned unchanged.
+    /// </summary>
+    private static string RemapSectionCode(string code)
+    {
+        foreach (var (from, to) in SectionCodePrefixMap)
+        {
+            if (code.StartsWith(from, StringComparison.OrdinalIgnoreCase))
+                return to + code[from.Length..];
+        }
+        return code;
+    }
+
     // ── Sections ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Clears notes from all sections and updates the denormalized course_code column
-    /// to reflect the new GEOG prefix.
+    /// Clears notes from all sections, remaps section code prefixes, and updates
+    /// the denormalized course_code column to reflect the anonymized courses.
     /// </summary>
     private static void AnonymizeSections(SqliteConnection conn)
     {
-        var rows = ReadAll(conn, "SELECT id, data FROM Sections");
+        var rows = ReadAll(conn, "SELECT id, section_code, data FROM Sections", columnCount: 3);
         Console.WriteLine($"Anonymizing {rows.Count} sections...");
 
-        foreach (var (id, json) in rows)
+        foreach (var row in rows)
         {
+            var id = row[0];
+            var oldCode = row[1];
+            var json = row[2];
+
             var node = JsonNode.Parse(json)!;
             node["notes"] = "";
 
+            var newCode = RemapSectionCode(oldCode);
+            node["sectionCode"] = newCode;
+
             Execute(conn,
-                "UPDATE Sections SET data=$d WHERE id=$id",
-                ("$d", node.ToJsonString(JsonOpts)), ("$id", id));
+                "UPDATE Sections SET section_code=$sc, data=$d WHERE id=$id",
+                ("$sc", newCode), ("$d", node.ToJsonString(JsonOpts)), ("$id", id));
         }
 
         // Update denormalized course_code column from the now-anonymized Courses table
         Execute(conn,
             "UPDATE Sections SET course_code = " +
             "(SELECT calendar_code FROM Courses WHERE Courses.id = Sections.course_id)");
+    }
+
+    // ── Section Code Patterns ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Remaps the prefix in each SectionCodePattern to match the anonymized
+    /// section codes, and regenerates the examples string.
+    /// </summary>
+    private static void AnonymizeSectionCodePatterns(SqliteConnection conn)
+    {
+        var rows = ReadAll(conn, "SELECT id, data FROM SectionCodePatterns");
+        Console.WriteLine($"Anonymizing {rows.Count} section code patterns...");
+
+        foreach (var (id, json) in rows)
+        {
+            var node = JsonNode.Parse(json)!;
+            var prefix = node["prefix"]?.GetValue<string>() ?? "";
+
+            if (!string.IsNullOrEmpty(prefix))
+            {
+                var newPrefix = RemapSectionCode(prefix);
+                node["prefix"] = newPrefix;
+
+                // Regenerate examples with new prefix
+                var examples = node["examples"]?.GetValue<string>() ?? "";
+                if (!string.IsNullOrEmpty(examples))
+                {
+                    var parts = examples.Split(',', StringSplitOptions.TrimEntries);
+                    var remapped = parts.Select(RemapSectionCode);
+                    node["examples"] = string.Join(", ", remapped);
+                }
+            }
+
+            Execute(conn,
+                "UPDATE SectionCodePatterns SET data=$d WHERE id=$id",
+                ("$d", node.ToJsonString(JsonOpts)), ("$id", id));
+        }
     }
 
     // ── Instructor Commitments ───────────────────────────────────────────────

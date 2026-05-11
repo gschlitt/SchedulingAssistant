@@ -8,10 +8,13 @@ public static partial class DemoData
     [
         new()
         {
-            Id           = "demo-campus-main",
-            Name         = "Main Campus",
-            Abbreviation = "MC",
-            SortOrder    = 1
+            Id           = "demo-campus-1",
+            Name         = "ABB"
+        },
+        new()
+        {
+            Id           = "demo-campus-2",
+            Name         = "CHWK"
         }
     ];
 }

@@ -1,15 +1,16 @@
+using SchedulingAssistant.Demo;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
 /// In-memory demo implementation of <see cref="IInstructorCommitmentRepository"/>.
-/// Starts empty; all CRUD operations update the in-memory list. Changes are lost on
-/// page reload.
+/// Seeded from <see cref="DemoData.InstructorCommitments"/>. All CRUD operations update
+/// the in-memory list. Changes are lost on page reload.
 /// </summary>
 public class DemoInstructorCommitmentRepository : IInstructorCommitmentRepository
 {
-    private readonly List<InstructorCommitment> _commitments = [];
+    private readonly List<InstructorCommitment> _commitments = [.. DemoData.InstructorCommitments];
 
     /// <inheritdoc/>
     public List<InstructorCommitment> GetByInstructor(string semesterId, string instructorId) =>

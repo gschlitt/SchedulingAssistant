@@ -1,15 +1,16 @@
+using SchedulingAssistant.Demo;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
 /// In-memory demo implementation of <see cref="ISectionCodePatternRepository"/>.
-/// Starts empty; all CRUD operations update the in-memory list only.
-/// Changes are lost on page reload.
+/// Seeded from <see cref="DemoData.SectionCodePatterns"/>. All CRUD operations update
+/// the in-memory list only. Changes are lost on page reload.
 /// </summary>
 public class DemoSectionCodePatternRepository : ISectionCodePatternRepository
 {
-    private readonly List<SectionCodePattern> _patterns = [];
+    private readonly List<SectionCodePattern> _patterns = [.. DemoData.SectionCodePatterns];
 
     /// <inheritdoc/>
     public List<SectionCodePattern> GetAll() =>

@@ -8,7 +8,7 @@
     xmlns:b="using:SchedulingAssistant.Behaviors">
 
     <Grid
-        Width="1000"
+        MaxWidth="1000"
         Margin="10,0"
         HorizontalAlignment="Left"
         RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto">

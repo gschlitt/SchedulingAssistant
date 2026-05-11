@@ -1,15 +1,16 @@
+using SchedulingAssistant.Demo;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
 /// <summary>
 /// In-memory demo implementation of <see cref="IReleaseRepository"/>.
-/// Starts empty; all CRUD operations update the in-memory list. Changes are lost on
-/// page reload.
+/// Seeded from <see cref="DemoData.Releases"/>. All CRUD operations update the
+/// in-memory list. Changes are lost on page reload.
 /// </summary>
 public class DemoReleaseRepository : IReleaseRepository
 {
-    private readonly List<Release> _releases = [];
+    private readonly List<Release> _releases = [.. DemoData.Releases];
 
     /// <inheritdoc/>
     public List<Release> GetBySemester(string semesterId) =>

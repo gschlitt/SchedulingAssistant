@@ -5064,3 +5064,52 @@
 |------|--------|---------|---------|--------|
 | 20:11 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml | expanded (+6 lines) | ~199 |
 | 20:11 | Session end: 1 writes across 1 files (AcademicYearListView.axaml) | 1 reads | ~1621 tok |
+
+## Session: 2026-05-11 20:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:59 | Created ../../../.claude/plans/another-wasm-problem-not-lucky-rose.md | — | ~741 |
+| 21:00 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | 7→9 lines | ~77 |
+| 21:00 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | 1→2 lines | ~25 |
+| 21:00 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | added 2 condition(s) | ~176 |
+| 21:01 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | added 3 condition(s) | ~221 |
+| 21:01 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | reduced (-6 lines) | ~58 |
+| 21:01 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | removed 16 lines | ~7 |
+| 21:03 | Session end: 7 writes across 3 files (another-wasm-problem-not-lucky-rose.md, MainView.axaml.cs, MainWindow.axaml.cs) | 14 reads | ~12598 tok |
+
+## Session: 2026-05-11 21:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:09 | Created ../../../.claude/plans/the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md | — | ~254 |
+| 21:09 | Edited src/SchedulingAssistant/Views/Management/LegalStartTimeListView.axaml | inline fix | ~7 |
+| 21:09 | Session end: 2 writes across 2 files (the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md, LegalStartTimeListView.axaml) | 2 reads | ~279 tok |
+| 21:10 | Session end: 2 writes across 2 files (the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md, LegalStartTimeListView.axaml) | 2 reads | ~279 tok |
+
+## Session: 2026-05-11 21:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:26 | Created ../../../.claude/plans/there-is-a-demo-smooth-beaver.md | — | ~1724 |
+| 21:33 | Created ../../../.claude/plans/there-is-a-demo-smooth-beaver.md | — | ~2443 |
+| 21:35 | Created src/SchedulingAssistant.DemoExporter/SchedulingAssistant.DemoExporter.csproj | — | ~92 |
+| 21:37 | Created src/SchedulingAssistant.DemoExporter/Program.cs | — | ~11466 |
+| 21:38 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | modified WriteSchedule() | ~454 |
+| 21:38 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | 13→13 lines | ~97 |
+| 21:38 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | 13→13 lines | ~100 |
+| 21:41 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoMeetingRepository.cs | 12→13 lines | ~129 |
+| 21:41 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoInstructorCommitmentRepository.cs | 12→13 lines | ~151 |
+| 21:41 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoReleaseRepository.cs | 12→13 lines | ~129 |
+| 21:41 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoSectionCodePatternRepository.cs | 12→13 lines | ~148 |
+| 21:41 | Created src/SchedulingAssistant/Demo/DemoData.Meetings.cs | — | ~46 |
+| 21:41 | Created src/SchedulingAssistant/Demo/DemoData.InstructorCommitments.cs | — | ~52 |
+| 21:41 | Created src/SchedulingAssistant/Demo/DemoData.Releases.cs | — | ~46 |
+| 21:42 | Created src/SchedulingAssistant/Demo/DemoData.SectionCodePatterns.cs | — | ~51 |
+| 21:46 | Session end: 15 writes across 11 files (there-is-a-demo-smooth-beaver.md, SchedulingAssistant.DemoExporter.csproj, Program.cs, DemoMeetingRepository.cs, DemoInstructorCommitmentRepository.cs) | 68 reads | ~29848 tok |
+| 22:17 | Session end: 15 writes across 11 files (there-is-a-demo-smooth-beaver.md, SchedulingAssistant.DemoExporter.csproj, Program.cs, DemoMeetingRepository.cs, DemoInstructorCommitmentRepository.cs) | 68 reads | ~29848 tok |
+| 22:28 | Session end: 15 writes across 11 files (there-is-a-demo-smooth-beaver.md, SchedulingAssistant.DemoExporter.csproj, Program.cs, DemoMeetingRepository.cs, DemoInstructorCommitmentRepository.cs) | 68 reads | ~29848 tok |
+| 22:42 | Session end: 15 writes across 11 files (there-is-a-demo-smooth-beaver.md, SchedulingAssistant.DemoExporter.csproj, Program.cs, DemoMeetingRepository.cs, DemoInstructorCommitmentRepository.cs) | 68 reads | ~29848 tok |
+| 22:44 | Edited src/SchedulingAssistant.Anonymizer/Program.cs | added optional chaining | ~995 |
+| 22:44 | Edited src/SchedulingAssistant.Anonymizer/Program.cs | 2→3 lines | ~37 |
+| 22:44 | Session end: 17 writes across 11 files (there-is-a-demo-smooth-beaver.md, SchedulingAssistant.DemoExporter.csproj, Program.cs, DemoMeetingRepository.cs, DemoInstructorCommitmentRepository.cs) | 68 reads | ~30954 tok |

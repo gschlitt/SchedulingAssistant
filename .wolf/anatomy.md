@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T03:11:31.769Z
-> Files: 30 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T05:44:12.315Z
+> Files: 14 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,9 +29,8 @@
 
 ## ../../../.claude/plans/
 
-- `i-d-like-to-further-declarative-origami.md` — Semester Selector: Single-Click Exclusive, Ctrl+Click Multi-Select (~1155 tok)
-- `some-revisions-needed-to-cozy-biscuit.md` — Plan: Reader Mode UX Fixes — Section View & Events View (~1193 tok)
-- `something-has-broken-on-optimized-clarke.md` — Fix: Academic Years flyout freeze in WASM (~1022 tok)
+- `the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md` — Fix: Text wrapping in LegalStartTimeListView (~238 tok)
+- `there-is-a-demo-smooth-beaver.md` — Plan: DemoData Exporter Console Tool (~2290 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -179,6 +178,7 @@
 
 ## src/SchedulingAssistant.Anonymizer/
 
+- `Program.cs` — Reads a TermPoint SQLite database and produces an anonymized copy. All instructor names, course titl (~7864 tok)
 
 ## src/SchedulingAssistant.Browser/
 
@@ -186,21 +186,22 @@
 ## src/SchedulingAssistant.Browser/wwwroot/
 
 
+## src/SchedulingAssistant.DemoExporter/
+
+- `Program.cs` — Reads a TermPoint SQLite database (typically already anonymized) and generates the DemoData.*.cs par (~11505 tok)
+- `SchedulingAssistant.DemoExporter.csproj` (~92 tok)
+
 ## src/SchedulingAssistant.Tests/
 
-- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~6292 tok)
-- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~7958 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4225 tok)
 
 ## src/SchedulingAssistant/Assets/
 
 
 ## src/SchedulingAssistant/Behaviors/
 
-- `SemesterClickBehavior.cs` — Attached behavior for semester picker rows. Intercepts left-clicks and routes them to <see cref="Sem (~1319 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -216,36 +217,32 @@
 
 ## src/SchedulingAssistant/Data/Repositories/Demo/
 
+- `DemoInstructorCommitmentRepository.cs` — In-memory demo implementation of <see cref="IInstructorCommitmentRepository"/>. Seeded from <see cre (~367 tok)
+- `DemoMeetingRepository.cs` — In-memory demo implementation of <see cref="IMeetingRepository"/>. Seeded from <see cref="DemoData.M (~382 tok)
+- `DemoReleaseRepository.cs` — In-memory demo implementation of <see cref="IReleaseRepository"/>. Seeded from <see cref="DemoData.R (~363 tok)
+- `DemoSectionCodePatternRepository.cs` — In-memory demo implementation of <see cref="ISectionCodePatternRepository"/>. Seeded from <see cref= (~398 tok)
 
 ## src/SchedulingAssistant/Demo/
 
+- `DemoData.InstructorCommitments.cs` — Class: DemoData (~52 tok)
+- `DemoData.Meetings.cs` — Class: DemoData (~46 tok)
+- `DemoData.Releases.cs` — Class: DemoData (~46 tok)
+- `DemoData.SectionCodePatterns.cs` — Class: DemoData (~51 tok)
 
 ## src/SchedulingAssistant/Models/
 
 
 ## src/SchedulingAssistant/Services/
 
-- `SectionStore.cs` — Singleton service that holds the in-memory cache of sections for the currently selected semester(s) (~2250 tok)
-- `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4296 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~7961 tok)
-- `WorkloadPanelViewModel.cs` — Public method to reload workload data (e.g., after release changes). (~3254 tok)
-- `WorkloadRowViewModel.cs` — Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)" (~678 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
-- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~17726 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `ConfigurationViewModel.cs` — ViewModel for the Configuration flyout hub. Hosts a left-sidebar list of configuration categories; s (~644 tok)
-- `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~457 tok)
-- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~5588 tok)
-- `PreferencesViewModel.cs` — ViewModel for the Preferences panel in the Configuration flyout. Exposes user-facing preferences suc (~111 tok)
-- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13064 tok)
-- `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~1844 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -255,23 +252,13 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `MainView.axaml` (~6048 tok)
-- `MainView.axaml.cs` — Top-level UserControl containing the full application UI. Extracted from MainWindow so the same UI c (~926 tok)
-- `SectionPanelContent.axaml` (~1510 tok)
-- `WorkloadPanelView.axaml` (~3121 tok)
-- `WorkloadPanelView.axaml.cs` — Tunnel-phase PointerPressed handler. When Ctrl is held on a left-click over a chip Button, calls <se (~481 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14331 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `AcademicYearListView.axaml` (~1500 tok)
-- `PreferencesView.axaml` (~207 tok)
-- `PreferencesView.axaml.cs` — Code-behind for <see cref="PreferencesView"/>. (~73 tok)
-- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3127 tok)
-- `SemesterManagerView.axaml` (~1707 tok)
+- `LegalStartTimeListView.axaml` (~3130 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

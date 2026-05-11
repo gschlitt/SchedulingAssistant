@@ -8,13 +8,13 @@ public static partial class DemoData
     [
         new()
         {
-            BlockLength = 1.0,
-            StartTimes  = [480, 540, 600, 660, 720, 780, 840, 900, 960]
+            BlockLength = 1.5,
+            StartTimes  = [510, 600, 690, 780, 870, 960, 1050, 1080]
         },
         new()
         {
-            BlockLength = 1.5,
-            StartTimes  = [480, 570, 660, 750, 840, 930]
+            BlockLength = 3.0,
+            StartTimes  = [510, 690, 870, 960, 1050, 1080, 1110, 1140]
         }
     ];
 }
