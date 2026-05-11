@@ -2,6 +2,10 @@ Bugs:
 
 In Instrutor flyout list should be able to colmn click to sort on fields
 
+Edge doesn't load WASM?
+
+Selection of a section can cause overflow in a section card. Minor issue. 
+
 Test deletion of section!
 
 If an instructor name is clicked on in workload view to multi-select workload, Section View is unresponsive

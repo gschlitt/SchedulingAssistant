@@ -1,5 +1,12 @@
 # Memory
 
+## Session: 2026-05-11 — WASM ComboBox popup fix + cross-view selection sync
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Added `SelectedItem` property-change handler to trigger `ScrollSelectedItemIntoView` | `SectionListView.axaml.cs` | Cross-view selection sync restored (Schedule Grid → Section View scroll) despite unconditional `SuppressPopupScrollBehavior` |
+| Updated WORKAROUNDS.md entry #2 | `WORKAROUNDS.md` | Documented cross-view sync side effect and direct Offset mitigation; added verification step #6 |
+
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
@@ -5150,6 +5157,74 @@
 | 10:33 | Session end: 5 writes across 3 files (we-ve-got-a-visual-clever-rabin.md, SectionListView.axaml, SectionListView.axaml.cs) | 4 reads | ~24810 tok |
 
 ## Session: 2026-05-11 10:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:49 | Created src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | — | ~755 |
+| 10:49 | Edited src/SchedulingAssistant/Views/SectionPanelContent.axaml | 5→6 lines | ~62 |
+| 10:50 | Edited src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | 4→5 lines | ~36 |
+| 10:51 | Session end: 3 writes across 2 files (SuppressPopupScrollBehavior.cs, SectionPanelContent.axaml) | 3 reads | ~2679 tok |
+| 10:51 | Session end: 3 writes across 2 files (SuppressPopupScrollBehavior.cs, SectionPanelContent.axaml) | 3 reads | ~2679 tok |
+| 11:01 | Created src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | — | ~667 |
+| 11:02 | Session end: 4 writes across 2 files (SuppressPopupScrollBehavior.cs, SectionPanelContent.axaml) | 4 reads | ~4156 tok |
+
+## Session: 2026-05-11 11:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:08 | Edited src/SchedulingAssistant/App.axaml | expanded (+11 lines) | ~174 |
+| 11:08 | Session end: 1 writes across 1 files (App.axaml) | 1 reads | ~186 tok |
+| 11:15 | Edited src/SchedulingAssistant/Views/SectionPanelContent.axaml | expanded (+7 lines) | ~136 |
+| 11:16 | Session end: 2 writes across 2 files (App.axaml, SectionPanelContent.axaml) | 2 reads | ~998 tok |
+| 11:22 | Edited src/SchedulingAssistant/App.axaml | reduced (-6 lines) | ~93 |
+| 11:22 | Session end: 3 writes across 2 files (App.axaml, SectionPanelContent.axaml) | 2 reads | ~1098 tok |
+| 11:26 | Created src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | — | ~1164 |
+| 11:26 | Edited src/SchedulingAssistant/Views/SectionPanelContent.axaml | reduced (-7 lines) | ~44 |
+| 11:26 | Edited src/SchedulingAssistant/App.axaml | — | ~0 |
+| 11:27 | Edited src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | "[DIAG]   Popup.Host = {po" → "[DIAG]   Popup.IsOpen = {" | ~25 |
+| 11:27 | Session end: 7 writes across 3 files (App.axaml, SectionPanelContent.axaml, SuppressPopupScrollBehavior.cs) | 3 reads | ~4280 tok |
+| 11:30 | Created src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | — | ~596 |
+| 11:31 | Session end: 8 writes across 3 files (App.axaml, SectionPanelContent.axaml, SuppressPopupScrollBehavior.cs) | 3 reads | ~4918 tok |
+| 11:35 | Edited src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | 6→6 lines | ~100 |
+| 11:35 | Edited src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | inline fix | ~22 |
+| 11:35 | Edited src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | modified OnIsEnabledChanged() | ~81 |
+| 11:35 | Edited src/SchedulingAssistant/Views/SectionPanelContent.axaml | 6→5 lines | ~48 |
+| 11:36 | Session end: 12 writes across 3 files (App.axaml, SectionPanelContent.axaml, SuppressPopupScrollBehavior.cs) | 3 reads | ~5115 tok |
+| 11:36 | Session end: 12 writes across 3 files (App.axaml, SectionPanelContent.axaml, SuppressPopupScrollBehavior.cs) | 3 reads | ~5115 tok |
+| 11:40 | Session end: 12 writes across 3 files (App.axaml, SectionPanelContent.axaml, SuppressPopupScrollBehavior.cs) | 3 reads | ~5115 tok |
+| 11:41 | Created src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | — | ~678 |
+| 11:42 | Edited WORKAROUNDS.md | added error handling | ~888 |
+| 11:42 | Edited src/SchedulingAssistant/App.axaml | 4→3 lines | ~10 |
+| 11:43 | Session end: 15 writes across 4 files (App.axaml, SectionPanelContent.axaml, SuppressPopupScrollBehavior.cs, WORKAROUNDS.md) | 4 reads | ~8444 tok |
+
+## Session: 2026-05-11 11:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:51 | Edited publish-wasm.ps1 | 3→3 lines | ~39 |
+| 11:51 | Session end: 1 writes across 1 files (publish-wasm.ps1) | 5 reads | ~42 tok |
+| 12:00 | Created src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | — | ~979 |
+
+## Session: 2026-05-11 12:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:03 | Edited ../../../.claude/plans/we-ve-got-a-visual-clever-rabin.md | modified ScrollViewer() | ~618 |
+| 12:05 | Session end: 1 writes across 1 files (we-ve-got-a-visual-clever-rabin.md) | 4 reads | ~24474 tok |
+| 12:10 | Edited src/SchedulingAssistant/Behaviors/SuppressPopupScrollBehavior.cs | modified SuppressPopupScrollBehavior() | ~733 |
+| 12:10 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | added 5 condition(s) | ~495 |
+| 12:11 | Session end: 3 writes across 3 files (we-ve-got-a-visual-clever-rabin.md, SuppressPopupScrollBehavior.cs, SectionListView.axaml.cs) | 5 reads | ~29103 tok |
+
+## Session: 2026-05-11 14:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:38 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | added 1 condition(s) | ~306 |
+| 14:39 | Session end: 1 writes across 1 files (SectionListView.axaml.cs) | 1 reads | ~3642 tok |
+| 14:45 | Edited WORKAROUNDS.md | expanded (+13 lines) | ~553 |
+| 14:45 | Session end: 2 writes across 2 files (SectionListView.axaml.cs, WORKAROUNDS.md) | 3 reads | ~6522 tok |
+
+## Session: 2026-05-11 14:47
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|

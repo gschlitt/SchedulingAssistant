@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T17:23:24.120Z
-> Files: 20 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T21:45:05.163Z
+> Files: 24 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -32,13 +32,15 @@
 - `the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md` — Fix: Text wrapping in LegalStartTimeListView (~238 tok)
 - `there-is-a-demo-smooth-beaver.md` — Plan: DemoData Exporter Console Tool (~2290 tok)
 - `under-the-flyout-schedulingenvironment-r-linked-salamander.md` — Plan: Make Edit-Conflict Advisory Always Visible in Section List (~918 tok)
-- `we-ve-got-a-visual-clever-rabin.md` — Fix: WASM ComboBox Dropdown Floating Above Its Anchor (~858 tok)
+- `we-ve-got-a-visual-clever-rabin.md` — Fix: WASM ComboBox Dropdown Floating Above Its Anchor (~580 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 
 ## ./
 
+- `publish-wasm.ps1` — publish-wasm.ps1 — Build, publish, and serve the WASM browser demo. (~432 tok)
+- `WORKAROUNDS.md` — Known Workarounds (~2532 tok)
 
 ## .claude/
 
@@ -198,12 +200,14 @@
 
 ## src/SchedulingAssistant/
 
+- `App.axaml` (~1744 tok)
 
 ## src/SchedulingAssistant/Assets/
 
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `SuppressPopupScrollBehavior.cs` — Attached behavior that unconditionally suppresses <see cref="Control.RequestBringIntoViewEvent"/> to (~733 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -254,7 +258,7 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `SectionPanelContent.axaml` (~1753 tok)
+- `SectionPanelContent.axaml` (~1766 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
@@ -264,7 +268,7 @@
 - `LegalStartTimeListView.axaml` (~3130 tok)
 - `RoomListView.axaml` (~1572 tok)
 - `SectionListView.axaml` (~21067 tok)
-- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3109 tok)
+- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3462 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

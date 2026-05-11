@@ -103,6 +103,15 @@ public partial class SectionListView : UserControl
         if (e.PropertyName == nameof(SectionListViewModel.SectionItems))
             Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
 
+        // When the selected item changes (e.g. cross-view selection sync from the
+        // Schedule Grid), scroll it into view. SuppressPopupScrollBehavior blocks the
+        // ListBox's built-in RequestBringIntoView, so we handle it here via direct
+        // ScrollViewer.Offset manipulation.
+        if (e.PropertyName == nameof(SectionListViewModel.SelectedItem))
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                ScrollSelectedItemIntoView,
+                Avalonia.Threading.DispatcherPriority.Background);
+
         // When the inline editor opens (e.g. via double-click from the Schedule Grid),
         // the expanding item changes the list layout AFTER any BringIntoView call that
         // was queued by the selection change. The item may therefore end up outside the
@@ -117,7 +126,12 @@ public partial class SectionListView : UserControl
     /// Brings the active editor item into the visible area of the scroll viewer.
     /// Called after the inline editor opens or closes, since the layout shift caused by
     /// expanding/collapsing the editor form can push the item out of the viewport.
-    /// Uses BringIntoView() which bubbles up to the outer ScrollViewer automatically.
+    ///
+    /// Scrolls by manipulating <see cref="ScrollViewer.Offset"/> directly instead of
+    /// calling <see cref="Control.BringIntoView()"/>, because
+    /// <see cref="Behaviors.SuppressPopupScrollBehavior"/> unconditionally suppresses
+    /// <c>RequestBringIntoView</c> events to prevent ComboBox popup mispositioning in WASM.
+    ///
     /// For existing sections the list item is selected; for new Add/Copy placeholders it is
     /// not (SelectedItem is null), so we fall back to the VM's ExpandedItem.
     /// </summary>
@@ -126,13 +140,27 @@ public partial class SectionListView : UserControl
         var listBox = this.FindControl<ListBox>("SectionListBox");
         if (listBox is null) return;
 
-        // For existing sections the item is selected; for new Add/Copy placeholders it is not —
-        // fall back to the VM's ExpandedItem so the editor scrolls into view either way.
         var target = listBox.SelectedItem ?? _vm?.ExpandedItem;
         if (target is null) return;
 
         var container = listBox.ContainerFromItem(target) as Control;
-        container?.BringIntoView();
+        if (container is null) return;
+
+        var scrollViewer = this.FindAncestorOfType<ScrollViewer>();
+        if (scrollViewer is null) return;
+
+        var point = container.TranslatePoint(new Point(0, 0), scrollViewer);
+        if (!point.HasValue) return;
+
+        var y = point.Value.Y;
+        var containerHeight = container.Bounds.Height;
+        var viewportHeight = scrollViewer.Viewport.Height;
+        var offsetY = scrollViewer.Offset.Y;
+
+        if (y < 0)
+            scrollViewer.Offset = scrollViewer.Offset.WithY(offsetY + y);
+        else if (y + containerHeight > viewportHeight)
+            scrollViewer.Offset = scrollViewer.Offset.WithY(offsetY + y + containerHeight - viewportHeight);
     }
 
     /// <summary>

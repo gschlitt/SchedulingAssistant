@@ -29,7 +29,7 @@ Write-Host ""
 
 $bundlePath = Resolve-Path $AppBundle
 $proc = Start-Process -FilePath "cmd" `
-    -ArgumentList "/c npx --yes serve -l $Port `"$bundlePath`"" `
+    -ArgumentList "/c npx --yes serve -l tcp://0.0.0.0:$Port `"$bundlePath`"" `
     -NoNewWindow -PassThru
 
 try {

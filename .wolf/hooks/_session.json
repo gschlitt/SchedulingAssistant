@@ -1,12 +1,38 @@
 {
-  "session_id": "session-2026-05-11-1044",
-  "started": "2026-05-11T17:44:16.881Z",
-  "files_read": {},
+  "session_id": "session-2026-05-11-1447",
+  "started": "2026-05-11T21:47:02.837Z",
+  "files_read": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T21:47:32.108Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T21:47:33.099Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T21:47:36.611Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T21:47:36.760Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/SchedulingAssistant.csproj": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-11T21:50:09.352Z"
+    }
+  },
   "files_written": [],
   "edit_counts": {},
   "anatomy_hits": 0,
-  "anatomy_misses": 0,
+  "anatomy_misses": 5,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 1
+  "stop_count": 0
 }

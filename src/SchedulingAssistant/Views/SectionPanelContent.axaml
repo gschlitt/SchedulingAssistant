@@ -180,7 +180,7 @@
 			Grid.Row="2"
 			HorizontalScrollBarVisibility="Disabled"
 			VerticalScrollBarVisibility="Auto">
-			<StackPanel>
+			<StackPanel b:SuppressPopupScrollBehavior.IsEnabled="True">
 				<views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}" />
 				<views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}" />
 			</StackPanel>

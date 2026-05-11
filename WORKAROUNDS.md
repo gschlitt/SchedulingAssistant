@@ -106,3 +106,88 @@ entirely (confirmed by absence of warning in the log file).
 6. Verify the crash no longer reproduces: open the section editor, add a meeting, click a
    start time from the AutoCompleteBox dropdown, wait 10 seconds. Repeat with block length.
 7. Update or remove this entry.
+
+---
+
+## 2 — SuppressPopupScrollBehavior: ComboBox dropdown mispositioning in WASM
+
+**Files:** `Behaviors/SuppressPopupScrollBehavior.cs`, `Views/SectionPanelContent.axaml`
+**Introduced:** May 11, 2026
+**Avalonia versions affected:** 11.2.3+ through 12.0.2 (unpatched as of May 2026)
+**Upstream issues:**
+- <https://github.com/AvaloniaUI/Avalonia/issues/18203>
+- <https://github.com/AvaloniaUI/Avalonia/issues/19356>
+- <https://github.com/AvaloniaUI/Avalonia/issues/16762>
+
+### Symptom
+
+ComboBox dropdowns inside the section editor appear at the wrong vertical position ("floating
+above" the ComboBox) when the section list is scrolled in the WASM/browser build. AutoCompleteBox
+dropdowns in the same visual tree position correctly. Desktop builds are unaffected.
+
+### Root cause
+
+When a ComboBox inside a ListBox is clicked, two `RequestBringIntoViewEvent` events fire in quick
+succession — one from the `ListBoxItem` and one from the `ComboBox` itself. The
+`ScrollContentPresenter` (inside the ScrollViewer's template) handles each event by scrolling the
+content. The popup position was already calculated from pre-scroll coordinates, so the dropdown
+appears at the stale position.
+
+On desktop, native popup windows handle their own positioning independently of the visual tree
+scroll state. In WASM, overlay popups are rendered inside the same visual tree, so their position
+is sensitive to scroll changes that occur between position calculation and rendering.
+
+### Current workaround: suppress RequestBringIntoView on the ScrollViewer's content
+
+`SuppressPopupScrollBehavior` is an attached behavior that catches `RequestBringIntoViewEvent`
+and marks it `Handled` before it can reach the `ScrollContentPresenter`.
+
+The behavior must be placed on a control **inside** the ScrollViewer (the content StackPanel),
+not on the ScrollViewer itself. The `ScrollContentPresenter` sits between the content and the
+ScrollViewer in the visual tree; a handler on the ScrollViewer fires after the scroll has
+already happened.
+
+In `SectionPanelContent.axaml`:
+```xml
+<ScrollViewer ...>
+    <StackPanel b:SuppressPopupScrollBehavior.IsEnabled="True">
+        ...
+    </StackPanel>
+</ScrollViewer>
+```
+
+### Side effects
+
+Keyboard-driven `BringIntoView` scrolling (e.g. Tab-navigating to an off-screen control) is
+suppressed within the section panel's ScrollViewer. Users still scroll manually via mouse wheel
+or scrollbar. This is acceptable because the section editor is a mouse/touch-driven UI.
+
+**Cross-view selection sync** (clicking a section in the Schedule Grid scrolls the Section View
+to that card) would also be broken, since the ListBox's built-in scroll-to-selected relies on
+`RequestBringIntoView`. To compensate, `SectionListView.axaml.cs` listens for `SelectedItem`
+property changes on the ViewModel and scrolls via direct `ScrollViewer.Offset` manipulation,
+bypassing `RequestBringIntoView` entirely. The same technique is used for `EditVm` changes
+(editor open/close layout shifts). See `ScrollSelectedItemIntoView()`.
+
+### Platform scope
+
+- **WASM/browser:** workaround is active and prevents the mispositioning.
+- **Windows/macOS:** workaround is active but has no visible effect — desktop popups use native
+  windows whose positioning is independent of `RequestBringIntoView` scroll changes.
+
+### How to remove this workaround
+
+1. Upgrade Avalonia to a version where [#18203](https://github.com/AvaloniaUI/Avalonia/issues/18203)
+   is resolved.
+2. Remove `b:SuppressPopupScrollBehavior.IsEnabled="True"` from the StackPanel in
+   `SectionPanelContent.axaml`.
+3. Delete `Behaviors/SuppressPopupScrollBehavior.cs`.
+4. In `SectionListView.axaml.cs`, the `SelectedItem` and `EditVm` property-change handlers
+   that call `ScrollSelectedItemIntoView()` can optionally be removed — the ListBox's built-in
+   `BringIntoView` will resume working. However, keeping them is harmless and provides a
+   consistent scrolling experience.
+5. Verify: in the WASM build, scroll the section list down, open a section editor, click the
+   Day ComboBox. The dropdown should appear directly below the ComboBox, not floating above.
+6. Verify: click a section in the Schedule Grid — the Section View should scroll to show that
+   section's card.
+7. Update or remove this entry.
