@@ -580,21 +580,21 @@ public partial class ScheduleGridView : UserControl
         // ── Multi-semester column wash ────────────────────────────────────
         // Drawn after the gridlines so the wash sits above them in Z-order, making
         // the colored columns more prominent than the rules.
-        if (data.IsMultiSemester)
-        {
-            for (int d = 0; d < dayCount; d++)
-            {
-                var col       = data.DayColumns[d];
-                var baseBrush = SemesterBrushResolver.Resolve(col.SemesterName, col.SemesterColor);
-                if (baseBrush is SolidColorBrush scb)
-                {
-                    var washBrush = new SolidColorBrush(DesaturateColor(scb.Color, 0.25));
-                    var (washX, washW) = GetDayGroupContentBounds(d, semCount, dayXOffsets, dayColWidths);
-                    AddRect(_canvas, washX, effectiveHeaderHeight,
-                            washW, totalHeight - effectiveHeaderHeight, washBrush, null);
-                }
-            }
-        }
+        //if (data.IsMultiSemester)
+        //{
+        //    for (int d = 0; d < dayCount; d++)
+        //    {
+        //        var col       = data.DayColumns[d];
+        //        var baseBrush = SemesterBrushResolver.Resolve(col.SemesterName, col.SemesterColor);
+        //        if (baseBrush is SolidColorBrush scb)
+        //        {
+        //            var washBrush = new SolidColorBrush(DesaturateColor(scb.Color, 0.25));
+        //            var (washX, washW) = GetDayGroupContentBounds(d, semCount, dayXOffsets, dayColWidths);
+        //            AddRect(_canvas, washX, effectiveHeaderHeight,
+        //                    washW, totalHeight - effectiveHeaderHeight, washBrush, null);
+        //        }
+        //    }
+        //}
 
         // ── Section tiles (with adjusted heights and positions) ──────────────
         for (int d = 0; d < dayCount; d++)

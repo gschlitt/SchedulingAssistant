@@ -28,7 +28,7 @@
             BorderThickness="0,0,0,0">
             <StackPanel>
                 <TextBlock Text="Select Instructor to access workload and workload history"
-                           FontSize="{StaticResource FontSizeLarge}"
+                           FontSize="{StaticResource FontSizeNormal}" FontStyle="Italic"
                            IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNull}}"/>
             <StackPanel
                 IsVisible="{Binding SelectedInstructor, Converter={x:Static ObjectConverters.IsNotNull}}"

@@ -26,6 +26,7 @@
                         IsVisible="{Binding HasSubjects, Converter={x:Static BoolConverters.Not}}"
                         Text="Create at least one subject first" />
 
+                    
                     <!--  Course edit form  -->
                     <ContentControl Content="{Binding EditVm}">
                         <ContentControl.ContentTemplate>
@@ -110,11 +111,12 @@
 
                     <TextBlock Text="Courses" FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold"/>
 
-                    <TextBlock>
+                    
+                    <TextBlock IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" >
                         <Run Text="{Binding SelectedCourse.CalendarCode}" FontSize="{StaticResource FontSizeLarge}"/>
                         <Run Text="{Binding SelectedCourse.Title}" FontSize="{StaticResource FontSizeLarge}"/>
                         </TextBlock>
-
+                        
                     <!--  Show only active courses toggle  -->
                     <CheckBox
                         Content="Show only active courses"
@@ -301,11 +303,11 @@
 
             <StackPanel
                 Grid.Column="2"
-                Margin="12,0,0,0"
+                Margin="12,18,0,0"
                 Spacing="8">
                 <TextBlock
                     Margin="0,0,0,4"
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeLarge}"                    
                     FontWeight="SemiBold"
                     Text="Course History" />
 

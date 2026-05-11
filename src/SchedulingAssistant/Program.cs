@@ -1,7 +1,4 @@
 using Avalonia;
-using Bugsnag;
-using SchedulingAssistant.Services;
-using System;
 using Velopack;
 
 namespace SchedulingAssistant;

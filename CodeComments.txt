@@ -1,9 +1,18 @@
 Bugs:
 
-Academic year and semester manager bug:
-Confusion about roles here.
-Deleting a semester in semester manager seems to cause a crash, at least app becomes nonresponsive.
-Move semester manager into configuration.
+"More..." is broken in WASM, does not populate properly
+
+Test deletion of section!
+
+If an instructor name is clicked on in workload view to multi-select workload, Section View is unresponsive
+to clicks after
+
+Line up "section types" in section view
+
+Follow semester order in workload history
+
+Select semester --> Add a section (without selecting anything) only works second time
+
 
 Todo:
 Section Code back in Wizard

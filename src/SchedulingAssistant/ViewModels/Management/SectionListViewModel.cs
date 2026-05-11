@@ -404,9 +404,18 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void ApplyFilterHighlights()
     {
+        //foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+        //{
+        //    item.IsCollapsed = true;
+        //}
+        
         var ids = _sectionStore.FilteredSectionIds;
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
-            item.IsFilterHighlighted = ids is not null && ids.Contains(item.Section.Id);
+        {
+           item.IsFilterHighlighted = ids is not null && ids.Contains(item.Section.Id);
+         //   item.IsCollapsed = !(ids is not null && ids.Contains(item.Section.Id));
+        }
+       
     }
 
     /// <summary>

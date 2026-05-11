@@ -1,0 +1,17 @@
+Multi-user.
+
+TermPoint supports multiple users. Anyone with access to the network location of the database and TermPoint installed on their
+desktop can access the database at any time. To protect your data, only one user at a time can edit the database (the "editor"); any other users are placed
+in "reader-mode", and can do anything short of editing. 
+
+FAQS
+
+(1) What happens if the "editor" leaves their computer for an extended period of time. Is everyone else locked out from editing?
+
+	If the editor has a database open for editing and their machine is active, no-one else can edit that database. If however their computer sleeps or hibernates,
+	 other users will be offered editor-access after the 3 minute windows passes, and the original editor will have been made a reader when the return to their computer.
+
+(2) What is the "lock" file in the database directory? 
+	This is the means by enforces the lock the current editor has, and ensure everyone else becomes a reader. In ordinary circumstances do not delete this file! 	
+
+Happy Mother's day Mom! Thank-you for your life of love for this family. You've given all you have. And know this: 	

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-07T20:29:38.501Z
-> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T03:11:31.769Z
+> Files: 30 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -31,6 +31,7 @@
 
 - `i-d-like-to-further-declarative-origami.md` — Semester Selector: Single-Click Exclusive, Ctrl+Click Multi-Select (~1155 tok)
 - `some-revisions-needed-to-cozy-biscuit.md` — Plan: Reader Mode UX Fixes — Section View & Events View (~1193 tok)
+- `something-has-broken-on-optimized-clarke.md` — Fix: Academic Years flyout freeze in WASM (~1022 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -266,9 +267,11 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `AcademicYearListView.axaml` (~1500 tok)
 - `PreferencesView.axaml` (~207 tok)
 - `PreferencesView.axaml.cs` — Code-behind for <see cref="PreferencesView"/>. (~73 tok)
 - `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3127 tok)
+- `SemesterManagerView.axaml` (~1707 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     x:CompileBindings="False"
+    xmlns:b="using:SchedulingAssistant.Behaviors"
     x:DataType="vm:AcademicYearListViewModel">
 
     <Grid RowDefinitions="Auto,*,Auto">
@@ -31,7 +32,7 @@
                             IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                             Text="{Binding ValidationError}" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Command="{Binding SaveCommand}" Content="Apply" />
+                            <Button Command="{Binding SaveCommand}" Content="Apply"/>
                             <Button Command="{Binding CancelCommand}" Content="Cancel" />
                         </StackPanel>
                     </StackPanel>
@@ -40,25 +41,36 @@
         </ContentControl>
 
         <!-- Two-column layout: AY list (left) + Semester manager (right) -->
-        <Grid
+        <Grid 
             Grid.Row="1"
             Margin="10,0,10,0"
-            ColumnDefinitions="340,10,200"
+            ColumnDefinitions="340,10,200" RowDefinitions="Auto,*"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <TextBlock Text="Academic Years" Grid.Row="0" FontWeight="SemiBold" />
 
             <!-- Left: Academic Year list -->
             <DataGrid
-                Grid.Column="0"
+                Grid.Column="0" Grid.Row="1"
                 AutoGenerateColumns="False"
-                CanUserSortColumns="True"
+                
                 IsReadOnly="True"
                 ItemsSource="{Binding AcademicYears}"
-                SelectedItem="{Binding SelectedAcademicYear}">
+                SelectedItem="{Binding SelectedAcademicYear}"
+               >
+                 <!-- Workaround: HeadersVisibility="None" crashes Avalonia 12 WASM.
+                     Hide the header row by collapsing its height instead. -->
+                <DataGrid.Styles>
+                    <Style Selector="DataGridColumnHeader">
+                        <Setter Property="Height" Value="0" />
+                        <Setter Property="MinHeight" Value="0" />
+                    </Style>
+                </DataGrid.Styles>
                 <DataGrid.Columns>
                     <DataGridTextColumn
                         Width="*"
                         Binding="{Binding Name}"
-                        Header="Academic Year" />
+                         />
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -70,21 +82,20 @@
                 Background="{StaticResource MenuBorderBrush}" />
 
             <!-- Right: Semester manager for selected year -->
-            <Grid Grid.Column="2" RowDefinitions="Auto,*">
-                <TextBlock
-                    Grid.Row="0"
-                    Margin="0,0,0,0"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    IsVisible="{Binding SemesterManager, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Text="Semesters" />
-                <ContentControl Grid.Row="1" Content="{Binding SemesterManager}" />
-            </Grid>
+            <TextBlock
+                Grid.Row="0"
+                Grid.Column="2"
+                HorizontalAlignment="Center"
+                FontSize="13"
+                FontWeight="SemiBold"
+                IsVisible="{Binding SemesterManager, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding SelectedAcademicYear.Name}" />
+            <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding SemesterManager}" />
 
         </Grid>
 
         <!-- Toolbar -->
-        <StackPanel
+       <StackPanel
             Grid.Row="2"
             Margin="10,12,0,0"
             IsEnabled="{Binding IsWriteEnabled}"
@@ -96,8 +107,8 @@
                 Command="{Binding DeleteCommand}"
                 Content="Delete"
                 IsEnabled="{Binding SelectedAcademicYear, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <Button Command="{Binding CopySemesterCommand}" Content="Copy Semester" />
-            <Button Command="{Binding EmptySemesterCommand}" Content="Empty Semester" />
+            <Button Command="{Binding CopySemesterCommand}" Content="Copy" b:HelpTip.Text="Copy sections from one academic year to another. Copying is done one semester at a time" />
+            <Button Command="{Binding EmptySemesterCommand}" Content="Empty" b:HelpTip.Text="Empty an academic year of sections. Emptying is done one semester at a time."/>
         </StackPanel>
         <!--  Inline error message  -->
         <TextBlock

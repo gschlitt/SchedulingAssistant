@@ -24,7 +24,7 @@
 				Visibility of the whole row swaps with the Meeting action buttons.
 			-->
 			<StackPanel
-				Margin="0,8,0,4"
+				Margin="0,12,0,4"
 				VerticalAlignment="Top"
 				DataContext="{Binding SectionListVm}"
 				IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}"

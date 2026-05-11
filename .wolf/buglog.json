@@ -8830,6 +8830,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-07T19:35:02.105Z"
+    },
+    {
+      "id": "bug-552",
+      "timestamp": "2026-05-10T01:34:31.370Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/something-has-broken-on-optimized-clarke.md",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 24→24 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-10T01:34:31.370Z"
+    },
+    {
+      "id": "bug-553",
+      "timestamp": "2026-05-10T03:35:47.153Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SemesterManagerView.axaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-10T03:35:47.153Z"
+    },
+    {
+      "id": "bug-554",
+      "timestamp": "2026-05-10T03:39:50.498Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml",
+      "root_cause": "Had \" RowDefinitions=\"",
+      "fix": "Changed to \" Grid.Row=\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-10T03:39:50.498Z"
+    },
+    {
+      "id": "bug-555",
+      "timestamp": "2026-05-11T03:11:31.925Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T03:11:31.925Z"
     }
   ]
 }
