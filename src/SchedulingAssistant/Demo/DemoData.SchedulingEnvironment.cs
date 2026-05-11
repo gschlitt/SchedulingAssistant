@@ -9,7 +9,8 @@ public static partial class DemoData
         new() { Id = "demo-st-1", Name = "F2F (TRD)", SortOrder = 0 },
         new() { Id = "demo-st-2", Name = "Blend (HYB)", SortOrder = 1 },
         new() { Id = "demo-st-3", Name = "Online Asynch (OLO)", SortOrder = 2 },
-        new() { Id = "demo-st-4", Name = "Online Synch (OLM)", SortOrder = 3 }
+        new() { Id = "demo-st-4", Name = "Online Synch (OLM)", SortOrder = 3 },
+        new() { Id = "demo-st-5", Name = "Lab", SortOrder = 4 }
     ];
 
     public static readonly List<SchedulingEnvironmentValue> MeetingTypes =
@@ -32,12 +33,16 @@ public static partial class DemoData
 
     public static readonly List<SchedulingEnvironmentValue> Tags =
     [
-        new() { Id = "demo-tag-1", Name = "e.g. Cohort 1", SortOrder = 0 },
-        new() { Id = "demo-tag-2", Name = "e.g. EnvStudCert", SortOrder = 1 }
+        new() { Id = "demo-tag-1", Name = "Cohort 1", SortOrder = 0 },
+        new() { Id = "demo-tag-2", Name = "EnvStudCert", SortOrder = 1 }
     ];
     public static readonly List<SchedulingEnvironmentValue> Resources =
     [
-        new() { Id = "demo-res-1", Name = "e.g. Laptop cart", SortOrder = 0 }
+        new() { Id = "demo-res-1", Name = "Laptop cart", SortOrder = 0 }
     ];
-    public static readonly List<SchedulingEnvironmentValue> Reserves = [];
+    public static readonly List<SchedulingEnvironmentValue> Reserves =
+    [
+        new() { Id = "demo-reserve-1", Name = "BSc", SortOrder = 0 },
+        new() { Id = "demo-reserve-2", Name = "ENV", SortOrder = 1 }
+    ];
 }

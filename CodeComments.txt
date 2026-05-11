@@ -1,6 +1,6 @@
 Bugs:
 
-"More..." is broken in WASM, does not populate properly
+In Instrutor flyout list should be able to colmn click to sort on fields
 
 Test deletion of section!
 

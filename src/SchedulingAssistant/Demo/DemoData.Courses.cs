@@ -10,8 +10,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-1",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO105",
-            Title        = "Human Biology",
+            CalendarCode = "GEOG105",
+            Title        = "Introduction to Physical Geography",
             IsActive     = true,
             Level        = "100"
         },
@@ -19,8 +19,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-2",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO106",
-            Title        = "Ecology from an Urban Perspective",
+            CalendarCode = "GEOG106",
+            Title        = "Introduction to Human Geography",
             IsActive     = true,
             Level        = "100"
         },
@@ -28,8 +28,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-3",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO106LAB",
-            Title        = "Ecology from an Urban Perspective LAB",
+            CalendarCode = "GEOG111",
+            Title        = "World Regional Geography",
             IsActive     = true,
             Level        = "100"
         },
@@ -37,8 +37,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-4",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO111",
-            Title        = "Introductory Biology I",
+            CalendarCode = "GEOG112",
+            Title        = "Earth's Natural Environments",
             IsActive     = true,
             Level        = "100"
         },
@@ -46,35 +46,35 @@ public static partial class DemoData
         {
             Id           = "demo-course-5",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO111LAB",
-            Title        = "Introductory Biology I LAB",
+            CalendarCode = "GEOG201",
+            Title        = "Geomorphology",
             IsActive     = true,
-            Level        = "100"
+            Level        = "200"
         },
         new()
         {
             Id           = "demo-course-6",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO112",
-            Title        = "Introductory Biology II",
+            CalendarCode = "GEOG202",
+            Title        = "Climatology",
             IsActive     = true,
-            Level        = "100"
+            Level        = "200"
         },
         new()
         {
             Id           = "demo-course-7",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO112LAB",
-            Title        = "Introductory Biology II LAB",
+            CalendarCode = "GEOG210",
+            Title        = "Biogeography",
             IsActive     = true,
-            Level        = "100"
+            Level        = "200"
         },
         new()
         {
             Id           = "demo-course-8",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO201",
-            Title        = "Cell Biochemistry/Metabolism",
+            CalendarCode = "GEOG219",
+            Title        = "Urban Geography",
             IsActive     = true,
             Level        = "200"
         },
@@ -82,8 +82,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-9",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO201LAB",
-            Title        = "Cell Biochemistry/Metabolism LAB",
+            CalendarCode = "GEOG220",
+            Title        = "Economic Geography",
             IsActive     = true,
             Level        = "200"
         },
@@ -91,71 +91,71 @@ public static partial class DemoData
         {
             Id           = "demo-course-10",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO202",
-            Title        = "Cell Signaling/Gene Regulation",
+            CalendarCode = "GEOG301",
+            Title        = "Advanced Geographic Information Systems",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-11",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO202LAB",
-            Title        = "Cell Signaling/Gene Regulation LAB",
+            CalendarCode = "GEOG305",
+            Title        = "Glacial and Periglacial Geomorphology",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-12",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO210",
-            Title        = "Introduction to Ecology",
+            CalendarCode = "GEOG306",
+            Title        = "Synoptic Meteorology",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-13",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO210LAB",
-            Title        = "Introduction to Ecology LAB",
+            CalendarCode = "GEOG307",
+            Title        = "Fluvial Geomorphology",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-14",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO219",
-            Title        = "Biogeography",
+            CalendarCode = "GEOG308",
+            Title        = "Geography of Urbanization",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-15",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO220",
-            Title        = "Genetics",
+            CalendarCode = "GEOG309",
+            Title        = "Spatial Statistics",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-16",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO220LAB",
-            Title        = "Genetics LAB",
+            CalendarCode = "GEOG310",
+            Title        = "Environmental Remote Sensing",
             IsActive     = true,
-            Level        = "200"
+            Level        = "300"
         },
         new()
         {
             Id           = "demo-course-17",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO301",
-            Title        = "Anatomy and Physiology of Invertebrates",
+            CalendarCode = "GEOG312",
+            Title        = "Historical Geography",
             IsActive     = true,
             Level        = "300"
         },
@@ -163,8 +163,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-18",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO301LAB",
-            Title        = "Anatomy and Physiology of Invertebrates LAB",
+            CalendarCode = "GEOG319",
+            Title        = "Landscape Ecology",
             IsActive     = true,
             Level        = "300"
         },
@@ -172,8 +172,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-19",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO305",
-            Title        = "Structural and Functional Anatomy of Vertebrates",
+            CalendarCode = "GEOG320",
+            Title        = "Geography of Development",
             IsActive     = true,
             Level        = "300"
         },
@@ -181,8 +181,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-20",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO305LAB",
-            Title        = "Structural and Functional Anatomy of Vertebrates LAB",
+            CalendarCode = "GEOG330",
+            Title        = "Water Resource Management",
             IsActive     = true,
             Level        = "300"
         },
@@ -190,8 +190,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-21",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO306",
-            Title        = "Vertebrate Organ Systems",
+            CalendarCode = "GEOG333",
+            Title        = "Advanced Cartography and Visualization",
             IsActive     = true,
             Level        = "300"
         },
@@ -199,8 +199,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-22",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO306LAB",
-            Title        = "Vertebrate Organ Systems LAB",
+            CalendarCode = "GEOG335",
+            Title        = "Geography of Energy and Resources",
             IsActive     = true,
             Level        = "300"
         },
@@ -208,8 +208,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-23",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO307",
-            Title        = "Anatomy and Diversity of Plants",
+            CalendarCode = "GEOG340",
+            Title        = "Environmental Impact Assessment",
             IsActive     = true,
             Level        = "300"
         },
@@ -217,8 +217,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-24",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO307LAB",
-            Title        = "Anatomy and Diversity of Plants LAB",
+            CalendarCode = "GEOG350",
+            Title        = "Quaternary Environments",
             IsActive     = true,
             Level        = "300"
         },
@@ -226,8 +226,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-25",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO308",
-            Title        = "Plant Physiology",
+            CalendarCode = "GEOG357",
+            Title        = "Digital Terrain Analysis",
             IsActive     = true,
             Level        = "300"
         },
@@ -235,8 +235,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-26",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO308LAB",
-            Title        = "Plant Physiology LAB",
+            CalendarCode = "GEOG360",
+            Title        = "Political Ecology",
             IsActive     = true,
             Level        = "300"
         },
@@ -244,8 +244,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-27",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO309",
-            Title        = "Microbiology I",
+            CalendarCode = "GEOG370",
+            Title        = "Geography of Global Trade",
             IsActive     = true,
             Level        = "300"
         },
@@ -253,8 +253,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-28",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO309LAB",
-            Title        = "Microbiology I LAB",
+            CalendarCode = "GEOG380",
+            Title        = "Applied Climatology",
             IsActive     = true,
             Level        = "300"
         },
@@ -262,8 +262,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-29",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO310",
-            Title        = "Conservation Biology",
+            CalendarCode = "GEOG383",
+            Title        = "Geography of Tourism and Recreation",
             IsActive     = true,
             Level        = "300"
         },
@@ -271,8 +271,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-30",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO312",
-            Title        = "Developmental Biology",
+            CalendarCode = "GEOG385",
+            Title        = "Special Topics (300-level) [29]",
             IsActive     = true,
             Level        = "300"
         },
@@ -280,8 +280,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-31",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO319",
-            Title        = "Swamps and Bogs",
+            CalendarCode = "GEOG390",
+            Title        = "Special Topics (300-level) [30]",
             IsActive     = true,
             Level        = "300"
         },
@@ -289,179 +289,179 @@ public static partial class DemoData
         {
             Id           = "demo-course-32",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO320",
-            Title        = "Biochemistry",
+            CalendarCode = "GEOG401",
+            Title        = "Research Methods in Geography",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-33",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO330",
-            Title        = "Plants and Animals of BC",
+            CalendarCode = "GEOG403",
+            Title        = "Senior Seminar in Physical Geography",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-34",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO330LAB",
-            Title        = "Plants and Animals of BC LAB",
+            CalendarCode = "GEOG406",
+            Title        = "Senior Seminar in Human Geography",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-35",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO333",
-            Title        = "Bioinformatics I",
+            CalendarCode = "GEOG407",
+            Title        = "Advanced Spatial Analysis",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-36",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO335",
-            Title        = "Freshwater Ecology",
+            CalendarCode = "GEOG408",
+            Title        = "Climate Change Science and Policy",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-37",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO335LAB",
-            Title        = "Freshwater Ecology LAB",
+            CalendarCode = "GEOG409",
+            Title        = "Geographic Thought and Philosophy",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-38",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO340",
-            Title        = "Population and Community Ecology",
+            CalendarCode = "GEOG410",
+            Title        = "Advanced Environmental Modeling",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-39",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO340LAB",
-            Title        = "Population and Community Ecology LAB",
+            CalendarCode = "GEOG412",
+            Title        = "Directed Studies in Geography",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-40",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO350",
-            Title        = "Medical Genetics",
+            CalendarCode = "GEOG414",
+            Title        = "Honours Thesis in Geography",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-41",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO357",
-            Title        = "Conservation GIS",
+            CalendarCode = "GEOG415",
+            Title        = "Advanced Topics in Geomorphology",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-42",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO360",
-            Title        = "Insect Biology",
+            CalendarCode = "GEOG416",
+            Title        = "Advanced Topics in Urban Systems",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-43",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO360LAB",
-            Title        = "Insect Biology LAB",
+            CalendarCode = "GEOG418",
+            Title        = "Land Use Planning and Policy",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-44",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO370",
-            Title        = "Introduction to Mycology",
+            CalendarCode = "GEOG419",
+            Title        = "Advanced Remote Sensing Applications",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-45",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO370LAB",
-            Title        = "Introduction to Mycology LAB",
+            CalendarCode = "GEOG420",
+            Title        = "Environmental Governance",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-46",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO380",
-            Title        = "Ornithology",
+            CalendarCode = "GEOG420",
+            Title        = "Capstone Project in Geography",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-47",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO380LAB",
-            Title        = "Ornithology LAB",
+            CalendarCode = "GEOG420",
+            Title        = "Special Topics (400-level) [46]",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-48",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO383",
-            Title        = "Human Physiology",
+            CalendarCode = "GEOG425",
+            Title        = "Special Topics (400-level) [47]",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-49",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO385",
-            Title        = "Neurobiology",
+            CalendarCode = "GEOG426",
+            Title        = "Special Topics (400-level) [48]",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-50",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO390",
-            Title        = "Animal Behaviour",
+            CalendarCode = "GEOG427",
+            Title        = "Special Topics (400-level) [49]",
             IsActive     = true,
-            Level        = "300"
+            Level        = "400"
         },
         new()
         {
             Id           = "demo-course-51",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO401",
-            Title        = "Molecular Biology",
+            CalendarCode = "GEOG430",
+            Title        = "Special Topics (400-level) [50]",
             IsActive     = true,
             Level        = "400"
         },
@@ -469,8 +469,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-52",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO403",
-            Title        = "Molecular Techniques I",
+            CalendarCode = "GEOG433",
+            Title        = "Special Topics (400-level) [51]",
             IsActive     = true,
             Level        = "400"
         },
@@ -478,8 +478,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-53",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO406",
-            Title        = "Advanced Genetics",
+            CalendarCode = "GEOG442",
+            Title        = "Special Topics (400-level) [52]",
             IsActive     = true,
             Level        = "400"
         },
@@ -487,8 +487,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-54",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO407",
-            Title        = "Applied Biotechnology",
+            CalendarCode = "GEOG448",
+            Title        = "Special Topics (400-level) [53]",
             IsActive     = true,
             Level        = "400"
         },
@@ -496,8 +496,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-55",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO408",
-            Title        = "Directed Studies in Biology I",
+            CalendarCode = "GEOG477",
+            Title        = "Special Topics (400-level) [54]",
             IsActive     = true,
             Level        = "400"
         },
@@ -505,8 +505,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-56",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO409",
-            Title        = "Directed Studies in Biology II",
+            CalendarCode = "GEOG496",
+            Title        = "Special Topics (400-level) [55]",
             IsActive     = true,
             Level        = "400"
         },
@@ -514,215 +514,8 @@ public static partial class DemoData
         {
             Id           = "demo-course-57",
             SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO410",
-            Title        = "Plant Ecology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-58",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO410LAB",
-            Title        = "Plant Ecology LAB",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-59",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO412",
-            Title        = "Advanced Metabolism",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-60",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO414",
-            Title        = "Genomics",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-61",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO415",
-            Title        = "Cancer Biology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-62",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO416",
-            Title        = "Evolution",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-63",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO418",
-            Title        = "Ethnobotany",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-64",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO418LAB",
-            Title        = "Ethnobotany LAB",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-65",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO419",
-            Title        = "Paleoecology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-66",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO420II",
-            Title        = "Science Communications",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-67",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO420KK",
-            Title        = "Metabolomics",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-68",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO420LL",
-            Title        = "Natural Product Biochemistry",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-69",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO425",
-            Title        = "Introductory Medical Microbiology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-70",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO425LAB",
-            Title        = "Introductory Medical Microbiology LAB",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-71",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO426",
-            Title        = "Environmental Microbiology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-72",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO426LAB",
-            Title        = "Enviromental Microbiology LAB",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-73",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO427",
-            Title        = "Plants and Drugs",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-74",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO430",
-            Title        = "Forest Ecology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-75",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO433",
-            Title        = "Bioinformatics II",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-76",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO442",
-            Title        = "Biological Field School",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-77",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO448",
-            Title        = "Immunology",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-78",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO477",
-            Title        = "Traditional Ecological Knowledge",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-79",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO496",
-            Title        = "Advanced Biological Topics",
-            IsActive     = true,
-            Level        = "400"
-        },
-        new()
-        {
-            Id           = "demo-course-80",
-            SubjectId    = "demo-subj-1",
-            CalendarCode = "BIO499",
-            Title        = "Honours Research Thesis",
+            CalendarCode = "GEOG499",
+            Title        = "Special Topics (400-level) [56]",
             IsActive     = true,
             Level        = "400"
         }

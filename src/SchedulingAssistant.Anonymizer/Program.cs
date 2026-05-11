@@ -53,6 +53,7 @@ public static class Program
         var faker = new Faker();
 
         var instructorMap = AnonymizeInstructors(conn, faker);
+        DropLabCourses(conn);
         AnonymizeSubjectsAndCourses(conn);
         var campusMap = AnonymizeCampuses(conn);
         AnonymizeRooms(conn, campusMap);
@@ -105,6 +106,52 @@ public static class Program
         }
 
         return map;
+    }
+
+    // ── Lab course removal ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Removes courses whose calendar code ends in "LAB" (e.g. BIO106LAB), first
+    /// re-pointing any sections that belong to them at the corresponding base course
+    /// (e.g. BIO106).  Must run before <see cref="AnonymizeSubjectsAndCourses"/> so
+    /// original calendar codes are still intact for matching.
+    /// </summary>
+    private static void DropLabCourses(SqliteConnection conn)
+    {
+        var courses = ReadAll(conn, "SELECT id, calendar_code FROM Courses", columnCount: 2);
+
+        // Build lookup: original calendar code → course id (base courses only)
+        var baseIdByCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var labCourses   = new List<(string Id, string CalCode)>();
+
+        foreach (var row in courses)
+        {
+            if (row[1].EndsWith("LAB", StringComparison.OrdinalIgnoreCase))
+                labCourses.Add((row[0], row[1]));
+            else
+                baseIdByCode[row[1]] = row[0];
+        }
+
+        Console.WriteLine($"Dropping {labCourses.Count} lab courses...");
+
+        foreach (var (labId, calCode) in labCourses)
+        {
+            var baseCode = calCode[..^3]; // strip "LAB"
+            if (baseIdByCode.TryGetValue(baseCode, out var baseId))
+            {
+                Execute(conn,
+                    "UPDATE Sections SET course_id=$base WHERE course_id=$lab",
+                    ("$base", baseId), ("$lab", labId));
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    $"  WARNING: no base course found for {calCode} (expected {baseCode}) " +
+                    $"— sections will have a null course reference");
+            }
+
+            Execute(conn, "DELETE FROM Courses WHERE id=$id", ("$id", labId));
+        }
     }
 
     // ── Subjects & Courses ───────────────────────────────────────────────────

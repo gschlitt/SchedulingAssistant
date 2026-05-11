@@ -149,8 +149,7 @@ public partial class SectionListView : UserControl
     /// </summary>
     private void UpdateColumnWidth()
     {
-        var scrollViewer = this.FindControl<ScrollViewer>("ListScrollViewer");
-        var stackPanel = scrollViewer?.Content as StackPanel;
+        var stackPanel = this.FindControl<StackPanel>("ListContentPanel");
         var listBox = this.FindControl<ListBox>("SectionListBox");
 
         if (stackPanel is null) return;

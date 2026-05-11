@@ -9,26 +9,34 @@ public static partial class DemoData
         new()
         {
             Id         = "demo-room-1",
-            Building   = "",
-            RoomNumber = "A2111"
+            Building   = "Main Building",
+            RoomNumber = "A2111",
+            Capacity   = 40,
+            CampusId   = "demo-campus-2"
         },
         new()
         {
             Id         = "demo-room-2",
-            Building   = "",
-            RoomNumber = "A328"
+            Building   = "Main Building",
+            RoomNumber = "A328",
+            Capacity   = 40,
+            CampusId   = "demo-campus-2"
         },
         new()
         {
             Id         = "demo-room-3",
-            Building   = "",
-            RoomNumber = "A331"
+            Building   = "Main Building",
+            RoomNumber = "A331",
+            Capacity   = 45,
+            CampusId   = "demo-campus-2"
         },
         new()
         {
             Id         = "demo-room-4",
-            Building   = "",
-            RoomNumber = "A337"
+            Building   = "Main Building",
+            RoomNumber = "A337",
+            Capacity   = 45,
+            CampusId   = "demo-campus-2"
         }
     ];
 }

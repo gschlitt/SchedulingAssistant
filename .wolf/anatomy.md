@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T05:44:12.315Z
-> Files: 14 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T17:23:24.120Z
+> Files: 20 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -31,6 +31,8 @@
 
 - `the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md` — Fix: Text wrapping in LegalStartTimeListView (~238 tok)
 - `there-is-a-demo-smooth-beaver.md` — Plan: DemoData Exporter Console Tool (~2290 tok)
+- `under-the-flyout-schedulingenvironment-r-linked-salamander.md` — Plan: Make Edit-Conflict Advisory Always Visible in Section List (~918 tok)
+- `we-ve-got-a-visual-clever-rabin.md` — Fix: WASM ComboBox Dropdown Floating Above Its Anchor (~858 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -178,7 +180,7 @@
 
 ## src/SchedulingAssistant.Anonymizer/
 
-- `Program.cs` — Reads a TermPoint SQLite database and produces an anonymized copy. All instructor names, course titl (~7864 tok)
+- `Program.cs` — Reads a TermPoint SQLite database and produces an anonymized copy. All instructor names, course titl (~8390 tok)
 
 ## src/SchedulingAssistant.Browser/
 
@@ -252,6 +254,7 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `SectionPanelContent.axaml` (~1753 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
@@ -259,6 +262,9 @@
 ## src/SchedulingAssistant/Views/Management/
 
 - `LegalStartTimeListView.axaml` (~3130 tok)
+- `RoomListView.axaml` (~1572 tok)
+- `SectionListView.axaml` (~21067 tok)
+- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~3109 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

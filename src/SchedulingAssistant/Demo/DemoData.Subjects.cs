@@ -9,8 +9,8 @@ public static partial class DemoData
         new()
         {
             Id                   = "demo-subj-1",
-            Name                 = "Biology",
-            CalendarAbbreviation = "BIO"
+            Name                 = "Geography",
+            CalendarAbbreviation = "GEOG"
         }
     ];
 }

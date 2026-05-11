@@ -26,7 +26,7 @@
                             <ComboBox  Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
                                        ItemsSource="{Binding CampusOptions}"
                                        SelectedItem="{Binding SelectedCampus}"
-                                       DisplayMemberBinding="{Binding DisplayName}"
+                                       DisplayMemberBinding="{Binding Name}"
                                        Margin="0,0,0,8" />
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity" Margin="0,0,0,4" />

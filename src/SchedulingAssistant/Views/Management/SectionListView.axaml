@@ -786,38 +786,11 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,Auto,*">
-
-        <!--  Error banner (only visible when LastErrorMessage is set)  -->
-        <Border
-            Grid.Row="0"
-            Padding="6,3"
-            Background="{StaticResource ErrorBannerBackground}"
-            BorderBrush="{StaticResource ErrorBannerBorder}"
-            BorderThickness="0,0,0,1"
-            IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <DockPanel>
-                <Button
-                    Padding="3,1"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Command="{Binding DismissErrorCommand}"
-                    Content="✕"
-                    DockPanel.Dock="Right"
-                    FontSize="10"
-                    ToolTip.Tip="Dismiss" />
-                <TextBlock
-                    VerticalAlignment="Center"
-                    FontSize="10"
-                    Foreground="{StaticResource ErrorBannerText}"
-                    Text="{Binding LastErrorMessage}"
-                    TextWrapping="Wrap" />
-            </DockPanel>
-        </Border>
+    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*">
 
         <!--  Add-to-semester prompt — shown in multi-semester mode when Add is clicked  -->
         <Border
-            Grid.Row="1"
+            Grid.Row="0"
             Padding="8,6"
             Background="{StaticResource EditorBackground}"
             BorderBrush="{StaticResource EditorBorder}"
@@ -859,11 +832,10 @@
             </StackPanel>
         </Border>
 
-        <ScrollViewer
-            x:Name="ListScrollViewer"
-            Grid.Row="2"
-            HorizontalScrollBarVisibility="Disabled">
-            <StackPanel HorizontalAlignment="Stretch">
+        <StackPanel
+            x:Name="ListContentPanel"
+            Grid.Row="1"
+            HorizontalAlignment="Stretch">
 
                 <!--
                     DoubleTapCommandBehavior replaces the OnListBoxDoubleTapped code-behind handler.
@@ -1253,8 +1225,7 @@
                     </ListBox.DataTemplates>
                 </ListBox>
 
-            </StackPanel>
-        </ScrollViewer>
+        </StackPanel>
 
     </Grid>
 

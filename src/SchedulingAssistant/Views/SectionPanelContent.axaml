@@ -12,7 +12,7 @@
 		Expects MainWindowViewModel as DataContext.
 		Used inside the DetachablePanel (docked) and in the detached window.
 	-->
-	<Grid RowDefinitions="Auto,*" Background="{StaticResource AppBackground}">
+	<Grid RowDefinitions="Auto,Auto,*" Background="{StaticResource AppBackground}">
 
 		<!--  Action buttons  -->
 		<StackPanel Grid.Row="0">
@@ -148,9 +148,36 @@
 
 		</StackPanel>
 
+		<!--  Edit-conflict advisory — always visible above the scroll area regardless of scroll position  -->
+		<Border
+			Grid.Row="1"
+			Padding="6,3"
+			Background="{StaticResource ErrorBannerBackground}"
+			BorderBrush="{StaticResource ErrorBannerBorder}"
+			BorderThickness="0,0,0,1"
+			IsVisible="{Binding SectionListVm.LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+			<DockPanel>
+				<Button
+					Padding="3,1"
+					Background="Transparent"
+					BorderThickness="0"
+					Command="{Binding SectionListVm.DismissErrorCommand}"
+					Content="✕"
+					DockPanel.Dock="Right"
+					FontSize="10"
+					ToolTip.Tip="Dismiss" />
+				<TextBlock
+					VerticalAlignment="Center"
+					FontSize="10"
+					Foreground="{StaticResource ErrorBannerText}"
+					Text="{Binding SectionListVm.LastErrorMessage}"
+					TextWrapping="Wrap" />
+			</DockPanel>
+		</Border>
+
 		<!--  Content: swaps between Section View and Events View  -->
 		<ScrollViewer
-			Grid.Row="1"
+			Grid.Row="2"
 			HorizontalScrollBarVisibility="Disabled"
 			VerticalScrollBarVisibility="Auto">
 			<StackPanel>
