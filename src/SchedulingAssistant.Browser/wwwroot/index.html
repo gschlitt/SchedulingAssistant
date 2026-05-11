@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/SchedulingAssistant/" />
     <title>TermPoint — Demo</title>
     <style>
         html, body {
@@ -21,7 +22,7 @@
 <body>
     <div id="out"></div>
     <script type="module">
-        import { dotnet } from './_framework/dotnet.js';
+        import { dotnet } from '_framework/dotnet.js';
 
         const runtime = await dotnet
             .withConfig({ applicationArguments: [] })

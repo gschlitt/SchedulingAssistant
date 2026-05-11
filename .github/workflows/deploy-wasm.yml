@@ -1,0 +1,50 @@
+name: Deploy WASM Demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Publish WASM
+        run: >
+          dotnet publish
+          src/SchedulingAssistant.Browser/SchedulingAssistant.Browser.csproj
+          -c Release
+
+      - name: Prepare Pages artifact
+        run: |
+          BUNDLE="src/SchedulingAssistant.Browser/bin/Release/net10.0-browser/browser-wasm/AppBundle"
+          touch "$BUNDLE/.nojekyll"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: src/SchedulingAssistant.Browser/bin/Release/net10.0-browser/browser-wasm/AppBundle
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
