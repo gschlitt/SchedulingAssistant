@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-11T22:22:36.138Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T00:09:07.148Z
 > Files: 27 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -159,7 +159,7 @@
 
 ## .github/workflows/
 
-- `deploy-wasm.yml` — CI: Deploy WASM Demo (~358 tok)
+- `deploy-wasm.yml` — CI: Deploy WASM Demo (~393 tok)
 
 ## .vs/SchedulingAssistant/DesignTimeBuild/
 
@@ -191,7 +191,7 @@
 
 ## src/SchedulingAssistant.Browser/wwwroot/
 
-- `index.html` — TermPoint — Demo (~228 tok)
+- `index.html` — TermPoint — Demo (~223 tok)
 
 ## src/SchedulingAssistant.DemoExporter/
 

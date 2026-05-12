@@ -1198,6 +1198,21 @@ public static partial class DemoData
         {
             Id            = "demo-sec-86",
             SemesterId    = "demo-sem-1",
+            CourseId      = "demo-course-2",
+            SectionCode   = "WS1",
+            CampusId      = "demo-campus-2",
+            Schedule =
+            [
+                new() { Day = 1, StartMinutes = 510, DurationMinutes = 90 },
+                new() { Day = 3, StartMinutes = 510, DurationMinutes = 90 },
+                new() { Day = 5, StartMinutes = 510, DurationMinutes = 90 }
+            ],
+            InstructorAssignments = []
+        },
+        new()
+        {
+            Id            = "demo-sec-87",
+            SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-32",
             SectionCode   = "WS1",
             SectionTypeId = "demo-st-1",
@@ -1211,7 +1226,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-87",
+            Id            = "demo-sec-88",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#A",
@@ -1225,7 +1240,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-88",
+            Id            = "demo-sec-89",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#B",
@@ -1239,7 +1254,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-89",
+            Id            = "demo-sec-90",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#C",
@@ -1253,7 +1268,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-90",
+            Id            = "demo-sec-91",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#D",
@@ -1268,7 +1283,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-91",
+            Id            = "demo-sec-92",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "WS1",
@@ -1280,21 +1295,6 @@ public static partial class DemoData
                 new() { Day = 3, StartMinutes = 780, DurationMinutes = 90, MeetingTypeId = "demo-mt-1" }
             ],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-17", Workload = 1m } ]
-        },
-        new()
-        {
-            Id            = "demo-sec-92",
-            SemesterId    = "demo-sem-1",
-            CourseId      = "demo-course-7",
-            SectionCode   = "WS2",
-            SectionTypeId = "demo-st-1",
-            CampusId      = "demo-campus-2",
-            Schedule =
-            [
-                new() { Day = 2, StartMinutes = 510, DurationMinutes = 90, MeetingTypeId = "demo-mt-1" },
-                new() { Day = 4, StartMinutes = 510, DurationMinutes = 90, MeetingTypeId = "demo-mt-1" }
-            ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-38", Workload = 2m } ]
         },
         new()
         {
@@ -1391,6 +1391,21 @@ public static partial class DemoData
         {
             Id            = "demo-sec-101",
             SemesterId    = "demo-sem-1",
+            CourseId      = "demo-course-1",
+            SectionCode   = "WS1",
+            CampusId      = "demo-campus-2",
+            Schedule =
+            [
+                new() { Day = 1, StartMinutes = 510, DurationMinutes = 90 },
+                new() { Day = 3, StartMinutes = 510, DurationMinutes = 90 },
+                new() { Day = 5, StartMinutes = 510, DurationMinutes = 90 }
+            ],
+            InstructorAssignments = []
+        },
+        new()
+        {
+            Id            = "demo-sec-102",
+            SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-35",
             SectionCode   = "WS1",
             SectionTypeId = "demo-st-1",
@@ -1404,7 +1419,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-102",
+            Id            = "demo-sec-103",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-30",
             SectionCode   = "WS1",
@@ -1418,7 +1433,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-103",
+            Id            = "demo-sec-104",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "L#A",
@@ -1432,7 +1447,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-104",
+            Id            = "demo-sec-105",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "L#B",
@@ -1446,7 +1461,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-105",
+            Id            = "demo-sec-106",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "LK1",
@@ -1462,7 +1477,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-106",
+            Id            = "demo-sec-107",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#A",
@@ -1472,11 +1487,11 @@ public static partial class DemoData
             [
                 new() { Day = 2, StartMinutes = 600, DurationMinutes = 180, RoomId = "demo-room-2", MeetingTypeId = "demo-mt-3" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-39", Workload = 0.75m } ]
+            InstructorAssignments = []
         },
         new()
         {
-            Id            = "demo-sec-107",
+            Id            = "demo-sec-108",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#B",
@@ -1490,7 +1505,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-108",
+            Id            = "demo-sec-109",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#C",
@@ -1504,7 +1519,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-109",
+            Id            = "demo-sec-110",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#D",
@@ -1518,7 +1533,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-110",
+            Id            = "demo-sec-111",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#E",
@@ -1532,7 +1547,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-111",
+            Id            = "demo-sec-112",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#F",
@@ -1542,11 +1557,11 @@ public static partial class DemoData
             [
                 new() { Day = 4, StartMinutes = 600, DurationMinutes = 180, RoomId = "demo-room-2", MeetingTypeId = "demo-mt-3" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-39", Workload = 0.75m } ]
+            InstructorAssignments = []
         },
         new()
         {
-            Id            = "demo-sec-112",
+            Id            = "demo-sec-113",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#G",
@@ -1560,7 +1575,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-113",
+            Id            = "demo-sec-114",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#H",
@@ -1574,7 +1589,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-114",
+            Id            = "demo-sec-115",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#I",
@@ -1588,7 +1603,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-115",
+            Id            = "demo-sec-116",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#J",
@@ -1602,7 +1617,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-116",
+            Id            = "demo-sec-117",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#K",
@@ -1616,7 +1631,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-117",
+            Id            = "demo-sec-118",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#L",
@@ -1630,7 +1645,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-118",
+            Id            = "demo-sec-119",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#M",
@@ -1644,7 +1659,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-119",
+            Id            = "demo-sec-120",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#N",
@@ -1658,7 +1673,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-120",
+            Id            = "demo-sec-121",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS1",
@@ -1674,7 +1689,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-121",
+            Id            = "demo-sec-122",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS2",
@@ -1690,7 +1705,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-122",
+            Id            = "demo-sec-123",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS3",
@@ -1706,7 +1721,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-123",
+            Id            = "demo-sec-124",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS4",
@@ -1718,11 +1733,11 @@ public static partial class DemoData
                 new() { Day = 4, StartMinutes = 510, DurationMinutes = 90, MeetingTypeId = "demo-mt-1" },
                 new() { Day = 5, StartMinutes = 510, DurationMinutes = 90, MeetingTypeId = "demo-mt-1", Frequency = "odd" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-39", Workload = 1m } ]
+            InstructorAssignments = []
         },
         new()
         {
-            Id            = "demo-sec-124",
+            Id            = "demo-sec-125",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS5",
@@ -1738,7 +1753,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-125",
+            Id            = "demo-sec-126",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS6",
@@ -1754,7 +1769,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-126",
+            Id            = "demo-sec-127",
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS7",
@@ -1768,7 +1783,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-127",
+            Id            = "demo-sec-128",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-45",
             SectionCode   = "ON1",
@@ -1781,7 +1796,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-128",
+            Id            = "demo-sec-129",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-4",
             SectionCode   = "W#A",
@@ -1795,7 +1810,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-129",
+            Id            = "demo-sec-130",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-4",
             SectionCode   = "W#B",
@@ -1809,7 +1824,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-130",
+            Id            = "demo-sec-131",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-4",
             SectionCode   = "WS1",
@@ -1825,7 +1840,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-131",
+            Id            = "demo-sec-132",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-47",
             SectionCode   = "WS1",
@@ -1840,7 +1855,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-132",
+            Id            = "demo-sec-133",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-3",
             SectionCode   = "W#A",
@@ -1854,7 +1869,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-133",
+            Id            = "demo-sec-134",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-3",
             SectionCode   = "W#B",
@@ -1868,7 +1883,7 @@ public static partial class DemoData
         },
         new()
         {
-            Id            = "demo-sec-134",
+            Id            = "demo-sec-135",
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-3",
             SectionCode   = "WS1",

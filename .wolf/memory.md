@@ -5245,3 +5245,8 @@
 | 15:22 | Edited src/SchedulingAssistant.Browser/wwwroot/index.html | "_framework/dotnet.js" → "/SchedulingAssistant/_fra" | ~18 |
 | 15:22 | Session end: 6 writes across 3 files (ok-i-d-like-to-piped-hejlsberg.md, deploy-wasm.yml, index.html) | 10 reads | ~1708 tok |
 | 16:58 | Session end: 6 writes across 3 files (ok-i-d-like-to-piped-hejlsberg.md, deploy-wasm.yml, index.html) | 10 reads | ~1708 tok |
+| 16:59 | Session end: 6 writes across 3 files (ok-i-d-like-to-piped-hejlsberg.md, deploy-wasm.yml, index.html) | 10 reads | ~1708 tok |
+| 17:03 | Session end: 6 writes across 3 files (ok-i-d-like-to-piped-hejlsberg.md, deploy-wasm.yml, index.html) | 10 reads | ~1708 tok |
+| 17:08 | Edited src/SchedulingAssistant.Browser/wwwroot/index.html | "/SchedulingAssistant/_fra" → "./_framework/dotnet.js" | ~13 |
+| 17:09 | Edited .github/workflows/deploy-wasm.yml | 4→5 lines | ~89 |
+| 17:09 | Session end: 8 writes across 3 files (ok-i-d-like-to-piped-hejlsberg.md, deploy-wasm.yml, index.html) | 10 reads | ~1811 tok |

@@ -42,6 +42,7 @@ jobs:
         run: |
           BUNDLE="src/SchedulingAssistant.Browser/bin/Release/net10.0-browser/browser-wasm/AppBundle"
           touch "$BUNDLE/.nojekyll"
+          sed -i "s|from './_framework/dotnet.js'|from '/SchedulingAssistant/_framework/dotnet.js'|" "$BUNDLE/index.html"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
