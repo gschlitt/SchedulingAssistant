@@ -302,6 +302,17 @@ public partial class ScheduleGridView : UserControl
         // Collect all tiles; used later for gridline expansion calculation.
         var allTiles = new List<(int day, GridTile tile, double timeBasedHeight)>();
 
+        // Calibrate single-entry line height once. The Phase 4 visual tree wraps each entry
+        // in a Border + TextBlock; the only height contributor that varies with content is
+        // the TextBlock's own line metrics (the wrapping Border has zero vertical padding).
+        // Because labels use CharacterEllipsis trimming (no wrapping), every entry is one
+        // line tall, so a single measurement supplies the per-entry baseline for all tiles.
+        // Using TextBlock.Measure keeps us on the same measurement basis as Phase 4 — the
+        // existing WASM per-entry fudge (PlatformCapabilities.TileHeightMarginPerEntry) is
+        // applied identically below.
+        double entryLineH = MeasureLineHeight(_tileFontSize, FontWeight.SemiBold);
+        const double EntrySeparatorH = 5; // 1 px rule + 2 px top margin + 2 px bottom margin (see Phase 4)
+
         for (int d = 0; d < dayCount; d++)
         {
             foreach (var tile in data.DayColumns[d].Tiles)
@@ -312,54 +323,21 @@ public partial class ScheduleGridView : UserControl
                                   - TilePaddingV * 2;
                 timeBasedH = Math.Max(timeBasedH, 18);
 
-                // Build a StackPanel matching the render layout to measure natural height.
-                // This drives gridline expansion; it does not need to be pixel-perfect
-                // because the tile uses MinHeight (not Height), so it auto-sizes to
-                // actual content on platforms where on-tree rendering is taller than
-                // off-tree measurement (e.g. WASM).
-                var stack = new StackPanel { Spacing = 0 };
-                for (int ei = 0; ei < tile.Entries.Count; ei++)
-                {
-                    var entry = tile.Entries[ei];
-                    bool entrySelected = selectedIds.Contains(entry.SectionId);
+                // Compute natural tile height arithmetically rather than by building a
+                // throwaway visual tree. Components, matching the Phase 4 layout exactly:
+                //   • per entry        : entryLineH (TextBlock line height)
+                //   • per selected row : 2 × TileSelectionBorderThickness (top + bottom border)
+                //   • between entries  : EntrySeparatorH
+                //   • WASM compensation: TileHeightMarginPerEntry × entry count
+                int entryCount     = tile.Entries.Count;
+                int selectedCount  = 0;
+                for (int ei = 0; ei < entryCount; ei++)
+                    if (selectedIds.Contains(tile.Entries[ei].SectionId)) selectedCount++;
 
-                    if (ei > 0)
-                        stack.Children.Add(new Border
-                        {
-                            Height     = 1,
-                            Background = TileInternalBorder,
-                            Margin     = new Thickness(0, 2, 0, 2),
-                        });
-
-                    var entryRow = new Border
-                    {
-                        Background      = Brushes.Transparent,
-                        BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
-                        BorderThickness = new Thickness(entrySelected ? TileSelectionBorderThickness : 0),
-                        CornerRadius    = new CornerRadius(2),
-                        Padding         = new Thickness(1, 0),
-                        Child           = new TextBlock
-                        {
-                            Text            = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation),
-                            FontSize        = _tileFontSize,
-                            FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                            Foreground      = entrySelected        ? SectionMeetingTextSelected
-                                           : entry.IsDeemphasized  ? TileDeemphasizedText
-                                           : TileText,
-                            TextTrimming    = TextTrimming.CharacterEllipsis,
-                            TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
-                        },
-                    };
-                    stack.Children.Add(entryRow);
-                }
-
-                // Measure StackPanel for HEIGHT only — drives gridline expansion logic.
-                // Off-tree measurement under-reports height in WASM (on-tree rendering
-                // produces taller line boxes than off-tree Measure). The per-entry margin
-                // compensates; on desktop the margin is zero so rendering is unchanged.
-                stack.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                double actualH = stack.DesiredSize.Height
-                               + tile.Entries.Count * PlatformCapabilities.TileHeightMarginPerEntry;
+                double actualH = entryCount * entryLineH
+                               + selectedCount * 2 * TileSelectionBorderThickness
+                               + Math.Max(0, entryCount - 1) * EntrySeparatorH
+                               + entryCount * PlatformCapabilities.TileHeightMarginPerEntry;
 
                 // Measure the widest entry label in this tile using Bold (the heavier weight
                 // applied when selected), guaranteeing the column fits in both render states.
@@ -1012,6 +990,19 @@ public partial class ScheduleGridView : UserControl
         var tb = new TextBlock { Text = text, FontSize = fontSize, FontWeight = weight };
         tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         return tb.DesiredSize.Width;
+    }
+
+    /// <summary>
+    /// Measures the height of a single-line <see cref="TextBlock"/> at the given font size
+    /// and weight. Sample text is intentionally non-empty so the measurement reflects an
+    /// actual rendered line box (an empty TextBlock measures to zero on some platforms).
+    /// Used by Phase 1 to compute tile heights without building a full visual tree per tile.
+    /// </summary>
+    private static double MeasureLineHeight(double fontSize, FontWeight weight)
+    {
+        var tb = new TextBlock { Text = "Mg", FontSize = fontSize, FontWeight = weight };
+        tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        return tb.DesiredSize.Height;
     }
 
 
