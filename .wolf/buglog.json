@@ -9326,6 +9326,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-12T04:24:34.773Z"
+    },
+    {
+      "id": "bug-583",
+      "timestamp": "2026-05-12T23:17:29.246Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: e.NewSize == _lastRenderedBounds",
+      "fix": "Added guard clause: if (e.NewSize == _lastRenderedBounds)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-12T23:17:29.246Z"
     }
   ]
 }

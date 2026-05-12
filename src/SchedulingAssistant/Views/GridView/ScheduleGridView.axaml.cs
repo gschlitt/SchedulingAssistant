@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 using System.ComponentModel;
@@ -101,11 +102,16 @@ public partial class ScheduleGridView : UserControl
     /// <summary>Font size used for section label text inside tiles. Adjustable via the footer ComboBox.</summary>
     private double _tileFontSize = 11;
 
+    // Resize debounce: SizeChanged fires per pixel during an interactive drag. A short tail
+    // collapses the burst into a single Render() once the user has stopped resizing.
+    private DispatcherTimer? _resizeDebounce;
+    private Size _lastRenderedBounds;
+
     public ScheduleGridView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
-        SizeChanged += (_, _) => Render();
+        SizeChanged += OnSizeChangedDebounced;
 
         // Wire up zoom slider to ScaleTransform on the zoom container
         var slider = this.FindControl<Slider>("ZoomSlider");
@@ -145,6 +151,31 @@ public partial class ScheduleGridView : UserControl
     }   
 
     
+    /// <summary>
+    /// SizeChanged handler with a 50 ms debounce. Coalesces per-pixel resize events into
+    /// a single Render() call once the resize has been quiet, eliminating jank during
+    /// interactive window/panel drags. No-op resizes (bounds identical to the last
+    /// rendered size) are skipped outright.
+    /// </summary>
+    private void OnSizeChangedDebounced(object? sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize == _lastRenderedBounds) return;
+
+        if (_resizeDebounce is null)
+        {
+            _resizeDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+            _resizeDebounce.Tick += (_, _) =>
+            {
+                _resizeDebounce!.Stop();
+                _lastRenderedBounds = Bounds.Size;
+                Render();
+            };
+        }
+
+        _resizeDebounce.Stop();
+        _resizeDebounce.Start();
+    }
+
     private void UpdateZoomTransform()
     {
         if (_zoomContainer?.RenderTransform is ScaleTransform scale)

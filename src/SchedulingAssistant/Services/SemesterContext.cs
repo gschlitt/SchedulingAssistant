@@ -200,6 +200,7 @@ public partial class SemesterContext : ObservableObject
                 item.SetSelectedSilently(item == clicked);
 
             UpdateSelectedSemesters();
+            IsSemesterPickerOpen = false;
         }
     }
 

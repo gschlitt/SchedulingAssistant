@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T04:30:33.655Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T23:17:29.210Z
 > Files: 4 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -29,14 +29,14 @@
 
 ## ../../../.claude/plans/
 
-- `for-some-reason-the-stateful-sparkle.md` — Fix DataGrid Sorting — Downgrade to 11.3.13 (~295 tok)
+- `a-small-issue-suppose-zesty-otter.md` — First click on "Add" after semester change does nothing (~680 tok)
+- `describe-to-me-how-snoopy-kahn.md` — Plan: Debounce `SizeChanged → Render()` in ScheduleGridView (~588 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 
 ## ./
 
-- `WORKAROUNDS.md` — Known Workarounds (~3123 tok)
 
 ## .claude/
 
@@ -193,7 +193,6 @@
 
 ## src/SchedulingAssistant/
 
-- `SchedulingAssistant.csproj` (~1543 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -224,6 +223,7 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4308 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -245,10 +245,10 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14851 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1843 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
