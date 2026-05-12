@@ -140,7 +140,8 @@
                         MaxHeight="300"
                         HorizontalAlignment="Left"
                         AutoGenerateColumns="False"
-                        CanUserSortColumns="False"
+                        CanUserSortColumns="True"
+                        
                         IsReadOnly="True"
                         IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
                         ItemsSource="{Binding Courses}"

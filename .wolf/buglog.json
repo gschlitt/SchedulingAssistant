@@ -9278,6 +9278,54 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-05-12T02:58:09.822Z"
+    },
+    {
+      "id": "bug-580",
+      "timestamp": "2026-05-12T04:19:26.317Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/SchedulingAssistant.csproj",
+      "root_cause": "Had \"12.0.0\"",
+      "fix": "Changed to \"11.3.13\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "csproj"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-12T04:20:28.931Z"
+    },
+    {
+      "id": "bug-581",
+      "timestamp": "2026-05-12T04:22:29.501Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-12T04:22:29.501Z"
+    },
+    {
+      "id": "bug-582",
+      "timestamp": "2026-05-12T04:24:34.773Z",
+      "error_message": "Wrong reference: Visual should be Avalonia",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs",
+      "root_cause": "Used \"Visual\" instead of \"Avalonia\"",
+      "fix": "Changed Visual → Avalonia",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-12T04:24:34.773Z"
     }
   ]
 }

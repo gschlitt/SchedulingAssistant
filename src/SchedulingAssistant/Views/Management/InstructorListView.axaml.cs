@@ -1,10 +1,12 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.ComponentModel;
+using System.Linq;
 
 namespace SchedulingAssistant.Views.Management;
 
@@ -17,6 +19,7 @@ public partial class InstructorListView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerPressedEvent, OnDataGridPointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -110,6 +113,43 @@ public partial class InstructorListView : UserControl
             "StaffType" => InstructorSortMode.StaffType,
             "LastName"  => InstructorSortMode.LastName,
             _           => (InstructorSortMode?)null,   // Email / Active — no sort change
+        };
+
+        if (mode.HasValue)
+            vm.SetSortMode(mode.Value);
+    }
+
+    /// <summary>
+    /// Workaround for Avalonia DataGrid 12.0.0 bug where the <c>Sorting</c> event
+    /// never fires on column header click (github.com/AvaloniaUI/Avalonia.Controls.DataGrid/issues/232).
+    /// Walks up the visual tree from the click target to find a <see cref="DataGridColumnHeader"/>,
+    /// resolves its column's <c>Tag</c>, and delegates to <see cref="InstructorListViewModel.SetSortMode"/>.
+    /// Remove when DataGrid is upgraded to a version containing the fix (PR #230).
+    /// </summary>
+    private void OnDataGridPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not InstructorListViewModel vm) return;
+
+        // Walk from the click target up to find a DataGridColumnHeader
+        var source = e.Source as Avalonia.Visual;
+        while (source is not null and not DataGridColumnHeader)
+            source = source.GetVisualParent();
+
+        if (source is not DataGridColumnHeader header) return;
+
+        var dataGrid = this.FindControl<DataGrid>("InstructorDataGrid");
+        if (dataGrid is null) return;
+
+        var column = dataGrid.Columns.FirstOrDefault(
+            c => c.Header?.ToString() == header.Content?.ToString());
+
+        var mode = (column?.Tag as string) switch
+        {
+            "FirstName" => InstructorSortMode.FirstName,
+            "Initials"  => InstructorSortMode.Initials,
+            "StaffType" => InstructorSortMode.StaffType,
+            "LastName"  => InstructorSortMode.LastName,
+            _           => (InstructorSortMode?)null,
         };
 
         if (mode.HasValue)
