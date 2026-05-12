@@ -203,6 +203,12 @@
       "action": "edit",
       "tokens": 14,
       "at": "2026-05-12T04:24:34.758Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/WORKAROUNDS.md",
+      "action": "edit",
+      "tokens": 681,
+      "at": "2026-05-12T04:30:33.688Z"
     }
   ],
   "edit_counts": {
@@ -211,11 +217,12 @@
     "src/SchedulingAssistant/Services/PlatformCapabilities.cs": 1,
     "../../../.claude/plans/for-some-reason-the-stateful-sparkle.md": 1,
     "src/SchedulingAssistant/SchedulingAssistant.csproj": 2,
-    "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs": 6
+    "src/SchedulingAssistant/Views/Management/InstructorListView.axaml.cs": 6,
+    "WORKAROUNDS.md": 1
   },
   "anatomy_hits": 1,
   "anatomy_misses": 9,
   "repeated_reads_warned": 15,
   "cerebrum_warnings": 0,
-  "stop_count": 12
+  "stop_count": 13
 }

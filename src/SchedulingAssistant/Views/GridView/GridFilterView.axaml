@@ -231,7 +231,7 @@
 				Background="{StaticResource AppBackground}"
 				BorderBrush="{StaticResource FilterGroupBorder}"
 				Padding="0,-3,0,0"
-				BorderThickness="1"
+				BorderThickness="2"
 				>
 				<GroupBox.Header>					
 						<StackPanel Orientation="Horizontal" >
@@ -603,7 +603,7 @@
 			<GroupBox
 				Margin="5,0,5,0"
 				Background="{StaticResource AppBackground}"
-				BorderThickness="1"
+				BorderThickness="2"
 				BorderBrush="{StaticResource FilterGroupBorder}"
 				Padding="0,-3,0,0"
 				>

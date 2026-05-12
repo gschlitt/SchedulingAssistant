@@ -191,3 +191,35 @@ bypassing `RequestBringIntoView` entirely. The same technique is used for `EditV
 6. Verify: click a section in the Schedule Grid — the Section View should scroll to show that
    section's card.
 7. Update or remove this entry.
+
+---
+
+## 3 — PointerPressed workaround for broken DataGrid column sorting (Avalonia DataGrid 12.0.0)
+
+**Files:** `Views/Management/InstructorListView.axaml.cs`
+**Introduced:** May 11, 2026
+**Avalonia versions affected:** `Avalonia.Controls.DataGrid` 12.0.0 (the only 12.x release as of May 2026)
+**Upstream issue:** <https://github.com/AvaloniaUI/Avalonia.Controls.DataGrid/issues/232>
+**Upstream fix:** <https://github.com/AvaloniaUI/Avalonia.Controls.DataGrid/pull/230> (merged April 15, 2026 — not yet shipped in a NuGet release)
+
+### Symptom
+
+Clicking a DataGrid column header no longer sorts the data. The `Sorting` event (`DataGrid_Sorting` handler) never fires. Sorting worked in `Avalonia.Controls.DataGrid` 11.3.x; it broke in 12.0.0. Downgrading the DataGrid package to 11.3.13 is not viable because the `DataGridBoundColumn.Binding` property type changed in Avalonia 12 core, making the older package binary-incompatible.
+
+### Current workaround: PointerPressed on column headers
+
+`InstructorListView.axaml.cs` registers a tunnel-routed `PointerPressedEvent` handler on the `UserControl`. The handler walks up the visual tree from the click target to find a `DataGridColumnHeader`. If found, it matches the header's `Content` to the corresponding `DataGridColumn` (via `DataGrid.Columns`) to retrieve the column's `Tag`, then maps the tag to an `InstructorSortMode` and calls `InstructorListViewModel.SetSortMode()` — the same logic as the original `DataGrid_Sorting` handler.
+
+The original `Sorting` event handler (`DataGrid_Sorting`) is kept in place so that sorting works through both paths once the upstream fix ships.
+
+### Side effects
+
+None observed. The handler only acts when the click target is inside a `DataGridColumnHeader`; all other clicks pass through unaffected.
+
+### How to remove this workaround
+
+1. Upgrade `Avalonia.Controls.DataGrid` to a version containing PR #230.
+2. In `InstructorListView.axaml.cs`, remove the `OnDataGridPointerPressed` method and the `AddHandler(InputElement.PointerPressedEvent, OnDataGridPointerPressed, ...)` line from the constructor.
+3. Remove the `using System.Linq;` directive if no other code in the file uses it.
+4. Verify: launch the app → Settings → Instructors → click the "Last" column header → the list should re-sort by last name.
+5. Update or remove this entry.

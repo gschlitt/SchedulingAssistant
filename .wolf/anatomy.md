@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T04:24:34.753Z
-> Files: 3 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T04:30:33.655Z
+> Files: 4 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -36,6 +36,7 @@
 
 ## ./
 
+- `WORKAROUNDS.md` — Known Workarounds (~3123 tok)
 
 ## .claude/
 
