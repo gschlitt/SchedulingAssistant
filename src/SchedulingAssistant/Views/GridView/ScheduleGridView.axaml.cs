@@ -282,6 +282,10 @@ public partial class ScheduleGridView : UserControl
                 timeBasedH = Math.Max(timeBasedH, 18);
 
                 // Build a StackPanel matching the render layout to measure natural height.
+                // This drives gridline expansion; it does not need to be pixel-perfect
+                // because the tile uses MinHeight (not Height), so it auto-sizes to
+                // actual content on platforms where on-tree rendering is taller than
+                // off-tree measurement (e.g. WASM).
                 var stack = new StackPanel { Spacing = 0 };
                 for (int ei = 0; ei < tile.Entries.Count; ei++)
                 {
@@ -319,8 +323,12 @@ public partial class ScheduleGridView : UserControl
                 }
 
                 // Measure StackPanel for HEIGHT only — drives gridline expansion logic.
+                // Off-tree measurement under-reports height in WASM (on-tree rendering
+                // produces taller line boxes than off-tree Measure). The per-entry margin
+                // compensates; on desktop the margin is zero so rendering is unchanged.
                 stack.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                double actualH = stack.DesiredSize.Height;
+                double actualH = stack.DesiredSize.Height
+                               + tile.Entries.Count * PlatformCapabilities.TileHeightMarginPerEntry;
 
                 // Measure the widest entry label in this tile using Bold (the heavier weight
                 // applied when selected), guaranteeing the column fits in both render states.
@@ -974,6 +982,7 @@ public partial class ScheduleGridView : UserControl
         tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         return tb.DesiredSize.Width;
     }
+
 
     private static void AddRect(Canvas canvas, double x, double y,
         double w, double h, IBrush fill, IBrush? stroke,

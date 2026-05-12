@@ -214,7 +214,9 @@ public partial class App : Application
         var semesterContext = Services.GetRequiredService<SemesterContext>();
         semesterContext.Reload(
             Services.GetRequiredService<IAcademicYearRepository>(),
-            Services.GetRequiredService<ISemesterRepository>());
+            Services.GetRequiredService<ISemesterRepository>(),
+            restoreAcademicYearId: "demo-ay-1",
+            restoreSemesterIds: new HashSet<string> { "demo-sem-1" });
 
         var sectionStore = Services.GetRequiredService<SectionStore>();
         sectionStore.Reload(

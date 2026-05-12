@@ -30,6 +30,12 @@ public static class PlatformCapabilities
     /// False in the browser demo — the demo database is in-memory only.
     /// </summary>
     public static bool SupportsSave => false;
+
+    /// <summary>
+    /// Extra pixels added per entry when measuring co-scheduled tile height.
+    /// WASM renders on-tree TextBlocks taller than off-tree Measure() predicts.
+    /// </summary>
+    public static int TileHeightMarginPerEntry => 2;
 #else
     /// <inheritdoc cref="SupportsFileDialogs"/>
     public static bool SupportsFileDialogs => true;
@@ -39,5 +45,8 @@ public static class PlatformCapabilities
 
     /// <inheritdoc cref="SupportsSave"/>
     public static bool SupportsSave => true;
+
+    /// <inheritdoc cref="TileHeightMarginPerEntry"/>
+    public static int TileHeightMarginPerEntry => 0;
 #endif
 }

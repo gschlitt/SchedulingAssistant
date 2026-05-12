@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T00:09:07.148Z
-> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T03:04:47.882Z
+> Files: 31 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,7 @@
 
 ## ../../../.claude/plans/
 
+- `here-s-a-stumper-two-zany-hoare.md` — Co-Scheduled Tile Overflow on WASM — Fix Plan (~408 tok)
 - `ok-i-d-like-to-piped-hejlsberg.md` — Deploy WASM Demo to GitHub Pages (~682 tok)
 - `the-text-in-legalstarttimeslistview-axam-ethereal-fiddle.md` — Fix: Text wrapping in LegalStartTimeListView (~238 tok)
 - `there-is-a-demo-smooth-beaver.md` — Plan: DemoData Exporter Console Tool (~2290 tok)
@@ -191,7 +192,7 @@
 
 ## src/SchedulingAssistant.Browser/wwwroot/
 
-- `index.html` — TermPoint — Demo (~223 tok)
+- `index.html` — TermPoint — Demo (~212 tok)
 
 ## src/SchedulingAssistant.DemoExporter/
 
@@ -204,6 +205,7 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1744 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4257 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -243,6 +245,7 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `PlatformCapabilities.cs` — Compile-time feature flags for platform-specific capabilities. All properties are compile-time const (~567 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -265,6 +268,7 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14523 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
