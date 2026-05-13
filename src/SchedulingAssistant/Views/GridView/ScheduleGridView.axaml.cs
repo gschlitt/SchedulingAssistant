@@ -270,6 +270,49 @@ public partial class ScheduleGridView : UserControl
         var data = _vm?.GridData ?? GridData.Empty;
         if (data.DayColumns.Count == 0) { ShowEmpty(); return; }
 
+        // ── Resource snapshot ───────────────────────────────────────────────
+        // Each static accessor below (TileFill, TilePaddingH, etc.) calls
+        // Application.Current.Resources.TryGetResource, which walks the merged resource
+        // dictionaries on every access. Without this snapshot the per-tile loop in
+        // Phase 4 would issue dozens of those lookups per tile — measurable cost when
+        // multiplied across a full grid render.
+        //
+        // C# language note: a local variable may use the SAME identifier as a static
+        // member of the enclosing class. Inside the method body, unqualified references
+        // resolve to the local (it "shadows" the static property). The compiler accepts
+        // this without warning. We exploit that here: by naming each local exactly the
+        // same as its source property, every existing reference inside Render() — there
+        // are dozens — automatically picks up the snapshot with zero call-site churn.
+        // Other methods in this class (UpdateSelectionHighlight, BuildTileTooltipContent,
+        // AddRect, etc.) are outside this scope and continue to read the static properties
+        // directly, which is the correct behaviour: their call frequency is low and they
+        // would not benefit from snapshotting.
+        //
+        // The fully-qualified "ScheduleGridView.X" on the right-hand side is required —
+        // the local is in scope from its declaration point, so a bare "X" on the RHS
+        // would be a self-reference (use-before-assignment).
+        double TilePaddingV            = ScheduleGridView.TilePaddingV;
+        double TilePaddingH            = ScheduleGridView.TilePaddingH;
+        double MultiSemPad             = ScheduleGridView.MultiSemPad;
+        IBrush TileFill                = ScheduleGridView.TileFill;
+        IBrush MeetingTileFill         = ScheduleGridView.MeetingTileFill;
+        IBrush TileExternalBorder      = ScheduleGridView.TileExternalBorder;
+        IBrush TileInternalBorder      = ScheduleGridView.TileInternalBorder;
+        IBrush SectionMeetingTextSelected = ScheduleGridView.SectionMeetingTextSelected;
+        IBrush UserSelectedBorder      = ScheduleGridView.UserSelectedBorder;
+        IBrush OverlayFrameBorder      = ScheduleGridView.OverlayFrameBorder;
+        IBrush TileDeemphasizedText    = ScheduleGridView.TileDeemphasizedText;
+        IBrush TileEntryHoverOverlay   = ScheduleGridView.TileEntryHoverOverlay;
+        IBrush RuleBrush               = ScheduleGridView.RuleBrush;
+        IBrush HourRuleBrush           = ScheduleGridView.HourRuleBrush;
+        IBrush HeaderFill              = ScheduleGridView.HeaderFill;
+        IBrush HeaderBorder            = ScheduleGridView.HeaderBorder;
+        IBrush GutterBg                = ScheduleGridView.GutterBg;
+        IBrush TileText                = ScheduleGridView.TileText;
+        IBrush HalfHourText            = ScheduleGridView.HalfHourText;
+        IBrush ScheduleBackground      = ScheduleGridView.ScheduleBackground;
+        IBrush FilterEmphasizedBg      = ScheduleGridView.FilterEmphasizedBg;
+
         int dayCount        = data.DayColumns.Count;
         int semCount        = data.SemesterCount;
         int logicalDayCount = dayCount / semCount;
@@ -538,7 +581,7 @@ public partial class ScheduleGridView : UserControl
             {
                 Text = data.DayColumns[firstCol].Header,
                 FontWeight = FontWeight.SemiBold,
-                FontSize = FontSizeFromResource("FontSizeXLarge"),
+                FontSize = headerFontSize,
                 Width = dayGroupW,
                 TextAlignment = TextAlignment.Center,
             };
