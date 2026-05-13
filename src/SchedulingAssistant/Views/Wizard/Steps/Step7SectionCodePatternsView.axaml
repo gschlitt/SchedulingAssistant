@@ -1,0 +1,16 @@
+<UserControl
+    x:Class="SchedulingAssistant.Views.Wizard.Steps.Step7SectionCodePatternsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mgmt="using:SchedulingAssistant.Views.Management"
+    x:CompileBindings="False">
+
+    <StackPanel MaxWidth="900" Spacing="16">
+
+       
+        
+
+        <mgmt:SectionCodePatternListView DataContext="{Binding SectionCodePatterns}" />
+
+    </StackPanel>
+</UserControl>

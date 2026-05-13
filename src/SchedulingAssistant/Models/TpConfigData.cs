@@ -20,6 +20,9 @@ public class TpConfigData
     /// <summary>Day-pattern definitions (e.g. MWF, TR).</summary>
     public List<TpConfigBlockPattern> BlockPatterns { get; set; } = [];
 
+    /// <summary>Section code pattern definitions.</summary>
+    public List<TpConfigSectionCodePattern> SectionCodePatterns { get; set; } = [];
+
     /// <summary>Whether Saturday is available as a scheduling day.</summary>
     public bool IncludeSaturday { get; set; } = false;
 
@@ -45,6 +48,43 @@ public class TpConfigBlockPattern
 
     /// <summary>Day numbers (1=Mon … 7=Sun).</summary>
     public List<int> Days { get; set; } = [];
+}
+
+/// <summary>A section code pattern entry for .tpconfig portability.</summary>
+public class TpConfigSectionCodePattern
+{
+    /// <summary>User-facing label (e.g. "Lecture", "Lab").</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Fixed text prepended to the incrementing part.</summary>
+    public string Prefix { get; set; } = string.Empty;
+
+    /// <summary>Fixed text appended after the incrementing part.</summary>
+    public string Suffix { get; set; } = string.Empty;
+
+    /// <summary>When true, the incrementing part uses letters (A, B, C…); otherwise integers.</summary>
+    public bool UseLetters { get; set; }
+
+    /// <summary>First numeric value in the sequence (when UseLetters is false).</summary>
+    public int FirstNumber { get; set; } = 1;
+
+    /// <summary>Minimum display width for the numeric part, left-padded with zeros.</summary>
+    public int PadWidth { get; set; }
+
+    /// <summary>Step between successive numeric codes.</summary>
+    public int Increment { get; set; } = 1;
+
+    /// <summary>First letter in the sequence (when UseLetters is true).</summary>
+    public char FirstLetter { get; set; } = 'A';
+
+    /// <summary>Campus name for pre-fill resolution (portable — not an ID).</summary>
+    public string? CampusName { get; set; }
+
+    /// <summary>Section type name for pre-fill resolution (portable — not an ID).</summary>
+    public string? SectionTypeName { get; set; }
+
+    /// <summary>Display order within the pattern chooser list.</summary>
+    public int SortOrder { get; set; }
 }
 
 /// <summary>A semester template entry with a name and default display color.</summary>

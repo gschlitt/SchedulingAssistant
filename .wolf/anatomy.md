@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-12T23:17:29.210Z
-> Files: 4 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-13T17:16:01.410Z
+> Files: 29 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,10 +30,15 @@
 ## ../../../.claude/plans/
 
 - `a-small-issue-suppose-zesty-otter.md` — First click on "Add" after semester change does nothing (~680 tok)
+- `at-line-604-of-quiet-leaf.md` — Remove PreSaveBackup from CheckoutService and BackupService (~616 tok)
 - `describe-to-me-how-snoopy-kahn.md` — Plan: Debounce `SizeChanged → Render()` in ScheduleGridView (~588 tok)
+- `under-the-configuration-flyout-happy-lake.md` — Plan: "When a filter passes a section" Preference (~1831 tok)
+- `we-need-to-revise-snoopy-wand.md` — Plan: Add Section Code Patterns Step to Startup Wizard (~1778 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
+- `feedback_compile_only_build.md` (~437 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~8793 tok)
 
 ## ./
 
@@ -190,9 +195,11 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `CheckoutServiceTests.cs` — Integration tests for <see cref="CheckoutService"/>. <para>Each test uses an isolated temporary dire (~20008 tok)
 
 ## src/SchedulingAssistant/
 
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14314 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -220,9 +227,14 @@
 
 ## src/SchedulingAssistant/Models/
 
+- `FilterPassBehavior.cs` — Controls what the Section List does when the Schedule Grid filter passes a section. (~98 tok)
+- `TpConfigData.cs` — Portable configuration file (.tpconfig) written to the database folder after first-run setup. Contai (~1089 tok)
 
 ## src/SchedulingAssistant/Services/
 
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3070 tok)
+- `BackupService.cs` — Manages automated SQLite backups and companion section CSV exports. <para><b>Backup file naming:</b> (~9584 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~19479 tok)
 - `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4308 tok)
 
 ## src/SchedulingAssistant/ViewModels/
@@ -230,31 +242,44 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~17889 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~5012 tok)
+- `PreferencesViewModel.cs` — ViewModel for the Preferences panel in the Configuration flyout. Exposes user-facing preferences tha (~866 tok)
+- `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13970 tok)
+- `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~2202 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — License Agreement 2 — Ex (~6176 tok)
+- `WizardServices.cs` — All external dependencies required by <see cref="StartupWizardViewModel"/> during its finish flow. E (~1261 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
+- `Step7SectionCodePatternsViewModel.cs` — Step 9 (manual path only) — configure section code patterns. Section code patterns define how sectio (~313 tok)
 
 ## src/SchedulingAssistant/Views/
 
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~14851 tok)
+- `ScheduleGridView.axaml` (~2496 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~15513 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `PreferencesView.axaml` (~909 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
 
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 
+- `Step0WelcomeView.axaml` (~551 tok)
+- `Step7SectionCodePatternsView.axaml` (~350 tok)
+- `Step7SectionCodePatternsView.axaml.cs` — Class: Step7SectionCodePatternsView (~57 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

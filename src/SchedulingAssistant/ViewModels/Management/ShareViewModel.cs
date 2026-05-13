@@ -19,11 +19,12 @@ public partial class ShareViewModel : ViewModelBase
 {
     /// <summary>Category label shown in the Export flyout sidebar.</summary>
     public string DisplayName => "Share Configuration";
-    private readonly ILegalStartTimeRepository _legalStartTimeRepo;
-    private readonly ICampusRepository         _campusRepo;
-    private readonly ISemesterRepository       _semesterRepo;
-    private readonly IBlockPatternRepository   _patternRepo;
-    private readonly SemesterContext           _semesterContext;
+    private readonly ILegalStartTimeRepository      _legalStartTimeRepo;
+    private readonly ICampusRepository              _campusRepo;
+    private readonly ISemesterRepository            _semesterRepo;
+    private readonly IBlockPatternRepository        _patternRepo;
+    private readonly ISectionCodePatternRepository  _sectionCodePatternRepo;
+    private readonly SemesterContext                _semesterContext;
 
     /// <summary>Feedback shown below the button after an attempt to write the file.</summary>
     [ObservableProperty] private string _statusMessage = string.Empty;
@@ -35,17 +36,19 @@ public partial class ShareViewModel : ViewModelBase
     [ObservableProperty] private bool _hasStatus;
 
     public ShareViewModel(
-        ILegalStartTimeRepository legalStartTimeRepo,
-        ICampusRepository         campusRepo,
-        ISemesterRepository       semesterRepo,
-        IBlockPatternRepository   patternRepo,
-        SemesterContext           semesterContext)
+        ILegalStartTimeRepository      legalStartTimeRepo,
+        ICampusRepository              campusRepo,
+        ISemesterRepository            semesterRepo,
+        IBlockPatternRepository        patternRepo,
+        ISectionCodePatternRepository  sectionCodePatternRepo,
+        SemesterContext                semesterContext)
     {
-        _legalStartTimeRepo = legalStartTimeRepo;
-        _campusRepo         = campusRepo;
-        _semesterRepo       = semesterRepo;
-        _patternRepo        = patternRepo;
-        _semesterContext    = semesterContext;
+        _legalStartTimeRepo     = legalStartTimeRepo;
+        _campusRepo             = campusRepo;
+        _semesterRepo           = semesterRepo;
+        _patternRepo            = patternRepo;
+        _sectionCodePatternRepo = sectionCodePatternRepo;
+        _semesterContext        = semesterContext;
     }
 
     /// <summary>
@@ -138,16 +141,36 @@ public partial class ShareViewModel : ViewModelBase
             .Select(bp => new TpConfigBlockPattern { Name = bp.Name, Days = bp.Days })
             .ToList();
 
+        // ── Section code patterns (all, institution-wide) ────────────────────
+        var campusById = campuses.ToDictionary(c => c.Id, c => c.Name);
+        var sectionCodePatterns = _sectionCodePatternRepo.GetAll()
+            .Select(scp => new TpConfigSectionCodePattern
+            {
+                Name            = scp.Name,
+                Prefix          = scp.Prefix,
+                Suffix          = scp.Suffix,
+                UseLetters      = scp.UseLetters,
+                FirstNumber     = scp.FirstNumber,
+                PadWidth        = scp.PadWidth,
+                Increment       = scp.Increment,
+                FirstLetter     = scp.FirstLetter,
+                CampusName      = scp.CampusId != null && campusById.TryGetValue(scp.CampusId, out var cn) ? cn : null,
+                SectionTypeName = null, // Section types are per-semester; not portable
+                SortOrder       = scp.SortOrder
+            })
+            .ToList();
+
         var settings = AppSettings.Current;
 
         return new TpConfigData
         {
-            BlockLengths    = blockLengths,
-            SemesterDefs    = semesterDefs,
-            Campuses        = campusNames,
-            BlockPatterns   = blockPatterns,
-            IncludeSaturday = settings.IncludeSaturday,
-            IncludeSunday   = settings.IncludeSunday
+            BlockLengths        = blockLengths,
+            SemesterDefs        = semesterDefs,
+            Campuses            = campusNames,
+            BlockPatterns       = blockPatterns,
+            SectionCodePatterns = sectionCodePatterns,
+            IncludeSaturday     = settings.IncludeSaturday,
+            IncludeSunday       = settings.IncludeSunday
         };
     }
 

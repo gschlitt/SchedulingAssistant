@@ -1,14 +1,15 @@
 Bugs:
 
-Sorting on instructors was fixed (see convo) but can only sort on a couple fields, type and last.
+Sometimes "New..." is locking up???
 
-Color selector broken in WASM version
+Color selector broken in WASM version. More generally the default colors are used when a new year
+is created, but not shown in the selector for the academic year.
 
 Selection of a section can cause overflow in a section card. Minor issue. 
 
 Test deletion of section!
 
-
+Check that .tpconfig is exporting/importing all it needs to. Section Codes?
 
 Line up "section types" in section view
 

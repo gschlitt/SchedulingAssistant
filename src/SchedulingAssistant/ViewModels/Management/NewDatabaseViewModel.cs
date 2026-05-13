@@ -365,6 +365,32 @@ public partial class NewDatabaseViewModel : ViewModelBase
             patternRepo.Insert(new BlockPattern { Name = bp.Name, Days = bp.Days });
         }
 
+        // ── Section code patterns ────────────────────────────────────────────
+        if (config.SectionCodePatterns is { Count: > 0 })
+        {
+            var scpRepo = App.Services.GetRequiredService<ISectionCodePatternRepository>();
+            foreach (var scp in config.SectionCodePatterns)
+            {
+                if (string.IsNullOrWhiteSpace(scp.Name)) continue;
+                var pattern = new SectionCodePattern
+                {
+                    Name        = scp.Name.Trim(),
+                    Prefix      = scp.Prefix,
+                    Suffix      = scp.Suffix,
+                    UseLetters  = scp.UseLetters,
+                    FirstNumber = scp.FirstNumber,
+                    PadWidth    = scp.PadWidth,
+                    Increment   = scp.Increment,
+                    FirstLetter = scp.FirstLetter,
+                    SortOrder   = scp.SortOrder,
+                    CampusId    = !string.IsNullOrWhiteSpace(scp.CampusName)
+                                  && campusNameToId.TryGetValue(scp.CampusName, out var cId) ? cId : null,
+                };
+                pattern.Examples = string.Join(", ", Services.SectionCodeGenerator.GetPreviewCodes(pattern, 2));
+                scpRepo.Insert(pattern);
+            }
+        }
+
         // ── First academic year ───────────────────────────────────────────────
         var ay = new AcademicYear { Name = ayName };
         ayRepo.Insert(ay);
