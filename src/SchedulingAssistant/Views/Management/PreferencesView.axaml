@@ -10,17 +10,48 @@
         MaxWidth="500"
         Margin="10,0"
         HorizontalAlignment="Left"
-        Spacing="16">
+        Spacing="24">
 
+        <!--  Page title  -->
         <TextBlock
             FontSize="{StaticResource FontSizeXLarge}"
             FontWeight="SemiBold"
             Text="Preferences" />
 
-        <TextBlock
-            Foreground="{StaticResource TextMuted}"
-            Text="User preferences will appear here."
-            TextWrapping="Wrap" />
+        <!--  ═══ Section View ═══════════════════════════════════════  -->
+        <StackPanel Spacing="12">
+
+            <!--  Sub-heading + rule  -->
+            <StackPanel Spacing="4">
+                <TextBlock
+                    FontSize="{StaticResource FontSizeLarge}"
+                    FontWeight="SemiBold"
+                    Text="Section View" />
+                <Border
+                    Height="1"
+                    Background="{StaticResource SeparatorLine}"
+                    Opacity="0.2" />
+            </StackPanel>
+
+            <!--  Open with all sections collapsed  -->
+            <CheckBox
+                Content="Open with all sections collapsed"
+                IsChecked="{Binding OpenWithAllSectionsCollapsed}" />
+
+            <!--  Filter pass behavior  -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="When a filter passes a section:" />
+                <RadioButton
+                    Content="Highlight the section"
+                    GroupName="FilterPassBehavior"
+                    IsChecked="{Binding FilterHighlightsSection}" />
+                <RadioButton
+                    Content="Expand the section (and collapse the others)"
+                    GroupName="FilterPassBehavior"
+                    IsChecked="{Binding FilterExpandsSection}" />
+            </StackPanel>
+
+        </StackPanel>
 
     </StackPanel>
 </UserControl>

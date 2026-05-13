@@ -83,6 +83,13 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// </summary>
     private int _lastSelectedIndex = -1;
 
+    /// <summary>
+    /// Semester IDs from the most recent <see cref="LoadCore"/> call.
+    /// Compared against the incoming set to detect a semester-context change vs. a
+    /// same-semester list refresh, so we only auto-collapse on a genuine semester switch.
+    /// </summary>
+    private HashSet<string> _loadedSemesterIds = new();
+
     // ── Computed Properties ────────────────────────────────────────────────────
 
     /// <summary>True when an inline editor is open (Add or Edit mode).</summary>
@@ -330,6 +337,12 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         var semesters = _semesterContext.SelectedSemesters.ToList();
         if (semesters.Count == 0) { SectionItems = new(); return; }
 
+        // Detect semester-context change (covers startup, switch, add/remove a semester).
+        // Empty _loadedSemesterIds on startup → first load is always treated as a new context.
+        var incomingSemesterIds = semesters.Select(s => s.Semester.Id).ToHashSet();
+        bool isSemesterChange = !incomingSemesterIds.SetEquals(_loadedSemesterIds);
+        _loadedSemesterIds = incomingSemesterIds;
+
         App.Logger.LogInfo($"LoadCore: Loading sections for {semesters.Count} semester(s)", "LoadCore");
 
         bool showBanners = semesters.Count > 1;
@@ -394,6 +407,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         if (selectSectionId is not null)
             SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
                 .FirstOrDefault(i => i.Section.Id == selectSectionId);
+
+        // Honour the "open with all sections collapsed" preference on semester change.
+        if (isSemesterChange && AppSettings.Current.OpenWithAllSectionsCollapsed)
+            CollapseAll();
     }
 
     /// <summary>

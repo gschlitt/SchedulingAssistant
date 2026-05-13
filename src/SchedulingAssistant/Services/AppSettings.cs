@@ -83,6 +83,14 @@ public class AppSettings
     public SectionSortMode SectionSortMode { get; set; } = SectionSortMode.SubjectCourseCode;
     public InstructorSortMode InstructorSortMode { get; set; } = InstructorSortMode.LastName;
 
+    /// <summary>
+    /// When true, all section cards are collapsed whenever a new semester context is loaded
+    /// (startup or semester switch). The user may expand them freely afterward; subsequent
+    /// same-semester refreshes preserve whatever state the user left them in.
+    /// Default: false.
+    /// </summary>
+    public bool OpenWithAllSectionsCollapsed { get; set; } = false;
+
 /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 
