@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<!-- Export/print palette: higher contrast for static images and print.
+	     Loaded lazily by ScheduleGridView.ExportToPng; never merged into App.axaml. -->
+
+	<!--  ── Backgrounds → white instead of tinted gray  ─────────────────  -->
+	<SolidColorBrush x:Key="AppBackground" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="WeekDayBar" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="TimesColumn" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="GridGutterBackground" Color="#FAFBFD" />
+
+	<!--  ── Tile fills → more saturated  ────────────────────────────────  -->
+	<SolidColorBrush x:Key="TileFill" Color="#f5f6f7" />
+	<SolidColorBrush x:Key="MeetingTile" Color="#a08cc8" />
+	<SolidColorBrush x:Key="FilterSelectedSectionBackgroundColor" Color="#7ab4f0" />
+
+	<!--  ── Borders → darker for sharper definition  ────────────────────  -->
+	<SolidColorBrush x:Key="TileExternalBorder" Color="#808a96" />
+	<SolidColorBrush x:Key="TileInternalBorder" Color="#b8bfc6" />
+	<SolidColorBrush x:Key="GridRuleLine" Color="#a0aec0" />
+	<SolidColorBrush x:Key="GridHourRuleLine" Color="#8898ac" />
+	<SolidColorBrush x:Key="DaySeparators" Color="#505860" />
+
+	<!--  ── Text → darker for print legibility  ────────────────────────  -->
+	<SolidColorBrush x:Key="TextPrimary" Color="#000000" />
+	<SolidColorBrush x:Key="GridTimeHalfHourText" Color="#4a5568" />
+	<SolidColorBrush x:Key="GridDayHeaderText" Color="#5a6a80" />
+
+	<!--  ── Interaction states → suppressed in export  ──────────────────  -->
+	<SolidColorBrush x:Key="CardHoverOverlay" Color="Transparent" />
+
+</ResourceDictionary>

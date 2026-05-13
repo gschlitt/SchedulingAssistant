@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -54,10 +55,31 @@ public partial class ScheduleGridView : UserControl
     private const double TileTextOverhead = 28;
 
     
-    // Resources resolved from App.axaml at first render (after resources are loaded).
-    private static IBrush Res(string key) =>
-        Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
+    /// <summary>
+    /// Cached export palette loaded from PrintColors.axaml on first export.
+    /// </summary>
+    private static ResourceDictionary? _printPalette;
+
+    /// <summary>
+    /// When true, <see cref="Res"/> resolves brushes from <see cref="_printPalette"/> first,
+    /// falling back to the normal application resources for any key not overridden.
+    /// Set only during <see cref="ExportToPng"/> to produce higher-contrast output.
+    /// </summary>
+    private static bool _useExportPalette;
+
+    /// <summary>
+    /// Resolves a brush from the application resource dictionary. When the export palette
+    /// is active, checks the print-specific overrides first.
+    /// </summary>
+    private static IBrush Res(string key)
+    {
+        if (_useExportPalette && _printPalette != null
+            && _printPalette.TryGetResource(key, null, out var pv) && pv is IBrush pb)
+            return pb;
+
+        return Application.Current!.Resources.TryGetResource(key, null, out var v) && v is IBrush b
             ? b : Brushes.Transparent;
+    }
     private static double FontSizeFromResource(string key) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is double d
             ? d : 12;
@@ -881,10 +903,10 @@ public partial class ScheduleGridView : UserControl
     }
 
     /// <summary>
-    /// Exports the full schedule grid canvas to a PNG file. Minimal implementation:
-    /// captures the canvas at its natural logical size with no transforms or DPI
-    /// scaling. Output quality matches on-screen rendering at 1× zoom; resolution
-    /// and super-sampling can be added later once basic capture is confirmed working.
+    /// Exports the full schedule grid canvas to a PNG file using the higher-contrast
+    /// export palette defined in PrintColors.axaml. Prepends a title banner showing the
+    /// semester name(s). Re-renders the canvas with export colors, captures the bitmap,
+    /// then restores the on-screen palette.
     /// </summary>
     /// <param name="outputPath">Absolute path for the output PNG file.</param>
     public void ExportToPng(string outputPath)
@@ -892,11 +914,68 @@ public partial class ScheduleGridView : UserControl
         _canvas ??= this.FindControl<Canvas>("GridCanvas");
         if (_canvas is null || double.IsNaN(_canvas.Width) || _canvas.Width <= 0) return;
 
-        var pixelSize = new PixelSize((int)_canvas.Width, (int)_canvas.Height);
+        _printPalette ??= (ResourceDictionary)AvaloniaXamlLoader.Load(
+            new Uri("avares://TermPoint/PrintColors.axaml"));
 
-        using var bitmap = new RenderTargetBitmap(pixelSize);
-        bitmap.Render(_canvas);
-        bitmap.Save(outputPath);
+        _useExportPalette = true;
+        try
+        {
+            Render();
+
+            // ── Title banner ────────────────────────────────────────────────
+            var unitName = _vm?.AcademicUnitName;
+            var semester = _vm?.SemesterLine ?? "";
+            var title = string.IsNullOrWhiteSpace(unitName)
+                ? semester
+                : $"{unitName} — {semester}";
+            double titleStripHeight = 0;
+
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                const double titleFontSize = 16;
+                const double titlePadding  = 10;
+                titleStripHeight = titleFontSize + titlePadding * 2;
+
+                // Shift every existing child down to make room for the title strip.
+                foreach (Control child in _canvas.Children)
+                    Canvas.SetTop(child, Canvas.GetTop(child) + titleStripHeight);
+
+                _canvas.Height += titleStripHeight;
+
+                // Title background (matches the export AppBackground).
+                AddRect(_canvas, 0, 0, _canvas.Width, titleStripHeight, Res("AppBackground"), null);
+
+                // Title text, centered horizontally.
+                var titleBlock = new TextBlock
+                {
+                    Text = title,
+                    FontSize = titleFontSize,
+                    FontWeight = FontWeight.SemiBold,
+                    Foreground = Res("TextPrimary"),
+                };
+                titleBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double titleX = (_canvas.Width - titleBlock.DesiredSize.Width) / 2;
+                Canvas.SetLeft(titleBlock, Math.Max(0, titleX));
+                Canvas.SetTop(titleBlock, titlePadding);
+                _canvas.Children.Add(titleBlock);
+            }
+
+            // Force a layout pass so every child is measured and arranged
+            // before the bitmap capture.
+            _canvas.Measure(new Size(_canvas.Width, _canvas.Height));
+            _canvas.Arrange(new Rect(0, 0, _canvas.Width, _canvas.Height));
+            _canvas.UpdateLayout();
+
+            var pixelSize = new PixelSize((int)_canvas.Width, (int)_canvas.Height);
+            using var bitmap = new RenderTargetBitmap(pixelSize);
+            bitmap.Render(_canvas);
+            bitmap.Save(outputPath);
+        }
+        finally
+        {
+            _useExportPalette = false;
+            Render();
+        }
     }
 
     /// <summary>
