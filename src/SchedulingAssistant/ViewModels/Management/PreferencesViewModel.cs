@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.ViewModels.Management;
@@ -8,7 +8,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// Exposes user-facing preferences that are persisted in user settings
 /// (not in the database), so they are per-machine rather than per-schedule.
 /// </summary>
-public partial class PreferencesViewModel : ViewModelBase
+public class PreferencesViewModel : ViewModelBase
 {
     /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
     public string DisplayName => "Preferences";
@@ -32,14 +32,31 @@ public partial class PreferencesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// True when the filter-pass behavior is set to highlight matched sections.
+    /// True when the filter-pass behavior is <see cref="FilterPassBehavior.Highlight"/>.
     /// Mutually exclusive with <see cref="FilterExpandsSection"/>.
     /// </summary>
-    [ObservableProperty] private bool _filterHighlightsSection = true;
+    public bool FilterHighlightsSection
+    {
+        get => AppSettings.Current.FilterPassBehavior == FilterPassBehavior.Highlight;
+        set { if (value) SetFilterPassBehavior(FilterPassBehavior.Highlight); }
+    }
 
     /// <summary>
-    /// True when the filter-pass behavior is set to expand matched sections
-    /// (collapsing all others).  Mutually exclusive with <see cref="FilterHighlightsSection"/>.
+    /// True when the filter-pass behavior is <see cref="FilterPassBehavior.Expand"/>.
+    /// Mutually exclusive with <see cref="FilterHighlightsSection"/>.
     /// </summary>
-    [ObservableProperty] private bool _filterExpandsSection;
+    public bool FilterExpandsSection
+    {
+        get => AppSettings.Current.FilterPassBehavior == FilterPassBehavior.Expand;
+        set { if (value) SetFilterPassBehavior(FilterPassBehavior.Expand); }
+    }
+
+    private void SetFilterPassBehavior(FilterPassBehavior behavior)
+    {
+        if (AppSettings.Current.FilterPassBehavior == behavior) return;
+        AppSettings.Current.FilterPassBehavior = behavior;
+        AppSettings.Current.Save();
+        OnPropertyChanged(nameof(FilterHighlightsSection));
+        OnPropertyChanged(nameof(FilterExpandsSection));
+    }
 }

@@ -91,6 +91,12 @@ public class AppSettings
     /// </summary>
     public bool OpenWithAllSectionsCollapsed { get; set; } = false;
 
+    /// <summary>
+    /// Controls what the Section List does when the Schedule Grid filter passes a section.
+    /// Default: Highlight (existing behaviour — matching cards receive a visual tint).
+    /// </summary>
+    public FilterPassBehavior FilterPassBehavior { get; set; } = FilterPassBehavior.Highlight;
+
 /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 

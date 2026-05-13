@@ -90,6 +90,14 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// </summary>
     private HashSet<string> _loadedSemesterIds = new();
 
+    /// <summary>
+    /// Snapshot of which section IDs were collapsed immediately before the current filter
+    /// was applied in <see cref="FilterPassBehavior.Expand"/> mode.  Restored when the filter
+    /// is cleared so the list returns to its pre-filter state.
+    /// Null when no snapshot is held (Highlight mode or no active filter).
+    /// </summary>
+    private HashSet<string>? _preFilterCollapsedIds;
+
     // ── Computed Properties ────────────────────────────────────────────────────
 
     /// <summary>True when an inline editor is open (Add or Edit mode).</summary>
@@ -327,6 +335,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private void LoadCore(string? selectSectionId)
     {
         _lastSelectedIndex = -1;
+        _preFilterCollapsedIds = null; // stale after a full list rebuild; re-snapped by ApplyFilterHighlights if needed
 
         // Close any open inline editor before rebuilding the list.
         // The rebuilt collection contains fresh VM instances, so the old
@@ -414,25 +423,59 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Updates <see cref="SectionListItemViewModel.IsFilterHighlighted"/> on every section card
-    /// based on the current <see cref="SectionStore.FilteredSectionIds"/> set.
-    /// When the store holds <c>null</c> (no regular filter active) all highlights are cleared.
+    /// Updates <see cref="SectionListItemViewModel.IsFilterHighlighted"/> (and optionally
+    /// <see cref="SectionListItemViewModel.IsCollapsed"/>) on every section card based on the
+    /// current <see cref="SectionStore.FilteredSectionIds"/> and <see cref="AppSettings.FilterPassBehavior"/>.
+    /// <list type="bullet">
+    ///   <item><b>No filter</b> (ids null): clears all highlights; if an expand-mode snapshot is held,
+    ///     restores the pre-filter collapsed state before discarding it.</item>
+    ///   <item><b>Highlight mode</b>: tints matching cards; collapsed state is untouched.</item>
+    ///   <item><b>Expand mode</b>: snaps pre-filter collapsed state on first call, then expands
+    ///     matching cards and collapses the rest.</item>
+    /// </list>
     /// Called whenever the Schedule Grid filter changes and after the list is rebuilt.
     /// </summary>
     private void ApplyFilterHighlights()
     {
-        //foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
-        //{
-        //    item.IsCollapsed = true;
-        //}
-        
         var ids = _sectionStore.FilteredSectionIds;
-        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+        bool expandMode = AppSettings.Current.FilterPassBehavior == FilterPassBehavior.Expand;
+
+        if (ids is null)
         {
-           item.IsFilterHighlighted = ids is not null && ids.Contains(item.Section.Id);
-         //   item.IsCollapsed = !(ids is not null && ids.Contains(item.Section.Id));
+            // Filter cleared — restore pre-filter snapshot (expand mode), then clear highlights.
+            foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            {
+                if (_preFilterCollapsedIds is not null)
+                    item.IsCollapsed = _preFilterCollapsedIds.Contains(item.Section.Id);
+                item.IsFilterHighlighted = false;
+            }
+            _preFilterCollapsedIds = null;
         }
-       
+        else
+        {
+            if (expandMode)
+            {
+                // Snapshot which cards were collapsed before this filter run (once per filter session).
+                _preFilterCollapsedIds ??= SectionItems
+                    .OfType<SectionListItemViewModel>()
+                    .Where(i => i.IsCollapsed)
+                    .Select(i => i.Section.Id)
+                    .ToHashSet();
+            }
+            else
+            {
+                // Switching to Highlight mode discards any stale expand snapshot.
+                _preFilterCollapsedIds = null;
+            }
+
+            foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            {
+                bool matches = ids.Contains(item.Section.Id);
+                item.IsFilterHighlighted = matches;
+                if (expandMode)
+                    item.IsCollapsed = !matches;
+            }
+        }
     }
 
     /// <summary>
