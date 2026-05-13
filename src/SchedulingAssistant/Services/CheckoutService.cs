@@ -85,14 +85,6 @@ public sealed class CheckoutService : IDisposable
     private readonly IAppLogger _logger;
 
     /// <summary>
-    /// Optional reference to the application's <see cref="BackupService"/>, used to take
-    /// a pre-save DB snapshot before writing D' → D. Set after DI initialisation via
-    /// <see cref="SetBackupService"/> because <see cref="BackupService"/> requires a live
-    /// <see cref="IDatabaseContext"/> that does not exist until after checkout completes.
-    /// </summary>
-    private BackupService? _backupService;
-
-    /// <summary>
     /// Dispatcher used to raise events on the UI thread. In production this is
     /// <c>Dispatcher.UIThread.Post</c>; in unit tests it is typically <c>a => a()</c>
     /// for synchronous, immediate dispatch.
@@ -266,15 +258,6 @@ public sealed class CheckoutService : IDisposable
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Wires up the <see cref="BackupService"/> so that <see cref="SaveAsync"/> can
-    /// delegate pre-save snapshots to it. Called from <c>MainWindow.SetupMainWindowAsync</c>
-    /// after the DI container is built and the backup session has started.
-    /// </summary>
-    /// <param name="backupService">The application-wide backup service instance.</param>
-    public void SetBackupService(BackupService backupService) =>
-        _backupService = backupService;
 
     /// <summary>
     /// Opens a database session. In write mode, acquires the write lock and copies D → D'.
@@ -600,10 +583,7 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
-        // ── Step 3: Write pre-save backup of D' ───────────────────────────────
-        TakePreSaveBackup();
-
-        // ── Step 4: Copy D' → D.tmp via the SQLite Online Backup API ────────
+        // ── Step 3: Copy D' → D.tmp via the SQLite Online Backup API ────────
         // BackupSqliteDatabase coordinates with the SQLite engine rather than
         // copying raw bytes. This guarantees a consistent snapshot even if a
         // write transaction is mid-commit on the DatabaseContext connection
@@ -630,7 +610,7 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.CopyError;
         }
 
-        // ── Step 5: Hash D.tmp for post-save conflict detection ──────────────
+        // ── Step 4: Hash D.tmp for post-save conflict detection ──────────────
         // BackupDatabase produces a semantically identical but not byte-identical
         // copy of D' (SQLite increments page-level counters in the destination).
         // We therefore hash D.tmp itself — the file that will become the new D —
@@ -646,7 +626,7 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.CopyError;
         }
 
-        // ── Step 6: Atomically rename D.tmp → D ──────────────────────────────
+        // ── Step 5: Atomically rename D.tmp → D ──────────────────────────────
         try
         {
             var renameCompleted = await NetworkFileOps.MoveAsync(tmpPath, SourcePath);
@@ -667,7 +647,7 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.CopyError;
         }
 
-        // ── Step 7 & 8: Update state ──────────────────────────────────────────
+        // ── Step 6: Update state ─────────────────────────────────────────────
         HashAtCheckout = newSourceHash;
         SessionDirty   = false;
 
@@ -1346,14 +1326,6 @@ public sealed class CheckoutService : IDisposable
         /// <summary>Network share could not be reached — treat as transient, not lock loss.</summary>
         Unreachable
     }
-
-    /// <summary>
-    /// Delegates to <see cref="BackupService.TakeDbSnapshot"/> when a backup service
-    /// has been wired up via <see cref="SetBackupService"/>. No-op otherwise.
-    /// Non-throwing — a backup failure inside the service is logged there and does not
-    /// propagate to the caller.
-    /// </summary>
-    private void TakePreSaveBackup() => _backupService?.TakeDbSnapshot();
 
     /// <summary>Writes a dirty marker file alongside D' to track ungraceful exits.</summary>
     private void WriteDirtyMarker()

@@ -408,7 +408,6 @@ public partial class MainWindow : Window
             && App.Services.GetService(typeof(WriteLockService)) is WriteLockService wl
             && wl.IsWriter)
         {
-            App.Checkout.SetBackupService(backup);
             _ = backup.StartSessionAsync(dbPath);
         }
 

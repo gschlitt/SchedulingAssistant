@@ -1869,44 +1869,4 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(new[] { "before-delete", "save-completed" }, ordering);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Group 10 — Null backup service during autosave (F8 from data-integrity audit)
-    //
-    // When the app switches databases, SetBackupService(null) is called during
-    // the DI teardown window. AutoSaveTickAsync must not throw or deadlock when
-    // _backupService is null. SaveAsync calls TakePreSaveBackup(), which is
-    // already null-guarded; this group adds explicit coverage so the guard is
-    // never accidentally removed.
-    // ═════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// <see cref="CheckoutService.SaveAsync"/> calls <c>TakePreSaveBackup()</c> which
-    /// delegates to <c>_backupService?.TakeDbSnapshot()</c>. When no backup service is
-    /// registered (the null window during a DI rebuild), the save must still succeed.
-    ///
-    /// <para>This guards the F8 finding: between the old DI container being disposed and
-    /// <see cref="CheckoutService.SetBackupService"/> being called with the new instance,
-    /// an in-flight autosave callback may run with <c>_backupService == null</c>. The
-    /// null-conditional in <c>TakePreSaveBackup</c> is the fix; this test pins it.</para>
-    /// </summary>
-    [Fact]
-    public async Task SaveAsync_WithNullBackupService_Succeeds()
-    {
-        // Arrange
-        var srcPath = DbPath("f8-null-backup");
-        CreateSqliteDb(srcPath);
-
-        var (svc, _) = CreateService();
-        await svc.CheckoutAsync(srcPath);
-
-        // Simulate the DI rebuild window — no backup service wired up
-        svc.SetBackupService(null!);
-
-        // Act
-        var outcome = await svc.SaveAsync(releaseLockAfter: false);
-
-        // Assert — save completes normally; pre-save snapshot silently skipped
-        Assert.Equal(SaveOutcome.Success, outcome);
-    }
-
 }
