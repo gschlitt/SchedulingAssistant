@@ -99,8 +99,8 @@ public partial class ScheduleGridView : UserControl
     private Popup? _tileContextPopup;
     private double _zoomLevel = 1.0;
 
-    /// <summary>Font size used for section label text inside tiles. Adjustable via the footer ComboBox.</summary>
-    private double _tileFontSize = 11;
+    // Tile font size lives on ScheduleGridViewModel.TileFontSize (initialized from AppSettings).
+    // The in-grid ComboBox binds to it directly; changes trigger OnVmPropertyChanged → Render().
 
     // Resize debounce: SizeChanged fires per pixel during an interactive drag. A short tail
     // collapses the burst into a single Render() once the user has stopped resizing.
@@ -133,21 +133,7 @@ public partial class ScheduleGridView : UserControl
         }
         UpdateZoomLabel();
 
-        // Populate and wire the tile font size ComboBox.
-        var fontSizeBox = this.FindControl<ComboBox>("TileFontSizeBox");
-        if (fontSizeBox is not null)
-        {
-            fontSizeBox.ItemsSource = new[] { 8.0, 9.0, 10.0, 11.0, 12.0 };
-            fontSizeBox.SelectedItem = _tileFontSize;
-            fontSizeBox.SelectionChanged += (_, _) =>
-            {
-                if (fontSizeBox.SelectedItem is double size)
-                {
-                    _tileFontSize = size;
-                    Render();
-                }
-            };
-        }
+        // TileFontSizeBox is bound in AXAML to ScheduleGridViewModel.TileFontSize / FontSizeOptions.
     }   
 
     
@@ -233,6 +219,8 @@ public partial class ScheduleGridView : UserControl
             Render();
         else if (e.PropertyName == nameof(ScheduleGridViewModel.SelectedSectionIds))
             UpdateSelectionHighlight();
+        else if (e.PropertyName == nameof(ScheduleGridViewModel.TileFontSize))
+            Render();
     }
 
     /// <summary>
@@ -353,7 +341,7 @@ public partial class ScheduleGridView : UserControl
         // Using TextBlock.Measure keeps us on the same measurement basis as Phase 4 — the
         // existing WASM per-entry fudge (PlatformCapabilities.TileHeightMarginPerEntry) is
         // applied identically below.
-        double entryLineH = MeasureLineHeight(_tileFontSize, FontWeight.SemiBold);
+        double entryLineH = MeasureLineHeight(_vm!.TileFontSize, FontWeight.SemiBold);
         const double EntrySeparatorH = 5; // 1 px rule + 2 px top margin + 2 px bottom margin (see Phase 4)
 
         for (int d = 0; d < dayCount; d++)
@@ -389,7 +377,7 @@ public partial class ScheduleGridView : UserControl
                 foreach (var e in tile.Entries)
                 {
                     string lbl = BuildTileLabel(e.Label, e.Initials, e.FrequencyAnnotation);
-                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, _tileFontSize, FontWeight.Bold));
+                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, _vm!.TileFontSize, FontWeight.Bold));
                 }
                 tileMaxTextWidths[(d, tile.StartMinutes, tile.EndMinutes)] = tileTextW;
 
@@ -720,7 +708,7 @@ public partial class ScheduleGridView : UserControl
                     var entryLabel = new TextBlock
                     {
                         Text            = labelText,
-                        FontSize        = _tileFontSize,
+                        FontSize        = _vm!.TileFontSize,
                         FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
                         Foreground      = entrySelected        ? SectionMeetingTextSelected
                                        : entry.IsOverlay       ? OverlayFrameBorder

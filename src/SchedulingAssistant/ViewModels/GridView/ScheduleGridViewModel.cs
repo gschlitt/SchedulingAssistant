@@ -47,6 +47,16 @@ public partial class ScheduleGridViewModel : ViewModelBase
     [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
     [ObservableProperty] private string? _lastErrorMessage;
 
+    /// <summary>
+    /// Font size applied to section label text inside tiles. Initialised from
+    /// <see cref="AppSettings.TileFontSize"/> at startup; the user may override it
+    /// per-session via the in-grid selector without affecting the persisted preference.
+    /// </summary>
+    [ObservableProperty] private double _tileFontSize;
+
+    /// <summary>Font size options shown in the tile font size selector (Preferences and in-grid).</summary>
+    public static IReadOnlyList<double> FontSizeOptions { get; } = [8, 9, 10, 11, 12];
+
     /// <summary>Display name of the selected semester, e.g. "2025-2026 — Fall"</summary>
     [ObservableProperty] private string _semesterLine = string.Empty;
 
@@ -105,6 +115,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _meetingRepo = meetingRepo;
         _changeNotifier = changeNotifier;
         _commitmentRepo = commitmentRepo;
+        _tileFontSize = AppSettings.Current.TileFontSize;
         _lockService = lockService;
 
         // After a context-menu save, refresh the shared section cache so all views

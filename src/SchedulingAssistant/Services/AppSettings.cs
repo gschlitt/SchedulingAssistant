@@ -92,6 +92,13 @@ public class AppSettings
     public bool OpenWithAllSectionsCollapsed { get; set; } = false;
 
     /// <summary>
+    /// Default font size for section label text inside schedule grid tiles.
+    /// The user may override this per-session via the in-grid selector; this value
+    /// is applied on startup. Default: 11.
+    /// </summary>
+    public double TileFontSize { get; set; } = 11.0;
+
+    /// <summary>
     /// Controls what the Section List does when the Schedule Grid filter passes a section.
     /// Default: Highlight (existing behaviour — matching cards receive a visual tint).
     /// </summary>

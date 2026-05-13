@@ -1,5 +1,6 @@
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.ViewModels.GridView;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -58,5 +59,26 @@ public class PreferencesViewModel : ViewModelBase
         AppSettings.Current.Save();
         OnPropertyChanged(nameof(FilterHighlightsSection));
         OnPropertyChanged(nameof(FilterExpandsSection));
+    }
+
+    // ── Schedule View ─────────────────────────────────────────────────────────
+
+    /// <summary>Font size options shown in the tile font size selector.</summary>
+    public static IReadOnlyList<double> FontSizeOptions => ScheduleGridViewModel.FontSizeOptions;
+
+    /// <summary>
+    /// Default tile font size for the Schedule Grid. Persisted to user settings.
+    /// Applied on startup; the user may override per-session via the in-grid selector.
+    /// </summary>
+    public double TileFontSize
+    {
+        get => AppSettings.Current.TileFontSize;
+        set
+        {
+            if (AppSettings.Current.TileFontSize == value) return;
+            AppSettings.Current.TileFontSize = value;
+            AppSettings.Current.Save();
+            OnPropertyChanged();
+        }
     }
 }

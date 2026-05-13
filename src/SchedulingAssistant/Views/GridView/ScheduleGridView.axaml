@@ -114,7 +114,9 @@
 					Height="18"
 					Padding="4,0"
 					VerticalAlignment="Center"
-					FontSize="10" />
+					FontSize="10"
+					ItemsSource="{Binding FontSizeOptions}"
+					SelectedItem="{Binding TileFontSize, Mode=TwoWay}" />
 				<TextBlock
 					Margin="12,0,0,0"
 					VerticalAlignment="Center"
