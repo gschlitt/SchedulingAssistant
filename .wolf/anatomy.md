@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-13T17:16:01.410Z
-> Files: 29 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-13T22:46:09.582Z
+> Files: 39 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -32,7 +32,9 @@
 - `a-small-issue-suppose-zesty-otter.md` — First click on "Add" after semester change does nothing (~680 tok)
 - `at-line-604-of-quiet-leaf.md` — Remove PreSaveBackup from CheckoutService and BackupService (~616 tok)
 - `describe-to-me-how-snoopy-kahn.md` — Plan: Debounce `SizeChanged → Render()` in ScheduleGridView (~588 tok)
+- `in-schedule-view-the-distributed-kahn.md` — Plan: Export-specific color palette for Schedule Grid PNG (~1347 tok)
 - `under-the-configuration-flyout-happy-lake.md` — Plan: "When a filter passes a section" Preference (~1831 tok)
+- `we-need-to-attach-groovy-clock.md` — Add "Room Type" to Scheduling Environment & Room Editor (~1593 tok)
 - `we-need-to-revise-snoopy-wand.md` — Plan: Add Section Code Patterns Step to Startup Wizard (~1778 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
@@ -200,6 +202,7 @@
 ## src/SchedulingAssistant/
 
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14314 tok)
+- `PrintColors.axaml` (~453 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -228,6 +231,7 @@
 ## src/SchedulingAssistant/Models/
 
 - `FilterPassBehavior.cs` — Controls what the Section List does when the Schedule Grid filter passes a section. (~98 tok)
+- `Room.cs` — Optional foreign key to <c>Campuses.id</c>. Null when the room is not associated with a specific cam (~288 tok)
 - `TpConfigData.cs` — Portable configuration file (.tpconfig) written to the database folder after first-run setup. Contai (~1089 tok)
 
 ## src/SchedulingAssistant/Services/
@@ -248,6 +252,11 @@
 
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~5012 tok)
 - `PreferencesViewModel.cs` — ViewModel for the Preferences panel in the Configuration flyout. Exposes user-facing preferences tha (~866 tok)
+- `RoomEditViewModel.cs` — A campus item for campus dropdown pickers, with a sentinel "none" option. (~1205 tok)
+- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~3085 tok)
+- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3246 tok)
+- `SchedulingEnvironmentTypes.cs` — Canonical type discriminator strings for the SchedulingEnvironmentValues.type column. (~155 tok)
+- `SchedulingEnvironmentViewModel.cs` — Class: SchedulingEnvironmentViewModel (~1028 tok)
 - `SectionListViewModel.cs` — The flat list of items shown in the Section List. Contains a mix of <see cref="SemesterBannerViewMod (~13970 tok)
 - `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~2202 tok)
 
@@ -266,11 +275,12 @@
 ## src/SchedulingAssistant/Views/GridView/
 
 - `ScheduleGridView.axaml` (~2496 tok)
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~15513 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~16380 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
 - `PreferencesView.axaml` (~909 tok)
+- `RoomListView.axaml` (~1742 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

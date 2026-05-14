@@ -38,7 +38,7 @@
 	<!--  External border: the outline around the entire tile card  -->
 	<SolidColorBrush x:Key="TileExternalBorder" Color="#acb4bd" />
 	<!--  Internal border: horizontal separator lines between co-scheduled sections within a card  -->
-	<SolidColorBrush x:Key="TileInternalBorder" Color="#dce0e3" />
+	<SolidColorBrush x:Key="TileInternalBorder" Color="Transparent" />
 
 	<!--  Selection and Interaction with Tiles  -->
 

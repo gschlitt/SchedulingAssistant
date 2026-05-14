@@ -30,7 +30,15 @@
                 </Span>
                 <LineBreak />
                 <LineBreak />
-                Choose as a preferred block length the length you most commonly schedule: it will be supplied automatically, and you can override if need be.</TextBlock>
+                <Span>
+                Choose as a preferred block length the length you most commonly schedule: it will be supplied automatically, and you can override if need be.
+                </Span>
+                <LineBreak />
+                <LineBreak />
+                <Span>
+					Note that Block-Length/Start-times can vary with the academic year. You need to have an academic year and semester selected before they can be edited here.
+                </Span>
+            </TextBlock>
         </StackPanel>
 
         <!--  Block length unit toggle  -->

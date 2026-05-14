@@ -9502,6 +9502,118 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-13T17:16:01.496Z"
+    },
+    {
+      "id": "bug-594",
+      "timestamp": "2026-05-13T19:46:26.243Z",
+      "error_message": "Null/undefined access in ",
+      "file": "../../../.claude/plans/in-schedule-view-the-distributed-kahn.md",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T19:46:26.243Z"
+    },
+    {
+      "id": "bug-595",
+      "timestamp": "2026-05-13T19:51:12.431Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T19:51:12.431Z"
+    },
+    {
+      "id": "bug-596",
+      "timestamp": "2026-05-13T20:01:20.036Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Had \"avares://SchedulingAssistant/PrintColors.axaml\"",
+      "fix": "Changed to \"avares://TermPoint/PrintColors.axaml\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T20:01:20.036Z"
+    },
+    {
+      "id": "bug-597",
+      "timestamp": "2026-05-13T20:16:41.547Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: var institution = AppSettings.Current.InstitutionName;; var semester = _vm?.SemesterLine ?? \"\";",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-13T20:19:06.393Z"
+    },
+    {
+      "id": "bug-598",
+      "timestamp": "2026-05-13T22:44:16.328Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/RoomListViewModel.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 15→26 lines (3 removed) | Also: /// Pairs a <see cref=\"Room\"/> model with its reso; public record RoomRow(Room Room, string CampusName",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-13T22:44:40.959Z"
+    },
+    {
+      "id": "bug-599",
+      "timestamp": "2026-05-13T22:46:02.722Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/RoomListView.axaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 21→28 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T22:46:02.722Z"
+    },
+    {
+      "id": "bug-600",
+      "timestamp": "2026-05-13T22:46:09.827Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/RoomListView.axaml",
+      "root_cause": "Had \"Capacity\"",
+      "fix": "Changed to \"Type\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T22:46:09.827Z"
     }
   ]
 }

@@ -20,7 +20,7 @@
 			<StackPanel Spacing="6">
 				<TextBlock
 					FontSize="{StaticResource FontSizeNormal}"
-					Text="Exports the full weekly grid as a PNG image at 2× resolution — all days and the full time range, regardless of current scroll or zoom."
+					Text="Exports the full weekly grid as a PNG image suitable for attachment to an email or printing. Shows all days and the full time range, regardless of current scroll or zoom."
 					TextWrapping="Wrap" />
 				<Button
 					Margin="0,4,0,0"
