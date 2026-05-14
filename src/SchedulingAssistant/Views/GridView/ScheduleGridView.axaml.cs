@@ -115,9 +115,10 @@ public partial class ScheduleGridView : UserControl
     private static IBrush FilterEmphasizedBg  => Res("FilterSelectedSectionBackgroundColor");
 
     // Ghost tile brushes (Room Availability Browser candidate slots)
-    private static readonly IBrush GhostTileFill   = new SolidColorBrush(Color.FromArgb(60, 76, 175, 80));
-    private static readonly IBrush GhostTileBorder = new SolidColorBrush(Color.FromArgb(180, 76, 175, 80));
-    private static readonly IBrush GhostTileText   = new SolidColorBrush(Color.FromArgb(220, 30, 100, 40));
+    private static IBrush GhostOutlineBrush => Res("GhostOutline");
+    private static IBrush GhostTabFill      => Res("GhostTabFill");
+    private static IBrush GhostTabText      => Res("GhostTabText");
+    private static IBrush GhostBodyFill     => Res("GhostBodyFill");
 
 
     private Canvas? _canvas;
@@ -962,32 +963,49 @@ public partial class ScheduleGridView : UserControl
             double tileH = Math.Max(endY - startY - TilePaddingV * 2, 18);
             double tileW = dayColWidth;
 
-            var label = new TextBlock
+            // Tab: small opaque strip with room label
+            var tabLabel = new TextBlock
             {
-                Text         = $"{ghost.RoomLabel}  {ghost.TimeLabel}",
-                FontSize     = _vm!.TileFontSize,
-                FontWeight   = FontWeight.SemiBold,
-                Foreground   = GhostTileText,
-                TextTrimming = TextTrimming.CharacterEllipsis,
+                Text              = ghost.RoomLabel,
+                FontSize          = Math.Max(_vm!.TileFontSize - 1, 8),
+                FontWeight        = FontWeight.SemiBold,
+                Foreground        = GhostTabText,
+                TextTrimming      = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
             };
 
-            var border = new Border
+            var tab = new Border
+            {
+                Background          = GhostTabFill,
+                CornerRadius        = new CornerRadius(0, 0, 3, 0),
+                Padding             = new Thickness(5, 1),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Child               = tabLabel,
+            };
+
+            var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+            Grid.SetRow(tab, 0);
+            grid.Children.Add(tab);
+
+            // Outer outline: transparent body with colored border
+            var outline = new Border
             {
                 Width           = tileW - TilePaddingH,
                 Height          = tileH,
-                Background      = GhostTileFill,
-                BorderBrush     = GhostTileBorder,
+                Background      = GhostBodyFill,
+                BorderBrush     = GhostOutlineBrush,
                 BorderThickness = new Thickness(2),
                 CornerRadius    = new CornerRadius(3),
-                Padding         = new Thickness(3, 2),
-                Opacity         = 0.85,
-                Child           = label,
+                ClipToBounds    = true,
+                Child           = grid,
             };
 
-            Canvas.SetLeft(border, dayX + TilePaddingH / 2);
-            Canvas.SetTop(border, tileY);
-            _canvas.Children.Add(border);
-            _ghostControls.Add(border);
+            ToolTip.SetTip(outline, $"{ghost.RoomLabel}  {ghost.TimeLabel}");
+
+            Canvas.SetLeft(outline, dayX + TilePaddingH / 2);
+            Canvas.SetTop(outline, tileY);
+            _canvas.Children.Add(outline);
+            _ghostControls.Add(outline);
         }
     }
 

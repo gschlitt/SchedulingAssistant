@@ -215,6 +215,16 @@
 	<SolidColorBrush x:Key="PrefixSectionBackground" Color="#D1FAE5" />
 	<SolidColorBrush x:Key="PrefixDesignatorBackground" Color="LightSalmon" />
 
+	<!--  ── Ghost tiles (Room Availability Browser candidate slots)  ────────  -->
+	<!--  Border outline around the full ghost block  -->
+	<SolidColorBrush x:Key="GhostOutline" Color="#C84CAF50" />
+	<!--  Opaque tab background showing room label  -->
+	<SolidColorBrush x:Key="GhostTabFill" Color="#E64CAF50" />
+	<!--  Room label text inside the tab  -->
+	<SolidColorBrush x:Key="GhostTabText" Color="White" />
+	<!--  Transparent body fill — raise alpha for a light tint (e.g. #184CAF50)  -->
+	<SolidColorBrush x:Key="GhostBodyFill" Color="#004CAF50" />
+
 	<!--  ── Help tooltips  ──────────────────────────────────────────────────  -->
 	<!--  Light indigo-white fill — distinct from the cooler TileFill (#E2EDF8)  -->
 	<SolidColorBrush x:Key="HelpTipBackground" Color="#F2F6FF" />
