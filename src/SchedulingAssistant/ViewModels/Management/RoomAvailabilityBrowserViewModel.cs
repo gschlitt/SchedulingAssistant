@@ -27,6 +27,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     private readonly string _semesterColor;
     private readonly Action<List<GhostBlock>?> _setGhostBlocks;
     private readonly Action<IReadOnlyList<SolutionSlot>> _onAccept;
+    private readonly Action _onCancel;
 
     private OccupancyIndex _index = new();
     private List<RoomSolution> _solutions = new();
@@ -73,6 +74,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// <param name="semesterColor">Active semester color hex string.</param>
     /// <param name="setGhostBlocks">Callback to push ghost blocks onto the schedule grid.</param>
     /// <param name="onAccept">Callback when the user accepts a solution.</param>
+    /// <param name="onCancel">Callback when the user cancels browsing.</param>
     /// <param name="existingMeetings">Meetings already on the section (augment mode).</param>
     public RoomAvailabilityBrowserViewModel(
         IReadOnlyList<Room> allRooms,
@@ -86,6 +88,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         string semesterColor,
         Action<List<GhostBlock>?> setGhostBlocks,
         Action<IReadOnlyList<SolutionSlot>> onAccept,
+        Action onCancel,
         IReadOnlyList<SectionDaySchedule>? existingMeetings = null)
     {
         _allRooms = allRooms;
@@ -99,6 +102,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         _semesterColor = semesterColor;
         _setGhostBlocks = setGhostBlocks;
         _onAccept = onAccept;
+        _onCancel = onCancel;
         ExistingMeetings = existingMeetings ?? Array.Empty<SectionDaySchedule>();
 
         // Build occupancy index
@@ -190,6 +194,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     private void Cancel()
     {
         _setGhostBlocks(null);
+        _onCancel();
     }
 
     // ── Day duration editing ─────────────────────────────────────────────────

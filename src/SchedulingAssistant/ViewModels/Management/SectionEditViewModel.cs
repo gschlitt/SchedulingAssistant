@@ -612,7 +612,7 @@ public partial class SectionEditViewModel : ViewModelBase
     /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.
     /// The delegate receives the section's existing meetings and a callback to accept new slots.
     /// </summary>
-    public Func<IReadOnlyList<SectionDaySchedule>, Action<IReadOnlyList<SolutionSlot>>, RoomAvailabilityBrowserViewModel>?
+    public Func<IReadOnlyList<SectionDaySchedule>, Action<IReadOnlyList<SolutionSlot>>, Action, RoomAvailabilityBrowserViewModel>?
         CreateRoomBrowser { get; set; }
 
     [RelayCommand]
@@ -626,7 +626,11 @@ public partial class SectionEditViewModel : ViewModelBase
             .Cast<SectionDaySchedule>()
             .ToList();
 
-        RoomBrowserVm = CreateRoomBrowser(existingMeetings, AcceptBrowserSolution);
+        RoomBrowserVm = CreateRoomBrowser(existingMeetings, AcceptBrowserSolution, () =>
+        {
+            RoomBrowserVm = null;
+            OnPropertyChanged(nameof(IsRoomBrowserOpen));
+        });
         OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 

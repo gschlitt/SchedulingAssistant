@@ -861,7 +861,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 var capturedRooms = ctx.Rooms;
                 var capturedLst = ctx.LegalStartTimes;
 
-                editVm.CreateRoomBrowser = (existingMeetings, onAccept) =>
+                editVm.CreateRoomBrowser = (existingMeetings, onAccept, onCancel) =>
                 {
                     var sections = _sectionRepo.GetAll(capturedSemId);
                     var meetings = _meetingRepo.GetAll(capturedSemId);
@@ -873,6 +873,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                         capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
                         ghosts => _setGhostBlocks?.Invoke(ghosts),
                         onAccept,
+                        onCancel,
                         existingMeetings);
                 };
             }
