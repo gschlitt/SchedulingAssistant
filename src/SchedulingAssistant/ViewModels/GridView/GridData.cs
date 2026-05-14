@@ -80,6 +80,19 @@ public record MeetingBlock(
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
+/// A ghost tile representing a candidate room+time slot from the Room Availability Browser.
+/// Rendered semi-transparent with a distinct visual style (dashed border, muted fill).
+/// Ghost blocks suppress click interactions and do not participate in selection.
+/// </summary>
+/// <param name="RoomLabel">Room display label, e.g. "A 101".</param>
+/// <param name="TimeLabel">Time range display, e.g. "8:00–9:15".</param>
+public record GhostBlock(
+    int Day, int StartMinutes, int EndMinutes,
+    string RoomLabel, string TimeLabel,
+    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: false, SemesterId, SemesterName, SemesterColor);
+
+/// <summary>
 /// An instructor commitment (non-teaching obligation stored in InstructorCommitments table).
 /// Commitments are independent of sections — they share the same grid but have no
 /// course code or section code. They are always rendered as overlay cards (red border,

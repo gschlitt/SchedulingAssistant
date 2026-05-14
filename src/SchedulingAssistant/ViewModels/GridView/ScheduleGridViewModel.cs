@@ -43,6 +43,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private string _lastSemesterKey = string.Empty;
 
+    /// <summary>
+    /// Ghost blocks from the Room Availability Browser. When set, these are appended
+    /// to the block list during <see cref="ReloadCore"/> and rendered as semi-transparent
+    /// candidate tiles on the grid.
+    /// </summary>
+    private List<GhostBlock>? _ghostBlocks;
+
     [ObservableProperty] private GridData _gridData = GridData.Empty;
     [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
     [ObservableProperty] private string? _lastErrorMessage;
@@ -232,6 +239,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Sets the ghost blocks to display on the grid (Room Availability Browser).
+    /// Pass <c>null</c> or an empty list to clear ghost tiles. Does NOT trigger a
+    /// full grid reload — the view renders ghosts as a lightweight overlay.
+    /// </summary>
+    public void SetGhostBlocks(List<GhostBlock>? blocks)
+    {
+        _ghostBlocks = blocks is { Count: > 0 } ? blocks : null;
+        OnPropertyChanged(nameof(GhostBlocks));
+    }
+
+    /// <summary>
+    /// Current ghost blocks for the Room Availability Browser overlay.
+    /// The view watches this property to repaint the ghost layer without a full re-render.
+    /// </summary>
+    public IReadOnlyList<GhostBlock>? GhostBlocks => _ghostBlocks;
+
+    /// <summary>
     /// Reloads the schedule grid from the currently selected semester(s) and filter state.
     /// This is the orchestrator for the grid pipeline. It delegates each distinct step to
     /// a focused helper method, making the overall flow easy to read and each step easy
@@ -316,8 +340,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var commitments   = BuildCommitmentBlocks(semesters, overlayInstructorId);
         var meetingBlocks = Filter.ShowMeetings ? BuildMeetingBlocks(semesters) : [];
 
-        var allBlocks = DeduplicateBlocks(
-            filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks));
+        var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks);
+        var allBlocks = DeduplicateBlocks(combinedBlocks);
         UpdateDisplayProperties(semesters, allBlocks);
     }
 

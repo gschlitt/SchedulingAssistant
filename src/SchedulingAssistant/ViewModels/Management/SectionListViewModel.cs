@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
+using SchedulingAssistant.ViewModels.GridView;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Threading.Tasks;
@@ -24,7 +25,14 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private readonly SectionStore _sectionStore;
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
+    private readonly IMeetingRepository _meetingRepo;
     private readonly WriteLockService _lockService;
+
+    /// <summary>
+    /// Callback to push ghost blocks (Room Availability Browser) onto the schedule grid.
+    /// Set by <see cref="MainWindowViewModel"/> after construction.
+    /// </summary>
+    internal Action<List<GhostBlock>?>? _setGhostBlocks;
 
     // ── Observable Properties ──────────────────────────────────────────────────
 
@@ -177,6 +185,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         SectionStore sectionStore,
         ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
+        IMeetingRepository meetingRepo,
         IDialogService dialog,
         WriteLockService lockService)
     {
@@ -193,6 +202,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _sectionStore = sectionStore;
         _propertyRepo = propertyRepo;
         _campusRepo = campusRepo;
+        _meetingRepo = meetingRepo;
         _dialog = dialog;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
@@ -810,7 +820,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         Section section, bool isNew, EditorContext ctx,
         string semesterId, string callerTag, bool isCopy = false)
     {
-        return new SectionEditViewModel(
+        var editVm = new SectionEditViewModel(
             section, isNew, isCopy,
             ctx.Courses, ctx.Subjects, ctx.Instructors, ctx.Rooms,
             ctx.LegalStartTimes, ctx.IncludeSaturday, ctx.IncludeSunday,
@@ -839,6 +849,36 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             },
             _blockPatternRepo,
             defaultBlockLength: ctx.DefaultBlockLength);
+
+        // Wire the Room Availability Browser factory (disabled in multi-semester mode)
+        if (!_semesterContext.IsMultiSemesterMode)
+        {
+            var semDisplay = _semesterContext.SelectedSemesterDisplay;
+            if (semDisplay != null)
+            {
+                var capturedSemId = semesterId;
+                var capturedSectionId = isNew ? null : section.Id;
+                var capturedRooms = ctx.Rooms;
+                var capturedLst = ctx.LegalStartTimes;
+
+                editVm.CreateRoomBrowser = (existingMeetings, onAccept) =>
+                {
+                    var sections = _sectionRepo.GetAll(capturedSemId);
+                    var meetings = _meetingRepo.GetAll(capturedSemId);
+                    var patterns = _blockPatternRepo.GetAll();
+
+                    return new RoomAvailabilityBrowserViewModel(
+                        capturedRooms, capturedLst, patterns,
+                        sections, meetings, capturedSectionId,
+                        capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
+                        ghosts => _setGhostBlocks?.Invoke(ghosts),
+                        onAccept,
+                        existingMeetings);
+                };
+            }
+        }
+
+        return editVm;
     }
 
     /// <summary>

@@ -384,6 +384,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _lockService          = lockService;
         _notificationService  = notificationService;
 
+        // Wire the Room Availability Browser ghost block callback
+        sectionListVm._setGhostBlocks = ghosts => _scheduleGridVm.SetGhostBlocks(ghosts);
+
         // Re-raise IsAnyPanelEditing when either child editor opens or closes.
         sectionListVm.PropertyChanged += (_, e) =>
         { if (e.PropertyName == nameof(SectionListViewModel.IsEditing)) OnPropertyChanged(nameof(IsAnyPanelEditing)); };

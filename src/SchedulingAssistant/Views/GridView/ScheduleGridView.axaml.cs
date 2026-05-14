@@ -114,12 +114,27 @@ public partial class ScheduleGridView : UserControl
     private static IBrush ScheduleBackground => Res("AppBackground");
     private static IBrush FilterEmphasizedBg  => Res("FilterSelectedSectionBackgroundColor");
 
+    // Ghost tile brushes (Room Availability Browser candidate slots)
+    private static readonly IBrush GhostTileFill   = new SolidColorBrush(Color.FromArgb(60, 76, 175, 80));
+    private static readonly IBrush GhostTileBorder = new SolidColorBrush(Color.FromArgb(180, 76, 175, 80));
+    private static readonly IBrush GhostTileText   = new SolidColorBrush(Color.FromArgb(220, 30, 100, 40));
+
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
     private Border? _zoomContainer;
     private Popup? _tileContextPopup;
     private double _zoomLevel = 1.0;
+
+    // Ghost overlay: cached layout parameters from the last full Render() pass, enabling
+    // ghost tiles to be added/removed without re-running the entire grid pipeline.
+    private double[]? _cachedDayXOffsets;
+    private double[]? _cachedDayColWidths;
+    private Dictionary<int, double>? _cachedGridlineYOffsets;
+    private double _cachedEffectiveHeaderHeight;
+    private int _cachedFirstRowMinutes;
+    private int _cachedSemesterCount;
+    private readonly List<Control> _ghostControls = new();
 
     // Tile font size lives on ScheduleGridViewModel.TileFontSize (initialized from AppSettings).
     // The in-grid ComboBox binds to it directly; changes trigger OnVmPropertyChanged → Render().
@@ -243,6 +258,8 @@ public partial class ScheduleGridView : UserControl
             UpdateSelectionHighlight();
         else if (e.PropertyName == nameof(ScheduleGridViewModel.TileFontSize))
             Render();
+        else if (e.PropertyName == nameof(ScheduleGridViewModel.GhostBlocks))
+            RenderGhostOverlay();
     }
 
     /// <summary>
@@ -883,6 +900,94 @@ public partial class ScheduleGridView : UserControl
                 Canvas.SetTop(border, adjustedTileY);
                 _canvas.Children.Add(border);
             }
+        }
+
+        // Cache layout parameters for the ghost overlay (avoids full re-render when stepping).
+        _cachedDayXOffsets = dayXOffsets;
+        _cachedDayColWidths = dayColWidths;
+        _cachedGridlineYOffsets = gridlineYOffsets;
+        _cachedEffectiveHeaderHeight = effectiveHeaderHeight;
+        _cachedFirstRowMinutes = data.FirstRowMinutes;
+        _cachedSemesterCount = semCount;
+
+        RenderGhostOverlay();
+    }
+
+    /// <summary>
+    /// Renders ghost tiles as a lightweight overlay on the canvas without re-running the
+    /// grid pipeline or re-rendering existing tiles. Uses layout parameters cached from the
+    /// most recent full <see cref="Render"/> call to position ghost tiles in the correct
+    /// day columns and time slots. Called when the user steps through Room Availability
+    /// Browser solutions.
+    /// </summary>
+    private void RenderGhostOverlay()
+    {
+        if (_canvas is null) return;
+
+        // Remove previous ghost controls.
+        foreach (var ctrl in _ghostControls)
+            _canvas.Children.Remove(ctrl);
+        _ghostControls.Clear();
+
+        var ghosts = _vm?.GhostBlocks;
+        if (ghosts is null || ghosts.Count == 0) return;
+        if (_cachedDayXOffsets is null || _cachedDayColWidths is null || _cachedGridlineYOffsets is null) return;
+
+        var data = _vm?.GridData ?? GridData.Empty;
+        if (data.DayColumns.Count == 0) return;
+
+        int semCount = _cachedSemesterCount;
+        double TilePaddingV = ScheduleGridView.TilePaddingV;
+        double TilePaddingH = ScheduleGridView.TilePaddingH;
+
+        foreach (var ghost in ghosts)
+        {
+            // Map day number (1-based) to flat column index. In single-semester mode
+            // column = day - 1. In multi-semester mode, ghost blocks target the first
+            // semester sub-column for that day.
+            int flatCol = (ghost.Day - 1) * semCount;
+            if (flatCol < 0 || flatCol >= data.DayColumns.Count) continue;
+
+            double dayX = _cachedDayXOffsets[flatCol];
+            double dayColWidth = _cachedDayColWidths[flatCol];
+
+            double startY = _cachedEffectiveHeaderHeight
+                          + TimeToY(ghost.StartMinutes, _cachedFirstRowMinutes)
+                          + GetGridlineOffset(_cachedGridlineYOffsets, ghost.StartMinutes);
+            double endY   = _cachedEffectiveHeaderHeight
+                          + TimeToY(ghost.EndMinutes, _cachedFirstRowMinutes)
+                          + GetGridlineOffset(_cachedGridlineYOffsets, ghost.EndMinutes);
+
+            double tileY = startY + TilePaddingV;
+            double tileH = Math.Max(endY - startY - TilePaddingV * 2, 18);
+            double tileW = dayColWidth;
+
+            var label = new TextBlock
+            {
+                Text         = $"{ghost.RoomLabel}  {ghost.TimeLabel}",
+                FontSize     = _vm!.TileFontSize,
+                FontWeight   = FontWeight.SemiBold,
+                Foreground   = GhostTileText,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+
+            var border = new Border
+            {
+                Width           = tileW - TilePaddingH,
+                Height          = tileH,
+                Background      = GhostTileFill,
+                BorderBrush     = GhostTileBorder,
+                BorderThickness = new Thickness(2),
+                CornerRadius    = new CornerRadius(3),
+                Padding         = new Thickness(3, 2),
+                Opacity         = 0.85,
+                Child           = label,
+            };
+
+            Canvas.SetLeft(border, dayX + TilePaddingH / 2);
+            Canvas.SetTop(border, tileY);
+            _canvas.Children.Add(border);
+            _ghostControls.Add(border);
         }
     }
 

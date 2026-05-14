@@ -155,6 +155,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<SchedulingEnvironmentValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _rooms;
+    private readonly IReadOnlyList<BlockPattern> _blockPatterns;
     private readonly bool _includeSaturday;
     private readonly bool _includeSunday;
     private readonly double? _defaultBlockLength;
@@ -426,8 +427,9 @@ public partial class SectionEditViewModel : ViewModelBase
         _defaultBlockLength = defaultBlockLength;
         _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
-        // Load saved block patterns for the shortcut buttons
+        // Load saved block patterns for the shortcut buttons and room browser templates
         var allPatterns = blockPatternRepository.GetAll();
+        _blockPatterns = allPatterns;
         _pattern1 = allPatterns.Count > 0 ? allPatterns[0] : null;
         _pattern2 = allPatterns.Count > 1 ? allPatterns[1] : null;
         _pattern3 = allPatterns.Count > 2 ? allPatterns[2] : null;
@@ -594,6 +596,67 @@ public partial class SectionEditViewModel : ViewModelBase
             { new SchedulingEnvironmentValue { Id = "", Name = "(none)" } };
         list.AddRange(values);
         return new ObservableCollection<SchedulingEnvironmentValue>(list);
+    }
+
+    // ── Room Availability Browser ──────────────────────────────────────────
+
+    /// <summary>
+    /// The room availability browser VM, or null when the browser panel is closed.
+    /// </summary>
+    [ObservableProperty] private RoomAvailabilityBrowserViewModel? _roomBrowserVm;
+
+    /// <summary>True when the browser panel is visible.</summary>
+    public bool IsRoomBrowserOpen => RoomBrowserVm != null;
+
+    /// <summary>
+    /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.
+    /// The delegate receives the section's existing meetings and a callback to accept new slots.
+    /// </summary>
+    public Func<IReadOnlyList<SectionDaySchedule>, Action<IReadOnlyList<SolutionSlot>>, RoomAvailabilityBrowserViewModel>?
+        CreateRoomBrowser { get; set; }
+
+    [RelayCommand]
+    private void OpenRoomBrowser()
+    {
+        if (CreateRoomBrowser == null) return;
+
+        var existingMeetings = Meetings
+            .Select(m => m.ToSchedule())
+            .Where(s => s != null)
+            .Cast<SectionDaySchedule>()
+            .ToList();
+
+        RoomBrowserVm = CreateRoomBrowser(existingMeetings, AcceptBrowserSolution);
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    [RelayCommand]
+    private void CloseRoomBrowser()
+    {
+        RoomBrowserVm?.CancelCommand.Execute(null);
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    private void AcceptBrowserSolution(IReadOnlyList<SolutionSlot> newSlots)
+    {
+        foreach (var slot in newSlots)
+        {
+            var meetingVm = new SectionMeetingViewModel(
+                _legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
+                defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
+                unit: AppSettings.Current.BlockLengthUnit);
+
+            meetingVm.SelectedDay = slot.Day;
+            meetingVm.StartTimeText = $"{slot.StartMinutes / 60:D2}{slot.StartMinutes % 60:D2}";
+            meetingVm.SelectedBlockLength = slot.DurationMinutes / 60.0;
+            meetingVm.SelectedRoomId = slot.RoomId;
+
+            Meetings.Add(meetingVm);
+        }
+
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
     [RelayCommand]

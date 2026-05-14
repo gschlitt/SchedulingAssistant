@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             xmlns:m="using:SchedulingAssistant.Models"
+             x:Class="SchedulingAssistant.Views.Management.RoomAvailabilityBrowserView"
+             x:DataType="vm:RoomAvailabilityBrowserViewModel">
+
+  <Border Background="{DynamicResource CardBackground}"
+          BorderBrush="{DynamicResource TileExternalBorder}"
+          BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,4,0,0">
+    <StackPanel Spacing="4">
+
+      <!-- Header -->
+      <TextBlock Text="Room Availability Browser" FontSize="11" FontWeight="SemiBold"
+                 Foreground="{DynamicResource TextPrimary}"/>
+
+      <!-- Template picker -->
+      <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+        <TextBlock Grid.Column="0" Text="Pattern:" FontSize="10" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextSecondary}" Margin="0,0,4,0"/>
+        <ComboBox Grid.Column="1" FontSize="10" Padding="4,2"
+                  ItemsSource="{Binding Templates}"
+                  SelectedItem="{Binding SelectedTemplate}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="m:MeetingTemplate">
+              <TextBlock Text="{Binding DisplayLabel}" FontSize="10"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </Grid>
+
+      <!-- Per-day duration editors -->
+      <ItemsControl ItemsSource="{Binding DayDurations}" IsVisible="{Binding !!DayDurations.Count}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:DayDurationItem">
+            <Grid ColumnDefinitions="40,*,Auto" Margin="0,1">
+              <TextBlock Grid.Column="0" Text="{Binding DayName}" FontSize="10"
+                         VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+              <ComboBox Grid.Column="1" FontSize="10" Padding="4,2"
+                        ItemsSource="{Binding AvailableBlockLengths}"
+                        SelectedItem="{Binding BlockLengthHours}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock FontSize="10">
+                      <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0:F1}hr">
+                          <Binding />
+                        </MultiBinding>
+                      </TextBlock.Text>
+                    </TextBlock>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Grid.Column="2" Text="{Binding DurationMinutes, StringFormat={}{0}min}"
+                         FontSize="9" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondary}" Margin="4,0,0,0"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Room filters -->
+      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,2">
+        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="1" Margin="0,0,2,0">
+          <TextBlock Text="Building" FontSize="9" Foreground="{DynamicResource TextSecondary}"/>
+          <ComboBox FontSize="10" Padding="4,2" HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding BuildingOptions}"
+                    SelectedItem="{Binding SelectedBuilding}"/>
+        </StackPanel>
+        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="1" Margin="2,0,0,0">
+          <TextBlock Text="Min Capacity" FontSize="9" Foreground="{DynamicResource TextSecondary}"/>
+          <TextBox FontSize="10" Padding="4,2" PlaceholderText="any"
+                   Text="{Binding MinCapacity}"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- Solution stepping -->
+      <Border Background="{DynamicResource AppBackground}" CornerRadius="3" Padding="4" Margin="0,2">
+        <StackPanel Spacing="2">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Button Grid.Column="0" Content="&lt;" FontSize="10" Padding="6,2"
+                    Command="{Binding PreviousSolutionCommand}"
+                    IsEnabled="{Binding CanGoPrevious}"/>
+            <TextBlock Grid.Column="1" Text="{Binding SolutionLabel}" FontSize="10"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextPrimary}"/>
+            <Button Grid.Column="2" Content="&gt;" FontSize="10" Padding="6,2"
+                    Command="{Binding NextSolutionCommand}"
+                    IsEnabled="{Binding CanGoNext}"/>
+          </Grid>
+          <TextBlock Text="{Binding TierLabel}" FontSize="9" HorizontalAlignment="Center"
+                     Foreground="{DynamicResource TextSecondary}"
+                     IsVisible="{Binding HasSolutions}"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Accept / Cancel -->
+      <Grid ColumnDefinitions="*,*" Margin="0,2">
+        <Button Grid.Column="0" Content="Accept" FontSize="10" Padding="8,3"
+                HorizontalAlignment="Stretch" Margin="0,0,2,0"
+                Command="{Binding AcceptSolutionCommand}"
+                IsEnabled="{Binding HasSolutions}"/>
+        <Button Grid.Column="1" Content="Cancel" FontSize="10" Padding="8,3"
+                HorizontalAlignment="Stretch" Margin="2,0,0,0"
+                Command="{Binding CancelCommand}"/>
+      </Grid>
+
+    </StackPanel>
+  </Border>
+</UserControl>

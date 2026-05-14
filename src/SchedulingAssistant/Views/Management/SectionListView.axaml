@@ -5,6 +5,7 @@
     xmlns:b="using:SchedulingAssistant.Behaviors"
     xmlns:models="using:SchedulingAssistant.Models"
     xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+    xmlns:views="using:SchedulingAssistant.Views.Management"
     xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
     b:LostFocusForwardBehavior.Command="{Binding CommitEditSectionCodeCommand}"
     b:LostFocusForwardBehavior.TargetName="SectionCodeBox"
@@ -191,10 +192,17 @@
                         Orientation="Horizontal"
                         Spacing="4">
                         <Button
-                            Margin="0,0,10,0"
+                            Margin="0,0,4,0"
                             Padding="4,2,4,3"
                             Command="{Binding AddMeetingCommand}"
                             Content="+meeting" />
+                        <Button
+                            Margin="0,0,10,0"
+                            Padding="4,2,4,3"
+                            Command="{Binding OpenRoomBrowserCommand}"
+                            Content="Browse"
+                            IsVisible="{Binding CreateRoomBrowser, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            ToolTip.Tip="Browse room availability" />
                         <Button
                             VerticalAlignment="Bottom"
                             Command="{Binding ApplyPattern1Command}"
@@ -474,7 +482,16 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    
+                    <!-- Room Availability Browser panel (shown when open) -->
+                    <ContentControl
+                        Content="{Binding RoomBrowserVm}"
+                        IsVisible="{Binding IsRoomBrowserOpen}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="vm:RoomAvailabilityBrowserViewModel">
+                                <views:RoomAvailabilityBrowserView />
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
 
                     <!--  Instructor  -->
                     <Grid
