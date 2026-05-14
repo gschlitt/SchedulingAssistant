@@ -17,6 +17,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
 {
     private readonly IRoomRepository _repo;
     private readonly ICampusRepository _campusRepo;
+    private readonly ISchedulingEnvironmentRepository _envRepo;
     private readonly ISectionRepository _sectionRepo;
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDatabaseContext _db;
@@ -48,6 +49,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
 
     /// <param name="repo">Room data repository.</param>
     /// <param name="campusRepo">Campus repository — supplies campus options to the edit form.</param>
+    /// <param name="envRepo">Scheduling environment repository — supplies room type options to the edit form.</param>
     /// <param name="sectionRepo">Used during delete to clear the room from any sections that reference it.</param>
     /// <param name="sectionListVm">Reloaded after edits so the section list reflects name changes.</param>
     /// <param name="db">Database context for transaction support on delete.</param>
@@ -56,6 +58,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
     public RoomListViewModel(
         IRoomRepository repo,
         ICampusRepository campusRepo,
+        ISchedulingEnvironmentRepository envRepo,
         ISectionRepository sectionRepo,
         SectionListViewModel sectionListVm,
         IDatabaseContext db,
@@ -64,6 +67,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
     {
         _repo = repo;
         _campusRepo = campusRepo;
+        _envRepo = envRepo;
         _sectionRepo = sectionRepo;
         _sectionListVm = sectionListVm;
         _db = db;
@@ -76,17 +80,28 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
     private void Load()
     {
         var campusById = _campusRepo.GetAll().ToDictionary(c => c.Id, c => c.Name);
+        var roomTypeById = _envRepo.GetAll(SchedulingEnvironmentTypes.RoomType)
+            .ToDictionary(v => v.Id, v => v.Name);
         Rooms = new ObservableCollection<RoomRow>(
-            _repo.GetAll().Select(r => new RoomRow(r, ResolveCampus(r.CampusId, campusById))));
+            _repo.GetAll().Select(r => new RoomRow(r,
+                ResolveName(r.CampusId, campusById),
+                ResolveName(r.RoomTypeId, roomTypeById))));
     }
 
-    private static string ResolveCampus(string? campusId, Dictionary<string, string> lookup) =>
-        campusId is not null && lookup.TryGetValue(campusId, out var name) ? name : string.Empty;
+    private static string ResolveName(string? id, Dictionary<string, string> lookup) =>
+        id is not null && lookup.TryGetValue(id, out var name) ? name : string.Empty;
 
     /// <summary>Builds the campus option list for the edit form, with a leading "(none)" sentinel.</summary>
     private List<CampusOption> BuildCampusOptions() =>
         new List<CampusOption> { new(null, "(none)") }
             .Concat(_campusRepo.GetAll().Select(c => new CampusOption(c.Id, c.Name)))
+            .ToList();
+
+    /// <summary>Builds the room type option list for the edit form, with a leading "(none)" sentinel.</summary>
+    private List<RoomTypeOption> BuildRoomTypeOptions() =>
+        new List<RoomTypeOption> { new(null, "(none)") }
+            .Concat(_envRepo.GetAll(SchedulingEnvironmentTypes.RoomType)
+                .Select(v => new RoomTypeOption(v.Id, v.Name)))
             .ToList();
 
     /// <summary>
@@ -166,6 +181,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
         };
         EditVm = new RoomEditViewModel(room, isNew: true,
             campusOptions: BuildCampusOptions(),
+            roomTypeOptions: BuildRoomTypeOptions(),
             onSave: r => { _repo.Insert(r); Load(); SelectedRow = Rooms.FirstOrDefault(x => x.Room.Id == r.Id); EditVm = null; },
             onCancel: () => EditVm = null);
     }
@@ -185,10 +201,12 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
             Features   = s.Features,
             Notes      = s.Notes,
             CampusId   = s.CampusId,
+            RoomTypeId = s.RoomTypeId,
             SortOrder  = s.SortOrder,
         };
         EditVm = new RoomEditViewModel(copy, isNew: false,
             campusOptions: BuildCampusOptions(),
+            roomTypeOptions: BuildRoomTypeOptions(),
             onSave: r => { _repo.Update(r); Load(); SelectedRow = Rooms.FirstOrDefault(x => x.Room.Id == r.Id); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null);
     }
@@ -244,8 +262,9 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
 
 /// <summary>
 /// Display-ready row for the Rooms data grid.
-/// Pairs a <see cref="Room"/> model with its resolved campus display name.
+/// Pairs a <see cref="Room"/> model with its resolved campus and room type display names.
 /// </summary>
 /// <param name="Room">The underlying room model.</param>
 /// <param name="CampusName">Campus display name, or empty string when no campus is associated.</param>
-public record RoomRow(Room Room, string CampusName);
+/// <param name="RoomTypeName">Room type display name, or empty string when no room type is assigned.</param>
+public record RoomRow(Room Room, string CampusName, string RoomTypeName);

@@ -9,4 +9,5 @@ public static class SchedulingEnvironmentTypes
     public const string Tag         = "tag";
     public const string Resource    = "resource";
     public const string Reserve     = "reserve";
+    public const string RoomType    = "roomType";
 }

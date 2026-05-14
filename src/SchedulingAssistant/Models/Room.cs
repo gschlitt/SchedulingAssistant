@@ -16,6 +16,12 @@ public class Room
     public string? CampusId { get; set; }
 
     /// <summary>
+    /// Optional foreign key to a <c>SchedulingEnvironmentValue</c> of type "roomType".
+    /// Null when no room type is assigned.
+    /// </summary>
+    public string? RoomTypeId { get; set; }
+
+    /// <summary>
     /// Display order within the room list. Lower values appear first.
     /// Defaults to 0 for all existing records; densely re-packed after each move operation.
     /// </summary>

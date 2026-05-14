@@ -9,6 +9,11 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// <param name="Name">Display name.</param>
 public record CampusOption(string? Id, string Name);
 
+/// <summary>A room type item for room type dropdown pickers, with a sentinel "none" option.</summary>
+/// <param name="Id">SchedulingEnvironmentValue GUID, or null for the "(none)" sentinel entry.</param>
+/// <param name="Name">Display name.</param>
+public record RoomTypeOption(string? Id, string Name);
+
 /// <summary>
 /// ViewModel for the inline Add/Edit form in the Rooms management panel.
 /// Communicates results back to the parent list via callbacks.
@@ -27,6 +32,12 @@ public partial class RoomEditViewModel : ViewModelBase
     /// <summary>Currently selected campus option; null falls back to "(none)".</summary>
     [ObservableProperty] private CampusOption? _selectedCampus;
 
+    /// <summary>Room type choices for the room type dropdown, including a leading "(none)" sentinel.</summary>
+    public List<RoomTypeOption> RoomTypeOptions { get; }
+
+    /// <summary>Currently selected room type option; null falls back to "(none)".</summary>
+    [ObservableProperty] private RoomTypeOption? _selectedRoomType;
+
     /// <summary>"Add Room" or "Edit Room" depending on <see cref="IsNew"/>.</summary>
     public string Title => IsNew ? "Add Room" : "Edit Room";
 
@@ -40,18 +51,21 @@ public partial class RoomEditViewModel : ViewModelBase
     /// <param name="room">The model object to populate on save.</param>
     /// <param name="isNew">True when adding; false when editing.</param>
     /// <param name="campusOptions">Campus choices including the leading "(none)" entry.</param>
+    /// <param name="roomTypeOptions">Room type choices including the leading "(none)" entry.</param>
     /// <param name="onSave">Called with the updated model when the user saves.</param>
     /// <param name="onCancel">Called when the user cancels.</param>
     public RoomEditViewModel(
         Room room,
         bool isNew,
         List<CampusOption> campusOptions,
+        List<RoomTypeOption> roomTypeOptions,
         Action<Room> onSave,
         Action onCancel)
     {
         _room = room;
         IsNew = isNew;
         CampusOptions = campusOptions;
+        RoomTypeOptions = roomTypeOptions;
         _onSave = onSave;
         _onCancel = onCancel;
 
@@ -63,6 +77,8 @@ public partial class RoomEditViewModel : ViewModelBase
 
         SelectedCampus = campusOptions.FirstOrDefault(c => c.Id == room.CampusId)
                          ?? campusOptions[0]; // "(none)" sentinel
+        SelectedRoomType = roomTypeOptions.FirstOrDefault(t => t.Id == room.RoomTypeId)
+                           ?? roomTypeOptions[0]; // "(none)" sentinel
     }
 
     /// <summary>Writes field values back to the model and invokes the save callback.</summary>
@@ -75,6 +91,7 @@ public partial class RoomEditViewModel : ViewModelBase
         _room.Features   = Features.Trim();
         _room.Notes      = Notes.Trim();
         _room.CampusId   = SelectedCampus?.Id; // null when "(none)" is selected
+        _room.RoomTypeId = SelectedRoomType?.Id; // null when "(none)" is selected
         _onSave(_room);
     }
 

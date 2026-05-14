@@ -15,6 +15,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
     private readonly IInstructorRepository _instructorRepo;
+    private readonly IRoomRepository? _roomRepo;
     private readonly IDatabaseContext _db;
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDialogService _dialog;
@@ -65,7 +66,8 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         IDialogService dialog,
         WriteLockService lockService,
         bool showAbbreviation = false,
-        string? description = null)
+        string? description = null,
+        IRoomRepository? roomRepo = null)
     {
         _type = propertyType;
         DisplayName = displayName;
@@ -74,6 +76,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _instructorRepo = instructorRepo;
+        _roomRepo = roomRepo;
         _db = db;
         _sectionListVm = sectionListVm;
         _dialog = dialog;
@@ -199,7 +202,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             ? "all instructors that reference it"
             : _type == SchedulingEnvironmentTypes.Tag
                 ? "all sections and courses that reference it"
-                : "all sections in all semesters that reference it";
+                : _type == SchedulingEnvironmentTypes.RoomType
+                    ? "all rooms that reference it"
+                    : "all sections in all semesters that reference it";
 
         if (!await _dialog.Confirm($"Delete \"{name}\"?\n\nThis will also remove it from {affected}."))
             return;
@@ -236,6 +241,8 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
                             changed = true;
                         }
                         break;
+                    case SchedulingEnvironmentTypes.RoomType:
+                        break;
                 }
                 if (changed) _sectionRepo.Update(section, tx);
             }
@@ -258,6 +265,17 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
                 {
                     if (course.TagIds.Remove(id))
                         _courseRepo.Update(course, tx);
+                }
+            }
+
+            // Room types: clear the deleted type from every room that references it.
+            if (_type == SchedulingEnvironmentTypes.RoomType && _roomRepo is not null)
+            {
+                var rooms = _roomRepo.GetAll();
+                foreach (var room in rooms.Where(r => r.RoomTypeId == id))
+                {
+                    room.RoomTypeId = null;
+                    _roomRepo.Update(room);
                 }
             }
 

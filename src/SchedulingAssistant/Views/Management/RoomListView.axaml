@@ -15,7 +15,7 @@
                     <StackPanel Spacing="12" MaxWidth="420" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
 
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Building" Margin="0,0,8,4" />
                             <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding Building}" Margin="0,0,8,8" />
 
@@ -29,12 +29,19 @@
                                        DisplayMemberBinding="{Binding Name}"
                                        Margin="0,0,0,8" />
 
-                            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity" Margin="0,0,0,4" />
-                            <NumericUpDown Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Room Type" Margin="0,0,0,4" />
+                            <ComboBox  Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                                       ItemsSource="{Binding RoomTypeOptions}"
+                                       SelectedItem="{Binding SelectedRoomType}"
+                                       DisplayMemberBinding="{Binding Name}"
+                                       Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity" Margin="0,0,0,4" />
+                            <NumericUpDown Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
                                            Value="{Binding Capacity}" Minimum="0" FormatString="0" Margin="0,0,0,8" />
 
-                            <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Text="Features" Margin="0,0,0,4" />
-                            <TextBox   Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Features}" Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" Text="Features" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Features}" Margin="0,0,0,8" />
                         </Grid>
 
                         <TextBlock Text="Notes" />
@@ -64,6 +71,7 @@
                     <DataGridTextColumn Header="Building"  Binding="{Binding Room.Building}"   Width="*" />
                     <DataGridTextColumn Header="Room #"    Binding="{Binding Room.RoomNumber}"  Width="80" />
                     <DataGridTextColumn Header="Campus"    Binding="{Binding CampusName}"       Width="120" />
+                    <DataGridTextColumn Header="Type"      Binding="{Binding RoomTypeName}"     Width="100" />
                     <DataGridTextColumn Header="Capacity"  Binding="{Binding Room.Capacity}"    Width="80" />
                     <DataGridTextColumn Header="Features"  Binding="{Binding Room.Features}"    Width="*" />
                 </DataGrid.Columns>

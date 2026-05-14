@@ -40,7 +40,10 @@ public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissabl
                 description: "Special facilities or equipment a section requires — e.g. Recording Studio, Smart Board."),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Reserve,     "Reserve Codes", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
                 description: "Enrollment codes for reserved registration access to specific student groups."),
-            new RoomListViewModel(roomRepo, campusRepo, sectionRepo, sectionListVm, db, dialog, lockService),
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.RoomType,   "Room Types",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+                description: "Classify rooms by purpose — e.g. Lecture Hall, Lab, Seminar Room.",
+                roomRepo: roomRepo),
+            new RoomListViewModel(roomRepo, campusRepo, repo, sectionRepo, sectionListVm, db, dialog, lockService),
             new CampusListViewModel(campusRepo, dialog, lockService),
         };
         SelectedCategory = Categories[0];
