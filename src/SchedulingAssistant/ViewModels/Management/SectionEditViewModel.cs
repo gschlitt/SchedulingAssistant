@@ -656,6 +656,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private bool CanOpenRoomBrowser() =>
         Meetings.Count > 0 && Meetings.All(m => m.SelectedBlockLength.HasValue);
 
+
     [RelayCommand(CanExecute = nameof(CanOpenRoomBrowser))]
     private void OpenRoomBrowser()
     {
@@ -697,6 +698,9 @@ public partial class SectionEditViewModel : ViewModelBase
     /// </summary>
     private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
     {
+        // Disconnect pattern coupling so per-day solutions don't fight the propagation handler.
+        TearDownPatternCoupling();
+
         foreach (var sol in solutions)
         {
             if (sol.SpecIndex < 0 || sol.SpecIndex >= Meetings.Count) continue;
