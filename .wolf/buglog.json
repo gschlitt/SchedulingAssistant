@@ -10222,6 +10222,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-15T05:07:20.121Z"
+    },
+    {
+      "id": "bug-639",
+      "timestamp": "2026-05-15T15:08:00.488Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T15:08:00.488Z"
+    },
+    {
+      "id": "bug-640",
+      "timestamp": "2026-05-15T15:35:23.805Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 12→9 lines (4 removed) | Also: // Use a Binding (not explicit DataContext) so dat; // matches the original AXAML: DataContext=\"{Bindi",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T15:35:32.860Z"
+    },
+    {
+      "id": "bug-641",
+      "timestamp": "2026-05-15T15:49:29.718Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→12 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T15:49:29.718Z"
     }
   ]
 }

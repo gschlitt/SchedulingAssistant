@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -39,12 +40,29 @@ public static class HelpTip
             "Text", typeof(HelpTip));
 
     /// <summary>
+    /// Alternate description shown when the control is disabled (<c>IsEnabled = false</c>).
+    /// When null the normal <see cref="TextProperty"/> text is always used regardless of state.
+    /// </summary>
+    public static readonly AttachedProperty<string?> DisabledTextProperty =
+        AvaloniaProperty.RegisterAttached<Control, string?>(
+            "DisabledText", typeof(HelpTip));
+
+    /// <summary>
     /// Optional URL opened when the user clicks "More help →" in the tooltip.
     /// When null or empty the link row is not rendered.
     /// </summary>
     public static readonly AttachedProperty<string?> MoreHelpUrlProperty =
         AvaloniaProperty.RegisterAttached<Control, string?>(
             "MoreHelpUrl", typeof(HelpTip));
+
+    /// <summary>
+    /// Internal property to track the <c>IsEnabled</c> event handler per control,
+    /// so it can be unsubscribed when <see cref="DisabledTextProperty"/> is cleared or overwritten.
+    /// </summary>
+    private static readonly AttachedProperty<EventHandler<AvaloniaPropertyChangedEventArgs>?>
+        IsEnabledHandlerProperty =
+            AvaloniaProperty.RegisterAttached<Control, EventHandler<AvaloniaPropertyChangedEventArgs>?>(
+                "IsEnabledHandler", typeof(HelpTip));
 
     // ── Getters / setters (required by Avalonia for attached properties) ───────
 
@@ -53,6 +71,12 @@ public static class HelpTip
 
     /// <summary>Sets the tooltip description text on <paramref name="c"/>.</summary>
     public static void SetText(Control c, string? value) => c.SetValue(TextProperty, value);
+
+    /// <summary>Gets the disabled-state tooltip text attached to <paramref name="c"/>.</summary>
+    public static string? GetDisabledText(Control c) => c.GetValue(DisabledTextProperty);
+
+    /// <summary>Sets the disabled-state tooltip text on <paramref name="c"/>.</summary>
+    public static void SetDisabledText(Control c, string? value) => c.SetValue(DisabledTextProperty, value);
 
     /// <summary>Gets the "More help" URL attached to <paramref name="c"/>.</summary>
     public static string? GetMoreHelpUrl(Control c) => c.GetValue(MoreHelpUrlProperty);
@@ -65,16 +89,44 @@ public static class HelpTip
     static HelpTip()
     {
         TextProperty.Changed.AddClassHandler<Control>(OnPropertyChanged);
+        DisabledTextProperty.Changed.AddClassHandler<Control>(OnDisabledTextChanged);
         MoreHelpUrlProperty.Changed.AddClassHandler<Control>(OnPropertyChanged);
     }
 
     // ── Internal logic ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Rebuilds the tooltip whenever either attached property changes on a control.
+    /// Rebuilds the tooltip whenever <see cref="TextProperty"/> or <see cref="MoreHelpUrlProperty"/> changes.
     /// </summary>
     private static void OnPropertyChanged(Control c, AvaloniaPropertyChangedEventArgs e)
         => RebuildTooltip(c);
+
+    /// <summary>
+    /// When <see cref="DisabledTextProperty"/> is set, subscribes to the control's
+    /// <c>PropertyChanged</c> to detect <c>IsEnabled</c> transitions and swap tooltip text.
+    /// Removes any prior handler to avoid duplicates.
+    /// </summary>
+    private static void OnDisabledTextChanged(Control c, AvaloniaPropertyChangedEventArgs e)
+    {
+        // Remove prior handler if any
+        var oldHandler = c.GetValue(IsEnabledHandlerProperty);
+        if (oldHandler is not null)
+            c.PropertyChanged -= oldHandler;
+        c.SetValue(IsEnabledHandlerProperty, null);
+
+        if (e.NewValue is string s && !string.IsNullOrWhiteSpace(s))
+        {
+            EventHandler<AvaloniaPropertyChangedEventArgs> handler = (_, pe) =>
+            {
+                if (pe.Property == InputElement.IsEnabledProperty)
+                    RebuildTooltip(c);
+            };
+            c.PropertyChanged += handler;
+            c.SetValue(IsEnabledHandlerProperty, handler);
+        }
+
+        RebuildTooltip(c);
+    }
 
     /// <summary>
     /// Constructs and assigns a styled <see cref="ToolTip"/> to <paramref name="c"/>,
@@ -82,7 +134,10 @@ public static class HelpTip
     /// </summary>
     private static void RebuildTooltip(Control c)
     {
-        var text = GetText(c);
+        var disabledText = GetDisabledText(c);
+        var text = !c.IsEnabled && !string.IsNullOrWhiteSpace(disabledText)
+            ? disabledText
+            : GetText(c);
 
         if (string.IsNullOrWhiteSpace(text))
         {

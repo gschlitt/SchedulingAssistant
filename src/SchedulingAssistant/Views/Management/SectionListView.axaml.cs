@@ -26,6 +26,8 @@ public partial class SectionListView : UserControl
         // the ListBox's bubble-phase selection-change handler.
         AttachedToVisualTree += OnAttachedToVisualTree;
 
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
+
         // Note: DoubleTapped (open inline editor) and LostFocus forwarding (commit section
         // code) are handled declaratively via DoubleTapCommandBehavior and
         // LostFocusForwardBehavior attached to the AXAML elements. No code-behind needed.
@@ -73,6 +75,19 @@ public partial class SectionListView : UserControl
 
         if (_vm is not null)
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+    }
+
+    /// <summary>
+    /// Cleanup when removed from the visual tree (e.g. detached window closing).
+    /// Unsubscribes from the long-lived VM so the discarded view can be garbage-collected.
+    /// </summary>
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _vm = null;
+        }
     }
 
     /// <summary>

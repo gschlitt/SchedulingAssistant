@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using System;
 
 namespace SchedulingAssistant.Views;
@@ -41,6 +42,17 @@ public partial class DetachedPanelWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        // Clear content before reattach so child views receive a null DataContext,
+        // which triggers their OnDataContextChanged to unsubscribe PropertyChanged
+        // handlers from the long-lived ViewModels. Without this, every detach/reattach
+        // cycle leaks the entire discarded view tree (canvas, tile controls, timers, etc.)
+        // because the VM holds a strong reference via PropertyChanged.
+        var contentArea = this.FindControl<ContentControl>("ContentArea");
+        if (contentArea is not null) contentArea.Content = null;
+
+        var headerArea = this.FindControl<ContentPresenter>("HeaderContextArea");
+        if (headerArea is not null) headerArea.Content = null;
+
         base.OnClosed(e);
         OnReattach?.Invoke();
     }

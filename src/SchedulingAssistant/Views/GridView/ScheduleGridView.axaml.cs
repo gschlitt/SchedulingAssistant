@@ -149,6 +149,7 @@ public partial class ScheduleGridView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
         SizeChanged += OnSizeChangedDebounced;
 
         // Wire up zoom slider to ScaleTransform on the zoom container
@@ -249,6 +250,24 @@ public partial class ScheduleGridView : UserControl
             _vm.PropertyChanged += OnVmPropertyChanged;
 
         Render();
+    }
+
+    /// <summary>
+    /// Cleanup when removed from the visual tree (e.g. detached window closing).
+    /// Unsubscribes from the long-lived VM and releases heavy rendering state so
+    /// the discarded view can be garbage-collected.
+    /// </summary>
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm = null;
+        }
+        _resizeDebounce?.Stop();
+        _canvas?.Children.Clear();
+        _entryRowRegistry.Clear();
+        _ghostControls.Clear();
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)

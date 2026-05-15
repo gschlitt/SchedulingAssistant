@@ -1010,7 +1010,10 @@ public partial class MainWindow : Window
             () => new SectionPanelContent { DataContext = Vm },
             () =>
             {
-                slot.PanelContent = new SectionPanelContent { DataContext = Vm };
+                // No explicit DataContext — inherit from the visual tree (MainWindowViewModel).
+                // Setting a local value here would pin the SPC to the current VM instance,
+                // surviving database switches where MainWindow.DataContext changes to a new VM.
+                slot.PanelContent = new SectionPanelContent();
                 slot.IsVisible = true;
                 _sectionViewWindow = null;
             },
@@ -1040,9 +1043,11 @@ public partial class MainWindow : Window
             () => new ScheduleGridView { DataContext = Vm.ScheduleGridVm },
             () =>
             {
-                // On reattach, create a fresh view and update the instance reference
-                // used by ExportViewModel for PNG export.
-                var freshView = new ScheduleGridView { DataContext = Vm.ScheduleGridVm };
+                // On reattach, create a fresh view with a DataContext BINDING (not local value)
+                // so it tracks database switches. A local value would pin it to the current
+                // ScheduleGridVm, surviving MainWindow.DataContext changes on DB switch.
+                var freshView = new ScheduleGridView();
+                freshView.Bind(DataContextProperty, new Binding("ScheduleGridVm"));
                 if (MainViewControl is not null) MainViewControl.ScheduleGridViewInstance = freshView;
                 slot.PanelContent = freshView;
                 slot.IsVisible = true;

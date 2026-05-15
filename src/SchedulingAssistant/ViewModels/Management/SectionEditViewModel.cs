@@ -536,6 +536,8 @@ public partial class SectionEditViewModel : ViewModelBase
             Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, _roomTypeOptions, entry, defaultBlockLength, _showMeetingWarning,
                 unit: AppSettings.Current.BlockLengthUnit));
 
+        WireMeetingDurationWatch();
+
         // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
         _isConstructed = true;
 
@@ -598,6 +600,30 @@ public partial class SectionEditViewModel : ViewModelBase
         };
     }
 
+    /// <summary>
+    /// Subscribes to <see cref="Meetings"/> collection changes and each meeting's
+    /// <c>SelectedBlockLength</c> so the Room Browser command re-evaluates CanExecute.
+    /// </summary>
+    private void WireMeetingDurationWatch()
+    {
+        foreach (var m in Meetings)
+            m.PropertyChanged += OnMeetingBlockLengthChanged;
+
+        Meetings.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is not null)
+                foreach (SectionMeetingViewModel m in e.NewItems)
+                    m.PropertyChanged += OnMeetingBlockLengthChanged;
+            OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+        };
+    }
+
+    private void OnMeetingBlockLengthChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
+            OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+    }
+
     private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
         IReadOnlyList<SchedulingEnvironmentValue> values)
     {
@@ -624,7 +650,13 @@ public partial class SectionEditViewModel : ViewModelBase
     public Func<IReadOnlyList<MeetingSpec>, Action<IReadOnlyList<SpecSolution>>, Action, RoomAvailabilityBrowserViewModel>?
         CreateRoomBrowser { get; set; }
 
-    [RelayCommand]
+    /// <summary>
+    /// Room Browser requires at least one meeting, and every meeting must have a duration.
+    /// </summary>
+    private bool CanOpenRoomBrowser() =>
+        Meetings.Count > 0 && Meetings.All(m => m.SelectedBlockLength.HasValue);
+
+    [RelayCommand(CanExecute = nameof(CanOpenRoomBrowser))]
     private void OpenRoomBrowser()
     {
         if (CreateRoomBrowser == null) return;
