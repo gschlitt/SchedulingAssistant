@@ -18,10 +18,6 @@ public partial class SectionListView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
 
-        // Measure content width after the control is first attached to the visual tree,
-        // so the left panel column is sized to fit the section cards at startup.
-        AttachedToVisualTree += (_, _) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
-
         // Handle keyboard shortcuts: Ctrl+S to save, Esc to cancel
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
 
@@ -81,28 +77,11 @@ public partial class SectionListView : UserControl
 
     /// <summary>
     /// Responds to property changes on the ViewModel that require the view to take action.
-    /// Two cases are handled here rather than in the ViewModel because both are purely visual
-    /// concerns — they require direct access to named controls or Avalonia layout APIs that
-    /// a ViewModel must not know about:
-    /// <list type="bullet">
-    ///   <item><description>
-    ///     <b>SectionItems changed</b> — re-measures the content stack to widen the left panel
-    ///     column if new cards are wider than the current allocation.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <b>EditVm changed</b> — re-scrolls the selected item into view after the inline
-    ///     editor opens or closes. See <see cref="ScrollSelectedItemIntoView"/> for the full
-    ///     rationale.
-    ///   </description></item>
-    /// </list>
+    /// These are purely visual concerns that require direct access to named controls or
+    /// Avalonia layout APIs that a ViewModel must not know about.
     /// </summary>
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Re-measure the content width when the section list changes, in case new cards
-        // are wider than the current column. Deferred to the next layout pass.
-        if (e.PropertyName == nameof(SectionListViewModel.SectionItems))
-            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateColumnWidth);
-
         // When the selected item changes (e.g. cross-view selection sync from the
         // Schedule Grid), scroll it into view. SuppressPopupScrollBehavior blocks the
         // ListBox's built-in RequestBringIntoView, so we handle it here via direct
@@ -112,19 +91,13 @@ public partial class SectionListView : UserControl
                 ScrollSelectedItemIntoView,
                 Avalonia.Threading.DispatcherPriority.Background);
 
-        // When the inline editor opens or closes, re-measure content width so the
-        // column hugs the editor form (or snaps back to card width).
-        // Also re-scroll the selected item into view since the layout shift from
-        // expanding/collapsing the editor can push it out of the viewport.
+        // When the inline editor opens or closes, re-scroll the selected item into view
+        // since the layout shift from expanding/collapsing the editor can push it out
+        // of the viewport.
         if (e.PropertyName == nameof(SectionListViewModel.EditVm))
-        {
-            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-                UpdateColumnWidth,
-                Avalonia.Threading.DispatcherPriority.Background);
             Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
                 ScrollSelectedItemIntoView,
                 Avalonia.Threading.DispatcherPriority.Background);
-        }
     }
 
     /// <summary>
@@ -166,42 +139,6 @@ public partial class SectionListView : UserControl
             scrollViewer.Offset = scrollViewer.Offset.WithY(offsetY + y);
         else if (y + containerHeight > viewportHeight)
             scrollViewer.Offset = scrollViewer.Offset.WithY(offsetY + y + containerHeight - viewportHeight);
-    }
-
-    /// <summary>
-    /// Measures the desired (unconstrained) width of the section list's content stack
-    /// and sets ThreePanelGrid's left column to match. When editing, the editor form
-    /// drives the width; otherwise the section cards do. A 20px hysteresis threshold
-    /// avoids constant small adjustments when not editing.
-    /// </summary>
-    private void UpdateColumnWidth()
-    {
-        var stackPanel = this.FindControl<StackPanel>("ListContentPanel");
-
-        if (stackPanel is null) return;
-
-        var mainWindow = TopLevel.GetTopLevel(this) as TopLevel;
-        if (mainWindow is null) return;
-
-        stackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var desiredWidth = stackPanel.DesiredSize.Width;
-        var requiredWidth = Math.Ceiling(desiredWidth) + 12;
-
-        var threePanelGrid = mainWindow.FindControl<Grid>("ThreePanelGrid");
-        if (threePanelGrid is null) return;
-
-        if (_vm?.IsEditing ?? false)
-        {
-            // When editing, set the column to the exact measured width.
-            threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
-        }
-        else
-        {
-            // When not editing, only widen (never shrink) with hysteresis.
-            var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
-            if (requiredWidth > currentWidth + 20)
-                threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
-        }
     }
 
     /// <summary>

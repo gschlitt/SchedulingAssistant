@@ -435,9 +435,9 @@
 				x:Name="ThreePanelGrid"
 				b:ConditionalColumnWidthBehavior.ColumnIndex="0"
 				b:ConditionalColumnWidthBehavior.Condition="{Binding IsAnyPanelEditing}"
-				b:ConditionalColumnWidthBehavior.FalseWidth="370"
-				b:ConditionalColumnWidthBehavior.TrueWidth="370"
-				ColumnDefinitions="370,4,*">
+				b:ConditionalColumnWidthBehavior.FalseWidth="440"
+				b:ConditionalColumnWidthBehavior.TrueWidth="-1"
+				ColumnDefinitions="440,4,*">
 
 				<!--  Left column: Section Editor (top) + Workload (bottom)  -->
 				<Grid Grid.Column="0" RowDefinitions="*,4,200">

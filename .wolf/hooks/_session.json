@@ -1,297 +1,56 @@
 {
-  "session_id": "session-2026-05-15-2034",
-  "started": "2026-05-15T03:34:01.268Z",
+  "session_id": "session-2026-05-15-2204",
+  "started": "2026-05-15T05:04:07.573Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-15T03:39:32.137Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml": {
-      "count": 1,
-      "tokens": 1115,
-      "first_read": "2026-05-15T03:39:38.107Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
-      "count": 22,
-      "tokens": 22579,
-      "first_read": "2026-05-15T03:40:45.669Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs": {
-      "count": 3,
-      "tokens": 2331,
-      "first_read": "2026-05-15T03:40:45.955Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml.cs": {
-      "count": 1,
-      "tokens": 124,
-      "first_read": "2026-05-15T03:42:33.676Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs": {
-      "count": 1,
-      "tokens": 14494,
-      "first_read": "2026-05-15T03:51:49.332Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs": {
-      "count": 1,
-      "tokens": 11357,
-      "first_read": "2026-05-15T03:51:56.590Z"
-    },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml": {
-      "count": 4,
-      "tokens": 6048,
-      "first_read": "2026-05-15T03:55:49.855Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/ConditionalColumnWidthBehavior.cs": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-05-15T03:59:32.338Z"
+      "first_read": "2026-05-15T05:04:18.397Z"
     },
     "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs": {
-      "count": 8,
-      "tokens": 3201,
-      "first_read": "2026-05-15T04:03:35.307Z"
+      "count": 2,
+      "tokens": 2366,
+      "first_read": "2026-05-15T05:04:18.444Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/SectionPanelContent.axaml": {
-      "count": 1,
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
+      "count": 6,
       "tokens": 0,
-      "first_read": "2026-05-15T04:30:23.089Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Controls/DetachablePanel.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-15T04:31:52.209Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/WorkloadPanelView.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-15T04:32:26.563Z"
+      "first_read": "2026-05-15T05:04:25.700Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 31,
-      "at": "2026-05-15T03:44:05.521Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 35,
-      "at": "2026-05-15T03:44:17.639Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 23,
-      "at": "2026-05-15T03:44:23.172Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 50,
-      "at": "2026-05-15T03:44:35.237Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 23,
-      "at": "2026-05-15T03:44:42.242Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 1,
-      "at": "2026-05-15T03:44:49.582Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T03:45:01.574Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 921,
-      "at": "2026-05-15T03:45:21.188Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 18,
-      "at": "2026-05-15T03:45:45.641Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml",
-      "action": "create",
-      "tokens": 122,
-      "at": "2026-05-15T03:46:54.033Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
-      "action": "edit",
-      "tokens": 66,
-      "at": "2026-05-15T03:52:07.537Z"
-    },
-    {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
       "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T03:56:35.602Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 25,
-      "at": "2026-05-15T03:56:41.344Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/ConditionalColumnWidthBehavior.cs",
-      "action": "edit",
-      "tokens": 292,
-      "at": "2026-05-15T04:01:20.083Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T04:01:25.890Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 1342,
-      "at": "2026-05-15T04:01:57.938Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 44,
-      "at": "2026-05-15T04:02:14.604Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 114,
-      "at": "2026-05-15T04:02:28.804Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 133,
-      "at": "2026-05-15T04:02:35.672Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 134,
-      "at": "2026-05-15T04:02:42.087Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 133,
-      "at": "2026-05-15T04:02:49.376Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 134,
-      "at": "2026-05-15T04:02:54.765Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 133,
-      "at": "2026-05-15T04:03:01.685Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 155,
-      "at": "2026-05-15T04:03:29.593Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T04:08:04.458Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T04:09:41.099Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 93,
-      "at": "2026-05-15T04:09:47.724Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 82,
-      "at": "2026-05-15T04:09:55.281Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 119,
-      "at": "2026-05-15T04:27:08.537Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T04:33:25.502Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T04:40:09.459Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 95,
-      "at": "2026-05-15T04:40:17.813Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/MainView.axaml",
-      "action": "edit",
-      "tokens": 14,
-      "at": "2026-05-15T04:47:39.596Z"
+      "tokens": 30,
+      "at": "2026-05-15T05:06:49.950Z"
     },
     {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
       "action": "edit",
-      "tokens": 442,
-      "at": "2026-05-15T04:48:06.757Z"
+      "tokens": 20,
+      "at": "2026-05-15T05:07:00.144Z"
     },
     {
       "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
       "action": "edit",
-      "tokens": 211,
-      "at": "2026-05-15T04:48:18.835Z"
+      "tokens": 394,
+      "at": "2026-05-15T05:07:20.111Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "action": "edit",
+      "tokens": 5,
+      "at": "2026-05-15T05:07:32.850Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs": 7,
-    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 16,
-    "src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml": 1,
-    "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs": 1,
-    "src/SchedulingAssistant/Views/MainView.axaml": 7,
-    "src/SchedulingAssistant/Behaviors/ConditionalColumnWidthBehavior.cs": 1,
-    "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs": 2
+    "src/SchedulingAssistant/Views/MainView.axaml": 1,
+    "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs": 3
   },
-  "anatomy_hits": 6,
-  "anatomy_misses": 7,
-  "repeated_reads_warned": 33,
+  "anatomy_hits": 0,
+  "anatomy_misses": 3,
+  "repeated_reads_warned": 6,
   "cerebrum_warnings": 0,
-  "stop_count": 11
+  "stop_count": 1
 }

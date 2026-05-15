@@ -193,8 +193,9 @@
                         <Button
                             Margin="0,0,4,0"
                             Padding="4,2,4,3"
+                            FontSize="11"
                             Command="{Binding AddMeetingCommand}"
-                            Content="+meeting" />                        
+                            Content="+Meeting" />                        
                         <Button
                             VerticalAlignment="Bottom"
                             Command="{Binding ApplyPattern1Command}"
@@ -234,7 +235,7 @@
 
                     <!--  Schedule  -->
                     <TextBlock
-                        Margin="0,0,0,3"
+                        Margin="0,3,0,3"
                         FontWeight="SemiBold"
                         Foreground="{StaticResource TextLabel}"
                         Text="Schedule" />
@@ -511,10 +512,11 @@
 
                       <!-- Row 0, Col 0: Room Browser button (always visible) -->
                       <Button Grid.Row="0" Grid.Column="0"
-                              Padding="4,2,4,3" FontSize="10"
+                              Padding="4,4,4,4" 
                               Command="{Binding OpenRoomBrowserCommand}"
                               Content="Room Browser"
-                              ToolTip.Tip="Browse room availability" />
+                              FontSize="11"
+                              b:HelpTip.Text="Enter your minimal requirements for section times first" />
 
                       <!-- Row 0, Col 1: Solution stepping carets + counter -->
                       <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="0"
@@ -523,7 +525,7 @@
                         <Button Content="&#x2039;" FontSize="11" Padding="3,1" MinWidth="0"
                                 Command="{Binding RoomBrowserVm.PreviousSolutionCommand}"
                                 IsEnabled="{Binding RoomBrowserVm.CanGoPrevious}"/>
-                        <TextBlock Text="{Binding RoomBrowserVm.SolutionLabel}" FontSize="9"
+                        <TextBlock Text="{Binding RoomBrowserVm.SolutionLabel}" FontSize="10"
                                    VerticalAlignment="Center" Margin="3,0"
                                    Foreground="{DynamicResource TextPrimary}"/>
                         <Button Content="&#x203A;" FontSize="11" Padding="3,1" MinWidth="0"
@@ -869,7 +871,7 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*">
+    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*" ColumnDefinitions="Auto">
 
         <!--  Add-to-semester prompt — shown in multi-semester mode when Add is clicked  -->
         <Border
@@ -1021,8 +1023,7 @@
                             <Border
                                 Margin="0,2,0,2"
                                 HorizontalAlignment="Left"
-                                MinWidth="350"
-                                MaxWidth="370"
+                                MinWidth="400"                                
                                 BorderBrush="{StaticResource UserSelectedSectionBorderColor}"
                                 BorderThickness="{Binding IsSelected, Converter={StaticResource FilterBorderThicknessConverter}}"
                                 CornerRadius="5">

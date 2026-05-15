@@ -10190,6 +10190,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-15T04:48:06.777Z"
+    },
+    {
+      "id": "bug-637",
+      "timestamp": "2026-05-15T05:06:49.959Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"370\"",
+      "fix": "Changed to \"-1\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T05:06:49.959Z"
+    },
+    {
+      "id": "bug-638",
+      "timestamp": "2026-05-15T05:07:20.121Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "root_cause": "23 lines replaced/restructured",
+      "fix": "Rewrote 47→24 lines (23 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T05:07:20.121Z"
     }
   ]
 }

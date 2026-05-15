@@ -186,7 +186,7 @@
 											ItemsSource="{Binding Items}">
 											<ItemsControl.ItemsPanel>
 												<ItemsPanelTemplate>
-													<WrapPanel HorizontalAlignment="Left" Orientation="Horizontal" />
+													<WrapPanel HorizontalAlignment="Left" Orientation="Horizontal" MaxWidth="200" />
 												</ItemsPanelTemplate>
 											</ItemsControl.ItemsPanel>
 											<ItemsControl.ItemTemplate>
