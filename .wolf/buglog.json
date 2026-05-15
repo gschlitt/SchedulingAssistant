@@ -10270,6 +10270,150 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-15T15:49:29.718Z"
+    },
+    {
+      "id": "bug-642",
+      "timestamp": "2026-05-15T16:30:34.266Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→20 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T16:30:34.266Z"
+    },
+    {
+      "id": "bug-643",
+      "timestamp": "2026-05-15T18:33:18.799Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→28 lines (2 removed) | Also: if (_solutions.Count == 0 || CurrentSolutionIndex ; var solution = _solutions[CurrentSolutionIndex];",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T18:33:34.625Z"
+    },
+    {
+      "id": "bug-644",
+      "timestamp": "2026-05-15T18:48:15.662Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T18:48:15.662Z"
+    },
+    {
+      "id": "bug-645",
+      "timestamp": "2026-05-15T19:13:15.803Z",
+      "error_message": "Wrong reference: private should be internal",
+      "file": "src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
+      "root_cause": "Used \"private\" instead of \"internal\"",
+      "fix": "Changed private → internal",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T19:13:15.803Z"
+    },
+    {
+      "id": "bug-646",
+      "timestamp": "2026-05-15T19:14:20.179Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T19:14:20.179Z"
+    },
+    {
+      "id": "bug-647",
+      "timestamp": "2026-05-15T19:40:19.355Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T19:40:19.355Z"
+    },
+    {
+      "id": "bug-648",
+      "timestamp": "2026-05-15T19:51:02.012Z",
+      "error_message": "Missing guard clause",
+      "file": "../../../.claude/plans/we-need-to-debug-sunny-octopus.md",
+      "root_cause": "No early return/throw for edge case: sameDayGroups.Count > 0",
+      "fix": "Added guard clause: if (sameDayGroups.Count > 0)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T19:51:02.012Z"
+    },
+    {
+      "id": "bug-649",
+      "timestamp": "2026-05-15T19:52:41.620Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/RoomAvailabilityService.cs",
+      "root_cause": "No early return/throw for edge case: !groups.TryGetValue(day, out var list",
+      "fix": "Added guard clause: if (!groups.TryGetValue(day, out var list)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T19:52:41.620Z"
+    },
+    {
+      "id": "bug-650",
+      "timestamp": "2026-05-15T19:55:25.419Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T19:55:25.419Z"
     }
   ]
 }

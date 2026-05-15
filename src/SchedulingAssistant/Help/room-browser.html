@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Browser — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Room Browser</h1>
+
+<p>
+    The Room Browser helps you find rooms that fit your section's meeting schedule.
+    Rather than manually checking each room's availability, it scans every room in
+    the system and ranks the results so the best options appear first.
+</p>
+
+<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
+<div class="video-section">
+    <p class="video-label">Video: Room Browser</p>
+    <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <strong>Room Browser Video — Coming Soon</strong>
+        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>room-browser.html</code> and add your YouTube video ID.</p>
+    </div>
+    <!--
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+            title="TermPoint — Room Browser"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+    -->
+</div>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+<h2>Before You Start</h2>
+
+<p>
+    The Room Browser button is enabled once every meeting on the section has a
+    <strong>duration</strong> set. You don't need to fill in days or start times —
+    the browser can work with partial information and will search for slots that fit.
+</p>
+
+<ul>
+    <li><strong>Duration</strong> — required for every meeting.</li>
+    <li><strong>Day</strong> — optional. Leave blank and the browser will consider all weekdays.</li>
+    <li><strong>Start time</strong> — optional. Leave blank and the browser will try every legal start time.</li>
+</ul>
+
+<p>
+    Remote meetings are excluded automatically since they don't need a physical room.
+</p>
+
+<h2>How Results Are Ranked</h2>
+
+<p>
+    Solutions are grouped into three tiers based on how well they satisfy your
+    requirements:
+</p>
+
+<ul>
+    <li>
+        <strong>Tier 1 — Exact match.</strong>
+        Every meeting lands in the same room, on the day and time you specified
+        (or the best available slot if you left those open).
+    </li>
+    <li>
+        <strong>Tier 2 — Same room, different times.</strong>
+        All meetings share one room, but some times were adjusted to avoid conflicts.
+    </li>
+    <li>
+        <strong>Tier 3 — Split rooms.</strong>
+        Meetings are spread across more than one room because no single room
+        could accommodate the entire schedule.
+    </li>
+</ul>
+
+<h2>Stepping Through Solutions</h2>
+
+<p>
+    Use the <strong>&lsaquo;</strong> and <strong>&rsaquo;</strong> arrows next to
+    the Room Browser button to cycle through the available solutions. The counter
+    shows your position (e.g. "3 / 12") and the tier label tells you which
+    tier you're viewing.
+</p>
+
+<h2>Accepting a Solution</h2>
+
+<p>
+    Click <strong>Accept</strong> to apply the currently displayed solution. The
+    browser fills in any blank day, start time, and room fields on your meetings —
+    it never overwrites values you've already entered. Click <strong>Cancel</strong>
+    to close the browser without making changes.
+</p>
+
+</body>
+</html>

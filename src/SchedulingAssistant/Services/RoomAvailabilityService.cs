@@ -335,16 +335,18 @@ public class RoomAvailabilityService
                 var alt = ResolveToTemplateDaySpecs(gapSpecs, resolvedDays, legalStartTimes, openStarts: true);
                 if (alt != null)
                 {
-                    ScanTier1(alt, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern);
-                    ScanTier2a(alt, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern);
-                    ScanTier2b(alt, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms);
-                    ScanTier3(alt, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms);
+                    ScanTier1(alt, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern, isAlternative: true);
+                    ScanTier2a(alt, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern, isAlternative: true);
+                    ScanTier2b(alt, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms, isAlternative: true);
+                    ScanTier3(alt, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms, isAlternative: true);
                 }
             }
         }
 
         solutions.Sort((a, b) =>
         {
+            // Primaries before alternatives.
+            if (a.IsAlternative != b.IsAlternative) return a.IsAlternative ? 1 : -1;
             if (a.IsPatternMatch != b.IsPatternMatch) return a.IsPatternMatch ? -1 : 1;
             int cmp = a.Tier.CompareTo(b.Tier);
             if (cmp != 0) return cmp;
@@ -504,8 +506,12 @@ public class RoomAvailabilityService
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
         HashSet<string> seen,
-        bool isPatternMatch = false)
+        bool isPatternMatch = false,
+        bool isAlternative = false)
     {
+        // Same start time on the same day = guaranteed overlap.
+        if (FindSameDayGroups(gapSpecs).Count > 0) return;
+
         // Find start times that are legal on ALL gap days.
         var commonStarts = gapSpecs[0].LegalStartTimes.AsEnumerable();
         for (int i = 1; i < gapSpecs.Count; i++)
@@ -526,7 +532,7 @@ public class RoomAvailabilityService
                     .Select(spec => new SolutionSlot(spec.Day, startTime, spec.DurationMinutes, room.Id, label))
                     .ToList();
 
-                TryAddSolution(newSlots, fixedSlots, solutions, seen, isPatternMatch);
+                TryAddSolution(newSlots, fixedSlots, solutions, seen, isPatternMatch, isAlternative);
             }
         }
     }
@@ -538,38 +544,53 @@ public class RoomAvailabilityService
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
         HashSet<string> seen,
-        bool isPatternMatch = false)
+        bool isPatternMatch = false,
+        bool isAlternative = false)
     {
+        var sameDayGroups = FindSameDayGroups(gapSpecs);
+        bool hasSameDaySpecs = sameDayGroups.Count > 0;
+        var orderings = BuildSpecOrderings(gapSpecs, sameDayGroups);
+
         foreach (var room in rooms)
         {
             string label = RoomLabel(room);
-            var daySlots = new List<SolutionSlot>();
-            bool allDaysCovered = true;
 
-            foreach (var spec in gapSpecs)
+            foreach (var order in orderings)
             {
-                int? earliest = spec.LegalStartTimes
-                    .OrderBy(t => t)
-                    .FirstOrDefault(t => index.IsAvailable(room.Id, spec.Day, t, spec.DurationMinutes));
+                var daySlots = new List<SolutionSlot>();
+                bool allDaysCovered = true;
 
-                // FirstOrDefault returns 0 for int, so check if the value is actually legal.
-                if (earliest == default && !spec.LegalStartTimes.Contains(0))
+                foreach (int idx in order)
                 {
-                    allDaysCovered = false;
-                    break;
+                    var spec = gapSpecs[idx];
+
+                    // Find the earliest legal start where the room is free
+                    // AND doesn't overlap any same-day slot already assigned.
+                    bool found = false;
+                    int earliest = 0;
+                    foreach (int t in spec.LegalStartTimes.OrderBy(t => t))
+                    {
+                        if (index.IsAvailable(room.Id, spec.Day, t, spec.DurationMinutes)
+                            && (!hasSameDaySpecs || IsNonOverlapping(spec.Day, t, spec.DurationMinutes, daySlots)))
+                        {
+                            earliest = t;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        allDaysCovered = false;
+                        break;
+                    }
+
+                    daySlots.Add(new SolutionSlot(spec.Day, earliest, spec.DurationMinutes, room.Id, label));
                 }
 
-                if (!index.IsAvailable(room.Id, spec.Day, earliest!.Value, spec.DurationMinutes))
-                {
-                    allDaysCovered = false;
-                    break;
-                }
-
-                daySlots.Add(new SolutionSlot(spec.Day, earliest.Value, spec.DurationMinutes, room.Id, label));
+                if (allDaysCovered && daySlots.Count == gapSpecs.Count)
+                    TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch, isAlternative);
             }
-
-            if (allDaysCovered && daySlots.Count == gapSpecs.Count)
-                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch);
         }
     }
 
@@ -581,8 +602,12 @@ public class RoomAvailabilityService
         List<RoomSolution> solutions,
         HashSet<string> seen,
         bool isPatternMatch = false,
-        IReadOnlyList<Room>[]? perSpecRooms = null)
+        IReadOnlyList<Room>[]? perSpecRooms = null,
+        bool isAlternative = false)
     {
+        // Same start time on the same day = guaranteed overlap.
+        if (FindSameDayGroups(gapSpecs).Count > 0) return;
+
         // Find start times legal on ALL gap days.
         var commonStarts = gapSpecs[0].LegalStartTimes.AsEnumerable();
         for (int i = 1; i < gapSpecs.Count; i++)
@@ -610,7 +635,7 @@ public class RoomAvailabilityService
             }
 
             if (allDaysCovered && daySlots.Count == gapSpecs.Count)
-                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch);
+                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch, isAlternative);
         }
     }
 
@@ -622,10 +647,15 @@ public class RoomAvailabilityService
         List<RoomSolution> solutions,
         HashSet<string> seen,
         bool isPatternMatch = false,
-        IReadOnlyList<Room>[]? perSpecRooms = null)
+        IReadOnlyList<Room>[]? perSpecRooms = null,
+        bool isAlternative = false)
     {
-        // Generate a small number of representative Tier 3 solutions using
-        // different room orderings. Each ordering produces at most one solution.
+        var sameDayGroups = FindSameDayGroups(gapSpecs);
+        bool hasSameDaySpecs = sameDayGroups.Count > 0;
+        var specOrderings = BuildSpecOrderings(gapSpecs, sameDayGroups);
+
+        // Generate representative Tier 3 solutions using different room orderings
+        // and (when same-day specs exist) different spec orderings.
         foreach (var orderedRooms in BuildOrderings(rooms))
         {
             // When per-spec rooms are in play, pre-compute per-spec ordered pools.
@@ -633,36 +663,40 @@ public class RoomAvailabilityService
                 ReferenceEquals(pool, rooms) ? orderedRooms : ApplyOrdering(pool, orderedRooms))
                 .ToArray();
 
-            var daySlots = new List<SolutionSlot>();
-            bool allDaysCovered = true;
-
-            for (int i = 0; i < gapSpecs.Count; i++)
+            foreach (var specOrder in specOrderings)
             {
-                var spec = gapSpecs[i];
-                var pool = perSpecOrdered?[i] ?? orderedRooms;
+                var daySlots = new List<SolutionSlot>();
+                bool allDaysCovered = true;
 
-                SolutionSlot? best = null;
-                foreach (int startTime in spec.LegalStartTimes.OrderBy(t => t))
+                foreach (int idx in specOrder)
                 {
-                    var room = pool.FirstOrDefault(r =>
-                        index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes));
-                    if (room != null)
+                    var spec = gapSpecs[idx];
+                    var pool = perSpecOrdered?[idx] ?? orderedRooms;
+
+                    SolutionSlot? best = null;
+                    foreach (int startTime in spec.LegalStartTimes.OrderBy(t => t))
                     {
-                        best = new SolutionSlot(spec.Day, startTime, spec.DurationMinutes, room.Id, RoomLabel(room));
+                        var room = pool.FirstOrDefault(r =>
+                            index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes)
+                            && (!hasSameDaySpecs || IsNonOverlapping(spec.Day, startTime, spec.DurationMinutes, daySlots)));
+                        if (room != null)
+                        {
+                            best = new SolutionSlot(spec.Day, startTime, spec.DurationMinutes, room.Id, RoomLabel(room));
+                            break;
+                        }
+                    }
+
+                    if (best == null)
+                    {
+                        allDaysCovered = false;
                         break;
                     }
+                    daySlots.Add(best);
                 }
 
-                if (best == null)
-                {
-                    allDaysCovered = false;
-                    break;
-                }
-                daySlots.Add(best);
+                if (allDaysCovered && daySlots.Count == gapSpecs.Count)
+                    TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch, isAlternative);
             }
-
-            if (allDaysCovered && daySlots.Count == gapSpecs.Count)
-                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch);
         }
     }
 
@@ -695,14 +729,15 @@ public class RoomAvailabilityService
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
         HashSet<string> seen,
-        bool isPatternMatch = false)
+        bool isPatternMatch = false,
+        bool isAlternative = false)
     {
         var allSlots = fixedSlots.Concat(newSlots).OrderBy(s => s.Day).ToList();
         string key = SolutionKey(allSlots);
         if (!seen.Add(key)) return;
 
         var tier = RoomSolution.Classify(allSlots);
-        solutions.Add(new RoomSolution(allSlots, tier, isPatternMatch));
+        solutions.Add(new RoomSolution(allSlots, tier, isPatternMatch, isAlternative));
     }
 
     /// <summary>
@@ -718,4 +753,107 @@ public class RoomAvailabilityService
         string.IsNullOrEmpty(room.Building)
             ? room.RoomNumber
             : $"{room.Building} {room.RoomNumber}";
+
+    // ── Same-day helpers ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns day → spec-index-list for days that have two or more specs.
+    /// An empty dictionary means no day is shared — callers can skip overlap logic.
+    /// </summary>
+    private static Dictionary<int, List<int>> FindSameDayGroups(List<TemplateDaySpec> specs)
+    {
+        var groups = new Dictionary<int, List<int>>();
+        for (int i = 0; i < specs.Count; i++)
+        {
+            int day = specs[i].Day;
+            if (!groups.TryGetValue(day, out var list))
+            {
+                list = new List<int>();
+                groups[day] = list;
+            }
+            list.Add(i);
+        }
+
+        // Keep only days with 2+ specs.
+        var sameDays = new Dictionary<int, List<int>>();
+        foreach (var kv in groups)
+            if (kv.Value.Count > 1)
+                sameDays[kv.Key] = kv.Value;
+        return sameDays;
+    }
+
+    /// <summary>
+    /// Returns true if [startMinutes, startMinutes + durationMinutes) does NOT overlap
+    /// any slot on the same <paramref name="day"/> already in <paramref name="assignedSlots"/>.
+    /// </summary>
+    private static bool IsNonOverlapping(
+        int day, int startMinutes, int durationMinutes,
+        List<SolutionSlot> assignedSlots)
+    {
+        int end = startMinutes + durationMinutes;
+        foreach (var slot in assignedSlots)
+        {
+            if (slot.Day != day) continue;
+            int slotEnd = slot.StartMinutes + slot.DurationMinutes;
+            if (startMinutes < slotEnd && slot.StartMinutes < end)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Produces spec-index orderings for the tier scanners. When no same-day groups
+    /// exist, returns the single natural ordering [0, 1, …]. When same-day groups exist,
+    /// adds a second ordering where same-day specs are sorted longest-first (they are
+    /// harder to place and benefit from priority in greedy search).
+    /// </summary>
+    private static List<int[]> BuildSpecOrderings(
+        List<TemplateDaySpec> specs,
+        Dictionary<int, List<int>> sameDayGroups)
+    {
+        int n = specs.Count;
+        var natural = Enumerable.Range(0, n).ToArray();
+        if (sameDayGroups.Count == 0)
+            return new List<int[]> { natural };
+
+        // Build an alternative ordering: same-day specs sorted by descending duration.
+        var alt = (int[])natural.Clone();
+        foreach (var kv in sameDayGroups)
+        {
+            var indices = kv.Value;
+            var sorted = indices
+                .OrderByDescending(i => specs[i].DurationMinutes)
+                .ToList();
+            for (int j = 0; j < indices.Count; j++)
+                alt[indices[j]] = sorted[j];
+        }
+
+        // The alt array has been index-swapped: alt[originalPos] = newSpecIndex.
+        // We need a permutation of spec indices, not a remapping.
+        // Rebuild: for each position, which spec index goes there?
+        var altOrder = new int[n];
+        // Positions that aren't in any same-day group keep their natural index.
+        var inGroup = new HashSet<int>(sameDayGroups.Values.SelectMany(v => v));
+        int pos = 0;
+        // Walk natural order, inserting same-day group members in duration-descending order
+        // while keeping non-group members in place.
+        var groupSorted = new Dictionary<int, Queue<int>>();
+        foreach (var kv in sameDayGroups)
+            groupSorted[kv.Key] = new Queue<int>(
+                kv.Value.OrderByDescending(i => specs[i].DurationMinutes));
+
+        for (int i = 0; i < n; i++)
+        {
+            int day = specs[i].Day;
+            if (groupSorted.TryGetValue(day, out var q) && q.Count > 0)
+                altOrder[i] = q.Dequeue();
+            else
+                altOrder[i] = i;
+        }
+
+        // Only add if different from natural.
+        if (!natural.SequenceEqual(altOrder))
+            return new List<int[]> { natural, altOrder };
+        return new List<int[]> { natural };
+    }
 }

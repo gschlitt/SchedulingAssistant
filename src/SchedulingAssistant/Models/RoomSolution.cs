@@ -44,7 +44,8 @@ public record SolutionSlot(
 public record RoomSolution(
     IReadOnlyList<SolutionSlot> Slots,
     SolutionTier Tier,
-    bool IsPatternMatch = false)
+    bool IsPatternMatch = false,
+    bool IsAlternative = false)
 {
     /// <summary>Human-readable tier description shown in the browser panel.</summary>
     public string TierLabel => Tier switch

@@ -28,6 +28,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
 
     private OccupancyIndex _index = new();
     private List<RoomSolution> _solutions = new();
+    private List<RoomSolution> _displayedSolutions = new();
 
     // ── Observable properties ────────────────────────────────────────────────
 
@@ -39,6 +40,15 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     [ObservableProperty] private bool _hasSolutions;
     [ObservableProperty] private bool _canGoNext;
     [ObservableProperty] private bool _canGoPrevious;
+
+    /// <summary>When true, alternative solutions (relaxed constraints) are included in navigation.</summary>
+    [ObservableProperty] private bool _showAlternatives;
+
+    /// <summary>True when the solution set contains at least one alternative.</summary>
+    [ObservableProperty] private bool _hasAlternatives;
+
+    /// <summary>Number of alternative solutions available (shown in label hint).</summary>
+    [ObservableProperty] private int _alternativeCount;
 
     /// <param name="specs">Partially-specified meetings — duration required, day/start optional.</param>
     /// <param name="allRooms">All rooms in the database.</param>
@@ -88,7 +98,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     [RelayCommand]
     private void NextSolution()
     {
-        if (CurrentSolutionIndex < _solutions.Count - 1)
+        if (CurrentSolutionIndex < _displayedSolutions.Count - 1)
         {
             CurrentSolutionIndex++;
             ShowCurrentSolution();
@@ -108,9 +118,9 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     [RelayCommand]
     private void AcceptSolution()
     {
-        if (_solutions.Count == 0 || CurrentSolutionIndex >= _solutions.Count) return;
+        if (_displayedSolutions.Count == 0 || CurrentSolutionIndex >= _displayedSolutions.Count) return;
 
-        var solution = _solutions[CurrentSolutionIndex];
+        var solution = _displayedSolutions[CurrentSolutionIndex];
 
         // Map solution slots back to spec indices via greedy day+duration matching.
         var specSolutions = MapSlotsToSpecs(solution.Slots, _specs);
@@ -133,8 +143,20 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         _solutions = _service.GenerateSolutionsFromSpecs(
             _specs, _allRooms.ToList(), _index, _legalStartTimes, _blockPatterns);
 
-        TotalSolutions = _solutions.Count;
-        HasSolutions = _solutions.Count > 0;
+        AlternativeCount = _solutions.Count(s => s.IsAlternative);
+        HasAlternatives = AlternativeCount > 0;
+        RebuildDisplayList();
+    }
+
+    /// <summary>Rebuilds the filtered solution list based on the current toggle state.</summary>
+    private void RebuildDisplayList()
+    {
+        _displayedSolutions = ShowAlternatives
+            ? _solutions
+            : _solutions.Where(s => !s.IsAlternative).ToList();
+
+        TotalSolutions = _displayedSolutions.Count;
+        HasSolutions = _displayedSolutions.Count > 0;
         CurrentSolutionIndex = 0;
 
         if (HasSolutions)
@@ -143,14 +165,21 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
             ClearSolutions();
     }
 
+    partial void OnShowAlternativesChanged(bool value) => RebuildDisplayList();
+
     private void ShowCurrentSolution()
     {
-        if (_solutions.Count == 0 || CurrentSolutionIndex >= _solutions.Count) return;
+        if (_displayedSolutions.Count == 0 || CurrentSolutionIndex >= _displayedSolutions.Count) return;
 
-        var solution = _solutions[CurrentSolutionIndex];
-        SolutionLabel = $"{CurrentSolutionIndex + 1} of {TotalSolutions}";
+        var solution = _displayedSolutions[CurrentSolutionIndex];
+
+        string label = $"{CurrentSolutionIndex + 1} of {TotalSolutions}";
+        if (!ShowAlternatives && HasAlternatives)
+            label += $" (+{AlternativeCount} alt)";
+        SolutionLabel = label;
+
         TierLabel = solution.TierLabel;
-        CanGoNext = CurrentSolutionIndex < _solutions.Count - 1;
+        CanGoNext = CurrentSolutionIndex < _displayedSolutions.Count - 1;
         CanGoPrevious = CurrentSolutionIndex > 0;
 
         var ghosts = solution.Slots.Select(slot =>
@@ -169,6 +198,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     private void ClearSolutions()
     {
         _solutions.Clear();
+        _displayedSolutions.Clear();
         TotalSolutions = 0;
         HasSolutions = false;
         CurrentSolutionIndex = 0;
@@ -185,7 +215,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// Maps solution slots back to spec indices using greedy day+duration matching.
     /// Each slot is matched to the first unmatched spec with the same day and duration.
     /// </summary>
-    private static List<SpecSolution> MapSlotsToSpecs(
+    internal static List<SpecSolution> MapSlotsToSpecs(
         IReadOnlyList<SolutionSlot> slots,
         IReadOnlyList<MeetingSpec> specs)
     {

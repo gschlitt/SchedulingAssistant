@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-15T16:15:26.517Z
-> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-15T23:35:53.409Z
+> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,13 +29,16 @@
 
 ## ../../../.claude/plans/
 
+- `i-ve-found-a-problem-recursive-lollipop.md` — Fix: Tear down pattern coupling before applying room browser solution (~508 tok)
 - `the-user-needs-some-cosmic-lecun.md` — Disable Room Browser Button Until Meetings Have Durations (~654 tok)
 - `use-your-reasoned-imagination-lexical-hummingbird.md` — Detach/Reattach Memory Leak Analysis (~2676 tok)
+- `we-need-to-debug-sunny-octopus.md` — Fix: Same-day multi-spec scheduling (class + lab on one day) (~1317 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 - `detach_reattach_bugs.md` — Detach/Reattach Panel Bug History (May 2026, Rooming branch) (~857 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~8872 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~8917 tok)
+- `project_integration_test_db.md` — Declares distributions (~351 tok)
 
 ## ./
 
@@ -192,6 +195,7 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `RoomAvailabilityIntegrationTests.cs` — Integration tests for the Room Availability Browser using a real database. Loads rooms, sections, me (~7531 tok)
 
 ## src/SchedulingAssistant/
 
@@ -199,10 +203,11 @@
 
 ## src/SchedulingAssistant/Assets/
 
+- `Icons.axaml` (~1621 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
-- `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~2475 tok)
+- `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~1775 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -222,11 +227,17 @@
 ## src/SchedulingAssistant/Demo/
 
 
+## src/SchedulingAssistant/Help/
+
+- `room-browser.html` — Room Browser — TermPoint Help (~913 tok)
+
 ## src/SchedulingAssistant/Models/
 
+- `RoomSolution.cs` — Ranking tiers for room availability solutions, from most to least coherent. (~820 tok)
 
 ## src/SchedulingAssistant/Services/
 
+- `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9610 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
@@ -236,7 +247,8 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `SectionEditViewModel.cs` — Available code patterns for this session, loaded once at editor construction. Only relevant for new (~11698 tok)
+- `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~2738 tok)
+- `SectionEditViewModel.cs` — Available code patterns for this session, loaded once at editor construction. Only relevant for new  (~11735 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -255,8 +267,8 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `SectionListView.axaml` (~22647 tok)
-- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~2506 tok)
+- `SectionListView.axaml` (~22990 tok)
+- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~2616 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

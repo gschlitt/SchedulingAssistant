@@ -3,9 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.ComponentModel;
+using System.IO;
 
 namespace SchedulingAssistant.Views.Management;
 
@@ -219,5 +221,14 @@ public partial class SectionListView : UserControl
                 listBox.Focus();
             },
             Avalonia.Threading.DispatcherPriority.Normal);
+    }
+
+    /// <summary>
+    /// Opens the Room Browser help article in the system default browser.
+    /// </summary>
+    private void OnRoomBrowserHelpClick(object? sender, RoutedEventArgs e)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Help", "room-browser.html");
+        PlatformProcess.OpenUri(new Uri(path).AbsoluteUri);
     }
 }

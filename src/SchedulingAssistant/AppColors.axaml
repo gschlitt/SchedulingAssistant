@@ -147,7 +147,7 @@
 	<SolidColorBrush x:Key="TextValidationError" Color="#C53030" />
 	<SolidColorBrush x:Key="TextError" Color="#C53030" />
 	<SolidColorBrush x:Key="ToolTipTextBrush" Color="Black" />
-
+	<SolidColorBrush x:Key="TextAttention" Color="Red"/>
 	<!--  Subtle tint — zebra rows, inactive areas, empty-state fills  -->
 	<SolidColorBrush x:Key="SubtleBackground" Color="#F0F4FA" />
 
