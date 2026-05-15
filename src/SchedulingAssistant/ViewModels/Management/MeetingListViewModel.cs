@@ -333,6 +333,7 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
             allInstructors,
             _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType),
             allRooms,
+            _propertyRepo.GetAll(SchedulingEnvironmentTypes.RoomType),
             _campusRepo.GetAll(),
             _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag),
             _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource),
@@ -414,13 +415,14 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
         var resources    = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource);
         var staffTypes   = _propertyRepo.GetAll(SchedulingEnvironmentTypes.StaffType);
         var rooms        = _roomRepo.GetAll();
+        var roomTypes    = _propertyRepo.GetAll(SchedulingEnvironmentTypes.RoomType);
         var instructors  = _instructorRepo.GetAll();
         var campuses     = _campusRepo.GetAll();
 
         var vm = new MeetingEditViewModel(
             meeting, isNew,
             _meetingRepo, _meetingStore,
-            legalStartTimes, instructors, meetingTypes, rooms, campuses, tags, resources, staffTypes);
+            legalStartTimes, instructors, meetingTypes, rooms, roomTypes, campuses, tags, resources, staffTypes);
 
         vm.EditCompleted += CloseEditor;
         EditVm = vm;

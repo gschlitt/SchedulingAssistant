@@ -208,6 +208,293 @@ public class RoomAvailabilityService
             .ToList();
     }
 
+    // ── Spec-based solver (partial-spec input from meeting rows) ────────────
+
+    /// <summary>
+    /// Generates solutions from partially-specified meeting rows. Each <see cref="MeetingSpec"/>
+    /// must have a duration; day and start time are optional. The solver fills in the gaps,
+    /// preferring institutional block patterns for unspecified days.
+    /// </summary>
+    /// <param name="specs">One per meeting row — duration required, day/start optional.</param>
+    /// <param name="filteredRooms">Rooms passing the user's global filter criteria.</param>
+    /// <param name="index">Occupancy index for the active semester.</param>
+    /// <param name="legalStartTimes">Legal start times for the current academic year.</param>
+    /// <param name="blockPatterns">Institutional block patterns (MWF, TR, etc.) for day preference.</param>
+    public List<RoomSolution> GenerateSolutionsFromSpecs(
+        IReadOnlyList<MeetingSpec> specs,
+        IReadOnlyList<Room> filteredRooms,
+        OccupancyIndex index,
+        IReadOnlyList<LegalStartTime> legalStartTimes,
+        IReadOnlyList<BlockPattern> blockPatterns)
+    {
+        if (specs.Count == 0 || filteredRooms.Count == 0)
+            return new List<RoomSolution>();
+
+        // Build a room lookup for locked-room specs.
+        var roomById = filteredRooms.ToDictionary(r => r.Id);
+
+        // Pre-compute per-spec room lists based on RoomId (locked) or RoomTypeId (type filter).
+        var perSpecRooms = new IReadOnlyList<Room>[specs.Count];
+        for (int i = 0; i < specs.Count; i++)
+        {
+            var spec = specs[i];
+            if (!string.IsNullOrEmpty(spec.RoomId))
+            {
+                // Locked to a specific room — must be in the filtered set.
+                perSpecRooms[i] = roomById.TryGetValue(spec.RoomId, out var locked)
+                    ? new[] { locked }
+                    : Array.Empty<Room>();
+            }
+            else if (!string.IsNullOrEmpty(spec.RoomTypeId))
+            {
+                perSpecRooms[i] = filteredRooms
+                    .Where(r => r.RoomTypeId == spec.RoomTypeId)
+                    .ToList();
+            }
+            else
+            {
+                perSpecRooms[i] = filteredRooms;
+            }
+        }
+
+        // Identify fully-fixed specs (room + day + start all set) and separate them as fixed slots.
+        var fixedSlotList = new List<SolutionSlot>();
+        var gapSpecIndices = new List<int>();
+        for (int i = 0; i < specs.Count; i++)
+        {
+            var spec = specs[i];
+            if (!string.IsNullOrEmpty(spec.RoomId) && spec.Day.HasValue && spec.StartMinutes.HasValue)
+            {
+                string label = roomById.TryGetValue(spec.RoomId, out var r) ? RoomLabel(r) : spec.RoomId;
+                fixedSlotList.Add(new SolutionSlot(spec.Day.Value, spec.StartMinutes.Value,
+                    spec.DurationMinutes, spec.RoomId, label));
+            }
+            else
+            {
+                gapSpecIndices.Add(i);
+            }
+        }
+
+        // Build sub-lists for the gap specs only.
+        var gapSpecs = gapSpecIndices.Select(i => specs[i]).ToList();
+        var gapPerSpecRooms = gapSpecIndices.Select(i => perSpecRooms[i]).ToArray();
+
+        // If everything is fully fixed, return the single deterministic solution.
+        if (gapSpecs.Count == 0)
+        {
+            var solutions0 = new List<RoomSolution>();
+            var seen0 = new HashSet<string>();
+            TryAddSolution(new List<SolutionSlot>(), fixedSlotList, solutions0, seen0);
+            return solutions0;
+        }
+
+        // Room lists for Tier 1/2a: intersection (same room must appear in all gap specs).
+        IReadOnlyList<Room> intersectionRooms;
+        if (gapPerSpecRooms.All(r => ReferenceEquals(r, filteredRooms)))
+        {
+            intersectionRooms = filteredRooms;
+        }
+        else
+        {
+            var ids = new HashSet<string>(gapPerSpecRooms[0].Select(r => r.Id));
+            for (int i = 1; i < gapPerSpecRooms.Length; i++)
+                ids.IntersectWith(gapPerSpecRooms[i].Select(r => r.Id));
+            intersectionRooms = filteredRooms.Where(r => ids.Contains(r.Id)).ToList();
+        }
+
+        var solutions = new List<RoomSolution>();
+        var seen = new HashSet<string>();
+
+        // Separate fixed-day vs open-day specs (within the gap set).
+        var fixedDays = new HashSet<int>(gapSpecs.Where(s => s.Day.HasValue).Select(s => s.Day!.Value));
+        int openCount = gapSpecs.Count(s => !s.Day.HasValue);
+
+        var dayAssignments = openCount > 0
+            ? EnumerateDayAssignments(fixedDays, openCount, blockPatterns)
+            : new List<(List<int> Days, bool IsPattern)> { (new List<int>(), true) };
+
+        bool allStartsFixed = gapSpecs.All(s => s.StartMinutes.HasValue);
+
+        foreach (var (assignment, isPattern) in dayAssignments)
+        {
+            int openIdx = 0;
+            var resolvedDays = new int[gapSpecs.Count];
+            for (int i = 0; i < gapSpecs.Count; i++)
+                resolvedDays[i] = gapSpecs[i].Day ?? assignment[openIdx++];
+
+            var resolved = ResolveToTemplateDaySpecs(gapSpecs, resolvedDays, legalStartTimes);
+            if (resolved == null) continue;
+
+            ScanTier1(resolved, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern);
+            ScanTier2a(resolved, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern);
+            ScanTier2b(resolved, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms);
+            ScanTier3(resolved, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms);
+
+            if (allStartsFixed)
+            {
+                var alt = ResolveToTemplateDaySpecs(gapSpecs, resolvedDays, legalStartTimes, openStarts: true);
+                if (alt != null)
+                {
+                    ScanTier1(alt, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern);
+                    ScanTier2a(alt, intersectionRooms, index, fixedSlotList, solutions, seen, isPattern);
+                    ScanTier2b(alt, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms);
+                    ScanTier3(alt, filteredRooms, index, fixedSlotList, solutions, seen, isPattern, gapPerSpecRooms);
+                }
+            }
+        }
+
+        solutions.Sort((a, b) =>
+        {
+            if (a.IsPatternMatch != b.IsPatternMatch) return a.IsPatternMatch ? -1 : 1;
+            int cmp = a.Tier.CompareTo(b.Tier);
+            if (cmp != 0) return cmp;
+            string labelA = a.Slots.OrderBy(s => s.Day).FirstOrDefault()?.RoomLabel ?? "";
+            string labelB = b.Slots.OrderBy(s => s.Day).FirstOrDefault()?.RoomLabel ?? "";
+            cmp = string.Compare(labelA, labelB, StringComparison.OrdinalIgnoreCase);
+            if (cmp != 0) return cmp;
+            return a.Slots.Min(s => s.StartMinutes).CompareTo(b.Slots.Min(s => s.StartMinutes));
+        });
+
+        return solutions;
+    }
+
+    /// <summary>
+    /// Converts <see cref="MeetingSpec"/>s with resolved days into <see cref="TemplateDaySpec"/>s
+    /// for the tier scanners. Returns null if any spec has no legal start times.
+    /// </summary>
+    /// <param name="openStarts">When true, ignores the spec's fixed start time and gathers all legal starts (for alternative suggestions).</param>
+    private static List<TemplateDaySpec>? ResolveToTemplateDaySpecs(
+        IReadOnlyList<MeetingSpec> specs,
+        int[] resolvedDays,
+        IReadOnlyList<LegalStartTime> legalStartTimes,
+        bool openStarts = false)
+    {
+        var result = new List<TemplateDaySpec>(specs.Count);
+        for (int i = 0; i < specs.Count; i++)
+        {
+            var spec = specs[i];
+            int day = resolvedDays[i];
+            double blockHours = spec.DurationMinutes / 60.0;
+
+            IReadOnlyList<int> legalStarts;
+            if (!openStarts && spec.StartMinutes.HasValue)
+            {
+                legalStarts = new[] { spec.StartMinutes.Value };
+            }
+            else
+            {
+                legalStarts = GatherLegalStarts(spec.DurationMinutes, legalStartTimes);
+                if (legalStarts.Count == 0) return null;
+            }
+
+            result.Add(new TemplateDaySpec(day, blockHours, spec.DurationMinutes, legalStarts));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Gathers legal start times for a given duration. When the duration exactly matches a
+    /// configured block length, returns the start times for that block length. Otherwise
+    /// falls back to all start times where the meeting fits before 22:00.
+    /// </summary>
+    private static IReadOnlyList<int> GatherLegalStarts(
+        int durationMinutes,
+        IReadOnlyList<LegalStartTime> legalStartTimes)
+    {
+        double durationHours = durationMinutes / 60.0;
+        var matched = legalStartTimes
+            .Where(l => Math.Abs(l.BlockLength - durationHours) < 0.001)
+            .SelectMany(l => l.StartTimes)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        if (matched.Count > 0) return matched;
+
+        // Custom duration: use all start times where the meeting fits before 22:00.
+        const int maxEnd = 22 * 60;
+        return legalStartTimes
+            .SelectMany(l => l.StartTimes)
+            .Distinct()
+            .Where(t => t + durationMinutes <= maxEnd)
+            .OrderBy(t => t)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Enumerates candidate day assignments for open-day specs, with institutional
+    /// pattern matches listed first.
+    /// </summary>
+    private static List<(List<int> Days, bool IsPattern)> EnumerateDayAssignments(
+        HashSet<int> fixedDays,
+        int openCount,
+        IReadOnlyList<BlockPattern> patterns)
+    {
+        var results = new List<(List<int>, bool)>();
+        var seenSets = new HashSet<string>();
+
+        var availableDays = new[] { 1, 2, 3, 4, 5 }.Where(d => !fixedDays.Contains(d)).ToList();
+
+        // 1. Pattern completion: try to complete an institutional pattern that already includes the fixed days.
+        foreach (var pattern in patterns)
+        {
+            var patternSet = new HashSet<int>(pattern.Days);
+            if (!fixedDays.All(d => patternSet.Contains(d))) continue;
+            var remaining = patternSet.Except(fixedDays).OrderBy(d => d).ToList();
+            if (remaining.Count != openCount) continue;
+
+            string key = string.Join(",", remaining);
+            if (seenSets.Add(key))
+                results.Add((remaining, true));
+        }
+
+        // 2. Full pattern match: when ALL specs are open-day, try each pattern whose day count matches.
+        if (fixedDays.Count == 0)
+        {
+            foreach (var pattern in patterns)
+            {
+                if (pattern.Days.Count != openCount) continue;
+                var combo = pattern.Days.OrderBy(d => d).ToList();
+                string key = string.Join(",", combo);
+                if (seenSets.Add(key))
+                    results.Add((combo, true));
+            }
+        }
+
+        // 3. Combinatorial fallback: remaining distinct day combos from the available pool.
+        int cap = 50 - results.Count;
+        if (cap > 0)
+        {
+            foreach (var combo in Combinations(availableDays, openCount))
+            {
+                string key = string.Join(",", combo);
+                if (seenSets.Add(key))
+                {
+                    results.Add((combo, false));
+                    if (--cap <= 0) break;
+                }
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>Yields all <paramref name="count"/>-element subsets of <paramref name="source"/> in lexicographic order.</summary>
+    private static IEnumerable<List<int>> Combinations(List<int> source, int count)
+    {
+        if (count == 0) { yield return new List<int>(); yield break; }
+        if (count > source.Count) yield break;
+
+        for (int i = 0; i <= source.Count - count; i++)
+        {
+            foreach (var rest in Combinations(source.GetRange(i + 1, source.Count - i - 1), count - 1))
+            {
+                rest.Insert(0, source[i]);
+                yield return rest;
+            }
+        }
+    }
+
     // ── Tier scanning methods ────────────────────────────────────────────────
 
     private static void ScanTier1(
@@ -216,7 +503,8 @@ public class RoomAvailabilityService
         OccupancyIndex index,
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
-        HashSet<string> seen)
+        HashSet<string> seen,
+        bool isPatternMatch = false)
     {
         // Find start times that are legal on ALL gap days.
         var commonStarts = gapSpecs[0].LegalStartTimes.AsEnumerable();
@@ -238,7 +526,7 @@ public class RoomAvailabilityService
                     .Select(spec => new SolutionSlot(spec.Day, startTime, spec.DurationMinutes, room.Id, label))
                     .ToList();
 
-                TryAddSolution(newSlots, fixedSlots, solutions, seen);
+                TryAddSolution(newSlots, fixedSlots, solutions, seen, isPatternMatch);
             }
         }
     }
@@ -249,7 +537,8 @@ public class RoomAvailabilityService
         OccupancyIndex index,
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
-        HashSet<string> seen)
+        HashSet<string> seen,
+        bool isPatternMatch = false)
     {
         foreach (var room in rooms)
         {
@@ -280,7 +569,7 @@ public class RoomAvailabilityService
             }
 
             if (allDaysCovered && daySlots.Count == gapSpecs.Count)
-                TryAddSolution(daySlots, fixedSlots, solutions, seen);
+                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch);
         }
     }
 
@@ -290,7 +579,9 @@ public class RoomAvailabilityService
         OccupancyIndex index,
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
-        HashSet<string> seen)
+        HashSet<string> seen,
+        bool isPatternMatch = false,
+        IReadOnlyList<Room>[]? perSpecRooms = null)
     {
         // Find start times legal on ALL gap days.
         var commonStarts = gapSpecs[0].LegalStartTimes.AsEnumerable();
@@ -302,9 +593,11 @@ public class RoomAvailabilityService
             var daySlots = new List<SolutionSlot>();
             bool allDaysCovered = true;
 
-            foreach (var spec in gapSpecs)
+            for (int i = 0; i < gapSpecs.Count; i++)
             {
-                var room = rooms.FirstOrDefault(r =>
+                var spec = gapSpecs[i];
+                var pool = perSpecRooms?[i] ?? rooms;
+                var room = pool.FirstOrDefault(r =>
                     index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes));
 
                 if (room == null)
@@ -317,7 +610,7 @@ public class RoomAvailabilityService
             }
 
             if (allDaysCovered && daySlots.Count == gapSpecs.Count)
-                TryAddSolution(daySlots, fixedSlots, solutions, seen);
+                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch);
         }
     }
 
@@ -327,28 +620,31 @@ public class RoomAvailabilityService
         OccupancyIndex index,
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
-        HashSet<string> seen)
+        HashSet<string> seen,
+        bool isPatternMatch = false,
+        IReadOnlyList<Room>[]? perSpecRooms = null)
     {
         // Generate a small number of representative Tier 3 solutions using
         // different room orderings. Each ordering produces at most one solution.
-        var orderings = new List<IReadOnlyList<Room>>
+        foreach (var orderedRooms in BuildOrderings(rooms))
         {
-            rooms.OrderBy(r => r.Building).ThenBy(r => r.RoomNumber).ToList(),
-            rooms.OrderByDescending(r => r.Capacity).ThenBy(r => r.Building).ToList(),
-            rooms.OrderBy(r => r.Capacity).ThenBy(r => r.Building).ToList()
-        };
+            // When per-spec rooms are in play, pre-compute per-spec ordered pools.
+            var perSpecOrdered = perSpecRooms?.Select(pool =>
+                ReferenceEquals(pool, rooms) ? orderedRooms : ApplyOrdering(pool, orderedRooms))
+                .ToArray();
 
-        foreach (var orderedRooms in orderings)
-        {
             var daySlots = new List<SolutionSlot>();
             bool allDaysCovered = true;
 
-            foreach (var spec in gapSpecs)
+            for (int i = 0; i < gapSpecs.Count; i++)
             {
+                var spec = gapSpecs[i];
+                var pool = perSpecOrdered?[i] ?? orderedRooms;
+
                 SolutionSlot? best = null;
                 foreach (int startTime in spec.LegalStartTimes.OrderBy(t => t))
                 {
-                    var room = orderedRooms.FirstOrDefault(r =>
+                    var room = pool.FirstOrDefault(r =>
                         index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes));
                     if (room != null)
                     {
@@ -366,8 +662,26 @@ public class RoomAvailabilityService
             }
 
             if (allDaysCovered && daySlots.Count == gapSpecs.Count)
-                TryAddSolution(daySlots, fixedSlots, solutions, seen);
+                TryAddSolution(daySlots, fixedSlots, solutions, seen, isPatternMatch);
         }
+    }
+
+    /// <summary>Returns three ordering strategies for room preference in Tier 3.</summary>
+    private static List<IReadOnlyList<Room>> BuildOrderings(IReadOnlyList<Room> rooms) => new()
+    {
+        rooms.OrderBy(r => r.Building).ThenBy(r => r.RoomNumber).ToList(),
+        rooms.OrderByDescending(r => r.Capacity).ThenBy(r => r.Building).ToList(),
+        rooms.OrderBy(r => r.Capacity).ThenBy(r => r.Building).ToList()
+    };
+
+    /// <summary>
+    /// Re-orders a per-spec room pool to match the ordering of <paramref name="reference"/>,
+    /// preserving only rooms present in <paramref name="pool"/>.
+    /// </summary>
+    private static IReadOnlyList<Room> ApplyOrdering(IReadOnlyList<Room> pool, IReadOnlyList<Room> reference)
+    {
+        var ids = new HashSet<string>(pool.Select(r => r.Id));
+        return reference.Where(r => ids.Contains(r.Id)).ToList();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -380,14 +694,15 @@ public class RoomAvailabilityService
         List<SolutionSlot> newSlots,
         List<SolutionSlot> fixedSlots,
         List<RoomSolution> solutions,
-        HashSet<string> seen)
+        HashSet<string> seen,
+        bool isPatternMatch = false)
     {
         var allSlots = fixedSlots.Concat(newSlots).OrderBy(s => s.Day).ToList();
         string key = SolutionKey(allSlots);
         if (!seen.Add(key)) return;
 
         var tier = RoomSolution.Classify(allSlots);
-        solutions.Add(new RoomSolution(allSlots, tier));
+        solutions.Add(new RoomSolution(allSlots, tier, isPatternMatch));
     }
 
     /// <summary>

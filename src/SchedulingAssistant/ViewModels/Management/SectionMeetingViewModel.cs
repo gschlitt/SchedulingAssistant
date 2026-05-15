@@ -58,17 +58,39 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     [ObservableProperty] private string? _selectedMeetingTypeId;
     [ObservableProperty] private string? _selectedRoomId;
+    [ObservableProperty] private RoomTypeOption? _selectedRoomType;
 
     public ObservableCollection<DayOption> AvailableDays { get; }
     public ObservableCollection<SchedulingEnvironmentValue> MeetingTypes { get; }
-    public ObservableCollection<Room> Rooms { get; }
+
+    /// <summary>Room type options: "(none)", configured types, and "Remote".</summary>
+    public ObservableCollection<RoomTypeOption> RoomTypeOptions { get; }
+
+    /// <summary>Master room list (unfiltered). Not bound to UI directly.</summary>
+    private readonly IReadOnlyList<Room> _allRooms;
+
+    /// <summary>Rooms filtered by the selected room type. Bound to the Room combobox.</summary>
+    public ObservableCollection<Room> FilteredRooms { get; } = new();
+
+    /// <summary>True when the selected room type is "Remote" — no physical room needed.</summary>
+    public bool IsRemote => SelectedRoomType?.Id == SectionDaySchedule.RemoteRoomTypeId;
+
+    /// <summary>True when a room selection is meaningful (not remote).</summary>
+    public bool IsRoomEnabled => !IsRemote;
 
     /// <summary>
-    /// All distinct start times available across all block-length rows, formatted as "HHMM".
-    /// Shown as suggestions in the Start AutoCompleteBox regardless of which block length
-    /// is selected — the user picks start time first, then sees corresponding lengths.
+    /// Start time suggestions formatted as "HHMM". When no block length is committed, shows
+    /// all distinct legal start times. When a block length is committed, narrows to only
+    /// start times where that block length is legal (bidirectional filtering with
+    /// <see cref="AvailableBlockLengthStrings"/>).
     /// </summary>
-    public IReadOnlyList<string> AllStartTimeStrings { get; }
+    public ObservableCollection<string> AvailableStartTimeStrings { get; } = new();
+
+    /// <summary>
+    /// All distinct start times across every block-length row, sorted chronologically.
+    /// Immutable reference set used by <see cref="RefreshStartTimes"/> as the unfiltered pool.
+    /// </summary>
+    private readonly IReadOnlyList<string> _allStartTimeStrings;
 
     /// <summary>
     /// Block lengths valid for the currently selected start time, formatted in the active unit
@@ -96,6 +118,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly BlockLengthUnit _unit;
 
+    /// <summary>Guards against circular updates between <see cref="RefreshStartTimes"/> and <see cref="RefreshBlockLengths"/>.</summary>
+    private bool _isRefreshing;
+
     /// <summary>
     /// The preferred block length from Settings. When the user commits a start time,
     /// the block length is auto-filled with this value if it is valid for that start time.
@@ -114,6 +139,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <param name="includeSunday">Whether Sunday should appear as a day option.</param>
     /// <param name="meetingTypes">Available meeting type property values.</param>
     /// <param name="rooms">Available rooms for selection.</param>
+    /// <param name="roomTypeOptions">Room type options including "(none)" sentinel and "Remote".</param>
     /// <param name="existing">If non-null, the form is populated from this existing schedule entry.</param>
     /// <param name="defaultBlockLength">
     /// Preferred block length from Settings. After the user commits a start time, the block
@@ -133,6 +159,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
         bool includeSunday,
         IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Room> rooms,
+        IReadOnlyList<RoomTypeOption> roomTypeOptions,
         SectionDaySchedule? existing = null,
         double? defaultBlockLength = null,
         Func<string, Task>? onWarning = null,
@@ -142,10 +169,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
         _defaultBlockLength = defaultBlockLength;
         _onWarning          = onWarning;
         _unit               = unit;
+        _allRooms           = rooms;
 
-        // Build the start-time suggestion list from ALL distinct start times across every
-        // block-length row, sorted chronologically.
-        AllStartTimeStrings = legalStartTimes
+        // Build the immutable reference set of all start times for RefreshStartTimes.
+        _allStartTimeStrings = legalStartTimes
             .SelectMany(l => l.StartTimes)
             .Distinct()
             .OrderBy(t => t)
@@ -155,6 +182,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
         var days = new List<DayOption>
         {
+            new(0, "(any)"),
             new(1, "Monday"),
             new(2, "Tuesday"),
             new(3, "Wednesday"),
@@ -173,10 +201,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
         mtList.AddRange(meetingTypes);
         MeetingTypes = new ObservableCollection<SchedulingEnvironmentValue>(mtList);
 
-        // Prepend a "(none)" sentinel for room
-        var roomList = new List<Room> { new Room { Id = "", Building = "(none)", RoomNumber = "" } };
-        roomList.AddRange(rooms);
-        Rooms = new ObservableCollection<Room>(roomList);
+        RoomTypeOptions = new ObservableCollection<RoomTypeOption>(roomTypeOptions);
 
         if (existing != null)
         {
@@ -192,20 +217,68 @@ public partial class SectionMeetingViewModel : ViewModelBase
             _selectedBlockLength = blockLengthHours;
             _blockLengthText     = FormatBlockLength(blockLengthHours);
 
+            // Populate start time suggestions (filtered by the loaded block length).
+            RefreshStartTimes();
+
             _selectedMeetingTypeId = existing.MeetingTypeId ?? "";
             _selectedRoomId        = existing.RoomId ?? "";
+            _selectedRoomType      = roomTypeOptions.FirstOrDefault(o => o.Id == existing.RoomTypeId)
+                                     ?? roomTypeOptions[0];
+            RefreshFilteredRooms();
             LoadFrequency(existing.Frequency);
         }
         else
         {
-            _selectedDay = 1;
+            _selectedDay = 0; // "(any)" — user picks a day or leaves it for the browser
             // null (not "") so that Avalonia's SelectedValue+SelectedValueBinding resolution
             // during ComboBox initialization does not fire a spurious PropertyChanged — which
             // would otherwise consume the pattern-coupling slot before the user picks anything.
             _selectedMeetingTypeId = null;
             _selectedRoomId        = "";
+            _selectedRoomType      = roomTypeOptions[0]; // "(none)"
+            RefreshFilteredRooms();
             _selectedFrequencyOption = "Weekly";
-            // Start time and block length are left empty; the user picks start time first.
+            // Populate suggestion lists immediately so the user can pick either field first.
+            RefreshStartTimes();
+            RefreshBlockLengths();
+        }
+    }
+
+    // ── Room type helpers ───────────────────────────────────────────────────────
+
+    partial void OnSelectedRoomTypeChanged(RoomTypeOption? value)
+    {
+        OnPropertyChanged(nameof(IsRemote));
+        OnPropertyChanged(nameof(IsRoomEnabled));
+        RefreshFilteredRooms();
+
+        if (IsRemote)
+        {
+            SelectedRoomId = "";
+        }
+        else if (!string.IsNullOrEmpty(SelectedRoomId) && value?.Id != null)
+        {
+            // Clear room if it doesn't match the new type
+            var currentRoom = _allRooms.FirstOrDefault(r => r.Id == SelectedRoomId);
+            if (currentRoom != null && currentRoom.RoomTypeId != value.Id)
+                SelectedRoomId = "";
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds <see cref="FilteredRooms"/> based on the selected room type.
+    /// Shows all rooms when "(none)" is selected; disables when "Remote".
+    /// </summary>
+    private void RefreshFilteredRooms()
+    {
+        FilteredRooms.Clear();
+        FilteredRooms.Add(new Room { Id = "", Building = "(none)", RoomNumber = "" });
+
+        var typeId = SelectedRoomType?.Id;
+        foreach (var room in _allRooms)
+        {
+            if (typeId == null || typeId == SectionDaySchedule.RemoteRoomTypeId || room.RoomTypeId == typeId)
+                FilteredRooms.Add(room);
         }
     }
 
@@ -355,6 +428,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
         }
 
         BlockLengthError = null;
+        RefreshStartTimes();
     }
 
     /// <summary>
@@ -364,7 +438,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// </summary>
     partial void OnStartTimeTextChanged(string value)
     {
-        if (AllStartTimeStrings.Contains(value))
+        if (AvailableStartTimeStrings.Contains(value))
             CommitStartTime();
     }
 
@@ -520,32 +594,87 @@ public partial class SectionMeetingViewModel : ViewModelBase
         BlockLengthText = FormatBlockLength(hours);
     }
 
-    // ── Block-length refresh (reverse lookup) ─────────────────────────────────
+    // ── Bidirectional suggestion refresh ─────────────────────────────────────
 
     /// <summary>
-    /// Rebuilds <see cref="AvailableBlockLengthStrings"/> to contain every block length for
-    /// which the currently selected start time is a legal start, formatted in the active unit.
-    /// When the chosen start time is not in the table (e.g. a custom time like 09:15), falls
-    /// back to showing every known block length as suggestions so the dropdown is never empty.
+    /// Rebuilds <see cref="AvailableBlockLengthStrings"/>. When a start time is committed,
+    /// shows only block lengths legal at that time; otherwise shows all distinct block lengths.
+    /// Falls back to all lengths when a custom start time matches nothing.
     /// </summary>
     private void RefreshBlockLengths()
     {
-        AvailableBlockLengthStrings.Clear();
-        if (SelectedStartTime is null) return;
+        if (_isRefreshing) return;
+        _isRefreshing = true;
+        try
+        {
+            AvailableBlockLengthStrings.Clear();
 
-        var matched = _legalStartTimes
-            .Where(l => l.StartTimes.Contains(SelectedStartTime.Value))
-            .Select(l => l.BlockLength)
-            .OrderBy(b => b)
-            .ToList();
+            if (SelectedStartTime is null)
+            {
+                // No start time — show all distinct block lengths as suggestions.
+                var all = _legalStartTimes
+                    .Select(l => l.BlockLength)
+                    .Distinct()
+                    .OrderBy(b => b)
+                    .ToList();
+                foreach (var s in all.Select(FormatBlockLength))
+                    AvailableBlockLengthStrings.Add(s);
+                return;
+            }
 
-        // Fall back to all known block lengths when none match the custom start time.
-        var lengths = matched.Count > 0
-            ? matched
-            : _legalStartTimes.Select(l => l.BlockLength).Distinct().OrderBy(b => b).ToList();
+            var matched = _legalStartTimes
+                .Where(l => l.StartTimes.Contains(SelectedStartTime.Value))
+                .Select(l => l.BlockLength)
+                .OrderBy(b => b)
+                .ToList();
 
-        foreach (var s in lengths.Select(FormatBlockLength))
-            AvailableBlockLengthStrings.Add(s);
+            // Fall back to all known block lengths when none match the custom start time.
+            var lengths = matched.Count > 0
+                ? matched
+                : _legalStartTimes.Select(l => l.BlockLength).Distinct().OrderBy(b => b).ToList();
+
+            foreach (var s in lengths.Select(FormatBlockLength))
+                AvailableBlockLengthStrings.Add(s);
+        }
+        finally { _isRefreshing = false; }
+    }
+
+    /// <summary>
+    /// Rebuilds <see cref="AvailableStartTimeStrings"/>. When a block length is committed,
+    /// shows only start times where that block length is legal; otherwise shows all start times.
+    /// Falls back to all start times when a custom block length matches nothing.
+    /// </summary>
+    private void RefreshStartTimes()
+    {
+        if (_isRefreshing) return;
+        _isRefreshing = true;
+        try
+        {
+            AvailableStartTimeStrings.Clear();
+
+            if (SelectedBlockLength is null)
+            {
+                foreach (var s in _allStartTimeStrings)
+                    AvailableStartTimeStrings.Add(s);
+                return;
+            }
+
+            // Find legal start-time entries whose block length matches the committed value.
+            var matched = _legalStartTimes
+                .Where(l => Math.Abs(l.BlockLength - SelectedBlockLength.Value) < 0.001)
+                .SelectMany(l => l.StartTimes)
+                .Distinct()
+                .OrderBy(t => t)
+                .Select(FormatTime)
+                .ToList();
+
+            // Fall back to all start times when the block length is custom (no legal entry matches).
+            var times = matched.Count > 0 ? matched : _allStartTimeStrings;
+
+            foreach (var s in times)
+                AvailableStartTimeStrings.Add(s);
+        }
+        finally { _isRefreshing = false; }
     }
 
     // ── Format / parse helpers ────────────────────────────────────────────────
@@ -588,6 +717,27 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // ── Model conversion ──────────────────────────────────────────────────────
 
     /// <summary>
+    /// Converts the form state to a <see cref="MeetingSpec"/> for the Room Availability Browser.
+    /// Returns null only when <see cref="SelectedBlockLength"/> is not set (duration is the one
+    /// required field for Browse). Day and start time may be null (unspecified).
+    /// </summary>
+    /// <param name="index">Ordinal position in the Meetings collection, for back-mapping on Accept.</param>
+    public MeetingSpec? ToMeetingSpec(int index)
+    {
+        if (SelectedBlockLength is null) return null;
+        bool isRemote = IsRemote;
+        var roomTypeId = SelectedRoomType?.Id;
+        return new MeetingSpec(
+            Index: index,
+            Day: SelectedDay == 0 ? null : SelectedDay,
+            DurationMinutes: (int)Math.Round(SelectedBlockLength.Value * 60),
+            StartMinutes: SelectedStartTime,
+            RoomTypeId: isRemote ? null : roomTypeId,
+            RoomId: isRemote ? null : (string.IsNullOrEmpty(SelectedRoomId) ? null : SelectedRoomId),
+            IsRemote: isRemote);
+    }
+
+    /// <summary>
     /// Converts the form state back to a <see cref="SectionDaySchedule"/> model.
     /// Returns null if the start time or block length have not been committed yet.
     /// </summary>
@@ -602,6 +752,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
             DurationMinutes = (int)Math.Round(SelectedBlockLength.Value * 60),
             MeetingTypeId   = string.IsNullOrEmpty(SelectedMeetingTypeId) ? null : SelectedMeetingTypeId,
             RoomId          = string.IsNullOrEmpty(SelectedRoomId)        ? null : SelectedRoomId,
+            RoomTypeId      = SelectedRoomType?.Id,
             Frequency       = BuildStoredFrequency(),
         };
     }

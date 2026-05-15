@@ -2,6 +2,9 @@ namespace SchedulingAssistant.Models;
 
 public class SectionDaySchedule
 {
+    /// <summary>Well-known sentinel value indicating a remote/online meeting that needs no physical room.</summary>
+    public const string RemoteRoomTypeId = "__remote__";
+
     /// <summary>Day of week: 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday.</summary>
     public int Day { get; set; }
 
@@ -18,6 +21,15 @@ public class SectionDaySchedule
 
     /// <summary>Optional room ID for this specific meeting.</summary>
     public string? RoomId { get; set; }
+
+    /// <summary>
+    /// Optional room type ID referencing a SchedulingEnvironmentValue of type "roomType",
+    /// or <see cref="RemoteRoomTypeId"/> for remote/online meetings.
+    /// </summary>
+    public string? RoomTypeId { get; set; }
+
+    /// <summary>True when this meeting is remote/online and does not require a physical room.</summary>
+    public bool IsRemote => RoomTypeId == RemoteRoomTypeId;
 
     /// <summary>
     /// Optional meeting frequency within the semester. Null or empty means the meeting

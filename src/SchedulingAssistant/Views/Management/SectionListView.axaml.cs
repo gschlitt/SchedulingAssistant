@@ -112,14 +112,19 @@ public partial class SectionListView : UserControl
                 ScrollSelectedItemIntoView,
                 Avalonia.Threading.DispatcherPriority.Background);
 
-        // When the inline editor opens (e.g. via double-click from the Schedule Grid),
-        // the expanding item changes the list layout AFTER any BringIntoView call that
-        // was queued by the selection change. The item may therefore end up outside the
-        // visible area. Re-scroll to the selected item after the layout has settled.
+        // When the inline editor opens or closes, re-measure content width so the
+        // column hugs the editor form (or snaps back to card width).
+        // Also re-scroll the selected item into view since the layout shift from
+        // expanding/collapsing the editor can push it out of the viewport.
         if (e.PropertyName == nameof(SectionListViewModel.EditVm))
+        {
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                UpdateColumnWidth,
+                Avalonia.Threading.DispatcherPriority.Background);
             Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
                 ScrollSelectedItemIntoView,
                 Avalonia.Threading.DispatcherPriority.Background);
+        }
     }
 
     /// <summary>
@@ -164,57 +169,39 @@ public partial class SectionListView : UserControl
     }
 
     /// <summary>
-    /// Measures the desired (unconstrained) width of the section list's content stack,
-    /// then widens ThreePanelGrid's left column if the content would be clipped.
-
-    /// Only runs when the editor is not open (ConditionalColumnWidthBehavior owns the
-    /// column width while editing). A 20px hysteresis threshold avoids constant small
-    /// adjustments as items load.
-    /// 
-    /// Cards are temporarily reset to <c>NaN</c> width before
-    /// measuring so they report their natural content width rather than their previously
-    /// assigned uniform width.
+    /// Measures the desired (unconstrained) width of the section list's content stack
+    /// and sets ThreePanelGrid's left column to match. When editing, the editor form
+    /// drives the width; otherwise the section cards do. A 20px hysteresis threshold
+    /// avoids constant small adjustments when not editing.
     /// </summary>
     private void UpdateColumnWidth()
     {
         var stackPanel = this.FindControl<StackPanel>("ListContentPanel");
-        var listBox = this.FindControl<ListBox>("SectionListBox");
 
         if (stackPanel is null) return;
-
-        // Do not adjust while the editor is open; ConditionalColumnWidthBehavior
-        // owns the column width in that state.
-        if (_vm?.IsEditing ?? false) return;
 
         var mainWindow = TopLevel.GetTopLevel(this) as TopLevel;
         if (mainWindow is null) return;
 
-        // Reset uniform card width to NaN so cards report their natural content width
-        // during the unconstrained measure pass below, not their previously assigned width.
-        //if (_vm is not null)
-        //    _vm.UniformCardWidth = double.NaN;
-
-        // Force an unconstrained layout pass to get the content's natural desired width.
         stackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var desiredWidth = stackPanel.DesiredSize.Width;
-
-        // desiredWidth includes the ListBox's own horizontal margins (e.g. Margin="5,0" → +10px).
-        // Cards live inside the ListBox, so subtract those margins so the card width
-        // matches the natural content width rather than being inflated by the ListBox gutter.
-        //var lbMargin = listBox?.Margin ?? new Thickness(0);
-        //if (_vm is not null)
-         //   _vm.UniformCardWidth = desiredWidth - lbMargin.Left - lbMargin.Right;
-
-        // Column width still uses the full desiredWidth (which includes the ListBox margins)
-        // plus a safety margin for the scrollbar track.
         var requiredWidth = Math.Ceiling(desiredWidth) + 12;
-        
+
         var threePanelGrid = mainWindow.FindControl<Grid>("ThreePanelGrid");
         if (threePanelGrid is null) return;
-     
-        var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
-        if (requiredWidth > currentWidth + 20)
+
+        if (_vm?.IsEditing ?? false)
+        {
+            // When editing, set the column to the exact measured width.
             threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
+        }
+        else
+        {
+            // When not editing, only widen (never shrink) with hysteresis.
+            var currentWidth = threePanelGrid.ColumnDefinitions[0].Width.Value;
+            if (requiredWidth > currentWidth + 20)
+                threePanelGrid.ColumnDefinitions[0].Width = new GridLength(requiredWidth, GridUnitType.Pixel);
+        }
     }
 
     /// <summary>

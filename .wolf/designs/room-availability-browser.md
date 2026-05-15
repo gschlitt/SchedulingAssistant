@@ -1,10 +1,10 @@
 # Room Availability Browser — Feature Design
 
 ## Status
-Current phase: **3 — Implementation** (COMPLETE)  
+Current phase: **3b — Partial-Spec Redesign** (CODE COMPLETE)  
 Next phase: **4 — Runtime Testing**  
-Last session: 2026-05-13  
-Next step: Close running app, run unit tests, manual verification in app
+Last session: 2026-05-14  
+Next step: Launch app, test 4 user scenarios (MWF pattern, open-day pattern preference, single meeting, mixed fixed/open), verify ghost blocks, accept → confirm meeting rows populated
 
 ---
 
@@ -155,3 +155,74 @@ Ghost appearance: semi-transparent green fill (`#3C4CAF50`), green border, room 
 ### Known Rough Edges
 - `ScanTier2a`: `FirstOrDefault` returns 0 for `int` — could false-positive if midnight (0) is a legal start time
 - Room filter UI: building + capacity only; campus/roomType dropdowns not wired to real data yet
+
+---
+
+## Phase 3b: Partial-Spec Redesign (May 2026, `Rooming` branch)
+
+### Concept
+Inverted the browser's input model: instead of the browser owning its own pattern picker and per-day duration editors, the user's partially-filled meeting rows in the section editor become the browser's input. The user fills in what they know (day, duration, start time) and leaves blanks. "Browse" reads that partial spec and generates solutions filling in the gaps, preferring institutional patterns when the spec is loose.
+
+### User Scenarios
+1. **MWF pattern** → 3 rows with days pre-set → type "90" duration → Browse finds room+time
+2. **Open days** → 2 meetings, duration=90, no days → Browse tries institutional patterns (TR, MW) first
+3. **Single meeting** → Monday, 180min → Browse finds time+room
+4. **Mixed** → T 80min, R 80min, one 180min no day → Browse finds solutions
+
+### Design Decisions
+- Duration: free-form with suggestions (AutoCompleteBox shows block lengths even without start time)
+- Room type per-meeting: browser-only assignment (deferred to later)
+- Day combos: institutional patterns first, then non-pattern combos
+- Template buttons: existing quick-pick pattern buttons stay unchanged
+- Minimum for Browse: duration required on every meeting row
+- Full spec: room search AND alternative time suggestions
+- Accept: updates existing meeting VMs in place (fills blanks), doesn't create new rows
+- Bidirectional start/length filtering: choosing block length filters start time suggestions and vice versa
+
+### New Model: `MeetingSpec` / `SpecSolution`
+```csharp
+// Models/MeetingSpec.cs
+public record MeetingSpec(int Index, int? Day, int DurationMinutes, int? StartMinutes, string? RoomTypeId);
+public record SpecSolution(int SpecIndex, int Day, int StartMinutes, int DurationMinutes, string RoomId, string RoomLabel);
+```
+
+### Changes Made (code complete, 9 new tests pass, build clean)
+
+**SectionMeetingViewModel.cs**:
+- `DayOption(0, "(any)")` as first day option; default `_selectedDay = 0` for blank meetings
+- `AllStartTimeStrings` → `AvailableStartTimeStrings` (ObservableCollection, refreshable)
+- `RefreshStartTimes()` + modified `RefreshBlockLengths()` — bidirectional filtering with `_isRefreshing` guard
+- `ToMeetingSpec(int index)` — extracts partial spec from current meeting row state
+
+**RoomAvailabilityService.cs**:
+- `GenerateSolutionsFromSpecs()` — partitions specs into fixed/open day groups, enumerates day assignments (patterns first via `BlockPatterns`), resolves to `TemplateDaySpec`, runs tier scanners
+- `EnumerateDayAssignments()` — pattern completion first, full pattern match second, combinatorial fallback (capped at 50)
+- `GatherLegalStarts()` — legal start times for duration; falls back for custom durations
+- `RoomSolution` gained `IsPatternMatch` flag; solutions sorted: IsPatternMatch DESC → Tier ASC
+
+**RoomAvailabilityBrowserViewModel.cs** (rewritten):
+- Removed template machinery (`Templates`, `SelectedTemplate`, `DayDurations`, `DayDurationItem`)
+- New constructor takes `IReadOnlyList<MeetingSpec>` as first param
+- `BrowserMeetingRow` display class (read-only: DayLabel, DurationLabel, StartLabel)
+- `MapSlotsToSpecs()` — greedy day+duration matching for slot-to-spec back-mapping
+- `AcceptSolution()` converts to `IReadOnlyList<SpecSolution>` via `MapSlotsToSpecs`
+
+**SectionEditViewModel.cs**:
+- `CreateRoomBrowser` delegate: `Func<IReadOnlyList<MeetingSpec>, Action<IReadOnlyList<SpecSolution>>, Action, RoomAvailabilityBrowserViewModel>`
+- `OpenRoomBrowser()` extracts specs via `ToMeetingSpec(i)`, validates all have duration
+- `AcceptBrowserSolution()` updates existing meeting VMs in place (fills blanks for day, start, room)
+- Save validation: rejects meetings with `SelectedDay == 0` as incomplete
+
+**SectionListViewModel.cs** (~line 864): Updated factory lambda for new constructor signature.
+
+**Views**: Browser view rewritten (meeting spec summary rows, removed template picker). AXAML bindings updated for `AvailableStartTimeStrings`.
+
+**Tests**: 9 new `SpecSolver_*` tests in `RoomAvailabilityTests.cs` — all pass.
+
+### Removed (from browser)
+- `MeetingTemplate` / template dropdown / per-day duration editors (still exist in codebase for other uses)
+- `DayDurationItem` class
+
+### Still Pending
+- Runtime testing of 4 user scenarios
+- Per-meeting room type filtering in browser panel (deferred)

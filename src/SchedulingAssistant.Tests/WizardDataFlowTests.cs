@@ -87,11 +87,13 @@ public class WizardDataFlowTests : IDisposable
             Semesters:          () => mockSem.Object,
             Campuses:           () => mockCampus.Object,
             BlockPatterns:      () => mockPattern.Object,
+            SectionCodePatterns: () => new Mock<ISectionCodePatternRepository>().Object,
             Database:           () => dbContext,
             SemesterContext:    () => new SemesterContext(),
             // Import path never navigates to the manual-config steps; these will not be invoked.
             CampusListVm:       () => throw new NotSupportedException("Not used on import path"),
-            BlockPatternListVm: () => throw new NotSupportedException("Not used on import path")
+            BlockPatternListVm: () => throw new NotSupportedException("Not used on import path"),
+            SectionCodePatternListVm: () => throw new NotSupportedException("Not used on import path")
         );
     }
 
@@ -475,10 +477,12 @@ public class WizardDataFlowTests : IDisposable
             Semesters:          () => mockSem.Object,
             Campuses:           () => mockCampus.Object,
             BlockPatterns:      () => mockPattern.Object,
+            SectionCodePatterns: () => new Mock<ISectionCodePatternRepository>().Object,
             Database:           () => dbContext,
             SemesterContext:    () => new SemesterContext(),
             CampusListVm:       () => throw new NotSupportedException("Not used on ExitNow path"),
-            BlockPatternListVm: () => throw new NotSupportedException("Not used on ExitNow path")
+            BlockPatternListVm: () => throw new NotSupportedException("Not used on ExitNow path"),
+            SectionCodePatternListVm: () => throw new NotSupportedException("Not used on ExitNow path")
         );
 
         var vm = new StartupWizardViewModel(null!, services);

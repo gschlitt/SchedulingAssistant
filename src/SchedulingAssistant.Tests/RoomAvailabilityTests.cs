@@ -695,4 +695,210 @@ public class RoomAvailabilityTests
             new TemplateDaySpec(5, blockLengthHours, durationMinutes, starts)
         });
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Spec-based solver (GenerateSolutionsFromSpecs)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static BlockPattern MakePattern(string id, string name, int[] days) =>
+        new BlockPattern { Id = id, Name = name, Days = days.ToList() };
+
+    private static LegalStartTime MakeLst(double blockLength, int[] starts) =>
+        new LegalStartTime { BlockLength = blockLength, StartTimes = starts.ToList() };
+
+    [Fact]
+    public void SpecSolver_AllFixed_FindsRooms()
+    {
+        // Scenario 3: M 180min at 0800. All fields set except room.
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var lst = new[] { MakeLst(3.0, [480]) };
+        var patterns = new[] { MakePattern("mwf", "MWF", [1, 3, 5]) };
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        var specs = new[] { new MeetingSpec(0, Day: 1, DurationMinutes: 180, StartMinutes: 480, RoomTypeId: null) };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        Assert.NotEmpty(solutions);
+        Assert.All(solutions, sol => Assert.Contains(sol.Slots, s => s.RoomId == "r1" && s.Day == 1));
+    }
+
+    [Fact]
+    public void SpecSolver_OpenStart_EnumeratesLegalStarts()
+    {
+        // Scenario 1-like: MWF 90min, days fixed, start not set.
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var lst = new[] { MakeLst(1.5, [480, 570]) }; // 0800, 0930
+        var patterns = new[] { MakePattern("mwf", "MWF", [1, 3, 5]) };
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        var specs = new MeetingSpec[]
+        {
+            new(0, Day: 1, DurationMinutes: 90, StartMinutes: null, RoomTypeId: null),
+            new(1, Day: 3, DurationMinutes: 90, StartMinutes: null, RoomTypeId: null),
+            new(2, Day: 5, DurationMinutes: 90, StartMinutes: null, RoomTypeId: null),
+        };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        Assert.NotEmpty(solutions);
+        // Tier 1 should have same room, same start across all 3 days.
+        var tier1 = solutions.Where(s => s.Tier == SolutionTier.SameRoomSameTime).ToList();
+        Assert.NotEmpty(tier1);
+    }
+
+    [Fact]
+    public void SpecSolver_OpenDays_PrefersPatterns()
+    {
+        // Scenario 2: 2 meetings, 90min each, no days specified.
+        // Patterns: TR (days 2,4). Available days: 1,2,3,4,5.
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var lst = new[] { MakeLst(1.5, [480]) };
+        var patterns = new[] { MakePattern("tr", "TR", [2, 4]) };
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        var specs = new MeetingSpec[]
+        {
+            new(0, Day: null, DurationMinutes: 90, StartMinutes: null, RoomTypeId: null),
+            new(1, Day: null, DurationMinutes: 90, StartMinutes: null, RoomTypeId: null),
+        };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        Assert.NotEmpty(solutions);
+        // First solution should be pattern-matched (TR).
+        var first = solutions[0];
+        Assert.True(first.IsPatternMatch);
+        var days = first.Slots.Select(s => s.Day).OrderBy(d => d).ToList();
+        Assert.Equal([2, 4], days);
+    }
+
+    [Fact]
+    public void SpecSolver_MixedFixedAndOpen_CompletesPattern()
+    {
+        // Scenario 4-like: T fixed, R fixed, 1 open day.
+        // Pattern MWF doesn't fit. Pattern TWR (2,4,?) doesn't exist.
+        // But we add a pattern "TWRF" with days [2,4,5] → should complete with F=5.
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var lst = new[] { MakeLst(1.5, [480]) };
+        var patterns = new[]
+        {
+            MakePattern("mwf", "MWF", [1, 3, 5]),
+            MakePattern("twrf", "TWThF", [2, 3, 4, 5])  // nope, this is 4 days but we only have 3 specs total
+        };
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        // T(2) at 80min, R(4) at 80min, 1 open at 180min.
+        var specs = new MeetingSpec[]
+        {
+            new(0, Day: 2, DurationMinutes: 80, StartMinutes: null, RoomTypeId: null),
+            new(1, Day: 4, DurationMinutes: 80, StartMinutes: null, RoomTypeId: null),
+            new(2, Day: null, DurationMinutes: 180, StartMinutes: null, RoomTypeId: null),
+        };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        // Should find solutions with the open spec assigned to some day (M, W, or F).
+        Assert.NotEmpty(solutions);
+        var openDay = solutions[0].Slots.FirstOrDefault(s => s.DurationMinutes == 180);
+        Assert.NotNull(openDay);
+        Assert.DoesNotContain(openDay.Day, new[] { 2, 4 }); // not T or R
+    }
+
+    [Fact]
+    public void SpecSolver_RoomBusy_ExcludesConflicts()
+    {
+        // Room r1 is busy Mon 0800-0930. Spec wants Mon 90min at 0800.
+        var rooms = new[] { MakeRoom("r1", "A", "101"), MakeRoom("r2", "B", "201") };
+        var lst = new[] { MakeLst(1.5, [480, 570]) };
+        var patterns = Array.Empty<BlockPattern>();
+        var blocking = MakeSection("s1", "r1", day: 1, start: 480, duration: 90);
+        var index = new OccupancyIndex();
+        index.Build([blocking], [], null);
+
+        var specs = new[] { new MeetingSpec(0, Day: 1, DurationMinutes: 90, StartMinutes: 480, RoomTypeId: null) };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        // r1 at 0800 is busy; only r2 should appear at 0800.
+        Assert.All(solutions.Where(s => s.Slots.Any(sl => sl.StartMinutes == 480)),
+            sol => Assert.All(sol.Slots, s => Assert.Equal("r2", s.RoomId)));
+    }
+
+    [Fact]
+    public void SpecSolver_CustomDuration_FallsBackToAllStarts()
+    {
+        // 80min does not match any configured block length (only 1.5hr = 90min exists).
+        // Solver should fall back to all start times where 80min fits.
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var lst = new[] { MakeLst(1.5, [480, 570]) };
+        var patterns = Array.Empty<BlockPattern>();
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        var specs = new[] { new MeetingSpec(0, Day: 1, DurationMinutes: 80, StartMinutes: null, RoomTypeId: null) };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        Assert.NotEmpty(solutions);
+    }
+
+    [Fact]
+    public void SpecSolver_FullySpecified_AlsoSuggestsAlternatives()
+    {
+        // All fields set (day=1, start=480, dur=90). Should find room for that time
+        // AND suggest alternative times.
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var lst = new[] { MakeLst(1.5, [480, 570]) };
+        var patterns = Array.Empty<BlockPattern>();
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        var specs = new[] { new MeetingSpec(0, Day: 1, DurationMinutes: 90, StartMinutes: 480, RoomTypeId: null) };
+
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        // Should have the exact match (0800) AND the alternative (0930).
+        var starts = solutions.SelectMany(s => s.Slots).Select(s => s.StartMinutes).Distinct().ToList();
+        Assert.Contains(480, starts);
+        Assert.Contains(570, starts);
+    }
+
+    [Fact]
+    public void SpecSolver_NoRooms_ReturnsEmpty()
+    {
+        var index = new OccupancyIndex();
+        index.Build([], [], null);
+
+        var specs = new[] { new MeetingSpec(0, Day: 1, DurationMinutes: 90, StartMinutes: null, RoomTypeId: null) };
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, Array.Empty<Room>(), index,
+            new[] { MakeLst(1.5, [480]) }, Array.Empty<BlockPattern>());
+
+        Assert.Empty(solutions);
+    }
+
+    [Fact]
+    public void SpecSolver_EmptySpecs_ReturnsEmpty()
+    {
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(Array.Empty<MeetingSpec>(),
+            new[] { MakeRoom("r1", "A", "101") },
+            new OccupancyIndex(),
+            new[] { MakeLst(1.5, [480]) },
+            Array.Empty<BlockPattern>());
+
+        Assert.Empty(solutions);
+    }
 }

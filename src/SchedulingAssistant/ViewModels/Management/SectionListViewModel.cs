@@ -742,7 +742,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         List<SchedulingEnvironmentValue> AllTags,
         List<SchedulingEnvironmentValue> AllResources,
         List<SchedulingEnvironmentValue> AllReserves,
-        List<SectionCodePattern>   SectionCodePatterns);
+        List<SectionCodePattern>   SectionCodePatterns,
+        List<SchedulingEnvironmentValue> RoomTypes);
 
     /// <summary>
     /// Loads all data needed to open the inline editor and returns it as an
@@ -771,7 +772,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             AllTags:             _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag),
             AllResources:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource),
             AllReserves:         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve),
-            SectionCodePatterns: _codePatternRepo.GetAll());
+            SectionCodePatterns: _codePatternRepo.GetAll(),
+            RoomTypes:           _propertyRepo.GetAll(SchedulingEnvironmentTypes.RoomType));
     }
 
     /// <summary>
@@ -848,6 +850,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 }
             },
             _blockPatternRepo,
+            roomTypes: ctx.RoomTypes,
             defaultBlockLength: ctx.DefaultBlockLength);
 
         // Wire the Room Availability Browser factory (disabled in multi-semester mode)
@@ -861,20 +864,20 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 var capturedRooms = ctx.Rooms;
                 var capturedLst = ctx.LegalStartTimes;
 
-                editVm.CreateRoomBrowser = (existingMeetings, onAccept, onCancel) =>
+                editVm.CreateRoomBrowser = (specs, onAccept, onCancel) =>
                 {
                     var sections = _sectionRepo.GetAll(capturedSemId);
                     var meetings = _meetingRepo.GetAll(capturedSemId);
                     var patterns = _blockPatternRepo.GetAll();
 
                     return new RoomAvailabilityBrowserViewModel(
+                        specs,
                         capturedRooms, capturedLst, patterns,
                         sections, meetings, capturedSectionId,
                         capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
                         ghosts => _setGhostBlocks?.Invoke(ghosts),
                         onAccept,
-                        onCancel,
-                        existingMeetings);
+                        onCancel);
                 };
             }
         }
@@ -1074,6 +1077,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     private void CollapseEditor()
     {
+        EditVm?.RoomBrowserVm?.CancelCommand.Execute(null);
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
         ExpandedItem = null;
         EditVm = null;

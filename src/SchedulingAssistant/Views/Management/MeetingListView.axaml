@@ -97,7 +97,7 @@
                     Foreground="{StaticResource TextLabel}"
                     Text="Schedule" />
                 <!--  Column headers (rendered once above all slots)  -->
-                <Grid Margin="5,0,0,1" ColumnDefinitions="80,80,80,90,70,80,24">
+                <Grid Margin="5,0,0,1" ColumnDefinitions="75,42,42,65,55,55,70,20">
                     <TextBlock
                         Grid.Column="0"
                         Margin="0,0,2,0"
@@ -133,6 +133,12 @@
                         Margin="2,0,2,0"
                         FontSize="9"
                         Foreground="{StaticResource TextMuted}"
+                        Text="Rm Type" />
+                    <TextBlock
+                        Grid.Column="6"
+                        Margin="2,0,2,0"
+                        FontSize="9"
+                        Foreground="{StaticResource TextMuted}"
                         Text="Room" />
                 </Grid>
 
@@ -149,7 +155,7 @@
                                     weeks TextBox (row 1, shown only when Frequency="Custom"). Row 1
                                     occupies only col 3 so both controls share the same column width.
                                 -->
-                                <Grid ColumnDefinitions="80,80,80,90,70,80,24" RowDefinitions="Auto,Auto">
+                                <Grid ColumnDefinitions="75,42,42,65,55,55,70,20" RowDefinitions="Auto,Auto">
 
                                     <!--  Day  -->
                                     <ComboBox
@@ -182,7 +188,7 @@
                                         CornerRadius="4"
                                         FilterMode="None"
                                         FontSize="11"
-                                        ItemsSource="{Binding AllStartTimeStrings}"
+                                        ItemsSource="{Binding AvailableStartTimeStrings}"
                                         MinimumPrefixLength="0"
                                         Text="{Binding StartTimeText, Mode=TwoWay}"
                                         PlaceholderText="HHMM" />
@@ -255,7 +261,7 @@
                                         SelectedValue="{Binding SelectedMeetingTypeId}"
                                         SelectedValueBinding="{Binding Id}" />
 
-                                    <!--  Room  -->
+                                    <!--  Room Type  -->
                                     <ComboBox
                                         Grid.Row="0"
                                         Grid.Column="5"
@@ -263,8 +269,22 @@
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
                                         CornerRadius="4"
+                                        DisplayMemberBinding="{Binding Name}"
                                         FontSize="11"
-                                        ItemsSource="{Binding Rooms}"
+                                        ItemsSource="{Binding RoomTypeOptions}"
+                                        SelectedItem="{Binding SelectedRoomType}" />
+
+                                    <!--  Room  -->
+                                    <ComboBox
+                                        Grid.Row="0"
+                                        Grid.Column="6"
+                                        Margin="2,0,2,0"
+                                        Padding="3,1"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsRoomEnabled}"
+                                        CornerRadius="4"
+                                        FontSize="11"
+                                        ItemsSource="{Binding FilteredRooms}"
                                         SelectedValue="{Binding SelectedRoomId}"
                                         SelectedValueBinding="{Binding Id}">
                                         <ComboBox.ItemTemplate>
@@ -277,7 +297,7 @@
                                     <!--  Remove slot button  -->
                                     <Button
                                         Grid.Row="0"
-                                        Grid.Column="6"
+                                        Grid.Column="7"
                                         Width="20"
                                         Padding="2,1"
                                         HorizontalAlignment="Center"

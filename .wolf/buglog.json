@@ -9614,6 +9614,582 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-13T22:46:09.827Z"
+    },
+    {
+      "id": "bug-601",
+      "timestamp": "2026-05-14T03:17:41.356Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Had \"Unknown GridBlock subtype: {b.GetType().Name}\"",
+      "fix": "Changed to \"ghost-{g.Day}-{g.StartMinutes}-{g.RoomLabel}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:17:41.356Z"
+    },
+    {
+      "id": "bug-602",
+      "timestamp": "2026-05-14T03:17:54.214Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:17:54.214Z"
+    },
+    {
+      "id": "bug-603",
+      "timestamp": "2026-05-14T03:19:47.286Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Condition was: if (tileHasOverlay && isMultiSemester && semesterBrush)",
+      "fix": "Changed to: if (tileHasGhost)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:19:47.286Z"
+    },
+    {
+      "id": "bug-604",
+      "timestamp": "2026-05-14T03:25:46.568Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:25:46.568Z"
+    },
+    {
+      "id": "bug-605",
+      "timestamp": "2026-05-14T03:29:48.205Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:29:48.205Z"
+    },
+    {
+      "id": "bug-606",
+      "timestamp": "2026-05-14T03:33:39.637Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"using:SchedulingAssistant.ViewModels.Management\"",
+      "fix": "Changed to \"using:SchedulingAssistant.Views.Management\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:33:39.637Z"
+    },
+    {
+      "id": "bug-607",
+      "timestamp": "2026-05-14T03:46:42.123Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→16 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:46:42.123Z"
+    },
+    {
+      "id": "bug-608",
+      "timestamp": "2026-05-14T03:48:59.949Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 30→12 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:48:59.949Z"
+    },
+    {
+      "id": "bug-609",
+      "timestamp": "2026-05-14T03:49:26.103Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T03:49:26.103Z"
+    },
+    {
+      "id": "bug-610",
+      "timestamp": "2026-05-14T16:21:49.950Z",
+      "error_message": "Wrong return value",
+      "file": "../../../.claude/plans/continue-room-availability-browser-steady-marshmallow.md",
+      "root_cause": "Was returning: when `SelectedStartTime is null`. Instead, populat",
+      "fix": "Now returns: when `SelectedStartTime is null`. When null, show ",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:21:49.950Z"
+    },
+    {
+      "id": "bug-611",
+      "timestamp": "2026-05-14T16:21:55.060Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../.claude/plans/continue-room-availability-browser-steady-marshmallow.md",
+      "root_cause": "Had `ToMeetingSpec`",
+      "fix": "Changed to `RefreshStartTimes`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:21:55.060Z"
+    },
+    {
+      "id": "bug-612",
+      "timestamp": "2026-05-14T16:24:04.574Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 6→13 lines (4 removed) | Also: // ── Block-length refresh (reverse lookup) ──────; /// Rebuilds <see cref=\"AvailableBlockLengthString",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-14T16:25:03.922Z"
+    },
+    {
+      "id": "bug-613",
+      "timestamp": "2026-05-14T16:24:35.523Z",
+      "error_message": "Wrong reference: AllStartTimeStrings should be AvailableStartTimeStrings",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "Used \"AllStartTimeStrings\" instead of \"AvailableStartTimeStrings\"",
+      "fix": "Changed AllStartTimeStrings → AvailableStartTimeStrings",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:24:35.523Z"
+    },
+    {
+      "id": "bug-614",
+      "timestamp": "2026-05-14T16:25:16.206Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "No early return/throw for edge case: SelectedBlockLength is null",
+      "fix": "Added guard clause: if (SelectedBlockLength is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:25:16.206Z"
+    },
+    {
+      "id": "bug-615",
+      "timestamp": "2026-05-14T16:25:43.580Z",
+      "error_message": "Wrong reference: AllStartTimeStrings should be AvailableStartTimeStrings",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Used \"AllStartTimeStrings\" instead of \"AvailableStartTimeStrings\"",
+      "fix": "Changed AllStartTimeStrings → AvailableStartTimeStrings",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:25:43.580Z"
+    },
+    {
+      "id": "bug-616",
+      "timestamp": "2026-05-14T16:25:44.394Z",
+      "error_message": "Wrong reference: AllStartTimeStrings should be AvailableStartTimeStrings",
+      "file": "src/SchedulingAssistant/Views/Management/MeetingListView.axaml",
+      "root_cause": "Used \"AllStartTimeStrings\" instead of \"AvailableStartTimeStrings\"",
+      "fix": "Changed AllStartTimeStrings → AvailableStartTimeStrings",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:25:44.394Z"
+    },
+    {
+      "id": "bug-617",
+      "timestamp": "2026-05-14T16:29:42.706Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/RoomAvailabilityService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:29:42.706Z"
+    },
+    {
+      "id": "bug-618",
+      "timestamp": "2026-05-14T20:58:02.193Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 49→66 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T20:58:02.193Z"
+    },
+    {
+      "id": "bug-619",
+      "timestamp": "2026-05-14T22:47:17.772Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../.claude/plans/we-re-going-to-refine-sprightly-ripple.md",
+      "root_cause": "Had `85,45,45,70,60,65,70,24`",
+      "fix": "Changed to `75,42,42,65,55,55,70,20`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-14T22:47:22.808Z"
+    },
+    {
+      "id": "bug-620",
+      "timestamp": "2026-05-14T22:49:51.201Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Models/MeetingSpec.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T22:49:51.201Z"
+    },
+    {
+      "id": "bug-621",
+      "timestamp": "2026-05-14T22:50:13.685Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: // ── Room type helpers ────────────────────────────────────; partial void OnSelectedRoomTypeChanged(RoomTypeOption? value | Also: bool isRemote = IsRemote;; var roomTypeId = SelectedRoomType?.Id; | Also: RoomTypeId      = SelectedRoomType?.Id,",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-05-14T22:51:28.662Z"
+    },
+    {
+      "id": "bug-622",
+      "timestamp": "2026-05-14T23:00:33.700Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "Had \"campuses\"",
+      "fix": "Changed to \"roomTypes\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T23:00:33.700Z"
+    },
+    {
+      "id": "bug-623",
+      "timestamp": "2026-05-14T23:05:18.845Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/RoomAvailabilityService.cs",
+      "root_cause": "22 lines replaced/restructured",
+      "fix": "Rewrote 71→137 lines (22 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T23:05:18.845Z"
+    },
+    {
+      "id": "bug-624",
+      "timestamp": "2026-05-14T23:05:43.748Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/RoomAvailabilityService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: bool isPatternMatch = false,; IReadOnlyList<Room>[]? perSpecRooms = null)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-14T23:06:02.314Z"
+    },
+    {
+      "id": "bug-625",
+      "timestamp": "2026-05-15T03:44:05.531Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 15→3 lines (10 removed) | Also: var filteredRooms = RoomAvailabilityService.ApplyF; _allRooms,",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T03:44:35.252Z"
+    },
+    {
+      "id": "bug-626",
+      "timestamp": "2026-05-15T03:45:21.218Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 20→49 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T03:45:21.218Z"
+    },
+    {
+      "id": "bug-627",
+      "timestamp": "2026-05-15T03:52:07.557Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T03:52:07.557Z"
+    },
+    {
+      "id": "bug-628",
+      "timestamp": "2026-05-15T03:56:35.622Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"650\"",
+      "fix": "Changed to \"500\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T04:01:25.909Z"
+    },
+    {
+      "id": "bug-629",
+      "timestamp": "2026-05-15T03:56:41.357Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "Had \"75,42,42,65,55,55,70,20\"",
+      "fix": "Changed to \"75,42,42,65,55,65,70,20\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T03:56:41.357Z"
+    },
+    {
+      "id": "bug-630",
+      "timestamp": "2026-05-15T04:01:20.107Z",
+      "error_message": "Wrong operator: <= should be ==",
+      "file": "src/SchedulingAssistant/Behaviors/ConditionalColumnWidthBehavior.cs",
+      "root_cause": "Used \"<=\" instead of \"==\"",
+      "fix": "Changed operator <= → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T04:01:20.107Z"
+    },
+    {
+      "id": "bug-631",
+      "timestamp": "2026-05-15T04:01:58.071Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 65→81 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T04:01:58.071Z"
+    },
+    {
+      "id": "bug-632",
+      "timestamp": "2026-05-15T04:08:04.476Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"-1\"",
+      "fix": "Changed to \"520\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T04:09:41.119Z"
+    },
+    {
+      "id": "bug-633",
+      "timestamp": "2026-05-15T04:33:25.534Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"-1\"",
+      "fix": "Changed to \"490\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T04:33:25.534Z"
+    },
+    {
+      "id": "bug-634",
+      "timestamp": "2026-05-15T04:40:09.478Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"490\"",
+      "fix": "Changed to \"-1\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T04:40:09.478Z"
+    },
+    {
+      "id": "bug-635",
+      "timestamp": "2026-05-15T04:47:39.614Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"-1\"",
+      "fix": "Changed to \"370\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T04:47:39.614Z"
+    },
+    {
+      "id": "bug-636",
+      "timestamp": "2026-05-15T04:48:06.777Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs",
+      "root_cause": "26 lines replaced/restructured",
+      "fix": "Rewrote 53→35 lines (26 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T04:48:06.777Z"
     }
   ]
 }

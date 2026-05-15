@@ -57,11 +57,13 @@ public class WizardRoutingTests
             Semesters:          () => mockSem.Object,
             Campuses:           () => new Mock<ICampusRepository>().Object,
             BlockPatterns:      () => new Mock<IBlockPatternRepository>().Object,
+            SectionCodePatterns: () => new Mock<ISectionCodePatternRepository>().Object,
             Database:           () => new Mock<IDatabaseContext>().Object,
             SemesterContext:    () => new SemesterContext(),
             // Routing tests never reach manual-config steps; these will not be invoked.
             CampusListVm:       () => throw new NotSupportedException("Not used in routing tests"),
-            BlockPatternListVm: () => throw new NotSupportedException("Not used in routing tests")
+            BlockPatternListVm: () => throw new NotSupportedException("Not used in routing tests"),
+            SectionCodePatternListVm: () => throw new NotSupportedException("Not used in routing tests")
         );
     }
 

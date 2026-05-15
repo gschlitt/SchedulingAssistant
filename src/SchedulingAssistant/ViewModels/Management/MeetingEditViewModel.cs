@@ -22,6 +22,7 @@ public partial class MeetingEditViewModel : ViewModelBase
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<SchedulingEnvironmentValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _allRooms;
+    private readonly IReadOnlyList<RoomTypeOption> _roomTypeOptions;
 
     // ── Title ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ public partial class MeetingEditViewModel : ViewModelBase
     /// <param name="allInstructors">Full instructor list — those assigned to the meeting are pre-checked.</param>
     /// <param name="meetingTypes">Available meeting-type property values for the slot dropdowns.</param>
     /// <param name="allRooms">Available rooms for the slot dropdowns.</param>
+    /// <param name="roomTypes">Available room types for the slot room-type dropdowns.</param>
     /// <param name="campuses">Available campuses for the campus picker.</param>
     /// <param name="allTags">Available tags — those already on the meeting are pre-checked.</param>
     /// <param name="allResources">Available resources — those already on the meeting are pre-checked.</param>
@@ -146,6 +148,7 @@ public partial class MeetingEditViewModel : ViewModelBase
         IReadOnlyList<Instructor> allInstructors,
         IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
         IReadOnlyList<Room> allRooms,
+        IReadOnlyList<SchedulingEnvironmentValue> roomTypes,
         IReadOnlyList<Campus> campuses,
         IReadOnlyList<SchedulingEnvironmentValue> allTags,
         IReadOnlyList<SchedulingEnvironmentValue> allResources,
@@ -158,6 +161,11 @@ public partial class MeetingEditViewModel : ViewModelBase
         _meetingTypes    = meetingTypes;
         _allRooms        = allRooms;
         IsNew            = isNew;
+
+        var rtOpts = new List<RoomTypeOption> { new(null, "(none)") };
+        rtOpts.AddRange(roomTypes.Select(rt => new RoomTypeOption(rt.Id, rt.Name)));
+        rtOpts.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
+        _roomTypeOptions = rtOpts;
 
         // Populate title and notes from the existing meeting.
         _title = meeting.Title;
@@ -290,7 +298,7 @@ public partial class MeetingEditViewModel : ViewModelBase
 
     private SectionMeetingViewModel CreateSlotVm(SectionDaySchedule? existing) =>
         new(_legalStartTimes, includeSaturday: true, includeSunday: false,
-            _meetingTypes, _allRooms, existing,
+            _meetingTypes, _allRooms, _roomTypeOptions, existing,
             unit: AppSettings.Current.BlockLengthUnit);
 
     // ── Save / Cancel ─────────────────────────────────────────────────────────

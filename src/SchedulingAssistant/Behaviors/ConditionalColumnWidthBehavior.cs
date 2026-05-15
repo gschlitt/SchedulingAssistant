@@ -95,7 +95,8 @@ public static class ConditionalColumnWidthBehavior
 
     /// <summary>
     /// Called whenever any controlling property changes. Applies the width only when all
-    /// four properties are set (ColumnIndex >= 0, and the relevant width > 0).
+    /// four properties are set (ColumnIndex >= 0, and the relevant width > 0 or -1 for Auto).
+    /// A value of -1 sets the column to <see cref="GridLength.Auto"/>.
     /// </summary>
     private static void OnAnyPropertyChanged(Grid grid, AvaloniaPropertyChangedEventArgs e)
     {
@@ -108,9 +109,11 @@ public static class ConditionalColumnWidthBehavior
 
         // Don't apply if the target width hasn't been set yet (still at default 0).
         // This avoids a transient zero-width column during AXAML property initialization.
-        if (width <= 0)
+        if (width == 0)
             return;
 
-        grid.ColumnDefinitions[colIndex].Width = new GridLength(width, GridUnitType.Pixel);
+        grid.ColumnDefinitions[colIndex].Width = width < 0
+            ? GridLength.Auto
+            : new GridLength(width, GridUnitType.Pixel);
     }
 }

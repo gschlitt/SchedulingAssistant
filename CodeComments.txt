@@ -2,9 +2,18 @@ Bugs:
 
 Sometimes "New..." is locking up???
 
-
+Deleting a semester permitted with sections? 
 
 Selection of a section can cause overflow in a section card. Minor issue. 
+
+Rooming: 
+ghost blocks don't delete on closure, at least not always
+Events need a browser too!
+Window popouts are broken????
+
+
+
+
 
 Test deletion of section!
 

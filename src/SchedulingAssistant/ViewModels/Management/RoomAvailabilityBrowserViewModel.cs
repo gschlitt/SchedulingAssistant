@@ -1,50 +1,35 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
-using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
 /// <summary>
 /// Drives the Room Availability Browser panel inside the section editor.
-/// Computes feasible room+time solutions for a meeting pattern, displays them
-/// as ghost tiles on the schedule grid, and lets the user step through and accept.
+/// Reads partially-specified meeting rows (<see cref="MeetingSpec"/>), fills in
+/// the gaps (days, start times, rooms), and lets the user step through ranked solutions
+/// displayed as ghost tiles on the schedule grid.
 /// </summary>
 public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
 {
     private readonly RoomAvailabilityService _service = new();
+    private readonly IReadOnlyList<MeetingSpec> _specs;
     private readonly IReadOnlyList<Room> _allRooms;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<BlockPattern> _blockPatterns;
-    private readonly IEnumerable<Section> _semesterSections;
-    private readonly IEnumerable<Meeting> _semesterMeetings;
-    private readonly string? _excludeSectionId;
     private readonly string _semesterId;
     private readonly string _semesterName;
     private readonly string _semesterColor;
     private readonly Action<List<GhostBlock>?> _setGhostBlocks;
-    private readonly Action<IReadOnlyList<SolutionSlot>> _onAccept;
+    private readonly Action<IReadOnlyList<SpecSolution>> _onAccept;
     private readonly Action _onCancel;
 
     private OccupancyIndex _index = new();
     private List<RoomSolution> _solutions = new();
 
     // ── Observable properties ────────────────────────────────────────────────
-
-    [ObservableProperty] private ObservableCollection<MeetingTemplate> _templates = new();
-    [ObservableProperty] private MeetingTemplate? _selectedTemplate;
-
-    // Room filters
-    [ObservableProperty] private ObservableCollection<string> _campusOptions = new();
-    [ObservableProperty] private string? _selectedCampus;
-    [ObservableProperty] private ObservableCollection<string> _buildingOptions = new();
-    [ObservableProperty] private string? _selectedBuilding;
-    [ObservableProperty] private ObservableCollection<string> _roomTypeOptions = new();
-    [ObservableProperty] private string? _selectedRoomType;
-    [ObservableProperty] private int? _minCapacity;
 
     // Solution stepping
     [ObservableProperty] private int _currentSolutionIndex;
@@ -55,14 +40,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     [ObservableProperty] private bool _canGoNext;
     [ObservableProperty] private bool _canGoPrevious;
 
-    // Per-day duration editing
-    [ObservableProperty] private ObservableCollection<DayDurationItem> _dayDurations = new();
-    [ObservableProperty] private ObservableCollection<double> _availableBlockLengths = new();
-
-    /// <summary>
-    /// Creates the browser VM. The browser automatically builds the occupancy index
-    /// and generates templates on construction.
-    /// </summary>
+    /// <param name="specs">Partially-specified meetings — duration required, day/start optional.</param>
     /// <param name="allRooms">All rooms in the database.</param>
     /// <param name="legalStartTimes">Legal start times for the current academic year.</param>
     /// <param name="blockPatterns">Configured block patterns (day patterns).</param>
@@ -75,8 +53,8 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// <param name="setGhostBlocks">Callback to push ghost blocks onto the schedule grid.</param>
     /// <param name="onAccept">Callback when the user accepts a solution.</param>
     /// <param name="onCancel">Callback when the user cancels browsing.</param>
-    /// <param name="existingMeetings">Meetings already on the section (augment mode).</param>
     public RoomAvailabilityBrowserViewModel(
+        IReadOnlyList<MeetingSpec> specs,
         IReadOnlyList<Room> allRooms,
         IReadOnlyList<LegalStartTime> legalStartTimes,
         IReadOnlyList<BlockPattern> blockPatterns,
@@ -87,72 +65,23 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         string semesterName,
         string semesterColor,
         Action<List<GhostBlock>?> setGhostBlocks,
-        Action<IReadOnlyList<SolutionSlot>> onAccept,
-        Action onCancel,
-        IReadOnlyList<SectionDaySchedule>? existingMeetings = null)
+        Action<IReadOnlyList<SpecSolution>> onAccept,
+        Action onCancel)
     {
+        _specs = specs;
         _allRooms = allRooms;
         _legalStartTimes = legalStartTimes;
         _blockPatterns = blockPatterns;
-        _semesterSections = semesterSections;
-        _semesterMeetings = semesterMeetings;
-        _excludeSectionId = excludeSectionId;
         _semesterId = semesterId;
         _semesterName = semesterName;
         _semesterColor = semesterColor;
         _setGhostBlocks = setGhostBlocks;
         _onAccept = onAccept;
         _onCancel = onCancel;
-        ExistingMeetings = existingMeetings ?? Array.Empty<SectionDaySchedule>();
 
-        // Build occupancy index
-        _index = _service.BuildOccupancyIndex(_semesterSections, _semesterMeetings, _excludeSectionId);
-
-        // Generate templates
-        var templates = _service.GenerateTemplates(_blockPatterns, _legalStartTimes);
-        Templates = new ObservableCollection<MeetingTemplate>(templates);
-
-        // Populate available block lengths for per-day editing
-        AvailableBlockLengths = new ObservableCollection<double>(
-            _legalStartTimes.Select(l => l.BlockLength).OrderBy(b => b));
-
-        // Populate filter options
-        PopulateFilterOptions();
-
-        // Auto-select first template
-        if (Templates.Count > 0)
-            SelectedTemplate = Templates[0];
-    }
-
-    /// <summary>Existing meetings on the section (for augment mode).</summary>
-    public IReadOnlyList<SectionDaySchedule> ExistingMeetings { get; }
-
-    // ── Property change handlers ─────────────────────────────────────────────
-
-    partial void OnSelectedTemplateChanged(MeetingTemplate? value)
-    {
-        if (value == null)
-        {
-            DayDurations.Clear();
-            ClearSolutions();
-            return;
-        }
-
-        // Populate per-day duration editors
-        DayDurations = new ObservableCollection<DayDurationItem>(
-            value.DaySpecs.Select(spec => new DayDurationItem(
-                spec.Day,
-                DayName(spec.Day),
-                spec.BlockLengthHours,
-                this)));
-
+        _index = _service.BuildOccupancyIndex(semesterSections, semesterMeetings, excludeSectionId);
         Recompute();
     }
-
-    partial void OnSelectedCampusChanged(string? value) => Recompute();
-    partial void OnSelectedBuildingChanged(string? value) => Recompute();
-    partial void OnSelectedRoomTypeChanged(string? value) => Recompute();
-    partial void OnMinCapacityChanged(int? value) => Recompute();
 
     // ── Commands ─────────────────────────────────────────────────────────────
 
@@ -182,12 +111,12 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         if (_solutions.Count == 0 || CurrentSolutionIndex >= _solutions.Count) return;
 
         var solution = _solutions[CurrentSolutionIndex];
-        // Only pass slots for gap days (not existing meetings)
-        var existingDays = new HashSet<int>(ExistingMeetings.Select(m => m.Day));
-        var newSlots = solution.Slots.Where(s => !existingDays.Contains(s.Day)).ToList();
+
+        // Map solution slots back to spec indices via greedy day+duration matching.
+        var specSolutions = MapSlotsToSpecs(solution.Slots, _specs);
 
         _setGhostBlocks(null);
-        _onAccept(newSlots);
+        _onAccept(specSolutions);
     }
 
     [RelayCommand]
@@ -197,42 +126,12 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         _onCancel();
     }
 
-    // ── Day duration editing ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// Called by <see cref="DayDurationItem"/> when the user changes a day's block length.
-    /// Rebuilds the template with the new per-day specs and recomputes solutions.
-    /// </summary>
-    internal void OnDayDurationChanged()
-    {
-        if (SelectedTemplate == null) return;
-
-        // Rebuild day specs from the current DayDurations
-        var newSpecs = DayDurations.Select(dd =>
-        {
-            var lst = _legalStartTimes.FirstOrDefault(l => Math.Abs(l.BlockLength - dd.BlockLengthHours) < 0.01);
-            var starts = lst?.StartTimes ?? new List<int>();
-            return new TemplateDaySpec(dd.Day, dd.BlockLengthHours, (int)(dd.BlockLengthHours * 60), starts.AsReadOnly());
-        }).ToList();
-
-        // Create a modified template
-        SelectedTemplate = new MeetingTemplate(SelectedTemplate.PatternId, SelectedTemplate.PatternName, newSpecs);
-    }
-
     // ── Internal logic ───────────────────────────────────────────────────────
 
     private void Recompute()
     {
-        if (SelectedTemplate == null) { ClearSolutions(); return; }
-
-        var filteredRooms = RoomAvailabilityService.ApplyFilter(
-            _allRooms,
-            SelectedCampus == "(any)" ? null : _allRooms.FirstOrDefault(r => r.CampusId != null && SelectedCampus != null)?.CampusId,
-            SelectedBuilding == "(any)" ? null : SelectedBuilding,
-            SelectedRoomType == "(any)" ? null : _allRooms.FirstOrDefault(r => r.RoomTypeId != null && SelectedRoomType != null)?.RoomTypeId,
-            MinCapacity);
-
-        _solutions = _service.GenerateSolutions(SelectedTemplate, filteredRooms, _index, ExistingMeetings);
+        _solutions = _service.GenerateSolutionsFromSpecs(
+            _specs, _allRooms.ToList(), _index, _legalStartTimes, _blockPatterns);
 
         TotalSolutions = _solutions.Count;
         HasSolutions = _solutions.Count > 0;
@@ -254,7 +153,6 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         CanGoNext = CurrentSolutionIndex < _solutions.Count - 1;
         CanGoPrevious = CurrentSolutionIndex > 0;
 
-        // Convert solution slots to ghost blocks
         var ghosts = solution.Slots.Select(slot =>
         {
             int endMinutes = slot.StartMinutes + slot.DurationMinutes;
@@ -281,23 +179,42 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         _setGhostBlocks(null);
     }
 
-    private void PopulateFilterOptions()
+    // ── Mapping helpers ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Maps solution slots back to spec indices using greedy day+duration matching.
+    /// Each slot is matched to the first unmatched spec with the same day and duration.
+    /// </summary>
+    private static List<SpecSolution> MapSlotsToSpecs(
+        IReadOnlyList<SolutionSlot> slots,
+        IReadOnlyList<MeetingSpec> specs)
     {
-        var buildings = _allRooms
-            .Select(r => r.Building)
-            .Where(b => !string.IsNullOrEmpty(b))
-            .Distinct()
-            .OrderBy(b => b)
-            .ToList();
-        buildings.Insert(0, "(any)");
-        BuildingOptions = new ObservableCollection<string>(buildings);
-        SelectedBuilding = "(any)";
+        var result = new List<SpecSolution>();
+        var used = new HashSet<int>();
 
-        CampusOptions = new ObservableCollection<string>(new[] { "(any)" });
-        SelectedCampus = "(any)";
+        foreach (var slot in slots)
+        {
+            for (int i = 0; i < specs.Count; i++)
+            {
+                if (used.Contains(i)) continue;
+                var spec = specs[i];
 
-        RoomTypeOptions = new ObservableCollection<string>(new[] { "(any)" });
-        SelectedRoomType = "(any)";
+                // Match: day must agree (spec day is null or matches slot day), duration must match.
+                bool dayMatch = !spec.Day.HasValue || spec.Day.Value == slot.Day;
+                bool durMatch = spec.DurationMinutes == slot.DurationMinutes;
+
+                if (dayMatch && durMatch)
+                {
+                    used.Add(i);
+                    result.Add(new SpecSolution(
+                        spec.Index, slot.Day, slot.StartMinutes,
+                        slot.DurationMinutes, slot.RoomId, slot.RoomLabel));
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 
     // ── Formatting helpers ───────────────────────────────────────────────────
@@ -312,48 +229,9 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         return m == 0 ? $"{h}{ampm}" : $"{h}:{m:D2}{ampm}";
     }
 
-    private static string DayName(int day) => day switch
+    internal static string DayName(int day) => day switch
     {
-        1 => "Mon",
-        2 => "Tue",
-        3 => "Wed",
-        4 => "Thu",
-        5 => "Fri",
-        6 => "Sat",
-        _ => "?"
+        1 => "Mon", 2 => "Tue", 3 => "Wed", 4 => "Thu",
+        5 => "Fri", 6 => "Sat", 7 => "Sun", _ => "?"
     };
-}
-
-/// <summary>
-/// Per-day duration editor item for the Room Availability Browser panel.
-/// Allows the user to change the block length for an individual day.
-/// </summary>
-public partial class DayDurationItem : ObservableObject
-{
-    private readonly RoomAvailabilityBrowserViewModel _parent;
-
-    public DayDurationItem(int day, string dayName, double blockLengthHours, RoomAvailabilityBrowserViewModel parent)
-    {
-        Day = day;
-        DayName = dayName;
-        _blockLengthHours = blockLengthHours;
-        _parent = parent;
-    }
-
-    public int Day { get; }
-    public string DayName { get; }
-
-    /// <summary>Block length options for the per-day dropdown (from the parent VM).</summary>
-    public ObservableCollection<double> AvailableBlockLengths => _parent.AvailableBlockLengths;
-
-    [ObservableProperty] private double _blockLengthHours;
-
-    /// <summary>Duration in minutes for display.</summary>
-    public int DurationMinutes => (int)(BlockLengthHours * 60);
-
-    partial void OnBlockLengthHoursChanged(double value)
-    {
-        OnPropertyChanged(nameof(DurationMinutes));
-        _parent.OnDayDurationChanged();
-    }
 }

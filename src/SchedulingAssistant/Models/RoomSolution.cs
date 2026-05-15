@@ -8,11 +8,11 @@ public enum SolutionTier
     /// <summary>All days use the same room and the same start time.</summary>
     SameRoomSameTime = 1,
 
-    /// <summary>All days use the same room but start times differ across days.</summary>
-    SameRoomDiffTimes = 2,
-
     /// <summary>All days use the same start time but rooms differ across days.</summary>
-    SameTimeDiffRooms = 3,
+    SameTimeDiffRooms = 2,
+
+    /// <summary>All days use the same room but start times differ across days.</summary>
+    SameRoomDiffTimes = 3,
 
     /// <summary>Neither rooms nor start times are consistent across days.</summary>
     Mixed = 4
@@ -40,9 +40,11 @@ public record SolutionSlot(
 /// </summary>
 /// <param name="Slots">One slot per gap day, plus any existing meetings for tier classification.</param>
 /// <param name="Tier">Quality tier (lower = more coherent).</param>
+/// <param name="IsPatternMatch">True when the day assignment came from an institutional block pattern.</param>
 public record RoomSolution(
     IReadOnlyList<SolutionSlot> Slots,
-    SolutionTier Tier)
+    SolutionTier Tier,
+    bool IsPatternMatch = false)
 {
     /// <summary>Human-readable tier description shown in the browser panel.</summary>
     public string TierLabel => Tier switch

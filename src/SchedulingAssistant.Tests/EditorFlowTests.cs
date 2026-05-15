@@ -85,6 +85,7 @@ public class EditorFlowTests
             isSectionCodeDuplicate: isDuplicate ?? ((_, _) => false),
             onSave:            onSave ?? (_ => Task.CompletedTask),
             blockPatternRepository: blockPatternRepo.Object,
+            roomTypes:         new List<SchedulingEnvironmentValue>(),
             defaultBlockLength: null);
     }
 
@@ -117,6 +118,7 @@ public class EditorFlowTests
             allInstructors:  new List<Instructor>(),
             meetingTypes:    new List<SchedulingEnvironmentValue>(),
             allRooms:        new List<Room>(),
+            roomTypes:       new List<SchedulingEnvironmentValue>(),
             campuses:        new List<Campus>(),
             allTags:         new List<SchedulingEnvironmentValue>(),
             allResources:    new List<SchedulingEnvironmentValue>(),

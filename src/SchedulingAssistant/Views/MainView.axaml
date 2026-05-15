@@ -436,7 +436,7 @@
 				b:ConditionalColumnWidthBehavior.ColumnIndex="0"
 				b:ConditionalColumnWidthBehavior.Condition="{Binding IsAnyPanelEditing}"
 				b:ConditionalColumnWidthBehavior.FalseWidth="370"
-				b:ConditionalColumnWidthBehavior.TrueWidth="650"
+				b:ConditionalColumnWidthBehavior.TrueWidth="370"
 				ColumnDefinitions="370,4,*">
 
 				<!--  Left column: Section Editor (top) + Workload (bottom)  -->

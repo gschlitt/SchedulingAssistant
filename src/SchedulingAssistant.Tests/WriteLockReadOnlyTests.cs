@@ -163,7 +163,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private SectionListViewModel CreateSectionListVm() =>
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
-            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _dialog, _lock);
+            _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
+            _dialog, _lock);
 
     /// <summary>Creates a fully-wired <see cref="MeetingListViewModel"/> in reader mode.</summary>
     private MeetingListViewModel CreateMeetingListVm() =>
@@ -187,7 +188,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
 
     /// <summary>Creates a fully-wired <see cref="RoomListViewModel"/> in reader mode.</summary>
     private RoomListViewModel CreateRoomListVm() =>
-        new(_roomRepo, _campusRepo, _sectionRepo, CreateSectionListVm(), _db, _dialog, _lock);
+        new(_roomRepo, _campusRepo, _propertyRepo, _sectionRepo, CreateSectionListVm(), _db, _dialog, _lock);
 
     /// <summary>
     /// Creates a <see cref="SchedulingEnvironmentListViewModel"/> for the "sectionType"

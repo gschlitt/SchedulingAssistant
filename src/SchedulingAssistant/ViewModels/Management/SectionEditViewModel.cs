@@ -155,6 +155,7 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<SchedulingEnvironmentValue> _meetingTypes;
     private readonly IReadOnlyList<Room> _rooms;
+    private readonly IReadOnlyList<RoomTypeOption> _roomTypeOptions;
     private readonly IReadOnlyList<BlockPattern> _blockPatterns;
     private readonly bool _includeSaturday;
     private readonly bool _includeSunday;
@@ -386,6 +387,7 @@ public partial class SectionEditViewModel : ViewModelBase
     /// </param>
     /// <param name="onSave">Async callback invoked when the user saves.</param>
     /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
+    /// <param name="roomTypes">Room type scheduling environment values for the room type dropdown.</param>
     /// <param name="defaultBlockLength">Optional preferred block length pre-filled on new meetings.</param>
     public SectionEditViewModel(
         Section section,
@@ -408,6 +410,7 @@ public partial class SectionEditViewModel : ViewModelBase
         Func<string, string, bool> isSectionCodeDuplicate,
         Func<Section, Task> onSave,
         IBlockPatternRepository blockPatternRepository,
+        IReadOnlyList<SchedulingEnvironmentValue> roomTypes,
         double? defaultBlockLength = null)
     {
         _section = section;
@@ -424,6 +427,12 @@ public partial class SectionEditViewModel : ViewModelBase
         _rooms = rooms;
         _includeSaturday = includeSaturday;
         _includeSunday = includeSunday;
+
+        // Build room type options: "(none)" + DB types + "Remote"
+        var rto = new List<RoomTypeOption> { new(null, "(none)") };
+        rto.AddRange(roomTypes.Select(v => new RoomTypeOption(v.Id, v.Name)));
+        rto.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
+        _roomTypeOptions = rto;
         _defaultBlockLength = defaultBlockLength;
         _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
@@ -524,7 +533,7 @@ public partial class SectionEditViewModel : ViewModelBase
         // Meetings — pass rooms down so each meeting can show its own room picker.
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
-            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, entry, defaultBlockLength, _showMeetingWarning,
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, _roomTypeOptions, entry, defaultBlockLength, _showMeetingWarning,
                 unit: AppSettings.Current.BlockLengthUnit));
 
         // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
@@ -610,9 +619,9 @@ public partial class SectionEditViewModel : ViewModelBase
 
     /// <summary>
     /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.
-    /// The delegate receives the section's existing meetings and a callback to accept new slots.
+    /// Receives the section's meeting specs and callbacks for accept/cancel.
     /// </summary>
-    public Func<IReadOnlyList<SectionDaySchedule>, Action<IReadOnlyList<SolutionSlot>>, Action, RoomAvailabilityBrowserViewModel>?
+    public Func<IReadOnlyList<MeetingSpec>, Action<IReadOnlyList<SpecSolution>>, Action, RoomAvailabilityBrowserViewModel>?
         CreateRoomBrowser { get; set; }
 
     [RelayCommand]
@@ -620,13 +629,21 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         if (CreateRoomBrowser == null) return;
 
-        var existingMeetings = Meetings
-            .Select(m => m.ToSchedule())
+        var specs = Meetings
+            .Select((m, i) => m.ToMeetingSpec(i))
             .Where(s => s != null)
-            .Cast<SectionDaySchedule>()
+            .Cast<MeetingSpec>()
+            .Where(s => !s.IsRemote)
             .ToList();
 
-        RoomBrowserVm = CreateRoomBrowser(existingMeetings, AcceptBrowserSolution, () =>
+        if (specs.Count == 0)
+        {
+            LastErrorMessage = "Every meeting must have a duration before browsing. Remote meetings are excluded.";
+            return;
+        }
+
+        LastErrorMessage = null;
+        RoomBrowserVm = CreateRoomBrowser(specs, AcceptBrowserSolution, () =>
         {
             RoomBrowserVm = null;
             OnPropertyChanged(nameof(IsRoomBrowserOpen));
@@ -642,21 +659,30 @@ public partial class SectionEditViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
-    private void AcceptBrowserSolution(IReadOnlyList<SolutionSlot> newSlots)
+    /// <summary>
+    /// Accepts a browser solution by filling in blank fields on existing meeting rows
+    /// rather than creating new rows.
+    /// </summary>
+    private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
     {
-        foreach (var slot in newSlots)
+        foreach (var sol in solutions)
         {
-            var meetingVm = new SectionMeetingViewModel(
-                _legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
-                defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
-                unit: AppSettings.Current.BlockLengthUnit);
+            if (sol.SpecIndex < 0 || sol.SpecIndex >= Meetings.Count) continue;
+            var meeting = Meetings[sol.SpecIndex];
 
-            meetingVm.SelectedDay = slot.Day;
-            meetingVm.StartTimeText = $"{slot.StartMinutes / 60:D2}{slot.StartMinutes % 60:D2}";
-            meetingVm.SelectedBlockLength = slot.DurationMinutes / 60.0;
-            meetingVm.SelectedRoomId = slot.RoomId;
+            // Fill in only the fields that were unspecified.
+            if (meeting.SelectedDay == 0)
+                meeting.SelectedDay = sol.Day;
 
-            Meetings.Add(meetingVm);
+            if (!meeting.SelectedStartTime.HasValue)
+            {
+                meeting.StartTimeText = SectionMeetingViewModel.FormatTime(sol.StartMinutes);
+                // Trigger commit so SelectedStartTime gets set.
+                meeting.CommitStartTimeCommand.Execute(null);
+            }
+
+            if (string.IsNullOrEmpty(meeting.SelectedRoomId))
+                meeting.SelectedRoomId = sol.RoomId;
         }
 
         RoomBrowserVm = null;
@@ -666,7 +692,7 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void AddMeeting()
     {
-        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
+        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms, _roomTypeOptions,
             defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
             unit: AppSettings.Current.BlockLengthUnit));
     }
@@ -721,7 +747,7 @@ public partial class SectionEditViewModel : ViewModelBase
             // any meeting, the block length is auto-filled when valid. For the lead meeting,
             // the auto-fill fires OnSelectedBlockLengthChanged and the coupling propagates
             // it to all follower meetings just like a manual change would.
-            var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms,
+            var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms, _roomTypeOptions,
                 defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
                 unit: AppSettings.Current.BlockLengthUnit);
             meeting.SelectedDay = day;
@@ -846,6 +872,19 @@ public partial class SectionEditViewModel : ViewModelBase
             LastErrorMessage = incomplete.Count == 1
                 ? "One meeting has a start time but no block length. Please complete it or delete it."
                 : $"{incomplete.Count} meetings are incomplete. Each needs both a start time and block length.";
+            return;
+        }
+
+        // Guard: meetings with day "(any)" (sentinel 0) cannot be saved — they are
+        // placeholders for the Room Availability Browser to fill in.
+        var unassignedDay = Meetings
+            .Where(m => m.SelectedDay == 0 && (m.SelectedStartTime.HasValue || m.SelectedBlockLength.HasValue))
+            .ToList();
+        if (unassignedDay.Any())
+        {
+            LastErrorMessage = unassignedDay.Count == 1
+                ? "One meeting has no day assigned. Use Browse to assign days, or select a day manually."
+                : $"{unassignedDay.Count} meetings have no day assigned. Use Browse to assign days, or select days manually.";
             return;
         }
 

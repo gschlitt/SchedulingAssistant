@@ -223,7 +223,7 @@
 	<!--  Room label text inside the tab  -->
 	<SolidColorBrush x:Key="GhostTabText" Color="White" />
 	<!--  Transparent body fill — raise alpha for a light tint (e.g. #184CAF50)  -->
-	<SolidColorBrush x:Key="GhostBodyFill" Color="#004CAF50" />
+	<SolidColorBrush x:Key="GhostBodyFill" Color="#184CAF50" />
 
 	<!--  ── Help tooltips  ──────────────────────────────────────────────────  -->
 	<!--  Light indigo-white fill — distinct from the cooler TileFill (#E2EDF8)  -->

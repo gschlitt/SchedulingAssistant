@@ -1,5 +1,36 @@
 # Memory
 
+## Session: 2026-05-14 — Room Availability Browser partial-spec redesign (code complete)
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Created MeetingSpec + SpecSolution models | `Models/MeetingSpec.cs` | Partial-spec input (day/start nullable, duration required) + back-mapping record |
+| Added day sentinel + bidirectional filtering | `ViewModels/Management/SectionMeetingViewModel.cs` | DayOption(0,"(any)"), RefreshStartTimes(), _isRefreshing guard, ToMeetingSpec() |
+| Added spec-based solver to service | `Services/RoomAvailabilityService.cs` | GenerateSolutionsFromSpecs, EnumerateDayAssignments (patterns first), GatherLegalStarts |
+| Rewrote browser VM for spec input | `ViewModels/Management/RoomAvailabilityBrowserViewModel.cs` | Removed template machinery; BrowserMeetingRow display, MapSlotsToSpecs back-mapping |
+| Updated editor+list wiring | `SectionEditViewModel.cs`, `SectionListViewModel.cs` | New delegate sig, OpenRoomBrowser extracts specs, AcceptBrowserSolution fills blanks in place |
+| Rewrote browser view | `Views/Management/RoomAvailabilityBrowserView.axaml` | Meeting spec summary rows, removed template picker |
+| Updated AXAML bindings | `SectionListView.axaml`, `MeetingListView.axaml` | AllStartTimeStrings → AvailableStartTimeStrings |
+| Added save validation for unassigned days | `SectionEditViewModel.cs` | Rejects meetings with SelectedDay==0 |
+| Added IsPatternMatch to RoomSolution | `Models/RoomSolution.cs` | Pattern-match solutions sort first |
+| Wrote 9 spec solver tests | `Tests/RoomAvailabilityTests.cs` | AllFixed, OpenStart, OpenDays, Mixed, RoomBusy, CustomDuration, FullySpecified, edge cases — all pass |
+| Updated design doc | `.wolf/designs/room-availability-browser.md` | Phase 3b documented |
+
+## Session: 2026-05-13 — Room Availability Browser implementation + ghost overlay refactor
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Created MeetingTemplate and RoomSolution models | `Models/MeetingTemplate.cs`, `Models/RoomSolution.cs` | Per-day template specs, 4-tier solution classification |
+| Created RoomAvailabilityService with OccupancyIndex | `Services/RoomAvailabilityService.cs` | Template generation, occupancy tracking, 4-phase solution algorithm |
+| Created RoomAvailabilityBrowserViewModel | `ViewModels/Management/RoomAvailabilityBrowserViewModel.cs` | Browser panel: template selection, per-day durations, room filters, solution stepping |
+| Created RoomAvailabilityBrowserView | `Views/Management/RoomAvailabilityBrowserView.axaml` + `.cs` | Panel UI with pattern dropdown, duration editors, filters, prev/next stepper |
+| Added GhostBlock to GridData | `ViewModels/GridView/GridData.cs` | New GridBlock subtype for candidate display |
+| Wired section editor to browser | `SectionEditViewModel.cs`, `SectionListViewModel.cs`, `MainWindowViewModel.cs` | OpenRoomBrowser command, callback chain for ghost blocks, AcceptBrowserSolution |
+| Added Browse button + panel to SectionListView | `Views/Management/SectionListView.axaml` | Browse button next to +meeting, ContentControl for browser panel |
+| Refactored ghost rendering to lightweight overlay | `ScheduleGridViewModel.cs`, `ScheduleGridView.axaml.cs`, `GridData.cs` | Ghost tiles bypass pipeline entirely; RenderGhostOverlay() adds/removes controls on cached layout — no Reload()/Render() per step |
+| Wrote 30 unit tests | `Tests/RoomAvailabilityTests.cs` | OccupancyIndex, Classify, DisplayLabel, GenerateTemplates, GenerateSolutions, ApplyFilter |
+| Updated design doc | `.wolf/designs/room-availability-browser.md` | Phase 3 complete, overlay architecture documented |
+
 ## Session: 2026-05-11 — WASM ComboBox popup fix + cross-view selection sync
 
 | Action | Files | Outcome |
@@ -5502,3 +5533,279 @@
 | 15:46 | Edited src/SchedulingAssistant/Views/Management/RoomListView.axaml | 2→3 lines | ~89 |
 | 15:49 | Session end: 21 writes across 8 files (we-need-to-attach-groovy-clock.md, SchedulingEnvironmentTypes.cs, Room.cs, RoomEditViewModel.cs, RoomListViewModel.cs) | 21 reads | ~6089 tok |
 | 18:58 | Session end: 21 writes across 8 files (we-need-to-attach-groovy-clock.md, SchedulingEnvironmentTypes.cs, Room.cs, RoomEditViewModel.cs, RoomListViewModel.cs) | 21 reads | ~6089 tok |
+
+## Session: 2026-05-14 19:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:38 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_room_availability_browser.md | — | ~235 |
+| 19:38 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~83 |
+| 19:39 | Created ../../../.claude/plans/i-have-an-idea-mossy-alpaca.md | — | ~420 |
+| 19:39 | Session end: 3 writes across 3 files (project_room_availability_browser.md, MEMORY.md, i-have-an-idea-mossy-alpaca.md) | 15 reads | ~18968 tok |
+
+## Session: 2026-05-14 19:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:03 | Created ../../../.claude/plans/let-s-continue-the-room-magical-waterfall.md | — | ~1965 |
+| 20:13 | Created ../../../.claude/plans/let-s-continue-the-room-magical-waterfall.md | — | ~2211 |
+| 20:14 | Created src/SchedulingAssistant/Models/MeetingTemplate.cs | — | ~658 |
+| 20:15 | Created src/SchedulingAssistant/Models/RoomSolution.cs | — | ~751 |
+| 20:16 | Created src/SchedulingAssistant/Services/RoomAvailabilityService.cs | — | ~4155 |
+| 20:16 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | modified GhostBlock() | ~225 |
+| 20:16 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | expanded (+6 lines) | ~138 |
+| 20:17 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→3 lines | ~114 |
+| 20:17 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→3 lines | ~64 |
+| 20:17 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | added 1 condition(s) | ~87 |
+| 20:18 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | expanded (+7 lines) | ~112 |
+| 20:18 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified Reload() | ~210 |
+| 20:19 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→4 lines | ~78 |
+| 20:19 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→5 lines | ~105 |
+| 20:19 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→3 lines | ~55 |
+| 20:19 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 1 condition(s) | ~248 |
+| 20:19 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 1→6 lines | ~130 |
+| 20:23 | Created src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | — | ~3580 |
+| 20:24 | Created src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml | — | ~1500 |
+| 20:24 | Created src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml.cs | — | ~61 |
+| 20:24 | Edited src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml | 6→5 lines | ~60 |
+| 20:24 | Edited src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml | 1→2 lines | ~34 |
+| 20:25 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~42 |
+| 20:25 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→3 lines | ~50 |
+| 20:25 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | added optional chaining | ~622 |
+| 20:27 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | ToSectionDaySchedule() → ToSchedule() | ~48 |
+| 20:27 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | Cancel() → Execute() | ~22 |
+| 20:29 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added optional chaining | ~367 |
+| 20:30 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified catch() | ~422 |
+| 20:30 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 4→5 lines | ~48 |
+| 20:30 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | expanded (+7 lines) | ~110 |
+| 20:31 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 20→22 lines | ~218 |
+| 20:31 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 3→6 lines | ~110 |
+| 20:33 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+7 lines) | ~178 |
+| 20:33 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+9 lines) | ~180 |
+| 20:33 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 1→2 lines | ~33 |
+
+## Session: 2026-05-14 20:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:42 | Created src/SchedulingAssistant.Tests/RoomAvailabilityTests.cs | — | ~6881 |
+| 20:43 | Session end: 1 writes across 1 files (RoomAvailabilityTests.cs) | 15 reads | ~16804 tok |
+| 20:46 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified SetGhostBlocks() | ~195 |
+| 20:46 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 4→2 lines | ~43 |
+| 20:47 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 5→4 lines | ~68 |
+| 20:47 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→2 lines | ~81 |
+| 20:47 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | expanded (+10 lines) | ~184 |
+| 20:47 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 1 condition(s) | ~140 |
+| 20:48 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 5→4 lines | ~84 |
+| 20:48 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→3 lines | ~58 |
+| 20:48 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | reduced (-18 lines) | ~162 |
+| 20:49 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added optional chaining | ~1062 |
+| 20:49 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | reduced (-6 lines) | ~44 |
+| 20:51 | Session end: 12 writes across 4 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs) | 18 reads | ~57777 tok |
+| 20:58 | Session end: 12 writes across 4 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs) | 18 reads | ~57777 tok |
+| 21:02 | Session end: 12 writes across 4 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs) | 18 reads | ~57777 tok |
+| 21:07 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 3→4 lines | ~75 |
+| 21:07 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | inline fix | ~30 |
+| 21:07 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 14→16 lines | ~261 |
+| 21:08 | Edited src/SchedulingAssistant.Tests/WizardDataFlowTests.cs | 12→14 lines | ~233 |
+| 21:08 | Edited src/SchedulingAssistant.Tests/WizardRoutingTests.cs | 13→15 lines | ~287 |
+| 21:10 | Session end: 17 writes across 7 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs, WriteLockReadOnlyTests.cs) | 25 reads | ~77509 tok |
+| 21:13 | Session end: 17 writes across 7 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs, WriteLockReadOnlyTests.cs) | 25 reads | ~77509 tok |
+| 21:15 | Session end: 17 writes across 7 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs, WriteLockReadOnlyTests.cs) | 25 reads | ~77509 tok |
+| 21:16 | Session end: 17 writes across 7 files (RoomAvailabilityTests.cs, ScheduleGridViewModel.cs, ScheduleGridView.axaml.cs, GridData.cs, WriteLockReadOnlyTests.cs) | 25 reads | ~77509 tok |
+
+## Session: 2026-05-14 21:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:26 | Created ../../../.claude/plans/let-s-continue-the-room-scalable-sphinx.md | — | ~1414 |
+| 21:30 | Session end: 1 writes across 1 files (let-s-continue-the-room-scalable-sphinx.md) | 28 reads | ~105061 tok |
+| 21:38 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 4→7 lines | ~84 |
+| 21:38 | Edited src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml | 3→3 lines | ~55 |
+| 21:41 | Session end: 3 writes across 3 files (let-s-continue-the-room-scalable-sphinx.md, RoomAvailabilityBrowserViewModel.cs, RoomAvailabilityBrowserView.axaml) | 28 reads | ~105210 tok |
+| 21:42 | Session end: 3 writes across 3 files (let-s-continue-the-room-scalable-sphinx.md, RoomAvailabilityBrowserViewModel.cs, RoomAvailabilityBrowserView.axaml) | 28 reads | ~105210 tok |
+| 21:42 | Session end: 3 writes across 3 files (let-s-continue-the-room-scalable-sphinx.md, RoomAvailabilityBrowserViewModel.cs, RoomAvailabilityBrowserView.axaml) | 28 reads | ~105210 tok |
+| 21:43 | Session end: 3 writes across 3 files (let-s-continue-the-room-scalable-sphinx.md, RoomAvailabilityBrowserViewModel.cs, RoomAvailabilityBrowserView.axaml) | 28 reads | ~105210 tok |
+| 21:52 | Session end: 3 writes across 3 files (let-s-continue-the-room-scalable-sphinx.md, RoomAvailabilityBrowserViewModel.cs, RoomAvailabilityBrowserView.axaml) | 28 reads | ~105210 tok |
+| 22:02 | Session end: 3 writes across 3 files (let-s-continue-the-room-scalable-sphinx.md, RoomAvailabilityBrowserViewModel.cs, RoomAvailabilityBrowserView.axaml) | 28 reads | ~105210 tok |
+
+## Session: 2026-05-14 08:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-14 08:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-14 08:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:18 | Created ../../../.claude/plans/continue-room-availabilitly-browser-sharded-panda.md | — | ~1299 |
+| 08:19 | Created ../../../.claude/plans/continue-room-availabilitly-browser-sharded-panda.md | — | ~707 |
+| 08:19 | Session end: 2 writes across 1 files (continue-room-availabilitly-browser-sharded-panda.md) | 12 reads | ~66339 tok |
+| 08:27 | Created ../../../.claude/plans/continue-room-availabilitly-browser-sharded-panda.md | — | ~1038 |
+| 08:27 | Session end: 3 writes across 1 files (continue-room-availabilitly-browser-sharded-panda.md) | 14 reads | ~67451 tok |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 2→3 lines | ~46 |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 15→17 lines | ~229 |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 2→3 lines | ~27 |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | modified Cancel() | ~29 |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~46 |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→6 lines | ~69 |
+| 08:38 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 14→15 lines | ~210 |
+| 08:39 | Edited src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml.cs | modified RoomAvailabilityBrowserView() | ~124 |
+| 08:39 | Session end: 11 writes across 5 files (continue-room-availabilitly-browser-sharded-panda.md, RoomAvailabilityBrowserViewModel.cs, SectionEditViewModel.cs, SectionListViewModel.cs, RoomAvailabilityBrowserView.axaml.cs) | 15 reads | ~68346 tok |
+| 08:40 | Session end: 11 writes across 5 files (continue-room-availabilitly-browser-sharded-panda.md, RoomAvailabilityBrowserViewModel.cs, SectionEditViewModel.cs, SectionListViewModel.cs, RoomAvailabilityBrowserView.axaml.cs) | 15 reads | ~68346 tok |
+
+## Session: 2026-05-14 08:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:15 | Created ../../../.claude/plans/continue-room-availability-browser-steady-marshmallow.md | — | ~2677 |
+| 09:21 | Edited ../../../.claude/plans/continue-room-availability-browser-steady-marshmallow.md | expanded (+8 lines) | ~292 |
+| 09:21 | Edited ../../../.claude/plans/continue-room-availability-browser-steady-marshmallow.md | inline fix | ~51 |
+| 09:23 | Created src/SchedulingAssistant/Models/MeetingSpec.cs | — | ~450 |
+| 09:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | expanded (+7 lines) | ~194 |
+| 09:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 2→5 lines | ~76 |
+| 09:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 23→23 lines | ~203 |
+| 09:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 11→13 lines | ~188 |
+| 09:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 2→2 lines | ~23 |
+| 09:24 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified OnSelectedBlockLengthChanged() | ~164 |
+| 09:25 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added 3 condition(s) | ~836 |
+| 09:25 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added 1 condition(s) | ~335 |
+| 09:25 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified if() | ~244 |
+| 09:25 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | inline fix | ~7 |
+| 09:25 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | inline fix | ~7 |
+| 09:29 | Edited src/SchedulingAssistant/Models/RoomSolution.cs | 5→7 lines | ~110 |
+| 09:29 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | added optional chaining | ~2590 |
+| 09:30 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | modified ScanTier1() | ~1607 |
+| 09:30 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | modified TryAddSolution() | ~139 |
+| 09:31 | Created src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | — | ~3154 |
+| 09:32 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | added 5 condition(s) | ~643 |
+| 09:32 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 15→15 lines | ~204 |
+| 09:33 | Created src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml | — | ~1115 |
+| 09:36 | Edited src/SchedulingAssistant.Tests/RoomAvailabilityTests.cs | modified MakeMWFTemplate() | ~2527 |
+
+## Session: 2026-05-14 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:42 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | added 1 condition(s) | ~339 |
+| 09:43 | Session end: 1 writes across 1 files (SectionEditViewModel.cs) | 2 reads | ~11346 tok |
+| 11:58 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_room_availability_browser.md | — | ~412 |
+| 11:58 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~37 |
+| 11:59 | Session end: 3 writes across 3 files (SectionEditViewModel.cs, project_room_availability_browser.md, MEMORY.md) | 6 reads | ~11826 tok |
+
+## Session: 2026-05-14 12:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:54 | Created ../../../.claude/plans/we-re-going-to-refine-sprightly-ripple.md | — | ~1416 |
+| 13:56 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→5 lines | ~129 |
+| 13:57 | Edited src/SchedulingAssistant/AppColors.axaml | expanded (+10 lines) | ~169 |
+| 13:57 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 5→5 lines | ~92 |
+| 13:58 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified foreach() | ~782 |
+| 13:59 | Session end: 5 writes across 3 files (we-re-going-to-refine-sprightly-ripple.md, ScheduleGridView.axaml.cs, AppColors.axaml) | 13 reads | ~65704 tok |
+| 13:59 | Session end: 5 writes across 3 files (we-re-going-to-refine-sprightly-ripple.md, ScheduleGridView.axaml.cs, AppColors.axaml) | 13 reads | ~65704 tok |
+| 14:05 | Session end: 5 writes across 3 files (we-re-going-to-refine-sprightly-ripple.md, ScheduleGridView.axaml.cs, AppColors.axaml) | 13 reads | ~65704 tok |
+| 14:07 | Session end: 5 writes across 3 files (we-re-going-to-refine-sprightly-ripple.md, ScheduleGridView.axaml.cs, AppColors.axaml) | 14 reads | ~66154 tok |
+| 14:13 | Edited src/SchedulingAssistant/Models/RoomSolution.cs | 5→5 lines | ~63 |
+| 14:15 | Session end: 6 writes across 4 files (we-re-going-to-refine-sprightly-ripple.md, ScheduleGridView.axaml.cs, AppColors.axaml, RoomSolution.cs) | 14 reads | ~66221 tok |
+| 14:16 | Session end: 6 writes across 4 files (we-re-going-to-refine-sprightly-ripple.md, ScheduleGridView.axaml.cs, AppColors.axaml, RoomSolution.cs) | 14 reads | ~66221 tok |
+| 15:27 | Created ../../../.claude/plans/we-re-going-to-refine-sprightly-ripple.md | — | ~1860 |
+| 15:47 | Edited ../../../.claude/plans/we-re-going-to-refine-sprightly-ripple.md | inline fix | ~51 |
+| 15:47 | Edited ../../../.claude/plans/we-re-going-to-refine-sprightly-ripple.md | "85,45,45,70,60,65,70,24" → "75,42,42,65,55,55,70,20" | ~18 |
+| 15:49 | Edited src/SchedulingAssistant/Models/SectionDaySchedule.cs | expanded (+12 lines) | ~356 |
+| 15:49 | Edited src/SchedulingAssistant/Models/MeetingSpec.cs | 11→15 lines | ~251 |
+| 15:50 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added optional chaining | ~300 |
+| 15:50 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified SectionMeetingViewModel() | ~1389 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added optional chaining | ~378 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added optional chaining | ~166 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added optional chaining | ~146 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 5→6 lines | ~85 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 25→27 lines | ~383 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | expanded (+6 lines) | ~139 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~80 |
+| 15:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~76 |
+| 15:53 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~79 |
+| 15:53 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→3 lines | ~44 |
+| 15:53 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 1→2 lines | ~41 |
+| 15:53 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→3 lines | ~34 |
+
+## Session: 2026-05-14 15:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:57 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 46→45 lines | ~572 |
+| 15:57 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 8→8 lines | ~187 |
+| 15:57 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+14 lines) | ~1217 |
+| 15:57 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | expanded (+6 lines) | ~502 |
+| 15:58 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 6→6 lines | ~130 |
+| 15:58 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | expanded (+14 lines) | ~962 |
+| 16:00 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | 1→2 lines | ~32 |
+| 16:00 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | 2→3 lines | ~68 |
+| 16:00 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | 2→3 lines | ~37 |
+| 16:00 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | 2→7 lines | ~94 |
+| 16:01 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | 4→4 lines | ~75 |
+| 16:01 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 3→4 lines | ~54 |
+| 16:01 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 8→9 lines | ~123 |
+| 16:01 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 2→3 lines | ~44 |
+| 16:03 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | 2→3 lines | ~46 |
+| 16:03 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | modified if() | ~105 |
+| 16:05 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | added 5 condition(s) | ~1658 |
+| 16:05 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | added nullish coalescing | ~403 |
+| 16:06 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | added optional chaining | ~771 |
+| 16:07 | Session end: 19 writes across 7 files (SectionListView.axaml, MeetingListView.axaml, MeetingEditViewModel.cs, MeetingListViewModel.cs, EditorFlowTests.cs) | 7 reads | ~69803 tok |
+
+## Session: 2026-05-15 20:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:44 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | removed 15 lines | ~29 |
+| 20:44 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | reduced (-6 lines) | ~33 |
+| 20:44 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | removed 8 lines | ~22 |
+| 20:44 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | modified Recompute() | ~47 |
+| 20:44 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | removed 20 lines | ~22 |
+| 20:44 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | removed 25 lines | ~1 |
+| 20:45 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 2→1 lines | ~13 |
+| 20:45 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+29 lines) | ~860 |
+| 20:45 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 2→1 lines | ~17 |
+| 20:46 | Created src/SchedulingAssistant/Views/Management/RoomAvailabilityBrowserView.axaml | — | ~114 |
+| 20:48 | Session end: 10 writes across 3 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml) | 5 reads | ~27008 tok |
+| 20:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added optional chaining | ~61 |
+| 20:52 | Session end: 11 writes across 4 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs) | 7 reads | ~52925 tok |
+| 20:56 | Edited src/SchedulingAssistant/Views/MainView.axaml | "650" → "500" | ~13 |
+| 20:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | inline fix | ~24 |
+| 20:56 | Session end: 13 writes across 5 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 8 reads | ~52947 tok |
+| 21:01 | Edited src/SchedulingAssistant/Behaviors/ConditionalColumnWidthBehavior.cs | modified OnAnyPropertyChanged() | ~272 |
+| 21:01 | Edited src/SchedulingAssistant/Views/MainView.axaml | "500" → "-1" | ~13 |
+| 21:01 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+16 lines) | ~1252 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 3→4 lines | ~41 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→7 lines | ~107 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→7 lines | ~124 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→7 lines | ~125 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 8→8 lines | ~124 |
+| 21:02 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 8→8 lines | ~125 |
+| 21:03 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 8→8 lines | ~124 |
+| 21:03 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 9→9 lines | ~144 |
+| 21:04 | Session end: 24 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 10 reads | ~55921 tok |
+| 21:05 | Session end: 24 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 10 reads | ~55921 tok |
+| 21:08 | Edited src/SchedulingAssistant/Views/MainView.axaml | "-1" → "520" | ~13 |
+| 21:08 | Session end: 25 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 10 reads | ~55905 tok |
+| 21:09 | Edited src/SchedulingAssistant/Views/MainView.axaml | "520" → "-1" | ~13 |
+| 21:09 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→8 lines | ~87 |
+| 21:09 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→6 lines | ~77 |
+| 21:11 | Session end: 28 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 10 reads | ~56118 tok |
+| 21:27 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→6 lines | ~111 |
+| 21:27 | Session end: 29 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 10 reads | ~56237 tok |
+| 21:33 | Edited src/SchedulingAssistant/Views/MainView.axaml | "-1" → "490" | ~13 |
+| 21:33 | Session end: 30 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 13 reads | ~62355 tok |
+| 21:40 | Edited src/SchedulingAssistant/Views/MainView.axaml | "490" → "-1" | ~13 |
+| 21:40 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 5→6 lines | ~89 |
+| 21:40 | Session end: 32 writes across 6 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 13 reads | ~62464 tok |
+| 21:47 | Edited src/SchedulingAssistant/Views/MainView.axaml | "-1" → "370" | ~13 |
+| 21:48 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | modified UpdateColumnWidth() | ~412 |
+| 21:48 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml.cs | opens() → form() | ~197 |
+| 21:50 | Session end: 35 writes across 7 files (RoomAvailabilityBrowserViewModel.cs, SectionListView.axaml, RoomAvailabilityBrowserView.axaml, SectionListViewModel.cs, MainView.axaml) | 13 reads | ~63131 tok |
