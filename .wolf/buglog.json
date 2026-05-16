@@ -10414,6 +10414,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-15T19:55:25.419Z"
+    },
+    {
+      "id": "bug-651",
+      "timestamp": "2026-05-15T23:50:43.889Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Services/BlockLengthFormatter.cs",
+      "root_cause": "Had \"{(int)hours} hours\"",
+      "fix": "Changed to \"{(int)rounded} hours\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T23:50:43.889Z"
+    },
+    {
+      "id": "bug-652",
+      "timestamp": "2026-05-15T23:50:51.671Z",
+      "error_message": "Wrong reference: hours should be Math",
+      "file": "src/SchedulingAssistant/Services/BlockLengthFormatter.cs",
+      "root_cause": "Used \"hours\" instead of \"Math\"",
+      "fix": "Changed hours → Math",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T23:50:51.671Z"
     }
   ]
 }

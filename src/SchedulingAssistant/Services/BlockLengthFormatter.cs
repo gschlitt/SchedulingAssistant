@@ -21,7 +21,7 @@ public static class BlockLengthFormatter
     public static string FormatBlockLength(double hours, BlockLengthUnit unit) =>
         unit == BlockLengthUnit.Minutes
             ? ((int)Math.Round(hours * 60)).ToString(CultureInfo.InvariantCulture)
-            : hours.ToString("G", CultureInfo.InvariantCulture);
+            : hours.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Builds a human-readable label for a block length card or option.
@@ -34,7 +34,8 @@ public static class BlockLengthFormatter
         if (unit == BlockLengthUnit.Minutes)
             return $"{(int)Math.Round(hours * 60)} min";
 
-        return hours == Math.Floor(hours) ? $"{(int)hours} hours" : $"{hours} hours";
+        double rounded = Math.Round(hours, 2);
+        return rounded == Math.Floor(rounded) ? $"{(int)rounded} hours" : $"{rounded} hours";
     }
 
     // ── Parsing ───────────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ public static class BlockLengthFormatter
 
     /// <summary>Format string for the block-length NumericUpDown control.</summary>
     public static string NumericFormatString(BlockLengthUnit unit) =>
-        unit == BlockLengthUnit.Minutes ? "0" : "0.0";
+        unit == BlockLengthUnit.Minutes ? "0" : "0.##";
 
     // ── UI strings ────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ public static class BlockLengthFormatter
     /// <param name="hours">Block length in hours.</param>
     /// <param name="unit">Display unit.</param>
     public static double HoursToDisplay(double hours, BlockLengthUnit unit) =>
-        unit == BlockLengthUnit.Minutes ? Math.Round(hours * 60) : hours;
+        unit == BlockLengthUnit.Minutes ? Math.Round(hours * 60) : Math.Round(hours, 2);
 
     /// <summary>
     /// Builds the error hint for an invalid block-length entry.

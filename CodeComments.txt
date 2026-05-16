@@ -9,7 +9,7 @@ Selection of a section can cause overflow in a section card. Minor issue.
 Rooming: 
 
 Events need a browser too!
-Window popouts are broken????
+
 fast click in section editor needs fixing again,
 
 

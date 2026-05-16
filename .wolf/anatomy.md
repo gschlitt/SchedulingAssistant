@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-15T23:35:53.409Z
-> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-15T23:50:51.630Z
+> Files: 23 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,6 +30,7 @@
 ## ../../../.claude/plans/
 
 - `i-ve-found-a-problem-recursive-lollipop.md` — Fix: Tear down pattern coupling before applying room browser solution (~508 tok)
+- `the-app-can-display-squishy-flask.md` — Fix: Truncate block length hours display to 2 decimal places (~481 tok)
 - `the-user-needs-some-cosmic-lecun.md` — Disable Room Browser Button Until Meetings Have Durations (~654 tok)
 - `use-your-reasoned-imagination-lexical-hummingbird.md` — Detach/Reattach Memory Leak Analysis (~2676 tok)
 - `we-need-to-debug-sunny-octopus.md` — Fix: Same-day multi-spec scheduling (class + lab on one day) (~1317 tok)
@@ -237,6 +238,7 @@
 
 ## src/SchedulingAssistant/Services/
 
+- `BlockLengthFormatter.cs` — Stateless helpers for formatting and parsing block lengths under the current <see cref="BlockLengthU (~1615 tok)
 - `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9610 tok)
 
 ## src/SchedulingAssistant/ViewModels/
@@ -248,7 +250,7 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~2738 tok)
-- `SectionEditViewModel.cs` — Available code patterns for this session, loaded once at editor construction. Only relevant for new  (~11735 tok)
+- `SectionEditViewModel.cs` — Available code patterns for this session, loaded once at editor construction. Only relevant for new (~11735 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
