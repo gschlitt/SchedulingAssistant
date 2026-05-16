@@ -17,6 +17,7 @@ using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.GridView;
 using SchedulingAssistant.Views.Wizard;
+using Avalonia.Threading;
 using System.Reflection;
 
 namespace SchedulingAssistant;
@@ -636,7 +637,7 @@ public partial class MainWindow : Window
         panel.Children.Add(ok);
         msg.Content = panel;
 
-        ok.Click += (_, _) => msg.Close();
+        ok.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
         await msg.ShowDialog(owner);
     }
 
@@ -713,7 +714,7 @@ public partial class MainWindow : Window
                     HorizontalContentAlignment = HorizontalAlignment.Left,
                     Padding = new Thickness(8, 4)
                 };
-                btn.Click += (_, _) => { chosen = backupPath; dlg.Close(); };
+                btn.Click += (_, _) => { chosen = backupPath; Dispatcher.UIThread.Post(() => dlg.Close()); };
                 panel.Children.Add(btn);
             }
         }
@@ -726,8 +727,8 @@ public partial class MainWindow : Window
         };
         var continueBtn = new Button { Content = "Continue anyway (risky)", FontSize = 11, Padding = new Thickness(8, 4) };
         var exitBtn     = new Button { Content = "Exit", FontSize = 11, Padding = new Thickness(8, 4) };
-        continueBtn.Click += (_, _) => { chosen = "continue"; dlg.Close(); };
-        exitBtn.Click     += (_, _) => { chosen = null; dlg.Close(); };
+        continueBtn.Click += (_, _) => { chosen = "continue"; Dispatcher.UIThread.Post(() => dlg.Close()); };
+        exitBtn.Click     += (_, _) => { chosen = null; Dispatcher.UIThread.Post(() => dlg.Close()); };
         buttonRow.Children.Add(continueBtn);
         buttonRow.Children.Add(exitBtn);
         panel.Children.Add(buttonRow);
@@ -778,7 +779,7 @@ public partial class MainWindow : Window
         panel.Children.Add(ok);
         msg.Content = panel;
 
-        ok.Click += (_, _) => msg.Close();
+        ok.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
         await msg.ShowDialog(this);
     }
 
@@ -809,7 +810,7 @@ public partial class MainWindow : Window
         panel.Children.Add(ok);
         msg.Content = panel;
 
-        ok.Click += (_, _) => msg.Close();
+        ok.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
         await msg.ShowDialog(this);
     }
 
@@ -956,8 +957,8 @@ public partial class MainWindow : Window
         panel.Children.Add(btns);
         dlg.Content = panel;
 
-        yes.Click += (_, _) => { result = true;  dlg.Close(); };
-        no.Click  += (_, _) => { result = false; dlg.Close(); };
+        yes.Click += (_, _) => { result = true;  Dispatcher.UIThread.Post(() => dlg.Close()); };
+        no.Click  += (_, _) => { result = false; Dispatcher.UIThread.Post(() => dlg.Close()); };
         await dlg.ShowDialog(this);
         return result;
     }

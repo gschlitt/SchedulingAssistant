@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.Threading.Tasks;
@@ -51,8 +52,8 @@ public partial class AcademicYearListView : UserControl
         var yesBtn = new Button { Content = "Yes" };
         var noBtn = new Button { Content = "No" };
 
-        yesBtn.Click += (_, _) => { result = prevAyId; msg.Close(); };
-        noBtn.Click += (_, _) => { result = null; msg.Close(); };
+        yesBtn.Click += (_, _) => { result = prevAyId; Dispatcher.UIThread.Post(() => msg.Close()); };
+        noBtn.Click += (_, _) => { result = null; Dispatcher.UIThread.Post(() => msg.Close()); };
 
         var buttons = new StackPanel
         {
@@ -99,8 +100,8 @@ public partial class AcademicYearListView : UserControl
         var yesBtn = new Button { Content = "Yes" };
         var noBtn  = new Button { Content = "No" };
 
-        yesBtn.Click += (_, _) => { result = true;  msg.Close(); };
-        noBtn.Click  += (_, _) => { result = false; msg.Close(); };
+        yesBtn.Click += (_, _) => { result = true;  Dispatcher.UIThread.Post(() => msg.Close()); };
+        noBtn.Click  += (_, _) => { result = false; Dispatcher.UIThread.Post(() => msg.Close()); };
 
         var buttons = new StackPanel
         {

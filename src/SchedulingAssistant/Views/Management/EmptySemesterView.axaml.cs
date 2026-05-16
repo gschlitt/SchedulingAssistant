@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Threading;
 using SchedulingAssistant.ViewModels.Management;
 using System;
 using System.Threading.Tasks;
@@ -52,8 +53,8 @@ public partial class EmptySemesterView : UserControl
         var deleteBtn = new Button { Content = "Delete All Sections" };
         var cancelBtn = new Button { Content = "Cancel" };
 
-        deleteBtn.Click += (_, _) => { result = true; msg.Close(); };
-        cancelBtn.Click += (_, _) => { result = false; msg.Close(); };
+        deleteBtn.Click += (_, _) => { result = true; Dispatcher.UIThread.Post(() => msg.Close()); };
+        cancelBtn.Click += (_, _) => { result = false; Dispatcher.UIThread.Post(() => msg.Close()); };
 
         var buttons = new StackPanel
         {
@@ -96,7 +97,7 @@ public partial class EmptySemesterView : UserControl
         };
 
         var okBtn = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Right };
-        okBtn.Click += (_, _) => msg.Close();
+        okBtn.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
 
         var panel = new StackPanel { Margin = new Avalonia.Thickness(24), Spacing = 16 };
         panel.Children.Add(body);
