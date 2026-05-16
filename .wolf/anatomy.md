@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-16T16:18:09.212Z
-> Files: 47 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-16T18:41:54.470Z
+> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -40,7 +40,8 @@
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
 - `detach_reattach_bugs.md` — Detach/Reattach Panel Bug History (May 2026, Rooming branch) (~857 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~8917 tok)
+- `feedback_progressive_design_spec.md` (~355 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~8968 tok)
 - `project_integration_test_db.md` — Declares distributions (~351 tok)
 
 ## ./
