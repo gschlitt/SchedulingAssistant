@@ -328,6 +328,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
 
     public void Dispose()
     {
+        _lockService.LockStateChanged -= OnLockStateChanged;
         _semesterContext.PropertyChanged -= OnSemesterContextChanged;
     }
 }

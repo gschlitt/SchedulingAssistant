@@ -8,7 +8,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// ViewModel for editing the single Academic Unit in the system.
 /// There is always exactly one unit; this dialog allows editing its name.
 /// </summary>
-public partial class AcademicUnitListViewModel : ViewModelBase
+public partial class AcademicUnitListViewModel : ViewModelBase, IDisposable
 {
     /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
     public string DisplayName => "Academic Units";
@@ -81,5 +81,11 @@ public partial class AcademicUnitListViewModel : ViewModelBase
     {
         Load();
         IsEditing = false;
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }

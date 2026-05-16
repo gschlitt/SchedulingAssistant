@@ -9,7 +9,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEditor
+public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
@@ -214,4 +214,9 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
         }
     }
 
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
+    }
 }

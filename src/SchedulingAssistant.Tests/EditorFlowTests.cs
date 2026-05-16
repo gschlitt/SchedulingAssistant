@@ -366,12 +366,14 @@ public class EditorFlowTests
         Semester? semester = null,
         AcademicYear? academicYear = null)
     {
-        var meetingRepo    = new Mock<IMeetingRepository>();
-        var instructorRepo = new Mock<IInstructorRepository>();
-        var roomRepo       = new Mock<IRoomRepository>();
-        var propertyRepo   = new Mock<ISchedulingEnvironmentRepository>();
-        var campusRepo     = new Mock<ICampusRepository>();
-        var legalRepo      = new Mock<ILegalStartTimeRepository>();
+        var meetingRepo      = new Mock<IMeetingRepository>();
+        var instructorRepo   = new Mock<IInstructorRepository>();
+        var roomRepo         = new Mock<IRoomRepository>();
+        var propertyRepo     = new Mock<ISchedulingEnvironmentRepository>();
+        var campusRepo       = new Mock<ICampusRepository>();
+        var legalRepo        = new Mock<ILegalStartTimeRepository>();
+        var sectionRepo      = new Mock<ISectionRepository>();
+        var blockPatternRepo = new Mock<IBlockPatternRepository>();
 
         // Return empty lists from all repository calls to avoid NullReferenceExceptions.
         meetingRepo.Setup(r => r.GetAll(It.IsAny<string>())).Returns(new List<Meeting>());
@@ -380,6 +382,8 @@ public class EditorFlowTests
         propertyRepo.Setup(r => r.GetAll(It.IsAny<string>())).Returns(new List<SchedulingEnvironmentValue>());
         campusRepo.Setup(r => r.GetAll()).Returns(new List<Campus>());
         legalRepo.Setup(r => r.GetAll(It.IsAny<string>())).Returns(new List<LegalStartTime>());
+        sectionRepo.Setup(r => r.GetAll(It.IsAny<string>())).Returns(new List<Section>());
+        blockPatternRepo.Setup(r => r.GetAll()).Returns(new List<BlockPattern>());
 
         var semesterContext = new SemesterContext();
 
@@ -407,6 +411,8 @@ public class EditorFlowTests
             propertyRepo.Object,
             campusRepo.Object,
             legalRepo.Object,
+            sectionRepo.Object,
+            blockPatternRepo.Object,
             semesterContext,
             store,
             lockService);

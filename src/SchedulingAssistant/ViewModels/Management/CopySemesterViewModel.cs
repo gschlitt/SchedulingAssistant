@@ -13,7 +13,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 
 public enum CopyState { Ready, FlaggedWarning, Complete }
 
-public partial class CopySemesterViewModel : ViewModelBase
+public partial class CopySemesterViewModel : ViewModelBase, IDisposable
 {
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
@@ -455,4 +455,10 @@ public partial class CopySemesterViewModel : ViewModelBase
     public Action? NavigateToAcademicYears { get; set; }
 
     private void NavigateBackToAcademicYears() => NavigateToAcademicYears?.Invoke();
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
+    }
 }

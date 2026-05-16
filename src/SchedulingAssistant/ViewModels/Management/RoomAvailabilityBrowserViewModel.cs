@@ -57,6 +57,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// <param name="semesterSections">All sections in the active semester.</param>
     /// <param name="semesterMeetings">All meetings in the active semester.</param>
     /// <param name="excludeSectionId">The section being edited (excluded from occupancy).</param>
+    /// <param name="excludeMeetingId">The meeting being edited (excluded from occupancy).</param>
     /// <param name="semesterId">Active semester ID for ghost block placement.</param>
     /// <param name="semesterName">Active semester display name.</param>
     /// <param name="semesterColor">Active semester color hex string.</param>
@@ -71,6 +72,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         IEnumerable<Section> semesterSections,
         IEnumerable<Meeting> semesterMeetings,
         string? excludeSectionId,
+        string? excludeMeetingId,
         string semesterId,
         string semesterName,
         string semesterColor,
@@ -89,7 +91,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         _onAccept = onAccept;
         _onCancel = onCancel;
 
-        _index = _service.BuildOccupancyIndex(semesterSections, semesterMeetings, excludeSectionId);
+        _index = _service.BuildOccupancyIndex(semesterSections, semesterMeetings, excludeSectionId, excludeMeetingId);
         Recompute();
     }
 

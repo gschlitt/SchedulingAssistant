@@ -11,7 +11,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// ViewModel for the Section Code Patterns configuration panel.
 /// Supports full CRUD for <see cref="SectionCodePattern"/> entities.
 /// </summary>
-public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissableEditor
+public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly ISectionCodePatternRepository _repo;
     private readonly ICampusRepository _campusRepo;
@@ -164,6 +164,12 @@ public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissab
         if (!await _dialog.Confirm($"Delete pattern \"{SelectedItem.Name}\"?")) return;
         _repo.Delete(SelectedItem.Id);
         Load();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }
 

@@ -10,7 +10,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// <summary>
 /// ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering.
 /// </summary>
-public partial class CampusListViewModel : ViewModelBase, IDismissableEditor
+public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly ICampusRepository _repo;
     private readonly IDialogService _dialog;
@@ -112,6 +112,12 @@ public partial class CampusListViewModel : ViewModelBase, IDismissableEditor
 
         _repo.Delete(SelectedItem.Id);
         Load();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }
 

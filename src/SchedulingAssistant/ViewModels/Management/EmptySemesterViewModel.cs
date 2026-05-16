@@ -9,7 +9,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class EmptySemesterViewModel : ViewModelBase
+public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
 {
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
@@ -164,5 +164,11 @@ public partial class EmptySemesterViewModel : ViewModelBase
     {
         var mainVm = App.Services.GetRequiredService<MainWindowViewModel>();
         mainVm.CloseFlyoutCommand.Execute(null);
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }

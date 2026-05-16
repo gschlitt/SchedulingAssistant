@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class CourseListViewModel : ViewModelBase, IDismissableEditor
+public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly ICourseRepository _courseRepo;
     private readonly ISubjectRepository _subjectRepo;
@@ -287,5 +287,11 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor
         var settings = AppSettings.Current;
         settings.ShowOnlyActiveCourses = value;
         settings.Save();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }

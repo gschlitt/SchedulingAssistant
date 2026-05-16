@@ -24,34 +24,41 @@ public partial class SaveAndBackupView : UserControl
     /// </summary>
     private async void OnBrowseBackupFolder(object? sender, RoutedEventArgs e)
     {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel is null) return;
-
-        // Pre-select the current folder if it exists on disk.
-        IStorageFolder? suggestedFolder = null;
-        if (DataContext is SaveAndBackupViewModel vm
-            && !string.IsNullOrWhiteSpace(vm.BackupFolderPath)
-            && Directory.Exists(vm.BackupFolderPath))
+        try
         {
-            suggestedFolder = await topLevel.StorageProvider
-                .TryGetFolderFromPathAsync(vm.BackupFolderPath);
-        }
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null) return;
 
-        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions
+            // Pre-select the current folder if it exists on disk.
+            IStorageFolder? suggestedFolder = null;
+            if (DataContext is SaveAndBackupViewModel vm
+                && !string.IsNullOrWhiteSpace(vm.BackupFolderPath)
+                && Directory.Exists(vm.BackupFolderPath))
             {
-                Title                  = "Choose backup folder",
-                AllowMultiple          = false,
-                SuggestedStartLocation = suggestedFolder
-            });
+                suggestedFolder = await topLevel.StorageProvider
+                    .TryGetFolderFromPathAsync(vm.BackupFolderPath);
+            }
 
-        if (folders.Count > 0 && DataContext is SaveAndBackupViewModel settingsVm)
+            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
+                new FolderPickerOpenOptions
+                {
+                    Title                  = "Choose backup folder",
+                    AllowMultiple          = false,
+                    SuggestedStartLocation = suggestedFolder
+                });
+
+            if (folders.Count > 0 && DataContext is SaveAndBackupViewModel settingsVm)
+            {
+                // TryGetLocalPath() handles drive roots (e.g. E:\) and other edge cases
+                // that cause Uri.LocalPath to throw InvalidOperationException.
+                var localPath = folders[0].TryGetLocalPath();
+                if (localPath is not null)
+                    settingsVm.BackupFolderPath = localPath;
+            }
+        }
+        catch (Exception ex)
         {
-            // TryGetLocalPath() handles drive roots (e.g. E:\) and other edge cases
-            // that cause Uri.LocalPath to throw InvalidOperationException.
-            var localPath = folders[0].TryGetLocalPath();
-            if (localPath is not null)
-                settingsVm.BackupFolderPath = localPath;
+            App.Logger.LogError(ex, "OnBrowseBackupFolder: folder picker failed");
         }
     }
 }

@@ -75,16 +75,23 @@ public partial class DatabaseLocationDialog : Window
 
     private async void OnBrowseFolderClicked(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        try
         {
-            Title = "Choose a folder for the database"
-        });
-        if (folders.Count == 0) return;
-        var folder = folders[0].TryGetLocalPath();
-        if (folder is null) return;
-        _chosenFolder = folder;
-        FolderBox.Text = folder;
-        UpdateCreatePreview();
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Choose a folder for the database"
+            });
+            if (folders.Count == 0) return;
+            var folder = folders[0].TryGetLocalPath();
+            if (folder is null) return;
+            _chosenFolder = folder;
+            FolderBox.Text = folder;
+            UpdateCreatePreview();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "OnBrowseFolderClicked: folder picker failed");
+        }
     }
 
     private void OnNameOrFolderChanged(object? sender, Avalonia.Controls.TextChangedEventArgs e)
@@ -128,20 +135,27 @@ public partial class DatabaseLocationDialog : Window
 
     private async void OnBrowseFileClicked(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        try
         {
-            Title = "Open existing database file",
-            FileTypeFilter = new[]
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                new FilePickerFileType("SQLite Database") { Patterns = new[] { "*.db", "*.sqlite" } },
-                new FilePickerFileType("All Files")       { Patterns = new[] { "*" } }
-            }
-        });
-        if (files.Count == 0) return;
-        var path = files[0].TryGetLocalPath();
-        if (path is null) return;
-        ExistingPathBox.Text = path;
-        OkButton.IsEnabled = true;
+                Title = "Open existing database file",
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("SQLite Database") { Patterns = new[] { "*.db", "*.sqlite" } },
+                    new FilePickerFileType("All Files")       { Patterns = new[] { "*" } }
+                }
+            });
+            if (files.Count == 0) return;
+            var path = files[0].TryGetLocalPath();
+            if (path is null) return;
+            ExistingPathBox.Text = path;
+            OkButton.IsEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "OnBrowseFileClicked: file picker failed");
+        }
     }
 
     // ── OK / Cancel ───────────────────────────────────────────────────────

@@ -897,7 +897,19 @@ public partial class MainWindow : Window
                 {
                     await Task.CompletedTask;
                     if (dbContext is not null && !string.IsNullOrEmpty(App.Checkout.WorkingPath))
-                        dbContext.ReinitializeConnection(App.Checkout.WorkingPath);
+                    {
+                        try
+                        {
+                            dbContext.ReinitializeConnection(App.Checkout.WorkingPath);
+                        }
+                        catch (System.Exception ex)
+                        {
+                            App.Logger.LogError(ex, "OnWriteLockLost: ReinitializeConnection failed — database is unavailable until reopened");
+                            vm?.SetSaveError(
+                                "The database connection could not be restored after losing write access. " +
+                                "Please close and reopen the database file.");
+                        }
+                    }
                 }
 
                 var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);

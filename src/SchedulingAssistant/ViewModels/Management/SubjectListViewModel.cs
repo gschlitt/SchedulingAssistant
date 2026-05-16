@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SubjectListViewModel : ViewModelBase
+public partial class SubjectListViewModel : ViewModelBase, IDisposable
 {
     private readonly ISubjectRepository _repo;
     private readonly IDialogService _dialog;
@@ -105,5 +105,11 @@ public partial class SubjectListViewModel : ViewModelBase
 
         _repo.Delete(SelectedSubject.Id);
         Load();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }

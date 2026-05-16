@@ -169,7 +169,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates a fully-wired <see cref="MeetingListViewModel"/> in reader mode.</summary>
     private MeetingListViewModel CreateMeetingListVm() =>
         new(_meetingRepo, _instructorRepo, _roomRepo, _propertyRepo, _campusRepo,
-            _legalStartTimeRepo, _semesterContext, _meetingStore, _lock);
+            _legalStartTimeRepo, _sectionRepo, _blockPatternRepo,
+            _semesterContext, _meetingStore, _lock);
 
     /// <summary>Creates a fully-wired <see cref="SectionCodePatternListViewModel"/> in reader mode.</summary>
     private SectionCodePatternListViewModel CreateSectionCodePatternListVm() =>

@@ -13,7 +13,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// ViewModel for the Rooms management panel. Provides a list of rooms with
 /// inline Add/Edit/Delete and manual ordering support.
 /// </summary>
-public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
+public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly IRoomRepository _repo;
     private readonly ICampusRepository _campusRepo;
@@ -257,6 +257,12 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor
         {
             tx?.Dispose();
         }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }
 

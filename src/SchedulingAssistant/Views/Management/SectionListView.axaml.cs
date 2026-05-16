@@ -85,6 +85,9 @@ public partial class SectionListView : UserControl
     /// </summary>
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        var listBox = this.FindControl<ListBox>("SectionListBox");
+        listBox?.RemoveHandler(InputElement.PointerPressedEvent, OnSectionListCtrlClick);
+
         if (_vm is not null)
         {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;

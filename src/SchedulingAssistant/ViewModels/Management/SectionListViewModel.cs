@@ -873,7 +873,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                     return new RoomAvailabilityBrowserViewModel(
                         specs,
                         capturedRooms, capturedLst, patterns,
-                        sections, meetings, capturedSectionId,
+                        sections, meetings, capturedSectionId, excludeMeetingId: null,
                         capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
                         ghosts => _setGhostBlocks?.Invoke(ghosts),
                         onAccept,

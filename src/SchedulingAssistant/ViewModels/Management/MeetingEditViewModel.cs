@@ -175,6 +175,8 @@ public partial class MeetingEditViewModel : ViewModelBase
         foreach (var slot in meeting.Schedule)
             _slots.Add(CreateSlotVm(slot));
 
+        _slots.CollectionChanged += (_, _) => OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+
         // Populate attendees (all instructors listed; assigned ones pre-checked).
         // No workload concept for meetings — IsSelected is all that matters.
         var assignedIds = meeting.InstructorAssignments.ToDictionary(a => a.InstructorId, a => a.Workload);
@@ -296,10 +298,104 @@ public partial class MeetingEditViewModel : ViewModelBase
     [RelayCommand]
     private void RemoveSlot(SectionMeetingViewModel slot) => Slots.Remove(slot);
 
-    private SectionMeetingViewModel CreateSlotVm(SectionDaySchedule? existing) =>
-        new(_legalStartTimes, includeSaturday: true, includeSunday: false,
+    private SectionMeetingViewModel CreateSlotVm(SectionDaySchedule? existing)
+    {
+        var vm = new SectionMeetingViewModel(
+            _legalStartTimes, includeSaturday: true, includeSunday: false,
             _meetingTypes, _allRooms, _roomTypeOptions, existing,
             unit: AppSettings.Current.BlockLengthUnit);
+
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
+                OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+        };
+
+        return vm;
+    }
+
+    // ── Room Availability Browser ──────────────────────────────────────────
+
+    /// <summary>The room availability browser VM, or null when the browser panel is closed.</summary>
+    [ObservableProperty] private RoomAvailabilityBrowserViewModel? _roomBrowserVm;
+
+    /// <summary>True when the browser panel is visible.</summary>
+    public bool IsRoomBrowserOpen => RoomBrowserVm != null;
+
+    /// <summary>
+    /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.
+    /// Receives the meeting's slot specs and callbacks for accept/cancel.
+    /// </summary>
+    public Func<IReadOnlyList<MeetingSpec>, Action<IReadOnlyList<SpecSolution>>, Action, RoomAvailabilityBrowserViewModel>?
+        CreateRoomBrowser { get; set; }
+
+    /// <summary>Room Browser requires at least one slot, and every slot must have a duration.</summary>
+    private bool CanOpenRoomBrowser() =>
+        Slots.Count > 0 && Slots.All(m => m.SelectedBlockLength.HasValue);
+
+    /// <summary>Opens the Room Availability Browser for the meeting's time slots.</summary>
+    [RelayCommand(CanExecute = nameof(CanOpenRoomBrowser))]
+    private void OpenRoomBrowser()
+    {
+        if (CreateRoomBrowser == null) return;
+
+        var specs = Slots
+            .Select((m, i) => m.ToMeetingSpec(i))
+            .Where(s => s != null)
+            .Cast<MeetingSpec>()
+            .Where(s => !s.IsRemote)
+            .ToList();
+
+        if (specs.Count == 0)
+        {
+            LastErrorMessage = "Every slot must have a duration before browsing. Remote slots are excluded.";
+            return;
+        }
+
+        LastErrorMessage = null;
+        RoomBrowserVm = CreateRoomBrowser(specs, AcceptBrowserSolution, () =>
+        {
+            RoomBrowserVm = null;
+            OnPropertyChanged(nameof(IsRoomBrowserOpen));
+        });
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    /// <summary>Closes the Room Availability Browser and clears ghost blocks.</summary>
+    [RelayCommand]
+    private void CloseRoomBrowser()
+    {
+        RoomBrowserVm?.CancelCommand.Execute(null);
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    /// <summary>
+    /// Accepts a browser solution by filling in blank fields on existing slot rows.
+    /// </summary>
+    private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
+    {
+        foreach (var sol in solutions)
+        {
+            if (sol.SpecIndex < 0 || sol.SpecIndex >= Slots.Count) continue;
+            var slot = Slots[sol.SpecIndex];
+
+            if (slot.SelectedDay == 0)
+                slot.SelectedDay = sol.Day;
+
+            if (!slot.SelectedStartTime.HasValue)
+            {
+                slot.StartTimeText = SectionMeetingViewModel.FormatTime(sol.StartMinutes);
+                slot.CommitStartTimeCommand.Execute(null);
+            }
+
+            if (string.IsNullOrEmpty(slot.SelectedRoomId))
+                slot.SelectedRoomId = sol.RoomId;
+        }
+
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
 
     // ── Save / Cancel ─────────────────────────────────────────────────────────
 

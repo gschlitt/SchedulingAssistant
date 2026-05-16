@@ -13,12 +13,14 @@ public class OccupancyIndex
 
     /// <summary>
     /// Populates the index from sections and meetings in the given semester,
-    /// excluding the section currently being edited.
+    /// excluding the section or meeting currently being edited.
     /// </summary>
     /// <param name="sections">All sections in the target semester.</param>
     /// <param name="meetings">All meetings in the target semester.</param>
     /// <param name="excludeSectionId">The section being edited (excluded from bookings).</param>
-    public void Build(IEnumerable<Section> sections, IEnumerable<Meeting> meetings, string? excludeSectionId)
+    /// <param name="excludeMeetingId">The meeting being edited (excluded from bookings).</param>
+    public void Build(IEnumerable<Section> sections, IEnumerable<Meeting> meetings,
+        string? excludeSectionId, string? excludeMeetingId = null)
     {
         _bookings.Clear();
 
@@ -29,7 +31,10 @@ public class OccupancyIndex
         }
 
         foreach (var meeting in meetings)
+        {
+            if (meeting.Id == excludeMeetingId) continue;
             AddSchedule(meeting.Schedule);
+        }
     }
 
     private void AddSchedule(List<SectionDaySchedule> schedule)
@@ -113,15 +118,16 @@ public class RoomAvailabilityService
 
     /// <summary>
     /// Builds a new <see cref="OccupancyIndex"/> from all sections and meetings in the
-    /// specified semester, excluding the section being edited.
+    /// specified semester, excluding the section or meeting being edited.
     /// </summary>
     public OccupancyIndex BuildOccupancyIndex(
         IEnumerable<Section> sections,
         IEnumerable<Meeting> meetings,
-        string? excludeSectionId)
+        string? excludeSectionId,
+        string? excludeMeetingId = null)
     {
         var index = new OccupancyIndex();
-        index.Build(sections, meetings, excludeSectionId);
+        index.Build(sections, meetings, excludeSectionId, excludeMeetingId);
         return index;
     }
 

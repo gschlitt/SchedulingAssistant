@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-15T23:50:51.630Z
-> Files: 23 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-16T16:18:09.212Z
+> Files: 47 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,7 +29,9 @@
 
 ## ../../../.claude/plans/
 
+- `i-d-like-you-to-sleepy-kernighan.md` — Stability & Reliability Review — Prioritized Findings (~3175 tok)
 - `i-ve-found-a-problem-recursive-lollipop.md` — Fix: Tear down pattern coupling before applying room browser solution (~508 tok)
+- `the-app-also-allow-tingly-curry.md` — Add Room Browser to Meeting (Event) Editor (~1160 tok)
 - `the-app-can-display-squishy-flask.md` — Fix: Truncate block length hours display to 2 decimal places (~481 tok)
 - `the-user-needs-some-cosmic-lecun.md` — Disable Room Browser Button Until Meetings Have Durations (~654 tok)
 - `use-your-reasoned-imagination-lexical-hummingbird.md` — Detach/Reattach Memory Leak Analysis (~2676 tok)
@@ -196,11 +198,13 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~6435 tok)
 - `RoomAvailabilityIntegrationTests.cs` — Integration tests for the Room Availability Browser using a real database. Loads rooms, sections, me (~7531 tok)
+- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~7981 tok)
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14436 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14602 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -239,18 +243,34 @@
 ## src/SchedulingAssistant/Services/
 
 - `BlockLengthFormatter.cs` — Stateless helpers for formatting and parsing block lengths under the current <see cref="BlockLengthU (~1615 tok)
-- `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9610 tok)
+- `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9691 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8028 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~2738 tok)
+- `AcademicUnitListViewModel.cs` — ViewModel for editing the single Academic Unit in the system. There is always exactly one unit; this (~713 tok)
+- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2516 tok)
+- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1713 tok)
+- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~2020 tok)
+- `CopySemesterViewModel.cs` — True when the current user holds the write lock; gates all Copy Semester controls. (~4563 tok)
+- `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3211 tok)
+- `EmptySemesterViewModel.cs` — True when the current user holds the write lock; gates the Empty Semester button. (~1599 tok)
+- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3475 tok)
+- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~5582 tok)
+- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~6481 tok)
+- `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~2779 tok)
+- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~3123 tok)
+- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3283 tok)
+- `SectionCodePatternListViewModel.cs` — ViewModel for the Section Code Patterns configuration panel. Supports full CRUD for <see cref="Secti (~5412 tok)
 - `SectionEditViewModel.cs` — Available code patterns for this session, loaded once at editor construction. Only relevant for new (~11735 tok)
+- `SectionListViewModel.cs` — Callback to push ghost blocks (Room Availability Browser) onto the schedule grid. Set by <see cref=" (~14516 tok)
+- `SubjectListViewModel.cs` — True when the current user holds the write lock; controls whether CRUD buttons are enabled. (~1161 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -260,6 +280,7 @@
 
 ## src/SchedulingAssistant/Views/
 
+- `DatabaseLocationDialog.axaml.cs` — The chosen full file path after OK. Null means cancelled. (~1600 tok)
 - `DetachedPanelWindow.axaml.cs` — Class: DetachedPanelWindow (~552 tok)
 - `MainView.axaml` (~6048 tok)
 
@@ -269,8 +290,11 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `MeetingListView.axaml` (~12072 tok)
+- `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1150 tok)
+- `SaveAndBackupView.axaml.cs` — Code-behind for <see cref="SaveAndBackupView"/>. Kept minimal — only the folder-picker button handle (~690 tok)
 - `SectionListView.axaml` (~22990 tok)
-- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~2616 tok)
+- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~2659 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

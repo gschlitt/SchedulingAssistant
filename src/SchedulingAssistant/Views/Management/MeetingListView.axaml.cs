@@ -1,7 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Management;
 using System;
+using System.IO;
 
 namespace SchedulingAssistant.Views.Management;
 
@@ -80,6 +83,13 @@ public partial class MeetingListView : UserControl
                     RestoreFocusToList(meetingListBox);
             }
         }
+    }
+
+    /// <summary>Opens the Room Browser help page in the default browser.</summary>
+    private void OnRoomBrowserHelpClick(object? sender, RoutedEventArgs e)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Help", "room-browser.html");
+        PlatformProcess.OpenUri(new Uri(path).AbsoluteUri);
     }
 
     /// <summary>

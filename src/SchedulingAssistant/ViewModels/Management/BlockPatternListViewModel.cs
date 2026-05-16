@@ -10,7 +10,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// Manages up to five block-pattern favourite slots shown in the Block Patterns flyout.
 /// Patterns are stored in the database so all users of the same database see the same patterns.
 /// </summary>
-public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEditor
+public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly IBlockPatternRepository _patternRepository;
     private readonly WriteLockService _lockService;
@@ -71,6 +71,12 @@ public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEdit
             slot.EditCommand.NotifyCanExecuteChanged();
             slot.ClearCommand.NotifyCanExecuteChanged();
         }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }
 

@@ -9,7 +9,7 @@ using System.Data.Common;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor
+public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly ISchedulingEnvironmentRepository _repo;
     private readonly ISectionRepository _sectionRepo;
@@ -293,5 +293,11 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         {
             tx?.Dispose();
         }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }
