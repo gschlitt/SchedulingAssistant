@@ -22,7 +22,7 @@ public partial class MainView : UserControl
 
     /// <summary>
     /// Reference to the schedule grid view, resolved after DataContext is set.
-    /// Exposed so MainWindow can pass it to ExportViewModel for PNG export.
+    /// Exposed so MainWindow can access it for PNG export (Print Schedule).
     /// </summary>
     public ScheduleGridView? ScheduleGridViewInstance { get; set; }
 

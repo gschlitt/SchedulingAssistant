@@ -312,7 +312,8 @@ public partial class App : Application
                 sp.GetRequiredService<SemesterContext>(),
                 sp.GetRequiredService<SectionChangeNotifier>(),
                 sp.GetRequiredService<IDialogService>(),
-                sp.GetRequiredService<WriteLockService>()));
+                sp.GetRequiredService<WriteLockService>(),
+                sp.GetRequiredService<WorkloadMailerViewModel>()));
 
         services.AddTransient<RoomListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();
@@ -330,7 +331,6 @@ public partial class App : Application
         services.AddTransient<PreferencesViewModel>();
         services.AddTransient<ExportHubViewModel>();
         services.AddTransient<SharingViewModel>();
-        services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
         services.AddTransient<WorkloadMailerViewModel>();
         services.AddTransient<CourseHistoryExportViewModel>();

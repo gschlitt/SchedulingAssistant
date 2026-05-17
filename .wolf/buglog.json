@@ -10622,6 +10622,198 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-16T16:18:01.951Z"
+    },
+    {
+      "id": "bug-664",
+      "timestamp": "2026-05-16T21:53:48.937Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-16T21:53:48.937Z"
+    },
+    {
+      "id": "bug-665",
+      "timestamp": "2026-05-16T22:00:03.377Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Tests/SharedScheduleCsvParserTests.cs",
+      "root_cause": "Had \"3,000\"",
+      "fix": "Changed to \"3000\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-16T22:00:03.377Z"
+    },
+    {
+      "id": "bug-666",
+      "timestamp": "2026-05-16T22:00:29.216Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.Tests/SharedScheduleCsvExporterTests.cs",
+      "root_cause": "Had '\\n'",
+      "fix": "Changed to \"\\r\\n\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-16T22:00:35.674Z"
+    },
+    {
+      "id": "bug-667",
+      "timestamp": "2026-05-17T01:35:41.090Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Condition was: if (!string.IsNullOrEmpty(tileTooltip.AttendeeList)",
+      "fix": "Changed to: if (tileIsSharedSchedule)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T01:35:41.090Z"
+    },
+    {
+      "id": "bug-668",
+      "timestamp": "2026-05-17T01:56:35.035Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 10→6 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T01:56:35.035Z"
+    },
+    {
+      "id": "bug-669",
+      "timestamp": "2026-05-17T01:56:50.473Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T01:56:50.473Z"
+    },
+    {
+      "id": "bug-670",
+      "timestamp": "2026-05-17T02:45:16.679Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 13→4 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T02:45:16.679Z"
+    },
+    {
+      "id": "bug-671",
+      "timestamp": "2026-05-17T02:56:00.500Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/SharedScheduleStripView.axaml",
+      "root_cause": "Had \"{Binding $parent[ItemsControl].((vm:SharedSchedul",
+      "fix": "Changed to \"{ReflectionBinding $parent[ItemsControl].DataCont",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-17T02:57:13.301Z"
+    },
+    {
+      "id": "bug-672",
+      "timestamp": "2026-05-17T03:23:36.685Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 8→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T03:23:36.685Z"
+    },
+    {
+      "id": "bug-673",
+      "timestamp": "2026-05-17T04:13:58.658Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T04:13:58.658Z"
+    },
+    {
+      "id": "bug-674",
+      "timestamp": "2026-05-17T04:38:45.960Z",
+      "error_message": "Missing error handling in Task",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T04:38:45.960Z"
+    },
+    {
+      "id": "bug-675",
+      "timestamp": "2026-05-17T04:50:55.902Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "root_cause": "Had \"Auto,Auto,Auto,*\"",
+      "fix": "Changed to \"Auto,Auto,Auto,*,Auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-17T04:55:27.787Z"
     }
   ]
 }

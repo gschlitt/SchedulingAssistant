@@ -78,6 +78,9 @@
 								</MenuItem.Styles>
 							</MenuItem>
 							<Separator />
+							<MenuItem Command="{Binding PrintScheduleCommand}" Header="Print..."
+									ToolTip.Tip="Prints the current view to a PNG file suitable for printing or attaching to an email" />
+							<Separator />
 							<MenuItem Command="{Binding ExitCommand}" Header="Exit" />
 						</MenuItem>
 					</Menu>

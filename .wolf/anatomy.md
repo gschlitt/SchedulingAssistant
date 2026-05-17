@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-16T18:41:54.470Z
-> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-17T05:05:52.821Z
+> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,20 +29,11 @@
 
 ## ../../../.claude/plans/
 
-- `i-d-like-you-to-sleepy-kernighan.md` — Stability & Reliability Review — Prioritized Findings (~3175 tok)
-- `i-ve-found-a-problem-recursive-lollipop.md` — Fix: Tear down pattern coupling before applying room browser solution (~508 tok)
-- `the-app-also-allow-tingly-curry.md` — Add Room Browser to Meeting (Event) Editor (~1160 tok)
-- `the-app-can-display-squishy-flask.md` — Fix: Truncate block length hours display to 2 decimal places (~481 tok)
-- `the-user-needs-some-cosmic-lecun.md` — Disable Room Browser Button Until Meetings Have Durations (~654 tok)
-- `use-your-reasoned-imagination-lexical-hummingbird.md` — Detach/Reattach Memory Leak Analysis (~2676 tok)
-- `we-need-to-debug-sunny-octopus.md` — Fix: Same-day multi-spec scheduling (class + lab on one day) (~1317 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `detach_reattach_bugs.md` — Detach/Reattach Panel Bug History (May 2026, Rooming branch) (~857 tok)
-- `feedback_progressive_design_spec.md` (~355 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~8968 tok)
-- `project_integration_test_db.md` — Declares distributions (~351 tok)
+- `feedback_no_compiled_bindings.md` — Declares cast (~202 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~9658 tok)
 
 ## ./
 
@@ -199,21 +190,21 @@
 
 ## src/SchedulingAssistant.Tests/
 
-- `EditorFlowTests.cs` — Integration-style unit tests for the inline editor workflows. Each test constructs the ViewModel und (~6435 tok)
-- `RoomAvailabilityIntegrationTests.cs` — Integration tests for the Room Availability Browser using a real database. Loads rooms, sections, me (~7531 tok)
-- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~7981 tok)
+- `SharedScheduleCsvExporterTests.cs` — Class: SharedScheduleCsvExporterTests (~1553 tok)
+- `SharedScheduleCsvParserTests.cs` — Class: SharedScheduleCsvParserTests (~2946 tok)
+- `SharedScheduleServiceTests.cs` — Class: SharedScheduleServiceTests (~1012 tok)
 
 ## src/SchedulingAssistant/
 
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14602 tok)
+- `App.axaml.cs` — Logger available app-wide, including before DI is fully initialized. (~4338 tok)
+- `AppColors.axaml` (~3366 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~14678 tok)
 
 ## src/SchedulingAssistant/Assets/
 
-- `Icons.axaml` (~1621 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
-- `HelpTip.cs` — Attached behavior that provides a styled help tooltip for any <see cref="Control"/>. Set <see cref=" (~1775 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -235,43 +226,36 @@
 
 ## src/SchedulingAssistant/Help/
 
-- `room-browser.html` — Room Browser — TermPoint Help (~913 tok)
 
 ## src/SchedulingAssistant/Models/
 
-- `RoomSolution.cs` — Ranking tiers for room availability solutions, from most to least coherent. (~820 tok)
+- `SharedMeeting.cs` — One day/time slot from an imported shared schedule CSV. In-memory only — never persisted to the loca (~246 tok)
+- `SharedScheduleSet.cs` — Container for one CSV import operation. Holds all sections from a single shared schedule file. In-me (~213 tok)
+- `SharedSection.cs` — One logical section from an imported shared schedule CSV. In-memory only — never persisted to the lo (~202 tok)
 
 ## src/SchedulingAssistant/Services/
 
-- `BlockLengthFormatter.cs` — Stateless helpers for formatting and parsing block lengths under the current <see cref="BlockLengthU (~1615 tok)
-- `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9691 tok)
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3156 tok)
+- `SharedScheduleCsvExporter.cs` — Exports sections visible in the current filter state as a shared schedule CSV. Stateless — all data (~1427 tok)
+- `SharedScheduleCsvParser.cs` — Parses a shared schedule CSV file into a <see cref="SharedScheduleSet"/>. Stateless — all results re (~3584 tok)
+- `SharedScheduleService.cs` — Holds actively loaded shared schedule sets (cross-department CSV imports). All data is transient (in (~791 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8028 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8495 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~3782 tok)
+- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~19068 tok)
+- `SharedScheduleStripViewModel.cs` — Drives the collapsible shared schedule strip between the filter bar and the grid. Shows a collapsed (~1123 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `AcademicUnitListViewModel.cs` — ViewModel for editing the single Academic Unit in the system. There is always exactly one unit; this (~713 tok)
-- `AcademicYearListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~2516 tok)
-- `BlockPatternListViewModel.cs` — Manages up to five block-pattern favourite slots shown in the Block Patterns flyout. Patterns are st (~1713 tok)
-- `CampusListViewModel.cs` — ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering. (~2020 tok)
-- `CopySemesterViewModel.cs` — True when the current user holds the write lock; gates all Copy Semester controls. (~4563 tok)
-- `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3211 tok)
-- `EmptySemesterViewModel.cs` — True when the current user holds the write lock; gates the Empty Semester button. (~1599 tok)
-- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~3475 tok)
-- `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~5582 tok)
-- `MeetingListViewModel.cs` — Drives the Event List left panel — the counterpart to <see cref="SectionListViewModel"/> when the us (~6481 tok)
-- `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~2779 tok)
-- `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~3123 tok)
-- `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3283 tok)
-- `SectionCodePatternListViewModel.cs` — ViewModel for the Section Code Patterns configuration panel. Supports full CRUD for <see cref="Secti (~5412 tok)
-- `SectionEditViewModel.cs` — Available code patterns for this session, loaded once at editor construction. Only relevant for new (~11735 tok)
-- `SectionListViewModel.cs` — Callback to push ghost blocks (Room Availability Browser) onto the schedule grid. Set by <see cref=" (~14516 tok)
-- `SubjectListViewModel.cs` — True when the current user holds the write lock; controls whether CRUD buttons are enabled. (~1161 tok)
+- `ConfigurationViewModel.cs` — ViewModel for the Configuration flyout hub. Hosts a left-sidebar list of configuration categories; s (~682 tok)
+- `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~353 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4544 tok)
+- `SharingViewModel.cs` — Flyout for shared schedule import/export operations. Provides Import, Export, Set Shared Folder, and (~2322 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -281,21 +265,22 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `DatabaseLocationDialog.axaml.cs` — The chosen full file path after OK. Null means cancelled. (~1600 tok)
-- `DetachedPanelWindow.axaml.cs` — Class: DetachedPanelWindow (~552 tok)
-- `MainView.axaml` (~6048 tok)
+- `MainView.axaml` (~6373 tok)
+- `MainView.axaml.cs` — Top-level UserControl containing the full application UI. Extracted from MainWindow so the same UI c (~1288 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18061 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18135 tok)
+- `SharedScheduleStripView.axaml` (~1090 tok)
+- `SharedScheduleStripView.axaml.cs` — Class: SharedScheduleStripView (~58 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `MeetingListView.axaml` (~12072 tok)
-- `MeetingListView.axaml.cs` — Code-behind for <see cref="MeetingListView"/>. Handles keyboard shortcuts for the inline meeting edi (~1150 tok)
-- `SaveAndBackupView.axaml.cs` — Code-behind for <see cref="SaveAndBackupView"/>. Kept minimal — only the folder-picker button handle (~690 tok)
-- `SectionListView.axaml` (~22990 tok)
-- `SectionListView.axaml.cs` — Tunnel-phase PointerPressed on the ListBox. When Ctrl is held on a left-click over a section card, t (~2659 tok)
+- `AcademicYearListView.axaml.cs` — Class: AcademicYearListView (~1123 tok)
+- `EmptySemesterView.axaml.cs` — Class: EmptySemesterView (~936 tok)
+- `InstructorListView.axaml` (~8659 tok)
+- `SharingView.axaml` (~815 tok)
+- `SharingView.axaml.cs` — Class: SharingView (~52 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

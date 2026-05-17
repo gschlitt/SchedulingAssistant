@@ -746,6 +746,54 @@ public partial class MainWindowViewModel : ViewModelBase
         await MainWindowReference.SwitchDatabaseAsync(databasePath);
     }
 
+    /// <summary>
+    /// Exports the schedule grid as a PNG image. Prompts the user for a save location.
+    /// Wired to the Files › Print… menu item.
+    /// </summary>
+    [RelayCommand]
+    private async Task PrintSchedule()
+    {
+        var window = MainWindowReference;
+        if (window is null) return;
+
+        try
+        {
+            var settings = AppSettings.Current;
+
+            IStorageFolder? suggestedFolder = null;
+            if (settings.LastExportPath is not null)
+            {
+                var dir = Path.GetDirectoryName(settings.LastExportPath);
+                if (dir is not null)
+                    suggestedFolder = await window.StorageProvider.TryGetFolderFromPathAsync(dir);
+            }
+
+            var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Print Schedule to PNG",
+                SuggestedFileName = "schedule.png",
+                DefaultExtension = "png",
+                SuggestedStartLocation = suggestedFolder,
+                FileTypeChoices = new[]
+                {
+                    new FilePickerFileType("PNG Image") { Patterns = new[] { "*.png" } }
+                }
+            });
+
+            if (file is null) return;
+
+            var path = file.Path.LocalPath;
+            window.ScheduleGridViewInstance?.ExportToPng(path);
+
+            settings.LastExportPath = path;
+            settings.Save();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"PrintSchedule error: {ex.Message}");
+        }
+    }
+
     [RelayCommand]
     private void Exit() => MainWindowReference?.Close();
 #endif

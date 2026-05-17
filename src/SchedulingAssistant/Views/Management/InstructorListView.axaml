@@ -11,11 +11,11 @@
 
 
 
-    <!--  Two-column layout: Column 0 has instructor list + workload panels | Column 1 workload history  -->
+    <!--  Three-column layout: Col 0 instructor list + workload panels | Col 1 workload history | Col 2 workload mailer  -->
     <Grid
         Margin="10,0,0,0"
         Background="{StaticResource AppBackground}"
-        ColumnDefinitions="*,*"
+        ColumnDefinitions="*,380,Auto"
         RowDefinitions="Auto,Auto,Auto,*">
         <!--  LEFT COLUMN: Instructor list and edit  -->
 
@@ -165,14 +165,16 @@
                 Tag values on each column identify which InstructorSortMode to apply.
             -->
             <DataGrid
+                MinWidth="200"
                 x:Name="InstructorDataGrid"
+                HorizontalAlignment="Left"
                 b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                 MaxHeight="250"
                 AutoGenerateColumns="False"
                 Background="{StaticResource AppBackground}"
                 BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1"
-                CanUserSortColumns="True"
+                CanUserSortColumns="False"
                 IsReadOnly="True"
                 ItemsSource="{Binding Instructors}"
                 SelectedItem="{Binding SelectedInstructor}"
@@ -186,26 +188,26 @@
                         Tag="FirstName" />
                     <DataGridTextColumn
                         Width="Auto"
-                        MinWidth="200"
+                        MinWidth="20"
                         Binding="{Binding LastName}"
                         FontSize="12"
                         Header="Last"
                         Tag="LastName" />
                     <DataGridTextColumn
-                        Width="40"
+                        MinWidth="40"
                         Binding="{Binding Initials}"
                         FontSize="12"
                         Header="Init"
                         Tag="Initials" />
                     <DataGridTextColumn
-                        Width="100"
+                        Width="Auto"
                         Binding="{Binding StaffTypeName}"
                         FontSize="12"
                         Header="Type"
                         Tag="StaffType" />
                     <DataGridTextColumn
                         Width="Auto"
-                        MinWidth="200"
+                        MinWidth="150"
                         Binding="{Binding Email}"
                         FontSize="12"
                         Header="Email" />
@@ -608,7 +610,7 @@
         </Grid>
 
         <!--
-            RIGHT COLUMN: Workload History (header + content).
+            MIDDLE COLUMN: Workload History (header + content).
             Spans all 4 rows so its height never influences the Auto row heights
             used by the left column (list, semester picker, workload panels).
         -->
@@ -632,6 +634,18 @@
                 <v:WorkloadHistoryView DataContext="{Binding WorkloadHistoryVm}" />
             </Border>
         </DockPanel>
+
+        <!--  RIGHT COLUMN: Workload Mailer  -->
+        <Border
+            Grid.Row="0"
+            Grid.RowSpan="4"
+            Grid.Column="2"
+            Width="340"
+            Padding="10"
+            BorderBrush="{StaticResource InlineListBorder}"
+            BorderThickness="1,0,0,0">
+            <v:WorkloadMailerView DataContext="{Binding WorkloadMailerVm}" />
+        </Border>
 
     </Grid>
 </UserControl>

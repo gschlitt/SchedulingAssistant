@@ -46,6 +46,9 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     [ObservableProperty] private CommitmentsManagementViewModel _commitmentsVm;
     [ObservableProperty] private WorkloadHistoryViewModel _workloadHistoryVm;
 
+    /// <summary>The Workload Mailer panel, displayed below the three workload panels.</summary>
+    public WorkloadMailerViewModel WorkloadMailerVm { get; }
+
     /// <summary>
     /// All semesters in the currently selected academic year, available in the flyout's
     /// local semester picker. This list is independent of the global semester selection.
@@ -88,7 +91,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         SemesterContext semesterContext,
         SectionChangeNotifier changeNotifier,
         IDialogService dialog,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        WorkloadMailerViewModel workloadMailerVm)
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
@@ -101,6 +105,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         _semesterContext = semesterContext;
         _dialog = dialog;
         _lockService = lockService;
+        WorkloadMailerVm = workloadMailerVm;
         _lockService.LockStateChanged += OnLockStateChanged;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo, lockService);
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier, lockService);

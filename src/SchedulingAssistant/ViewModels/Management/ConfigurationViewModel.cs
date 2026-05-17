@@ -29,13 +29,15 @@ public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor
     /// <param name="sectionCodePatternsVm">Section code patterns category.</param>
     /// <param name="academicUnitsVm">Academic unit category.</param>
     /// <param name="preferencesVm">User preferences category.</param>
+    /// <param name="shareVm">Share configuration (.tpconfig export) category.</param>
     /// <param name="saveAndBackupVm">Save &amp; Backup category.</param>
     public ConfigurationViewModel(
         LegalStartTimeListViewModel schedulingVm,
         BlockPatternListViewModel blockPatternsVm,
         SectionCodePatternListViewModel sectionCodePatternsVm,
         AcademicUnitListViewModel academicUnitsVm,
-        PreferencesViewModel preferencesVm
+        PreferencesViewModel preferencesVm,
+        ShareViewModel shareVm
 #if !BROWSER
         , SaveAndBackupViewModel saveAndBackupVm
 #endif
@@ -52,6 +54,7 @@ public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor
             sectionCodePatternsVm,
             academicUnitsVm,
             preferencesVm,
+            shareVm,
 #if !BROWSER
             saveAndBackupVm,
 #endif

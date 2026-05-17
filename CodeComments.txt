@@ -1,5 +1,7 @@
 Bugs:
 
+What happens if a schedule contiains saturday sections and we load it with only m- fset?
+
 Sometimes "New..." is locking up???
 
 Deleting a semester permitted with sections? 

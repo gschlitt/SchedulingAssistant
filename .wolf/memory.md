@@ -1,5 +1,30 @@
 # Memory
 
+## Session: 2026-05-16 — Shared Schedule feature implementation complete
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Implemented SharedScheduleStripViewModel | `ViewModels/GridView/SharedScheduleStripViewModel.cs` | Collapsible strip VM: collapsed summary, expanded per-source section listings, toggle/dismiss-all/dismiss-source commands, auto-refreshes on SharedScheduleService.Changed |
+| Created SharedScheduleStripView | `Views/GridView/SharedScheduleStripView.axaml`, `.axaml.cs` | Purple-accented collapsible panel: 3px left border, chevron toggle, per-source groups with [×] dismiss, section rows (label + schedule + notes), 200px max scrollable |
+| Added SharedScheduleBadge to grid header | `ViewModels/GridView/ScheduleGridViewModel.cs`, `Views/MainView.axaml` | "Shared: Chemistry (12) · Biology (8)" purple badge in header bar, clears on ClearDisplay |
+| Added export source label field | `ViewModels/Management/SharingViewModel.cs`, `Views/Management/SharingView.axaml` | Editable TextBox pre-populated from institution/academic unit name; export uses this instead of hardcoded derivation |
+| Wired strip into MainView | `Views/MainView.axaml` | DockPanel wraps grid; strip docks at top above ScheduleGridView. Strip DataContext bound to ScheduleGridVm.SharedScheduleStrip |
+| All tests pass | 600 tests, 0 failures | Full feature: models, services, parser, exporter, grid rendering, strip, badge, flyout UI, tests |
+
+**Status**: Feature complete, awaiting user testing. Branch: `Sharing`. All design phases (1–5) locked and implemented.
+
+## Session: 2026-05-16 — Schedule Overlay Phase 3 (UX) locked
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Wrote & locked Phase 3 UX spec | `.wolf/designs/schedule-overlay.md` | Naming: "Shared Schedule" (avoids confusion with emphasis overlays). Purple/violet color family (#7C5CCC). Outlined tiles (border-only, no fill). Collapsible strip below filter bar (expandable to show per-source section lists). New "Sharing" top-level menu (Import/Export/Set Shared Folder/Dismiss All). SharedScheduleFolder in AppSettings (single folder for import+export default). Phase 2 amendment: IsSharedSchedule flag replaces IsOverlay for shared tiles. Domain types renamed: OverlaySet→SharedScheduleSet, OverlayService→SharedScheduleService. |
+
+## Session: 2026-05-16 — Schedule Overlay Phase 2 (Domain Model) locked
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Wrote Phase 2 domain model into design spec | `.wolf/designs/schedule-overlay.md` | Entities (OverlaySet/OverlaySection/OverlayMeeting), CSV format (backup-style human+machine), grid integration via existing SectionMeetingBlock(IsOverlay=true), OverlayService singleton, dedicated read-only list panel (separate from Section List), frequency support, notes field. All Phase 1 open questions resolved. |
+
 ## Session: 2026-05-14 — Room Availability Browser partial-spec redesign (code complete)
 
 | Action | Files | Outcome |
@@ -6079,3 +6104,195 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-05-16 12:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-16 13:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-16 13:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:26 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | 6→7 lines | ~53 |
+| 13:26 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | 2→2 lines | ~54 |
+| 13:27 | Edited src/SchedulingAssistant/Views/Management/AcademicYearListView.axaml.cs | 2→2 lines | ~54 |
+| 13:27 | Edited src/SchedulingAssistant/Views/Management/EmptySemesterView.axaml.cs | 5→6 lines | ~45 |
+| 13:27 | Edited src/SchedulingAssistant/Views/Management/EmptySemesterView.axaml.cs | 2→2 lines | ~55 |
+| 13:27 | Edited src/SchedulingAssistant/Views/Management/EmptySemesterView.axaml.cs | inline fix | ~21 |
+| 13:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→3 lines | ~24 |
+| 13:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~30 |
+| 13:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | inline fix | ~30 |
+| 13:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~57 |
+| 13:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 10→10 lines | ~107 |
+| 13:28 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 10→10 lines | ~82 |
+| 13:29 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~52 |
+| 13:30 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 16 reads | ~15371 tok |
+| 13:31 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 16 reads | ~15371 tok |
+| 13:32 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 16 reads | ~15371 tok |
+| 13:37 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 16 reads | ~15371 tok |
+| 13:38 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 16 reads | ~15371 tok |
+| 13:42 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 16 reads | ~15371 tok |
+| 13:57 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 17 reads | ~15371 tok |
+| 14:05 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 17 reads | ~15371 tok |
+| 14:06 | Session end: 13 writes across 3 files (AcademicYearListView.axaml.cs, EmptySemesterView.axaml.cs, MainWindow.axaml.cs) | 17 reads | ~15371 tok |
+
+## Session: 2026-05-16 14:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-16 14:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:48 | Created src/SchedulingAssistant/Models/SharedMeeting.cs | — | ~246 |
+| 14:48 | Created src/SchedulingAssistant/Models/SharedSection.cs | — | ~202 |
+| 14:48 | Created src/SchedulingAssistant/Models/SharedScheduleSet.cs | — | ~213 |
+| 14:49 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | modified CommitmentBlock() | ~546 |
+| 14:49 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 12→14 lines | ~164 |
+| 14:49 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→3 lines | ~128 |
+| 14:49 | Created src/SchedulingAssistant/Services/SharedScheduleService.cs | — | ~791 |
+| 14:50 | Created src/SchedulingAssistant/Services/SharedScheduleCsvParser.cs | — | ~3584 |
+| 14:51 | Created src/SchedulingAssistant/Services/SharedScheduleCsvExporter.cs | — | ~1427 |
+| 14:51 | Edited src/SchedulingAssistant/App.axaml.cs | 5→8 lines | ~122 |
+| 14:52 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→3 lines | ~51 |
+| 14:52 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified ScheduleGridViewModel() | ~378 |
+| 14:52 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→6 lines | ~95 |
+| 14:52 | Edited src/SchedulingAssistant/App.axaml.cs | 3→4 lines | ~74 |
+| 14:53 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified BuildMeetingBlocks() | ~146 |
+| 14:53 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | added nullish coalescing | ~302 |
+| 14:54 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 7→8 lines | ~110 |
+| 14:54 | Edited src/SchedulingAssistant/Services/AppSettings.cs | expanded (+7 lines) | ~120 |
+| 14:54 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | added 1 condition(s) | ~321 |
+| 14:55 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 7→12 lines | ~190 |
+| 14:58 | Created src/SchedulingAssistant.Tests/SharedScheduleCsvParserTests.cs | — | ~2955 |
+| 14:58 | Created src/SchedulingAssistant.Tests/SharedScheduleCsvExporterTests.cs | — | ~1512 |
+| 14:58 | Created src/SchedulingAssistant.Tests/SharedScheduleServiceTests.cs | — | ~1012 |
+| 14:59 | Edited src/SchedulingAssistant.Tests/SharedScheduleCsvParserTests.cs | modified EscapedQuotes_ParsesCorrectly() | ~106 |
+| 15:00 | Edited src/SchedulingAssistant.Tests/SharedScheduleCsvParserTests.cs | 2→2 lines | ~25 |
+| 15:00 | Edited src/SchedulingAssistant.Tests/SharedScheduleCsvExporterTests.cs | 10→10 lines | ~153 |
+| 15:00 | Edited src/SchedulingAssistant.Tests/SharedScheduleCsvExporterTests.cs | 6→7 lines | ~98 |
+| 15:00 | Edited src/SchedulingAssistant.Tests/SharedScheduleCsvExporterTests.cs | inline fix | ~37 |
+| 15:00 | Edited src/SchedulingAssistant.Tests/SharedScheduleCsvExporterTests.cs | "\n" → "\r\n" | ~32 |
+| 15:01 | Session end: 29 writes across 13 files (SharedMeeting.cs, SharedSection.cs, SharedScheduleSet.cs, GridData.cs, ScheduleGridViewModel.cs) | 12 reads | ~42235 tok |
+| 18:31 | Session end: 29 writes across 13 files (SharedMeeting.cs, SharedSection.cs, SharedScheduleSet.cs, GridData.cs, ScheduleGridViewModel.cs) | 12 reads | ~42235 tok |
+| 18:34 | Edited src/SchedulingAssistant/AppColors.axaml | expanded (+8 lines) | ~173 |
+| 18:34 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 5→10 lines | ~174 |
+| 18:34 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 12→15 lines | ~269 |
+| 18:35 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 1 condition(s) | ~395 |
+| 18:35 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | tiles() → tooltip() | ~192 |
+| 18:35 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+7 lines) | ~126 |
+| 18:36 | Created src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | — | ~2278 |
+| 18:37 | Created src/SchedulingAssistant/Views/Management/SharingView.axaml | — | ~597 |
+| 18:37 | Created src/SchedulingAssistant/Views/Management/SharingView.axaml.cs | — | ~52 |
+| 18:38 | Edited src/SchedulingAssistant/App.axaml.cs | 1→2 lines | ~28 |
+| 18:38 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 2→5 lines | ~55 |
+
+## Session: 2026-05-17 18:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:49 | Created src/SchedulingAssistant/ViewModels/GridView/SharedScheduleStripViewModel.cs | — | ~1123 |
+| 18:49 | Created src/SchedulingAssistant/Views/GridView/SharedScheduleStripView.axaml | — | ~1084 |
+| 18:49 | Created src/SchedulingAssistant/Views/GridView/SharedScheduleStripView.axaml.cs | — | ~58 |
+| 18:50 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→4 lines | ~61 |
+| 18:50 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→5 lines | ~86 |
+| 18:50 | Edited src/SchedulingAssistant/Views/MainView.axaml | 3→8 lines | ~101 |
+| 18:50 | Edited src/SchedulingAssistant/Views/GridView/SharedScheduleStripView.axaml | 8→12 lines | ~102 |
+| 18:54 | Session end: 7 writes across 5 files (SharedScheduleStripViewModel.cs, SharedScheduleStripView.axaml, SharedScheduleStripView.axaml.cs, ScheduleGridViewModel.cs, MainView.axaml) | 5 reads | ~28724 tok |
+| 18:55 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→5 lines | ~102 |
+| 18:55 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | added 1 condition(s) | ~149 |
+| 18:55 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+14 lines) | ~284 |
+| 18:56 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→3 lines | ~52 |
+| 18:56 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 3→4 lines | ~46 |
+| 18:56 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | GetUnit() → Trim() | ~86 |
+| 18:56 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | added optional chaining | ~156 |
+| 18:57 | Edited src/SchedulingAssistant/Views/Management/SharingView.axaml | modified label() | ~227 |
+| 18:57 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified ClearDisplay() | ~82 |
+| 18:59 | Session end: 16 writes across 7 files (SharedScheduleStripViewModel.cs, SharedScheduleStripView.axaml, SharedScheduleStripView.axaml.cs, ScheduleGridViewModel.cs, MainView.axaml) | 8 reads | ~33117 tok |
+| 18:59 | Session end: 16 writes across 7 files (SharedScheduleStripViewModel.cs, SharedScheduleStripView.axaml, SharedScheduleStripView.axaml.cs, ScheduleGridViewModel.cs, MainView.axaml) | 8 reads | ~33117 tok |
+| 19:06 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 3→5 lines | ~217 |
+| 19:06 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | expanded (+25 lines) | ~678 |
+| 19:07 | Session end: 18 writes across 8 files (SharedScheduleStripViewModel.cs, SharedScheduleStripView.axaml, SharedScheduleStripView.axaml.cs, ScheduleGridViewModel.cs, MainView.axaml) | 9 reads | ~34076 tok |
+| 19:08 | Session end: 18 writes across 8 files (SharedScheduleStripViewModel.cs, SharedScheduleStripView.axaml, SharedScheduleStripView.axaml.cs, ScheduleGridViewModel.cs, MainView.axaml) | 9 reads | ~34076 tok |
+
+## Session: 2026-05-17 19:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:14 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | removed 18 lines | ~31 |
+| 19:14 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | — | ~0 |
+| 19:15 | Session end: 2 writes across 1 files (ScheduleGridView.axaml.cs) | 2 reads | ~22128 tok |
+| 19:42 | Session end: 2 writes across 1 files (ScheduleGridView.axaml.cs) | 2 reads | ~22128 tok |
+| 19:43 | Session end: 2 writes across 1 files (ScheduleGridView.axaml.cs) | 2 reads | ~22128 tok |
+| 19:44 | Session end: 2 writes across 1 files (ScheduleGridView.axaml.cs) | 2 reads | ~22128 tok |
+| 19:45 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→2 lines | ~36 |
+| 19:45 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | reduced (-9 lines) | ~85 |
+| 19:45 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 2→1 lines | ~16 |
+| 19:46 | Session end: 5 writes across 1 files (ScheduleGridView.axaml.cs) | 2 reads | ~22253 tok |
+| 19:56 | Edited src/SchedulingAssistant/Views/GridView/SharedScheduleStripView.axaml | "{Binding $parent[ItemsCon" → "{ReflectionBinding $paren" | ~23 |
+| 19:57 | Edited src/SchedulingAssistant/Views/GridView/SharedScheduleStripView.axaml | "{ReflectionBinding $paren" → "{Binding $parent[ItemsCon" | ~20 |
+| 19:57 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/feedback_no_compiled_bindings.md | — | ~201 |
+| 19:57 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~92 |
+| 19:57 | Session end: 9 writes across 4 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md) | 5 reads | ~24828 tok |
+| 19:59 | Session end: 9 writes across 4 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md) | 5 reads | ~24828 tok |
+| 20:09 | Session end: 9 writes across 4 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md) | 6 reads | ~43896 tok |
+| 20:23 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | modified UpdateExportSourceLabel() | ~26 |
+| 20:23 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→2 lines | ~30 |
+| 20:23 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 1→5 lines | ~77 |
+| 20:23 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | inline fix | ~14 |
+| 20:24 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→1 lines | ~14 |
+| 20:24 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 3→2 lines | ~21 |
+| 20:24 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→1 lines | ~7 |
+| 20:25 | Session end: 16 writes across 5 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 7 reads | ~46447 tok |
+| 21:04 | Edited src/SchedulingAssistant/Views/Management/SharingView.axaml | 7→8 lines | ~66 |
+| 21:04 | Session end: 17 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47228 tok |
+| 21:08 | Session end: 17 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47228 tok |
+| 21:12 | Session end: 17 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47161 tok |
+| 21:13 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→3 lines | ~45 |
+| 21:13 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→3 lines | ~34 |
+| 21:13 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | 2→3 lines | ~33 |
+| 21:13 | Edited src/SchedulingAssistant/ViewModels/Management/SharingViewModel.cs | added optional chaining | ~89 |
+| 21:14 | Session end: 21 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47375 tok |
+| 21:26 | Session end: 21 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47375 tok |
+| 21:30 | Session end: 21 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47375 tok |
+| 21:31 | Session end: 21 writes across 6 files (ScheduleGridView.axaml.cs, SharedScheduleStripView.axaml, feedback_no_compiled_bindings.md, MEMORY.md, SharingViewModel.cs) | 8 reads | ~47375 tok |
+
+## Session: 2026-05-17 21:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:38 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added error handling | ~452 |
+| 21:38 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | inline fix | ~20 |
+| 21:39 | Edited src/SchedulingAssistant/Views/MainView.axaml | 2→4 lines | ~50 |
+| 21:39 | Edited src/SchedulingAssistant/ViewModels/Management/ExportHubViewModel.cs | modified ExportHubViewModel() | ~195 |
+| 21:39 | Edited src/SchedulingAssistant/App.axaml.cs | — | ~0 |
+| 21:39 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | inline fix | ~21 |
+| 21:41 | Session end: 6 writes across 5 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 10 reads | ~20750 tok |
+| 21:43 | Edited src/SchedulingAssistant/Views/MainView.axaml | 1→2 lines | ~48 |
+| 21:43 | Session end: 7 writes across 5 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 10 reads | ~20802 tok |
+| 21:46 | Edited src/SchedulingAssistant/ViewModels/Management/ExportHubViewModel.cs | modified ExportHubViewModel() | ~162 |
+| 21:46 | Edited src/SchedulingAssistant/ViewModels/Management/ConfigurationViewModel.cs | modified ConfigurationViewModel() | ~350 |
+| 21:46 | Session end: 9 writes across 6 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 11 reads | ~21351 tok |
+| 21:50 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 1→4 lines | ~63 |
+| 21:50 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | modified InstructorListViewModel() | ~280 |
+| 21:50 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 2→2 lines | ~22 |
+| 21:51 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 5→5 lines | ~55 |
+| 21:51 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | expanded (+12 lines) | ~203 |
+| 21:51 | Edited src/SchedulingAssistant/ViewModels/Management/ExportHubViewModel.cs | modified ExportHubViewModel() | ~122 |
+| 21:51 | Session end: 15 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~30672 tok |
+| 21:52 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~49 |
+| 21:52 | Session end: 16 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~30711 tok |
+| 21:55 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 2→2 lines | ~22 |
+| 21:55 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 39→39 lines | ~393 |
+| 21:55 | Session end: 18 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~31290 tok |
+| 21:57 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 5→5 lines | ~67 |
+| 21:57 | Session end: 19 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~31335 tok |
+| 22:05 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 14→15 lines | ~183 |
+| 22:05 | Session end: 20 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~31536 tok |
