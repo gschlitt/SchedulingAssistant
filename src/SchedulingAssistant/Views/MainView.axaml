@@ -289,6 +289,13 @@
 						Content="Export" />
 
 					<Button
+						x:Name="NavSharing"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToSharingCommand}"
+						Content="Sharing" />
+
+					<Button
 						x:Name="NavHelp"
 						Margin="0,4,0,4"
 						Classes="nav"
@@ -595,10 +602,29 @@
 								IsVisible="{Binding ScheduleGridVm.Filter.OverlaySummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
 								Text="{Binding ScheduleGridVm.Filter.OverlaySummary}"
 								TextWrapping="Wrap" />
+
+							<Border
+								Width="1"
+								Margin="0,3,6,3"
+								Background="{StaticResource SeparatorLine}"
+								IsVisible="{Binding ScheduleGridVm.SharedScheduleBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+							<TextBlock
+								VerticalAlignment="Center"
+								FontSize="{StaticResource FontSizeLarge}"
+								FontWeight="SemiBold"
+								Foreground="{StaticResource SharedScheduleBadgeText}"
+								IsVisible="{Binding ScheduleGridVm.SharedScheduleBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ScheduleGridVm.SharedScheduleBadge}"
+								TextWrapping="Wrap" />
 						</WrapPanel>
 					</controls:DetachablePanel.HeaderContext>
 					<controls:DetachablePanel.PanelContent>
-						<gridViews:ScheduleGridView x:Name="ScheduleGridViewControl" DataContext="{Binding ScheduleGridVm}" />
+						<DockPanel>
+							<gridViews:SharedScheduleStripView
+								DockPanel.Dock="Top"
+								DataContext="{Binding ScheduleGridVm.SharedScheduleStrip}" />
+							<gridViews:ScheduleGridView x:Name="ScheduleGridViewControl" DataContext="{Binding ScheduleGridVm}" />
+						</DockPanel>
 					</controls:DetachablePanel.PanelContent>
 				</controls:DetachablePanel>
 

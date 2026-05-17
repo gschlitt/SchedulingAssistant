@@ -645,6 +645,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToExportHub() => OpenFlyout<ExportHubViewModel>("Export");
 
     [RelayCommand]
+    private void NavigateToSharing() => OpenFlyout<SharingViewModel>("Sharing");
+
+    [RelayCommand]
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
 #if !BROWSER

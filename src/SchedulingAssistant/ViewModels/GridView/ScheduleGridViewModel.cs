@@ -36,6 +36,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SectionChangeNotifier _changeNotifier;
     private readonly IInstructorCommitmentRepository _commitmentRepo;
     private readonly WriteLockService _lockService;
+    private readonly SharedScheduleService _sharedScheduleService;
 
     /// <summary>
     /// Tracks the set of semester IDs from the last reload so <see cref="ReloadCore"/>
@@ -82,6 +83,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>Filter state. Exposed so the view can bind to it.</summary>
     public GridFilterViewModel Filter { get; } = new();
 
+    /// <summary>Shared schedule strip state (collapsible info panel above the grid).</summary>
+    public SharedScheduleStripViewModel SharedScheduleStrip { get; private set; } = null!;
+
+    /// <summary>Header badge text, e.g. "Shared: Chemistry (12) · Biology (8)". Empty when none loaded.</summary>
+    [ObservableProperty] private string _sharedScheduleBadge = string.Empty;
+
     /// <summary>State for the right-click context menu on section tiles.</summary>
     public SectionContextMenuViewModel ContextMenu { get; }
 
@@ -106,7 +113,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IMeetingRepository meetingRepo,
         SectionChangeNotifier changeNotifier,
         IInstructorCommitmentRepository commitmentRepo,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        SharedScheduleService sharedScheduleService)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -124,6 +132,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _commitmentRepo = commitmentRepo;
         _tileFontSize = AppSettings.Current.TileFontSize;
         _lockService = lockService;
+        _sharedScheduleService = sharedScheduleService;
+        SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.
@@ -146,6 +156,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // SectionChangeNotifier is now used exclusively for commitment CRUD reloads.
         // Commitment changes are not section-data changes and are not cached in SectionStore.
         _changeNotifier.SectionChanged += Reload;
+
+        // Reload grid when shared schedules are imported or dismissed.
+        _sharedScheduleService.Changed += Reload;
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
@@ -310,6 +323,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
             _meetingStore.MeetingsChanged -= Reload;
             _meetingStore.Reload(_meetingRepo, semesters.Select(s => s.Semester.Id));
             _meetingStore.MeetingsChanged += Reload;
+
+            // Shared schedules are semester-specific; dismiss them on semester switch.
+            _sharedScheduleService.Changed -= Reload;
+            _sharedScheduleService.DismissAll();
+            _sharedScheduleService.Changed += Reload;
         }
 
         var lookups = BuildLookups(semesters);
@@ -340,7 +358,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var commitments   = BuildCommitmentBlocks(semesters, overlayInstructorId);
         var meetingBlocks = Filter.ShowMeetings ? BuildMeetingBlocks(semesters) : [];
 
-        var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks);
+        // Pass 4: shared schedule blocks from imported cross-department CSVs.
+        // Blocks are injected per-semester so they route to the correct sub-column in multi-semester mode.
+        var sharedBlocks = BuildSharedScheduleBlocks(semesters);
+
+        var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks).Concat(sharedBlocks);
         var allBlocks = DeduplicateBlocks(combinedBlocks);
         UpdateDisplayProperties(semesters, allBlocks);
     }
@@ -369,6 +391,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SemesterLineSegments = [];
         SubjectFilterSummary = string.Empty;
         StatsLine            = string.Empty;
+        SharedScheduleBadge  = string.Empty;
     }
 
     /// <summary>
@@ -537,6 +560,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
             .FirstOrDefault(a => !string.IsNullOrEmpty(a));
 
         return new TileTooltip(lines, attendeeList);
+    }
+
+    /// <summary>
+    /// Builds a tooltip for a shared schedule tile, including source label and notes.
+    /// </summary>
+    internal static TileTooltip BuildSharedScheduleTooltip(SharedScheduleBlock block)
+    {
+        static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
+        var lines = new List<string>
+        {
+            block.Label,
+            block.SourceLabel,
+            $"{Fmt(block.StartMinutes)}-{Fmt(block.EndMinutes)}"
+        };
+        if (!string.IsNullOrEmpty(block.Notes))
+            lines.Add(block.Notes);
+        return new TileTooltip(lines);
     }
 
     internal static (string Label, string Initials) BuildSectionLabel(
@@ -949,6 +989,24 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Pass 4: builds blocks from all active shared schedules (cross-department CSV imports).
+    /// Each set's meetings are injected once per selected semester so they appear in the correct
+    /// sub-column in multi-semester mode.
+    /// </summary>
+    private List<GridBlock> BuildSharedScheduleBlocks(List<SemesterDisplay> semesters)
+    {
+        if (!_sharedScheduleService.HasAny) return [];
+
+        var blocks = new List<GridBlock>();
+        foreach (var sd in semesters)
+        {
+            blocks.AddRange(_sharedScheduleService.BuildBlocks(
+                sd.Semester.Id, sd.Semester.Name, sd.Semester.Color ?? string.Empty));
+        }
+        return blocks;
+    }
+
+    /// <summary>
     /// Removes duplicate blocks from the combined block list, keeping the first occurrence.
     ///
     /// A block is a duplicate when another block with the same
@@ -989,6 +1047,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             SectionMeetingBlock s => s.SectionId,
             CommitmentBlock c     => c.CommitmentId,
             MeetingBlock m        => m.MeetingId,
+            SharedScheduleBlock sh => $"shared:{sh.Label}:{sh.SourceLabel}",
             _ => throw new InvalidOperationException($"Unknown GridBlock subtype: {b.GetType().Name}")
         };
 
@@ -1129,6 +1188,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
             sb.Append(" shown");
             StatsLine = sb.ToString();
         }
+
+        // Update shared schedule header badge
+        if (_sharedScheduleService.HasAny)
+        {
+            var parts = _sharedScheduleService.Sets.Select(s => $"{s.SourceLabel} ({s.Sections.Count})");
+            SharedScheduleBadge = "Shared: " + string.Join(" · ", parts);
+        }
+        else
+        {
+            SharedScheduleBadge = string.Empty;
+        }
     }
 
     /// <summary>
@@ -1157,6 +1227,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // suppressed; IsMeeting=true lets the pointer handler distinguish meetings from
         // plain commitments and allow double-click through.
         MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true, FrequencyAnnotation: m.FrequencyAnnotation, AttendeeList: m.AttendeeList),
+        SharedScheduleBlock sh => new TileEntry(sh.Label, string.Empty, string.Empty, IsCommitment: true, IsSharedSchedule: true, FrequencyAnnotation: sh.FrequencyAnnotation),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };
 

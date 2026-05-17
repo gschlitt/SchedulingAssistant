@@ -120,6 +120,10 @@ public partial class ScheduleGridView : UserControl
     private static IBrush GhostTabText      => Res("GhostTabText");
     private static IBrush GhostBodyFill     => Res("GhostBodyFill");
 
+    // Shared schedule tile brushes (cross-department CSV overlay)
+    private static IBrush SharedScheduleBorder  => Res("SharedScheduleBorder");
+    private static IBrush SharedScheduleText    => Res("SharedScheduleText");
+
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
@@ -768,10 +772,12 @@ public partial class ScheduleGridView : UserControl
                     {
                         Text            = labelText,
                         FontSize        = _vm!.TileFontSize,
-                        FontWeight      = entrySelected ? FontWeight.Bold : FontWeight.SemiBold,
-                        Foreground      = entrySelected        ? SectionMeetingTextSelected
-                                       : entry.IsOverlay       ? OverlayFrameBorder
-                                       : entry.IsDeemphasized  ? TileDeemphasizedText
+                        FontWeight      = entrySelected ? FontWeight.Bold
+                                       : FontWeight.SemiBold,
+                        Foreground      = entrySelected         ? SectionMeetingTextSelected
+                                       : entry.IsSharedSchedule ? SharedScheduleText
+                                       : entry.IsOverlay        ? OverlayFrameBorder
+                                       : entry.IsDeemphasized   ? TileDeemphasizedText
                                        : TileText,
                         TextTrimming    = TextTrimming.CharacterEllipsis,
                         TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
@@ -910,8 +916,7 @@ public partial class ScheduleGridView : UserControl
                 }
 
 
-                // Show attendee tooltip only for meeting tiles (not section tiles).
-                // The time-span tooltip on section tiles was intentionally removed.
+                // Meeting tiles get an attendee tooltip. Section tiles get no tooltip.
                 var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile);
                 if (!string.IsNullOrEmpty(tileTooltip.AttendeeList))
                     ToolTip.SetTip(border, BuildTileTooltipContent(tileTooltip));

@@ -109,6 +109,22 @@ public record CommitmentBlock(
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
+/// A meeting from an imported shared schedule CSV (cross-department visibility).
+/// Rendered with purple outlined styling — distinct from both the red overlay and normal tiles.
+/// Does not participate in selection or context menu interactions.
+/// </summary>
+/// <param name="Label">Pre-formatted display text, e.g. "CHEM101 A".</param>
+/// <param name="FrequencyAnnotation">Parenthesised frequency, e.g. "(odd)". Empty for weekly.</param>
+/// <param name="SourceLabel">Name of the importing source (e.g. "Chemistry Department").</param>
+/// <param name="Notes">Optional freeform notes from the sender.</param>
+public record SharedScheduleBlock(
+    int Day, int StartMinutes, int EndMinutes,
+    string Label, string FrequencyAnnotation = "",
+    string SourceLabel = "", string Notes = "",
+    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: false, SemesterId, SemesterName, SemesterColor);
+
+/// <summary>
 /// One row within a rendered tile. A tile can have multiple entries when two or
 /// more blocks share the exact same start and end time (co-scheduled); they are
 /// stacked vertically with a thin separator rule between them.
@@ -143,7 +159,9 @@ public record TileEntry(
     bool IsMeeting = false,
     bool IsEmphasized = false,
     /// <summary>Full comma-separated attendee names shown in the tile hover tooltip. Empty for sections and commitments.</summary>
-    string AttendeeList = "");
+    string AttendeeList = "",
+    /// <summary>True when this entry came from a <see cref="SharedScheduleBlock"/>. The renderer applies purple outlined styling.</summary>
+    bool IsSharedSchedule = false);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

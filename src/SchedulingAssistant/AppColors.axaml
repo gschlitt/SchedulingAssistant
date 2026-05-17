@@ -215,6 +215,14 @@
 	<SolidColorBrush x:Key="PrefixSectionBackground" Color="#D1FAE5" />
 	<SolidColorBrush x:Key="PrefixDesignatorBackground" Color="LightSalmon" />
 
+	<!--  ── Shared schedule tiles (cross-department CSV overlay)  ────────────  -->
+	<Color x:Key="SharedScheduleColor">#4a0be6</Color>
+	<SolidColorBrush x:Key="SharedScheduleBorder" Color="{StaticResource SharedScheduleColor}" />
+	<SolidColorBrush x:Key="SharedScheduleText" Color="{StaticResource SharedScheduleColor}" />
+	<SolidColorBrush x:Key="SharedScheduleBodyFill" Color="#0C7C5CCC" />
+	<SolidColorBrush x:Key="SharedScheduleBadgeText" Color="{StaticResource SharedScheduleColor}" />
+	<SolidColorBrush x:Key="SharedScheduleStripBackground" Color="#F5F0FF" />
+
 	<!--  ── Ghost tiles (Room Availability Browser candidate slots)  ────────  -->
 	<!--  Border outline around the full ghost block  -->
 	<SolidColorBrush x:Key="GhostOutline" Color="#C84CAF50" />

@@ -161,6 +161,9 @@ public partial class App : Application
         services.AddSingleton<AppNotificationService>();
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();
+        services.AddSingleton<SharedScheduleService>();
+        services.AddSingleton<SharedScheduleCsvParser>();
+        services.AddSingleton<SharedScheduleCsvExporter>();
         services.AddTransient<IDialogService, DialogService>();
 
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath, App.Checkout.MarkDirty));
@@ -286,7 +289,8 @@ public partial class App : Application
             sp.GetRequiredService<IMeetingRepository>(),
             sp.GetRequiredService<SectionChangeNotifier>(),
             sp.GetRequiredService<IInstructorCommitmentRepository>(),
-            sp.GetRequiredService<WriteLockService>()));
+            sp.GetRequiredService<WriteLockService>(),
+            sp.GetRequiredService<SharedScheduleService>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),
@@ -325,6 +329,7 @@ public partial class App : Application
         services.AddTransient<AcademicUnitListViewModel>();
         services.AddTransient<PreferencesViewModel>();
         services.AddTransient<ExportHubViewModel>();
+        services.AddTransient<SharingViewModel>();
         services.AddTransient<ExportViewModel>();
         services.AddTransient<WorkloadReportViewModel>();
         services.AddTransient<WorkloadMailerViewModel>();

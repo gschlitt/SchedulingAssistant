@@ -114,6 +114,13 @@ public class AppSettings
     public string? LastCourseHistoryExportPath { get; set; }
 
     /// <summary>
+    /// Default folder for shared schedule import/export file dialogs.
+    /// Typically a shared network drive (e.g. "\\dept-server\schedules\").
+    /// Null when not configured — file dialogs use the OS default location.
+    /// </summary>
+    public string? SharedScheduleFolder { get; set; }
+
+    /// <summary>
     /// The academic year ID that was selected when the app was last closed.
     /// Restored on startup so the user returns to where they left off.
     /// </summary>
