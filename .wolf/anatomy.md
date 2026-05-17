@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-17T17:14:18.441Z
-> Files: 37 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-17T18:20:24.587Z
+> Files: 40 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -255,6 +255,8 @@
 ## src/SchedulingAssistant/ViewModels/Management/
 
 - `ConfigurationViewModel.cs` — ViewModel for the Configuration flyout hub. Hosts a left-sidebar list of configuration categories; s (~682 tok)
+- `CourseEditViewModel.cs` — The level band the user has selected (e.g. "100", "300"), or null when none is chosen. Auto-suggeste (~2306 tok)
+- `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3504 tok)
 - `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~353 tok)
 - `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4653 tok)
 - `SharingViewModel.cs` — Flyout for shared schedule import/export operations. Provides Import, Export, Set Shared Folder, and (~2322 tok)
@@ -279,6 +281,7 @@
 ## src/SchedulingAssistant/Views/Management/
 
 - `AcademicYearListView.axaml.cs` — Class: AcademicYearListView (~1123 tok)
+- `CourseListView.axaml` (~5305 tok)
 - `EmptySemesterView.axaml.cs` — Class: EmptySemesterView (~936 tok)
 - `InstructorListView.axaml` (~8451 tok)
 - `SectionListView.axaml` (~23154 tok)

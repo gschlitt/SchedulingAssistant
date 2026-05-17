@@ -57,6 +57,7 @@ public partial class CourseEditViewModel : ViewModelBase
     private readonly Func<Course, Task> _onSave;
     private readonly Action _onCancel;
     private readonly Func<string, bool> _codeExists;
+    private readonly Func<List<string>, Task<int>>? _applyTagsToAll;
 
     public string? ValidationError
     {
@@ -99,6 +100,7 @@ public partial class CourseEditViewModel : ViewModelBase
     /// <param name="onCancel">Callback invoked when the user cancels.</param>
     /// <param name="codeExists">Delegate that returns true when the calendar code is already in use.</param>
     /// <param name="subjects">All subjects, used to populate the Subject dropdown.</param>
+    /// <param name="applyTagsToAll">Optional callback that applies the given tag IDs to all sections of this course. Returns the number of sections updated.</param>
     public CourseEditViewModel(
         Course course,
         bool isNew,
@@ -106,13 +108,15 @@ public partial class CourseEditViewModel : ViewModelBase
         Func<Course, Task> onSave,
         Action onCancel,
         Func<string, bool> codeExists,
-        ObservableCollection<Subject> subjects)
+        ObservableCollection<Subject> subjects,
+        Func<List<string>, Task<int>>? applyTagsToAll = null)
     {
         _course = course;
         IsNew = isNew;
         _onSave = onSave;
         _onCancel = onCancel;
         _codeExists = codeExists;
+        _applyTagsToAll = applyTagsToAll;
         Subjects = subjects;
 
         // Initialize from existing course if editing
@@ -163,4 +167,33 @@ public partial class CourseEditViewModel : ViewModelBase
 
     [RelayCommand]
     private void Cancel() => _onCancel();
+
+    /// <summary>Whether the "Apply to all sections" button should be visible (editing existing course with callback available).</summary>
+    public bool CanApplyTagsToAll => !IsNew && _applyTagsToAll is not null;
+
+    /// <summary>Status message shown after applying tags to all sections.</summary>
+    [ObservableProperty] private string? _applyTagsResult;
+
+    /// <summary>
+    /// Applies the currently selected tags to every section of this course across all semesters.
+    /// </summary>
+    [RelayCommand]
+    private async Task ApplyTagsToAllSections()
+    {
+        if (_applyTagsToAll is null) return;
+        var selectedTagIds = TagSelections
+            .Where(t => t.IsSelected)
+            .Select(t => t.Value.Id)
+            .ToList();
+        try
+        {
+            var count = await _applyTagsToAll(selectedTagIds);
+            ApplyTagsResult = $"Tags applied to {count} section{(count == 1 ? "" : "s")}.";
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "CourseEditViewModel.ApplyTagsToAllSections");
+            ApplyTagsResult = "Failed to apply tags. Please try again.";
+        }
+    }
 }

@@ -10894,6 +10894,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-17T16:46:07.325Z"
+    },
+    {
+      "id": "bug-681",
+      "timestamp": "2026-05-17T17:31:06.207Z",
+      "error_message": "Missing error handling in Task",
+      "file": "src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T17:31:06.207Z"
     }
   ]
 }

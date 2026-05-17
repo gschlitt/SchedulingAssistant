@@ -10,10 +10,12 @@ namespace SchedulingAssistant.ViewModels.Management;
 public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IDisposable
 {
     private readonly ICourseRepository _courseRepo;
+    private readonly ISectionRepository _sectionRepo;
     private readonly ISubjectRepository _subjectRepo;
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
+    private readonly SectionStore _sectionStore;
 
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -53,13 +55,16 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         ISemesterRepository semesterRepo,
         IAcademicYearRepository academicYearRepo,
         IInstructorRepository instructorRepo,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        SectionStore sectionStore)
     {
         _courseRepo = courseRepo;
+        _sectionRepo = sectionRepo;
         _subjectRepo = subjectRepo;
         _propertyRepo = propertyRepo;
         _dialog = dialog;
         _lockService = lockService;
+        _sectionStore = sectionStore;
         _lockService.LockStateChanged += OnLockStateChanged;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
@@ -118,6 +123,26 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     private List<SchedulingEnvironmentValue> LoadAllTags() =>
         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
 
+    /// <summary>
+    /// Overwrites the tag list on every section of the given course (all semesters)
+    /// with the specified tag IDs. Refreshes the shared section cache so the section
+    /// list and grid reflect the changes immediately. Returns the number of sections updated.
+    /// </summary>
+    private int ApplyTagsToAllSections(string courseId, List<string> tagIds)
+    {
+        var sections = _sectionRepo.GetByCourseId(courseId);
+        foreach (var section in sections)
+        {
+            section.TagIds = new List<string>(tagIds);
+            _sectionRepo.Update(section);
+        }
+
+        if (sections.Count > 0)
+            _sectionStore.Reload(_sectionRepo, _sectionStore.SectionsBySemester.Keys);
+
+        return sections.Count;
+    }
+
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private void Add()
     {
@@ -160,7 +185,8 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             },
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id),
-            subjects: Subjects);
+            subjects: Subjects,
+            applyTagsToAll: tagIds => Task.FromResult(ApplyTagsToAllSections(clone.Id, tagIds)));
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]

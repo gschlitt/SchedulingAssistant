@@ -6348,3 +6348,22 @@
 | 10:09 | Session end: 6 writes across 3 files (ScheduleGridView.axaml.cs, SectionListView.axaml, DoubleTapCommandBehavior.cs) | 3 reads | ~18865 tok |
 | 10:12 | Session end: 6 writes across 3 files (ScheduleGridView.axaml.cs, SectionListView.axaml, DoubleTapCommandBehavior.cs) | 3 reads | ~18865 tok |
 | 10:14 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | expanded (+14 lines) | ~614 |
+
+## Session: 2026-05-17 10:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:30 | Edited src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs | 4→5 lines | ~66 |
+| 10:30 | Edited src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs | 18→20 lines | ~333 |
+| 10:30 | Edited src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs | 6→7 lines | ~56 |
+| 10:31 | Edited src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs | added error handling | ~325 |
+| 10:31 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | 5→6 lines | ~87 |
+| 10:31 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | 5→6 lines | ~55 |
+| 10:31 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | modified catch() | ~206 |
+| 10:31 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | modified ApplyTagsToAllSections() | ~246 |
+| 10:31 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | expanded (+14 lines) | ~672 |
+| 10:43 | Session end: 9 writes across 3 files (CourseEditViewModel.cs, CourseListViewModel.cs, CourseListView.axaml) | 14 reads | ~5451 tok |
+| 11:20 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | 6→7 lines | ~100 |
+| 11:20 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | modified CourseListViewModel() | ~186 |
+| 11:20 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | added 1 condition(s) | ~204 |
+| 11:23 | Session end: 12 writes across 3 files (CourseEditViewModel.cs, CourseListViewModel.cs, CourseListView.axaml) | 16 reads | ~6218 tok |

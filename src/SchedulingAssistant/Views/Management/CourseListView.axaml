@@ -97,6 +97,20 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                     </Expander>
+                                    <StackPanel IsVisible="{Binding CanApplyTagsToAll}" Orientation="Horizontal" Spacing="6">
+                                        <Button
+                                            Padding="6,2"
+                                            FontSize="10"
+                                            Command="{Binding ApplyTagsToAllSectionsCommand}"
+                                            Content="Apply to all sections"
+                                            ToolTip.Tip="Overwrite tags on all existing sections of this course across all semesters with the tags selected above." />
+                                        <TextBlock
+                                            FontSize="10"
+                                            VerticalAlignment="Center"
+                                            Foreground="{StaticResource TextMuted}"
+                                            IsVisible="{Binding ApplyTagsResult, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                            Text="{Binding ApplyTagsResult}" />
+                                    </StackPanel>
 
                                     <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
 

@@ -1,75 +1,170 @@
 {
-  "session_id": "session-2026-05-17-0957",
-  "started": "2026-05-17T16:57:58.015Z",
+  "session_id": "session-2026-05-17-1028",
+  "started": "2026-05-17T17:28:24.285Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": {
-      "count": 4,
-      "tokens": 18135,
-      "first_read": "2026-05-17T16:58:11.606Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/DoubleTapCommandBehavior.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-17T17:06:51.423Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs": {
       "count": 2,
       "tokens": 0,
-      "first_read": "2026-05-17T17:07:01.418Z"
+      "first_read": "2026-05-17T17:28:37.559Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:38.003Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/TagSelectionViewModel.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:40.138Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Course.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:43.055Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs": {
+      "count": 6,
+      "tokens": 3504,
+      "first_read": "2026-05-17T17:28:43.105Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/ISchedulingEnvironmentRepository.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:48.702Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/SchedulingEnvironmentRepository.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:52.637Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SchedulingEnvironmentTypes.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:55.322Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SchedulingEnvironmentValue.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:28:58.215Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/Section.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:29:04.956Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Models/SchedulableBase.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:29:08.073Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs": {
+      "count": 4,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:29:17.289Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/SectionRepository.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:30:01.396Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Data/Repositories/ISectionRepository.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T17:30:18.867Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/SectionChangeNotifier.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T18:19:36.952Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/SectionStore.cs": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-17T18:19:37.871Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs",
       "action": "edit",
-      "tokens": 128,
-      "at": "2026-05-17T16:58:19.794Z"
+      "tokens": 71,
+      "at": "2026-05-17T17:30:38.169Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs",
       "action": "edit",
-      "tokens": 52,
-      "at": "2026-05-17T16:58:21.596Z"
+      "tokens": 356,
+      "at": "2026-05-17T17:30:49.860Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs",
       "action": "edit",
-      "tokens": 54,
-      "at": "2026-05-17T17:00:54.800Z"
+      "tokens": 60,
+      "at": "2026-05-17T17:30:54.992Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs",
       "action": "edit",
-      "tokens": 138,
-      "at": "2026-05-17T17:07:31.365Z"
+      "tokens": 348,
+      "at": "2026-05-17T17:31:06.195Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/DoubleTapCommandBehavior.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
       "action": "edit",
-      "tokens": 44,
-      "at": "2026-05-17T17:07:36.983Z"
+      "tokens": 93,
+      "at": "2026-05-17T17:31:12.496Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Behaviors/DoubleTapCommandBehavior.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
       "action": "edit",
-      "tokens": 314,
-      "at": "2026-05-17T17:07:45.934Z"
+      "tokens": 59,
+      "at": "2026-05-17T17:31:17.330Z"
     },
     {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
       "action": "edit",
-      "tokens": 657,
-      "at": "2026-05-17T17:14:18.498Z"
+      "tokens": 220,
+      "at": "2026-05-17T17:31:26.754Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
+      "action": "edit",
+      "tokens": 263,
+      "at": "2026-05-17T17:31:40.005Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/CourseListView.axaml",
+      "action": "edit",
+      "tokens": 720,
+      "at": "2026-05-17T17:31:54.364Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
+      "action": "edit",
+      "tokens": 107,
+      "at": "2026-05-17T18:20:08.056Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
+      "action": "edit",
+      "tokens": 199,
+      "at": "2026-05-17T18:20:14.921Z"
+    },
+    {
+      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs",
+      "action": "edit",
+      "tokens": 218,
+      "at": "2026-05-17T18:20:24.609Z"
     }
   ],
   "edit_counts": {
-    "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": 4,
-    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 1,
-    "src/SchedulingAssistant/Behaviors/DoubleTapCommandBehavior.cs": 2
+    "src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs": 4,
+    "src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs": 7,
+    "src/SchedulingAssistant/Views/Management/CourseListView.axaml": 1
   },
-  "anatomy_hits": 1,
-  "anatomy_misses": 2,
-  "repeated_reads_warned": 4,
+  "anatomy_hits": 0,
+  "anatomy_misses": 16,
+  "repeated_reads_warned": 10,
   "cerebrum_warnings": 0,
-  "stop_count": 3
+  "stop_count": 2
 }
