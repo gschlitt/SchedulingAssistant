@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using System.Windows.Input;
 
 namespace SchedulingAssistant.Behaviors;
@@ -59,6 +60,10 @@ public static class DoubleTapCommandBehavior
         if (sender is not Control c)
             return;
 
+        // Suppress when the double-tap originates inside an inline editor.
+        if (e.Source is Visual source && IsInsideInlineEditor(source))
+            return;
+
         var cmd = GetCommand(c);
         if (cmd is null)
             return;
@@ -68,5 +73,19 @@ public static class DoubleTapCommandBehavior
 
         if (cmd.CanExecute(parameter))
             cmd.Execute(parameter);
+    }
+
+    /// <summary>
+    /// Walks the visual tree from <paramref name="source"/> upward, returning true
+    /// if any ancestor carries the "inline-editor" style class.
+    /// </summary>
+    private static bool IsInsideInlineEditor(Visual source)
+    {
+        for (Visual? v = source; v is not null; v = v.GetVisualParent())
+        {
+            if (v is StyledElement se && se.Classes.Contains("inline-editor"))
+                return true;
+        }
+        return false;
     }
 }

@@ -642,7 +642,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NavigateToExportHub() => OpenFlyout<ExportHubViewModel>("Export");
+    private void NavigateToExportHub() => OpenFlyout<ExportHubViewModel>("Reports");
 
     [RelayCommand]
     private void NavigateToSharing() => OpenFlyout<SharingViewModel>("Sharing");

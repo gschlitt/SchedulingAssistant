@@ -10814,6 +10814,86 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-05-17T04:55:27.787Z"
+    },
+    {
+      "id": "bug-676",
+      "timestamp": "2026-05-17T16:04:19.380Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→22 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T16:04:19.380Z"
+    },
+    {
+      "id": "bug-677",
+      "timestamp": "2026-05-17T16:16:41.047Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/InstructorListView.axaml",
+      "root_cause": "Had \"Auto,Auto,Auto,*\"",
+      "fix": "Changed to \"Auto,*\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T16:16:41.047Z"
+    },
+    {
+      "id": "bug-678",
+      "timestamp": "2026-05-17T16:43:45.821Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"Export\"",
+      "fix": "Changed to \"Reports\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T16:43:45.821Z"
+    },
+    {
+      "id": "bug-679",
+      "timestamp": "2026-05-17T16:43:46.988Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Had \"Export\"",
+      "fix": "Changed to \"Reports\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T16:43:46.988Z"
+    },
+    {
+      "id": "bug-680",
+      "timestamp": "2026-05-17T16:46:07.325Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/MoreMenuViewModel.cs",
+      "root_cause": "Had \"Export\"",
+      "fix": "Changed to \"Reports\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T16:46:07.325Z"
     }
   ]
 }

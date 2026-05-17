@@ -46,8 +46,11 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     [ObservableProperty] private CommitmentsManagementViewModel _commitmentsVm;
     [ObservableProperty] private WorkloadHistoryViewModel _workloadHistoryVm;
 
-    /// <summary>The Workload Mailer panel, displayed below the three workload panels.</summary>
+    /// <summary>The Workload Mailer panel, shown in the right column of the Instructors flyout.</summary>
     public WorkloadMailerViewModel WorkloadMailerVm { get; }
+
+    /// <summary>Whether the Workload Mailer panel is visible. Persisted in user preferences.</summary>
+    [ObservableProperty] private bool _showWorkloadMailer = AppSettings.Current.ShowWorkloadMailer;
 
     /// <summary>
     /// All semesters in the currently selected academic year, available in the flyout's
@@ -197,6 +200,13 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         Load();
         var settings = AppSettings.Current;
         settings.ShowOnlyActiveInstructors = value;
+        settings.Save();
+    }
+
+    partial void OnShowWorkloadMailerChanged(bool value)
+    {
+        var settings = AppSettings.Current;
+        settings.ShowWorkloadMailer = value;
         settings.Save();
     }
 

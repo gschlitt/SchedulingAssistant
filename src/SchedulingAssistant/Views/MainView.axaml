@@ -289,7 +289,7 @@
 						Margin="0,4,0,4"
 						Classes="nav"
 						Command="{Binding NavigateToExportHubCommand}"
-						Content="Export" />
+						Content="Reports" />
 
 					<Button
 						x:Name="NavSharing"

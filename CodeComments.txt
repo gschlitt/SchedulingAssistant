@@ -1,6 +1,6 @@
 Bugs:
 
-What happens if a schedule contiains saturday sections and we load it with only m- fset?
+
 
 Sometimes "New..." is locking up???
 
@@ -8,30 +8,21 @@ Deleting a semester permitted with sections?
 
 Selection of a section can cause overflow in a section card. Minor issue. 
 
-Rooming: 
 
-Events need a browser too!
 
 fast click in section editor needs fixing again,
 
 
 
 
-
-Test deletion of section!
-
-
-
-Line up "section types" in section view
-
 Follow semester order in workload history
 
-Apply Tagss button
+
 
 
 Todo:
 
-
+Apply Tagss button
 
 When you open a new db within file, the backup folder defaults to usersettings?
 

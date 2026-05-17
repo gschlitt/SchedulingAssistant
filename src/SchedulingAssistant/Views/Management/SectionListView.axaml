@@ -1317,6 +1317,7 @@
 
                                         <!--  Inline edit form — shown when this item IsExpanded  -->
                                         <Border
+                                            Classes="inline-editor"
                                             Padding="10,8,8,12"
                                             HorizontalAlignment="Left"
                                             Background="{StaticResource EditorBackground}"

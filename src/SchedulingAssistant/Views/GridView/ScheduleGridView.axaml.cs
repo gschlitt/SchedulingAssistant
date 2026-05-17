@@ -888,7 +888,7 @@ public partial class ScheduleGridView : UserControl
                         Height          = adjustedTileH,
                         Background      = TileFill,
                         BorderBrush     = OverlayFrameBorder,
-                        BorderThickness = new Thickness(3),
+                        BorderThickness = new Thickness(4),
                         CornerRadius    = new CornerRadius(3),
                         BoxShadow       = new BoxShadows(new BoxShadow { Blur = 4, Spread = 0, Color = new Color(128, 0, 0, 0), OffsetX = 1, OffsetY = 2 }),
                         ClipToBounds    = false,
@@ -905,7 +905,7 @@ public partial class ScheduleGridView : UserControl
                         Background      = TileFill,
                         BorderBrush     = tileHasOverlay ? OverlayFrameBorder
                                         : semesterBrush ?? TileExternalBorder,
-                        BorderThickness = tileHasOverlay ? new Thickness(2)
+                        BorderThickness = tileHasOverlay ? new Thickness(3)
                                         : semesterBrush is not null ? new Thickness(3) : new Thickness(1),
                         CornerRadius    = new CornerRadius(3),
                         BoxShadow       = new BoxShadows(new BoxShadow { Blur = 4, Spread = 0, Color = new Color(128, 0, 0, 0), OffsetX = 1, OffsetY = 2 }),
@@ -987,7 +987,7 @@ public partial class ScheduleGridView : UserControl
             double tileH = Math.Max(endY - startY - TilePaddingV * 2, 18);
             double tileW = dayColWidth;
 
-            // Tab: small opaque strip with room label
+            // Tab: small opaque strip with room label, positioned above the outline
             var tabLabel = new TextBlock
             {
                 Text              = ghost.RoomLabel,
@@ -1001,15 +1001,15 @@ public partial class ScheduleGridView : UserControl
             var tab = new Border
             {
                 Background          = GhostTabFill,
-                CornerRadius        = new CornerRadius(0, 0, 3, 0),
+                CornerRadius        = new CornerRadius(3, 3, 0, 0),
                 Padding             = new Thickness(5, 1),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Child               = tabLabel,
             };
 
-            var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
-            Grid.SetRow(tab, 0);
-            grid.Children.Add(tab);
+            // Measure the tab so we know its height for positioning
+            tab.Measure(new Size(tileW, double.PositiveInfinity));
+            double tabH = tab.DesiredSize.Height;
 
             // Outer outline: transparent body with colored border
             var outline = new Border
@@ -1018,18 +1018,32 @@ public partial class ScheduleGridView : UserControl
                 Height          = tileH,
                 Background      = GhostBodyFill,
                 BorderBrush     = GhostOutlineBrush,
-                BorderThickness = new Thickness(2),
+                BorderThickness = new Thickness(3),
                 CornerRadius    = new CornerRadius(3),
                 ClipToBounds    = true,
-                Child           = grid,
             };
 
-            ToolTip.SetTip(outline, $"{ghost.RoomLabel}  {ghost.TimeLabel}");
+            // Wrapper canvas: tab sits above the outline at negative Y
+            var wrapper = new Canvas
+            {
+                Width  = tileW - TilePaddingH,
+                Height = tileH,
+                ClipToBounds = false,
+            };
+            Canvas.SetLeft(tab, 0);
+            Canvas.SetTop(tab, -tabH);
+            wrapper.Children.Add(tab);
 
-            Canvas.SetLeft(outline, dayX + TilePaddingH / 2);
-            Canvas.SetTop(outline, tileY);
-            _canvas.Children.Add(outline);
-            _ghostControls.Add(outline);
+            Canvas.SetLeft(outline, 0);
+            Canvas.SetTop(outline, 0);
+            wrapper.Children.Add(outline);
+
+            ToolTip.SetTip(wrapper, $"{ghost.RoomLabel}  {ghost.TimeLabel}");
+
+            Canvas.SetLeft(wrapper, dayX + TilePaddingH / 2);
+            Canvas.SetTop(wrapper, tileY);
+            _canvas.Children.Add(wrapper);
+            _ghostControls.Add(wrapper);
         }
     }
 

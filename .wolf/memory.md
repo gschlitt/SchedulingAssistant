@@ -6296,3 +6296,55 @@
 | 21:57 | Session end: 19 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~31335 tok |
 | 22:05 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 14→15 lines | ~183 |
 | 22:05 | Session end: 20 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~31536 tok |
+| 08:46 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 47→50 lines | ~592 |
+| 08:47 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 39→39 lines | ~419 |
+| 08:47 | Session end: 22 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~32810 tok |
+| 08:51 | Created src/SchedulingAssistant/Views/Management/InstructorListView.axaml | — | ~8135 |
+| 08:52 | Session end: 23 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~41526 tok |
+| 08:58 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 4→5 lines | ~69 |
+| 08:58 | Session end: 24 writes across 8 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 14 reads | ~40907 tok |
+| 09:03 | Edited src/SchedulingAssistant/Services/AppSettings.cs | 4→9 lines | ~79 |
+| 09:03 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 2→5 lines | ~100 |
+| 09:03 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | modified OnShowOnlyActiveChanged() | ~103 |
+| 09:03 | Edited src/SchedulingAssistant/Views/Management/WorkloadMailerView.axaml | reduced (-9 lines) | ~20 |
+| 09:04 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | Mailer() → panel() | ~221 |
+| 09:04 | Session end: 29 writes across 10 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 16 reads | ~49237 tok |
+| 09:04 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 16→16 lines | ~148 |
+| 09:05 | Session end: 30 writes across 10 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 16 reads | ~49395 tok |
+| 09:05 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 22→18 lines | ~194 |
+| 09:05 | Session end: 31 writes across 10 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 16 reads | ~49603 tok |
+| 09:06 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 4→5 lines | ~62 |
+| 09:06 | Session end: 32 writes across 10 files (MainWindowViewModel.cs, MainView.axaml, ExportHubViewModel.cs, App.axaml.cs, MainView.axaml.cs) | 16 reads | ~49761 tok |
+| 09:16 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | "Auto,Auto,Auto,*" → "Auto,*" | ~9 |
+| 09:17 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | reduced (-6 lines) | ~3191 |
+
+## Session: 2026-05-17 09:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:20 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 3→5 lines | ~28 |
+
+## Session: 2026-05-17 09:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:43 | Edited src/SchedulingAssistant/Views/MainView.axaml | "Export" → "Reports" | ~7 |
+| 09:43 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | "Export" → "Reports" | ~22 |
+| 09:43 | Session end: 2 writes across 2 files (MainView.axaml, MainWindowViewModel.cs) | 3 reads | ~14899 tok |
+| 09:46 | Edited src/SchedulingAssistant/ViewModels/MoreMenuViewModel.cs | 2→3 lines | ~72 |
+| 09:46 | Session end: 3 writes across 3 files (MainView.axaml, MainWindowViewModel.cs, MoreMenuViewModel.cs) | 4 reads | ~14976 tok |
+
+## Session: 2026-05-17 09:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:58 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 6→6 lines | ~119 |
+| 09:58 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified Thickness() | ~49 |
+| 10:00 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 4→4 lines | ~50 |
+| 10:00 | Session end: 3 writes across 1 files (ScheduleGridView.axaml.cs) | 1 reads | ~18369 tok |
+| 10:07 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→7 lines | ~129 |
+| 10:07 | Edited src/SchedulingAssistant/Behaviors/DoubleTapCommandBehavior.cs | 5→6 lines | ~41 |
+| 10:07 | Edited src/SchedulingAssistant/Behaviors/DoubleTapCommandBehavior.cs | added 2 condition(s) | ~293 |
+| 10:09 | Session end: 6 writes across 3 files (ScheduleGridView.axaml.cs, SectionListView.axaml, DoubleTapCommandBehavior.cs) | 3 reads | ~18865 tok |
+| 10:12 | Session end: 6 writes across 3 files (ScheduleGridView.axaml.cs, SectionListView.axaml, DoubleTapCommandBehavior.cs) | 3 reads | ~18865 tok |
+| 10:14 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | expanded (+14 lines) | ~614 |

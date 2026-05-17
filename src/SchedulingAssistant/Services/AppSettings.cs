@@ -181,6 +181,11 @@ public class AppSettings
     public bool ShowMeetingsOnGrid { get; set; } = true;
 
     /// <summary>
+    /// Whether the Workload Mailer panel is shown in the Instructors flyout.
+    /// </summary>
+    public bool ShowWorkloadMailer { get; set; }
+
+    /// <summary>
     /// Email subject template for the Workload Mailer.
     /// Supports placeholders: {FirstName}, {LastName}, {AcademicYear}, {Semester}.
     /// </summary>

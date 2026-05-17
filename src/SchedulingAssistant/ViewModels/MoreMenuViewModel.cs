@@ -28,7 +28,8 @@ public partial class MoreMenuViewModel : ViewModelBase
         ("NavSchedulingEnvironment", "Scheduling Environment", typeof(SchedulingEnvironmentViewModel)),
         ("NavAcademicYears",         "Academic Years",         typeof(AcademicYearListViewModel)),
         ("NavConfiguration",         "Configuration",          typeof(ConfigurationViewModel)),
-        ("NavExport",                "Export",                 typeof(ExportHubViewModel)),
+        ("NavExport",                "Reports",                typeof(ExportHubViewModel)),
+        ("NavSharing",               "Sharing",                typeof(SharingViewModel)),
         ("NavHelp",                  "Help",                   typeof(HelpViewModel)),
     };
 

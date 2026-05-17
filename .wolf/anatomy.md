@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-17T05:05:52.821Z
-> Files: 33 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-17T17:14:18.441Z
+> Files: 37 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -205,6 +205,7 @@
 
 ## src/SchedulingAssistant/Behaviors/
 
+- `DoubleTapCommandBehavior.cs` — Attached behavior that executes a command when a control is double-tapped. Commonly used on ListBox (~858 tok)
 
 ## src/SchedulingAssistant/Controls/
 
@@ -235,7 +236,7 @@
 
 ## src/SchedulingAssistant/Services/
 
-- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3156 tok)
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3201 tok)
 - `SharedScheduleCsvExporter.cs` — Exports sections visible in the current filter state as a shared schedule CSV. Stateless — all data (~1427 tok)
 - `SharedScheduleCsvParser.cs` — Parses a shared schedule CSV file into a <see cref="SharedScheduleSet"/>. Stateless — all results re (~3584 tok)
 - `SharedScheduleService.cs` — Holds actively loaded shared schedule sets (cross-department CSV imports). All data is transient (in (~791 tok)
@@ -243,6 +244,7 @@
 ## src/SchedulingAssistant/ViewModels/
 
 - `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8495 tok)
+- `MoreMenuViewModel.cs` — Hosts the "More" flyout. Its left rail lists whichever low-priority top-bar items are currently over (~1634 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
@@ -254,7 +256,7 @@
 
 - `ConfigurationViewModel.cs` — ViewModel for the Configuration flyout hub. Hosts a left-sidebar list of configuration categories; s (~682 tok)
 - `ExportHubViewModel.cs` — ViewModel for the Export flyout hub. Hosts a left-sidebar list of export categories; selecting one d (~353 tok)
-- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4544 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4653 tok)
 - `SharingViewModel.cs` — Flyout for shared schedule import/export operations. Provides Import, Export, Set Shared Folder, and (~2322 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
@@ -265,12 +267,12 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `MainView.axaml` (~6373 tok)
+- `MainView.axaml` (~6374 tok)
 - `MainView.axaml.cs` — Top-level UserControl containing the full application UI. Extracted from MainWindow so the same UI c (~1288 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
-- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18135 tok)
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18276 tok)
 - `SharedScheduleStripView.axaml` (~1090 tok)
 - `SharedScheduleStripView.axaml.cs` — Class: SharedScheduleStripView (~58 tok)
 
@@ -278,9 +280,11 @@
 
 - `AcademicYearListView.axaml.cs` — Class: AcademicYearListView (~1123 tok)
 - `EmptySemesterView.axaml.cs` — Class: EmptySemesterView (~936 tok)
-- `InstructorListView.axaml` (~8659 tok)
+- `InstructorListView.axaml` (~8451 tok)
+- `SectionListView.axaml` (~23154 tok)
 - `SharingView.axaml` (~815 tok)
 - `SharingView.axaml.cs` — Class: SharingView (~52 tok)
+- `WorkloadMailerView.axaml` (~2467 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
