@@ -10910,6 +10910,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-17T17:31:06.207Z"
+    },
+    {
+      "id": "bug-682",
+      "timestamp": "2026-05-17T20:28:17.151Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../.claude/plans/domain-model-for-ai-piped-panda.md",
+      "root_cause": "Had `CalendarCode`",
+      "fix": "Changed to `Subject,CalendarCode`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-17T20:28:17.151Z"
+    },
+    {
+      "id": "bug-683",
+      "timestamp": "2026-05-18T02:57:54.867Z",
+      "error_message": "Wrong reference: RebuildList should be RebuildInstructorList",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs",
+      "root_cause": "Used \"RebuildList\" instead of \"RebuildInstructorList\"",
+      "fix": "Changed RebuildList → RebuildInstructorList",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T02:57:54.867Z"
     }
   ]
 }

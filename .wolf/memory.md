@@ -6367,3 +6367,43 @@
 | 11:20 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | modified CourseListViewModel() | ~186 |
 | 11:20 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | added 1 condition(s) | ~204 |
 | 11:23 | Session end: 12 writes across 3 files (CourseEditViewModel.cs, CourseListViewModel.cs, CourseListView.axaml) | 16 reads | ~6218 tok |
+
+## Session: 2026-05-17 11:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:55 | Created ../../../.claude/plans/there-are-more-things-starry-parasol.md | — | ~461 |
+| 12:59 | Session end: 1 writes across 1 files (there-are-more-things-starry-parasol.md) | 18 reads | ~4078 tok |
+
+## Session: 2026-05-17 13:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:11 | Created ../../../.claude/plans/domain-model-for-ai-piped-panda.md | — | ~3331 |
+| 13:28 | Edited ../../../.claude/plans/domain-model-for-ai-piped-panda.md | 18→18 lines | ~301 |
+| 13:28 | Edited ../../../.claude/plans/domain-model-for-ai-piped-panda.md | "CalendarCode" → "Subject,CalendarCode" | ~9 |
+| 13:28 | Edited ../../../.claude/plans/domain-model-for-ai-piped-panda.md | expanded (+14 lines) | ~280 |
+
+## Session: 2026-05-17 15:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-17 15:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-17 15:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-18 19:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:20 | Created ../../../.claude/plans/we-can-sort-the-dreamy-pike.md | — | ~627 |
+| 19:57 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | 2→1 lines | ~17 |
+| 19:58 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | modified RebuildList() | ~810 |
+| 20:00 | Session end: 3 writes across 2 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs) | 10 reads | ~36929 tok |

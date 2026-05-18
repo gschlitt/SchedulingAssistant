@@ -19,10 +19,12 @@ Follow semester order in workload history
 
 
 
+Filter orders for instructors do not follow sort order
+
 
 Todo:
 
-Apply Tagss button
+
 
 When you open a new db within file, the backup folder defaults to usersettings?
 

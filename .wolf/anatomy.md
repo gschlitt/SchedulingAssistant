@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-17T18:20:24.587Z
-> Files: 40 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-18T02:58:09.766Z
+> Files: 44 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,6 +29,9 @@
 
 ## ../../../.claude/plans/
 
+- `domain-model-for-ai-piped-panda.md` — Phase 2: Domain Model — AI-Assisted Data Import (~3386 tok)
+- `there-are-more-things-starry-parasol.md` — AI-Assisted Data Import — Phase 1: Problem Statement (~432 tok)
+- `we-can-sort-the-dreamy-pike.md` — Plan: Sync Instructor Filter Sort Order with Instructor List Sort (~587 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
@@ -249,6 +252,7 @@
 ## src/SchedulingAssistant/ViewModels/GridView/
 
 - `GridData.cs` — Abstract base for any time-positioned block that can be placed on the schedule grid. Day uses 1=Mond (~3782 tok)
+- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each  (~7379 tok)
 - `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~19068 tok)
 - `SharedScheduleStripViewModel.cs` — Drives the collapsible shared schedule strip between the filter bar and the grid. Shows a collapsed (~1123 tok)
 

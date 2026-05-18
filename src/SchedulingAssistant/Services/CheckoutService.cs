@@ -1503,7 +1503,7 @@ public sealed class CheckoutService : IDisposable
         using var dest   = new SqliteConnection($"Data Source={destPath};Pooling=False");
         source.Open();
         dest.Open();
-        source.BackupDatabase(dest);
+    source.BackupDatabase(dest);
     }
 
 }

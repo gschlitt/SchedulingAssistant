@@ -276,8 +276,7 @@ public partial class GridFilterViewModel : ViewModelBase
         // they have no sections scheduled yet. The instructorLookup is already filtered
         // by ShowOnlyActiveInstructors (set in AppSettings), so inactive instructors
         // are excluded regardless.
-        RebuildList(Instructors,  instructorLookup.Keys,
-            id => instructorLookup.TryGetValue(id, out var v) ? $"{v.FirstName} {v.LastName}" : null);
+        RebuildInstructorList(Instructors, instructorLookup);
         // Insert in reverse order: Emphasize Unstaffed goes in first (lands at [0]),
         // then Unstaffed is inserted at [0], pushing Emphasize to [1].
         // Final layout: [0]=Unstaffed, [1]=Unstaffed (Emphasize), [2..]=named instructors.
@@ -348,6 +347,49 @@ public partial class GridFilterViewModel : ViewModelBase
             var item = new FilterItemViewModel(id, name)
             {
                 IsSelected = previouslySelected.Contains(id)
+            };
+            item.PropertyChanged += OnItemPropertyChanged;
+            list.Add(item);
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the instructor filter list, sorted by the user's
+    /// <see cref="AppSettings.InstructorSortMode"/> preference.
+    /// </summary>
+    private void RebuildInstructorList(
+        ObservableCollection<FilterItemViewModel> list,
+        IReadOnlyDictionary<string, Instructor> instructorLookup)
+    {
+        var previouslySelected = list.Where(i => i.IsSelected).Select(i => i.Id).ToHashSet();
+
+        foreach (var item in list)
+            item.PropertyChanged -= OnItemPropertyChanged;
+        list.Clear();
+
+        var sorted = AppSettings.Current.InstructorSortMode switch
+        {
+            InstructorSortMode.FirstName => instructorLookup.Values
+                .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase),
+            InstructorSortMode.Initials => instructorLookup.Values
+                .OrderBy(i => i.Initials, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+            InstructorSortMode.StaffType => instructorLookup.Values
+                .OrderBy(i => i.StaffTypeName ?? "", StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+            _ => instructorLookup.Values
+                .OrderBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+        };
+
+        foreach (var inst in sorted)
+        {
+            var item = new FilterItemViewModel(inst.Id, $"{inst.FirstName} {inst.LastName}")
+            {
+                IsSelected = previouslySelected.Contains(inst.Id)
             };
             item.PropertyChanged += OnItemPropertyChanged;
             list.Add(item);
