@@ -88,7 +88,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     // ── Services ──────────────────────────────────────────────────────────────
 
     private readonly SemesterContext              _semesterContext;
-    private readonly SectionChangeNotifier        _changeNotifier;
+    private readonly GridChangeNotifier        _changeNotifier;
     private readonly SectionStore                 _sectionStore;
     private readonly MeetingStore                 _meetingStore;
     private readonly AcademicUnitService          _academicUnitService;
@@ -127,7 +127,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _meetingRepo     = new MeetingRepository(_db);
 
         _semesterContext    = new SemesterContext();
-        _changeNotifier     = new SectionChangeNotifier();
+        _changeNotifier     = new GridChangeNotifier();
         _sectionStore       = new SectionStore();
         _meetingStore       = new MeetingStore();
         _academicUnitService = new AcademicUnitService(_academicUnitRepo);
@@ -179,13 +179,14 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates a fully-wired <see cref="CourseListViewModel"/> in reader mode.</summary>
     private CourseListViewModel CreateCourseListVm() =>
         new(_courseRepo, _subjectRepo, _propertyRepo, _dialog, _sectionRepo,
-            _semesterRepo, _ayRepo, _instructorRepo, _lock);
+            _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore);
 
     /// <summary>Creates a fully-wired <see cref="InstructorListViewModel"/> in reader mode.</summary>
     private InstructorListViewModel CreateInstructorListVm() =>
         new(_instructorRepo, _propertyRepo, _sectionRepo, _courseRepo, _releaseRepo,
             _commitmentRepo, _semesterRepo, _ayRepo, _semesterContext, _changeNotifier,
-            _dialog, _lock);
+            _dialog, _lock,
+            new WorkloadMailerViewModel(_ayRepo, _semesterRepo, _instructorRepo, _sectionRepo, _releaseRepo, _courseRepo));
 
     /// <summary>Creates a fully-wired <see cref="RoomListViewModel"/> in reader mode.</summary>
     private RoomListViewModel CreateRoomListVm() =>

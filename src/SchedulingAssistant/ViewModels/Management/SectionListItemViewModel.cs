@@ -54,6 +54,14 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     public bool HasNonDefaultFrequency =>
         MeetingDetails.Any(m => !string.IsNullOrEmpty(m.Frequency));
 
+    /// <summary>
+    /// Advisory warning text describing room-scheduling conflicts with other sections
+    /// in the same semester. Null when no conflicts exist.
+    /// Set externally by <see cref="SectionListViewModel.ApplyRoomConflicts"/>.
+    /// </summary>
+    [ObservableProperty]
+    private string? _roomConflictWarning;
+
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
     [ObservableProperty] private bool _isBeingCreated;
 

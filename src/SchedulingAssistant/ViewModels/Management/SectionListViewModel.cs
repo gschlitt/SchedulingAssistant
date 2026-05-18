@@ -423,6 +423,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // Apply any active grid filter highlights to the freshly built items.
         ApplyFilterHighlights();
 
+        // Flag sections that share a room+day+time with another section.
+        ApplyRoomConflicts(courseLookup, roomLookup);
+
         if (selectSectionId is not null)
             SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
                 .FirstOrDefault(i => i.Section.Id == selectSectionId);
@@ -485,6 +488,42 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 if (expandMode)
                     item.IsCollapsed = !matches;
             }
+        }
+    }
+
+    /// <summary>
+    /// Runs room-conflict detection per semester and sets
+    /// <see cref="SectionListItemViewModel.RoomConflictWarning"/> on each card.
+    /// Called at the end of <see cref="LoadCore"/> after the list is rebuilt.
+    /// </summary>
+    /// <param name="courseLookup">Courses keyed by ID, already built in LoadCore.</param>
+    /// <param name="roomLookup">Rooms keyed by ID, already built in LoadCore.</param>
+    private void ApplyRoomConflicts(
+        Dictionary<string, Course> courseLookup,
+        Dictionary<string, Room> roomLookup)
+    {
+        var courseCodeById = courseLookup.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value.CalendarCode ?? kv.Value.Id);
+
+        var roomNameById = roomLookup.ToDictionary(
+            kv => kv.Key,
+            kv => $"{kv.Value.Building} {kv.Value.RoomNumber}".Trim());
+
+        // Detect conflicts per semester independently.
+        var allConflicts = new Dictionary<string, List<string>>();
+        foreach (var (semesterId, sections) in _sectionStore.SectionsBySemester)
+        {
+            var semConflicts = RoomConflictService.DetectConflicts(sections, roomNameById, courseCodeById);
+            foreach (var (sectionId, lines) in semConflicts)
+                allConflicts[sectionId] = lines;
+        }
+
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+        {
+            item.RoomConflictWarning = allConflicts.TryGetValue(item.Section.Id, out var lines)
+                ? string.Join("; ", lines)
+                : null;
         }
     }
 
