@@ -30,7 +30,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
     private readonly SectionListViewModel _sectionListVm;
-    private readonly SectionChangeNotifier _changeNotifier;
+    private readonly GridChangeNotifier _changeNotifier;
     private string? _currentAcademicYearId;
 
     /// <summary>True when the current user holds the write lock; controls whether CRUD and settings controls are enabled.</summary>
@@ -87,7 +87,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
             // Immediately repaint both views so the Saturday column appears/disappears
             // without requiring the user to close and reopen anything.
             _sectionListVm.Reload();
-            _changeNotifier.NotifySectionChanged();
+            _changeNotifier.NotifyGridContentChanged();
         }
     }
 
@@ -113,7 +113,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
             // Immediately repaint both views so the Sunday column appears/disappears
             // without requiring the user to close and reopen anything.
             _sectionListVm.Reload();
-            _changeNotifier.NotifySectionChanged();
+            _changeNotifier.NotifyGridContentChanged();
         }
     }
 
@@ -195,7 +195,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
         IDialogService dialog,
         WriteLockService lockService,
         SectionListViewModel sectionListVm,
-        SectionChangeNotifier changeNotifier)
+        GridChangeNotifier changeNotifier)
     {
         _repo            = repo;
         _semesterContext = semesterContext;

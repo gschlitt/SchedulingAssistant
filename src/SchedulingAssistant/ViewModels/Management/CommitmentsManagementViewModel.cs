@@ -16,7 +16,7 @@ namespace SchedulingAssistant.ViewModels.Management;
 /// department duties, etc. They are stored in the InstructorCommitments table and displayed
 /// on the Schedule Grid when an instructor overlay is active (as red overlay cards).
 ///
-/// After any successful write (insert, update, delete), _changeNotifier.NotifySectionChanged()
+/// After any successful write (insert, update, delete), _changeNotifier.NotifyGridContentChanged()
 /// is called. This fires a shared event that ScheduleGridViewModel subscribes to, causing the
 /// grid to reload and immediately reflect the change.
 /// </summary>
@@ -24,10 +24,9 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
 {
     private readonly IInstructorCommitmentRepository _commitmentRepo;
 
-    // SectionChangeNotifier is the shared singleton that bridges changes in this flyout
-    // to the Schedule Grid. Despite its name ("Section"), it is used for any data change
-    // that should cause the grid to refresh — including commitment CRUD.
-    private readonly SectionChangeNotifier _changeNotifier;
+    // GridChangeNotifier is the shared singleton that bridges changes in this flyout
+    // to the Schedule Grid, causing it to refresh after commitment CRUD.
+    private readonly GridChangeNotifier _changeNotifier;
     private readonly WriteLockService _lockService;
 
     private string _instructorId = string.Empty;
@@ -42,7 +41,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
     /// <summary>Exposed to XAML to bind button panels' IsEnabled in read-only mode.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
-    public CommitmentsManagementViewModel(IInstructorCommitmentRepository commitmentRepo, SectionChangeNotifier changeNotifier, WriteLockService lockService)
+    public CommitmentsManagementViewModel(IInstructorCommitmentRepository commitmentRepo, GridChangeNotifier changeNotifier, WriteLockService lockService)
     {
         _commitmentRepo = commitmentRepo;
         _changeNotifier = changeNotifier;
@@ -123,7 +122,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
                     EditVm = null;
                     // Notify the Schedule Grid to reload so the new commitment card
                     // appears immediately if this instructor's overlay is active.
-                    _changeNotifier.NotifySectionChanged();
+                    _changeNotifier.NotifyGridContentChanged();
                 }
                 catch (Exception ex)
                 {
@@ -159,7 +158,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
                     EditVm = null;
                     // Notify the Schedule Grid to reload so the updated commitment card
                     // (new time, new name, etc.) is reflected immediately.
-                    _changeNotifier.NotifySectionChanged();
+                    _changeNotifier.NotifyGridContentChanged();
                 }
                 catch (Exception ex)
                 {
@@ -179,7 +178,7 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
             Load();
             // Notify the Schedule Grid to reload so the deleted commitment card
             // disappears immediately if this instructor's overlay is active.
-            _changeNotifier.NotifySectionChanged();
+            _changeNotifier.NotifyGridContentChanged();
         }
         catch (Exception ex)
         {

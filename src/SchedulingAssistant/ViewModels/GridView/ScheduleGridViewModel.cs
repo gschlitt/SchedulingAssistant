@@ -33,7 +33,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SectionStore _sectionStore;
     private readonly MeetingStore _meetingStore;
     private readonly IMeetingRepository _meetingRepo;
-    private readonly SectionChangeNotifier _changeNotifier;
+    private readonly GridChangeNotifier _changeNotifier;
     private readonly IInstructorCommitmentRepository _commitmentRepo;
     private readonly WriteLockService _lockService;
     private readonly SharedScheduleService _sharedScheduleService;
@@ -111,7 +111,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SectionStore sectionStore,
         MeetingStore meetingStore,
         IMeetingRepository meetingRepo,
-        SectionChangeNotifier changeNotifier,
+        GridChangeNotifier changeNotifier,
         IInstructorCommitmentRepository commitmentRepo,
         WriteLockService lockService,
         SharedScheduleService sharedScheduleService)
@@ -153,9 +153,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _sectionStore.SectionsChanged += Reload;
         _meetingStore.MeetingsChanged += Reload;
 
-        // SectionChangeNotifier is now used exclusively for commitment CRUD reloads.
-        // Commitment changes are not section-data changes and are not cached in SectionStore.
-        _changeNotifier.SectionChanged += Reload;
+        // GridChangeNotifier handles non-section content changes (commitment CRUD,
+        // legal start time edits) that require a grid refresh.
+        _changeNotifier.GridContentChanged += Reload;
 
         // Reload grid when shared schedules are imported or dismissed.
         _sharedScheduleService.Changed += Reload;

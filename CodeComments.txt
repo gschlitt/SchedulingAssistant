@@ -1,16 +1,13 @@
 Bugs:
 
-
-
-Sometimes "New..." is locking up???
-
-Deleting a semester permitted with sections? 
-
-Selection of a section can cause overflow in a section card. Minor issue. 
+Note on Secton List when a semester is not open
 
 
 
-fast click in section editor needs fixing again,
+
+
+
+
 
 
 
@@ -19,7 +16,6 @@ Follow semester order in workload history
 
 
 
-Filter orders for instructors do not follow sort order
 
 
 Todo:

@@ -92,7 +92,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         ISemesterRepository semesterRepo,
         IAcademicYearRepository academicYearRepo,
         SemesterContext semesterContext,
-        SectionChangeNotifier changeNotifier,
+        GridChangeNotifier changeNotifier,
         IDialogService dialog,
         WriteLockService lockService,
         WorkloadMailerViewModel workloadMailerVm)

@@ -13,7 +13,8 @@ public record TemplateDaySpec(
     int Day,
     double BlockLengthHours,
     int DurationMinutes,
-    IReadOnlyList<int> LegalStartTimes);
+    IReadOnlyList<int> LegalStartTimes,
+    string? Frequency = null);
 
 /// <summary>
 /// A browsable meeting pattern combining a day pattern with block lengths per day.

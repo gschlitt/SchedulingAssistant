@@ -9,7 +9,7 @@ namespace SchedulingAssistant.Services;
 /// </summary>
 public class OccupancyIndex
 {
-    private readonly Dictionary<(string RoomId, int Day), List<(int Start, int End)>> _bookings = new();
+    private readonly Dictionary<(string RoomId, int Day), List<(int Start, int End, string? Frequency)>> _bookings = new();
 
     /// <summary>
     /// Populates the index from sections and meetings in the given semester,
@@ -45,10 +45,10 @@ public class OccupancyIndex
             var key = (slot.RoomId, slot.Day);
             if (!_bookings.TryGetValue(key, out var list))
             {
-                list = new List<(int, int)>();
+                list = new List<(int, int, string?)>();
                 _bookings[key] = list;
             }
-            list.Add((slot.StartMinutes, slot.EndMinutes));
+            list.Add((slot.StartMinutes, slot.EndMinutes, slot.Frequency));
         }
 
         // Sort each list for predictable iteration (not strictly required for correctness)
@@ -58,17 +58,20 @@ public class OccupancyIndex
 
     /// <summary>
     /// Returns <c>true</c> if the given room is free on the given day for the
-    /// specified time range.
+    /// specified time range. When <paramref name="frequency"/> is provided, bookings
+    /// on non-overlapping weeks (e.g. "odd" vs "even") are ignored.
     /// </summary>
-    public bool IsAvailable(string roomId, int day, int startMinutes, int durationMinutes)
+    public bool IsAvailable(string roomId, int day, int startMinutes, int durationMinutes,
+        string? frequency = null)
     {
         int end = startMinutes + durationMinutes;
         if (!_bookings.TryGetValue((roomId, day), out var intervals))
             return true;
 
-        foreach (var (bStart, bEnd) in intervals)
+        foreach (var (bStart, bEnd, bFreq) in intervals)
         {
-            if (startMinutes < bEnd && bStart < end)
+            if (startMinutes < bEnd && bStart < end
+                && SectionDaySchedule.FrequenciesOverlap(frequency, bFreq))
                 return false;
         }
         return true;
@@ -395,7 +398,7 @@ public class RoomAvailabilityService
                 if (legalStarts.Count == 0) return null;
             }
 
-            result.Add(new TemplateDaySpec(day, blockHours, spec.DurationMinutes, legalStarts));
+            result.Add(new TemplateDaySpec(day, blockHours, spec.DurationMinutes, legalStarts, spec.Frequency));
         }
         return result;
     }
@@ -530,7 +533,7 @@ public class RoomAvailabilityService
             foreach (int startTime in commonStartList)
             {
                 bool allFree = gapSpecs.All(spec =>
-                    index.IsAvailable(room.Id, spec.Day, startTime, spec.DurationMinutes));
+                    index.IsAvailable(room.Id, spec.Day, startTime, spec.DurationMinutes, spec.Frequency));
 
                 if (!allFree) continue;
 
@@ -576,7 +579,7 @@ public class RoomAvailabilityService
                     int earliest = 0;
                     foreach (int t in spec.LegalStartTimes.OrderBy(t => t))
                     {
-                        if (index.IsAvailable(room.Id, spec.Day, t, spec.DurationMinutes)
+                        if (index.IsAvailable(room.Id, spec.Day, t, spec.DurationMinutes, spec.Frequency)
                             && (!hasSameDaySpecs || IsNonOverlapping(spec.Day, t, spec.DurationMinutes, daySlots)))
                         {
                             earliest = t;
@@ -629,7 +632,7 @@ public class RoomAvailabilityService
                 var spec = gapSpecs[i];
                 var pool = perSpecRooms?[i] ?? rooms;
                 var room = pool.FirstOrDefault(r =>
-                    index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes));
+                    index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes, spec.Frequency));
 
                 if (room == null)
                 {
@@ -683,7 +686,7 @@ public class RoomAvailabilityService
                     foreach (int startTime in spec.LegalStartTimes.OrderBy(t => t))
                     {
                         var room = pool.FirstOrDefault(r =>
-                            index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes)
+                            index.IsAvailable(r.Id, spec.Day, startTime, spec.DurationMinutes, spec.Frequency)
                             && (!hasSameDaySpecs || IsNonOverlapping(spec.Day, startTime, spec.DurationMinutes, daySlots)));
                         if (room != null)
                         {

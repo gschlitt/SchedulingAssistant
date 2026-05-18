@@ -18,7 +18,8 @@ public record MeetingSpec(
     int? StartMinutes,
     string? RoomTypeId,
     string? RoomId = null,
-    bool IsRemote = false);
+    bool IsRemote = false,
+    string? Frequency = null);
 
 /// <summary>
 /// A fully-resolved solution for one meeting spec, ready to be written back to the section editor.

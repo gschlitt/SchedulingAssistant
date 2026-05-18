@@ -6407,3 +6407,83 @@
 | 19:57 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | 2→1 lines | ~17 |
 | 19:58 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | modified RebuildList() | ~810 |
 | 20:00 | Session end: 3 writes across 2 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs) | 10 reads | ~36929 tok |
+| 20:05 | Edited src/SchedulingAssistant/Services/AppSettings.cs | expanded (+6 lines) | ~97 |
+| 20:05 | Edited src/SchedulingAssistant/Services/AppSettings.cs | added optional chaining | ~42 |
+| 20:05 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | modified SetSortMode() | ~61 |
+| 20:05 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | 1→4 lines | ~69 |
+| 20:05 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | added 3 condition(s) | ~1049 |
+| 20:06 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | modified ResortInstructors() | ~359 |
+| 20:06 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 5→8 lines | ~122 |
+| 20:07 | Session end: 10 writes across 5 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs, AppSettings.cs, InstructorListViewModel.cs, ScheduleGridViewModel.cs) | 12 reads | ~46281 tok |
+| 20:09 | Session end: 10 writes across 5 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs, AppSettings.cs, InstructorListViewModel.cs, ScheduleGridViewModel.cs) | 12 reads | ~46281 tok |
+| 20:10 | Session end: 10 writes across 5 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs, AppSettings.cs, InstructorListViewModel.cs, ScheduleGridViewModel.cs) | 12 reads | ~46281 tok |
+| 20:12 | Session end: 10 writes across 5 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs, AppSettings.cs, InstructorListViewModel.cs, ScheduleGridViewModel.cs) | 12 reads | ~46281 tok |
+| 20:15 | Session end: 10 writes across 5 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs, AppSettings.cs, InstructorListViewModel.cs, ScheduleGridViewModel.cs) | 14 reads | ~46427 tok |
+| 20:19 | Edited ../../../.claude/plans/we-can-sort-the-dreamy-pike.md | 39→43 lines | ~898 |
+| 20:20 | Created src/SchedulingAssistant/Services/GridChangeNotifier.cs | — | ~222 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | inline fix | ~5 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentsManagementViewModel.cs | inline fix | ~5 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | inline fix | ~5 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | inline fix | ~5 |
+| 20:21 | Edited src/SchedulingAssistant/App.axaml.cs | inline fix | ~5 |
+| 20:21 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | inline fix | ~5 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentsManagementViewModel.cs | inline fix | ~7 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/LegalStartTimeListViewModel.cs | inline fix | ~7 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | inline fix | ~6 |
+| 20:21 | Edited src/SchedulingAssistant/ViewModels/Management/CommitmentsManagementViewModel.cs | 3→2 lines | ~43 |
+| 20:22 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→2 lines | ~40 |
+| 20:25 | Session end: 23 writes across 10 files (we-can-sort-the-dreamy-pike.md, GridFilterViewModel.cs, AppSettings.cs, InstructorListViewModel.cs, ScheduleGridViewModel.cs) | 18 reads | ~54589 tok |
+
+## Session: 2026-05-18 20:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-18 20:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-18 20:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-18 21:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-18 21:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:58 | Created ../../../.claude/plans/did-we-fix-up-squishy-simon.md | — | ~1242 |
+| 21:58 | Edited ../../../.claude/plans/did-we-fix-up-squishy-simon.md | inline fix | ~94 |
+| 22:01 | Edited src/SchedulingAssistant/Models/SectionDaySchedule.cs | added 7 condition(s) | ~601 |
+| 22:01 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | inline fix | ~33 |
+| 22:02 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | modified AddSchedule() | ~187 |
+| 22:02 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | modified IsAvailable() | ~216 |
+| 22:02 | Edited src/SchedulingAssistant/Models/MeetingSpec.cs | 8→9 lines | ~57 |
+| 22:02 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | 8→9 lines | ~126 |
+| 22:02 | Edited src/SchedulingAssistant/Models/MeetingTemplate.cs | 5→6 lines | ~45 |
+| 22:02 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | inline fix | ~30 |
+| 22:02 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | 2→2 lines | ~43 |
+| 22:03 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | 2→2 lines | ~59 |
+| 22:03 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | 4→4 lines | ~51 |
+| 22:03 | Edited src/SchedulingAssistant/Services/RoomAvailabilityService.cs | 3→3 lines | ~79 |
+| 22:04 | Edited src/SchedulingAssistant.Tests/RoomAvailabilityTests.cs | modified FrequenciesOverlap_Cases() | ~844 |
+| 22:04 | Edited src/SchedulingAssistant.Tests/RoomAvailabilityTests.cs | modified SpecSolver_EmptySpecs_ReturnsEmpty() | ~732 |
+| 22:06 | Session end: 16 writes across 7 files (did-we-fix-up-squishy-simon.md, SectionDaySchedule.cs, RoomAvailabilityService.cs, MeetingSpec.cs, SectionMeetingViewModel.cs) | 11 reads | ~14545 tok |
+| 08:47 | Created ../../../.claude/plans/there-must-be-a-ancient-hennessy.md | — | ~960 |
+| 08:51 | Created src/SchedulingAssistant/Services/RoomConflictService.cs | — | ~1313 |
+| 08:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | expanded (+8 lines) | ~132 |
+| 08:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 4→7 lines | ~76 |
+| 08:52 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added nullish coalescing | ~523 |
+| 08:52 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+8 lines) | ~303 |
+| 08:53 | Created src/SchedulingAssistant.Tests/RoomConflictTests.cs | — | ~2055 |
+| 08:54 | Edited src/SchedulingAssistant.Tests/RoomConflictTests.cs | 2→3 lines | ~22 |
+| 08:55 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 3→3 lines | ~56 |
+| 08:55 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 4→5 lines | ~104 |
+| 08:57 | Session end: 26 writes across 14 files (did-we-fix-up-squishy-simon.md, SectionDaySchedule.cs, RoomAvailabilityService.cs, MeetingSpec.cs, SectionMeetingViewModel.cs) | 21 reads | ~25250 tok |
+| 09:09 | Session end: 26 writes across 14 files (did-we-fix-up-squishy-simon.md, SectionDaySchedule.cs, RoomAvailabilityService.cs, MeetingSpec.cs, SectionMeetingViewModel.cs) | 21 reads | ~25250 tok |

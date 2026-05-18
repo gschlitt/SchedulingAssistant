@@ -175,6 +175,74 @@ public class RoomAvailabilityTests
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // FrequenciesOverlap
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Theory]
+    [InlineData(null, null, true)]
+    [InlineData(null, "odd", true)]
+    [InlineData("even", null, true)]
+    [InlineData("", "odd", true)]
+    [InlineData("odd", "even", false)]
+    [InlineData("even", "odd", false)]
+    [InlineData("odd", "odd", true)]
+    [InlineData("even", "even", true)]
+    [InlineData("odd", "1,3,5", true)]
+    [InlineData("even", "1,3,5", false)]
+    [InlineData("odd", "2,4,6", false)]
+    [InlineData("even", "2,4,6", true)]
+    [InlineData("1,3", "2,4", false)]
+    [InlineData("1,3", "3,5", true)]
+    [InlineData("1,6,7", "2,4,8", false)]
+    [InlineData("1,6,7", "7,9,11", true)]
+    public void FrequenciesOverlap_Cases(string? a, string? b, bool expected)
+    {
+        Assert.Equal(expected, SectionDaySchedule.FrequenciesOverlap(a, b));
+        // Symmetric: order shouldn't matter.
+        Assert.Equal(expected, SectionDaySchedule.FrequenciesOverlap(b, a));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // OccupancyIndex.IsAvailable with frequency
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void IsAvailable_OddVsEven_NoConflict()
+    {
+        var section = new Section
+        {
+            Id = "s1",
+            Schedule = [new SectionDaySchedule { Day = 5, StartMinutes = 780, DurationMinutes = 80, RoomId = "room1", Frequency = "odd" }]
+        };
+        var index = new OccupancyIndex();
+        index.Build([section], [], null);
+
+        // Even-week query at the same time should be available.
+        Assert.True(index.IsAvailable("room1", 5, 780, 80, "even"));
+        // Odd-week query at the same time should still conflict.
+        Assert.False(index.IsAvailable("room1", 5, 780, 80, "odd"));
+        // Every-week (null) query overlaps with odd — conflict.
+        Assert.False(index.IsAvailable("room1", 5, 780, 80));
+    }
+
+    [Fact]
+    public void IsAvailable_CustomWeekLists_NoOverlap()
+    {
+        var section = new Section
+        {
+            Id = "s1",
+            Schedule = [new SectionDaySchedule { Day = 3, StartMinutes = 600, DurationMinutes = 50, RoomId = "room1", Frequency = "1,3,5" }]
+        };
+        var index = new OccupancyIndex();
+        index.Build([section], [], null);
+
+        // Disjoint week list — no conflict.
+        Assert.True(index.IsAvailable("room1", 3, 600, 50, "2,4,6"));
+        // Overlapping week list — conflict.
+        Assert.False(index.IsAvailable("room1", 3, 600, 50, "3,7,9"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // RoomSolution.Classify
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -898,6 +966,59 @@ public class RoomAvailabilityTests
             new OccupancyIndex(),
             new[] { MakeLst(1.5, [480]) },
             Array.Empty<BlockPattern>());
+
+        Assert.Empty(solutions);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Spec-based solver: frequency-aware room sharing
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void SpecSolver_OddVsEven_SameRoomTimeAvailable()
+    {
+        // Room A 101 is booked Friday 1300–1420 on odd weeks.
+        var occupant = new Section
+        {
+            Id = "s1",
+            Schedule = [new SectionDaySchedule { Day = 5, StartMinutes = 780, DurationMinutes = 80, RoomId = "r1", Frequency = "odd" }]
+        };
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var index = new OccupancyIndex();
+        index.Build([occupant], [], null);
+
+        var lst = new[] { MakeLst(80.0 / 60.0, [780]) };
+        var patterns = Array.Empty<BlockPattern>();
+
+        // Query: Friday 1300–1420 on even weeks — should find Room A 101.
+        var specs = new[] { new MeetingSpec(0, Day: 5, DurationMinutes: 80, StartMinutes: 780, RoomTypeId: null, Frequency: "even") };
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
+
+        Assert.NotEmpty(solutions);
+        Assert.Contains(solutions, sol => sol.Slots.Any(s => s.RoomId == "r1" && s.Day == 5 && s.StartMinutes == 780));
+    }
+
+    [Fact]
+    public void SpecSolver_SameFrequency_RoomBlocked()
+    {
+        // Room A 101 is booked Friday 1300–1420 on odd weeks.
+        var occupant = new Section
+        {
+            Id = "s1",
+            Schedule = [new SectionDaySchedule { Day = 5, StartMinutes = 780, DurationMinutes = 80, RoomId = "r1", Frequency = "odd" }]
+        };
+        var rooms = new[] { MakeRoom("r1", "A", "101") };
+        var index = new OccupancyIndex();
+        index.Build([occupant], [], null);
+
+        var lst = new[] { MakeLst(80.0 / 60.0, [780]) };
+        var patterns = Array.Empty<BlockPattern>();
+
+        // Query: Friday 1300–1420 on odd weeks — room should be blocked.
+        var specs = new[] { new MeetingSpec(0, Day: 5, DurationMinutes: 80, StartMinutes: 780, RoomTypeId: null, Frequency: "odd") };
+        var svc = new RoomAvailabilityService();
+        var solutions = svc.GenerateSolutionsFromSpecs(specs, rooms, index, lst, patterns);
 
         Assert.Empty(solutions);
     }

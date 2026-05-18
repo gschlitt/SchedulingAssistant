@@ -734,7 +734,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
             StartMinutes: SelectedStartTime,
             RoomTypeId: isRemote ? null : roomTypeId,
             RoomId: isRemote ? null : (string.IsNullOrEmpty(SelectedRoomId) ? null : SelectedRoomId),
-            IsRemote: isRemote);
+            IsRemote: isRemote,
+            Frequency: BuildStoredFrequency());
     }
 
     /// <summary>

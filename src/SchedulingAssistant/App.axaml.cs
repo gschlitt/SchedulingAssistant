@@ -270,7 +270,7 @@ public partial class App : Application
     {
         services.AddSingleton<SectionStore>();
         services.AddSingleton<MeetingStore>();
-        services.AddSingleton<SectionChangeNotifier>();
+        services.AddSingleton<GridChangeNotifier>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<MeetingListViewModel>();
@@ -287,7 +287,7 @@ public partial class App : Application
             sp.GetRequiredService<SectionStore>(),
             sp.GetRequiredService<MeetingStore>(),
             sp.GetRequiredService<IMeetingRepository>(),
-            sp.GetRequiredService<SectionChangeNotifier>(),
+            sp.GetRequiredService<GridChangeNotifier>(),
             sp.GetRequiredService<IInstructorCommitmentRepository>(),
             sp.GetRequiredService<WriteLockService>(),
             sp.GetRequiredService<SharedScheduleService>()));
@@ -310,7 +310,7 @@ public partial class App : Application
                 sp.GetRequiredService<ISemesterRepository>(),
                 sp.GetRequiredService<IAcademicYearRepository>(),
                 sp.GetRequiredService<SemesterContext>(),
-                sp.GetRequiredService<SectionChangeNotifier>(),
+                sp.GetRequiredService<GridChangeNotifier>(),
                 sp.GetRequiredService<IDialogService>(),
                 sp.GetRequiredService<WriteLockService>(),
                 sp.GetRequiredService<WorkloadMailerViewModel>()));
