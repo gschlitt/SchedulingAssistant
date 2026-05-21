@@ -84,7 +84,7 @@
 		</Style>
 	</UserControl.Styles>
 
-	<Grid Grid.IsSharedSizeScope="True" RowDefinitions="Auto,*,Auto">
+	<Grid Grid.IsSharedSizeScope="True" RowDefinitions="Auto,*,Auto" MaxWidth="550" HorizontalAlignment="Left">
 
 		<!--  Column headers  -->
 		<Border

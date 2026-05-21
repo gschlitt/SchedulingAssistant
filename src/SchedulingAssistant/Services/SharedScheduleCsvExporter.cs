@@ -31,8 +31,9 @@ public class SharedScheduleCsvExporter
             ExportCore(output, sourceLabel, sections, courseCodeLookup);
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            App.Logger.LogInfo($"[SharedScheduleCsvExporter] Export failed: {ex.Message}");
             return "Export failed — unable to write file.";
         }
     }

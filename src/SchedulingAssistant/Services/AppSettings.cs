@@ -163,6 +163,13 @@ public class AppSettings
     public string? LastAcknowledgedVersion { get; set; }
 
     /// <summary>
+    /// Tour keys that have been completed or dismissed. Used to suppress auto-triggers
+    /// on subsequent launches. On WASM, this list resets each session (AppSettings is
+    /// in-memory only) so demo tours auto-trigger every visit.
+    /// </summary>
+    public List<string> CompletedTourKeys { get; set; } = new();
+
+    /// <summary>
     /// When true, the app automatically saves D' to D on a timer while in write mode.
     /// The interval is controlled by <see cref="AutoSaveIntervalMinutes"/>.
     /// </summary>
@@ -217,8 +224,9 @@ public class AppSettings
                 var json = File.ReadAllText(SettingsPath);
                 result = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
-            catch
+            catch (Exception ex)
             {
+                App.Logger.LogInfo($"[AppSettings] Could not load settings (using defaults): {ex.Message}");
                 result = new AppSettings();
             }
         }
@@ -232,16 +240,26 @@ public class AppSettings
     /// Writes to <c>settings.json.tmp</c> first, then renames to <c>settings.json</c>.
     /// If the process crashes between the write and the rename, the original file is intact.
     /// Thread-safe: serialises concurrent callers via <see cref="_settingsLock"/>. (F12, F15.)
+    /// Returns false and logs if the write fails; the in-memory state remains correct.
     /// </summary>
-    public void Save()
+    public bool Save()
     {
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
         lock (_settingsLock)
         {
-            Directory.CreateDirectory(SettingsDir);
-            var tmp = SettingsPath + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, SettingsPath, overwrite: true);
+            try
+            {
+                Directory.CreateDirectory(SettingsDir);
+                var tmp = SettingsPath + ".tmp";
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, SettingsPath, overwrite: true);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogInfo($"[AppSettings] Save failed: {ex.Message}");
+                return false;
+            }
         }
     }
 

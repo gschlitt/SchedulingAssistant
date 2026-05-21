@@ -289,8 +289,9 @@ public sealed class WriteLockService : IDisposable
             var data = JsonSerializer.Deserialize<LockFileData>(json);
             return data?.SessionGuid == SessionGuid;
         }
-        catch
+        catch (Exception ex)
         {
+            App.Logger.LogInfo($"[WriteLockService] LockFileStillOurs: could not verify lock ownership: {ex.Message}");
             return false;
         }
     }

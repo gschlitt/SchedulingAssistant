@@ -104,7 +104,11 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
                 var bak = Path.GetFullPath(BackupFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 return string.Equals(db, bak, StringComparison.OrdinalIgnoreCase);
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                App.Logger.LogInfo($"[Step2DatabaseViewModel] SameFolderWarning path comparison failed: {ex.Message}");
+                return false;
+            }
         }
     }
 

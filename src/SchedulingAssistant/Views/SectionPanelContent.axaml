@@ -12,10 +12,10 @@
 		Expects MainWindowViewModel as DataContext.
 		Used inside the DetachablePanel (docked) and in the detached window.
 	-->
-	<Grid RowDefinitions="Auto,Auto,*" Background="{StaticResource AppBackground}">
+	<Grid RowDefinitions="Auto,Auto,Auto,*" Background="{StaticResource AppBackground}">
 
 		<!--  Action buttons  -->
-		<StackPanel Grid.Row="0">
+		<StackPanel Grid.Row="0" IsEnabled="{Binding SemesterContext.HasSemesterSelected}">
 
 			<!--
 				Section action buttons.
@@ -148,9 +148,18 @@
 
 		</StackPanel>
 
+		<!--  Hint shown when no semester is selected  -->
+		<TextBlock
+			Grid.Row="1"
+			Margin="4,2,0,2"
+			FontSize="10"
+			Foreground="{StaticResource TextFaint}"
+			IsVisible="{Binding !SemesterContext.HasSemesterSelected}"
+			Text="Select a semester to load sections" />
+
 		<!--  Edit-conflict advisory — always visible above the scroll area regardless of scroll position  -->
 		<Border
-			Grid.Row="1"
+			Grid.Row="2"
 			Padding="6,3"
 			Background="{StaticResource ErrorBannerBackground}"
 			BorderBrush="{StaticResource ErrorBannerBorder}"
@@ -177,7 +186,7 @@
 
 		<!--  Content: swaps between Section View and Events View  -->
 		<ScrollViewer
-			Grid.Row="2"
+			Grid.Row="3"
 			HorizontalScrollBarVisibility="Disabled"
 			VerticalScrollBarVisibility="Auto">
 			<StackPanel b:SuppressPopupScrollBehavior.IsEnabled="True">

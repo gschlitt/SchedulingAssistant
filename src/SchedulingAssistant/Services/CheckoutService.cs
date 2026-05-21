@@ -394,7 +394,7 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogInfo("CheckoutService: checkout retry copy timed out — network unreachable");
                 _lockService.Release();
                 DeleteDirtyMarker();
-                try { File.Delete(WorkingPath); } catch { }
+                TryDelete(WorkingPath);
                 return CheckoutOutcome.NetworkUnreachable;
             }
 
@@ -405,7 +405,7 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogInfo("CheckoutService: hash mismatch on retry — aborting checkout.");
                 _lockService.Release();
                 DeleteDirtyMarker();
-                try { File.Delete(WorkingPath); } catch { }
+                TryDelete(WorkingPath);
                 return CheckoutOutcome.Failed;
             }
         }
@@ -487,7 +487,7 @@ public sealed class CheckoutService : IDisposable
             _logger.LogInfo("CheckoutService: ForceCheckout hash mismatch — aborting.");
             _lockService.Release();
             DeleteDirtyMarker();
-            try { File.Delete(WorkingPath); } catch { }
+            TryDelete(WorkingPath);
             return CheckoutOutcome.Failed;
         }
 
@@ -743,7 +743,7 @@ public sealed class CheckoutService : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp during refresh");
-                try { File.Delete(tmpPath); } catch { }
+                TryDelete(tmpPath);
                 return RefreshOutcome.SourceUnavailable;
             }
 
@@ -757,7 +757,7 @@ public sealed class CheckoutService : IDisposable
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "CheckoutService: beforeOverwrite callback threw during refresh");
-                        try { File.Delete(tmpPath); } catch { }
+                        TryDelete(tmpPath);
                         return RefreshOutcome.SourceUnavailable;
                     }
                 }
@@ -769,7 +769,7 @@ public sealed class CheckoutService : IDisposable
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp during refresh");
-                    try { File.Delete(tmpPath); } catch { }
+                    TryDelete(tmpPath);
                     return RefreshOutcome.SourceUnavailable;
                 }
 
@@ -792,7 +792,7 @@ public sealed class CheckoutService : IDisposable
 
             // Hash mismatch — D was likely being written during copy. Retry.
             _logger.LogInfo($"CheckoutService: refresh hash mismatch on attempt {attempt + 1}/3 — retrying.");
-            try { File.Delete(tmpPath); } catch { }
+            TryDelete(tmpPath);
 
             if (attempt < 2)
                 await Task.Delay(100 * (attempt + 1));
@@ -834,12 +834,12 @@ public sealed class CheckoutService : IDisposable
 
         if (hasWorking && !hasMarker)
         {
-            try { File.Delete(workingPath); } catch { }
+            TryDelete(workingPath);
             _logger.LogInfo($"CheckoutService: cleaned up untracked working copy (no dirty marker): {workingPath}");
         }
         else if (!hasWorking && hasMarker)
         {
-            try { File.Delete(markerPath); } catch { }
+            TryDelete(markerPath);
             _logger.LogInfo($"CheckoutService: cleaned up orphaned dirty marker (no working copy): {markerPath}");
         }
     }
@@ -880,8 +880,8 @@ public sealed class CheckoutService : IDisposable
     public void DiscardCrash(string sourcePath)
     {
         var workingPath = ComputeWorkingPath(sourcePath);
-        try { File.Delete(workingPath); }          catch { }
-        try { File.Delete(workingPath + ".dirty"); } catch { }
+        TryDelete(workingPath);
+        TryDelete(workingPath + ".dirty");
     }
 
     /// <summary>
@@ -1329,16 +1329,11 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>Writes a dirty marker file alongside D' to track ungraceful exits.</summary>
     private void WriteDirtyMarker()
-    {
-        try { File.WriteAllText(WorkingPath + ".dirty", DateTime.UtcNow.ToString("O")); }
-        catch { }
-    }
+        => TryWriteAllText(WorkingPath + ".dirty", DateTime.UtcNow.ToString("O"));
 
     /// <summary>Deletes the dirty marker file. Non-throwing.</summary>
     private void DeleteDirtyMarker()
-    {
-        try { File.Delete(WorkingPath + ".dirty"); } catch { }
-    }
+        => TryDelete(WorkingPath + ".dirty");
 
     /// <summary>
     /// Derives a stable, user-invisible path for D' from the source path.
@@ -1391,7 +1386,7 @@ public sealed class CheckoutService : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp");
-            try { File.Delete(roTmpPath); } catch { }
+            TryDelete(roTmpPath);
             return null;
         }
 
@@ -1422,7 +1417,7 @@ public sealed class CheckoutService : IDisposable
             if (roCopyHash != roSourceHash)
             {
                 _logger.LogInfo("CheckoutService: D'' hash mismatch on retry — aborting.");
-                try { File.Delete(roTmpPath); } catch { }
+                TryDelete(roTmpPath);
                 return null;
             }
         }
@@ -1431,7 +1426,7 @@ public sealed class CheckoutService : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp to D''");
-            try { File.Delete(roTmpPath); } catch { }
+            TryDelete(roTmpPath);
             return null;
         }
 
@@ -1504,6 +1499,18 @@ public sealed class CheckoutService : IDisposable
         source.Open();
         dest.Open();
     source.BackupDatabase(dest);
+    }
+
+    /// <summary>Best-effort file deletion. Non-throwing — failures are silently ignored.</summary>
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); } catch { }
+    }
+
+    /// <summary>Best-effort file write. Non-throwing — failures are silently ignored.</summary>
+    private static void TryWriteAllText(string path, string content)
+    {
+        try { File.WriteAllText(path, content); } catch { }
     }
 
 }

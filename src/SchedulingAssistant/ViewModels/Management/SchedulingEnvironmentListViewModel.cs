@@ -284,9 +284,10 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             Load();
             _sectionListVm.Reload();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             tx?.Rollback();
+            App.Logger.LogError(ex, "SchedulingEnvironmentListViewModel.Delete");
             LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
         }
         finally

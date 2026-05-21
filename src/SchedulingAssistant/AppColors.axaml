@@ -239,6 +239,13 @@
 	<!--  Muted medium-blue border — pairs with the indigo accent  -->
 	<SolidColorBrush x:Key="HelpTipBorder" Color="#9ABED8" />
 
+	<!--  ── Tour overlay  ──────────────────────────────────────────────────  -->
+	<!--  Same HelpTip color family — "informational overlay" visual language  -->
+	<SolidColorBrush x:Key="TourHighlightBorder" Color="#9ABED8" />
+	<SolidColorBrush x:Key="TourHighlightGlow" Color="#409ABED8" />
+	<SolidColorBrush x:Key="TourCardBackground" Color="#abc7ad" />
+	<SolidColorBrush x:Key="TourCardBorder" Color="#9ABED8" />
+	<SolidColorBrush x:Key="TourStepCounterText" Color="#64748B" />
 
 
 </ResourceDictionary>

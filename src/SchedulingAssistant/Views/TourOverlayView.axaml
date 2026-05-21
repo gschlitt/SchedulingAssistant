@@ -1,0 +1,159 @@
+<UserControl
+	x:Class="SchedulingAssistant.Views.TourOverlayView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:SchedulingAssistant.ViewModels"
+	x:CompileBindings="False"
+	x:DataType="vm:TourOverlayViewModel"
+	ClipToBounds="False"
+	IsVisible="{Binding IsVisible}">
+
+	<UserControl.Styles>
+		<!-- Arrow triangles — only one is visible at a time, determined by ArrowClass -->
+		<Style Selector="Path.arrowLeft">
+			<Setter Property="IsVisible" Value="True" />
+			<!-- Narrow thorn pointing left (32px wide, 16px tall) -->
+			<Setter Property="Data" Value="M 32,0 L 0,8 L 32,16 Z" />
+		</Style>
+		<Style Selector="Path.arrowRight">
+			<Setter Property="IsVisible" Value="True" />
+			<Setter Property="Data" Value="M 0,0 L 32,8 L 0,16 Z" />
+		</Style>
+		<Style Selector="Path.arrowUp">
+			<Setter Property="IsVisible" Value="True" />
+			<Setter Property="Data" Value="M 0,32 L 8,0 L 16,32 Z" />
+		</Style>
+		<Style Selector="Path.arrowDown">
+			<Setter Property="IsVisible" Value="True" />
+			<Setter Property="Data" Value="M 0,0 L 8,32 L 16,0 Z" />
+		</Style>
+		<Style Selector="Path.arrowNone">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+
+		<!-- Skip Tour button — subtle text-only style -->
+		<Style Selector="Button.tourSkip">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="8,4" />
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="Foreground" Value="{StaticResource TourStepCounterText}" />
+			<Setter Property="Cursor" Value="Hand" />
+		</Style>
+		<Style Selector="Button.tourSkip:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+		</Style>
+
+		<!-- Next / Done button — primary action -->
+		<Style Selector="Button.tourNext">
+			<Setter Property="Background" Value="{StaticResource ButtonBackground}" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="12,6" />
+			<Setter Property="FontSize" Value="12" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="CornerRadius" Value="4" />
+			<Setter Property="Cursor" Value="Hand" />
+		</Style>
+	</UserControl.Styles>
+
+	<!-- Root panel: transparent background captures all pointer events (input blocker).
+	     ClipToBounds=False ensures tall cards near the bottom edge aren't clipped. -->
+	<Panel Background="Transparent" ClipToBounds="False">
+
+		<!-- Highlight ring — positioned at target bounds -->
+		<Border
+			HorizontalAlignment="Left"
+			VerticalAlignment="Top"
+			Margin="{Binding HighlightMargin}"
+			Width="{Binding HighlightWidth}"
+			Height="{Binding HighlightHeight}"
+			IsVisible="{Binding IsHighlightVisible}"
+			BorderBrush="{StaticResource TourHighlightBorder}"
+			BorderThickness="2"
+			CornerRadius="4"
+			BoxShadow="0 0 8 2 #409ABED8"
+			IsHitTestVisible="False" />
+
+		<!-- Floating card — positioned relative to the target -->
+		<Border
+			x:Name="TourCard"
+			Width="{Binding CardWidth}"
+			HorizontalAlignment="Left"
+			VerticalAlignment="{Binding CardVerticalAlignment}"
+			Margin="{Binding CardMargin}"
+			Background="{StaticResource TourCardBackground}"
+			BorderBrush="{StaticResource TourCardBorder}"
+			BorderThickness="1"
+			CornerRadius="6"
+			BoxShadow="{StaticResource PanelBoxShadow}"
+			Padding="16,12">
+
+			<StackPanel Spacing="6">
+
+				<!-- Title -->
+				<TextBlock
+					Text="{Binding Title}"
+					FontSize="16"
+					FontWeight="SemiBold"
+					Foreground="{StaticResource TextPrimary}"
+					TextWrapping="Wrap" />
+
+				<!-- Segment name -->
+				<TextBlock
+					Text="{Binding SegmentTitle}"
+					FontSize="10"
+					Foreground="{StaticResource TourStepCounterText}" />
+
+				<!-- Body -->
+				<TextBlock
+					Text="{Binding Body}"
+					FontSize="16"
+					Foreground="{StaticResource TextSecondary}"
+					TextWrapping="Wrap"
+					Margin="0,4,0,8" />
+
+				<!-- Footer: step counter + buttons -->
+				<DockPanel>
+					<TextBlock
+						DockPanel.Dock="Left"
+						Text="{Binding StepCounterText}"
+						FontSize="10"
+						Foreground="{StaticResource TourStepCounterText}"
+						VerticalAlignment="Center" />
+
+					<StackPanel
+						DockPanel.Dock="Right"
+						Orientation="Horizontal"
+						HorizontalAlignment="Right"
+						Spacing="6">
+						<Button
+							Classes="tourSkip"
+							Content="Skip Tour"
+							Command="{Binding DismissCommand}" />
+						<Button
+							x:Name="NextButton"
+							Classes="tourNext"
+							Content="{Binding AdvanceButtonLabel}"
+							Command="{Binding AdvanceCommand}" />
+					</StackPanel>
+				</DockPanel>
+
+			</StackPanel>
+		</Border>
+
+		<!-- Arrow — positioned by code-behind relative to the card -->
+		<Canvas
+			x:Name="ArrowCanvas"
+			IsHitTestVisible="False"
+			ZIndex="10"
+			IsVisible="{Binding IsHighlightVisible}">
+			<Path
+				x:Name="ArrowPath"
+				Fill="{StaticResource TourCardBackground}"
+				Stroke="{StaticResource TourCardBorder}"
+				StrokeThickness="1" />
+		</Canvas>
+
+	</Panel>
+</UserControl>

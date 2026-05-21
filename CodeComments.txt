@@ -1,10 +1,10 @@
 Bugs:
 
-Note on Secton List when a semester is not open
 
 
+Scan for proper exception handling
 
-
+Check that .tpconfig is exporting/importing all it needs to. 
 
 
 
@@ -40,18 +40,21 @@ Test:
 Semester copying
 multi-user across network, lock acquisition etc
 
-Check that .tpconfig is exporting/importing all it needs to. 
+
 
 
 WorkFlows?
-Filter First!
-I've scheduled my sections. I need to staff them, keeping in mind workload
-Work through the instructors that need workload one at a time, bringing them up to full workload.
-Choose an instructor, and overlay their schedule. Now choose "Unstaffed Sections (Isolate)" or Unstaffed
-Section ("Emphasize") as an Instructor Filter. 
+I need to see how my rooms are booked, or how my upper-level courses interact, how my service courses are scheduled... Filters are your friend! 
+
+I've scheduled my sections. I need to staff them, keeping in mind workload...
+
+The registrar has given us a room we have to tightly  as possible...
+
+I have a last minute section add. I have a candidate for an instructor, I just need to make sure the new section fits with the others and has a room....
 
 I've know who is instructing my sections. I need to schedule the sections
-I'm adding an additional section, I need to schedule and staff it.
+
+
 
 
 

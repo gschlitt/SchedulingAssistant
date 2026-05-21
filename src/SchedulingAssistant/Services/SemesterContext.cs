@@ -116,6 +116,9 @@ public partial class SemesterContext : ObservableObject
     /// <summary>True when more than one semester is currently selected.</summary>
     public bool IsMultiSemesterMode => SelectedSemesters.Count > 1;
 
+    /// <summary>True when at least one semester is selected.</summary>
+    public bool HasSemesterSelected => SelectedSemesters.Count > 0;
+
     /// <summary>Controls whether the semester picker Popup is open.</summary>
     [ObservableProperty]
     private bool _isSemesterPickerOpen;
@@ -354,6 +357,7 @@ public partial class SemesterContext : ObservableObject
         OnPropertyChanged(nameof(SelectedSemesters));
         OnPropertyChanged(nameof(SelectedSemestersLabel));
         OnPropertyChanged(nameof(IsMultiSemesterMode));
+        OnPropertyChanged(nameof(HasSemesterSelected));
         OnPropertyChanged(nameof(FilteredSemesters));
         // Notifies all single-semester ViewModels (WorkloadPanel, CommitmentsManagement, etc.)
         OnPropertyChanged(nameof(SelectedSemesterDisplay));

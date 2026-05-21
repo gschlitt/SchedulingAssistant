@@ -1,0 +1,83 @@
+<ResourceDictionary
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:tour="using:SchedulingAssistant.Models.Tour">
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     Tour Content: steps, segments, and tour definitions.
+
+	     Content is hot-reloadable via HotAvalonia — edit text, targets,
+	     and placement here without rebuilding. PreAction/PostAction
+	     callbacks live in C# and are merged by TourCatalog at startup.
+
+	     x:Key on each entry becomes the step/segment/tour key used
+	     throughout the tour system.
+	     ═══════════════════════════════════════════════════════════ -->
+	
+	<!-- ── Post-Wizard Tour ── -->
+
+	<tour:TourData x:Key="TermPointTour"
+		Title="Getting Started Tour"
+		Description="Learn the layout and key workflows"
+		SegmentKeys="LayoutTourSegment,FilterSegment"
+		AutoTrigger="PostWizardFirstLaunch"
+		IsReplayable="True" />
+	
+	
+	<!-- 3 Panel Layout Tour --> 
+		 
+	<tour:TourSegmentData x:Key="LayoutTourSegment"
+	Title="TermPoint Tour"
+	StepKeys="layout.section-list,layout.schedule-grid,layout.workloadview"
+	/>
+	
+	<tour:TourStepData x:Key="layout.section-list"
+    Title="Section View"
+    Body="The semesters sections get edited here."
+    TargetKind="NamedControl"
+    TargetValue="SectionViewPanel"
+    Placement="Right" />	
+	
+	<tour:TourStepData x:Key="layout.schedule-grid"
+    Title="The Schedule Grid"
+    Body="This is where your weekly schedule appears."
+    TargetKind="NamedControl"
+    TargetValue="ScheduleGridPanel"
+    Placement="Left" />
+
+	<tour:TourStepData x:Key="layout.workloadview"
+    Title="Workload View"
+    Body="Workload appears here, automatically updated."
+    TargetKind="NamedControl"
+    TargetValue="WorkloadPanel"
+    Placement="Above" />
+
+	<!-- Filter Tour -->
+
+	<tour:TourSegmentData x:Key="FilterSegment"
+	Title="TermPoint Tour"
+	StepKeys="filter-general,filter.tags,filter.instructor"
+	/>
+
+	<tour:TourStepData x:Key="filter-general"
+    Title="Filters"
+    Body="It's hard to see what you're looking for on a crowded schedule. The key is to filter!"
+    TargetKind="Region"
+    TargetValue="ScheduleGridPanel.FilterBody"
+    Placement="Below" />
+
+	<tour:TourStepData x:Key="filter.tags"
+	Title="Filter by Tag"
+    Body="Let's see the sections in Cohort 1.|Just the sections serving students in Cohort 1 are shown."
+    TargetKind="Region"
+    TargetValue="ScheduleGridPanel.TagsPanel"
+    Placement="Above" />
+
+	<tour:TourStepData x:Key="filter.instructor"
+    Title="Filter by Instructor"
+    Body="Individual schedules are easy to see.|Individual schedules are easy to see."
+    TargetKind="Region"
+    TargetValue="ScheduleGridPanel.InstructorPanel"
+    Placement="Above" />
+
+</ResourceDictionary>

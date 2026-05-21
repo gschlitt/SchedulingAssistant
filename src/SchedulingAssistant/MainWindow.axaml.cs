@@ -82,6 +82,17 @@ public partial class MainWindow : Window
                     debugVm.SectionListVm.SimulateLoadError();
                     e.Handled = true;
                 }
+                else if (e.Key == Key.T)
+                {
+                    // Re-scan AXAML resources so HotAvalonia edits take effect immediately
+                    TourCatalog.Reset();
+                    TourCatalog.Initialize(Application.Current!.Resources, App.TourActions);
+
+                    if (App.Services.GetService(typeof(TourRunner)) is TourRunner runner)
+                        runner.Start("TermPointTour");
+
+                    e.Handled = true;
+                }
             }
 #endif
         };
@@ -234,7 +245,18 @@ public partial class MainWindow : Window
                 : RecoveryReason.NotFound;
 
             var recovery = new DatabaseRecoveryWindow(reason, settings.DatabasePath);
-            await recovery.ShowDialog(this);
+            // Show non-modally + await Closed, matching the wizard path.
+            // ShowDialog(this) on an invisible owner corrupts the Avalonia
+            // dispatcher — subsequent awaits that yield to the thread pool
+            // never get their continuations dispatched back to the UI thread.
+            WindowState = WindowState.Minimized;
+            recovery.Show(this);
+
+            var tcs = new TaskCompletionSource();
+            recovery.Closed += (_, _) => tcs.TrySetResult();
+            await tcs.Task;
+
+            WindowState = WindowState.Normal;
 
             switch (recovery.Vm.Outcome)
             {
@@ -262,9 +284,8 @@ public partial class MainWindow : Window
             }
         }
 
-        // Record this database in recent list
         settings.AddRecentDatabase(dbPath);
-        
+
         // ── Checkout flow ─────────────────────────────────────────────────────
         // Clean up any orphaned .tmp from a previous crashed save, then check for
         // an orphaned working copy (crash recovery), then acquire the write lock
@@ -277,6 +298,7 @@ public partial class MainWindow : Window
             await HandleCrashRecoveryAsync(dbPath);
 
         var checkoutResult = await RunCheckoutAsync(dbPath);
+        App.Logger.LogInfo($"[Startup] Checkout result: {checkoutResult ?? "(null)"}");
         if (checkoutResult is null)
         {
             // Network unreachable — dialog already shown. Close the app since this
@@ -455,6 +477,14 @@ public partial class MainWindow : Window
 
         IsVisible = true;
         Activate();
+
+        // Evaluate tour auto-triggers after the window is visible and laid out.
+        // Deferred to the next dispatcher tick so the overlay has valid bounds.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (App.Services.GetService(typeof(TourRunner)) is TourRunner tourRunner)
+                tourRunner.EvaluateAutoTriggers();
+        }, Avalonia.Threading.DispatcherPriority.Background);
 
         await Task.CompletedTask;
     }

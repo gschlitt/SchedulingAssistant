@@ -248,9 +248,10 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDis
             Load();
             _sectionListVm.Reload();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             tx?.Rollback();
+            App.Logger.LogError(ex, "RoomListViewModel.Delete");
             LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
         }
         finally

@@ -679,6 +679,9 @@
 
 			</Panel>
 
+			<!--  Layer 2: tour overlay  -->
+			<panelViews:TourOverlayView DataContext="{Binding TourOverlayVm}" />
+
 		</Panel>
 
 	</Grid>

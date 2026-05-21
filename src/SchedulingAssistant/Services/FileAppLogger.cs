@@ -39,7 +39,11 @@ public sealed class FileAppLogger : IAppLogger
     public void LogError(Exception? ex, string? context = null)
     {
         Write("ERROR", context, ex);
-        BugsnagClient?.Notify(ex);
+        // Bugsnag's internal BlockingCollection may be disposed during app
+        // termination — the error reporter must never throw.
+        try { BugsnagClient?.Notify(ex); }
+        catch (ObjectDisposedException) { }
+        catch (Exception) { }
         // In dev mode, re-throw immediately so exceptions surface with a full stack
         // trace rather than being silently swallowed and shown as a notification banner.
         // ExceptionDispatchInfo preserves the original stack trace. The re-throw exits

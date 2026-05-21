@@ -45,7 +45,8 @@
 
 		<!--  Row 0: Filter bar - always visible  -->
 		<local:GridFilterView
-			Grid.Row="0"
+			x:Name="GridFilterBar"
+		    Grid.Row="0"
 			MinHeight="28"
 			Margin="0,0,0,4"
 			DataContext="{Binding Filter}" />

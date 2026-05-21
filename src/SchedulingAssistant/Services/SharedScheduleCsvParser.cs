@@ -39,8 +39,9 @@ public class SharedScheduleCsvParser
         {
             return ParseCore(stream, fallbackSourceLabel);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            App.Logger.LogInfo($"[SharedScheduleCsvParser] Parse failed: {ex.Message}");
             return ImportResult.Failed("Unable to read file.");
         }
     }

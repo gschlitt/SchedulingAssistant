@@ -22,12 +22,20 @@ using SchedulingAssistant.ViewModels.GridView;
 using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using SchedulingAssistant.Views.Management;
+using Avalonia.Controls;
+using System.Linq;
 
 namespace SchedulingAssistant;
 
 public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
+
+    /// <summary>
+    /// Tour step actions (PreAction/PostAction callbacks), built once in
+    /// <see cref="InitializeServices"/> and reused on Ctrl+Shift+T hot-reload.
+    /// </summary>
+    internal static Dictionary<string, TourStepActions>? TourActions { get; private set; }
 
     /// <summary>
     /// Logger available app-wide, including before DI is fully initialized.
@@ -116,6 +124,15 @@ public partial class App : Application
         Logger = Services.GetRequiredService<IAppLogger>();
         if (Logger is FileAppLogger fal) fal.PruneOldLogs();
 
+
+        TourActions = TourActionDefinitions.Build();
+
+
+
+        TourCatalog.Initialize(Current!.Resources, TourActions);
+        foreach (var err in TourCatalog.Validate())
+            Logger.LogInfo($"[TourCatalog] {err}");
+
         if (File.Exists(dbPath) && !BackupService.CheckIntegrity(dbPath))
             throw new DatabaseCorruptException(dbPath);
 
@@ -164,6 +181,7 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
+        services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, DialogService>();
 
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath, App.Checkout.MarkDirty));
@@ -212,6 +230,10 @@ public partial class App : Application
         Services = services.BuildServiceProvider();
         Logger = Services.GetRequiredService<IAppLogger>();
 
+        TourCatalog.Initialize(Current!.Resources);
+        foreach (var err in TourCatalog.Validate())
+            Logger.LogInfo($"[TourCatalog] {err}");
+
         Services.GetRequiredService<WriteLockService>().AcquireDemo();
 
         var semesterContext = Services.GetRequiredService<SemesterContext>();
@@ -226,8 +248,20 @@ public partial class App : Application
             Services.GetRequiredService<ISectionRepository>(),
             semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
 
+        // In demo/WASM mode the startup wizard is bypassed, so mark setup as
+        // complete so PostWizardFirstLaunch auto-triggers evaluate correctly.
+        AppSettings.Current.IsInitialSetupComplete = true;
+
         var vm = Services.GetRequiredService<MainWindowViewModel>();
         vm.SetDatabaseName("Demo");
+
+        // Evaluate auto-triggers on the next UI tick so the MainView has loaded
+        // and the overlay can resolve target controls.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            Services.GetRequiredService<TourRunner>().EvaluateAutoTriggers();
+        }, Avalonia.Threading.DispatcherPriority.Background);
+
         return vm;
     }
 
@@ -240,6 +274,10 @@ public partial class App : Application
         services.AddSingleton<AppNotificationService>();
         services.AddSingleton<AcademicUnitService>();
         services.AddSingleton<ScheduleValidationService>();
+        services.AddSingleton<SharedScheduleService>();
+        services.AddSingleton<SharedScheduleCsvParser>();
+        services.AddSingleton<SharedScheduleCsvExporter>();
+        services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, NullDialogService>();
 
         services.AddSingleton<IDatabaseContext, DemoDatabaseContext>();

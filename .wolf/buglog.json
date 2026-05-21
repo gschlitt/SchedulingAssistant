@@ -11182,6 +11182,871 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-18T15:52:39.402Z"
+    },
+    {
+      "id": "bug-699",
+      "timestamp": "2026-05-18T17:33:54.068Z",
+      "error_message": "Wrong reference: FilteredSemesters should be HasSemesterSelected",
+      "file": "src/SchedulingAssistant/Services/SemesterContext.cs",
+      "root_cause": "Used \"FilteredSemesters\" instead of \"HasSemesterSelected\"",
+      "fix": "Changed FilteredSemesters → HasSemesterSelected",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T17:33:54.068Z"
+    },
+    {
+      "id": "bug-700",
+      "timestamp": "2026-05-18T17:33:58.752Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/SectionPanelContent.axaml",
+      "root_cause": "Had \"Auto,Auto,*\"",
+      "fix": "Changed to \"Auto,Auto,Auto,*\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T17:33:58.752Z"
+    },
+    {
+      "id": "bug-701",
+      "timestamp": "2026-05-18T17:55:12.599Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/AppSettings.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T17:55:12.599Z"
+    },
+    {
+      "id": "bug-702",
+      "timestamp": "2026-05-18T17:56:25.658Z",
+      "error_message": "Wrong return value",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/Steps/Step2DatabaseViewModel.cs",
+      "root_cause": "Was returning: false; }",
+      "fix": "Now returns: false;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T17:56:25.658Z"
+    },
+    {
+      "id": "bug-703",
+      "timestamp": "2026-05-18T17:57:12.519Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T17:57:12.519Z"
+    },
+    {
+      "id": "bug-704",
+      "timestamp": "2026-05-18T21:18:36.190Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/FileAppLogger.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T21:18:36.190Z"
+    },
+    {
+      "id": "bug-705",
+      "timestamp": "2026-05-18T23:51:52.899Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/let-s-work-on-the-glimmering-pearl.md",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 16→18 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-18T23:51:52.899Z"
+    },
+    {
+      "id": "bug-706",
+      "timestamp": "2026-05-19T00:11:58.116Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/next-is-the-data-functional-charm.md",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 10→12 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T00:11:58.116Z"
+    },
+    {
+      "id": "bug-707",
+      "timestamp": "2026-05-19T04:11:34.424Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T04:11:34.424Z"
+    },
+    {
+      "id": "bug-708",
+      "timestamp": "2026-05-19T04:32:34.407Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 35→44 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T04:32:34.407Z"
+    },
+    {
+      "id": "bug-709",
+      "timestamp": "2026-05-19T14:51:59.577Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T14:51:59.577Z"
+    },
+    {
+      "id": "bug-710",
+      "timestamp": "2026-05-19T15:02:20.111Z",
+      "error_message": "Wrong operator: ?? should be &&",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "Used \"??\" instead of \"&&\"",
+      "fix": "Changed operator ?? → &&",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T15:02:20.111Z"
+    },
+    {
+      "id": "bug-711",
+      "timestamp": "2026-05-19T15:02:31.758Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 22→18 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T15:02:31.758Z"
+    },
+    {
+      "id": "bug-712",
+      "timestamp": "2026-05-19T15:05:28.995Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 15→8 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T15:05:28.996Z"
+    },
+    {
+      "id": "bug-713",
+      "timestamp": "2026-05-19T16:00:00.000Z",
+      "error_message": "TourCatalog.ScanResources finds 0 steps/segments/tours — catalog empty at runtime",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "Avalonia lazily wraps AXAML-defined objects as PointerDeferredContent<T>. Iterating IResourceDictionary yields the deferred wrapper, not the materialized TourStepData/TourSegmentData/TourData. The switch(kvp.Value) never matched any tour types.",
+      "fix": "Replaced direct kvp.Value access with resources.TryGetResource(key, null, out var resolved) to force materialization before type-checking.",
+      "tags": [
+        "avalonia",
+        "tour",
+        "resource-dictionary",
+        "deferred-content"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T16:00:00.000Z"
+    },
+    {
+      "id": "bug-714",
+      "timestamp": "2026-05-19T15:20:32.203Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/tour-authoring-guide.md",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 14→20 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T15:20:32.203Z"
+    },
+    {
+      "id": "bug-715",
+      "timestamp": "2026-05-19T16:30:57.741Z",
+      "error_message": "Missing error handling in Task",
+      "file": "../../../.claude/plans/move-to-phase-3-cached-zebra.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T16:30:57.741Z"
+    },
+    {
+      "id": "bug-716",
+      "timestamp": "2026-05-19T20:09:59.537Z",
+      "error_message": "Null/undefined access in ",
+      "file": "docs/tour-authoring-guide.md",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:09:59.537Z"
+    },
+    {
+      "id": "bug-717",
+      "timestamp": "2026-05-19T20:19:37.082Z",
+      "error_message": "Wrong reference: actions should be TourActions",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Used \"actions\" instead of \"TourActions\"",
+      "fix": "Changed actions → TourActions",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:19:37.082Z"
+    },
+    {
+      "id": "bug-718",
+      "timestamp": "2026-05-19T20:22:35.721Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "34 lines replaced/restructured",
+      "fix": "Rewrote 45→3 lines (34 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:22:35.721Z"
+    },
+    {
+      "id": "bug-719",
+      "timestamp": "2026-05-19T20:27:55.731Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:27:55.731Z"
+    },
+    {
+      "id": "bug-720",
+      "timestamp": "2026-05-19T22:06:22.699Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T22:06:22.699Z"
+    },
+    {
+      "id": "bug-721",
+      "timestamp": "2026-05-19T23:39:21.292Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T23:39:21.292Z"
+    },
+    {
+      "id": "bug-722",
+      "timestamp": "2026-05-19T23:39:28.242Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T23:39:28.242Z"
+    },
+    {
+      "id": "bug-723",
+      "timestamp": "2026-05-20T01:01:47.413Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourRunner.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T01:01:47.413Z"
+    },
+    {
+      "id": "bug-724",
+      "timestamp": "2026-05-20T01:02:06.388Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T01:02:06.388Z"
+    },
+    {
+      "id": "bug-725",
+      "timestamp": "2026-05-20T01:02:31.365Z",
+      "error_message": "Wrong reference: OnBodyChanged should be OnRunnerBodyChanged",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Used \"OnBodyChanged\" instead of \"OnRunnerBodyChanged\"",
+      "fix": "Changed OnBodyChanged → OnRunnerBodyChanged",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T01:02:31.365Z"
+    },
+    {
+      "id": "bug-726",
+      "timestamp": "2026-05-20T16:13:26.452Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:13:26.452Z"
+    },
+    {
+      "id": "bug-727",
+      "timestamp": "2026-05-20T16:49:43.748Z",
+      "error_message": "Wrong reference: 200 should be 280",
+      "file": "src/SchedulingAssistant/Helpers/TourPositionCalculator.cs",
+      "root_cause": "Used \"200\" instead of \"280\"",
+      "fix": "Changed 200 → 280",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:49:43.748Z"
+    },
+    {
+      "id": "bug-728",
+      "timestamp": "2026-05-20T19:42:37.012Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Models/Tour/TourTarget.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T19:42:37.012Z"
+    },
+    {
+      "id": "bug-729",
+      "timestamp": "2026-05-20T19:43:13.291Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T19:43:13.291Z"
+    },
+    {
+      "id": "bug-730",
+      "timestamp": "2026-05-20T19:44:03.606Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "Had \"320\"",
+      "fix": "Changed to \"{Binding CardWidth}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T19:44:03.606Z"
+    },
+    {
+      "id": "bug-731",
+      "timestamp": "2026-05-20T19:44:10.128Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T19:44:10.128Z"
+    },
+    {
+      "id": "bug-732",
+      "timestamp": "2026-05-20T20:13:24.197Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T20:13:24.197Z"
+    },
+    {
+      "id": "bug-733",
+      "timestamp": "2026-05-20T20:18:29.028Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T20:18:29.028Z"
+    },
+    {
+      "id": "bug-734",
+      "timestamp": "2026-05-20T20:20:48.171Z",
+      "error_message": "Wrong reference: 280 should be 200",
+      "file": "src/SchedulingAssistant/Helpers/TourPositionCalculator.cs",
+      "root_cause": "Used \"280\" instead of \"200\"",
+      "fix": "Changed 280 → 200",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T20:20:48.171Z"
+    },
+    {
+      "id": "bug-735",
+      "timestamp": "2026-05-20T20:20:56.067Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "Had \"Transparent\"",
+      "fix": "Changed to 't clipped. -->\n\t<Panel Background=\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T20:21:05.869Z"
+    },
+    {
+      "id": "bug-736",
+      "timestamp": "2026-05-20T21:00:16.478Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: _vm is null || _vm.ActualPlacement != TourPlacement.Above",
+      "fix": "Added guard clause: if (_vm is null || _vm.ActualPlacement != To)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T21:00:16.478Z"
+    },
+    {
+      "id": "bug-737",
+      "timestamp": "2026-05-20T21:14:38.620Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T21:14:38.620Z"
+    },
+    {
+      "id": "bug-738",
+      "timestamp": "2026-05-20T21:45:38.346Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 13→4 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T21:45:38.346Z"
+    },
+    {
+      "id": "bug-739",
+      "timestamp": "2026-05-20T23:41:05.992Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "../../../.claude/plans/ok-we-ll-need-to-zazzy-quasar.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T23:41:05.992Z"
+    },
+    {
+      "id": "bug-740",
+      "timestamp": "2026-05-20T23:41:14.110Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/ok-we-ll-need-to-zazzy-quasar.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 10→12 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T23:41:14.110Z"
+    },
+    {
+      "id": "bug-741",
+      "timestamp": "2026-05-20T23:42:05.505Z",
+      "error_message": "Function not marked async",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T23:42:05.505Z"
+    },
+    {
+      "id": "bug-742",
+      "timestamp": "2026-05-20T23:42:12.305Z",
+      "error_message": "Wrong reference: MidAction should be MidActions",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "Used \"MidAction\" instead of \"MidActions\"",
+      "fix": "Changed MidAction → MidActions",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T23:42:12.305Z"
+    },
+    {
+      "id": "bug-743",
+      "timestamp": "2026-05-20T23:42:59.474Z",
+      "error_message": "Missing error handling in Task",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: try; catch (Exception ex) | Also: {; try { await _currentStep.PostAction(); } | Also: {; try { await step.PreAction(); }",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-05-20T23:43:25.634Z"
+    },
+    {
+      "id": "bug-744",
+      "timestamp": "2026-05-20T23:48:20.101Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T23:48:20.101Z"
+    },
+    {
+      "id": "bug-745",
+      "timestamp": "2026-05-20T23:49:58.379Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_tour_data_model.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T23:49:58.379Z"
+    },
+    {
+      "id": "bug-746",
+      "timestamp": "2026-05-21T03:00:33.932Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "docs/tour-authoring-guide.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T03:00:33.932Z"
+    },
+    {
+      "id": "bug-747",
+      "timestamp": "2026-05-21T03:01:18.336Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T03:01:18.336Z"
+    },
+    {
+      "id": "bug-748",
+      "timestamp": "2026-05-21T03:11:54.799Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→13 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T03:11:54.799Z"
+    },
+    {
+      "id": "bug-749",
+      "timestamp": "2026-05-21T03:30:07.961Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Had \"post-wizard\"",
+      "fix": "Changed to \"TermPointTour\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T03:30:07.961Z"
+    },
+    {
+      "id": "bug-750",
+      "timestamp": "2026-05-21T03:59:39.165Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T03:59:39.165Z"
+    },
+    {
+      "id": "bug-751",
+      "timestamp": "2026-05-21T04:17:05.323Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"filter-general,filter.tags\"",
+      "fix": "Changed to \"filter-general,filter.tags,filter.instructor\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:17:05.323Z"
+    },
+    {
+      "id": "bug-752",
+      "timestamp": "2026-05-21T04:17:32.190Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:17:32.190Z"
     }
   ]
 }

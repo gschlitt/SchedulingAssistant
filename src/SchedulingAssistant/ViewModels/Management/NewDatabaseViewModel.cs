@@ -107,7 +107,11 @@ public partial class NewDatabaseViewModel : ViewModelBase
                 var bak = Path.GetFullPath(BackupFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 return string.Equals(db, bak, StringComparison.OrdinalIgnoreCase);
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                App.Logger.LogInfo($"[NewDatabaseViewModel] SameFolderWarning path comparison failed: {ex.Message}");
+                return false;
+            }
         }
     }
 

@@ -20,6 +20,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ScheduleGridViewModel _scheduleGridVm;
     private readonly WriteLockService _lockService;
     private readonly AppNotificationService _notificationService;
+    private readonly TourRunner _tourRunner;
 
     /// <summary>
     /// The permanent left-panel section list. Held for app lifetime.
@@ -69,6 +70,11 @@ public partial class MainWindowViewModel : ViewModelBase
     /// The permanent bottom-left workload panel. Held for app lifetime.
     /// </summary>
     public WorkloadPanelViewModel WorkloadPanelVm { get; }
+
+    /// <summary>
+    /// Tour overlay ViewModel. Drives the walkthrough card and highlight ring.
+    /// </summary>
+    public TourOverlayViewModel TourOverlayVm { get; }
 
     /// <summary>
     /// The management ViewModel currently shown in the flyout overlay.
@@ -373,7 +379,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ScheduleGridViewModel scheduleGridVm,
         WorkloadPanelViewModel workloadPanelVm,
         WriteLockService lockService,
-        AppNotificationService notificationService)
+        AppNotificationService notificationService,
+        TourRunner tourRunner)
     {
         _services             = services;
         SemesterContext       = semesterContext;
@@ -383,6 +390,8 @@ public partial class MainWindowViewModel : ViewModelBase
         WorkloadPanelVm       = workloadPanelVm;
         _lockService          = lockService;
         _notificationService  = notificationService;
+        _tourRunner           = tourRunner;
+        TourOverlayVm         = new TourOverlayViewModel(tourRunner);
 
         // Wire the Room Availability Browser ghost block callback
         sectionListVm._setGhostBlocks = ghosts => _scheduleGridVm.SetGhostBlocks(ghosts);
