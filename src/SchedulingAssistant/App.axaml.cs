@@ -76,6 +76,23 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // ── Global UI-thread safety net ─────────────────────────────────────
+        // Catches exceptions that escape all local try-catch blocks on the UI
+        // thread (property change cascades, binding converters, rendering code,
+        // unprotected async void event handlers). Logs via App.Logger, which
+        // fires ErrorLogged → AppNotificationService banner, keeping the app
+        // alive instead of crashing.
+        //
+        // In debug mode (ThrowOnError), the exception is NOT handled so it
+        // propagates to the debugger as usual.
+        Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            if (Logger.ThrowOnError) return;
+
+            Logger.LogError(e.Exception, "Unexpected error (the app will try to continue)");
+            e.Handled = true;
+        };
+
 #if !BROWSER
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

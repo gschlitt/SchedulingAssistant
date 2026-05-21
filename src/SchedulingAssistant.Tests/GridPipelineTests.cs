@@ -111,6 +111,7 @@ public class GridPipelineTests
             Courses:          courses  ?? new(),
             ActiveCourses:    courses  ?? new(),
             Instructors:      instructors ?? new(),
+            ActiveInstructors: instructors ?? new(),
             Rooms:            new Dictionary<string, Room>(),
             Subjects:         new Dictionary<string, Subject>(),
             Campuses:         new Dictionary<string, Campus>(),

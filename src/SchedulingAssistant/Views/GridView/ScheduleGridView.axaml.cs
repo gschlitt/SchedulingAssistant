@@ -321,6 +321,9 @@ public partial class ScheduleGridView : UserControl
         var data = _vm?.GridData ?? GridData.Empty;
         if (data.DayColumns.Count == 0) { ShowEmpty(); return; }
 
+        try
+        {
+
         // ── Resource snapshot ───────────────────────────────────────────────
         // Each static accessor below (TileFill, TilePaddingH, etc.) calls
         // Application.Current.Resources.TryGetResource, which walks the merged resource
@@ -936,6 +939,13 @@ public partial class ScheduleGridView : UserControl
         _cachedSemesterCount = semCount;
 
         RenderGhostOverlay();
+
+        }
+        catch (Exception ex)
+        {
+            _canvas.Children.Clear();
+            App.Logger.LogError(ex, "Schedule grid failed to render");
+        }
     }
 
     /// <summary>
@@ -960,6 +970,9 @@ public partial class ScheduleGridView : UserControl
 
         var data = _vm?.GridData ?? GridData.Empty;
         if (data.DayColumns.Count == 0) return;
+
+        try
+        {
 
         int semCount = _cachedSemesterCount;
         double TilePaddingV = ScheduleGridView.TilePaddingV;
@@ -1044,6 +1057,13 @@ public partial class ScheduleGridView : UserControl
             Canvas.SetTop(wrapper, tileY);
             _canvas.Children.Add(wrapper);
             _ghostControls.Add(wrapper);
+        }
+
+        }
+        catch (Exception ex)
+        {
+            _ghostControls.Clear();
+            App.Logger.LogError(ex, "Ghost overlay failed to render");
         }
     }
 

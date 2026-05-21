@@ -128,19 +128,28 @@ public partial class MainWindow : Window
         e.Cancel = true; // Defer: run async save first.
         _shuttingDown = true;
 
-        // Stop the periodic backup timer before disposing the container.
-        if (App.Services?.GetService(typeof(BackupService)) is BackupService bs)
-            bs.StopSession();
+        try
+        {
+            // Stop the periodic backup timer before disposing the container.
+            if (App.Services?.GetService(typeof(BackupService)) is BackupService bs)
+                bs.StopSession();
 
-        // Stop autosave and save D' → D (releases lock on success).
-        App.Checkout.StopAutoSave();
-        await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
+            // Stop autosave and save D' → D (releases lock on success).
+            App.Checkout.StopAutoSave();
+            await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
 
-        // Dispose the DI container, which closes the SQLite connection cleanly.
-        (App.Services as IDisposable)?.Dispose();
+            // Dispose the DI container, which closes the SQLite connection cleanly.
+            (App.Services as IDisposable)?.Dispose();
 
-        // Now that the connection is closed, delete D' from the working directory.
-        App.Checkout.CleanupWorkingCopy();
+            // Now that the connection is closed, delete D' from the working directory.
+            App.Checkout.CleanupWorkingCopy();
+        }
+        catch (Exception ex)
+        {
+            // Log but still allow the window to close — don't leave the user
+            // stuck with an uncloseable window.
+            App.Logger.LogError(ex, "Error during shutdown — some changes may not have been saved");
+        }
 
         Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
     }   
