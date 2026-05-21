@@ -402,12 +402,33 @@ public partial class SectionMeetingViewModel : ViewModelBase
         }
 
         // Auto-fill the preferred block length only when no block length is already set.
-        // OnBlockLengthTextChanged will auto-commit it since it matches a preset value.
         if (!SelectedBlockLength.HasValue && value.HasValue && _defaultBlockLength.HasValue)
         {
             string preferred = FormatBlockLength(_defaultBlockLength.Value);
             if (AvailableBlockLengthStrings.Contains(preferred))
-                BlockLengthText = preferred;
+            {
+                // BACKING FIELDS intentionally used instead of property setters.
+                //
+                // Setting SelectedBlockLength via the property setter would trigger the
+                // generated OnSelectedBlockLengthChanged partial method, which calls
+                // RefreshStartTimes(). That clears and repopulates AvailableStartTimeStrings
+                // while the Start AutoCompleteBox is still processing the text change that
+                // initiated this whole chain — Avalonia's internal index into the ItemsSource
+                // becomes invalid and throws ArgumentOutOfRangeException.
+                //
+                // Writing _selectedBlockLength directly bypasses the partial method because
+                // CommunityToolkit [ObservableProperty] only invokes OnXChanged from the
+                // property setter, not from OnPropertyChanged. The OnPropertyChanged calls
+                // below update UI bindings (text field display, CanExecute for Room Browser)
+                // without re-entering the cascade. RefreshStartTimes() is unnecessary here
+                // anyway — we just set the start time, so the suggestion list is already
+                // correct for the current state.
+                _selectedBlockLength = _defaultBlockLength.Value;
+                _blockLengthText = preferred;
+                BlockLengthError = null;
+                OnPropertyChanged(nameof(SelectedBlockLength));
+                OnPropertyChanged(nameof(BlockLengthText));
+            }
         }
     }
 
