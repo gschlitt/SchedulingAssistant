@@ -11,6 +11,10 @@ public interface IInstructorRepository
     /// <summary>Returns all instructors, ordered by last name then first name.</summary>
     List<Instructor> GetAll();
 
+    /// <summary>Returns only active instructors (<see cref="Instructor.IsActive"/> == true),
+    /// ordered by the current <see cref="Services.AppSettings.InstructorSortMode"/>.</summary>
+    List<Instructor> GetAllActive();
+
     /// <summary>Returns the instructor with the given <paramref name="id"/>, or <c>null</c> if not found.</summary>
     Instructor? GetById(string id);
 

@@ -47,6 +47,34 @@ public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
         return results;
     }
 
+    /// <summary>
+    /// Returns only active instructors (IsActive == true), ordered according to the
+    /// persisted <see cref="AppSettings.InstructorSortMode"/> preference.
+    /// Used for filter and overlay option lists where deactivated instructors should
+    /// not appear as chooser items.
+    /// </summary>
+    public List<Instructor> GetAllActive()
+    {
+        var orderBy = AppSettings.Current.InstructorSortMode switch
+        {
+            InstructorSortMode.FirstName => "first_name, last_name",
+            InstructorSortMode.Initials  => "initials, last_name, first_name",
+            _                            => "last_name, first_name",
+        };
+
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = $"SELECT id, data FROM Instructors WHERE CAST(data ->> 'isActive' AS INTEGER) = 1 ORDER BY {orderBy}";
+        using var reader = cmd.ExecuteReader();
+        var results = new List<Instructor>();
+        while (reader.Read())
+        {
+            var instructor = JsonHelpers.Deserialize<Instructor>(reader.GetString(1));
+            instructor.Id = reader.GetString(0);
+            results.Add(instructor);
+        }
+        return results;
+    }
+
     public Instructor? GetById(string id)
     {
         using var cmd = db.Connection.CreateCommand();

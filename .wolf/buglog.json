@@ -12047,6 +12047,102 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-21T04:17:32.190Z"
+    },
+    {
+      "id": "bug-753",
+      "timestamp": "2026-05-21T04:24:35.887Z",
+      "error_message": "Wrong reference: Instructors should be ActiveInstructors",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Used \"Instructors\" instead of \"ActiveInstructors\"",
+      "fix": "Changed Instructors → ActiveInstructors",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:24:35.887Z"
+    },
+    {
+      "id": "bug-754",
+      "timestamp": "2026-05-21T04:24:44.170Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:24:44.170Z"
+    },
+    {
+      "id": "bug-755",
+      "timestamp": "2026-05-21T04:34:44.337Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"filter-general,filter.tags,filter.instructor\"",
+      "fix": "Changed to \"filter-general,filter.tags,filter.instructor,filt",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:34:44.337Z"
+    },
+    {
+      "id": "bug-756",
+      "timestamp": "2026-05-21T04:35:11.463Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:35:11.463Z"
+    },
+    {
+      "id": "bug-757",
+      "timestamp": "2026-05-21T04:41:47.462Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"filter-general,filter.tags,filter.instructor,filt",
+      "fix": "Changed to \"filter-general,filter.tags,filter.instructor,filt",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:41:47.462Z"
+    },
+    {
+      "id": "bug-758",
+      "timestamp": "2026-05-21T04:50:48.647Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:50:48.647Z"
     }
   ]
 }

@@ -18,6 +18,10 @@ public class DemoInstructorRepository : IInstructorRepository
         [.. _instructors.OrderBy(i => i.LastName).ThenBy(i => i.FirstName)];
 
     /// <inheritdoc/>
+    public List<Instructor> GetAllActive() =>
+        [.. _instructors.Where(i => i.IsActive).OrderBy(i => i.LastName).ThenBy(i => i.FirstName)];
+
+    /// <inheritdoc/>
     public Instructor? GetById(string id) =>
         _instructors.FirstOrDefault(i => i.Id == id);
 

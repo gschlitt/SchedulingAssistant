@@ -270,12 +270,9 @@ public partial class GridFilterViewModel : ViewModelBase
         IReadOnlyDictionary<string, string> levelLookup,
         IReadOnlyDictionary<string, Course> courseLookup)
     {
-        // Instructors: use the FULL instructor lookup (all active instructors), not just
-        // those assigned to sections in this semester. This ensures the overlay listbox
-        // always shows every instructor so their commitments can be overlaid even when
-        // they have no sections scheduled yet. The instructorLookup is already filtered
-        // by ShowOnlyActiveInstructors (set in AppSettings), so inactive instructors
-        // are excluded regardless.
+        // Instructors: the caller passes only active instructors so deactivated ones
+        // never appear as filter or overlay choices. The full instructor set (including
+        // inactive) is kept in GridLookups.Instructors for grid tile display.
         RebuildInstructorList(Instructors, instructorLookup);
         // Insert in reverse order: Emphasize Unstaffed goes in first (lands at [0]),
         // then Unstaffed is inserted at [0], pushing Emphasize to [1].

@@ -31,8 +31,16 @@ internal record GridLookups(
     /// </summary>
     IReadOnlyDictionary<string, Course> ActiveCourses,
 
-    /// <summary>All instructors, keyed by instructor ID.</summary>
+    /// <summary>All instructors (including inactive), keyed by instructor ID. Used for grid tile display.</summary>
     IReadOnlyDictionary<string, Instructor> Instructors,
+
+    /// <summary>
+    /// Active instructors only, keyed by instructor ID.
+    /// Used exclusively for populating the filter and overlay option lists so that
+    /// deactivated instructors are never presented as chooser items, even if sections
+    /// assigned to them are still visible on the grid.
+    /// </summary>
+    IReadOnlyDictionary<string, Instructor> ActiveInstructors,
 
     /// <summary>All rooms, keyed by room ID.</summary>
     IReadOnlyDictionary<string, Room> Rooms,

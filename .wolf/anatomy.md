@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-21T04:17:32.093Z
-> Files: 60 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-21T04:50:48.607Z
+> Files: 66 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -219,7 +219,7 @@
 - `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~4756 tok)
 - `AppColors.axaml` (~3496 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~15080 tok)
-- `TourContent.axaml` (~735 tok)
+- `TourContent.axaml` (~1030 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -238,9 +238,12 @@
 
 ## src/SchedulingAssistant/Data/Repositories/
 
+- `IInstructorRepository.cs` — Data access contract for <see cref="Instructor"/> entities. (~484 tok)
+- `InstructorRepository.cs` — Returns all instructors, ordered according to the persisted <see cref="AppSettings.InstructorSortMod (~1918 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/Demo/
 
+- `DemoInstructorRepository.cs` — In-memory demo implementation of <see cref="IInstructorRepository"/> backed by a mutable copy of <se (~503 tok)
 
 ## src/SchedulingAssistant/Demo/
 
@@ -279,7 +282,7 @@
 - `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4361 tok)
 - `SharedScheduleCsvExporter.cs` — Exports sections visible in the current filter state as a shared schedule CSV. Stateless — all data (~1487 tok)
 - `SharedScheduleCsvParser.cs` — Parses a shared schedule CSV file into a <see cref="SharedScheduleSet"/>. Stateless — all results re (~3710 tok)
-- `TourActionDefinitions.cs` — Defines all tour step PreAction/MidActions/PostAction callbacks in one place. Each entry's key must  (~4809 tok)
+- `TourActionDefinitions.cs` — Defines all tour step PreAction/MidActions/PostAction callbacks in one place. Each entry's key must  (~5965 tok)
 - `TourCatalog.cs` — Static registry of all tour definitions. Steps, segments, and tours are immutable and created once a (~3613 tok)
 - `TourRunner.cs` — Coordinates tour lifecycle: start, advance, dismiss, and auto-trigger evaluation. DI-registered sing (~2504 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~8153 tok)
@@ -291,6 +294,9 @@
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each (~7319 tok)
+- `GridPipelineTypes.cs` — Aggregates all entity lookup dictionaries that the schedule grid pipeline needs to convert raw <see (~2806 tok)
+- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~19134 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 

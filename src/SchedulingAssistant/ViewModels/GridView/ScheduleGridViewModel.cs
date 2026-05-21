@@ -423,7 +423,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // Active courses are kept separate so the filter options list omits inactive
         // courses without affecting grid tile display of existing sections.
         var activeCourses = _courseRepo.GetAllActive().ToDictionary(c => c.Id);
-        var instructors   = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+        var instructors       = _instructorRepo.GetAll().ToDictionary(i => i.Id);
+        // Active instructors are kept separate so the filter and overlay option lists
+        // omit deactivated instructors without affecting grid tile display.
+        var activeInstructors = _instructorRepo.GetAllActive().ToDictionary(i => i.Id);
         var rooms         = _roomRepo.GetAll().ToDictionary(r => r.Id);
         var subjects      = _subjectRepo.GetAll().ToDictionary(s => s.Id);
 
@@ -448,7 +451,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var semesterIdToColor = semesters.ToDictionary(sd => sd.Semester.Id, sd => sd.Semester.Color ?? string.Empty);
 
         return new GridLookups(
-            sections, courses, activeCourses, instructors, rooms, subjects,
+            sections, courses, activeCourses, instructors, activeInstructors, rooms, subjects,
             campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName, semesterIdToColor);
     }
 
@@ -465,7 +468,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private void PopulateFilterOptions(GridLookups lookups)
     {
         Filter.PopulateOptions(
-            lookups.Instructors,
+            lookups.ActiveInstructors,
             lookups.Rooms,
             lookups.Subjects,
             lookups.Campuses,

@@ -6978,3 +6978,30 @@
 | 21:17 | Edited src/SchedulingAssistant/TourContent.axaml | 5→10 lines | ~84 |
 | 21:17 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added optional chaining | ~534 |
 | 21:18 | Session end: 7 writes across 2 files (TourContent.axaml, TourActionDefinitions.cs) | 2 reads | ~6383 tok |
+| 21:23 | Edited src/SchedulingAssistant/Data/Repositories/IInstructorRepository.cs | 2→6 lines | ~93 |
+| 21:24 | Edited src/SchedulingAssistant/Data/Repositories/InstructorRepository.cs | modified GetAllActive() | ~334 |
+| 21:24 | Edited src/SchedulingAssistant/ViewModels/GridView/GridPipelineTypes.cs | expanded (+8 lines) | ~149 |
+| 21:24 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→6 lines | ~130 |
+| 21:24 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→2 lines | ~53 |
+| 21:24 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 2→2 lines | ~19 |
+| 21:24 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | 6→3 lines | ~68 |
+| 21:24 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoInstructorRepository.cs | 6→10 lines | ~100 |
+| 21:26 | Session end: 15 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~10819 tok |
+| 21:31 | Session end: 15 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~10819 tok |
+| 21:32 | Session end: 15 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~10819 tok |
+| 21:34 | Session end: 15 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~10819 tok |
+| 21:34 | Edited src/SchedulingAssistant/TourContent.axaml | "filter-general,filter.tag" → "filter-general,filter.tag" | ~20 |
+| 21:34 | Edited src/SchedulingAssistant/TourContent.axaml | expanded (+7 lines) | ~87 |
+| 21:35 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added optional chaining | ~607 |
+| 21:36 | Session end: 18 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~12164 tok |
+| 21:41 | Session end: 18 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~12164 tok |
+| 21:41 | Edited src/SchedulingAssistant/TourContent.axaml | "filter-general,filter.tag" → "filter-general,filter.tag" | ~25 |
+| 21:41 | Edited src/SchedulingAssistant/TourContent.axaml | expanded (+7 lines) | ~172 |
+| 21:42 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added 3 condition(s) | ~967 |
+| 21:42 | Session end: 21 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~13984 tok |
+| 21:49 | Session end: 21 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~13984 tok |
+| 21:50 | Edited src/SchedulingAssistant/TourContent.axaml | expanded (+7 lines) | ~107 |
+| 21:50 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added optional chaining | ~261 |
+| 21:50 | Session end: 23 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~14966 tok |
+| 21:53 | Session end: 23 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~14966 tok |
+| 22:11 | Session end: 23 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 14 reads | ~23227 tok |

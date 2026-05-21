@@ -56,7 +56,7 @@
 
 	<tour:TourSegmentData x:Key="FilterSegment"
 	Title="TermPoint Tour"
-	StepKeys="filter-general,filter.tags,filter.instructor"
+	StepKeys="filter-general,filter.tags,filter.instructor,filter.unstaffed,overlay.instructor"
 	/>
 
 	<tour:TourStepData x:Key="filter-general"
@@ -78,6 +78,35 @@
     Body="Individual schedules are easy to see.|Individual schedules are easy to see."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorPanel"
-    Placement="Above" />
+    Placement="Left" />
+
+	<tour:TourStepData x:Key="filter.unstaffed"
+    Title="Find Unstaffed Sections"
+    Body="It's easy to see sections not yet staffed.|It's easy to see sections not yet staffed."
+    TargetKind="Region"
+    TargetValue="ScheduleGridPanel.InstructorPanel"
+    Placement="Left" />
+
+	<tour:TourStepData x:Key="overlay.instructor"
+    Title="Instructor Overlay"
+    Body="Suppose we need to fill out Ruthe Botsford's workload. First overlay what she already has.|Now we can see what unstaffed courses fit her schedule. Anything not conflicting with a red framed block fits her schedule."
+    TargetKind="Region"
+    TargetValue="ScheduleGridPanel.InstructorOverlayPanel"
+    Placement="Left" />
+
+
+	<tour:TourSegmentData x:Key="SectionEditSegment"
+	Title="TermPoint Tour"
+	StepKeys="section.collapse"
+	/>
+
+	<tour:TourStepData x:Key="section.collapse"
+    Title="Collapsible Sections"
+    Body="Sections can be collapsed to save space.|Sections can be collapsed to save space."
+    TargetKind="NamedControl"
+    TargetValue="SectionViewPanel"
+    Placement="Right" />
+
+
 
 </ResourceDictionary>

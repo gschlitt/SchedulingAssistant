@@ -339,6 +339,116 @@ internal static class TourActionDefinitions
                 }
                 return Task.CompletedTask;
             }),
+
+        // ── Find Unstaffed Sections ────────────────────────────────────────
+
+        // PreAction: suppress light-dismiss on Instructor popup
+        // MidAction 1: open the Instructor popup and select the sentinel (unstaffed) entry
+        // PostAction: close popup only — leave sentinel selected for next step's context
+        ["filter.unstaffed"] = new(
+            PreAction: () =>
+            {
+                SuppressLightDismiss("ScheduleGridPanel", "InstructorToggle");
+                return Task.CompletedTask;
+            },
+            MidActions: new Func<Task>[]
+            {
+                () =>
+                {
+                    var toggle = FindDescendant<ToggleButton>("ScheduleGridPanel", "InstructorToggle");
+                    if (toggle is not null)
+                        toggle.IsChecked = true;
+
+                    var sentinel = GetViewModel()?.ScheduleGridVm.Filter.Instructors
+                        .FirstOrDefault(t => t.IsSentinel);
+                    if (sentinel is not null)
+                        sentinel.IsSelected = true;
+
+                    return Task.CompletedTask;
+                }
+            },
+            PostAction: () =>
+            {
+                try
+                {
+                    var toggle = FindDescendant<ToggleButton>("ScheduleGridPanel", "InstructorToggle");
+                    if (toggle is not null)
+                        toggle.IsChecked = false;
+                }
+                finally
+                {
+                    RestoreAllLightDismiss();
+                }
+                return Task.CompletedTask;
+            }),
+
+        // ── Instructor Overlay ─────────────────────────────────────────────
+
+        // PreAction: suppress light-dismiss on Instructor Overlay popup
+        // MidAction 1: open overlay popup, select first instructor
+        // PostAction: clear overlay, close popup, also clear unstaffed filter from previous step
+        ["overlay.instructor"] = new(
+            PreAction: () =>
+            {
+                SuppressLightDismiss("ScheduleGridPanel", "InstructorOverlayToggle");
+                return Task.CompletedTask;
+            },
+            MidActions: new Func<Task>[]
+            {
+                () =>
+                {
+                    var toggle = FindDescendant<ToggleButton>("ScheduleGridPanel", "InstructorOverlayToggle");
+                    if (toggle is not null)
+                        toggle.IsChecked = true;
+
+                    var firstInstructor = GetViewModel()?.ScheduleGridVm.Filter.NamedInstructors.FirstOrDefault();
+                    if (firstInstructor is not null)
+                        GetViewModel()?.ScheduleGridVm.Filter.SetInstructorOverlay(firstInstructor.Id);
+
+                    return Task.CompletedTask;
+                }
+            },
+            PostAction: () =>
+            {
+                try
+                {
+                    GetViewModel()?.ScheduleGridVm.Filter.ClearOverlay();
+
+                    var toggle = FindDescendant<ToggleButton>("ScheduleGridPanel", "InstructorOverlayToggle");
+                    if (toggle is not null)
+                        toggle.IsChecked = false;
+
+                    // Clean up the unstaffed filter left active by the previous step
+                    var sentinel = GetViewModel()?.ScheduleGridVm.Filter.Instructors
+                        .FirstOrDefault(t => t.IsSentinel);
+                    if (sentinel is not null)
+                        sentinel.IsSelected = false;
+                }
+                finally
+                {
+                    RestoreAllLightDismiss();
+                }
+                return Task.CompletedTask;
+            }),
+
+        // ── Section Edit ───────────────────────────────────────────────────
+
+        // MidAction 1: collapse all sections so user sees the compact view
+        // PostAction: expand them back
+        ["section.collapse"] = new(
+            MidActions: new Func<Task>[]
+            {
+                () =>
+                {
+                    GetViewModel()?.SectionListVm.CollapseAll();
+                    return Task.CompletedTask;
+                }
+            },
+            PostAction: () =>
+            {
+                GetViewModel()?.SectionListVm.ExpandAll();
+                return Task.CompletedTask;
+            }),
     };
 
     // ── Light-dismiss suppression ───────────────────────────────────────────
