@@ -10,9 +10,7 @@ using Bugsnag;
 using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
-#if BROWSER
 using SchedulingAssistant.Data.Repositories.Demo;
-#endif
 using SchedulingAssistant.Services;
 #if !BROWSER
 using SchedulingAssistant.Exceptions;
@@ -96,9 +94,11 @@ public partial class App : Application
 #if !BROWSER
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var win = new MainWindow();
-            win.IsVisible = false;
-            desktop.MainWindow = win;
+            // Show the splash as the initial main window so Avalonia's lifecycle
+            // renders it immediately. The splash creates the real MainWindow,
+            // swaps desktop.MainWindow, and closes itself after a minimum 2s display.
+            var splash = new Views.SplashScreen();
+            desktop.MainWindow = splash;
 
             _ = new UpdateService().CheckForUpdatesAsync(Logger);
         }
@@ -247,7 +247,8 @@ public partial class App : Application
         Services = services.BuildServiceProvider();
         Logger = Services.GetRequiredService<IAppLogger>();
 
-        TourCatalog.Initialize(Current!.Resources);
+        TourActions = TourActionDefinitions.Build();
+        TourCatalog.Initialize(Current!.Resources, TourActions);
         foreach (var err in TourCatalog.Validate())
             Logger.LogInfo($"[TourCatalog] {err}");
 
@@ -281,7 +282,14 @@ public partial class App : Application
 
         return vm;
     }
+#endif // BROWSER
 
+    // ── Demo services (shared by WASM and desktop pre-wizard tour) ───────────
+
+    /// <summary>
+    /// Registers demo repositories and services into a service collection.
+    /// Platform-neutral — all Demo* classes compile on all targets.
+    /// </summary>
     private static void ConfigureDemoServices(IServiceCollection services)
     {
         services.AddSingleton<IAppLogger>(new ConsoleAppLogger());
@@ -317,7 +325,17 @@ public partial class App : Application
 
         RegisterViewModels(services);
     }
-#endif // BROWSER
+
+    /// <summary>
+    /// Builds an isolated demo DI container without touching <see cref="Services"/>.
+    /// Used by the desktop pre-wizard tour to show populated demo data.
+    /// </summary>
+    internal static IServiceProvider BuildDemoServiceProvider()
+    {
+        var services = new ServiceCollection();
+        ConfigureDemoServices(services);
+        return services.BuildServiceProvider();
+    }
 
     // ── Shared ViewModel registration ────────────────────────────────────────
 

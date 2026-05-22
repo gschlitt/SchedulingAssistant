@@ -258,7 +258,7 @@ public static class TourCatalog
                 ? TourTarget.None
                 : new TourTarget(kind, data.TargetValue);
             result[key] = new TourStep(
-                key, target, data.Title, data.Body, placement, data.IsWelcome,
+                key, target, data.Title, data.Body, placement, data.CardWidth,
                 stepActions?.PreAction, stepActions?.MidActions, stepActions?.PostAction);
         }
 

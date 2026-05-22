@@ -10,7 +10,7 @@ namespace SchedulingAssistant.Helpers;
 public static class TourPositionCalculator
 {
     /// <summary>Default card width in pixels.</summary>
-    public const double CardWidth = 320;
+    public const double DefaultCardWidth = 320;
 
     /// <summary>Estimated card height. Actual height varies with content; used for fit-checking.</summary>
     public const double EstimatedCardHeight = 200;
@@ -60,7 +60,7 @@ public static class TourPositionCalculator
         Rect targetBounds,
         Size overlaySize,
         TourPlacement preferred,
-        double cardWidth = CardWidth,
+        double cardWidth = DefaultCardWidth,
         double cardHeight = EstimatedCardHeight)
     {
         var highlight = ComputeHighlightRect(targetBounds);
@@ -100,7 +100,7 @@ public static class TourPositionCalculator
     /// <returns>Centered card position.</returns>
     public static CardPosition ComputeCenteredPosition(
         Size overlaySize,
-        double cardWidth = CardWidth,
+        double cardWidth = DefaultCardWidth,
         double cardHeight = EstimatedCardHeight)
     {
         var x = (overlaySize.Width - cardWidth) / 2;

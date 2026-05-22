@@ -58,7 +58,7 @@ public class TourPositionCalculatorTests
 
         Assert.Equal(TourPlacement.Left, pos.ActualPlacement);
         // Card right edge = card left + card width, should be less than highlight left
-        Assert.True(pos.CardMargin.Left + TourPositionCalculator.CardWidth < CenteredTarget.Left);
+        Assert.True(pos.CardMargin.Left + TourPositionCalculator.DefaultCardWidth < CenteredTarget.Left);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class TourPositionCalculatorTests
     {
         var pos = TourPositionCalculator.ComputeCenteredPosition(Overlay);
 
-        var expectedX = (Overlay.Width - TourPositionCalculator.CardWidth) / 2;
+        var expectedX = (Overlay.Width - TourPositionCalculator.DefaultCardWidth) / 2;
         var expectedY = (Overlay.Height - TourPositionCalculator.EstimatedCardHeight) / 2;
 
         Assert.Equal(expectedX, pos.CardMargin.Left);

@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.VisualTree;
 using SchedulingAssistant.ViewModels;
+using SchedulingAssistant.ViewModels.Management;
 using SchedulingAssistant.Views;
 using System.Linq;
 
@@ -449,6 +450,173 @@ internal static class TourActionDefinitions
                 GetViewModel()?.SectionListVm.ExpandAll();
                 return Task.CompletedTask;
             }),
+
+        // ── Adding a Section ───────────────────────────────────────────────
+
+        // MidAction 1: select the 4th section, fire Add (editor opens below it)
+        // No PostAction — editor stays open for the next card
+        ["section.add"] = new(
+            MidActions: new Func<Task>[]
+            {
+                async () =>
+                {
+                    var vm = GetViewModel()?.SectionListVm;
+                    if (vm is null) return;
+
+                    // Select the 4th section item so Add inserts below it
+                    var fourth = vm.SectionItems
+                        .OfType<SectionListItemViewModel>()
+                        .Skip(3).FirstOrDefault();
+                    if (fourth is not null)
+                        vm.SelectedItem = fourth;
+
+                    await vm.AddCommand.ExecuteAsync(null);
+                }
+            }),
+
+        // ── Section Editor: Full Add-and-Edit Walkthrough ───────────────────
+        //
+        // MidAction 1: pick the 2nd subject and 1st course number
+        // MidAction 2: pick the 1st code pattern (auto-fills section code)
+        // MidAction 3: fire ApplyPattern1 to create meeting rows
+        // MidAction 4: set start time, block length, meeting type on first meeting
+        // MidAction 5: open instructor chooser, select 3rd instructor
+        // MidAction 6: close instructor chooser, open tag chooser, select 1st tag
+        // MidAction 7: close tag chooser
+        // PostAction: save the section and clean up
+        ["section.editor-course"] = new(
+            PreAction: () =>
+            {
+                SuppressLightDismiss("SectionViewPanel", "InstructorToggle");
+                SuppressLightDismiss("SectionViewPanel", "TagsToggle");
+                return Task.CompletedTask;
+            },
+            MidActions: new Func<Task>[]
+            {
+                // MidAction 1: pick subject + course number
+                () =>
+                {
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    if (editVm is null) return Task.CompletedTask;
+
+                    // Pick the 2nd subject
+                    var subject = editVm.Subjects.Count > 1
+                        ? editVm.Subjects[1] : editVm.Subjects.FirstOrDefault();
+                    if (subject is not null)
+                        editVm.SelectedSubject = subject;
+
+                    // Pick the 1st available course number
+                    var courseNum = editVm.CourseNumbers?.FirstOrDefault();
+                    if (courseNum is not null)
+                        editVm.SelectedCourseNumber = courseNum;
+
+                    return Task.CompletedTask;
+                },
+
+                // MidAction 2: pick the 1st code pattern (auto-fills section code)
+                () =>
+                {
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    if (editVm?.CodePatterns.Count > 0)
+                        editVm.SelectedPattern = editVm.CodePatterns[0];
+
+                    return Task.CompletedTask;
+                },
+
+                // MidAction 3: fire meeting pattern to create meeting rows
+                () =>
+                {
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    if (editVm?.HasPattern1 == true)
+                        editVm.ApplyPattern1Command.Execute(null);
+
+                    return Task.CompletedTask;
+                },
+
+                // MidAction 4: set time, duration, meeting type on the first meeting.
+                // Uses CommitStartTime/CommitBlockLength so the text→hours unit
+                // conversion is handled correctly (SelectedBlockLength is in hours,
+                // but AvailableBlockLengthStrings may show minutes).
+                async () =>
+                {
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    var meeting = editVm?.Meetings.FirstOrDefault();
+                    if (meeting is null) return;
+
+                    // Pick the 2nd available start time via text + commit
+                    if (meeting.AvailableStartTimeStrings.Count > 1)
+                    {
+                        meeting.StartTimeText = meeting.AvailableStartTimeStrings[1];
+                        await meeting.CommitStartTimeCommand.ExecuteAsync(null);
+                    }
+
+                    // Pick the 1st available block length via text + commit
+                    if (meeting.AvailableBlockLengthStrings.Count > 0)
+                    {
+                        meeting.BlockLengthText = meeting.AvailableBlockLengthStrings[0];
+                        await meeting.CommitBlockLengthCommand.ExecuteAsync(null);
+                    }
+
+                    // Pick the 1st meeting type
+                    if (meeting.MeetingTypes.Count > 0)
+                        meeting.SelectedMeetingTypeId = meeting.MeetingTypes[0].Id;
+                },
+
+                // MidAction 5: open instructor chooser, select 3rd instructor
+                () =>
+                {
+                    var toggle = FindDescendant<ToggleButton>("SectionViewPanel", "InstructorToggle");
+                    if (toggle is not null)
+                        toggle.IsChecked = true;
+
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    if (editVm?.InstructorSelections.Count > 2)
+                        editVm.InstructorSelections[2].IsSelected = true;
+
+                    return Task.CompletedTask;
+                },
+
+                // MidAction 6: close instructor chooser, open tag chooser, select 1st tag
+                () =>
+                {
+                    var instrToggle = FindDescendant<ToggleButton>("SectionViewPanel", "InstructorToggle");
+                    if (instrToggle is not null)
+                        instrToggle.IsChecked = false;
+
+                    var tagToggle = FindDescendant<ToggleButton>("SectionViewPanel", "TagsToggle");
+                    if (tagToggle is not null)
+                        tagToggle.IsChecked = true;
+
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    if (editVm?.TagSelections.Count > 0)
+                        editVm.TagSelections[0].IsSelected = true;
+
+                    return Task.CompletedTask;
+                },
+
+                // MidAction 7: close tag chooser
+                () =>
+                {
+                    var tagToggle = FindDescendant<ToggleButton>("SectionViewPanel", "TagsToggle");
+                    if (tagToggle is not null)
+                        tagToggle.IsChecked = false;
+
+                    return Task.CompletedTask;
+                }
+            },
+            PostAction: async () =>
+            {
+                try
+                {
+                    var editVm = GetViewModel()?.SectionListVm.EditVm;
+                    if (editVm is not null)
+                        await editVm.SaveCommand.ExecuteAsync(null);
+                }
+                finally
+                {
+                    RestoreAllLightDismiss();
+                }
+            }),
     };
 
     // ── Light-dismiss suppression ───────────────────────────────────────────
@@ -517,11 +685,16 @@ internal static class TourActionDefinitions
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Gets the current <see cref="MainWindowViewModel"/> from DI.
+    /// Gets the current <see cref="MainWindowViewModel"/> from DI, or falls back
+    /// to <see cref="MainWindow.DataContext"/> when <see cref="App.Services"/> is
+    /// not yet initialized (e.g. during the pre-wizard desktop tour).
     /// </summary>
     private static MainWindowViewModel? GetViewModel()
     {
-        return App.Services.GetService(typeof(MainWindowViewModel)) as MainWindowViewModel;
+        if (App.Services?.GetService(typeof(MainWindowViewModel)) is MainWindowViewModel vm)
+            return vm;
+        return (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.DataContext as MainWindowViewModel;
     }
 
     /// <summary>

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-21T04:50:48.607Z
-> Files: 66 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-22T01:07:32.921Z
+> Files: 76 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -37,6 +37,9 @@
 - `let-s-work-on-the-glimmering-pearl.md` — Plan: Walkthrough Tour — Phase 3 (UX Sketch) (~2715 tok)
 - `move-to-phase-3-cached-zebra.md` — Body Message Sequence — AXAML-Driven Dynamic Tour Card Text (~1025 tok)
 - `next-is-the-data-functional-charm.md` — Plan: Tour Feature — Data Model Implementation (~1925 tok)
+- `oh-sweet-ok-we-ll-mossy-cherny.md` — Plan: Two-Tour Architecture (Desktop + WASM) with Pre-Wizard Desktop Tour (~1832 tok)
+- `ok-better-one-issue-velvety-crane.md` — Tour: Full-window input blocking + exception safety (~795 tok)
+- `ok-found-another-reproducible-compiled-blum.md` — Exception Handling Safety Net (~1918 tok)
 - `ok-we-ll-need-to-zazzy-quasar.md` — Tour Action Sequence Rework (~1087 tok)
 - `on-a-build-i-m-playful-codd.md` — Fix: Bugsnag ObjectDisposedException on Startup Error (~406 tok)
 - `we-ll-refine-the-project-tour-golden-catmull.md` — Plan: Add `filter.overlay-open` tour action group (~579 tok)
@@ -207,19 +210,21 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `GridPipelineTests.cs` — Unit tests for the internal static pipeline methods extracted from <see cref="ScheduleGridViewModel. (~8267 tok)
 - `TourCatalogTests.cs` — Class: TourCatalogTests (~1144 tok)
 - `TourOverlayViewModelTests.cs` — Tests for <see cref="TourOverlayViewModel"/> — verifies that TourRunner events correctly update all (~3707 tok)
-- `TourPositionCalculatorTests.cs` — Class: TourPositionCalculatorTests (~2131 tok)
+- `TourPositionCalculatorTests.cs` — Class: TourPositionCalculatorTests (~2135 tok)
 - `TourProgressTests.cs` — Class: TourProgressTests (~390 tok)
 - `TourRunnerTests.cs` — Tests for <see cref="TourRunner"/> state machine. Each test initializes TourCatalog with test data a (~1530 tok)
+- `WatchCommandErrorsTests.cs` — Unit tests for <see cref="ViewModelBase.WatchCommandErrors"/>. <para>Uses a minimal concrete subclas (~2312 tok)
 
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1762 tok)
-- `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~4756 tok)
+- `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5242 tok)
 - `AppColors.axaml` (~3496 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~15080 tok)
-- `TourContent.axaml` (~1030 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~16114 tok)
+- `TourContent.axaml` (~2000 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -253,7 +258,7 @@
 
 ## src/SchedulingAssistant/Helpers/
 
-- `TourPositionCalculator.cs` — Pure static positioning logic for the tour overlay card and highlight ring. No Avalonia visual tree (~2663 tok)
+- `TourPositionCalculator.cs` — Pure static positioning logic for the tour overlay card and highlight ring. No Avalonia visual tree (~2669 tok)
 
 ## src/SchedulingAssistant/Models/
 
@@ -267,11 +272,11 @@
 - `TourSegment.cs` — A named, ordered group of <see cref="TourStep"/> keys that belong together thematically. The unit of (~552 tok)
 - `TourSegmentData.cs` — AXAML-instantiable content class for a tour segment. Converted to an immutable <see cref="TourSegmen (~204 tok)
 - `TourStatus.cs` — Lifecycle state of a running or completed tour. Valid transitions: <c>NotStarted → InProgress → Comp (~114 tok)
-- `TourStep.cs` — The atomic unit of a tour: one moment of explanation that identifies a UI element and provides conte (~1216 tok)
+- `TourStep.cs` — The atomic unit of a tour: one moment of explanation that identifies a UI element and provides conte (~1175 tok)
 - `TourStepData.cs` — AXAML-instantiable content class for a tour step. Parameterless constructor and public setters allow (~465 tok)
 - `TourTarget.cs` — Identifies a UI element that a tour step points at. <see cref="Kind"/> selects the resolution strate (~424 tok)
 - `TourTargetKind.cs` — Determines how a <see cref="TourTarget"/> is resolved to a UI element at runtime. Each kind uses a d (~314 tok)
-- `TourTriggerRule.cs` — Describes when a tour should auto-start. Attached to a <see cref="TourDefinition"/> via its <c>AutoT (~235 tok)
+- `TourTriggerRule.cs` — Describes when a tour should auto-start. Attached to a <see cref="TourDefinition"/> via its <c>AutoT (~290 tok)
 
 ## src/SchedulingAssistant/Services/
 
@@ -282,15 +287,16 @@
 - `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4361 tok)
 - `SharedScheduleCsvExporter.cs` — Exports sections visible in the current filter state as a shared schedule CSV. Stateless — all data (~1487 tok)
 - `SharedScheduleCsvParser.cs` — Parses a shared schedule CSV file into a <see cref="SharedScheduleSet"/>. Stateless — all results re (~3710 tok)
-- `TourActionDefinitions.cs` — Defines all tour step PreAction/MidActions/PostAction callbacks in one place. Each entry's key must  (~5965 tok)
+- `TourActionDefinitions.cs` — Defines all tour step PreAction/MidActions/PostAction callbacks in one place. Each entry's key must (~7980 tok)
 - `TourCatalog.cs` — Static registry of all tour definitions. Steps, segments, and tours are immutable and created once a (~3613 tok)
-- `TourRunner.cs` — Coordinates tour lifecycle: start, advance, dismiss, and auto-trigger evaluation. DI-registered sing (~2504 tok)
+- `TourRunner.cs` — Coordinates tour lifecycle: start, advance, dismiss, and auto-trigger evaluation. DI-registered sing (~2803 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~8153 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
 - `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8595 tok)
-- `TourOverlayViewModel.cs` — Drives the tour overlay presentation layer. Subscribes to <see cref="TourRunner"/> events and comput (~5063 tok)
+- `TourOverlayViewModel.cs` — Drives the tour overlay presentation layer. Subscribes to <see cref="TourRunner"/> events and comput (~5140 tok)
+- `ViewModelBase.cs` — Inline error message shown in the view when an operation fails or is blocked by a business rule. Set (~591 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
@@ -303,6 +309,7 @@
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~5060 tok)
 - `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~3141 tok)
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3306 tok)
+- `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~9161 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -313,13 +320,16 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `MainView.axaml` (~6403 tok)
+- `MainView.axaml` (~6424 tok)
 - `SectionPanelContent.axaml` (~1858 tok)
+- `SplashScreen.axaml` (~360 tok)
+- `SplashScreen.axaml.cs` — Splash screen shown as the initial <c>desktop.MainWindow</c>. After a minimum display time, creates (~370 tok)
 - `TourOverlayView.axaml` (~1364 tok)
-- `TourOverlayView.axaml.cs` — Code-behind for the tour overlay. Handles target resolution (visual tree walking), arrow positioning (~2953 tok)
+- `TourOverlayView.axaml.cs` — Code-behind for the tour overlay. Handles target resolution (visual tree walking), arrow positioning (~3060 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18383 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 

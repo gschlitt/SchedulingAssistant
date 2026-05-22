@@ -34,8 +34,8 @@ public class TourStepData
     public string Placement { get; set; } = string.Empty;
 
     /// <summary>
-    /// When true, the overlay renders a wider centered card suitable for a tour
-    /// introduction or welcome message. Implies no highlight ring or arrow.
+    /// Card width in pixels. Defaults to 320. Set a larger value in AXAML for
+    /// steps that need more room (e.g. welcome/introduction cards).
     /// </summary>
-    public bool IsWelcome { get; set; }
+    public double CardWidth { get; set; } = 320;
 }

@@ -15,10 +15,16 @@ public enum TourTriggerRule
     PostWizardFirstLaunch,
 
     /// <summary>
-    /// Auto-start on every main-window load when the tour key is not
-    /// in <c>CompletedTourKeys</c>. On WASM (where settings reset each
-    /// session) this effectively fires every visit; on desktop it fires
-    /// once and completion suppresses it.
+    /// Auto-start on every browser/WASM session. On desktop this trigger
+    /// is suppressed (via <see cref="PlatformCapabilities"/>). On WASM,
+    /// where settings reset each session, this fires every visit.
     /// </summary>
-    EverySession
+    EverySession,
+
+    /// <summary>
+    /// Auto-start before the startup wizard on first launch.
+    /// Detected by: <c>AppSettings.IsInitialSetupComplete == false</c>
+    /// AND tour key not in <c>CompletedTourKeys</c>.
+    /// </summary>
+    PreWizardFirstLaunch
 }

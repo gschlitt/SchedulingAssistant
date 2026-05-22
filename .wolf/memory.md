@@ -1,5 +1,25 @@
 # Memory
 
+## Session: 2026-05-21 — Exception handling safety net
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Global UI-thread exception handler | `App.axaml.cs` | `Dispatcher.UIThread.UnhandledException` catches, logs, and continues instead of crashing. Respects `ThrowOnError` for debug mode. |
+| OnClosing try-catch | `MainWindow.axaml.cs` | Wrapped async void OnClosing shutdown sequence in try-catch; logs error, still allows close. |
+| Render try-catch | `ScheduleGridView.axaml.cs` | Wrapped `Render()` and `RenderGhostOverlay()` bodies; on failure clears canvas and logs. |
+| WatchCommandErrors helper | `ViewModelBase.cs` | Monitors `IAsyncRelayCommand.ExecutionTask` for faults; surfaces via `LastErrorMessage` + `App.Logger`. |
+| WatchCommandErrors tests | `WatchCommandErrorsTests.cs` | 7 tests: faulting sets LastErrorMessage, logs with context, unwraps inner exception; successful command leaves state clean. |
+| GridPipelineTests fix | `GridPipelineTests.cs` | Added missing `ActiveInstructors` parameter (pre-existing build error from prior session). |
+
+## Session: 2026-05-21 — Tour content authoring: section editor walkthrough + instructor filter fix
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Extended section.editor-course with 7 mid-actions | `Services/TourActionDefinitions.cs`, `TourContent.axaml` | Full add-and-edit walkthrough: subject→course→code pattern→meeting pattern→time/duration/type→instructor→tag→save. 8 body messages, light-dismiss suppression on instructor/tag toggles. |
+| Fixed deactivated instructors in filter/overlay | `IInstructorRepository.cs`, `InstructorRepository.cs`, `DemoInstructorRepository.cs`, `GridPipelineTypes.cs`, `ScheduleGridViewModel.cs`, `GridFilterViewModel.cs` | Added `GetAllActive()`, `ActiveInstructors` field in GridLookups, filters use active-only list. |
+| Created FilterSegment tour steps | `TourContent.axaml`, `TourActionDefinitions.cs` | filter.tags, filter.instructor, filter.unstaffed, overlay.instructor — all with popup light-dismiss suppression. Cross-step state: unstaffed sentinel left selected for overlay step cleanup. |
+| Created SectionEditSegment tour steps | `TourContent.axaml`, `TourActionDefinitions.cs` | section.collapse (collapse/expand all), section.add (select 4th item, fire Add), section.editor-course (7-step editor walkthrough). |
+
 ## Session: 2026-05-18 — Tour data model implementation
 
 | Action | Files | Outcome |
@@ -7005,3 +7025,225 @@
 | 21:50 | Session end: 23 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~14966 tok |
 | 21:53 | Session end: 23 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 9 reads | ~14966 tok |
 | 22:11 | Session end: 23 writes across 8 files (TourContent.axaml, TourActionDefinitions.cs, IInstructorRepository.cs, InstructorRepository.cs, GridPipelineTypes.cs) | 14 reads | ~23227 tok |
+
+## Session: 2026-05-21 07:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:29 | Edited src/SchedulingAssistant/TourContent.axaml | "section.collapse" → "section.collapse,section." | ~17 |
+| 07:29 | Edited src/SchedulingAssistant/TourContent.axaml | expanded (+12 lines) | ~166 |
+| 07:29 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | 2→3 lines | ~32 |
+| 07:30 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added 6 condition(s) | ~733 |
+| 07:30 | Session end: 4 writes across 2 files (TourContent.axaml, TourActionDefinitions.cs) | 2 reads | ~8022 tok |
+
+## Session: 2026-05-21 08:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:07 | Edited src/SchedulingAssistant/TourContent.axaml | 6→6 lines | ~152 |
+| 08:08 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added 14 condition(s) | ~1643 |
+| 08:08 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | inline fix | ~13 |
+| 08:09 | Session end: 3 writes across 2 files (TourContent.axaml, TourActionDefinitions.cs) | 4 reads | ~9793 tok |
+
+## Session: 2026-05-21 08:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-21 08:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:34 | Created ../../../.claude/plans/ok-found-another-reproducible-compiled-blum.md | — | ~824 |
+| 08:41 | Edited ../../../.claude/plans/ok-found-another-reproducible-compiled-blum.md | modified if() | ~505 |
+| 08:42 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified if() | ~239 |
+| 08:47 | Session end: 3 writes across 2 files (ok-found-another-reproducible-compiled-blum.md, SectionMeetingViewModel.cs) | 9 reads | ~9537 tok |
+| 08:47 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified if() | ~507 |
+| 08:47 | Session end: 4 writes across 2 files (ok-found-another-reproducible-compiled-blum.md, SectionMeetingViewModel.cs) | 9 reads | ~19018 tok |
+| 08:48 | Session end: 4 writes across 2 files (ok-found-another-reproducible-compiled-blum.md, SectionMeetingViewModel.cs) | 9 reads | ~19018 tok |
+
+## Session: 2026-05-21 08:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:50 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | modified if() | ~397 |
+| 08:50 | Session end: 1 writes across 1 files (TourActionDefinitions.cs) | 0 reads | ~426 tok |
+| 08:51 | Session end: 1 writes across 1 files (TourActionDefinitions.cs) | 0 reads | ~426 tok |
+| 08:52 | Session end: 1 writes across 1 files (TourActionDefinitions.cs) | 0 reads | ~426 tok |
+
+## Session: 2026-05-21 11:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-21 11:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-21 11:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:56 | Created ../../../.claude/plans/ok-found-another-reproducible-compiled-blum.md | — | ~2046 |
+| 12:03 | Edited src/SchedulingAssistant/App.axaml.cs | added error handling | ~397 |
+| 12:03 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added error handling | ~362 |
+| 12:03 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified if() | ~59 |
+| 12:03 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified catch() | ~164 |
+| 12:04 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified RenderGhostOverlay() | ~167 |
+| 12:04 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | modified catch() | ~71 |
+| 12:04 | Edited src/SchedulingAssistant/ViewModels/ViewModelBase.cs | added error handling | ~579 |
+
+## Session: 2026-05-21 12:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:08 | Created src/SchedulingAssistant.Tests/WatchCommandErrorsTests.cs | — | ~1914 |
+| 12:08 | Edited src/SchedulingAssistant.Tests/WatchCommandErrorsTests.cs | modified SetAppLogger() | ~152 |
+| 12:09 | Edited src/SchedulingAssistant.Tests/GridPipelineTests.cs | 6→7 lines | ~87 |
+| 12:10 | Created src/SchedulingAssistant.Tests/WatchCommandErrorsTests.cs | — | ~2193 |
+| 12:10 | Edited src/SchedulingAssistant.Tests/WatchCommandErrorsTests.cs | modified TestViewModel() | ~225 |
+| 12:13 | Session end: 5 writes across 2 files (WatchCommandErrorsTests.cs, GridPipelineTests.cs) | 6 reads | ~10186 tok |
+
+## Session: 2026-05-21 12:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:49 | Created ../../../.claude/plans/oh-sweet-ok-we-ll-mossy-cherny.md | — | ~1808 |
+| 12:57 | Session end: 1 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 23 reads | ~63504 tok |
+| 12:59 | Session end: 1 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 23 reads | ~63504 tok |
+| 13:01 | Session end: 1 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 23 reads | ~63504 tok |
+| 13:02 | Session end: 1 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 23 reads | ~63504 tok |
+| 13:03 | Session end: 1 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 23 reads | ~63504 tok |
+| 13:04 | Edited ../../../.claude/plans/oh-sweet-ok-we-ll-mossy-cherny.md | modified BuildDemoServiceProvider() | ~302 |
+| 13:04 | Edited ../../../.claude/plans/oh-sweet-ok-we-ll-mossy-cherny.md | inline fix | ~31 |
+| 13:04 | Session end: 3 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 24 reads | ~63860 tok |
+| 13:04 | Session end: 3 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 24 reads | ~63860 tok |
+| 13:05 | Session end: 3 writes across 1 files (oh-sweet-ok-we-ll-mossy-cherny.md) | 24 reads | ~63860 tok |
+| 13:06 | Edited src/SchedulingAssistant/Models/Tour/TourTriggerRule.cs | expanded (+7 lines) | ~151 |
+| 13:06 | Edited src/SchedulingAssistant/Services/TourRunner.cs | 6→7 lines | ~87 |
+| 13:06 | Edited src/SchedulingAssistant/App.axaml.cs | 3→1 lines | ~14 |
+| 13:06 | Edited src/SchedulingAssistant/App.axaml.cs | 3→4 lines | ~59 |
+| 13:06 | Edited src/SchedulingAssistant/App.axaml.cs | modified ConfigureDemoServices() | ~799 |
+| 13:07 | Edited src/SchedulingAssistant/App.axaml.cs | 5→3 lines | ~12 |
+| 13:07 | Edited src/SchedulingAssistant/TourContent.axaml | expanded (+56 lines) | ~675 |
+| 13:07 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added optional chaining | ~165 |
+| 13:08 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 1→2 lines | ~21 |
+| 13:08 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added error handling | ~211 |
+| 13:08 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added optional chaining | ~796 |
+| 13:10 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→2 lines | ~39 |
+| 13:11 | Session end: 15 writes across 7 files (oh-sweet-ok-we-ll-mossy-cherny.md, TourTriggerRule.cs, TourRunner.cs, App.axaml.cs, TourContent.axaml) | 24 reads | ~68247 tok |
+| 13:14 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 3→4 lines | ~67 |
+| 13:14 | Session end: 16 writes across 7 files (oh-sweet-ok-we-ll-mossy-cherny.md, TourTriggerRule.cs, TourRunner.cs, App.axaml.cs, TourContent.axaml) | 24 reads | ~68351 tok |
+| 13:20 | Session end: 16 writes across 7 files (oh-sweet-ok-we-ll-mossy-cherny.md, TourTriggerRule.cs, TourRunner.cs, App.axaml.cs, TourContent.axaml) | 24 reads | ~68351 tok |
+| 13:23 | Edited src/SchedulingAssistant/Services/TourRunner.cs | 7→7 lines | ~97 |
+| 13:24 | Edited src/SchedulingAssistant/Models/Tour/TourTriggerRule.cs | WASM() → suppressed() | ~72 |
+| 13:24 | Session end: 18 writes across 7 files (oh-sweet-ok-we-ll-mossy-cherny.md, TourTriggerRule.cs, TourRunner.cs, App.axaml.cs, TourContent.axaml) | 24 reads | ~68558 tok |
+
+## Session: 2026-05-21 14:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:04 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 6→8 lines | ~64 |
+| 15:05 | Session end: 1 writes across 1 files (MainWindow.axaml.cs) | 4 reads | ~21405 tok |
+| 15:06 | Edited src/SchedulingAssistant/App.axaml.cs | modified if() | ~125 |
+| 15:06 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified MainWindow() | ~123 |
+| 15:06 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | removed 8 lines | ~10 |
+| 15:07 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added error handling | ~119 |
+| 15:07 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 6→7 lines | ~87 |
+| 15:07 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→3 lines | ~35 |
+| 15:07 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 4→5 lines | ~41 |
+| 15:09 | Session end: 8 writes across 2 files (MainWindow.axaml.cs, App.axaml.cs) | 4 reads | ~22150 tok |
+| 15:11 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 5→7 lines | ~64 |
+| 15:11 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~139 |
+| 15:11 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | inline fix | ~8 |
+| 15:12 | Session end: 11 writes across 2 files (MainWindow.axaml.cs, App.axaml.cs) | 4 reads | ~22382 tok |
+| 15:16 | Edited src/SchedulingAssistant/App.axaml.cs | modified if() | ~140 |
+| 15:16 | Created src/SchedulingAssistant/Views/SplashScreen.axaml.cs | — | ~322 |
+| 15:16 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | removed 17 lines | ~16 |
+| 15:16 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | removed 17 lines | ~15 |
+| 15:16 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→1 lines | ~14 |
+| 15:16 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 3→2 lines | ~17 |
+| 15:17 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 3→2 lines | ~12 |
+| 15:17 | Session end: 18 writes across 3 files (MainWindow.axaml.cs, App.axaml.cs, SplashScreen.axaml.cs) | 4 reads | ~22774 tok |
+| 15:23 | Session end: 18 writes across 3 files (MainWindow.axaml.cs, App.axaml.cs, SplashScreen.axaml.cs) | 4 reads | ~22774 tok |
+
+## Session: 2026-05-21 15:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-21 15:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:33 | Edited src/SchedulingAssistant/Views/SplashScreen.axaml | expanded (+12 lines) | ~360 |
+| 15:33 | Session end: 1 writes across 1 files (SplashScreen.axaml) | 5 reads | ~25560 tok |
+| 15:35 | Edited src/SchedulingAssistant/Views/SplashScreen.axaml | 2→2 lines | ~21 |
+| 15:35 | Session end: 2 writes across 1 files (SplashScreen.axaml) | 5 reads | ~25583 tok |
+| 15:36 | Edited src/SchedulingAssistant/Views/SplashScreen.axaml | 2→1 lines | ~12 |
+| 15:36 | Edited src/SchedulingAssistant/Views/SplashScreen.axaml.cs | modified SplashScreen() | ~250 |
+| 15:36 | Session end: 4 writes across 2 files (SplashScreen.axaml, SplashScreen.axaml.cs) | 5 reads | ~25864 tok |
+| 15:39 | Session end: 4 writes across 2 files (SplashScreen.axaml, SplashScreen.axaml.cs) | 6 reads | ~27866 tok |
+| 15:40 | Session end: 4 writes across 2 files (SplashScreen.axaml, SplashScreen.axaml.cs) | 6 reads | ~27866 tok |
+| 15:41 | Edited src/SchedulingAssistant/App.axaml | 3→7 lines | ~58 |
+| 15:41 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 4→5 lines | ~54 |
+| 15:41 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 1→6 lines | ~58 |
+| 15:42 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 13→11 lines | ~126 |
+| 15:42 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | inline fix | ~24 |
+| 15:42 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 2→2 lines | ~36 |
+| 15:42 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | added 3 condition(s) | ~403 |
+| 15:42 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | inline fix | ~20 |
+| 15:42 | Edited src/SchedulingAssistant/Helpers/TourPositionCalculator.cs | 4→4 lines | ~72 |
+| 15:42 | Edited src/SchedulingAssistant/Helpers/TourPositionCalculator.cs | inline fix | ~12 |
+| 15:42 | Edited src/SchedulingAssistant.Tests/TourPositionCalculatorTests.cs | inline fix | ~11 |
+| 15:43 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | inline fix | ~16 |
+| 15:45 | Session end: 16 writes across 8 files (SplashScreen.axaml, SplashScreen.axaml.cs, App.axaml, TourOverlayView.axaml, TourOverlayViewModel.cs) | 12 reads | ~44755 tok |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 11→10 lines | ~136 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | inline fix | ~22 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 2→2 lines | ~34 |
+| 15:51 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | added optional chaining | ~198 |
+| 15:51 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | modified OnVmPropertyChanged() | ~153 |
+| 15:51 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | inline fix | ~18 |
+| 15:51 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 6→1 lines | ~13 |
+| 15:51 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 5→4 lines | ~33 |
+| 15:53 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | TryFindResource() → TryGetResource() | ~103 |
+| 15:54 | Session end: 25 writes across 8 files (SplashScreen.axaml, SplashScreen.axaml.cs, App.axaml, TourOverlayView.axaml, TourOverlayViewModel.cs) | 12 reads | ~45516 tok |
+| 16:01 | Edited src/SchedulingAssistant/Models/Tour/TourStepData.cs | 6→6 lines | ~63 |
+| 16:01 | Edited src/SchedulingAssistant/Models/Tour/TourStep.cs | 5→2 lines | ~28 |
+| 16:02 | Edited src/SchedulingAssistant/Models/Tour/TourStep.cs | modified TourStep() | ~386 |
+| 16:02 | Edited src/SchedulingAssistant/Services/TourCatalog.cs | 3→3 lines | ~56 |
+| 16:02 | Edited src/SchedulingAssistant/TourContent.axaml | "True" → "700" | ~4 |
+| 16:02 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | reduced (-7 lines) | ~41 |
+| 16:02 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | removed 9 lines | ~22 |
+| 16:03 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 5→5 lines | ~46 |
+| 16:03 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 4→3 lines | ~25 |
+| 16:03 | Edited src/SchedulingAssistant/App.axaml | removed 5 lines | ~7 |
+| 16:03 | Edited src/SchedulingAssistant/Helpers/TourPositionCalculator.cs | 2→2 lines | ~28 |
+| 16:04 | Session end: 36 writes across 12 files (SplashScreen.axaml, SplashScreen.axaml.cs, App.axaml, TourOverlayView.axaml, TourOverlayViewModel.cs) | 15 reads | ~51447 tok |
+| 16:10 | Created ../../../.claude/plans/ok-better-one-issue-velvety-crane.md | — | ~848 |
+
+## Session: 2026-05-22 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:43 | Edited src/SchedulingAssistant/Views/MainView.axaml | 3→4 lines | ~22 |
+| 17:43 | Edited src/SchedulingAssistant/Views/MainView.axaml | 7→9 lines | ~56 |
+| 17:43 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | added error handling | ~312 |
+| 17:44 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | added error handling | ~729 |
+| 17:44 | Edited src/SchedulingAssistant/Services/TourRunner.cs | Invoke() → FireStepChanged() | ~36 |
+| 17:44 | Edited src/SchedulingAssistant/Services/TourRunner.cs | Invoke() → FireStepChanged() | ~36 |
+| 17:44 | Edited src/SchedulingAssistant/Services/TourRunner.cs | added error handling | ~96 |
+| 17:44 | Edited src/SchedulingAssistant/Services/TourRunner.cs | added error handling | ~69 |
+| 17:44 | Edited src/SchedulingAssistant/Services/TourRunner.cs | added error handling | ~61 |
+| 17:44 | Edited src/SchedulingAssistant/Services/TourRunner.cs | added error handling | ~138 |
+| 17:47 | Session end: 10 writes across 3 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs) | 2 reads | ~13087 tok |
+| 17:51 | Session end: 10 writes across 3 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs) | 3 reads | ~16040 tok |
+| 17:53 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 9→9 lines | ~90 |
+| 17:53 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 3→5 lines | ~110 |
+| 17:54 | Session end: 12 writes across 4 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs, TourOverlayView.axaml) | 4 reads | ~17640 tok |
+| 18:00 | Session end: 12 writes across 4 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs, TourOverlayView.axaml) | 4 reads | ~17762 tok |
+| 18:07 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | inline fix | ~9 |
+| 18:07 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 5→3 lines | ~60 |
+| 18:07 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | added 1 condition(s) | ~158 |
+| 18:08 | Session end: 15 writes across 5 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs, TourOverlayView.axaml, TourOverlayView.axaml.cs) | 4 reads | ~18057 tok |

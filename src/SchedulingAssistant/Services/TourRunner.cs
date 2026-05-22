@@ -58,7 +58,7 @@ public class TourRunner
 
         var step = ResolveCurrentStep();
         if (step is not null)
-            StepChanged?.Invoke(step);
+            FireStepChanged(step);
 
         return true;
     }
@@ -96,7 +96,7 @@ public class TourRunner
         _bodyIndex = 0;
         var step = ResolveCurrentStep();
         if (step is not null)
-            StepChanged?.Invoke(step);
+            FireStepChanged(step);
     }
 
     /// <summary>
@@ -121,7 +121,14 @@ public class TourRunner
         if (step is null) return;
         _bodyIndex++;
         if (_bodyIndex < step.BodyMessages.Count)
-            BodyChanged?.Invoke(step.BodyMessages[_bodyIndex]);
+        {
+            try { BodyChanged?.Invoke(step.BodyMessages[_bodyIndex]); }
+            catch (Exception ex)
+            {
+                App.Logger.LogInfo($"[Tour] BodyChanged handler threw: {ex.Message}");
+                DismissInternal(persist: false);
+            }
+        }
     }
 
     /// <summary>
@@ -218,6 +225,20 @@ public class TourRunner
         return TourCatalog.GetSegment(segKey)?.Title;
     }
 
+    /// <summary>
+    /// Safely fires <see cref="StepChanged"/>. If a subscriber throws, the tour
+    /// is dismissed so the user is never left with a stuck overlay.
+    /// </summary>
+    private void FireStepChanged(TourStep step)
+    {
+        try { StepChanged?.Invoke(step); }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[Tour] StepChanged handler threw on '{step.Key}': {ex.Message}");
+            DismissInternal(persist: false);
+        }
+    }
+
     private void MarkCompleted()
     {
         if (Progress is null || ActiveTour is null) return;
@@ -230,7 +251,12 @@ public class TourRunner
         var tour = ActiveTour;
         ActiveTour = null;
         Progress = null;
-        TourCompleted?.Invoke();
+
+        try { TourCompleted?.Invoke(); }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[Tour] TourCompleted handler threw: {ex.Message}");
+        }
     }
 
     private void DismissInternal(bool persist)
@@ -245,7 +271,12 @@ public class TourRunner
 
         ActiveTour = null;
         Progress = null;
-        TourDismissed?.Invoke();
+
+        try { TourDismissed?.Invoke(); }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[Tour] TourDismissed handler threw: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -271,7 +302,8 @@ public class TourRunner
         return tour.AutoTrigger switch
         {
             TourTriggerRule.PostWizardFirstLaunch => AppSettings.Current.IsInitialSetupComplete,
-            TourTriggerRule.EverySession => true,
+            TourTriggerRule.PreWizardFirstLaunch => !AppSettings.Current.IsInitialSetupComplete,
+            TourTriggerRule.EverySession => !PlatformCapabilities.SupportsFileDialogs,
             _ => false
         };
     }

@@ -72,19 +72,9 @@ public partial class TourOverlayViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLastStep;
 
-    /// <summary>True when the current step is a welcome/introduction card (wider, centered).</summary>
+    /// <summary>Card width for the current step, read directly from step data.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CardWidth))]
-    private bool _isWelcomeStep;
-
-    /// <summary>Normal card width in pixels.</summary>
-    public const double NormalCardWidth = 320;
-
-    /// <summary>Wider card width for welcome/introduction steps.</summary>
-    public const double WelcomeCardWidth = 480;
-
-    /// <summary>Card width: wider for welcome steps, normal otherwise.</summary>
-    public double CardWidth => IsWelcomeStep ? WelcomeCardWidth : NormalCardWidth;
+    private double _cardWidth = 320;
 
     /// <summary>Button label: "Next" or "Done" depending on <see cref="IsLastStep"/>.</summary>
     public string AdvanceButtonLabel => IsLastStep ? "Done" : "Next >";
@@ -406,27 +396,36 @@ public partial class TourOverlayViewModel : ViewModelBase
     /// </summary>
     private async Task ShowStepAsync(TourStep step)
     {
-        _currentStep = step;
-        _midActionIndex = 0;
+        try
+        {
+            _currentStep = step;
+            _midActionIndex = 0;
 
-        // Update content
-        Title = step.Title;
-        Body = step.Body;
-        IsWelcomeStep = step.IsWelcome;
-        SegmentTitle = _runner.GetCurrentSegmentTitle();
+            // Update content
+            Title = step.Title;
+            Body = step.Body;
+            CardWidth = step.CardWidth;
+            SegmentTitle = _runner.GetCurrentSegmentTitle();
 
-        var globalIndex = _runner.GetGlobalStepIndex();
-        var globalCount = _runner.GetGlobalStepCount();
-        StepCounterText = $"Step {globalIndex + 1} of {globalCount}";
-        IsLastStep = (globalIndex + 1) >= globalCount;
-        OnPropertyChanged(nameof(AdvanceButtonLabel));
+            var globalIndex = _runner.GetGlobalStepIndex();
+            var globalCount = _runner.GetGlobalStepCount();
+            StepCounterText = $"Step {globalIndex + 1} of {globalCount}";
+            IsLastStep = (globalIndex + 1) >= globalCount;
+            OnPropertyChanged(nameof(AdvanceButtonLabel));
 
-        // Position highlight and card — but skip if AdvanceAsync is handling
-        // positioning to avoid a race between two concurrent PositionOverlayAsync calls.
-        if (!_isAdvancing)
-            await PositionOverlayAsync(step);
+            // Position highlight and card — but skip if AdvanceAsync is handling
+            // positioning to avoid a race between two concurrent PositionOverlayAsync calls.
+            if (!_isAdvancing)
+                await PositionOverlayAsync(step);
 
-        IsVisible = true;
+            IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, $"[Tour] ShowStepAsync failed on '{step.Key}' — dismissing tour");
+            HideOverlay();
+            _runner.Dismiss();
+        }
     }
 
     /// <summary>
@@ -435,68 +434,77 @@ public partial class TourOverlayViewModel : ViewModelBase
     /// </summary>
     private async Task PositionOverlayAsync(TourStep step)
     {
-        // Untargeted steps (welcome/intro cards) always center — skip resolution entirely
-        if (step.Target.Kind == TourTargetKind.None)
+        try
         {
-            ShowCentered();
-            return;
-        }
+            // Untargeted steps (welcome/intro cards) always center — skip resolution entirely
+            if (step.Target.Kind == TourTargetKind.None)
+            {
+                ShowCentered();
+                return;
+            }
 
-        if (ResolveTargetAsync is null)
-        {
-            ShowCentered();
-            return;
-        }
+            if (ResolveTargetAsync is null)
+            {
+                ShowCentered();
+                return;
+            }
 
-        Rect? bounds = null;
-        for (int attempt = 0; attempt < MaxResolveRetries; attempt++)
-        {
-            bounds = await ResolveTargetAsync(step.Target);
-            if (bounds is not null) break;
-            await Task.Delay(ResolveRetryDelayMs);
-        }
+            Rect? bounds = null;
+            for (int attempt = 0; attempt < MaxResolveRetries; attempt++)
+            {
+                bounds = await ResolveTargetAsync(step.Target);
+                if (bounds is not null) break;
+                await Task.Delay(ResolveRetryDelayMs);
+            }
 
-        if (bounds is null || _overlaySize.Width < 1 || _overlaySize.Height < 1)
-        {
-            ShowCentered();
-            return;
-        }
+            if (bounds is null || _overlaySize.Width < 1 || _overlaySize.Height < 1)
+            {
+                ShowCentered();
+                return;
+            }
 
-        var targetRect = bounds.Value;
+            var targetRect = bounds.Value;
 
-        // Highlight ring
-        var ring = TourPositionCalculator.ComputeHighlightRect(targetRect);
-        HighlightMargin = new Thickness(ring.X, ring.Y, 0, 0);
-        HighlightWidth = ring.Width;
-        HighlightHeight = ring.Height;
-        IsHighlightVisible = true;
+            // Highlight ring
+            var ring = TourPositionCalculator.ComputeHighlightRect(targetRect);
+            HighlightMargin = new Thickness(ring.X, ring.Y, 0, 0);
+            HighlightWidth = ring.Width;
+            HighlightHeight = ring.Height;
+            IsHighlightVisible = true;
 
-        // Card position
-        var preferred = step.Placement;
+            // Card position
+            var preferred = step.Placement;
 #if DEBUG
-        if (_debugPlacementOverride is not null)
-            preferred = _debugPlacementOverride.Value;
+            if (_debugPlacementOverride is not null)
+                preferred = _debugPlacementOverride.Value;
 #endif
 
-        var cardPos = TourPositionCalculator.ComputeCardPosition(
-            targetRect, _overlaySize, preferred);
+            var cardPos = TourPositionCalculator.ComputeCardPosition(
+                targetRect, _overlaySize, preferred, CardWidth);
 
-        ActualPlacement = cardPos.ActualPlacement;
-        ArrowOffset = cardPos.ArrowOffset;
+            ActualPlacement = cardPos.ActualPlacement;
+            ArrowOffset = cardPos.ArrowOffset;
 
-        if (cardPos.ActualPlacement == TourPlacement.Above)
-        {
-            // Anchor from bottom so the card grows upward with content.
-            // The calculator's intended bottom edge is cardMargin.Top + EstimatedCardHeight.
-            var desiredBottom = cardPos.CardMargin.Top + TourPositionCalculator.EstimatedCardHeight;
-            var bottomMargin = _overlaySize.Height - desiredBottom;
-            CardVerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
-            CardMargin = new Thickness(cardPos.CardMargin.Left, 0, 0, bottomMargin);
+            if (cardPos.ActualPlacement == TourPlacement.Above)
+            {
+                // Anchor from bottom so the card grows upward with content.
+                // The calculator's intended bottom edge is cardMargin.Top + EstimatedCardHeight.
+                var desiredBottom = cardPos.CardMargin.Top + TourPositionCalculator.EstimatedCardHeight;
+                var bottomMargin = _overlaySize.Height - desiredBottom;
+                CardVerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
+                CardMargin = new Thickness(cardPos.CardMargin.Left, 0, 0, bottomMargin);
+            }
+            else
+            {
+                CardVerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+                CardMargin = cardPos.CardMargin;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            CardVerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
-            CardMargin = cardPos.CardMargin;
+            App.Logger.LogError(ex, $"[Tour] PositionOverlayAsync failed on '{step.Key}' — dismissing tour");
+            HideOverlay();
+            _runner.Dismiss();
         }
     }
 
@@ -517,7 +525,6 @@ public partial class TourOverlayViewModel : ViewModelBase
     {
         IsVisible = false;
         IsHighlightVisible = false;
-        IsWelcomeStep = false;
         _currentStep = null;
         _midActionIndex = 0;
 

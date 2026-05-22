@@ -12143,6 +12143,742 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-21T04:50:48.647Z"
+    },
+    {
+      "id": "bug-759",
+      "timestamp": "2026-05-21T14:29:25.149Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"section.collapse\"",
+      "fix": "Changed to \"section.collapse,section.add,section.editor-cours",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T14:29:25.149Z"
+    },
+    {
+      "id": "bug-760",
+      "timestamp": "2026-05-21T14:29:49.329Z",
+      "error_message": "Wrong reference: Views should be ViewModels",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Used \"Views\" instead of \"ViewModels\"",
+      "fix": "Changed Views → ViewModels",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T14:29:49.329Z"
+    },
+    {
+      "id": "bug-761",
+      "timestamp": "2026-05-21T14:30:07.981Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "No early return/throw for edge case: vm is null",
+      "fix": "Added guard clause: if (vm is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T14:30:07.981Z"
+    },
+    {
+      "id": "bug-762",
+      "timestamp": "2026-05-21T15:08:15.642Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T15:08:15.642Z"
+    },
+    {
+      "id": "bug-763",
+      "timestamp": "2026-05-21T15:08:21.491Z",
+      "error_message": "Wrong reference: CompletedText should be CompletedTask",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Used \"CompletedText\" instead of \"CompletedTask\"",
+      "fix": "Changed CompletedText → CompletedTask",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T15:08:21.491Z"
+    },
+    {
+      "id": "bug-764",
+      "timestamp": "2026-05-21T15:41:59.943Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../../.claude/plans/ok-found-another-reproducible-compiled-blum.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 26→36 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T15:41:59.943Z"
+    },
+    {
+      "id": "bug-765",
+      "timestamp": "2026-05-21T15:47:31.326Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 18→29 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T15:47:31.326Z"
+    },
+    {
+      "id": "bug-766",
+      "timestamp": "2026-05-21T15:50:18.305Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T15:50:18.305Z"
+    },
+    {
+      "id": "bug-767",
+      "timestamp": "2026-05-21T19:03:01.453Z",
+      "error_message": "Missing error handling in void",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T19:03:01.453Z"
+    },
+    {
+      "id": "bug-768",
+      "timestamp": "2026-05-21T19:03:16.427Z",
+      "error_message": "Missing error handling in void",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T19:03:16.427Z"
+    },
+    {
+      "id": "bug-769",
+      "timestamp": "2026-05-21T19:03:49.908Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: catch (Exception ex); {",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T19:04:20.039Z"
+    },
+    {
+      "id": "bug-770",
+      "timestamp": "2026-05-21T19:04:38.221Z",
+      "error_message": "Missing error handling in relay",
+      "file": "src/SchedulingAssistant/ViewModels/ViewModelBase.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T19:04:38.221Z"
+    },
+    {
+      "id": "bug-771",
+      "timestamp": "2026-05-21T19:10:56.205Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/WatchCommandErrorsTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T19:10:56.205Z"
+    },
+    {
+      "id": "bug-772",
+      "timestamp": "2026-05-21T20:07:39.588Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 13→69 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T20:07:39.588Z"
+    },
+    {
+      "id": "bug-773",
+      "timestamp": "2026-05-21T20:07:48.258Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T20:07:48.258Z"
+    },
+    {
+      "id": "bug-774",
+      "timestamp": "2026-05-21T20:08:17.792Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T20:08:17.792Z"
+    },
+    {
+      "id": "bug-775",
+      "timestamp": "2026-05-21T20:08:41.171Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T20:08:41.171Z"
+    },
+    {
+      "id": "bug-776",
+      "timestamp": "2026-05-21T20:10:28.914Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Had \"TermPointTour\"",
+      "fix": "Changed to \"desktop-tour\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T20:10:28.914Z"
+    },
+    {
+      "id": "bug-777",
+      "timestamp": "2026-05-21T20:14:44.592Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T20:14:44.592Z"
+    },
+    {
+      "id": "bug-778",
+      "timestamp": "2026-05-21T22:07:08.055Z",
+      "error_message": "Missing error handling in void",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:07:08.055Z"
+    },
+    {
+      "id": "bug-779",
+      "timestamp": "2026-05-21T22:11:49.265Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:11:49.265Z"
+    },
+    {
+      "id": "bug-780",
+      "timestamp": "2026-05-21T22:11:54.310Z",
+      "error_message": "Wrong reference: DismissSplash should be await",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Used \"DismissSplash\" instead of \"await\"",
+      "fix": "Changed DismissSplash → await",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:11:54.317Z"
+    },
+    {
+      "id": "bug-781",
+      "timestamp": "2026-05-21T22:16:31.428Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 17→3 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:16:31.428Z"
+    },
+    {
+      "id": "bug-782",
+      "timestamp": "2026-05-21T22:33:31.339Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/SplashScreen.axaml",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 21→33 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:33:31.339Z"
+    },
+    {
+      "id": "bug-783",
+      "timestamp": "2026-05-21T22:35:26.982Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/SplashScreen.axaml",
+      "root_cause": "Had \"CenterScreen\"",
+      "fix": "Changed to \"1400\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T22:36:04.286Z"
+    },
+    {
+      "id": "bug-784",
+      "timestamp": "2026-05-21T22:41:45.483Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:41:45.484Z"
+    },
+    {
+      "id": "bug-785",
+      "timestamp": "2026-05-21T22:42:09.095Z",
+      "error_message": "Wrong reference: CardWidth should be ActualCardWidth",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Used \"CardWidth\" instead of \"ActualCardWidth\"",
+      "fix": "Changed CardWidth → ActualCardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:42:09.095Z"
+    },
+    {
+      "id": "bug-786",
+      "timestamp": "2026-05-21T22:42:26.271Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "No early return/throw for edge case: _vm?.IsVisible == true && _nextButton is not null",
+      "fix": "Added guard clause: if (_vm?.IsVisible == true && _nextButton is)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:42:26.271Z"
+    },
+    {
+      "id": "bug-787",
+      "timestamp": "2026-05-21T22:42:31.299Z",
+      "error_message": "Wrong reference: CardWidth should be ActualCardWidth",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "Used \"CardWidth\" instead of \"ActualCardWidth\"",
+      "fix": "Changed CardWidth → ActualCardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T22:43:41.936Z"
+    },
+    {
+      "id": "bug-788",
+      "timestamp": "2026-05-21T22:42:40.580Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Helpers/TourPositionCalculator.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:42:40.580Z"
+    },
+    {
+      "id": "bug-789",
+      "timestamp": "2026-05-21T22:42:44.600Z",
+      "error_message": "Wrong reference: CardWidth should be DefaultCardWidth",
+      "file": "src/SchedulingAssistant/Helpers/TourPositionCalculator.cs",
+      "root_cause": "Used \"CardWidth\" instead of \"DefaultCardWidth\"",
+      "fix": "Changed CardWidth → DefaultCardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:42:44.600Z"
+    },
+    {
+      "id": "bug-790",
+      "timestamp": "2026-05-21T22:42:55.994Z",
+      "error_message": "Wrong reference: CardWidth should be DefaultCardWidth",
+      "file": "src/SchedulingAssistant.Tests/TourPositionCalculatorTests.cs",
+      "root_cause": "Used \"CardWidth\" instead of \"DefaultCardWidth\"",
+      "fix": "Changed CardWidth → DefaultCardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:42:55.994Z"
+    },
+    {
+      "id": "bug-791",
+      "timestamp": "2026-05-21T22:51:15.547Z",
+      "error_message": "Wrong reference: ActualCardWidth should be CardWidth",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Used \"ActualCardWidth\" instead of \"CardWidth\"",
+      "fix": "Changed ActualCardWidth → CardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T22:51:20.718Z"
+    },
+    {
+      "id": "bug-792",
+      "timestamp": "2026-05-21T22:51:29.650Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:51:29.650Z"
+    },
+    {
+      "id": "bug-793",
+      "timestamp": "2026-05-21T22:51:41.537Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "18 lines replaced/restructured",
+      "fix": "Rewrote 42→16 lines (18 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:51:41.537Z"
+    },
+    {
+      "id": "bug-794",
+      "timestamp": "2026-05-21T22:51:46.623Z",
+      "error_message": "Wrong reference: ActualCardWidth should be CardWidth",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "Used \"ActualCardWidth\" instead of \"CardWidth\"",
+      "fix": "Changed ActualCardWidth → CardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:51:46.623Z"
+    },
+    {
+      "id": "bug-795",
+      "timestamp": "2026-05-21T22:51:57.592Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→4 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T22:51:57.592Z"
+    },
+    {
+      "id": "bug-796",
+      "timestamp": "2026-05-21T23:02:24.857Z",
+      "error_message": "Wrong reference: IsWelcome should be CardWidth",
+      "file": "src/SchedulingAssistant/Services/TourCatalog.cs",
+      "root_cause": "Used \"IsWelcome\" instead of \"CardWidth\"",
+      "fix": "Changed IsWelcome → CardWidth",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T23:02:24.857Z"
+    },
+    {
+      "id": "bug-797",
+      "timestamp": "2026-05-21T23:02:30.540Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"True\"",
+      "fix": "Changed to \"700\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T23:02:30.540Z"
+    },
+    {
+      "id": "bug-798",
+      "timestamp": "2026-05-21T23:02:39.907Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 10→3 lines (7 removed) | Also: // Read card widths from AXAML resources; fall bac; var res = Avalonia.Application.Current?.Resources;",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T23:02:47.912Z"
+    },
+    {
+      "id": "bug-799",
+      "timestamp": "2026-05-22T00:43:36.936Z",
+      "error_message": "Missing error handling in Task",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: try; catch (Exception ex)",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-22T00:44:04.618Z"
+    },
+    {
+      "id": "bug-800",
+      "timestamp": "2026-05-22T00:44:23.466Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/TourRunner.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: try { TourCompleted?.Invoke(); }; catch (Exception ex) | Also: try { TourDismissed?.Invoke(); }; catch (Exception ex) | Also: /// <summary>; /// Safely fires <see cref=\"StepChanged\"/>. If a subscriber ",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-05-22T00:44:42.216Z"
+    },
+    {
+      "id": "bug-801",
+      "timestamp": "2026-05-22T00:53:12.299Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T00:53:12.299Z"
+    },
+    {
+      "id": "bug-802",
+      "timestamp": "2026-05-22T01:07:13.595Z",
+      "error_message": "Wrong reference: IsHitTestVisible should be IsVisible",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "Used \"IsHitTestVisible\" instead of \"IsVisible\"",
+      "fix": "Changed IsHitTestVisible → IsVisible",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T01:07:13.596Z"
+    },
+    {
+      "id": "bug-803",
+      "timestamp": "2026-05-22T01:07:25.614Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T01:07:25.614Z"
+    },
+    {
+      "id": "bug-804",
+      "timestamp": "2026-05-22T01:07:32.972Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "Condition was: if (_vm?.IsVisible == true && _nextButton is not null)",
+      "fix": "Changed to: if (_vm?.IsVisible == true)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T01:07:32.972Z"
     }
   ]
 }

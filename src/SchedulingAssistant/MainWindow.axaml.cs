@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Microsoft.Extensions.DependencyInjection;
 using SchedulingAssistant.Controls;
 using SchedulingAssistant.Data;
+using SchedulingAssistant.Data.Repositories;
 using SchedulingAssistant.Exceptions;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
@@ -89,7 +90,7 @@ public partial class MainWindow : Window
                     TourCatalog.Initialize(Application.Current!.Resources, App.TourActions);
 
                     if (App.Services.GetService(typeof(TourRunner)) is TourRunner runner)
-                        runner.Start("TermPointTour");
+                        runner.Start("desktop-tour");
 
                     e.Handled = true;
                 }
@@ -159,11 +160,6 @@ public partial class MainWindow : Window
         base.OnOpened(e);
         try
         {
-            // var splash = new SplashScreen();
-            // splash.Show();
-            // await Task.Delay(2000);
-            // splash.Close();
-
             await RunStartupAsync();
         }
         catch (Exception ex)
@@ -190,6 +186,21 @@ public partial class MainWindow : Window
         // so we must not call it again below.
         if (!settings.IsInitialSetupComplete)
         {
+            // Run the pre-wizard demo tour so the user sees a populated schedule
+            // before the setup wizard. The tour is skippable and uses an isolated
+            // demo DI container that is disposed when the tour ends.
+            if (!settings.CompletedTourKeys.Contains("desktop-tour"))
+            {
+                try
+                {
+                    await RunPreWizardTourAsync();
+                }
+                catch (Exception ex)
+                {
+                    App.Logger?.LogInfo($"[Tour] Pre-wizard tour failed: {ex.Message}");
+                }
+            }
+
             var wizard = new StartupWizardWindow();
             WindowState = WindowState.Minimized;
             wizard.Show(this);
@@ -223,6 +234,74 @@ public partial class MainWindow : Window
 
         // ── Returning user ────────────────────────────────────────────────────
         await RunReturningUserStartupAsync(settings);
+    }
+
+    /// <summary>
+    /// Runs the desktop tour with demo data before the startup wizard.
+    /// Builds an isolated demo DI container, swaps <see cref="Window.DataContext"/>
+    /// to a demo <see cref="MainWindowViewModel"/>, runs the tour, awaits completion
+    /// or dismissal, then tears down the demo container. The real <see cref="App.Services"/>
+    /// is not yet initialized at this point, so there is nothing to preserve.
+    /// </summary>
+    private async Task RunPreWizardTourAsync()
+    {
+        var demoProvider = App.BuildDemoServiceProvider();
+
+        try
+        {
+            // Initialize demo data (mirrors the WASM InitializeDemoServices path)
+            var tourActions = TourActionDefinitions.Build();
+            TourCatalog.Initialize(Avalonia.Application.Current!.Resources, tourActions);
+            foreach (var err in TourCatalog.Validate())
+                App.Logger?.LogInfo($"[TourCatalog] {err}");
+
+            demoProvider.GetRequiredService<WriteLockService>().AcquireDemo();
+
+            var semCtx = demoProvider.GetRequiredService<SemesterContext>();
+            semCtx.Reload(
+                demoProvider.GetRequiredService<IAcademicYearRepository>(),
+                demoProvider.GetRequiredService<ISemesterRepository>(),
+                restoreAcademicYearId: "demo-ay-1",
+                restoreSemesterIds: new HashSet<string> { "demo-sem-1" });
+
+            var store = demoProvider.GetRequiredService<SectionStore>();
+            store.Reload(
+                demoProvider.GetRequiredService<ISectionRepository>(),
+                semCtx.SelectedSemesters.Select(s => s.Semester.Id));
+
+            // Swap DataContext to the demo VM and make the window visible
+            var demoVm = demoProvider.GetRequiredService<MainWindowViewModel>();
+            demoVm.SetDatabaseName("Tour Preview");
+            DataContext = demoVm;
+            IsVisible = true;
+            Activate();
+
+            // Start the tour on the next UI tick so layout has settled
+            var runner = demoProvider.GetRequiredService<TourRunner>();
+            var tcs = new TaskCompletionSource();
+            void onDone() => tcs.TrySetResult();
+            runner.TourCompleted += onDone;
+            runner.TourDismissed += onDone;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!runner.Start("desktop-tour"))
+                    tcs.TrySetResult();
+            }, DispatcherPriority.Background);
+
+            await tcs.Task;
+            runner.TourCompleted -= onDone;
+            runner.TourDismissed -= onDone;
+
+            // Minimize and clear the demo VM before transitioning to the wizard.
+            // Don't set IsVisible = false — the wizard needs a visible owner window.
+            WindowState = WindowState.Minimized;
+            DataContext = null;
+        }
+        finally
+        {
+            (demoProvider as IDisposable)?.Dispose();
+        }
     }
 
     /// <summary>

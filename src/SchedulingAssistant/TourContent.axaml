@@ -14,17 +14,75 @@
 	     throughout the tour system.
 	     ═══════════════════════════════════════════════════════════ -->
 	
-	<!-- ── Post-Wizard Tour ── -->
+	<!-- ═══════════════════════════════════════════════════════════
+	     Tour Definitions
+	     ═══════════════════════════════════════════════════════════ -->
 
-	<tour:TourData x:Key="TermPointTour"
+	<!-- Desktop tour: runs before the startup wizard on first launch -->
+	<tour:TourData x:Key="desktop-tour"
 		Title="Getting Started Tour"
-		Description="Learn the layout and key workflows"
-		SegmentKeys="LayoutTourSegment,FilterSegment"
-		AutoTrigger="PostWizardFirstLaunch"
+		Description="A preview of TermPoint before you set up your database"
+		SegmentKeys="DesktopWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,DesktopClosingSegment"
+		AutoTrigger="PreWizardFirstLaunch"
 		IsReplayable="True" />
-	
-	
-	<!-- 3 Panel Layout Tour --> 
+
+	<!-- WASM tour: runs every session on the demo site -->
+	<tour:TourData x:Key="wasm-tour"
+		Title="TermPoint Demo Tour"
+		Description="Learn the layout and key workflows"
+		SegmentKeys="WasmWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,WasmClosingSegment"
+		AutoTrigger="EverySession"
+		IsReplayable="True" />
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     Welcome / Closing Steps and Segments
+	     ═══════════════════════════════════════════════════════════ -->
+
+	<tour:TourStepData x:Key="desktop.welcome"
+		Title="Welcome to TermPoint"
+		Body="Here's a quick preview of what your finished schedule will look like. Let's take a tour!"
+		TargetKind="None"
+		CardWidth="700" />
+
+	<tour:TourStepData x:Key="desktop.closing"
+		Title="Ready to Get Started"
+		Body="That's the tour! Click Done to continue to the setup wizard, where you'll configure your own database."
+		TargetKind="None"
+		CardWidth="700" />
+
+	<tour:TourStepData x:Key="wasm.welcome"
+		Title="Welcome to the TermPoint Demo"
+		Body="This is a live demo with sample data. Let's explore what TermPoint can do!"
+		TargetKind="None"
+		CardWidth="700" />
+
+	<tour:TourStepData x:Key="wasm.closing"
+		Title="That's the Tour!"
+		Body="Feel free to explore the demo on your own. Everything is interactive."
+		TargetKind="None"
+		CardWidth="700" />
+
+	<tour:TourSegmentData x:Key="DesktopWelcomeSegment"
+		Title="Welcome"
+		StepKeys="desktop.welcome" />
+
+	<tour:TourSegmentData x:Key="DesktopClosingSegment"
+		Title="Getting Started"
+		StepKeys="desktop.closing" />
+
+	<tour:TourSegmentData x:Key="WasmWelcomeSegment"
+		Title="Welcome"
+		StepKeys="wasm.welcome" />
+
+	<tour:TourSegmentData x:Key="WasmClosingSegment"
+		Title="Explore"
+		StepKeys="wasm.closing" />
+
+	<!-- ═══════════════════════════════════════════════════════════
+	     Shared Segments: Layout, Filters, Section Edit
+	     ═══════════════════════════════════════════════════════════ -->
+
+	<!-- 3 Panel Layout Tour -->
 		 
 	<tour:TourSegmentData x:Key="LayoutTourSegment"
 	Title="TermPoint Tour"
@@ -89,7 +147,7 @@
 
 	<tour:TourStepData x:Key="overlay.instructor"
     Title="Instructor Overlay"
-    Body="Suppose we need to fill out Ruthe Botsford's workload. First overlay what she already has.|Now we can see what unstaffed courses fit her schedule. Anything not conflicting with a red framed block fits her schedule."
+    Body="Suppose we need to fill out Ruthe Botsford's workload. We already filtered for the unstaffed sections. Let's overlay Ruthe's schedule so far.|Now we can see what unstaffed courses fit her schedule. Anything not conflicting with a red framed block fits her schedule."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorOverlayPanel"
     Placement="Left" />
@@ -97,7 +155,7 @@
 
 	<tour:TourSegmentData x:Key="SectionEditSegment"
 	Title="TermPoint Tour"
-	StepKeys="section.collapse"
+	StepKeys="section.collapse,section.add,section.editor-course,section.editor-course-finish-1,section.editor-course-finish-2"
 	/>
 
 	<tour:TourStepData x:Key="section.collapse"
@@ -107,6 +165,32 @@
     TargetValue="SectionViewPanel"
     Placement="Right" />
 
+	<tour:TourStepData x:Key="section.add"
+    Title="Adding a Section"
+    Body="Let's add a section.|The inline editor opens below the selected section."
+    TargetKind="NamedControl"
+    TargetValue="SectionViewPanel"
+    Placement="Right" />
 
+	<tour:TourStepData x:Key="section.editor-course"
+    Title="Section Editor"
+    Body="First choose a course.|Now choose the appropriate section code format (in this case a 'LakeView Lecture'). (These are customizable)|A section code is automatically supplied.|Select a (customizable) meeting pattern|Select times and duration, following your institution's patterns|Select an instructor. Workload credit (in this case 1) can be edited|Let's tag this section|Now apply the edits"
+    TargetKind="NamedControl"
+    TargetValue="SectionViewPanel"
+    Placement="Right" />
+
+    <tour:TourStepData x:Key="section.editor-course-finish-1"
+    Title="Section Editor"
+    Body="The new section now shows on Schedule View, selected."
+    TargetKind="NamedControl"
+    TargetValue="ScheduleGridPanel"
+    Placement="Left" />
+
+    <tour:TourStepData x:Key="section.editor-course-finish-2"
+    Title="Section Editor"
+    Body="Workload has been updated."
+    TargetKind="NamedControl"
+    TargetValue="WorkloadPanel"
+    Placement="Above" />
 
 </ResourceDictionary>

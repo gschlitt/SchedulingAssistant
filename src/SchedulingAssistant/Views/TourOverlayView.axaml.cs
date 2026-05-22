@@ -108,8 +108,16 @@ public partial class TourOverlayView : UserControl
         switch (e.PropertyName)
         {
             case nameof(TourOverlayViewModel.IsVisible):
-                if (_vm?.IsVisible == true && _nextButton is not null)
-                    _nextButton.Focus();
+                if (_vm?.IsVisible == true)
+                {
+                    // The UserControl was collapsed (IsVisible=false) so OnSizeChanged
+                    // never fired. Seed the overlay size from the parent, which is always
+                    // laid out at the correct window dimensions.
+                    if (Parent is Control parent && parent.Bounds.Width > 0)
+                        _vm.UpdateOverlaySize(parent.Bounds.Size);
+
+                    _nextButton?.Focus();
+                }
                 break;
 
             case nameof(TourOverlayViewModel.CardMargin):

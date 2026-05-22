@@ -37,6 +37,7 @@
 		</Style>
 	</UserControl.Styles>
 
+	<Panel>
 	<Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
 		<!--  Top menu bar  -->
@@ -679,10 +680,12 @@
 
 			</Panel>
 
-			<!--  Layer 2: tour overlay  -->
-			<panelViews:TourOverlayView DataContext="{Binding TourOverlayVm}" />
-
 		</Panel>
 
 	</Grid>
+
+	<!--  Tour overlay — covers the entire window (menu bar included) to block all input  -->
+	<panelViews:TourOverlayView DataContext="{Binding TourOverlayVm}" />
+
+	</Panel>
 </UserControl>

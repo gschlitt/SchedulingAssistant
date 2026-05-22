@@ -38,11 +38,8 @@ public class TourStep
     /// <summary>Preferred position of the tour card relative to the target.</summary>
     public TourPlacement Placement { get; }
 
-    /// <summary>
-    /// When true, the overlay renders a wider centered card suitable for a tour
-    /// introduction or welcome message. Implies no highlight ring or arrow.
-    /// </summary>
-    public bool IsWelcome { get; }
+    /// <summary>Card width in pixels. Defaults to 320.</summary>
+    public double CardWidth { get; }
 
     /// <summary>
     /// Optional async action that runs before this step displays
@@ -73,7 +70,7 @@ public class TourStep
     /// <param name="title">Card heading text.</param>
     /// <param name="body">Card body text.</param>
     /// <param name="placement">Preferred card position relative to target.</param>
-    /// <param name="isWelcome">When true, renders a wider centered card for tour introductions.</param>
+    /// <param name="cardWidth">Card width in pixels (default 320).</param>
     /// <param name="preAction">Optional setup action run before the step displays.</param>
     /// <param name="midActions">Optional ordered list of actions run one-per-click (card stays visible).</param>
     /// <param name="postAction">Optional cleanup action run when leaving the step.</param>
@@ -84,7 +81,7 @@ public class TourStep
         string title,
         string body,
         TourPlacement placement = TourPlacement.Auto,
-        bool isWelcome = false,
+        double cardWidth = 320,
         Func<Task>? preAction = null,
         IReadOnlyList<Func<Task>>? midActions = null,
         Func<Task>? postAction = null)
@@ -101,7 +98,7 @@ public class TourStep
             .AsReadOnly();
         Body = BodyMessages[0];
         Placement = placement;
-        IsWelcome = isWelcome;
+        CardWidth = cardWidth;
         PreAction = preAction;
         MidActions = midActions;
         PostAction = postAction;
