@@ -436,12 +436,15 @@ public partial class StartupWizardViewModel : ViewModelBase
         var auRepo = _services.AcademicUnits();
         var units  = auRepo.GetAll();
         var unit   = units.FirstOrDefault() ?? new AcademicUnit();
-        unit.Name         = _acUnitName;
-        unit.Abbreviation = _acUnitAbbrev;
+        unit.Name              = _acUnitName;
+        unit.Abbreviation      = _acUnitAbbrev;
+        unit.InstitutionName   = _institutionName;
+        unit.InstitutionAbbrev = _institutionAbbrev;
 
         if (units.Count == 0) auRepo.Insert(unit);
         else                  auRepo.Update(unit);
 
+        // Keep AppSettings in sync for now (ShareViewModel reads abbrev from here too).
         AppSettings.Current.InstitutionName   = _institutionName;
         AppSettings.Current.InstitutionAbbrev = _institutionAbbrev;
         AppSettings.Current.Save();

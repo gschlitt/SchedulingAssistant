@@ -25,7 +25,7 @@
                 Background="{StaticResource ControlBackground}"
                 BorderBrush="{StaticResource ControlBorder}"
                 BorderThickness="1">
-                <TextBlock VerticalAlignment="Center" Text="{Binding Name}" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding DisplaySummary}" />
             </Border>
             <Button
                 Width="80"
@@ -37,8 +37,14 @@
 
         <!--  Edit form (when editing)  -->
         <StackPanel IsVisible="{Binding IsEditing}" Spacing="8">
-            <TextBlock Text="Name" />
+            <TextBlock Text="Academic Unit Name" />
             <TextBox Text="{Binding Name}" />
+
+            <TextBlock Text="Institution Name" />
+            <TextBox Text="{Binding InstitutionName}" />
+
+            <TextBlock Text="Institution Abbreviation" />
+            <TextBox Text="{Binding InstitutionAbbrev}" />
 
             <TextBlock
                 FontSize="12"

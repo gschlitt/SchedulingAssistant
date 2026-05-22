@@ -24,6 +24,7 @@ public partial class ShareViewModel : ViewModelBase
     private readonly ISemesterRepository            _semesterRepo;
     private readonly IBlockPatternRepository        _patternRepo;
     private readonly ISectionCodePatternRepository  _sectionCodePatternRepo;
+    private readonly AcademicUnitService            _academicUnitService;
     private readonly SemesterContext                _semesterContext;
 
     /// <summary>Feedback shown below the button after an attempt to write the file.</summary>
@@ -41,6 +42,7 @@ public partial class ShareViewModel : ViewModelBase
         ISemesterRepository            semesterRepo,
         IBlockPatternRepository        patternRepo,
         ISectionCodePatternRepository  sectionCodePatternRepo,
+        AcademicUnitService            academicUnitService,
         SemesterContext                semesterContext)
     {
         _legalStartTimeRepo     = legalStartTimeRepo;
@@ -48,6 +50,7 @@ public partial class ShareViewModel : ViewModelBase
         _semesterRepo           = semesterRepo;
         _patternRepo            = patternRepo;
         _sectionCodePatternRepo = sectionCodePatternRepo;
+        _academicUnitService    = academicUnitService;
         _semesterContext        = semesterContext;
     }
 
@@ -90,8 +93,8 @@ public partial class ShareViewModel : ViewModelBase
         {
             var config = SnapshotConfig(ay.Id);
 
-            // Filename uses institution abbreviation (falls back to "config").
-            var abbrev = AppSettings.Current.InstitutionAbbrev;
+            // Filename uses institution abbreviation from DB (falls back to "config").
+            var abbrev = _academicUnitService.GetInstitutionAbbrev();
             var path   = TpConfigService.Write(dbFolder, config, abbrev);
 
             if (path is not null)

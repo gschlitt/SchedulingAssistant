@@ -432,6 +432,46 @@ internal static class TourActionDefinitions
                 return Task.CompletedTask;
             }),
 
+        // ── Instructor Flyout ──────────────────────────────────────────────
+
+        // PostAction: open the instructor flyout so the next step can target it
+        ["open-instructor-1"] = new(
+            PostAction: () =>
+            {
+                GetViewModel()?.NavigateToInstructorsCommand.Execute(null);
+                return Task.CompletedTask;
+            }),
+
+        // MidAction 1: select the first instructor to reveal workload panels
+        ["open-instructor-2"] = new(
+            MidActions: new Func<Task>[]
+            {
+                () =>
+                {
+                    var vm = GetViewModel()?.FlyoutPage as InstructorListViewModel;
+                    var first = vm?.Instructors.FirstOrDefault();
+                    if (first is not null)
+                        vm!.SelectedInstructor = first;
+                    return Task.CompletedTask;
+                }
+            }),
+
+        // PreAction: open the workload mailer panel
+        // PostAction: close the instructor flyout
+        ["open-instructor-5"] = new(
+            PreAction: () =>
+            {
+                var vm = GetViewModel()?.FlyoutPage as InstructorListViewModel;
+                if (vm is not null)
+                    vm.ShowWorkloadMailer = true;
+                return Task.CompletedTask;
+            },
+            PostAction: () =>
+            {
+                GetViewModel()?.CloseFlyoutCommand.Execute(null);
+                return Task.CompletedTask;
+            }),
+
         // ── Section Edit ───────────────────────────────────────────────────
 
         // MidAction 1: collapse all sections so user sees the compact view
@@ -698,13 +738,19 @@ internal static class TourActionDefinitions
     }
 
     /// <summary>
-    /// Resolves the <see cref="MainView"/> from the current application's main window.
-    /// Returns null when running in WASM or before the window is loaded.
+    /// Resolves the <see cref="MainView"/> from the current application lifetime.
+    /// Works on both desktop (IClassicDesktopStyleApplicationLifetime) and
+    /// WASM/browser (ISingleViewApplicationLifetime).
     /// </summary>
     private static MainView? GetMainView()
     {
-        return (Application.Current!.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)
-            ?.MainWindow?.FindControl<MainView>("MainViewControl");
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            return desktop.MainWindow?.FindControl<MainView>("MainViewControl");
+
+        if (Application.Current?.ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+            return singleView.MainView as MainView;
+
+        return null;
     }
 
     /// <summary>

@@ -12879,6 +12879,134 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-22T01:07:32.972Z"
+    },
+    {
+      "id": "bug-805",
+      "timestamp": "2026-05-22T01:36:32.040Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "No early return/throw for edge case: Application.Current?.ApplicationLifetime is IClassicDesktopS",
+      "fix": "Added guard clause: if (Application.Current?.ApplicationLifetime)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T01:36:32.040Z"
+    },
+    {
+      "id": "bug-806",
+      "timestamp": "2026-05-22T03:24:25.503Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/AcademicUnitListViewModel.cs",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 91→121 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T03:24:25.503Z"
+    },
+    {
+      "id": "bug-807",
+      "timestamp": "2026-05-22T03:24:58.353Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 10→13 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T03:24:58.353Z"
+    },
+    {
+      "id": "bug-808",
+      "timestamp": "2026-05-22T04:11:27.457Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T04:11:27.457Z"
+    },
+    {
+      "id": "bug-809",
+      "timestamp": "2026-05-22T04:13:16.612Z",
+      "error_message": "Wrong reference: Layout should be Background",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Used \"Layout\" instead of \"Background\"",
+      "fix": "Changed Layout → Background",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T04:13:16.612Z"
+    },
+    {
+      "id": "bug-810",
+      "timestamp": "2026-05-22T04:46:21.498Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/MainView.axaml",
+      "root_cause": "Had \"{Binding FlyoutPage, Converter={x:Static ObjectCo",
+      "fix": "Changed to \"FlyoutPanel\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T04:46:21.498Z"
+    },
+    {
+      "id": "bug-811",
+      "timestamp": "2026-05-22T04:47:09.182Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"DesktopWelcomeSegment,LayoutTourSegment,FilterSeg",
+      "fix": "Changed to \"DesktopWelcomeSegment,LayoutTourSegment,FilterSeg",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-22T04:47:16.487Z"
+    },
+    {
+      "id": "bug-812",
+      "timestamp": "2026-05-22T04:47:47.061Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/TourActionDefinitions.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T04:47:47.061Z"
     }
   ]
 }

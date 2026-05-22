@@ -1,5 +1,14 @@
 # Memory
 
+## Session: 2026-05-21 — Splash screen + tour card/overlay refactors
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Splash screen gradient redesign | `Views/SplashScreen.axaml`, `Views/SplashScreen.axaml.cs` | Diagonal gradient (navy→blue), "TermPoint" + "Loading..." centered. Sizes itself from hidden MainWindow at runtime — works on any screen. |
+| Tour CardWidth on step data | `Models/Tour/TourStepData.cs`, `TourStep.cs`, `TourContent.axaml`, `TourOverlayViewModel.cs`, `TourCatalog.cs`, `TourPositionCalculator.cs` | Removed `IsWelcome` property entirely. Added `CardWidth` (default 320) to step data. Welcome cards just use `CardWidth="700"` in AXAML. VM reads from step directly — no constants, no resource lookups. |
+| Tour full-window input blocking | `Views/MainView.axaml`, `Views/TourOverlayView.axaml.cs` | Moved overlay from Row 4 Panel to new outer Panel wrapping entire MainView Grid. Menu bar now blocked during tour. Seed `_overlaySize` from parent bounds when overlay becomes visible (collapsed controls have zero size). |
+| Tour exception safety | `ViewModels/TourOverlayViewModel.cs`, `Services/TourRunner.cs` | `ShowStepAsync`/`PositionOverlayAsync` wrapped in try/catch → `HideOverlay()` + `Dismiss()`. TourRunner event invocations wrapped — `FireStepChanged` helper dismisses on failure. User never left with stuck overlay. |
+
 ## Session: 2026-05-21 — Exception handling safety net
 
 | Action | Files | Outcome |
@@ -7247,3 +7256,115 @@
 | 18:07 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml | 5→3 lines | ~60 |
 | 18:07 | Edited src/SchedulingAssistant/Views/TourOverlayView.axaml.cs | added 1 condition(s) | ~158 |
 | 18:08 | Session end: 15 writes across 5 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs, TourOverlayView.axaml, TourOverlayView.axaml.cs) | 4 reads | ~18057 tok |
+| 18:11 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~80 |
+| 18:11 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/session_splash_tour_refactors.md | — | ~878 |
+| 18:12 | Session end: 17 writes across 7 files (MainView.axaml, TourOverlayViewModel.cs, TourRunner.cs, TourOverlayView.axaml, TourOverlayView.axaml.cs) | 6 reads | ~19084 tok |
+
+## Session: 2026-05-22 18:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:16 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_network_db_architecture.md | — | ~862 |
+| 18:16 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_shared_schedule.md | — | ~686 |
+| 18:17 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_avalonia12_upgrade.md | — | ~426 |
+| 18:17 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_wasm_compat.md | — | ~391 |
+| 18:17 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_section_codes.md | — | ~480 |
+| 18:18 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_data_migration.md | — | ~600 |
+| 18:18 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_wasm_demo.md | — | ~538 |
+| 18:18 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_architecture_reference.md | — | ~1040 |
+| 18:19 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_open_source_plan.md | — | ~248 |
+| 18:19 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_pending_work.md | — | ~377 |
+| 18:19 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_campus_architecture.md | — | ~227 |
+| 18:19 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | — | ~1246 |
+| 18:20 | Session end: 12 writes across 12 files (project_network_db_architecture.md, project_shared_schedule.md, project_avalonia12_upgrade.md, project_wasm_compat.md, project_section_codes.md) | 2 reads | ~7630 tok |
+
+## Session: 2026-05-22 18:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:29 | Created ../../../.claude/plans/so-the-tour-is-sequential-beaver.md | — | ~678 |
+| 18:36 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added 2 condition(s) | ~178 |
+| 18:37 | Session end: 2 writes across 2 files (so-the-tour-is-sequential-beaver.md, TourActionDefinitions.cs) | 19 reads | ~39171 tok |
+| 18:43 | Session end: 2 writes across 2 files (so-the-tour-is-sequential-beaver.md, TourActionDefinitions.cs) | 19 reads | ~39171 tok |
+
+## Session: 2026-05-22 19:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 19:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 20:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 20:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:23 | Edited src/SchedulingAssistant/Models/AcademicUnit.cs | expanded (+6 lines) | ~175 |
+| 20:24 | Edited src/SchedulingAssistant/Services/AcademicUnitService.cs | modified AcademicUnitService() | ~639 |
+| 20:24 | Edited src/SchedulingAssistant/ViewModels/Management/AcademicUnitListViewModel.cs | UpdateName() → UpdateUnit() | ~1009 |
+| 20:24 | Edited src/SchedulingAssistant/Views/Management/AcademicUnitListView.axaml | expanded (+6 lines) | ~440 |
+| 20:24 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 10→13 lines | ~168 |
+| 20:25 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | modified ShareViewModel() | ~460 |
+| 20:25 | Edited src/SchedulingAssistant/ViewModels/Management/ShareViewModel.cs | abbreviation() → GetInstitutionAbbrev() | ~42 |
+| 20:38 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoAcademicUnitRepository.cs | modified new() | ~70 |
+| 20:40 | Session end: 8 writes across 7 files (AcademicUnit.cs, AcademicUnitService.cs, AcademicUnitListViewModel.cs, AcademicUnitListView.axaml, StartupWizardViewModel.cs) | 16 reads | ~6639 tok |
+
+## Session: 2026-05-22 20:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:11 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 9→10 lines | ~84 |
+| 21:11 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | 4→8 lines | ~100 |
+| 21:13 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | inline fix | ~22 |
+| 21:14 | Session end: 3 writes across 1 files (TourOverlayViewModel.cs) | 4 reads | ~21828 tok |
+| 21:29 | Session end: 3 writes across 1 files (TourOverlayViewModel.cs) | 4 reads | ~21828 tok |
+| 21:44 | Session end: 3 writes across 1 files (TourOverlayViewModel.cs) | 5 reads | ~21828 tok |
+| 21:46 | Edited src/SchedulingAssistant/Views/MainView.axaml | 6→7 lines | ~60 |
+| 21:46 | Edited src/SchedulingAssistant/Views/MainView.axaml | 2→2 lines | ~44 |
+| 21:46 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 2→2 lines | ~30 |
+| 21:46 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 8→9 lines | ~112 |
+| 21:46 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 7→8 lines | ~87 |
+| 21:47 | Edited src/SchedulingAssistant/TourContent.axaml | expanded (+35 lines) | ~386 |
+| 21:47 | Edited src/SchedulingAssistant/TourContent.axaml | "DesktopWelcomeSegment,Lay" → "DesktopWelcomeSegment,Lay" | ~34 |
+| 21:47 | Edited src/SchedulingAssistant/TourContent.axaml | "WasmWelcomeSegment,Layout" → "WasmWelcomeSegment,Layout" | ~33 |
+| 21:47 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added optional chaining | ~335 |
+| 21:48 | Session end: 12 writes across 5 files (TourOverlayViewModel.cs, MainView.axaml, InstructorListView.axaml, TourContent.axaml, TourActionDefinitions.cs) | 5 reads | ~23028 tok |
+| 21:50 | Session end: 12 writes across 5 files (TourOverlayViewModel.cs, MainView.axaml, InstructorListView.axaml, TourContent.axaml, TourActionDefinitions.cs) | 5 reads | ~23028 tok |
+| 21:51 | Session end: 12 writes across 5 files (TourOverlayViewModel.cs, MainView.axaml, InstructorListView.axaml, TourContent.axaml, TourActionDefinitions.cs) | 5 reads | ~23028 tok |
+| 22:00 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 7→8 lines | ~97 |
+| 22:00 | Edited src/SchedulingAssistant/TourContent.axaml | 4→4 lines | ~41 |
+| 22:00 | Edited src/SchedulingAssistant/TourContent.axaml | 11→15 lines | ~136 |
+| 22:01 | Edited src/SchedulingAssistant/Services/TourActionDefinitions.cs | added 1 condition(s) | ~154 |
+| 22:01 | Session end: 16 writes across 5 files (TourOverlayViewModel.cs, MainView.axaml, InstructorListView.axaml, TourContent.axaml, TourActionDefinitions.cs) | 5 reads | ~24376 tok |
+
+## Session: 2026-05-22 22:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 22:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 22:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 22:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-22 22:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

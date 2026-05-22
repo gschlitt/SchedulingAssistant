@@ -10,7 +10,7 @@ namespace SchedulingAssistant.Services;
 public class AcademicUnitService(IAcademicUnitRepository repository)
 {
     /// <summary>
-    /// Fired after <see cref="UpdateName"/> successfully persists a new name.
+    /// Fired after <see cref="UpdateUnit"/> successfully persists changes.
     /// Subscribers (e.g. <c>ScheduleGridViewModel</c>) can refresh their display immediately.
     /// </summary>
     public event Action<string>? NameChanged;
@@ -34,5 +34,32 @@ public class AcademicUnitService(IAcademicUnitRepository repository)
         unit.Name = newName.Trim();
         repository.Update(unit);
         NameChanged?.Invoke(unit.Name);
+    }
+
+    /// <summary>
+    /// Updates all editable fields on the Academic Unit (name, institution name, institution abbreviation)
+    /// and fires <see cref="NameChanged"/> with the trimmed academic unit name.
+    /// </summary>
+    /// <param name="name">Academic unit name.</param>
+    /// <param name="institutionName">Institution name.</param>
+    /// <param name="institutionAbbrev">Institution abbreviation.</param>
+    public void UpdateUnit(string name, string institutionName, string institutionAbbrev)
+    {
+        var unit = GetUnit();
+        unit.Name = name.Trim();
+        unit.InstitutionName = institutionName.Trim();
+        unit.InstitutionAbbrev = institutionAbbrev.Trim();
+        repository.Update(unit);
+        NameChanged?.Invoke(unit.Name);
+    }
+
+    /// <summary>
+    /// Returns the institution abbreviation stored on the Academic Unit.
+    /// Falls back to empty string if none is set.
+    /// </summary>
+    public string GetInstitutionAbbrev()
+    {
+        var unit = GetUnit();
+        return unit.InstitutionAbbrev;
     }
 }

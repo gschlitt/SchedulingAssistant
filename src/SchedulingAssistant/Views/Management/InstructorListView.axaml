@@ -151,7 +151,7 @@
                 Spacing="16">
 
                 <!--  Instructor list  -->
-                <StackPanel Spacing="6">
+                <StackPanel x:Name="InstructorListPanel" Spacing="6">
                     <CheckBox Content="Show only active instructors" IsChecked="{Binding ShowOnlyActive}" />
 
                     <DataGrid
@@ -360,6 +360,7 @@
 
             <!--  Non-instructional Workload Panel  -->
             <Border
+                x:Name="NonInstructionalPanel"
                 Grid.Column="2"
                 Padding="8"
                 Background="{StaticResource AppBackground}"
@@ -472,6 +473,7 @@
 
             <!--  Commitments Panel  -->
             <Border
+                x:Name="CommitmentsPanel"
                 Grid.Column="4"
                 Padding="8"
                 Background="{StaticResource AppBackground}"
@@ -617,6 +619,7 @@
                 FontSize="{StaticResource FontSizeNormal}"                
                 IsChecked="{Binding ShowWorkloadMailer}" />
             <Border
+                x:Name="WorkloadMailerPanel"
                 Padding="10"
                 BorderBrush="{StaticResource InlineListBorder}"
                 BorderThickness="1,0,0,0"

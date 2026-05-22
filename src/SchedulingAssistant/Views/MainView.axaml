@@ -258,6 +258,7 @@
 						Command="{Binding NavigateToCoursesCommand}"
 						Content="Courses" />
 					<Button
+						x:Name="NavInstructors"
 						controls:ResponsiveMenuPanel.IsPriority="True"
 						Margin="0,4,0,4"
 						Classes="nav"
@@ -451,7 +452,7 @@
 				ColumnDefinitions="440,4,*">
 
 				<!--  Left column: Section Editor (top) + Workload (bottom)  -->
-				<Grid Grid.Column="0" RowDefinitions="*,4,200">
+				<Grid Grid.Column="0" RowDefinitions="*,4,250">
 
 					<controls:DetachablePanel
 						x:Name="SectionViewPanel"
@@ -635,7 +636,7 @@
 			</Grid>
 
 			<!--  Layer 1: management flyout overlay  -->
-			<Panel IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
+			<Panel x:Name="FlyoutPanel" IsVisible="{Binding FlyoutPage, Converter={x:Static ObjectConverters.IsNotNull}}">
 
 				<Border b:DismissBehaviors.ClickCommand="{Binding CloseFlyoutCommand}" Background="{StaticResource FlyoutScrim}" />
 

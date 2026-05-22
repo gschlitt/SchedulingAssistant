@@ -22,7 +22,7 @@
 	<tour:TourData x:Key="desktop-tour"
 		Title="Getting Started Tour"
 		Description="A preview of TermPoint before you set up your database"
-		SegmentKeys="DesktopWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,DesktopClosingSegment"
+		SegmentKeys="DesktopWelcomeSegment,LayoutTourSegment,FilterSegment,,SectionEditSegment,InstructorFlyout,DesktopClosingSegment"
 		AutoTrigger="PreWizardFirstLaunch"
 		IsReplayable="True" />
 
@@ -30,7 +30,7 @@
 	<tour:TourData x:Key="wasm-tour"
 		Title="TermPoint Demo Tour"
 		Description="Learn the layout and key workflows"
-		SegmentKeys="WasmWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,WasmClosingSegment"
+		SegmentKeys="WasmWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,InstructorFlyout,WasmClosingSegment"
 		AutoTrigger="EverySession"
 		IsReplayable="True" />
 
@@ -40,7 +40,7 @@
 
 	<tour:TourStepData x:Key="desktop.welcome"
 		Title="Welcome to TermPoint"
-		Body="Here's a quick preview of what your finished schedule will look like. Let's take a tour!"
+		Body="This short tour will use an example timetable will demonstrate some TermPoint basics. The tour will be followed by a wizard to help you get setup. More information on using TermPoint  is available under the help menu once you have completed the setup."
 		TargetKind="None"
 		CardWidth="700" />
 
@@ -52,13 +52,13 @@
 
 	<tour:TourStepData x:Key="wasm.welcome"
 		Title="Welcome to the TermPoint Demo"
-		Body="This is a live demo with sample data. Let's explore what TermPoint can do!"
+		Body="This is a live demo with sample data. A short tour will present some basics, after which you're able to experiment yourself. TermPoint is best viewed full-screen in your brower (three dots menu, find Zoom, set full-screen). Please keep in mind that this is a web-based demonstration and may run a little slowly. TermPoint itself is a desktop application which runs quickly!"
 		TargetKind="None"
 		CardWidth="700" />
 
 	<tour:TourStepData x:Key="wasm.closing"
 		Title="That's the Tour!"
-		Body="Feel free to explore the demo on your own. Everything is interactive."
+		Body="Feel free to explore the demo on your own. Everything is interactive, although some features are not available in this web-demo. You can change anything you like, a refresh on your browser will take you back to square one."
 		TargetKind="None"
 		CardWidth="700" />
 
@@ -91,21 +91,21 @@
 	
 	<tour:TourStepData x:Key="layout.section-list"
     Title="Section View"
-    Body="The semesters sections get edited here."
+    Body="The semester's sections are here. Section View functions as the single source of truth for the semester. (No more competing spreadsheets!)"
     TargetKind="NamedControl"
     TargetValue="SectionViewPanel"
     Placement="Right" />	
 	
 	<tour:TourStepData x:Key="layout.schedule-grid"
     Title="The Schedule Grid"
-    Body="This is where your weekly schedule appears."
+    Body="This is where your weekly schedule appears. More on ways to view this later."
     TargetKind="NamedControl"
     TargetValue="ScheduleGridPanel"
     Placement="Left" />
 
 	<tour:TourStepData x:Key="layout.workloadview"
     Title="Workload View"
-    Body="Workload appears here, automatically updated."
+    Body="Workload appears here, always automatically updated as work is assigned or unassigned."
     TargetKind="NamedControl"
     TargetValue="WorkloadPanel"
     Placement="Above" />
@@ -119,7 +119,7 @@
 
 	<tour:TourStepData x:Key="filter-general"
     Title="Filters"
-    Body="It's hard to see what you're looking for on a crowded schedule. The key is to filter!"
+    Body="It can be hard to see what you're looking for on a crowded schedule. The key is to filter!"
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.FilterBody"
     Placement="Below" />
@@ -133,7 +133,7 @@
 
 	<tour:TourStepData x:Key="filter.instructor"
     Title="Filter by Instructor"
-    Body="Individual schedules are easy to see.|Individual schedules are easy to see."
+    Body="Individual schedules are also easy to see.|Individual schedules are also easy to see."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorPanel"
     Placement="Left" />
@@ -151,6 +151,51 @@
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorOverlayPanel"
     Placement="Left" />
+
+
+	<!-- Instructor Flyout Tour -->
+
+	<tour:TourSegmentData x:Key="InstructorFlyout"
+	Title="TermPoint Tour"
+	StepKeys="open-instructor-1,open-instructor-2,open-instructor-3,open-instructor-4,open-instructor-5"
+	/>
+
+	<tour:TourStepData x:Key="open-instructor-1"
+    Title="Instructor Management"
+    Body="Instructor details are managed here."
+    TargetKind="NamedControl"
+    TargetValue="NavInstructors"
+    Placement="Below" />
+
+	<tour:TourStepData x:Key="open-instructor-2"
+    Title="Instructor List"
+    Body="Instructors are listed here. Click one to see workload and workload history.|Now you can see their workload details."
+    TargetKind="Region"
+    TargetValue="FlyoutPanel.InstructorListPanel"
+    Placement="Right" />
+
+	<tour:TourStepData x:Key="open-instructor-3"
+    Title="Non-instructional Workload"
+    Body="Non-instructional workload is managed here."
+    TargetKind="Region"
+    TargetValue="FlyoutPanel.NonInstructionalPanel"
+    Placement="Above" />
+
+	<tour:TourStepData x:Key="open-instructor-4"
+    Title="Scheduled Commitments"
+    Body="Scheduled commitments are managed here, and show on Schedule View when an instructor is overlaid."
+    TargetKind="Region"
+    TargetValue="FlyoutPanel.CommitmentsPanel"
+    Placement="Above" />
+
+	<tour:TourStepData x:Key="open-instructor-5"
+    Title="Workload Mailer"
+    Body="The workload mailer can save some time!"
+    TargetKind="Region"
+    TargetValue="FlyoutPanel.WorkloadMailerPanel"
+    Placement="Left" />
+
+
 
 
 	<tour:TourSegmentData x:Key="SectionEditSegment"
@@ -174,7 +219,7 @@
 
 	<tour:TourStepData x:Key="section.editor-course"
     Title="Section Editor"
-    Body="First choose a course.|Now choose the appropriate section code format (in this case a 'LakeView Lecture'). (These are customizable)|A section code is automatically supplied.|Select a (customizable) meeting pattern|Select times and duration, following your institution's patterns|Select an instructor. Workload credit (in this case 1) can be edited|Let's tag this section|Now apply the edits"
+    Body="First choose a course.|Now choose the appropriate section code format (in this case for a 'LakeView Lecture'). (These are customizable)|A section code is automatically supplied.|Select a (customizable) meeting pattern, in this case 'MW' for Monday, Wednesday|Select times and duration, following your institution's patterns (you can edit these at will). |Select an instructor. Workload credit (in this case 1) can be edited|Let's tag this section|Now apply the edits"
     TargetKind="NamedControl"
     TargetValue="SectionViewPanel"
     Placement="Right" />

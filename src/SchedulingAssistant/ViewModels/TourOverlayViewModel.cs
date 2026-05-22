@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Helpers;
@@ -326,6 +327,10 @@ public partial class TourOverlayViewModel : ViewModelBase
 
         // Safety net: restore any popups whose light-dismiss was suppressed
         TourActionDefinitions.RestoreAllLightDismiss();
+
+        // Let the layout pass settle after PostAction changes (e.g. closing a popup)
+        // before measuring the next step's target bounds.
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
 
 #if DEBUG
         _debugPlacementOverride = null;

@@ -18,6 +18,9 @@
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 
 - [2026-05-21] **Tour authoring sessions: only edit tour files.** When writing tour content, only edit `TourContent.axaml` and `TourActionDefinitions.cs`. Never fix issues by editing underlying app code (ViewModels, Views, Services, Models, etc.). If the app code has a bug, note it and move on.
+- [2026-05-21] **No hardcoded dimensions in ViewModels.** Pixel widths, heights, and other view concerns belong in AXAML resources or on the data model — not as VM constants. If a dimension varies by data (e.g. tour card width per step), put it on the data model with a sensible default.
+- [2026-05-21] **Collapsed Avalonia controls have zero size.** `IsVisible=false` collapses the control — `OnSizeChanged` never fires, `Bounds` is zero. If you need a control to track size while hidden, seed the size from the parent when it becomes visible.
+- [2026-05-21] **Keep it simple — avoid over-engineering.** Don't add CSS class toggling, dispatcher posts, or push-back patterns when reading a value directly from the data model works. The user values clean, minimal solutions.
 
 - [2026-04-26] .NET 10 WASM: `dotnet.run()` exits the runtime after Main returns. Use `const runtime = await dotnet.create(); await runtime.runMain();` in index.html instead.
 - [2026-04-26] .NET 10 WASM trimming: `TrimMode=partial` required for Avalonia — full trimming breaks reflection-based bindings and JSON serialization. Also set `JsonSerializerIsReflectionEnabledByDefault=true`.

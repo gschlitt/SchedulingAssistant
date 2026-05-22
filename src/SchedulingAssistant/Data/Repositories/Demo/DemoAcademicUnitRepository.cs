@@ -11,7 +11,13 @@ public class DemoAcademicUnitRepository : IAcademicUnitRepository
 {
     private readonly List<AcademicUnit> _units =
     [
-        new() { Id = "demo-academic-unit", Name = "Demo University" }
+        new()
+        {
+            Id = "demo-academic-unit",
+            Name = "Demo University",
+            InstitutionName = "Demo Institution",
+            InstitutionAbbrev = "DI"
+        }
     ];
 
     /// <inheritdoc/>
