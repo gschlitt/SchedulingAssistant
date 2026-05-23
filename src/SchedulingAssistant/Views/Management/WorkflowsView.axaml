@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SchedulingAssistant.ViewModels.Management"
+             x:Class="SchedulingAssistant.Views.Management.WorkflowsView"
+             x:DataType="vm:WorkflowsViewModel"
+             x:CompileBindings="False"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+
+    <StackPanel Margin="16,0,16,8" Spacing="8">
+
+        <!-- Brief intro -->
+        <TextBlock Text="Common scheduling tasks and how to accomplish them."
+                   FontSize="{StaticResource FontSizeNormal}"
+                   
+                   Margin="0,0,0,4" />
+
+        <!-- Wrapping card grid -->
+        <ItemsControl ItemsSource="{Binding Workflows}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:WorkflowItem">
+                    <Border Margin="0,0,10,10"
+                            Width="280"
+                            Padding="14,10"
+                            CornerRadius="6"
+                            BorderThickness="1"
+                            BorderBrush="{StaticResource WorkflowCardBorder}"
+                            Background="{Binding CardColor, Converter={StaticResource HexToBrushConverter}}">
+
+                        <Expander HorizontalAlignment="Stretch"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="0">
+
+                            <!-- Header: title + user story -->
+                            <Expander.Header>
+                                <StackPanel Spacing="4" Margin="0,2">
+                                    <TextBlock Text="{Binding Title}"
+                                               FontSize="{StaticResource FontSizeMedium}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding UserStory}"
+                                               FontSize="{StaticResource FontSizeNormal}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextPrimary}" />
+                                </StackPanel>
+                            </Expander.Header>
+
+                            <!-- Body: step-by-step solution -->
+                            <Border Padding="0,8,0,4"
+                                    Margin="0,4,0,0"
+                                    BorderThickness="0,1,0,0"
+                                    BorderBrush="{StaticResource WorkflowCardBorder}">
+                                <TextBlock Text="{Binding Solution}"
+                                           FontSize="{StaticResource FontSizeNormal}"
+                                           TextWrapping="Wrap"
+                                           LineHeight="18" />
+                            </Border>
+
+                        </Expander>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+    </StackPanel>
+
+</UserControl>

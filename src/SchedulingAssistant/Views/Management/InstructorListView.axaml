@@ -320,8 +320,7 @@
 
                         <TextBlock
                             Margin="0,4,0,0"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextFaint}"
+                            FontWeight="SemiBold"                            
                             Text="Sections" />
 
                         <ItemsControl ItemsSource="{Binding AssignedSections}">
@@ -331,13 +330,13 @@
                                         <TextBlock
                                             Grid.Column="0"
                                             VerticalAlignment="Center"
-                                            FontSize="11"
+                                            FontSize="12"
                                             Text="{Binding Display}" />
                                         <TextBlock
                                             Grid.Column="1"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center"
-                                            FontSize="11"
+                                            FontSize="12"
                                             Text="{Binding WorkloadValue, StringFormat=0.##}" />
                                     </Grid>
                                 </DataTemplate>
@@ -566,7 +565,7 @@
                                         Binding="{Binding DayDisplay}"
                                         Header="Day" />
                                     <DataGridTextColumn
-                                        Width="90"
+                                        Width="Auto"
                                         Binding="{Binding TimeDisplay}"
                                         Header="Time" />
                                 </DataGrid.Columns>

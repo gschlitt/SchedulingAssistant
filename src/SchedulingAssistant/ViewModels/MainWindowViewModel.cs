@@ -657,6 +657,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToSharing() => OpenFlyout<SharingViewModel>("Sharing");
 
     [RelayCommand]
+    private void NavigateToWorkflows() => OpenFlyout<WorkflowsViewModel>("Workflows");
+
+    [RelayCommand]
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
 #if !BROWSER

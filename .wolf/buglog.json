@@ -13007,6 +13007,134 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-22T04:47:47.061Z"
+    },
+    {
+      "id": "bug-813",
+      "timestamp": "2026-05-22T15:27:05.148Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/TourContent.axaml",
+      "root_cause": "Had \"DesktopWelcomeSegment,LayoutTourSegment,FilterSeg",
+      "fix": "Changed to \"DesktopWelcomeSegment,LayoutTourSegment,FilterSeg",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-22T15:27:09.751Z"
+    },
+    {
+      "id": "bug-814",
+      "timestamp": "2026-05-22T16:29:02.080Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml",
+      "root_cause": "Had \"{Binding IsVisible}\"",
+      "fix": "Changed to \"True\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-22T16:33:52.946Z"
+    },
+    {
+      "id": "bug-815",
+      "timestamp": "2026-05-22T16:29:34.686Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Views/TourOverlayView.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T16:29:34.686Z"
+    },
+    {
+      "id": "bug-816",
+      "timestamp": "2026-05-22T23:17:36.705Z",
+      "error_message": "Wrong reference: HelpViewModel should be WorkflowsViewModel",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Used \"HelpViewModel\" instead of \"WorkflowsViewModel\"",
+      "fix": "Changed HelpViewModel → WorkflowsViewModel",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T23:17:36.705Z"
+    },
+    {
+      "id": "bug-817",
+      "timestamp": "2026-05-22T23:18:01.733Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/WorkflowsView.axaml",
+      "root_cause": "Had \"{StaticResource CardBackground}\"",
+      "fix": "Changed to \"{StaticResource SubtleBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T23:18:01.733Z"
+    },
+    {
+      "id": "bug-818",
+      "timestamp": "2026-05-22T23:24:17.750Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"NotConverter\"",
+      "fix": "Changed to \"HexToBrushConverter\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T23:24:17.751Z"
+    },
+    {
+      "id": "bug-819",
+      "timestamp": "2026-05-22T23:24:51.362Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/Management/WorkflowsView.axaml",
+      "root_cause": "Had \"{StaticResource TextBody}\"",
+      "fix": "Changed to \"{StaticResource TextSecondary}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-22T23:24:51.362Z"
+    },
+    {
+      "id": "bug-820",
+      "timestamp": "2026-05-23T01:42:48.771Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
+      "root_cause": "Had \"{StaticResource ButtonHover}\"",
+      "fix": "Changed to \"{StaticResource FilterItemHover}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-23T01:42:48.771Z"
     }
   ]
 }

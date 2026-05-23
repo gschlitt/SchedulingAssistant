@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-22T05:01:02.757Z
-> Files: 97 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-23T01:42:48.720Z
+> Files: 105 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -33,16 +33,19 @@
 - `audit-exception-handling-across-clever-manatee.md` — Exception Handling Audit — Fix Plan (~1290 tok)
 - `begin-feature-design-spec-composed-willow.md` — Plan: Begin Feature Design Spec — Walkthrough Tour (~425 tok)
 - `continue-design-of-walkthrough-federated-cascade.md` — Plan: Continue Walkthrough Tour Design — Phase 2 (Domain Model) (~420 tok)
+- `fuzzy-honking-cocke.md` — Workflows Flyout — Design Spec (Phase 1) (~1100 tok)
 - `glimmering-inventing-snail.md` — Fix: Workload panel tour step highlights wrong area (~853 tok)
 - `let-s-work-on-the-glimmering-pearl.md` — Plan: Walkthrough Tour — Phase 3 (UX Sketch) (~2715 tok)
 - `move-to-phase-3-cached-zebra.md` — Body Message Sequence — AXAML-Driven Dynamic Tour Card Text (~1025 tok)
 - `next-is-the-data-functional-charm.md` — Plan: Tour Feature — Data Model Implementation (~1925 tok)
+- `no-joy-please-revert-expressive-lightning.md` — Plan: Revert keyboard shortcut changes, diagnose focus issue (~433 tok)
 - `oh-sweet-ok-we-ll-mossy-cherny.md` — Plan: Two-Tour Architecture (Desktop + WASM) with Pre-Wizard Desktop Tour (~1832 tok)
 - `ok-better-one-issue-velvety-crane.md` — Tour: Full-window input blocking + exception safety (~795 tok)
 - `ok-found-another-reproducible-compiled-blum.md` — Exception Handling Safety Net (~1918 tok)
 - `ok-we-ll-need-to-zazzy-quasar.md` — Tour Action Sequence Rework (~1087 tok)
 - `on-a-build-i-m-playful-codd.md` — Fix: Bugsnag ObjectDisposedException on Startup Error (~406 tok)
 - `so-the-tour-is-sequential-beaver.md` — Diagnosis: Tour Menus Don't Open on WASM (~635 tok)
+- `the-chooser-menus-looks-wondrous-kite.md` — Improve Filter Dropdown Popup Appearance (~510 tok)
 - `we-ll-refine-the-project-tour-golden-catmull.md` — Plan: Add `filter.overlay-open` tour action group (~579 tok)
 - `when-there-is-no-sprightly-bird.md` — Plan: Disable Section View Controls When No Semester Selected (~503 tok)
 
@@ -233,11 +236,11 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1762 tok)
-- `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5242 tok)
-- `AppColors.axaml` (~3496 tok)
+- `App.axaml` (~1778 tok)
+- `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5257 tok)
+- `AppColors.axaml` (~3627 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~16114 tok)
-- `TourContent.axaml` (~2641 tok)
+- `TourContent.axaml` (~2832 tok)
 
 ## src/SchedulingAssistant/Assets/
 
@@ -250,6 +253,7 @@
 
 ## src/SchedulingAssistant/Converters/
 
+- `HexToBrushConverter.cs` — Converts a <c>#RRGGBB</c> hex string to a <see cref="SolidColorBrush"/> for use as a Background or F (~290 tok)
 
 ## src/SchedulingAssistant/Data/
 
@@ -287,7 +291,7 @@
 - `TourSegment.cs` — A named, ordered group of <see cref="TourStep"/> keys that belong together thematically. The unit of (~552 tok)
 - `TourSegmentData.cs` — AXAML-instantiable content class for a tour segment. Converted to an immutable <see cref="TourSegmen (~204 tok)
 - `TourStatus.cs` — Lifecycle state of a running or completed tour. Valid transitions: <c>NotStarted → InProgress → Comp (~114 tok)
-- `TourStep.cs` — The atomic unit of a tour: one moment of explanation that identifies a UI element and provides conte (~1175 tok)
+- `TourStep.cs` — The atomic unit of a tour: one moment of explanation that identifies a UI element and provides conte (~1188 tok)
 - `TourStepData.cs` — AXAML-instantiable content class for a tour step. Parameterless constructor and public setters allow (~465 tok)
 - `TourTarget.cs` — Identifies a UI element that a tour step points at. <see cref="Kind"/> selects the resolution strate (~424 tok)
 - `TourTargetKind.cs` — Determines how a <see cref="TourTarget"/> is resolved to a UI element at runtime. Each kind uses a d (~314 tok)
@@ -303,14 +307,14 @@
 - `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4361 tok)
 - `SharedScheduleCsvExporter.cs` — Exports sections visible in the current filter state as a shared schedule CSV. Stateless — all data (~1487 tok)
 - `SharedScheduleCsvParser.cs` — Parses a shared schedule CSV file into a <see cref="SharedScheduleSet"/>. Stateless — all results re (~3710 tok)
-- `TourActionDefinitions.cs` — Defines all tour step PreAction/MidActions/PostAction callbacks in one place. Each entry's key must  (~8444 tok)
+- `TourActionDefinitions.cs` — Defines all tour step PreAction/MidActions/PostAction callbacks in one place. Each entry's key must (~8444 tok)
 - `TourCatalog.cs` — Static registry of all tour definitions. Steps, segments, and tours are immutable and created once a (~3613 tok)
 - `TourRunner.cs` — Coordinates tour lifecycle: start, advance, dismiss, and auto-trigger evaluation. DI-registered sing (~2803 tok)
 - `WriteLockService.cs` — Manages a file-based write lock that prevents two instances of the app from writing to the same SQLi (~8153 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8595 tok)
+- `MainWindowViewModel.cs` — The permanent left-panel section list. Held for app lifetime. (~8624 tok)
 - `TourOverlayViewModel.cs` — Drives the tour overlay presentation layer. Subscribes to <see cref="TourRunner"/> events and comput (~5210 tok)
 - `ViewModelBase.cs` — Inline error message shown in the view when an operation fails or is blocked by a business rule. Set (~591 tok)
 
@@ -328,6 +332,7 @@
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3306 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~9161 tok)
 - `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~2257 tok)
+- `WorkflowsViewModel.cs` — A single workflow entry: a user-facing scenario with expandable solution steps. (~1403 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -339,7 +344,7 @@
 
 ## src/SchedulingAssistant/Views/
 
-- `MainView.axaml` (~6438 tok)
+- `MainView.axaml` (~6484 tok)
 - `SectionPanelContent.axaml` (~1858 tok)
 - `SplashScreen.axaml` (~360 tok)
 - `SplashScreen.axaml.cs` — Splash screen shown as the initial <c>desktop.MainWindow</c>. After a minimum display time, creates (~370 tok)
@@ -348,12 +353,15 @@
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `GridFilterView.axaml` (~8080 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18383 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
 - `AcademicUnitListView.axaml` (~616 tok)
 - `InstructorListView.axaml` (~8657 tok)
+- `WorkflowsView.axaml` (~924 tok)
+- `WorkflowsView.axaml.cs` — Class: WorkflowsView (~53 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

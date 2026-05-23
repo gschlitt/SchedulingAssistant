@@ -22,7 +22,7 @@
 	<tour:TourData x:Key="desktop-tour"
 		Title="Getting Started Tour"
 		Description="A preview of TermPoint before you set up your database"
-		SegmentKeys="DesktopWelcomeSegment,LayoutTourSegment,FilterSegment,,SectionEditSegment,InstructorFlyout,DesktopClosingSegment"
+		SegmentKeys="DesktopWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,InstructorFlyout,Configuration and Scheduling Environment,DesktopClosingSegment"
 		AutoTrigger="PreWizardFirstLaunch"
 		IsReplayable="True" />
 
@@ -30,7 +30,7 @@
 	<tour:TourData x:Key="wasm-tour"
 		Title="TermPoint Demo Tour"
 		Description="Learn the layout and key workflows"
-		SegmentKeys="WasmWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,InstructorFlyout,WasmClosingSegment"
+		SegmentKeys="WasmWelcomeSegment,LayoutTourSegment,FilterSegment,SectionEditSegment,InstructorFlyout,Configuration and Scheduling Environment,WasmClosingSegment"
 		AutoTrigger="EverySession"
 		IsReplayable="True" />
 
@@ -40,19 +40,20 @@
 
 	<tour:TourStepData x:Key="desktop.welcome"
 		Title="Welcome to TermPoint"
-		Body="This short tour will use an example timetable will demonstrate some TermPoint basics. The tour will be followed by a wizard to help you get setup. More information on using TermPoint  is available under the help menu once you have completed the setup."
+		Body="This short tour will use an example timetable to demonstrate some TermPoint basics. The tour will be followed by a configuration wizard to help you get setup.{p} More information on using TermPoint  is available under the help menu once you have completed the setup."
 		TargetKind="None"
 		CardWidth="700" />
 
 	<tour:TourStepData x:Key="desktop.closing"
 		Title="Ready to Get Started"
-		Body="That's the tour! Click Done to continue to the setup wizard, where you'll configure your own database."
+		Body="You've finished the tour. Click Done to continue to the setup wizard, where you'll configure your own database."
 		TargetKind="None"
 		CardWidth="700" />
 
 	<tour:TourStepData x:Key="wasm.welcome"
 		Title="Welcome to the TermPoint Demo"
-		Body="This is a live demo with sample data. A short tour will present some basics, after which you're able to experiment yourself. TermPoint is best viewed full-screen in your brower (three dots menu, find Zoom, set full-screen). Please keep in mind that this is a web-based demonstration and may run a little slowly. TermPoint itself is a desktop application which runs quickly!"
+		Body="This is a live demo with sample data. A short tour will present some basics, after which you will be  able to experiment yourself.{p} TermPoint is best viewed full-screen in your brower (three dots menu, find Zoom, set full-screen).
+		{p}Please keep in mind that this is a web-based demonstration and may run a little slowly. TermPoint itself is a desktop application and runs quickly."
 		TargetKind="None"
 		CardWidth="700" />
 
@@ -91,7 +92,7 @@
 	
 	<tour:TourStepData x:Key="layout.section-list"
     Title="Section View"
-    Body="The semester's sections are here. Section View functions as the single source of truth for the semester. (No more competing spreadsheets!)"
+    Body="The semester's sections are here. Section View functions as the single source of truth for the semester, ensuring your data is not spread across competing documents."
     TargetKind="NamedControl"
     TargetValue="SectionViewPanel"
     Placement="Right" />	
@@ -133,21 +134,21 @@
 
 	<tour:TourStepData x:Key="filter.instructor"
     Title="Filter by Instructor"
-    Body="Individual schedules are also easy to see.|Individual schedules are also easy to see."
+    Body="Individual schedules are also easy to see.| Here we see just Ruthe Botsford's sections."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorPanel"
     Placement="Left" />
 
 	<tour:TourStepData x:Key="filter.unstaffed"
     Title="Find Unstaffed Sections"
-    Body="It's easy to see sections not yet staffed.|It's easy to see sections not yet staffed."
+    Body="Selecting 'unstaffed' will show us just the sections not yet staffed."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorPanel"
     Placement="Left" />
 
 	<tour:TourStepData x:Key="overlay.instructor"
     Title="Instructor Overlay"
-    Body="Suppose we need to fill out Ruthe Botsford's workload. We already filtered for the unstaffed sections. Let's overlay Ruthe's schedule so far.|Now we can see what unstaffed courses fit her schedule. Anything not conflicting with a red framed block fits her schedule."
+    Body="Suppose we need to fill out Ruthe Botsford's workload. We already filtered for the unstaffed sections. Let's overlay Ruthe's schedule so far.|Now we can see what unstaffed sections fit her schedule. Anything not conflicting with a red framed block fits her schedule. A right-click would assign it to her and update workload."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.InstructorOverlayPanel"
     Placement="Left" />
@@ -237,5 +238,18 @@
     TargetKind="NamedControl"
     TargetValue="WorkloadPanel"
     Placement="Above" />
+
+	<!-- Configuration Tour -->
+
+	<tour:TourSegmentData x:Key="Configuration and Scheduling Environment"
+	Title="TermPoint Tour"
+	StepKeys="config.overview"
+	/>
+
+	<tour:TourStepData x:Key="config.overview"
+    Title="Configuration"
+    Body="Under the Configuration menu, you can configure TermPoint to your institution's patterns: block start times and lengths, block patterns and section code types. Under Scheduling Environment you can edit your rooms, tags, staff types, meeting types reserve codes and so on."
+    TargetKind="None"
+	CardWidth="700"/>
 
 </ResourceDictionary>

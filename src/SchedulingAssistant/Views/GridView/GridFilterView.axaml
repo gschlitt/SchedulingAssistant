@@ -19,7 +19,7 @@
 		<!--  Compact checkbox style inside popups  -->
 		<Style Selector="CheckBox">
 			<Setter Property="FontSize" Value="11" />
-			<Setter Property="Padding" Value="4,2" />
+			<Setter Property="Padding" Value="6,3" />
 			<Setter Property="MinHeight" Value="0" />
 		</Style>
 		<!--  Extra-compact checkbox for the filter bar toggle (smaller glyph + label)  -->
@@ -171,7 +171,7 @@
 			<Setter Property="Background" Value="Transparent" />
 		</Style>
 		<Style Selector="ListBox.FilterList ListBoxItem:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+			<Setter Property="Background" Value="{StaticResource FilterItemHover}" />
 		</Style>
 		<!--  GroupBox template override: tighten the 6px structural padding to 2px  -->
 		<Style Selector="GroupBox">
@@ -270,11 +270,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -313,11 +314,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -356,11 +358,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -392,11 +395,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -428,11 +432,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -464,11 +469,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -500,11 +506,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -536,11 +543,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -572,11 +580,12 @@
 							<Border
 								MinWidth="120"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<ListBox
 										Classes="FilterList"
@@ -649,11 +658,12 @@
 							<Border
 								MinWidth="140"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<!--
 										SelectionCommandBehavior replaces OnInstructorOverlayChanged code-behind handler:
@@ -708,11 +718,12 @@
 							<Border
 								MinWidth="140"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<!--  SelectionCommandBehavior replaces OnRoomOverlayChanged code-behind handler.  -->
 									<ListBox
@@ -763,11 +774,12 @@
 							<Border
 								MinWidth="140"
 								MaxHeight="220"
-								Padding="2"
+								Padding="4"
 								Background="{StaticResource FilterExpanderContent}"
-								BorderBrush="{StaticResource FilterExpanderBorder}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
 								BorderThickness="1"
-								CornerRadius="3">
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
 								<ScrollViewer VerticalScrollBarVisibility="Auto">
 									<!--  SelectionCommandBehavior replaces OnTagOverlayChanged code-behind handler.  -->
 									<ListBox

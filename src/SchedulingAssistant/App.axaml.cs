@@ -408,6 +408,7 @@ public partial class App : Application
         services.AddTransient<WorkloadMailerViewModel>();
         services.AddTransient<CourseHistoryExportViewModel>();
         services.AddTransient<CampusListViewModel>();
+        services.AddTransient<WorkflowsViewModel>();
         services.AddTransient<HelpViewModel>();
         services.AddTransient<ShareViewModel>();
 

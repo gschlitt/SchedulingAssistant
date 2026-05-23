@@ -33,6 +33,7 @@
 			<conv:SemesterBorderBrushConverter x:Key="SemesterBorderBrushConverter" />
 			<conv:SemesterBackgroundBrushConverter x:Key="SemesterBackgroundBrushConverter" />
 			<conv:HexToColorConverter x:Key="HexToColorConverter" />
+			<conv:HexToBrushConverter x:Key="HexToBrushConverter" />
 			<conv:NotConverter x:Key="NotConverter" />
 		</ResourceDictionary>
 	</Application.Resources>

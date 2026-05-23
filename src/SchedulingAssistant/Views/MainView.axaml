@@ -301,6 +301,13 @@
 						Content="Sharing" />
 
 					<Button
+						x:Name="NavWorkflows"
+						Margin="0,4,0,4"
+						Classes="nav"
+						Command="{Binding NavigateToWorkflowsCommand}"
+						Content="Workflows" />
+
+					<Button
 						x:Name="NavHelp"
 						Margin="0,4,0,4"
 						Classes="nav"

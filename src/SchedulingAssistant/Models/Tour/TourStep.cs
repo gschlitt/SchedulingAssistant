@@ -94,6 +94,7 @@ public class TourStep
         Title = title;
         BodyMessages = body.Split('|', StringSplitOptions.TrimEntries)
             .Where(s => s.Length > 0)
+            .Select(s => s.Replace("{p}", "\n\n"))
             .ToList()
             .AsReadOnly();
         Body = BodyMessages[0];

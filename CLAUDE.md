@@ -2,7 +2,6 @@
 
 # Coding Practice
 
-
 Code should clean. Prefer building reusable code, even if it takes more time, rather than repeating yourself.
 
 Commenting should be on the liberal side, if anything. When in doubt, comment. Methods should be commented, explain the purpose, its parameters, return values, and any exceptions it might throw.
@@ -12,6 +11,12 @@ Uses /// for single-line XML documentation comments that a documentation generat
 Any fonts sizes, weights, and colors used should not be hardcoded, but refer back to appcolors.axaml or app.axaml
 
 Strongly prefer MVVM style with minimal code-behinds.  Prefer attached behaviors to code-behinds, unless it is unnatural and too complex.
+
+# Debugging Practice 
+
+When debugging, when you generate more than one competing hypothesis, stop and propose the cheapest experiment that would distinguish between them before continuing.
+
+When debugging, prefer one targeted probe over a complete theory - ask me to test first, synthesize later. 
 
 
 # SchedulingAssistant — Project Decisions
@@ -92,5 +97,4 @@ The Section Code TextBox lives inside a `DataTemplate`, so it cannot be reached 
 ### Copy operation
 "Copy" adds a new section immediately below the selected one in the list, pre-setting its course and (if derivable) its section code. Code derivation: `SectionCodeGenerator.MatchesPattern` checks the source code against each configured `SectionCodePattern` (in sort order); if a match is found, `GetNextCode` returns the next unused code in that pattern's sequence. If no pattern matches, or all codes are exhausted, the section code is left blank. The editor opens in the same step-gate mode; if both course and code are pre-populated, the snapshot is set at construction so all fields are immediately editable.
 
-## Decisions Not Yet Made
-- Exact fields on Section, Instructor, Room (beyond what's described above)
+
