@@ -118,9 +118,33 @@ public sealed class WorkflowsViewModel : ViewModelBase
             Solution  =
                 "1. Filters are your friend!\n" +
                 "2. If you have certain courses that together form a program, tag them. \n" +
-                "3. You can tag individual sections, but more effectively, assign tags to the courses in the course editor\n" +
+                "3. You can tag individual sections (in the editor, or right-click on a section meeting), but even better, assign tags to the courses in the course editor\n" +
                 "4. Now every new section of those courses will get those tags.\n" +
                 "5. When you're timetabling, filter to that tag (possibly with other filters), and ensure the sections together form workable schedules"
+        },
+        new()
+        {
+            Title     = "Speedy editing",
+            UserStory = "I'd like to speed up my editing",
+            CardColor = "#FFE4E6",
+            Solution  =
+                "1. In Schedule View, right-click on a meeting to assign intructors, tags or sections\n" +
+                "2. In any editor (section, instructor, course etc), Enter to edit, Esc to cancel, Ctrl-S to save\n" +
+                "3. Double-click on a section (in Section View) or a section meeting (in Schedule View) to open a section for editing\n" +
+                "4. Clicking on an instrutor name in Workload View highlights all their sections in Schedule View\n" +
+                "5. Select a section in any of Section View, Schedule View or Workload View and it is selected in the other two views." 
+        },
+        new()
+        {
+            Title     = "Tagging sections",
+            UserStory = "Adding tags to sections sound useful, but I forget!",
+            CardColor = "#FFE4E6",
+            Solution  =
+                "1. You can tag *courses* and then every section of that course will get those tags \n" +
+                "2. \n" +
+                "3. \n" +
+                "4. \n" +
+                "5. \n"
         },
     ];
 }

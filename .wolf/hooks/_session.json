@@ -1,84 +1,12 @@
 {
-  "session_id": "session-2026-05-23-1831",
-  "started": "2026-05-23T01:31:10.383Z",
-  "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": {
-      "count": 12,
-      "tokens": 8080,
-      "first_read": "2026-05-23T01:31:34.434Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml": {
-      "count": 1,
-      "tokens": 1778,
-      "first_read": "2026-05-23T01:31:35.041Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml": {
-      "count": 5,
-      "tokens": 3555,
-      "first_read": "2026-05-23T01:31:35.629Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs": {
-      "count": 1,
-      "tokens": 7319,
-      "first_read": "2026-05-23T01:31:39.251Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml.cs": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-23T01:31:42.528Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppLayout.axaml": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-05-23T01:31:48.709Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/.claude/plans/the-chooser-menus-looks-wondrous-kite.md",
-      "action": "create",
-      "tokens": 797,
-      "at": "2026-05-23T01:34:51.868Z"
-    },
-    {
-      "file": "C:/Users/gregs/.claude/plans/the-chooser-menus-looks-wondrous-kite.md",
-      "action": "create",
-      "tokens": 680,
-      "at": "2026-05-23T01:37:05.416Z"
-    },
-    {
-      "file": "C:/Users/gregs/.claude/plans/the-chooser-menus-looks-wondrous-kite.md",
-      "action": "create",
-      "tokens": 583,
-      "at": "2026-05-23T01:41:39.130Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
-      "action": "edit",
-      "tokens": 108,
-      "at": "2026-05-23T01:42:29.971Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
-      "action": "edit",
-      "tokens": 50,
-      "at": "2026-05-23T01:42:45.607Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/GridFilterView.axaml",
-      "action": "edit",
-      "tokens": 52,
-      "at": "2026-05-23T01:42:48.754Z"
-    }
-  ],
-  "edit_counts": {
-    "../../../.claude/plans/the-chooser-menus-looks-wondrous-kite.md": 3,
-    "src/SchedulingAssistant/AppColors.axaml": 1,
-    "src/SchedulingAssistant/Views/GridView/GridFilterView.axaml": 2
-  },
-  "anatomy_hits": 2,
-  "anatomy_misses": 3,
-  "repeated_reads_warned": 15,
+  "session_id": "session-2026-05-23-2113",
+  "started": "2026-05-23T04:13:27.983Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
+  "anatomy_misses": 0,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 4
+  "stop_count": 0
 }
