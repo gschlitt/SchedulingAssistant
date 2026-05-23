@@ -79,7 +79,7 @@
 			<Setter Property="FontSize" Value="13" />
 		</Style>
 		<Style Selector="Button.nav:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
 		</Style>
 
 		<!--
@@ -87,7 +87,7 @@
 			(e.g. the "More…" button stays highlighted while the More flyout is open).
 		-->
 		<Style Selector="Button.nav.active /template/ ContentPresenter">
-			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
 		</Style>
 
 		<!--  Settings menu: strip chrome from the Menu container itself  -->
@@ -100,12 +100,10 @@
 			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
 			<Setter Property="FontSize" Value="13" />
 			<Setter Property="CornerRadius" Value="4" />
-		</Style>
-		<Style Selector="MenuItem.nav:pointerover /template/ Border#PART_LayoutRoot">
-			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
-		</Style>
-		<Style Selector="MenuItem.nav:selected /template/ Border#PART_LayoutRoot">
-			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+			<Style.Resources>
+				<SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="{StaticResource ButtonHoverColor}" />
+				<SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="{StaticResource ButtonPressedColor}" />
+			</Style.Resources>
 		</Style>
 
 		<Style Selector="TextBlock">

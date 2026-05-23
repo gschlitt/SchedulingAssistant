@@ -13135,6 +13135,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-23T01:42:48.771Z"
+    },
+    {
+      "id": "bug-821",
+      "timestamp": "2026-05-23T17:50:52.512Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"{StaticResource UserInteractionBrush}\"",
+      "fix": "Changed to \"{StaticResource ButtonHover}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-23T17:51:50.099Z"
+    },
+    {
+      "id": "bug-822",
+      "timestamp": "2026-05-23T17:54:39.643Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/AppColors.axaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→7 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-23T17:54:39.643Z"
     }
   ]
 }

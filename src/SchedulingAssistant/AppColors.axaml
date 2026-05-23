@@ -66,13 +66,15 @@
 
 
 	<!--  User targets for interaction: buttons, selectors  -->
-	<Color x:Key="UserInteractionColor">#bcdcff</Color>
+	<Color x:Key="UserInteractionColor">Transparent</Color>
   <SolidColorBrush x:Key="UserInteractionBrush" Color="{StaticResource UserInteractionColor}"/>
 	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
 	<SolidColorBrush x:Key="ButtonBackground" Color="{StaticResource UserInteractionColor}" />
 	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
-	<SolidColorBrush x:Key="ButtonHover" Color="#a9d2fb" />
-	<SolidColorBrush x:Key="ButtonPressed" Color="#94c6f7" />
+	<Color x:Key="ButtonHoverColor">#a9d2fb</Color>
+	<SolidColorBrush x:Key="ButtonHover" Color="{StaticResource ButtonHoverColor}" />
+	<Color x:Key="ButtonPressedColor">#94c6f7</Color>
+	<SolidColorBrush x:Key="ButtonPressed" Color="{StaticResource ButtonPressedColor}" />
 
 	<!--  Filters and Overlays ────────────────────────────────  -->
 

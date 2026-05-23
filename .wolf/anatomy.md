@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-23T01:42:48.720Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-23T17:54:39.598Z
 > Files: 105 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -236,9 +236,9 @@
 
 ## src/SchedulingAssistant/
 
-- `App.axaml` (~1778 tok)
+- `App.axaml` (~1751 tok)
 - `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5257 tok)
-- `AppColors.axaml` (~3627 tok)
+- `AppColors.axaml` (~3669 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~16114 tok)
 - `TourContent.axaml` (~2832 tok)
 

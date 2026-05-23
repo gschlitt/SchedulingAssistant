@@ -22,7 +22,7 @@
 				x:Name="HeaderBorder"
 				Grid.Row="0"
 				MinHeight="30"
-				Padding="3,0"
+				Padding="5,0"
 				b:RightClickCommandBehavior.Command="{Binding #Root.InternalHeaderRightClickCommand}"
 				Background="{StaticResource ViewHeaderBackground}"
 				BorderBrush="Red"
