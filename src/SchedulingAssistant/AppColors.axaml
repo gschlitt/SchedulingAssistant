@@ -257,5 +257,12 @@
 	<!--  ── Workflow cards  ────────────────────────────────────────────────  -->
 	<!--  Soft pastel fills — distinct but not competing with grid tiles  -->
 	<SolidColorBrush x:Key="WorkflowCardBorder" Color="#D0D5DD" />
+	<!--  Hyperlink text on workflow cards / sticky notes (also the "pinned" pin tint)  -->
+	<SolidColorBrush x:Key="WorkflowLinkText" Color="#2563EB" />
+	<!--  Inline "pill" badges (mark an app element in workflow prose). Default = accent blue.  -->
+	<SolidColorBrush x:Key="WorkflowPillBackground" Color="#E3ECFB" />
+	<SolidColorBrush x:Key="WorkflowPillText" Color="#2D4A77" />
+	<SolidColorBrush x:Key="WorkflowPillSuccessBackground" Color="#D1FAE5" />
+	<SolidColorBrush x:Key="WorkflowPillSuccessText" Color="#1E5A3A" />
 
 </ResourceDictionary>

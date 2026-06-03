@@ -36,6 +36,19 @@ public static class PlatformCapabilities
     /// WASM renders on-tree TextBlocks taller than off-tree Measure() predicts.
     /// </summary>
     public static int TileHeightMarginPerEntry => 2;
+
+    /// <summary>
+    /// True when the platform supports spawning detached top-level windows
+    /// (e.g. floating "sticky note" copies of workflow cards).
+    /// False in the browser demo — WASM is single-window.
+    /// </summary>
+    public static bool SupportsDetachedWindows => false;
+
+    /// <summary>
+    /// True when the platform can open external URLs via the OS default handler.
+    /// False in the browser demo — there is no native process to launch.
+    /// </summary>
+    public static bool SupportsLinks => false;
 #else
     /// <inheritdoc cref="SupportsFileDialogs"/>
     public static bool SupportsFileDialogs => true;
@@ -48,5 +61,11 @@ public static class PlatformCapabilities
 
     /// <inheritdoc cref="TileHeightMarginPerEntry"/>
     public static int TileHeightMarginPerEntry => 0;
+
+    /// <inheritdoc cref="SupportsDetachedWindows"/>
+    public static bool SupportsDetachedWindows => true;
+
+    /// <inheritdoc cref="SupportsLinks"/>
+    public static bool SupportsLinks => true;
 #endif
 }
