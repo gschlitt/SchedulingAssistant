@@ -367,15 +367,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         bool showBanners = semesters.Count > 1;
 
         // Build shared lookup tables once (used across all semesters)
-        var courseLookup      = _courseRepo.GetAll().ToDictionary(c => c.Id);
-        var instructorLookup  = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var roomLookup        = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var sectionTypeLookup = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).ToDictionary(v => v.Id);
-        var campusLookup      = _campusRepo.GetAll().ToDictionary(c => c.Id);
-        var tagLookup         = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id);
-        var resourceLookup    = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource).ToDictionary(v => v.Id);
-        var reserveLookup     = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve).ToDictionary(v => v.Id);
-        var meetingTypeLookup = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id);
+        var lk = BuildItemLookups();
 
         // Snapshot collapsed state across all existing section items so it survives the rebuild
         var collapsedIds = SectionItems
@@ -402,11 +394,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
             var rawItems = sections.Select(s =>
             {
-                var vm = new SectionListItemViewModel(
-                    s, courseLookup, instructorLookup, roomLookup,
-                    sectionTypeLookup, campusLookup,
-                    tagLookup, resourceLookup, reserveLookup, meetingTypeLookup,
-                    semDisplay.Semester.Name, semDisplay.Semester.Color ?? string.Empty);
+                var vm = CreateSectionItem(
+                    s, lk, semDisplay.Semester.Name, semDisplay.Semester.Color ?? string.Empty);
                 if (collapsedIds.Contains(s.Id))
                     vm.IsCollapsed = true;
                 return vm;
@@ -424,7 +413,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         ApplyFilterHighlights();
 
         // Flag sections that share a room+day+time with another section.
-        ApplyRoomConflicts(courseLookup, roomLookup);
+        ApplyRoomConflicts(lk.Courses, lk.Rooms);
 
         if (selectSectionId is not null)
             SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
@@ -433,6 +422,137 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // Honour the "open with all sections collapsed" preference on semester change.
         if (isSemesterChange && AppSettings.Current.OpenWithAllSectionsCollapsed)
             CollapseAll();
+    }
+
+    /// <summary>
+    /// Immutable bundle of the entity lookup tables required to construct a
+    /// <see cref="SectionListItemViewModel"/>. Built once per refresh by
+    /// <see cref="BuildItemLookups"/> and shared across all card construction.
+    /// </summary>
+    private readonly record struct ItemLookups(
+        Dictionary<string, Course> Courses,
+        Dictionary<string, Instructor> Instructors,
+        Dictionary<string, Room> Rooms,
+        Dictionary<string, SchedulingEnvironmentValue> SectionTypes,
+        Dictionary<string, Campus> Campuses,
+        Dictionary<string, SchedulingEnvironmentValue> Tags,
+        Dictionary<string, SchedulingEnvironmentValue> Resources,
+        Dictionary<string, SchedulingEnvironmentValue> Reserves,
+        Dictionary<string, SchedulingEnvironmentValue> MeetingTypes);
+
+    /// <summary>
+    /// Builds the entity lookup tables used to construct section cards. All sources are
+    /// in-memory repositories, so this is cheap; it is rebuilt on each refresh so newly
+    /// added courses/rooms/etc. are reflected.
+    /// </summary>
+    private ItemLookups BuildItemLookups() => new(
+        _courseRepo.GetAll().ToDictionary(c => c.Id),
+        _instructorRepo.GetAll().ToDictionary(i => i.Id),
+        _roomRepo.GetAll().ToDictionary(r => r.Id),
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).ToDictionary(v => v.Id),
+        _campusRepo.GetAll().ToDictionary(c => c.Id),
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id),
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource).ToDictionary(v => v.Id),
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve).ToDictionary(v => v.Id),
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id));
+
+    /// <summary>
+    /// Constructs a single <see cref="SectionListItemViewModel"/> for <paramref name="s"/>
+    /// using the shared <paramref name="lk"/> lookups and the owning semester's display fields.
+    /// </summary>
+    private static SectionListItemViewModel CreateSectionItem(
+        Section s, ItemLookups lk, string semesterName, string semesterColor) =>
+        new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
+            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor);
+
+    /// <summary>
+    /// Fast path for refreshing the list after editing a single existing section: replaces just
+    /// that one card in place instead of rebuilding the entire <see cref="SectionItems"/> collection.
+    /// <para>
+    /// Rebuilding the whole collection forces the ListBox to discard and re-realize every card
+    /// container (a CollectionChanged.Reset), which is the dominant cost of the Apply action.
+    /// Mutating the existing collection with a granular Remove + Insert only re-realizes the one
+    /// changed container, leaving the other cards untouched.
+    /// </para>
+    /// Returns <c>false</c> when the section is not already present (e.g. a brand-new section) or
+    /// its semester is not currently displayed, in which case the caller should fall back to a
+    /// full <see cref="Load"/>.
+    /// </summary>
+    /// <param name="s">The just-saved section whose card should be refreshed.</param>
+    private bool TryUpdateCardInPlace(Section s)
+    {
+        // Locate the existing card for this section.
+        int oldIndex = -1;
+        SectionListItemViewModel? old = null;
+        for (int i = 0; i < SectionItems.Count; i++)
+        {
+            if (SectionItems[i] is SectionListItemViewModel vm && vm.Section.Id == s.Id)
+            {
+                oldIndex = i;
+                old = vm;
+                break;
+            }
+        }
+        if (old is null) return false;
+
+        // Resolve the owning semester's display fields (name/color).
+        var sem = _semesterContext.SelectedSemesters.FirstOrDefault(x => x.Semester.Id == s.SemesterId);
+        if (sem is null) return false;
+
+        var lk = BuildItemLookups();
+        var newVm = CreateSectionItem(s, lk, sem.Semester.Name, sem.Semester.Color ?? string.Empty);
+        newVm.IsCollapsed = old.IsCollapsed; // preserve collapsed/expanded state across the swap
+
+        // Remove the stale card, then insert the fresh one at its correct sorted position within
+        // its semester group (the edit may have changed a sort key, e.g. the section code).
+        SectionItems.RemoveAt(oldIndex);
+        int insertIndex = ComputeSortedInsertIndex(newVm, s.SemesterId);
+        SectionItems.Insert(insertIndex, newVm);
+
+        SelectedItem = newVm;
+
+        // Re-derive the cheap per-card flags (no container rebuild): filter highlight and room conflicts.
+        ApplyFilterHighlights();
+        ApplyRoomConflicts(lk.Courses, lk.Rooms);
+        return true;
+    }
+
+    /// <summary>
+    /// Computes the absolute index in <see cref="SectionItems"/> at which <paramref name="newVm"/>
+    /// should be inserted so that its semester group stays sorted per the current sort mode.
+    /// Assumes <paramref name="newVm"/> has already been removed from the collection.
+    /// </summary>
+    /// <param name="newVm">The card being (re)inserted.</param>
+    /// <param name="semesterId">The semester whose group the card belongs to.</param>
+    private int ComputeSortedInsertIndex(SectionListItemViewModel newVm, string semesterId)
+    {
+        // Gather the group's existing cards (contiguous in the collection) and their first index.
+        int groupStart = -1;
+        var groupVms = new List<SectionListItemViewModel>();
+        for (int i = 0; i < SectionItems.Count; i++)
+        {
+            if (SectionItems[i] is SectionListItemViewModel vm && vm.Section.SemesterId == semesterId)
+            {
+                if (groupStart < 0) groupStart = i;
+                groupVms.Add(vm);
+            }
+        }
+
+        if (groupVms.Count == 0)
+        {
+            // Empty group: place immediately after the matching semester banner if present,
+            // otherwise (single-semester mode) at the end of the list.
+            for (int i = 0; i < SectionItems.Count; i++)
+                if (SectionItems[i] is SemesterBannerViewModel b && b.SemesterId == semesterId)
+                    return i + 1;
+            return SectionItems.Count;
+        }
+
+        // The group occupies contiguous indices starting at groupStart, so the sorted rank within
+        // the group maps directly to an absolute offset.
+        var sortedGroup = SortItems(groupVms.Append(newVm)).ToList();
+        int rank = sortedGroup.IndexOf(newVm);
+        return groupStart + rank;
     }
 
     /// <summary>
@@ -878,9 +998,22 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 {
                     if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
                     CollapseEditor();
+
                     var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
+
+                    // Suppress this VM's own SectionsChanged → Reload() handler so the section list
+                    // is refreshed exactly once (below), rather than twice. The store reload still
+                    // notifies the Schedule Grid and Workload Panel.
+                    _sectionStore.SectionsChanged -= Reload;
                     _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
-                    Load(selectSectionId: s.Id);                // rebuild list with correct post-save selection
+                    _sectionStore.SectionsChanged += Reload;
+
+                    // Fast path: for an edit of an existing section, refresh just that one card in
+                    // place (granular Remove+Insert) instead of replacing the whole collection — the
+                    // collection swap forces a full ListBox container rebuild and dominated the Apply
+                    // cost. New sections fall back to a full rebuild, as do cards not found in the list.
+                    if (isNew || !TryUpdateCardInPlace(s))
+                        Load(selectSectionId: s.Id);            // full rebuild with post-save selection
                 }
                 catch (Exception ex)
                 {

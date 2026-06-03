@@ -13183,6 +13183,153 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-05-24T19:39:34.876Z"
+    },
+    {
+      "id": "bug-824",
+      "timestamp": "2026-06-03T17:34:54.049Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T17:34:54.049Z"
+    },
+    {
+      "id": "bug-825",
+      "timestamp": "2026-06-03T17:35:00.977Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Had \"LoadCore timing (ms): buildLoop={tBuildLoop}, col",
+      "fix": "Changed to \"[LoadCore] LoadCore timing (ms): buildLoop={tBuil",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T17:35:00.977Z"
+    },
+    {
+      "id": "bug-826",
+      "timestamp": "2026-06-03T17:35:05.584Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "Had \"Grid ReloadCore timing (ms): total={swGrid.Elapse",
+      "fix": "Changed to \"[GridTiming] Grid ReloadCore timing (ms): total={",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T17:35:05.584Z"
+    },
+    {
+      "id": "bug-827",
+      "timestamp": "2026-06-03T17:48:37.933Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 11→8 lines (5 removed) | Also: Load(selectSectionId: s.Id);                // sin; $\"storeReload={tStoreReload - tCollapse}, load={tL",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-03T17:49:36.277Z"
+    },
+    {
+      "id": "bug-828",
+      "timestamp": "2026-06-03T17:49:20.039Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T17:49:20.039Z"
+    },
+    {
+      "id": "bug-829",
+      "timestamp": "2026-06-03T17:58:57.738Z",
+      "error_message": "Wrong operator: && should be ||",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Used \"&&\" instead of \"||\"",
+      "fix": "Changed operator && → ||",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T17:58:57.738Z"
+    },
+    {
+      "id": "bug-830",
+      "timestamp": "2026-06-03T17:59:05.865Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (2 removed) | Also: var tBuildLoop = swLoad.ElapsedMilliseconds;; var tAssign = swLoad.ElapsedMilliseconds;",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-03T17:59:12.525Z"
+    },
+    {
+      "id": "bug-831",
+      "timestamp": "2026-06-03T17:59:17.616Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T17:59:17.616Z"
+    },
+    {
+      "id": "bug-832",
+      "timestamp": "2026-06-03T18:30:00.000Z",
+      "error_message": "Noticeable UI lag after clicking Apply on a section edit (WASM build); filter re-render stayed brisk by comparison",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Not the DB write-back (WASM uses in-memory DemoSectionRepository, no persistence). Two causes: (1) the onSave callback called _sectionStore.Reload AND Load(), but the VM is subscribed to SectionsChanged->Reload, so the section list was rebuilt twice; (2) every refresh assigned a brand-new ObservableCollection to SectionItems, forcing the ListBox into a CollectionChanged.Reset that tears down and re-realizes every card container (~425ms for 63 cards).",
+      "fix": "In onSave, unsubscribe this VM's SectionsChanged->Reload handler around _sectionStore.Reload so the list refreshes once (Grid + Workload still notified). For edits of an existing section, added TryUpdateCardInPlace(): build one fresh card VM and do a granular Remove+Insert at the correct sorted position instead of replacing the whole collection, so only one container is re-realized. New/unfound sections fall back to full Load. Apply dropped from ~1094ms to ~730ms; list no longer flash-rebuilds.",
+      "tags": [
+        "performance",
+        "wasm",
+        "avalonia",
+        "observablecollection",
+        "ui-lag",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T18:30:00.000Z"
     }
   ]
 }

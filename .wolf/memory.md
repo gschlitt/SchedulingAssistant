@@ -7534,3 +7534,36 @@
 |------|--------|---------|---------|--------|
 | 09:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 10→9 lines | ~182 |
 | 09:56 | Session end: 1 writes across 1 files (SectionListView.axaml) | 1 reads | ~195 tok |
+
+## Session: 2026-06-03 10:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:23 | Created ../../../.claude/plans/in-the-wasm-build-eager-abelson.md | — | ~1735 |
+| 10:26 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified LogInfo() | ~445 |
+| 10:26 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 3→6 lines | ~68 |
+| 10:26 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified LogInfo() | ~127 |
+| 10:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified ReloadCore() | ~96 |
+| 10:27 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified LogInfo() | ~94 |
+| 10:29 | Session end: 6 writes across 3 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs) | 17 reads | ~62226 tok |
+| 10:34 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added nullish coalescing | ~122 |
+| 10:35 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | modified LogInfo() | ~51 |
+| 10:35 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | "Grid ReloadCore timing (m" → "[GridTiming] Grid ReloadC" | ~29 |
+| 10:35 | Session end: 9 writes across 3 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs) | 18 reads | ~62442 tok |
+| 10:48 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | removed 10 lines | ~29 |
+| 10:48 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | SectionListItemViewModel() → CreateSectionItem() | ~90 |
+| 10:48 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 2→2 lines | ~33 |
+| 10:49 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added nullish coalescing | ~1859 |
+| 10:49 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added 1 condition(s) | ~369 |
+| 10:51 | Session end: 14 writes across 3 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs) | 18 reads | ~81968 tok |
+| 10:58 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | reduced (-15 lines) | ~375 |
+| 10:59 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 6→3 lines | ~28 |
+| 10:59 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | reduced (-7 lines) | ~48 |
+| 10:59 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | modified ReloadCore() | ~28 |
+| 10:59 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 5→3 lines | ~32 |
+| 11:01 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/perf_observablecollection_reset.md | — | ~406 |
+| 11:02 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 2→3 lines | ~71 |
+| 11:02 | Session end: 21 writes across 5 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs, perf_observablecollection_reset.md, MEMORY.md) | 19 reads | ~83025 tok |
+| 11:03 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/perf_observablecollection_reset.md | 2→2 lines | ~67 |
+| 11:03 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~50 |
+| 11:03 | Session end: 23 writes across 5 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs, perf_observablecollection_reset.md, MEMORY.md) | 19 reads | ~83151 tok |

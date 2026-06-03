@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T16:56:36.372Z
-> Files: 106 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T18:03:32.239Z
+> Files: 109 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -35,6 +35,7 @@
 - `continue-design-of-walkthrough-federated-cascade.md` — Plan: Continue Walkthrough Tour Design — Phase 2 (Domain Model) (~420 tok)
 - `fuzzy-honking-cocke.md` — Workflows Flyout — Design Spec (Phase 1) (~1100 tok)
 - `glimmering-inventing-snail.md` — Fix: Workload panel tour step highlights wrong area (~853 tok)
+- `in-the-wasm-build-eager-abelson.md` — Apply-button lag after editing a section (WASM build) (~1626 tok)
 - `let-s-work-on-the-glimmering-pearl.md` — Plan: Walkthrough Tour — Phase 3 (UX Sketch) (~2715 tok)
 - `move-to-phase-3-cached-zebra.md` — Body Message Sequence — AXAML-Driven Dynamic Tour Card Text (~1025 tok)
 - `next-is-the-data-functional-charm.md` — Plan: Tour Feature — Data Model Implementation (~1925 tok)
@@ -51,7 +52,8 @@
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `MEMORY.md` — SchedulingAssistant Project Memory (~1168 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~1215 tok)
+- `perf_observablecollection_reset.md` (~417 tok)
 - `project_architecture_reference.md` — Key Architectural Decisions (~994 tok)
 - `project_avalonia12_upgrade.md` — Avalonia 12 Upgrade (April 25, 2026) (~419 tok)
 - `project_campus_architecture.md` — Campus Architecture (complete — March 2026) (~233 tok)
@@ -330,6 +332,7 @@
 - `NewDatabaseViewModel.cs` — ViewModel for the File → New flyout. Collects the new database name, location, and backup folder fro (~5060 tok)
 - `RoomListViewModel.cs` — ViewModel for the Rooms management panel. Provides a list of rooms with inline Add/Edit/Delete and m (~3141 tok)
 - `SchedulingEnvironmentListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3306 tok)
+- `SectionListViewModel.cs` — Callback to push ghost blocks (Room Availability Browser) onto the schedule grid. Set by <see cref=" (~16737 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~9161 tok)
 - `ShareViewModel.cs` — ViewModel for the Export → Share Configuration panel. Generates a .tpconfig file from the current da (~2257 tok)
 - `WorkflowsViewModel.cs` — A single workflow entry: a user-facing scenario with expandable solution steps. (~1403 tok)
