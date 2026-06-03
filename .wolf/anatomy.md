@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-23T17:54:39.598Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T16:45:30.498Z
 > Files: 105 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -238,7 +238,7 @@
 
 - `App.axaml` (~1751 tok)
 - `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5257 tok)
-- `AppColors.axaml` (~3669 tok)
+- `AppColors.axaml` (~3646 tok)
 - `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~16114 tok)
 - `TourContent.axaml` (~2832 tok)
 
@@ -301,7 +301,7 @@
 
 - `AcademicUnitService.cs` — Service for accessing the single Academic Unit in the system. There is always exactly one Academic U (~656 tok)
 - `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3423 tok)
-- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~19503 tok)
+- `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~19614 tok)
 - `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\TermPoint\Logs\app-YYYY-MM-DD.log. De (~1420 tok)
 - `ITourActionContext.cs` — Abstracts the app actions that tour step PreAction/PostAction callbacks need. Implemented by MainWin (~323 tok)
 - `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4361 tok)

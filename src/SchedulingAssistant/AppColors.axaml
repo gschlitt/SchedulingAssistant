@@ -69,7 +69,7 @@
 	<Color x:Key="UserInteractionColor">Transparent</Color>
   <SolidColorBrush x:Key="UserInteractionBrush" Color="{StaticResource UserInteractionColor}"/>
 	<!--  ── Buttons  ─────────────────────────────────────────────────────  -->
-	<SolidColorBrush x:Key="ButtonBackground" Color="{StaticResource UserInteractionColor}" />
+	<SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
 	<SolidColorBrush x:Key="ButtonBorder" Color="#B8CCDF" />
 	<Color x:Key="ButtonHoverColor">#a9d2fb</Color>
 	<SolidColorBrush x:Key="ButtonHover" Color="{StaticResource ButtonHoverColor}" />
@@ -93,10 +93,10 @@
 	<!--  Very light border that visually groups the filter choosers (and separately the overlay choosers) in the filter bar  -->
 	<SolidColorBrush x:Key="FilterGroupBorder" Color="#C8D5E4" />
 
-	<SolidColorBrush x:Key="FilterExpanderContent" Color="{StaticResource UserInteractionColor}" />
+	<SolidColorBrush x:Key="FilterExpanderContent" Color="{StaticResource AppBackgroundColor}" />
 
 	<!--  Sentinel row background in filter dropdowns (separates "Unstaffed" entries) Currently the same as FilterExpanderContent  -->
-	<SolidColorBrush x:Key="FilterSentinelBackground" Color="{StaticResource UserInteractionColor}" />
+	<SolidColorBrush x:Key="FilterSentinelBackground" Color="{StaticResource AppBackgroundColor}" />
 	<!--  The descriptive text describing each filter  -->
 	<SolidColorBrush x:Key="FilterActiveHeader" Color="{StaticResource FilterColor}" />
 	<SolidColorBrush x:Key="FilterInactiveHeader" Color="#2D3748" />

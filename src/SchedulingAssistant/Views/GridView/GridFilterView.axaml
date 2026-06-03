@@ -164,11 +164,11 @@
 		<Style Selector="ListBox.FilterList ListBoxItem">
 			<Setter Property="Padding" Value="0" />
 			<Setter Property="MinHeight" Value="0" />
-			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Background" Value="{StaticResource AppBackground}" />
 			<Setter Property="Cursor" Value="Hand" />
 		</Style>
 		<Style Selector="ListBox.FilterList ListBoxItem:selected /template/ ContentPresenter">
-			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Background" Value="{StaticResource AppBackground}" />
 		</Style>
 		<Style Selector="ListBox.FilterList ListBoxItem:pointerover /template/ ContentPresenter">
 			<Setter Property="Background" Value="{StaticResource FilterItemHover}" />
@@ -184,7 +184,7 @@
 								Grid.Column="0" Grid.ColumnSpan="4"
 								CornerRadius="{TemplateBinding CornerRadius}"
 								BorderThickness="{TemplateBinding BorderThickness}"
-								BorderBrush="Transparent"
+								BorderBrush="{StaticResource AppBackground}"
 								Background="{TemplateBinding Background}" />
 						<Border Grid.Row="1" Grid.RowSpan="3"
 								Grid.ColumnSpan="4"

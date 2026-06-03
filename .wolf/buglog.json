@@ -13167,6 +13167,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-23T17:54:39.643Z"
+    },
+    {
+      "id": "bug-823",
+      "timestamp": "2026-05-24T19:39:28.296Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (3 removed) | Also: // D does not exist yet. Use SourcePath as Working; // DatabaseContext creates the schema directly at ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-24T19:39:34.876Z"
     }
   ]
 }

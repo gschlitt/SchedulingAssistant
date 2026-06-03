@@ -28,9 +28,11 @@ namespace SchedulingAssistant.Services;
 /// instance from ever holding D open, allowing the writer's atomic rename (D.tmp → D)
 /// to succeed.</para>
 ///
-/// <para><b>New databases:</b> When D does not yet exist, D' is set equal to D (degenerate
-/// mode). <c>DatabaseContext</c> creates the schema at that path normally. The first
-/// <see cref="SaveAsync"/> call is a no-op for this case.</para>
+/// <para><b>New databases:</b> When D does not yet exist, there is nothing to copy.
+/// <c>WorkingPath</c> is set to <c>SourcePath</c> directly — there is no separate D';
+/// the file <c>DatabaseContext</c> creates <i>is</i> the authoritative database.
+/// <see cref="SaveAsync"/> is a no-op in this mode because every write already targets
+/// the final location.</para>
 ///
 /// <para><b>Thread safety:</b> <see cref="SaveAsync"/> is designed to be called from
 /// background threads (e.g., the autosave timer). All events are raised on the Avalonia
@@ -42,7 +44,7 @@ namespace SchedulingAssistant.Services;
 /// <c>App.Logger</c>; unit tests supply their own isolated instances.</para>
 ///
 /// <para><b>Lock-loss scenarios — "Somehow, write access disappears out from under us":</b>
-/// The could possibly happen, for example, if a writer's network access goes down
+/// This could possibly happen, for example, if a writer's network access goes down
 /// for a little while, another user starts up, the app notices the stale lock file
 /// and gives the second user write access. Now when the network comes back up
 /// the write access is gone. Other possibilities include someone accidently deleting 
@@ -277,7 +279,7 @@ public sealed class CheckoutService : IDisposable
     {
         SourcePath = sourcePath;
 
-        //ensure the network location is reachable and that the database exists
+        //determine (respectively) if  the network location is reachable and that the database exists
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(sourcePath);
 
         if (!existsCompleted)
@@ -287,8 +289,10 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── New-database shortcut ──────────────────────────────────────────────
-        // D does not exist yet. Use SourcePath as WorkingPath (degenerate mode):
-        // DatabaseContext creates the schema directly at SourcePath and SaveAsync is a no-op.
+        // D does not exist yet — there is nothing to copy. WorkingPath is set to
+        // SourcePath directly; there is no separate D'. DatabaseContext creates the
+        // schema at this path, so every write targets the final location. SaveAsync
+        // is a no-op in this mode because there is no D' → D copy-back to perform.
         if (!exists)
         {
             WorkingPath     = sourcePath;
@@ -536,8 +540,9 @@ public sealed class CheckoutService : IDisposable
 
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter)
     {
-        // Degenerate mode — D' IS D (new database that was never copied).
-        // Nothing to copy back; just release the lock if requested.
+        // New-database mode — D never existed at checkout time, so there is no
+        // separate D'. WorkingPath points directly at the authoritative database;
+        // every write already went to the final location. No copy-back needed.
         if (WorkingPath == SourcePath)
         {
             SessionDirty = false;
