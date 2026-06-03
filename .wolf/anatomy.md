@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T16:45:30.498Z
-> Files: 105 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T16:56:36.372Z
+> Files: 106 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -360,6 +360,7 @@
 
 - `AcademicUnitListView.axaml` (~616 tok)
 - `InstructorListView.axaml` (~8657 tok)
+- `SectionListView.axaml` (~23328 tok)
 - `WorkflowsView.axaml` (~924 tok)
 - `WorkflowsView.axaml.cs` — Class: WorkflowsView (~53 tok)
 

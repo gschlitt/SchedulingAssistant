@@ -1312,13 +1312,14 @@
                                                 </StackPanel>
                                                 <!--  Notes  -->
                                                 <TextBlock
-                                                    
+                                                    MaxWidth="275"
+                                                    HorizontalAlignment="Left"
                                                     Margin="0,2,0,0"
                                                     FontSize="11"
                                                     IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     MaxLines="1"
                                                     Text="{Binding NoteLine}"
-                                                    TextWrapping="Wrap"
+                                                    TextTrimming="CharacterEllipsis"
                                                     />
                                             </StackPanel>
                                         </StackPanel>
