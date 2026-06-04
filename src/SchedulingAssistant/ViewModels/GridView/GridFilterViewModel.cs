@@ -47,6 +47,9 @@ public partial class GridFilterViewModel : ViewModelBase
     private FilterItemViewModel? _emphasizeUnstaffedItem;
     private FilterItemViewModel? _unroomedItem;
 
+    /// <summary>Cached from the most recent PopulateOptions call; used by <see cref="ResortInstructors"/>.</summary>
+    private IReadOnlyDictionary<string, Instructor>? _instructorLookup;
+
     // ── Option lists (one per filter dimension) ──────────────────────────────
 
     // Instructors and Rooms always contain their sentinel at index 0, followed by
@@ -358,31 +361,14 @@ public partial class GridFilterViewModel : ViewModelBase
         ObservableCollection<FilterItemViewModel> list,
         IReadOnlyDictionary<string, Instructor> instructorLookup)
     {
+        _instructorLookup = instructorLookup;
         var previouslySelected = list.Where(i => i.IsSelected).Select(i => i.Id).ToHashSet();
 
         foreach (var item in list)
             item.PropertyChanged -= OnItemPropertyChanged;
         list.Clear();
 
-        var sorted = AppSettings.Current.InstructorSortMode switch
-        {
-            InstructorSortMode.FirstName => instructorLookup.Values
-                .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase),
-            InstructorSortMode.Initials => instructorLookup.Values
-                .OrderBy(i => i.Initials, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
-            InstructorSortMode.StaffType => instructorLookup.Values
-                .OrderBy(i => i.StaffTypeName ?? "", StringComparer.OrdinalIgnoreCase)
-                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
-            _ => instructorLookup.Values
-                .OrderBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
-        };
-
-        foreach (var inst in sorted)
+        foreach (var inst in SortInstructors(instructorLookup.Values))
         {
             var item = new FilterItemViewModel(inst.Id, $"{inst.FirstName} {inst.LastName}")
             {
@@ -391,6 +377,67 @@ public partial class GridFilterViewModel : ViewModelBase
             item.PropertyChanged += OnItemPropertyChanged;
             list.Add(item);
         }
+    }
+
+    /// <summary>
+    /// Re-sorts the instructor filter and overlay lists in place to match the current
+    /// <see cref="AppSettings.InstructorSortMode"/>, preserving all selections and
+    /// overlay-active states. Called via <see cref="GridChangeNotifier.InstructorSortChanged"/>
+    /// when the user changes the sort mode in the instructor management flyout.
+    /// </summary>
+    public void ResortInstructors()
+    {
+        if (_instructorLookup is null) return;
+
+        // Build the desired ID order from the cached lookup.
+        var sortedIds = SortInstructors(_instructorLookup.Values)
+            .Select(i => i.Id)
+            .ToList();
+        var idToPosition = new Dictionary<string, int>(sortedIds.Count);
+        for (int i = 0; i < sortedIds.Count; i++)
+            idToPosition[sortedIds[i]] = i;
+
+        // Pull out non-sentinel items, sort them, and re-insert after sentinels.
+        var named = Instructors.Where(i => !i.IsSentinel).ToList();
+        named.Sort((a, b) =>
+        {
+            idToPosition.TryGetValue(a.Id, out var posA);
+            idToPosition.TryGetValue(b.Id, out var posB);
+            return posA.CompareTo(posB);
+        });
+
+        for (int i = Instructors.Count - 1; i >= 0; i--)
+            if (!Instructors[i].IsSentinel) Instructors.RemoveAt(i);
+        foreach (var item in named)
+            Instructors.Add(item);
+
+        SyncCollection(NamedInstructors, Instructors.Where(i => !i.IsSentinel));
+    }
+
+    /// <summary>
+    /// Sorts instructors by the current <see cref="AppSettings.InstructorSortMode"/>.
+    /// Shared by <see cref="RebuildInstructorList"/> (full rebuild) and
+    /// <see cref="ResortInstructors"/> (in-place re-sort).
+    /// </summary>
+    private static IOrderedEnumerable<Instructor> SortInstructors(IEnumerable<Instructor> instructors)
+    {
+        return AppSettings.Current.InstructorSortMode switch
+        {
+            InstructorSortMode.FirstName => instructors
+                .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase),
+            InstructorSortMode.Initials => instructors
+                .OrderBy(i => i.Initials, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+            InstructorSortMode.StaffType => instructors
+                .OrderBy(i => i.StaffTypeName ?? "", StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+            _ => instructors
+                .OrderBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     /// <summary>

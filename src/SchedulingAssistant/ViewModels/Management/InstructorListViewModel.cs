@@ -22,6 +22,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
+    private readonly GridChangeNotifier _gridChangeNotifier;
 
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -112,6 +113,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         _semesterContext = semesterContext;
         _dialog = dialog;
         _lockService = lockService;
+        _gridChangeNotifier = changeNotifier;
         WorkloadMailerVm = workloadMailerVm;
         _lockService.LockStateChanged += OnLockStateChanged;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo, lockService);
@@ -198,6 +200,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         s.InstructorSortMode = mode;
         s.Save();
         Load();
+        _gridChangeNotifier.NotifyInstructorSortChanged();
     }
 
     partial void OnShowOnlyActiveChanged(bool value)

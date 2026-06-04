@@ -12,10 +12,26 @@ namespace SchedulingAssistant.Services;
 /// </summary>
 public class GridChangeNotifier
 {
+    /// <summary>
+    /// Fires when non-section grid content changes (commitment CRUD, legal start time
+    /// edits). Subscribers should perform a full grid reload.
+    /// </summary>
     public event Action? GridContentChanged;
+
+    /// <summary>
+    /// Fires when the user changes the instructor sort mode in the instructor
+    /// management flyout. Subscribers should re-sort their instructor lists in place
+    /// without triggering a full grid reload.
+    /// </summary>
+    public event Action? InstructorSortChanged;
 
     public void NotifyGridContentChanged()
     {
         GridContentChanged?.Invoke();
+    }
+
+    public void NotifyInstructorSortChanged()
+    {
+        InstructorSortChanged?.Invoke();
     }
 }

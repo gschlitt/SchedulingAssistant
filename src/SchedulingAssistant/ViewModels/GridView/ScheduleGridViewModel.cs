@@ -157,6 +157,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // legal start time edits) that require a grid refresh.
         _changeNotifier.GridContentChanged += Reload;
 
+        // Re-sort the instructor filter/overlay lists in place (no full reload needed).
+        _changeNotifier.InstructorSortChanged += Filter.ResortInstructors;
+
         // Reload grid when shared schedules are imported or dismissed.
         _sharedScheduleService.Changed += Reload;
 
