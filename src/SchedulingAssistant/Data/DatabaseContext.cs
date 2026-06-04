@@ -184,6 +184,15 @@ public class DatabaseContext : IDatabaseContext
                 data            TEXT NOT NULL DEFAULT '{}'
             );
 
+            CREATE TABLE IF NOT EXISTS SchedulingNotes (
+                id              TEXT PRIMARY KEY,
+                instructor_id   TEXT NOT NULL,
+                semester_id     TEXT NOT NULL,
+                instructor_name TEXT,
+                semester_name   TEXT,
+                data            TEXT NOT NULL DEFAULT '{}'
+            );
+
             CREATE TABLE IF NOT EXISTS Campuses (
                 id   TEXT PRIMARY KEY,
                 name TEXT,

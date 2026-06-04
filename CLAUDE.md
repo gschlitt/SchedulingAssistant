@@ -12,6 +12,12 @@ Any fonts sizes, weights, and colors used should not be hardcoded, but refer bac
 
 Strongly prefer MVVM style with minimal code-behinds.  Prefer attached behaviors to code-behinds, unless it is unnatural and too complex.
 
+# Version Control
+
+The user controls when branches are created. Never create a git branch automatically — not even when committing on the default branch. Only create a branch when the user explicitly asks for one.
+
+When asked to commit (or push) while on the default branch, do NOT branch first. Either commit on the current branch as instructed, or, if branching seems warranted, ask the user how they'd like to proceed. Commit and push only when explicitly asked.
+
 # Debugging Practice 
 
 When debugging, when you generate more than one competing hypothesis, stop and propose the cheapest experiment that would distinguish between them before continuing.

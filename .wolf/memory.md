@@ -7568,3 +7568,172 @@
 | 11:03 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | inline fix | ~50 |
 | 11:03 | Session end: 23 writes across 5 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs, perf_observablecollection_reset.md, MEMORY.md) | 19 reads | ~83151 tok |
 | 11:04 | Session end: 23 writes across 5 files (in-the-wasm-build-eager-abelson.md, SectionListViewModel.cs, ScheduleGridViewModel.cs, perf_observablecollection_reset.md, MEMORY.md) | 19 reads | ~83151 tok |
+
+## Session: 2026-06-03 11:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:48 | Created ../../../.claude/plans/we-ve-created-a-workflows-peppy-crescent.md | — | ~2638 |
+| 12:02 | Edited src/SchedulingAssistant/Services/PlatformCapabilities.cs | expanded (+13 lines) | ~211 |
+| 12:02 | Edited src/SchedulingAssistant/Services/PlatformCapabilities.cs | expanded (+6 lines) | ~84 |
+| 12:02 | Edited src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | modified http() | ~209 |
+| 12:02 | Edited src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | expanded (+12 lines) | ~197 |
+| 12:03 | Edited src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | added error handling | ~267 |
+| 12:03 | Edited src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | modified new() | ~249 |
+| 12:03 | Created src/SchedulingAssistant/Views/Management/WorkflowCardContent.axaml.cs | — | ~346 |
+| 12:03 | Created src/SchedulingAssistant/Views/StickyNoteWindow.axaml.cs | — | ~607 |
+| 12:04 | Created src/SchedulingAssistant/Views/Management/WorkflowsView.axaml.cs | — | ~518 |
+| 12:04 | Edited src/SchedulingAssistant/Views/StickyNoteWindow.axaml.cs | inline fix | ~8 |
+| 12:04 | Edited src/SchedulingAssistant/Assets/Icons.axaml | 1→4 lines | ~72 |
+| 12:04 | Edited src/SchedulingAssistant/AppColors.axaml | 3→5 lines | ~99 |
+| 12:04 | Created src/SchedulingAssistant/Views/Management/WorkflowCardContent.axaml | — | ~570 |
+| 12:04 | Created src/SchedulingAssistant/Views/StickyNoteWindow.axaml | — | ~1174 |
+| 12:05 | Created src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | — | ~1220 |
+| 12:06 | Edited src/SchedulingAssistant/Views/StickyNoteWindow.axaml | inline fix | ~9 |
+| 12:14 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_workflow_sticky_notes.md | — | ~446 |
+| 12:14 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~67 |
+| 12:17 | Session end: 19 writes across 13 files (we-ve-created-a-workflows-peppy-crescent.md, PlatformCapabilities.cs, WorkflowsViewModel.cs, WorkflowCardContent.axaml.cs, StickyNoteWindow.axaml.cs) | 29 reads | ~9629 tok |
+| 12:18 | Session end: 19 writes across 13 files (we-ve-created-a-workflows-peppy-crescent.md, PlatformCapabilities.cs, WorkflowsViewModel.cs, WorkflowCardContent.axaml.cs, StickyNoteWindow.axaml.cs) | 29 reads | ~9629 tok |
+| 12:58 | Created ../../../.claude/plans/we-ve-created-a-workflows-peppy-crescent.md | — | ~2295 |
+| 12:59 | Created src/SchedulingAssistant/ViewModels/Markup.cs | — | ~613 |
+| 13:00 | Created src/SchedulingAssistant/Helpers/InlineTextHelper.cs | — | ~2584 |
+| 13:00 | Edited src/SchedulingAssistant/AppColors.axaml | 2→7 lines | ~139 |
+| 13:00 | Edited src/SchedulingAssistant/Views/Management/WorkflowCardContent.axaml | 6→7 lines | ~110 |
+| 13:01 | Edited src/SchedulingAssistant/Views/Management/WorkflowCardContent.axaml | 4→5 lines | ~84 |
+| 13:01 | Edited src/SchedulingAssistant/Views/StickyNoteWindow.axaml | 2→3 lines | ~49 |
+| 13:01 | Edited src/SchedulingAssistant/Views/StickyNoteWindow.axaml | 5→6 lines | ~117 |
+| 13:01 | Edited src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | 2→3 lines | ~50 |
+| 13:01 | Edited src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | 4→5 lines | ~134 |
+| 13:01 | Edited src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | 4→5 lines | ~46 |
+| 13:01 | Edited src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | 9→10 lines | ~274 |
+| 13:03 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_workflow_sticky_notes.md | modified formatting() | ~281 |
+| 13:04 | Session end: 32 writes across 15 files (we-ve-created-a-workflows-peppy-crescent.md, PlatformCapabilities.cs, WorkflowsViewModel.cs, WorkflowCardContent.axaml.cs, StickyNoteWindow.axaml.cs) | 37 reads | ~21505 tok |
+| 13:12 | Edited ../../../.claude/plans/we-ve-created-a-workflows-peppy-crescent.md | expanded (+13 lines) | ~396 |
+| 13:13 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 8→9 lines | ~110 |
+| 13:13 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 6→3 lines | ~46 |
+
+## Session: 2026-06-03 15:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:43 | Edited ../../../.claude/plans/we-ve-created-a-workflows-peppy-crescent.md | added error handling | ~1865 |
+| 15:49 | Created src/SchedulingAssistant/Helpers/InlineTextHelper.cs | — | ~2478 |
+| 15:50 | Created src/SchedulingAssistant/Controls/WorkflowCardChrome.axaml.cs | — | ~1245 |
+| 15:50 | Created src/SchedulingAssistant/Controls/WorkflowCardChrome.axaml | — | ~1014 |
+| 15:51 | Created src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | — | ~2212 |
+| 15:51 | Created src/SchedulingAssistant/Views/Management/WorkflowsView.axaml.cs | — | ~548 |
+| 15:51 | Created src/SchedulingAssistant/Views/StickyNoteWindow.axaml | — | ~760 |
+| 15:51 | Created src/SchedulingAssistant/Views/StickyNoteWindow.axaml.cs | — | ~434 |
+| 15:51 | Created src/SchedulingAssistant/ViewModels/Management/WorkflowsViewModel.cs | — | ~119 |
+| 15:55 | Edited src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | inline fix | ~15 |
+| 16:03 | Session end: 10 writes across 9 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 4 reads | ~18016 tok |
+| 16:06 | Edited src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | inline fix | ~9 |
+| 16:07 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 5→10 lines | ~137 |
+| 16:07 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 3→6 lines | ~66 |
+| 16:10 | Created src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | — | ~2440 |
+| 16:12 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_workflow_sticky_notes.md | modified AXAML() | ~387 |
+| 16:12 | Session end: 15 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 4 reads | ~21273 tok |
+| 16:25 | Edited ../../../.claude/plans/we-ve-created-a-workflows-peppy-crescent.md | modified InlineUIContainer() | ~970 |
+| 16:26 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 13→13 lines | ~207 |
+| 16:27 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 10→5 lines | ~49 |
+| 16:27 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | added 1 condition(s) | ~126 |
+| 16:27 | Edited src/SchedulingAssistant/Controls/WorkflowCardChrome.axaml | 4→3 lines | ~56 |
+| 16:27 | Edited src/SchedulingAssistant/Helpers/InlineTextHelper.cs | 6→8 lines | ~111 |
+| 16:28 | Session end: 21 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 4 reads | ~22898 tok |
+| 16:31 | Edited src/SchedulingAssistant/Views/Management/WorkflowsView.axaml | inline fix | ~2 |
+| 16:32 | Session end: 22 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 5 reads | ~25340 tok |
+| 16:44 | Session end: 22 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 6 reads | ~26343 tok |
+| 16:47 | Edited src/SchedulingAssistant/Controls/WorkflowCardChrome.axaml | 14→10 lines | ~142 |
+| 16:47 | Edited src/SchedulingAssistant/Controls/WorkflowCardChrome.axaml | expanded (+6 lines) | ~121 |
+| 16:53 | Edited src/SchedulingAssistant/Views/StickyNoteWindow.axaml | reduced (-27 lines) | ~304 |
+| 16:53 | Edited src/SchedulingAssistant/Views/StickyNoteWindow.axaml.cs | removed 7 lines | ~14 |
+| 16:54 | Session end: 26 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 6 reads | ~26507 tok |
+| 16:56 | Session end: 26 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 6 reads | ~26507 tok |
+| 16:56 | Session end: 26 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 6 reads | ~26507 tok |
+| 16:57 | Session end: 26 writes across 10 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 6 reads | ~26507 tok |
+| 16:58 | Edited CLAUDE.md | expanded (+6 lines) | ~168 |
+| 16:58 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/feedback_user_controls_branching.md | — | ~198 |
+| 16:59 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~60 |
+| 16:59 | Session end: 29 writes across 13 files (we-ve-created-a-workflows-peppy-crescent.md, InlineTextHelper.cs, WorkflowCardChrome.axaml.cs, WorkflowCardChrome.axaml, WorkflowsView.axaml) | 7 reads | ~26963 tok |
+
+## Session: 2026-06-04 17:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:16 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | History() → list() | ~75 |
+| 17:16 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | reduced (-6 lines) | ~57 |
+| 17:16 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 5→5 lines | ~69 |
+| 17:16 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 6→6 lines | ~78 |
+| 17:21 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 6→6 lines | ~79 |
+| 17:21 | Session end: 5 writes across 1 files (InstructorListView.axaml) | 1 reads | ~383 tok |
+| 17:26 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 4→9 lines | ~155 |
+| 17:26 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 2→2 lines | ~56 |
+| 17:26 | Session end: 7 writes across 1 files (InstructorListView.axaml) | 1 reads | ~609 tok |
+| 17:27 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 7→12 lines | ~165 |
+| 17:27 | Session end: 8 writes across 1 files (InstructorListView.axaml) | 1 reads | ~9512 tok |
+| 17:27 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | 6→11 lines | ~163 |
+| 17:28 | Session end: 9 writes across 1 files (InstructorListView.axaml) | 1 reads | ~9767 tok |
+| 17:42 | Created src/SchedulingAssistant/Models/SchedulingNote.cs | — | ~222 |
+| 17:42 | Created src/SchedulingAssistant/Data/Repositories/ISchedulingNoteRepository.cs | — | ~241 |
+| 17:42 | Created src/SchedulingAssistant/Data/Repositories/SchedulingNoteRepository.cs | — | ~917 |
+| 17:42 | Created src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingNoteRepository.cs | — | ~230 |
+| 17:42 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | expanded (+9 lines) | ~189 |
+| 17:42 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~68 |
+| 17:43 | Edited src/SchedulingAssistant/App.axaml.cs | 2→3 lines | ~76 |
+| 17:43 | Created src/SchedulingAssistant/ViewModels/Management/SchedulingNotesViewModel.cs | — | ~917 |
+| 17:43 | Edited src/SchedulingAssistant/ViewModels/Management/SchedulingNotesViewModel.cs | modified SchedulingNotesViewModel() | ~50 |
+| 17:43 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 2→3 lines | ~51 |
+| 17:43 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 3→4 lines | ~82 |
+| 17:44 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 3→4 lines | ~51 |
+| 17:44 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 3→4 lines | ~44 |
+| 17:44 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 2→3 lines | ~74 |
+| 17:44 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 5→6 lines | ~77 |
+| 17:44 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 4→5 lines | ~81 |
+| 17:44 | Edited src/SchedulingAssistant/App.axaml.cs | 4→5 lines | ~88 |
+| 17:45 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | expanded (+33 lines) | ~540 |
+| 17:46 | Edited src/SchedulingAssistant/Views/Management/InstructorListView.axaml | inline fix | ~25 |
+| 17:46 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_scheduling_notes.md | — | ~382 |
+| 17:47 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~77 |
+| 17:47 | Session end: 30 writes across 11 files (InstructorListView.axaml, SchedulingNote.cs, ISchedulingNoteRepository.cs, SchedulingNoteRepository.cs, DemoSchedulingNoteRepository.cs) | 13 reads | ~14656 tok |
+
+## Session: 2026-06-04 19:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-04 20:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-04 20:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-04 21:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:27 | Created ../../../.claude/plans/ok-we-re-going-to-deep-crayon.md | — | ~2121 |
+| 21:32 | Edited src/SchedulingAssistant/Data/Repositories/ISchedulingNoteRepository.cs | 1→5 lines | ~81 |
+| 21:32 | Edited src/SchedulingAssistant/Data/Repositories/SchedulingNoteRepository.cs | modified GetBySemester() | ~165 |
+| 21:32 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingNoteRepository.cs | 3→7 lines | ~92 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadRowViewModel.cs | expanded (+13 lines) | ~243 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadSemesterGroupViewModel.cs | 11→12 lines | ~127 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadSemesterGroupViewModel.cs | expanded (+11 lines) | ~179 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | 4→5 lines | ~73 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | 11→13 lines | ~123 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | modified foreach() | ~286 |
+| 21:34 | Edited src/SchedulingAssistant/ViewModels/WorkloadPanelViewModel.cs | modified foreach() | ~543 |
+| 21:34 | Edited src/SchedulingAssistant/App.axaml.cs | 5→6 lines | ~91 |
+| 21:34 | Edited src/SchedulingAssistant/Assets/Icons.axaml | 1→4 lines | ~83 |
+| 21:34 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | expanded (+26 lines) | ~322 |
+| 21:34 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 32→34 lines | ~248 |
+| 21:35 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | modified icon() | ~586 |
+| 21:35 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 7→8 lines | ~84 |
+| 21:35 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | expanded (+21 lines) | ~355 |
+| 21:38 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | modified icon() | ~261 |
+| 21:38 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | expanded (+19 lines) | ~302 |
+| 21:40 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_scheduling_notes.md | modified viewer() | ~361 |
+| 21:40 | Session end: 21 writes across 11 files (ok-we-re-going-to-deep-crayon.md, ISchedulingNoteRepository.cs, SchedulingNoteRepository.cs, DemoSchedulingNoteRepository.cs, WorkloadRowViewModel.cs) | 22 reads | ~34274 tok |

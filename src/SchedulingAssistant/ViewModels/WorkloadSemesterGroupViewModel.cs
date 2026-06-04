@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels;
@@ -5,9 +6,9 @@ namespace SchedulingAssistant.ViewModels;
 /// <summary>
 /// Represents one semester's workload items (sections and releases) within a
 /// <see cref="WorkloadRowViewModel"/> when the view is in multi-semester mode.
-/// Non-observable: rows are fully rebuilt on every load.
+/// Rebuilt on every load; the expand state below is observable so the note toggle works.
 /// </summary>
-public class WorkloadSemesterGroupViewModel
+public partial class WorkloadSemesterGroupViewModel : ObservableObject
 {
     /// <summary>Database ID of the semester.</summary>
     public required string SemesterId { get; init; }
@@ -26,4 +27,15 @@ public class WorkloadSemesterGroupViewModel
 
     /// <summary>Sum of all workload values for this semester.</summary>
     public decimal SemesterTotal => Items.Sum(i => i.WorkloadValue);
+
+    /// <summary>
+    /// Scheduling note text for this instructor in this semester. Empty when no note exists.
+    /// </summary>
+    public string NoteText { get; init; } = string.Empty;
+
+    /// <summary>True when a non-empty scheduling note exists; drives the note-icon's visibility.</summary>
+    public bool HasNote => !string.IsNullOrWhiteSpace(NoteText);
+
+    /// <summary>Whether the inline read-only note area (inside this semester box) is expanded.</summary>
+    [ObservableProperty] private bool _isNoteExpanded;
 }

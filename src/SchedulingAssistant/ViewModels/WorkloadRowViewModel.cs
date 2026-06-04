@@ -1,12 +1,25 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels;
 
-public class WorkloadRowViewModel
+public partial class WorkloadRowViewModel : ObservableObject
 {
     public required string InstructorId { get; init; }
     public required string FullName { get; init; }
     public required string Initials { get; init; }
+
+    /// <summary>
+    /// Scheduling note text for this instructor in the selected semester (single-semester mode).
+    /// Empty when no note exists.
+    /// </summary>
+    public string NoteText { get; init; } = string.Empty;
+
+    /// <summary>True when a non-empty scheduling note exists; drives the note-icon's visibility.</summary>
+    public bool HasNote => !string.IsNullOrWhiteSpace(NoteText);
+
+    /// <summary>Whether the inline read-only note area is expanded. Toggled by the note icon.</summary>
+    [ObservableProperty] private bool _isNoteExpanded;
 
     /// <summary>Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)".</summary>
     public string NameWithInitials => string.IsNullOrWhiteSpace(Initials) ? FullName : $"{FullName} ({Initials})";

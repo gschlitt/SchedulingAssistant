@@ -16,6 +16,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     private readonly ICourseRepository _courseRepo;
     private readonly IReleaseRepository _releaseRepo;
     private readonly IInstructorCommitmentRepository _commitmentRepo;
+    private readonly ISchedulingNoteRepository _schedulingNoteRepo;
     private readonly ISemesterRepository _semesterRepo;
     private readonly IAcademicYearRepository _academicYearRepo;
     private readonly SemesterContext _semesterContext;
@@ -44,6 +45,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     [ObservableProperty] private InstructorWorkloadViewModel _workloadVm = new();
     [ObservableProperty] private ReleaseManagementViewModel _releaseVm;
     [ObservableProperty] private CommitmentsManagementViewModel _commitmentsVm;
+    [ObservableProperty] private SchedulingNotesViewModel _schedulingNotesVm;
     [ObservableProperty] private WorkloadHistoryViewModel _workloadHistoryVm;
 
     /// <summary>The Workload Mailer panel, shown in the right column of the Instructors flyout.</summary>
@@ -89,6 +91,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         ICourseRepository courseRepo,
         IReleaseRepository releaseRepo,
         IInstructorCommitmentRepository commitmentRepo,
+        ISchedulingNoteRepository schedulingNoteRepo,
         ISemesterRepository semesterRepo,
         IAcademicYearRepository academicYearRepo,
         SemesterContext semesterContext,
@@ -103,6 +106,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         _courseRepo = courseRepo;
         _releaseRepo = releaseRepo;
         _commitmentRepo = commitmentRepo;
+        _schedulingNoteRepo = schedulingNoteRepo;
         _semesterRepo = semesterRepo;
         _academicYearRepo = academicYearRepo;
         _semesterContext = semesterContext;
@@ -112,6 +116,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         _lockService.LockStateChanged += OnLockStateChanged;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo, lockService);
         _commitmentsVm = new CommitmentsManagementViewModel(commitmentRepo, changeNotifier, lockService);
+        _schedulingNotesVm = new SchedulingNotesViewModel(schedulingNoteRepo, lockService);
         _workloadHistoryVm = new WorkloadHistoryViewModel(sectionRepo, courseRepo, semesterRepo, academicYearRepo, releaseRepo);
         ShowOnlyActive = AppSettings.Current.ShowOnlyActiveInstructors;
         RebuildFlyoutSemesters();
@@ -279,6 +284,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
             WorkloadVm.Clear();
             ReleaseVm.SetContext(string.Empty, string.Empty);
             CommitmentsVm.SetContext(string.Empty, string.Empty);
+            SchedulingNotesVm.SetContext(string.Empty, string.Empty);
             WorkloadHistoryVm.Clear();
             return;
         }
@@ -313,6 +319,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         WorkloadVm.LoadWorkload(assignedSections, releaseWorkloads);
         ReleaseVm.SetContext(instructorId, semesterId);
         CommitmentsVm.SetContext(instructorId, semesterId);
+        SchedulingNotesVm.SetContext(instructorId, semesterId);
         WorkloadHistoryVm.LoadHistory(instructorId);
     }
 

@@ -215,6 +215,7 @@ public partial class App : Application
         services.AddSingleton<IAcademicUnitRepository, AcademicUnitRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IInstructorCommitmentRepository, InstructorCommitmentRepository>();
+        services.AddSingleton<ISchedulingNoteRepository, SchedulingNoteRepository>();
         services.AddSingleton<ICampusRepository, CampusRepository>();
         services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
@@ -319,6 +320,7 @@ public partial class App : Application
         services.AddSingleton<IAcademicUnitRepository,        DemoAcademicUnitRepository>();
         services.AddSingleton<IReleaseRepository,             DemoReleaseRepository>();
         services.AddSingleton<IInstructorCommitmentRepository,DemoInstructorCommitmentRepository>();
+        services.AddSingleton<ISchedulingNoteRepository,      DemoSchedulingNoteRepository>();
         services.AddSingleton<ICampusRepository,              DemoCampusRepository>();
         services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
@@ -369,6 +371,7 @@ public partial class App : Application
             sp.GetRequiredService<ISectionRepository>(),
             sp.GetRequiredService<ICourseRepository>(),
             sp.GetRequiredService<IReleaseRepository>(),
+            sp.GetRequiredService<ISchedulingNoteRepository>(),
             sp.GetRequiredService<ISemesterRepository>(),
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<SectionStore>()));
@@ -380,6 +383,7 @@ public partial class App : Application
                 sp.GetRequiredService<ICourseRepository>(),
                 sp.GetRequiredService<IReleaseRepository>(),
                 sp.GetRequiredService<IInstructorCommitmentRepository>(),
+                sp.GetRequiredService<ISchedulingNoteRepository>(),
                 sp.GetRequiredService<ISemesterRepository>(),
                 sp.GetRequiredService<IAcademicYearRepository>(),
                 sp.GetRequiredService<SemesterContext>(),

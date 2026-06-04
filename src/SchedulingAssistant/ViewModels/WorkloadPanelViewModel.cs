@@ -13,6 +13,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
     private readonly IReleaseRepository _releaseRepo;
+    private readonly ISchedulingNoteRepository _noteRepo;
     private readonly ISemesterRepository _semesterRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
@@ -28,6 +29,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,
         IReleaseRepository releaseRepo,
+        ISchedulingNoteRepository noteRepo,
         ISemesterRepository semesterRepo,
         SemesterContext semesterContext,
         SectionStore sectionStore)
@@ -36,6 +38,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _releaseRepo = releaseRepo;
+        _noteRepo = noteRepo;
         _semesterRepo = semesterRepo;
         _semesterContext = semesterContext;
         _sectionStore = sectionStore;
@@ -96,6 +99,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                 var sections = _sectionStore.SectionsBySemester.TryGetValue(semesterDisplay.Semester.Id, out var s)
                     ? (IEnumerable<Section>)s : Array.Empty<Section>();
                 var releases = _releaseRepo.GetBySemester(semesterDisplay.Semester.Id);
+                var notes = _noteRepo.GetBySemester(semesterDisplay.Semester.Id)
+                    .ToDictionary(n => n.InstructorId, n => n.Text);
 
                 foreach (var instructor in instructors)
                 {
@@ -110,11 +115,19 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                         IsMultiSemesterMode = false,
                         Items = new ObservableCollection<WorkloadItemViewModel>(items),
                         SemesterGroups = Array.Empty<WorkloadSemesterGroupViewModel>(),
+                        NoteText = notes.GetValueOrDefault(instructor.Id, string.Empty),
                     });
                 }
             }
             else
             {
+                // Pre-build a per-semester note lookup (instructorId -> text) so notes are
+                // queried once per selected semester rather than once per instructor.
+                var notesBySemester = selectedSemesters.ToDictionary(
+                    sd => sd.Semester.Id,
+                    sd => _noteRepo.GetBySemester(sd.Semester.Id)
+                        .ToDictionary(n => n.InstructorId, n => n.Text));
+
                 // Multi-semester mode: build groups per semester per instructor
                 foreach (var instructor in instructors)
                 {
@@ -135,6 +148,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                             SemesterName  = semesterDisplay.Semester.Name,
                             SemesterColor = semesterDisplay.Semester.Color ?? string.Empty,
                             Items         = new ObservableCollection<WorkloadItemViewModel>(items),
+                            NoteText      = notesBySemester[semesterDisplay.Semester.Id]
+                                                .GetValueOrDefault(instructor.Id, string.Empty),
                         });
                     }
 
