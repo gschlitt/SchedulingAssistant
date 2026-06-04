@@ -184,8 +184,8 @@
 
 	<!--  ── Inline section editor highlight  ─────────────────────────────  -->
 
-	<SolidColorBrush x:Key="EditorBackground" Color="#FFFFFE" />
-	<SolidColorBrush x:Key="SectionScheduleArea" Color="#FFFFFE" />
+	<SolidColorBrush x:Key="EditorBackground" Color="{StaticResource AppBackgroundColor}" />
+	<SolidColorBrush x:Key="SectionScheduleArea" Color="{StaticResource AppBackgroundColor}" />
 	<SolidColorBrush x:Key="SectionEditorControls" Color="{StaticResource UserInteractionColor}" />
 	<!--  Editor left-border uses the accent color  -->
 	<SolidColorBrush x:Key="EditorBorder" Color="#ac8eb2" />
@@ -248,7 +248,7 @@
 
 	<!--  ── Tour overlay  ──────────────────────────────────────────────────  -->
 	<!--  Same HelpTip color family — "informational overlay" visual language  -->
-	<SolidColorBrush x:Key="TourHighlightBorder" Color="#9ABED8" />
+	<SolidColorBrush x:Key="TourHighlightBorder" Color="Black" />
 	<SolidColorBrush x:Key="TourHighlightGlow" Color="#409ABED8" />
 	<SolidColorBrush x:Key="TourCardBackground" Color="#abc7ad" />
 	<SolidColorBrush x:Key="TourCardBorder" Color="#9ABED8" />

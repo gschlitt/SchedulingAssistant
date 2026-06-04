@@ -13591,6 +13591,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-04T18:22:03.582973Z"
+    },
+    {
+      "id": "bug-849",
+      "timestamp": "2026-06-04T18:31:56.271Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "../../../.claude/plans/there-are-lots-of-swirling-star.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T18:31:56.271Z"
+    },
+    {
+      "id": "bug-850",
+      "timestamp": "2026-06-04T18:32:58.609Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 23→7 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T18:32:58.609Z"
+    },
+    {
+      "id": "bug-851",
+      "timestamp": "2026-06-04T18:33:51.943Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs",
+      "root_cause": "No early return/throw for edge case: ex is DatabaseFolderNotWritableException dfnw",
+      "fix": "Added guard clause: if (ex is DatabaseFolderNotWritableException)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T18:33:51.943Z"
+    },
+    {
+      "id": "bug-852",
+      "timestamp": "2026-06-04T19:43:47.870Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/ViewModels/MoreMenuViewModel.cs",
+      "root_cause": "Had \"NavHelp\"",
+      "fix": "Changed to \"NavWorkflows\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T19:43:47.870Z"
+    },
+    {
+      "id": "bug-853",
+      "timestamp": "2026-06-04T19:55:37.602Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T19:55:37.602Z"
     }
   ]
 }

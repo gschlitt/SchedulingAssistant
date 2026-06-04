@@ -40,7 +40,7 @@
 
 	<tour:TourStepData x:Key="desktop.welcome"
 		Title="Welcome to TermPoint"
-		Body="This short tour will use an example timetable to demonstrate some TermPoint basics. The tour will be followed by a configuration wizard to help you get setup.{p} More information on using TermPoint  is available under the help menu once you have completed the setup."
+		Body="This short tour will use an example timetable to demonstrate some TermPoint basics. The tour will be followed by a configuration wizard to help you get setup.{p}More information on using TermPoint  is available under the help menu once you have completed the setup."
 		TargetKind="None"
 		CardWidth="700" />
 

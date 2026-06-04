@@ -30,6 +30,7 @@ public partial class MoreMenuViewModel : ViewModelBase
         ("NavConfiguration",         "Configuration",          typeof(ConfigurationViewModel)),
         ("NavExport",                "Reports",                typeof(ExportHubViewModel)),
         ("NavSharing",               "Sharing",                typeof(SharingViewModel)),
+        ("NavWorkflows",             "Workflows",              typeof(WorkflowsViewModel)),
         ("NavHelp",                  "Help",                   typeof(HelpViewModel)),
     };
 

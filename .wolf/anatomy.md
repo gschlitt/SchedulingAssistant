@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T15:14:46.968Z
-> Files: 34 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T19:55:44.165Z
+> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,19 +29,16 @@
 
 ## ../../../.claude/plans/
 
-- `ok-we-re-going-to-deep-crayon.md` — Plan: View Scheduling Notes in the Workload Panel (~1989 tok)
-- `we-ve-created-a-workflows-peppy-crescent.md` — Fix: pill vertical alignment + step line breaks (~4796 tok)
+- `there-are-lots-of-swirling-star.md` — Plan: Friendly "folder won't accept writes" message at database open (CFA-aware) (~2643 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
-- `feedback_user_controls_branching.md` — Git branching is user-controlled (~186 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~1330 tok)
-- `project_scheduling_notes.md` (~694 tok)
-- `project_workflow_sticky_notes.md` (~943 tok)
+- `final_testing_watchlist.md` — Final Testing Watchlist (~682 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~1359 tok)
+- `project_pending_work.md` — Pending Work (~401 tok)
 
 ## ./
 
-- `CLAUDE.md` — Coding Practice (~1921 tok)
 
 ## .claude/
 
@@ -198,99 +195,87 @@
 
 ## src/SchedulingAssistant.Tests/
 
+- `WriteAccessProbeTests.cs` — Unit tests for <see cref="WriteAccessProbe"/>, the helper that distinguishes a folder which won't ac (~1085 tok)
+- `WriteLockReadOnlyTests.cs` — Verifies that every write-capable command in every ViewModel refuses execution (<c>CanExecute == fal (~8054 tok)
 
 ## src/SchedulingAssistant/
 
-- `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5341 tok)
-- `AppColors.axaml` (~3802 tok)
+- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~16417 tok)
 
 ## src/SchedulingAssistant/Assets/
 
-- `Icons.axaml` (~1783 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
 
 ## src/SchedulingAssistant/Controls/
 
-- `WorkflowCardChrome.axaml` (~1018 tok)
-- `WorkflowCardChrome.axaml.cs` — Visual chrome for a single workflow card. Holds the card's content as inline-markup <b>strings</b> ( (~1245 tok)
 
 ## src/SchedulingAssistant/Converters/
 
 
 ## src/SchedulingAssistant/Data/
 
-- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~7103 tok)
+- `DatabaseContext.cs` — SQLite-backed implementation of <see cref="IDatabaseContext"/>. Opens the database file, creates the (~7748 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/
 
-- `ISchedulingNoteRepository.cs` — Data access contract for <see cref="SchedulingNote"/> entities — a single free-text note per (instru (~304 tok)
-- `SchedulingNoteRepository.cs` — SQLite-backed repository for <see cref="SchedulingNote"/>. There is at most one row per (instructor, (~1048 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/Demo/
 
-- `DemoSchedulingNoteRepository.cs` — In-memory demo implementation of <see cref="ISchedulingNoteRepository"/>. Starts empty; notes added (~270 tok)
 
 ## src/SchedulingAssistant/Demo/
 
+
+## src/SchedulingAssistant/Exceptions/
+
+- `DatabaseFolderNotWritableException.cs` — Thrown by <see cref="App.InitializeServices"/> (via <see cref="Data.DatabaseContext"/>) when the dat (~575 tok)
 
 ## src/SchedulingAssistant/Help/
 
 
 ## src/SchedulingAssistant/Helpers/
 
-- `InlineTextHelper.cs` — Attached behavior that renders a lightweight inline-markup string into a <see cref="TextBlock"/>'s < (~2617 tok)
 
 ## src/SchedulingAssistant/Models/
 
-- `SchedulingNote.cs` — A free-text scheduling note attached to a specific instructor within a specific semester. Exactly on (~222 tok)
 
 ## src/SchedulingAssistant/Models/Tour/
 
 
 ## src/SchedulingAssistant/Services/
 
-- `PlatformCapabilities.cs` — Compile-time feature flags for platform-specific capabilities. All properties are compile-time const (~768 tok)
+- `GridChangeNotifier.cs` — Signals that non-section grid content has changed and the schedule grid should reload. Used by manag (~388 tok)
+- `WriteAccessProbe.cs` — Helpers for diagnosing why writing to a chosen folder failed. Pure BCL — no UI and no SQLite depende (~1784 tok)
 
 ## src/SchedulingAssistant/ViewModels/
 
-- `Markup.cs` — Convenient authoring helpers for inline rich text on the viewmodel side. Each method returns a light (~613 tok)
-- `WorkloadPanelViewModel.cs` — Public method to reload workload data (e.g., after release changes). (~3522 tok)
-- `WorkloadRowViewModel.cs` — Scheduling note text for this instructor in the selected semester (single-semester mode). Empty when (~851 tok)
-- `WorkloadSemesterGroupViewModel.cs` — Represents one semester's workload items (sections and releases) within a <see cref="WorkloadRowView (~503 tok)
+- `MoreMenuViewModel.cs` — Hosts the "More" flyout. Its left rail lists whichever low-priority top-bar items are currently over (~1659 tok)
 
 ## src/SchedulingAssistant/ViewModels/GridView/
 
+- `GridFilterViewModel.cs` — Holds all filter state for the Schedule Grid. Option lists are rebuilt by PopulateOptions() on each (~7881 tok)
+- `ScheduleGridViewModel.cs` — Represents one semester-line pill. Carries the semester's name and stored hex color only; the view r (~19179 tok)
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
-- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4781 tok)
-- `SchedulingNotesViewModel.cs` — Holds the single free-text scheduling note for the currently selected instructor and semester. The n (~878 tok)
-- `WorkflowsViewModel.cs` — ViewModel for the Workflows flyout. The cards themselves are authored directly in AXAML (<see cref=" (~119 tok)
+- `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4826 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
+- `StartupWizardViewModel.cs` — Orchestrates the multi-step startup wizard. Step index map: 0 — Welcome 1 — License Agreement 2 — Ex (~6852 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/Steps/
 
 
 ## src/SchedulingAssistant/Views/
 
-- `StickyNoteWindow.axaml` (~435 tok)
-- `StickyNoteWindow.axaml.cs` — A borderless, floating "sticky note" that hosts a detached workflow card (a <see cref="SchedulingAss (~378 tok)
-- `WorkloadPanelView.axaml` (~4407 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
 
 ## src/SchedulingAssistant/Views/Management/
 
-- `InstructorListView.axaml` (~9408 tok)
-- `WorkflowCardContent.axaml` (~616 tok)
-- `WorkflowCardContent.axaml.cs` — Reusable body of a workflow card: the step-by-step solution plus any external links. Used both insid (~346 tok)
-- `WorkflowsView.axaml` (~2435 tok)
-- `WorkflowsView.axaml.cs` — Currently-open sticky notes, kept so new notes cascade rather than stack directly on top of one anot (~548 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

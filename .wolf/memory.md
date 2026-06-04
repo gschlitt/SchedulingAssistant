@@ -7747,3 +7747,66 @@
 | 08:14 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 6→8 lines | ~78 |
 | 08:14 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 2→4 lines | ~45 |
 | 08:16 | Session end: 3 writes across 2 files (Icons.axaml, WorkloadPanelView.axaml) | 1 reads | ~1967 tok |
+
+## Session: 2026-06-04 09:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:00 | Created ../../../.claude/plans/there-are-lots-of-swirling-star.md | — | ~2046 |
+| 11:02 | Session end: 1 writes across 1 files (there-are-lots-of-swirling-star.md) | 22 reads | ~2192 tok |
+| 11:07 | Created src/SchedulingAssistant/Services/WriteAccessProbe.cs | — | ~1218 |
+| 11:11 | Created src/SchedulingAssistant/Exceptions/DatabaseFolderNotWritableException.cs | — | ~575 |
+| 11:11 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | 4→6 lines | ~44 |
+| 11:13 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | added 3 condition(s) | ~1127 |
+| 11:14 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added optional chaining | ~380 |
+| 11:15 | Created src/SchedulingAssistant.Tests/WriteAccessProbeTests.cs | — | ~780 |
+| 11:17 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 2→3 lines | ~53 |
+| 11:19 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 2→3 lines | ~50 |
+| 11:19 | Edited src/SchedulingAssistant.Tests/WriteLockReadOnlyTests.cs | 4→4 lines | ~90 |
+| 11:22 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/final_testing_watchlist.md | — | ~707 |
+| 11:22 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 3→4 lines | ~89 |
+| 11:22 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_pending_work.md | 2→4 lines | ~45 |
+| 11:23 | Session end: 13 writes across 10 files (there-are-lots-of-swirling-star.md, WriteAccessProbe.cs, DatabaseFolderNotWritableException.cs, DatabaseContext.cs, MainWindow.axaml.cs) | 27 reads | ~7717 tok |
+| 11:25 | Session end: 13 writes across 10 files (there-are-lots-of-swirling-star.md, WriteAccessProbe.cs, DatabaseFolderNotWritableException.cs, DatabaseContext.cs, MainWindow.axaml.cs) | 27 reads | ~7717 tok |
+| 11:31 | Edited ../../../.claude/plans/there-are-lots-of-swirling-star.md | added error handling | ~663 |
+| 11:32 | Edited ../../../.claude/plans/there-are-lots-of-swirling-star.md | modified paths() | ~212 |
+| 11:32 | Edited src/SchedulingAssistant/Services/WriteAccessProbe.cs | modified DescribeWriteBlock() | ~645 |
+| 11:32 | Edited src/SchedulingAssistant/Data/DatabaseContext.cs | reduced (-16 lines) | ~118 |
+| 11:33 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | 3→4 lines | ~40 |
+| 11:33 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | modified catch() | ~64 |
+| 11:33 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | added 3 condition(s) | ~666 |
+| 11:34 | Edited src/SchedulingAssistant.Tests/WriteAccessProbeTests.cs | added 1 condition(s) | ~363 |
+| 11:36 | Session end: 21 writes across 11 files (there-are-lots-of-swirling-star.md, WriteAccessProbe.cs, DatabaseFolderNotWritableException.cs, DatabaseContext.cs, MainWindow.axaml.cs) | 28 reads | ~10686 tok |
+| 11:38 | Session end: 21 writes across 11 files (there-are-lots-of-swirling-star.md, WriteAccessProbe.cs, DatabaseFolderNotWritableException.cs, DatabaseContext.cs, MainWindow.axaml.cs) | 28 reads | ~10686 tok |
+
+## Session: 2026-06-04 11:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-04 12:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-04 12:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:43 | Edited src/SchedulingAssistant/ViewModels/MoreMenuViewModel.cs | 2→3 lines | ~72 |
+
+## Session: 2026-06-04 12:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:54 | Edited src/SchedulingAssistant/Services/GridChangeNotifier.cs | modified NotifyGridContentChanged() | ~203 |
+| 12:54 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 2→3 lines | ~42 |
+| 12:54 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | 3→4 lines | ~41 |
+| 12:54 | Edited src/SchedulingAssistant/ViewModels/Management/InstructorListViewModel.cs | modified SetSortMode() | ~62 |
+| 12:55 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | 3→6 lines | ~86 |
+| 12:55 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | modified RebuildInstructorList() | ~82 |
+| 12:55 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | removed 19 lines | ~19 |
+| 12:55 | Edited src/SchedulingAssistant/ViewModels/GridView/GridFilterViewModel.cs | added nullish coalescing | ~829 |
+| 12:55 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 3→6 lines | ~98 |
+| 12:56 | Session end: 9 writes across 4 files (GridChangeNotifier.cs, InstructorListViewModel.cs, GridFilterViewModel.cs, ScheduleGridViewModel.cs) | 6 reads | ~13467 tok |
+| 12:58 | Session end: 9 writes across 4 files (GridChangeNotifier.cs, InstructorListViewModel.cs, GridFilterViewModel.cs, ScheduleGridViewModel.cs) | 6 reads | ~13467 tok |
