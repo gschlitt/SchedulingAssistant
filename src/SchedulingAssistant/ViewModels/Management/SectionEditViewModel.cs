@@ -15,6 +15,62 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private string _sectionCode = string.Empty;
     [ObservableProperty] private string _notes = string.Empty;
 
+    /// <summary>Section capacity as edited text; empty = null (unspecified). Parsed in Save().</summary>
+    [ObservableProperty] private string _capacityText = string.Empty;
+
+    /// <summary>Parsed capacity, or null when blank/invalid (treats negative as null).</summary>
+    private int? ParsedCapacity =>
+        int.TryParse(CapacityText.Trim(), out var n) && n >= 0 ? n : null;
+
+    /// <summary>
+    /// The section's current capacity as the user has it in the editor, for the Room Browser's
+    /// minimum-capacity filter. Read by the parent VM's browser factory at browse time.
+    /// </summary>
+    public int? CurrentSectionCapacity => ParsedCapacity;
+
+    /// <summary>
+    /// Advisory shown when a chosen room's known capacity is below the section capacity.
+    /// Non-blocking and dismissable; recomputed when a meeting's room or the capacity changes.
+    /// </summary>
+    [ObservableProperty] private string? _capacityWarning;
+
+    /// <summary>Clears the capacity advisory until the next room/capacity change re-triggers it.</summary>
+    [RelayCommand]
+    private void DismissCapacityWarning() => CapacityWarning = null;
+
+    partial void OnCapacityTextChanged(string value) => CheckRoomCapacities();
+
+    /// <summary>
+    /// Scans every meeting's selected room and flags any whose known capacity is below the
+    /// section's (non-null) capacity. Rooms with no capacity set are never flagged. Sets or
+    /// clears <see cref="CapacityWarning"/> accordingly.
+    /// </summary>
+    private void CheckRoomCapacities()
+    {
+        var needed = ParsedCapacity;
+        if (needed is null)
+        {
+            CapacityWarning = null;
+            return;
+        }
+
+        var undersized = Meetings
+            .Select(m => string.IsNullOrEmpty(m.SelectedRoomId)
+                ? null
+                : _rooms.FirstOrDefault(r => r.Id == m.SelectedRoomId))
+            .Where(r => r is not null && r.Capacity is int cap && cap < needed.Value)
+            .Select(r => $"{r!.Building} {r.RoomNumber}".Trim())
+            .Distinct()
+            .ToList();
+
+        CapacityWarning = undersized.Count switch
+        {
+            0 => null,
+            1 => $"Room {undersized[0]} seats fewer than the section capacity of {needed.Value}.",
+            _ => $"{undersized.Count} selected rooms seat fewer than the section capacity of {needed.Value}.",
+        };
+    }
+
     // ── Section code pattern chooser ─────────────────────────────────────────
 
     /// <summary>
@@ -160,6 +216,9 @@ public partial class SectionEditViewModel : ViewModelBase
     private readonly bool _includeSaturday;
     private readonly bool _includeSunday;
     private readonly double? _defaultBlockLength;
+
+    /// <summary>App-level fallback capacity for a new section whose course declares none.</summary>
+    private readonly int? _defaultSectionCapacity;
     private readonly IReadOnlyList<Subject> _allSubjects;
 
     /// <summary>
@@ -241,7 +300,19 @@ public partial class SectionEditViewModel : ViewModelBase
         // merge the new course's tags into the tag selections without removing any
         // tags the user may have already chosen.
         if (_isConstructed && !string.IsNullOrEmpty(value))
+        {
             MergeCourseTags(value);
+
+            // Seed capacity for a brand-new section from the chosen course (else the app
+            // default). Course is step 1 of the step-gate, so re-deriving on each course
+            // change is predictable. Edits and Copies keep their existing capacity.
+            if (IsNew && !IsCopy)
+            {
+                var course = Courses.FirstOrDefault(c => c.Id == value);
+                var inherited = course?.Capacity ?? _defaultSectionCapacity;
+                CapacityText = inherited?.ToString() ?? string.Empty;
+            }
+        }
     }
 
     partial void OnSelectedSubjectChanged(Subject? value)
@@ -411,7 +482,8 @@ public partial class SectionEditViewModel : ViewModelBase
         Func<Section, Task> onSave,
         IBlockPatternRepository blockPatternRepository,
         IReadOnlyList<SchedulingEnvironmentValue> roomTypes,
-        double? defaultBlockLength = null)
+        double? defaultBlockLength = null,
+        int? defaultSectionCapacity = null)
     {
         _section = section;
         IsNew = isNew;
@@ -434,6 +506,7 @@ public partial class SectionEditViewModel : ViewModelBase
         rto.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
         _roomTypeOptions = rto;
         _defaultBlockLength = defaultBlockLength;
+        _defaultSectionCapacity = defaultSectionCapacity;
         _isSectionCodeDuplicate = isSectionCodeDuplicate;
 
         // Load saved block patterns for the shortcut buttons and room browser templates
@@ -481,6 +554,7 @@ public partial class SectionEditViewModel : ViewModelBase
         SelectedCourseId = section.CourseId;
         SectionCode      = section.SectionCode;
         Notes            = section.Notes;
+        CapacityText     = section.Capacity?.ToString() ?? string.Empty;
 
         // If both fields are already populated (edit or copy-with-code), record them as
         // the validated pair so AreOtherFieldsEnabled computes to true immediately.
@@ -622,6 +696,8 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
             OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+        else if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedRoomId))
+            CheckRoomCapacities();
     }
 
     private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
@@ -931,6 +1007,7 @@ public partial class SectionEditViewModel : ViewModelBase
         // without a course lookup (e.g. "100", "300", or empty when not set).
         _section.Level = Courses.FirstOrDefault(c => c.Id == SelectedCourseId)?.Level;
         _section.Notes = Notes.Trim();
+        _section.Capacity = ParsedCapacity;
         _section.Schedule = Meetings
             .Select(m => m.ToSchedule())
             .Where(s => s is not null)

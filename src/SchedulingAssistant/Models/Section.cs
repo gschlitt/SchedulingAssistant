@@ -30,4 +30,10 @@ public class Section : SchedulableBase
     /// Null or empty when the section's course has no level assigned.
     /// </summary>
     public string? Level { get; set; }
+
+    /// <summary>
+    /// Optional seating capacity for this section. Null means "not specified".
+    /// Seeded at creation from the course's capacity, else the app default; freely editable.
+    /// </summary>
+    public int? Capacity { get; set; }
 }

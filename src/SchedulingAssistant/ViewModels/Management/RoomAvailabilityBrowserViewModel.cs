@@ -17,6 +17,13 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     private readonly RoomAvailabilityService _service = new();
     private readonly IReadOnlyList<MeetingSpec> _specs;
     private readonly IReadOnlyList<Room> _allRooms;
+
+    /// <summary>
+    /// Minimum seating capacity required (the section's capacity), or null when the section
+    /// has none. Rooms whose KNOWN capacity is below this are excluded; rooms with no capacity
+    /// set are kept (unknown gets the benefit of the doubt).
+    /// </summary>
+    private readonly int? _minCapacity;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<BlockPattern> _blockPatterns;
     private readonly string _semesterId;
@@ -78,10 +85,12 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         string semesterColor,
         Action<List<GhostBlock>?> setGhostBlocks,
         Action<IReadOnlyList<SpecSolution>> onAccept,
-        Action onCancel)
+        Action onCancel,
+        int? minCapacity = null)
     {
         _specs = specs;
         _allRooms = allRooms;
+        _minCapacity = minCapacity;
         _legalStartTimes = legalStartTimes;
         _blockPatterns = blockPatterns;
         _semesterId = semesterId;
@@ -142,8 +151,14 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
 
     private void Recompute()
     {
+        // Capacity filter: drop rooms whose known capacity is below the section's; keep
+        // unknown-capacity rooms (benefit of the doubt). No-op when the section has no capacity.
+        var rooms = _allRooms
+            .Where(r => _minCapacity == null || r.Capacity == null || r.Capacity >= _minCapacity)
+            .ToList();
+
         _solutions = _service.GenerateSolutionsFromSpecs(
-            _specs, _allRooms.ToList(), _index, _legalStartTimes, _blockPatterns);
+            _specs, rooms, _index, _legalStartTimes, _blockPatterns);
 
         AlternativeCount = _solutions.Count(s => s.IsAlternative);
         HasAlternatives = AlternativeCount > 0;

@@ -87,9 +87,36 @@
                     Text="{Binding LastErrorMessage}"
                     TextWrapping="Wrap" />
 
+                <!--  Dismissable capacity advisory — room seats fewer than the section capacity  -->
+                <Border
+                    Padding="6,3"
+                    Background="{StaticResource FilterExpanderContent}"
+                    BorderBrush="{StaticResource SubduedBorder}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    IsVisible="{Binding CapacityWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{DynamicResource TextAttention}"
+                            Text="{Binding CapacityWarning}"
+                            TextWrapping="Wrap" />
+                        <Button
+                            Grid.Column="1"
+                            Margin="6,0,0,0"
+                            Padding="4,1"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Command="{Binding DismissCapacityWarningCommand}"
+                            Content="Dismiss" />
+                    </Grid>
+                </Border>
+
                 <!--  Subject + Course Number + Pattern + Section Code + Section Type side by side  -->
                 <!--  The Pattern column (col 2) is Auto-width and collapses when HasCodePatterns is false  -->
-                <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,Auto,80,90">
+                <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,Auto,80,90,60">
                     <!--  Subject dropdown  -->
                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
                         <TextBlock
@@ -179,6 +206,22 @@
                             ItemsSource="{Binding SectionTypes}"
                             SelectedValue="{Binding SelectedSectionTypeId}"
                             SelectedValueBinding="{Binding Id}" />
+                    </StackPanel>
+
+                    <!--  Capacity (optional; empty = unspecified)  -->
+                    <StackPanel Grid.Column="5" Margin="4,0,0,0" IsEnabled="{Binding AreOtherFieldsEnabled}">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Capacity" />
+                        <TextBox
+                            Height="24"
+                            Background="{StaticResource SectionEditorControls}"
+                            BorderBrush="{StaticResource SubduedBorder}"
+                            CornerRadius="4"
+                            FontSize="11"
+                            Text="{Binding CapacityText}"
+                            PlaceholderText="—" />
                     </StackPanel>
                 </Grid>
 
@@ -1081,7 +1124,7 @@
                                             <Grid
                                                 Margin="6,6,8,3"
                                                 VerticalAlignment="Center"
-                                                ColumnDefinitions="Auto,Auto,130,Auto">
+                                                ColumnDefinitions="Auto,Auto,130,Auto,Auto">
                                                 <!--  Collapse/expand toggle  -->
                                                 <Button
                                                     Grid.Column="0"
@@ -1122,12 +1165,22 @@
                                                     TextWrapping="Wrap"
                                                     />
                                                 <!--  Section Type  -->
-                                                <TextBlock                                                    
+                                                <TextBlock
                                                     Grid.Column="3"
                                                     Margin="4,0,0,0"
                                                     FontSize="12"
                                                     IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding SectionTypeName}" />                                               
+                                                    Text="{Binding SectionTypeName}" />
+                                                <!--  Capacity (no label; hidden when unspecified)  -->
+                                                <TextBlock
+                                                    Grid.Column="4"
+                                                    Margin="6,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource TextMuted}"
+                                                    IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding CapacityLabel}"
+                                                    ToolTip.Tip="Section capacity" />
                                             </Grid>
 
                                             <!--  Row 2: Meetings (when not collapsed)  -->

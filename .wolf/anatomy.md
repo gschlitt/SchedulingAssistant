@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T19:55:44.165Z
-> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T23:09:00.363Z
+> Files: 35 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -29,13 +29,16 @@
 
 ## ../../../.claude/plans/
 
+- `hold-off-there-s-some-eager-puppy.md` — Section Capacity Feature (Phase 1) (~2988 tok)
 - `there-are-lots-of-swirling-star.md` — Plan: Friendly "folder won't accept writes" message at database open (CFA-aware) (~2643 tok)
 
 ## ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/
 
+- `feedback_validated_textbox_over_updown.md` — Declares it (~218 tok)
 - `final_testing_watchlist.md` — Final Testing Watchlist (~682 tok)
-- `MEMORY.md` — SchedulingAssistant Project Memory (~1359 tok)
+- `MEMORY.md` — SchedulingAssistant Project Memory (~1459 tok)
 - `project_pending_work.md` — Pending Work (~401 tok)
+- `project_section_capacity.md` — Capacity feature (June 2026) (~768 tok)
 
 ## ./
 
@@ -239,13 +242,18 @@
 
 ## src/SchedulingAssistant/Models/
 
+- `Course.cs` — IDs of tags (from SchedulingEnvironmentValues of type "tag") associated with this course. These are (~430 tok)
+- `Room.cs` — Seating capacity, or null when unspecified. Null means "unknown" — it is never treated as 0: the roo (~376 tok)
+- `Section.cs` — The core scheduling entity — a course section offered in a specific semester. Inherits all common sc (~485 tok)
 
 ## src/SchedulingAssistant/Models/Tour/
 
 
 ## src/SchedulingAssistant/Services/
 
+- `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3499 tok)
 - `GridChangeNotifier.cs` — Signals that non-section grid content has changed and the schedule grid should reload. Used by manag (~388 tok)
+- `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9842 tok)
 - `WriteAccessProbe.cs` — Helpers for diagnosing why writing to a chosen folder failed. Pure BCL — no UI and no SQLite depende (~1784 tok)
 
 ## src/SchedulingAssistant/ViewModels/
@@ -259,7 +267,14 @@
 
 ## src/SchedulingAssistant/ViewModels/Management/
 
+- `CourseEditViewModel.cs` — The level band the user has selected (e.g. "100", "300"), or null when none is chosen. Auto-suggeste (~2576 tok)
 - `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4826 tok)
+- `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~4023 tok)
+- `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~2976 tok)
+- `RoomEditViewModel.cs` — A campus item for campus dropdown pickers, with a sentinel "none" option. (~1311 tok)
+- `SectionEditViewModel.cs` — Section capacity as edited text; empty = null (unspecified). Parsed in Save(). (~12677 tok)
+- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~2932 tok)
+- `SectionListViewModel.cs` — Callback to push ghost blocks (Room Availability Browser) onto the schedule grid. Set by <see cref=" (~16799 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -276,6 +291,10 @@
 
 ## src/SchedulingAssistant/Views/Management/
 
+- `CourseListView.axaml` (~5476 tok)
+- `LegalStartTimeListView.axaml` (~3491 tok)
+- `RoomListView.axaml` (~1740 tok)
+- `SectionListView.axaml` (~24164 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 

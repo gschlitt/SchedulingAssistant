@@ -232,11 +232,32 @@
                 SelectedItem="{Binding SelectedPreferredOption}" />
         </StackPanel>
 
+        <!--  Default section capacity preference  -->
+        <StackPanel
+            Grid.Row="5"
+            Margin="0,16,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Default section capacity:" />
+            <TextBox
+                Width="120"
+                Text="{Binding DefaultSectionCapacityText}"
+                PlaceholderText="—"
+                b:HelpTip.Text="Applied to new sections whose course has no capacity. Leave blank for none." />
+            <TextBlock
+                VerticalAlignment="Center"
+                Foreground="{StaticResource TextError}"
+                IsVisible="{Binding DefaultSectionCapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding DefaultSectionCapacityError}" />
+        </StackPanel>
+
 
 
         <!--  Weekend day inclusion settings  -->
         <StackPanel
-            Grid.Row="5"
+            Grid.Row="6"
             Margin="0,24,0,0"
             IsEnabled="{Binding IsWriteEnabled}"
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"

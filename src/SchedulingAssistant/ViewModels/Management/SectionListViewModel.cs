@@ -1023,7 +1023,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             },
             _blockPatternRepo,
             roomTypes: ctx.RoomTypes,
-            defaultBlockLength: ctx.DefaultBlockLength);
+            defaultBlockLength: ctx.DefaultBlockLength,
+            defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity);
 
         // Wire the Room Availability Browser factory (disabled in multi-semester mode)
         if (!_semesterContext.IsMultiSemesterMode)
@@ -1049,7 +1050,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                         capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
                         ghosts => _setGhostBlocks?.Invoke(ghosts),
                         onAccept,
-                        onCancel);
+                        onCancel,
+                        minCapacity: editVm.CurrentSectionCapacity);
                 };
             }
         }
@@ -1169,6 +1171,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             CourseId    = source.CourseId,
             SectionCode = string.Empty,
             CampusId    = source.CampusId,
+            Capacity    = source.Capacity,
         };
 
         // If the source code matches a configured pattern, pre-fill the next available code
@@ -1358,6 +1361,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             .ToList(),
         SectionCode     = s.SectionCode,
         Notes           = s.Notes,
+        Capacity        = s.Capacity,
         Schedule        = s.Schedule.Select(d => new SectionDaySchedule
         {
             Day             = d.Day,

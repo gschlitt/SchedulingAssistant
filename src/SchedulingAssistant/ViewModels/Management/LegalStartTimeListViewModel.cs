@@ -189,6 +189,54 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
         }
     }
 
+    // ── Default section capacity ──────────────────────────────────────────────
+
+    private string _defaultSectionCapacityText = string.Empty;
+
+    /// <summary>
+    /// Default seating capacity applied to a new section when its course has no capacity,
+    /// as edited text. Blank means "no default". Persists to AppSettings only when blank or a
+    /// valid non-negative whole number; invalid text surfaces <see cref="DefaultSectionCapacityError"/>
+    /// and leaves the stored value unchanged.
+    /// </summary>
+    public string DefaultSectionCapacityText
+    {
+        get => _defaultSectionCapacityText;
+        set
+        {
+            if (_defaultSectionCapacityText == value) return;
+            _defaultSectionCapacityText = value;
+            OnPropertyChanged();
+
+            var trimmed = (value ?? string.Empty).Trim();
+            if (trimmed.Length == 0)
+            {
+                DefaultSectionCapacityError = null;
+                Persist(null);
+            }
+            else if (int.TryParse(trimmed, out var n) && n >= 0)
+            {
+                DefaultSectionCapacityError = null;
+                Persist(n);
+            }
+            else
+            {
+                // Keep the text so the user can fix it, but don't corrupt the stored value.
+                DefaultSectionCapacityError = "Enter a whole number, or leave blank.";
+            }
+
+            void Persist(int? capacity)
+            {
+                var settings = AppSettings.Current;
+                settings.DefaultSectionCapacity = capacity;
+                settings.Save();
+            }
+        }
+    }
+
+    /// <summary>Validation message for the default-capacity field; null when valid.</summary>
+    [ObservableProperty] private string? _defaultSectionCapacityError;
+
     public LegalStartTimeListViewModel(
         ILegalStartTimeRepository repo,
         SemesterContext semesterContext,
@@ -246,6 +294,9 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
         OnPropertyChanged(nameof(IncludeSaturday));
         _includeSunday = AppSettings.Current.IncludeSunday;
         OnPropertyChanged(nameof(IncludeSunday));
+        _defaultSectionCapacityText = AppSettings.Current.DefaultSectionCapacity?.ToString() ?? string.Empty;
+        DefaultSectionCapacityError = null;
+        OnPropertyChanged(nameof(DefaultSectionCapacityText));
     }
 
     private void RebuildDisplayEntries()

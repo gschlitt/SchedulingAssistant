@@ -31,6 +31,21 @@ public partial class CourseEditViewModel : ViewModelBase
     public IReadOnlyList<string> LevelOptions => CourseLevelParser.AllLevels;
 
     [ObservableProperty] private string _courseTitle = string.Empty;
+
+    /// <summary>
+    /// Optional seating capacity as edited text; empty = null (unspecified).
+    /// Validated in <see cref="ValidationError"/> and parsed in <see cref="ParsedCapacity"/>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ValidationError))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private string _capacityText = string.Empty;
+
+    /// <summary>Parsed capacity, or null when blank. Whitespace/invalid text is caught by validation.</summary>
+    private int? ParsedCapacity =>
+        string.IsNullOrWhiteSpace(CapacityText) ? null
+        : int.TryParse(CapacityText.Trim(), out var n) ? n : null;
+
     [ObservableProperty] private bool _isActive = true;
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
 
@@ -69,6 +84,10 @@ public partial class CourseEditViewModel : ViewModelBase
             if (numberTrimmed.Length == 0) return "Course number is required.";
             if (numberTrimmed.Length > 8)
                 return "Course number must be 8 characters or fewer.";
+
+            if (!string.IsNullOrWhiteSpace(CapacityText)
+                && !(int.TryParse(CapacityText.Trim(), out var cap) && cap >= 0))
+                return "Capacity must be a whole number (or left blank).";
 
             var calendarCode = ComputedCalendarCode;
             if (_codeExists(calendarCode)) return $"\"{calendarCode}\" is already used by another course.";
@@ -134,6 +153,7 @@ public partial class CourseEditViewModel : ViewModelBase
         }
 
         CourseTitle = course.Title;
+        CapacityText = course.Capacity?.ToString() ?? string.Empty;
         IsActive = course.IsActive;
 
         // Restore persisted level (editing) or auto-suggest from the course number (new).
@@ -156,6 +176,7 @@ public partial class CourseEditViewModel : ViewModelBase
         _course.SubjectId = SelectedSubject!.Id;
         _course.CalendarCode = ComputedCalendarCode;
         _course.Title = CourseTitle.Trim();
+        _course.Capacity = ParsedCapacity;
         _course.IsActive = IsActive;
         _course.Level = SelectedLevel ?? string.Empty;
         _course.TagIds = TagSelections

@@ -36,9 +36,9 @@
                                        DisplayMemberBinding="{Binding Name}"
                                        Margin="0,0,0,8" />
 
-                            <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity" Margin="0,0,0,4" />
-                            <NumericUpDown Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
-                                           Value="{Binding Capacity}" Minimum="0" FormatString="0" Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity (optional)" Margin="0,0,0,4" />
+                            <TextBox Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+                                     Text="{Binding CapacityText}" PlaceholderText="—" Margin="0,0,0,8" />
 
                             <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" Text="Features" Margin="0,0,0,4" />
                             <TextBox   Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Features}" Margin="0,0,0,8" />

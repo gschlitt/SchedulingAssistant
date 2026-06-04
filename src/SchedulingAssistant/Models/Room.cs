@@ -5,7 +5,13 @@ public class Room
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Building { get; set; } = string.Empty;
     public string RoomNumber { get; set; } = string.Empty;
-    public int Capacity { get; set; }
+
+    /// <summary>
+    /// Seating capacity, or null when unspecified. Null means "unknown" — it is never treated
+    /// as 0: the room finder gives unknown-capacity rooms the benefit of the doubt, and the
+    /// choose-a-room warning only fires when a room's known capacity is below the section's.
+    /// </summary>
+    public int? Capacity { get; set; }
     public string Features { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
 

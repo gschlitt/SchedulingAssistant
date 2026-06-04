@@ -22,7 +22,14 @@ public partial class RoomEditViewModel : ViewModelBase
 {
     [ObservableProperty] private string _building = string.Empty;
     [ObservableProperty] private string _roomNumber = string.Empty;
-    [ObservableProperty] private int _capacity;
+
+    /// <summary>Capacity as edited text; empty = null (unspecified). Parsed in <see cref="ParsedCapacity"/>.</summary>
+    [ObservableProperty] private string _capacityText = string.Empty;
+
+    /// <summary>Parsed capacity, or null when blank/invalid (negatives treated as null).</summary>
+    private int? ParsedCapacity =>
+        int.TryParse(CapacityText.Trim(), out var n) && n >= 0 ? n : null;
+
     [ObservableProperty] private string _features = string.Empty;
     [ObservableProperty] private string _notes = string.Empty;
 
@@ -71,7 +78,7 @@ public partial class RoomEditViewModel : ViewModelBase
 
         Building   = room.Building;
         RoomNumber = room.RoomNumber;
-        Capacity   = room.Capacity;
+        CapacityText = room.Capacity?.ToString() ?? string.Empty;
         Features   = room.Features;
         Notes      = room.Notes;
 
@@ -87,7 +94,7 @@ public partial class RoomEditViewModel : ViewModelBase
     {
         _room.Building   = Building.Trim();
         _room.RoomNumber = RoomNumber.Trim();
-        _room.Capacity   = Capacity;
+        _room.Capacity   = ParsedCapacity;
         _room.Features   = Features.Trim();
         _room.Notes      = Notes.Trim();
         _room.CampusId   = SelectedCampus?.Id; // null when "(none)" is selected

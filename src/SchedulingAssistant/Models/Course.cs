@@ -31,4 +31,10 @@ public class Course
     /// overridden or left empty.  Stored in the JSON data column.
     /// </summary>
     public string Level { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional seating capacity for the course. Null means "not specified" — never treat null as 0.
+    /// New sections of this course inherit it as their starting capacity (see SectionEditViewModel).
+    /// </summary>
+    public int? Capacity { get; set; }
 }

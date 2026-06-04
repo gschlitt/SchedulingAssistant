@@ -26,6 +26,9 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     public string? ResourceLine { get; }
     public string? NoteLine { get; }
 
+    /// <summary>Capacity number for the summary row, or null when unspecified (hidden in the UI).</summary>
+    public string? CapacityLabel { get; }
+
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private bool _isCollapsed;
 
@@ -212,6 +215,8 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         ResourceLine = resourceNames.Count > 0 ? string.Join(", ", resourceNames) : null;
 
         NoteLine = !string.IsNullOrWhiteSpace(section.Notes) ? section.Notes : null;
+
+        CapacityLabel = section.Capacity?.ToString();
     }
 
     [RelayCommand]

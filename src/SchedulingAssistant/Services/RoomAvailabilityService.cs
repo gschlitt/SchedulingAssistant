@@ -210,7 +210,9 @@ public class RoomAvailabilityService
             .Where(r => campusId == null || r.CampusId == campusId)
             .Where(r => building == null || string.Equals(r.Building, building, StringComparison.OrdinalIgnoreCase))
             .Where(r => roomTypeId == null || r.RoomTypeId == roomTypeId)
-            .Where(r => minCapacity == null || r.Capacity >= minCapacity)
+            // Unknown (null) room capacity is given the benefit of the doubt — only a room with a
+            // KNOWN capacity below the requested minimum is filtered out.
+            .Where(r => minCapacity == null || r.Capacity == null || r.Capacity >= minCapacity)
             .OrderBy(r => r.SortOrder)
             .ThenBy(r => r.Building)
             .ThenBy(r => r.RoomNumber)

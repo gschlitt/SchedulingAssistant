@@ -74,6 +74,12 @@ public class AppSettings
     public bool ShowOnlyActiveInstructors { get; set; } = true;
 
     /// <summary>
+    /// Default seating capacity applied to a new section when its course has no capacity of its own.
+    /// Null means no default — such sections start with unspecified (null) capacity.
+    /// </summary>
+    public int? DefaultSectionCapacity { get; set; }
+
+    /// <summary>
     /// When true, only active courses are shown in the Courses management flyout.
     /// Inactive courses are always hidden from the section editor and grid filter
     /// regardless of this setting.
