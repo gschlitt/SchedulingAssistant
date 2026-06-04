@@ -1,5 +1,7 @@
 using System.Data.Common;
 using Microsoft.Data.Sqlite;
+using SchedulingAssistant.Exceptions;
+using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Data;
 
@@ -60,11 +62,17 @@ public class DatabaseContext : IDatabaseContext
     {
         _onFirstWrite = onFirstWrite;
         _dbPath       = dbPath;
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
+        // Constructing the connection does not touch the filesystem; the folder is created and the
+        // file is opened inside the try below so that a Controlled Folder Access block (or any other
+        // write failure) is diagnosed rather than crashing as an unhandled exception.
         _conn = new SqliteConnection($"Data Source={dbPath}");
         try
         {
+            // Creating the folder is itself a write that Controlled Folder Access blocks when the
+            // path is under a protected known folder (Documents/Desktop/…), so it must be inside
+            // the try alongside Open()/InitializeSchema() (which create the SQLite journal sidecar).
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
             _conn.Open();
             InitializeSchema();
             Migrate(dbPath);
@@ -73,11 +81,57 @@ public class DatabaseContext : IDatabaseContext
         catch (Exception ex)
         {
             _conn.Dispose();
+
+            // Distinguish "this folder won't accept writes" (e.g. Controlled Folder Access, a
+            // read-only ACL, or read-only media) from a genuine lock/corruption/bad-path failure.
+            // The probe is the deciding gate: only when the folder actually rejects a brand-new
+            // file do we surface the location-specific guidance. This avoids mis-blaming the folder
+            // for, say, a file locked by another process (where the folder is still writable).
+            var dir = Path.GetDirectoryName(dbPath);
+            if (LooksLikeWriteBlock(ex) && !WriteAccessProbe.CanCreateFileIn(dir))
+            {
+                var userMessage =
+                    "This folder doesn't allow the application to save changes, so the database " +
+                    $"could not be opened here:\n\n{dir}\n\n" +
+                    "Please choose a different location — a shared network folder, or a folder such " +
+                    "as C:\\Schedules. The application will now close; reopen it and pick another folder.";
+
+                // Only mention Controlled Folder Access when the cause actually fits it: a protected
+                // Windows known folder. Otherwise leave the IT detail off and stay generic.
+                var itDetail = WriteAccessProbe.IsProtectedKnownFolder(dir)
+                    ? "This folder is one of Windows' protected locations (Documents, Desktop, " +
+                      "Pictures, etc.). Windows Defender 'Controlled Folder Access' blocks applications " +
+                      "it does not yet trust from creating or changing files there, which prevents the " +
+                      "database's journal file from being created. Either store the database outside " +
+                      "these folders (a shared network drive works well), or add this application under " +
+                      "Windows Security → Virus & threat protection → Ransomware protection " +
+                      "→ Allow an app through Controlled folder access."
+                    : null;
+
+                throw new DatabaseFolderNotWritableException(dbPath, userMessage, itDetail, ex);
+            }
+
             throw new InvalidOperationException(
                 $"Failed to open or initialize the database at '{dbPath}'. " +
                 "The file may be locked by another process, corrupted, or the path may be invalid.",
                 ex);
         }
+    }
+
+    /// <summary>
+    /// True when <paramref name="ex"/> (or anything in its inner-exception chain) indicates a file
+    /// could not be created/opened for writing: a SQLite <c>SQLITE_CANTOPEN</c> (error code 14), an
+    /// <see cref="UnauthorizedAccessException"/>, or an <see cref="IOException"/>. Used only to decide
+    /// whether to run the write-access probe; the probe itself makes the final determination.
+    /// </summary>
+    private static bool LooksLikeWriteBlock(Exception ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is SqliteException sql && sql.SqliteErrorCode == 14) return true;
+            if (e is UnauthorizedAccessException or IOException) return true;
+        }
+        return false;
     }
 
     private void InitializeSchema()

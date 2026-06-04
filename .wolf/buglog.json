@@ -13538,6 +13538,59 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-06-04T04:38:43.630Z"
+    },
+    {
+      "id": "bug-846",
+      "timestamp": "2026-06-04T18:13:59.042Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "No early return/throw for edge case: LooksLikeWriteBlock(ex",
+      "fix": "Added guard clause: if (LooksLikeWriteBlock(ex)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T18:13:59.042Z"
+    },
+    {
+      "id": "bug-847",
+      "timestamp": "2026-06-04T18:14:12.670Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T18:14:12.670Z"
+    },
+    {
+      "id": "bug-848",
+      "timestamp": "2026-06-04T18:22:03.582973Z",
+      "error_message": "Microsoft.Data.Sqlite.SqliteException: SQLite Error 14: 'unable to open database file' thrown from DatabaseContext.InitializeSchema (CREATE TABLE batch) when opening a DB located under the user's Documents folder.",
+      "file": "src/SchedulingAssistant/Data/DatabaseContext.cs",
+      "root_cause": "Windows Defender Controlled Folder Access (EnableControlledFolderAccess=1) blocks untrusted/unsigned processes from creating files in protected known-folders (Documents/Desktop/Pictures/etc). SQLite opened the existing .db for reading but could not create its -journal sidecar on first write -> SQLITE_CANTOPEN(14). Confirmed via Defender event log ID 1123: blocked process was the unsigned, freshly-built probe.exe / bin\\Debug build. Not a schema/migration problem (Migrate never runs); AppData is NOT protected so app internal writes are unaffected. Code signing is expected to largely resolve via CFA auto-trust.",
+      "fix": "Added WriteAccessProbe (CanCreateFileIn probe + IsProtectedKnownFolder) and DatabaseFolderNotWritableException. DatabaseContext ctor now moves Directory.CreateDirectory inside the try and, on a write-block (SqliteErrorCode 14 / UnauthorizedAccessException / IOException) where the folder genuinely rejects a new file, throws the typed exception with a neutral user message + optional IT detail (mentions CFA only for protected known-folders). MainWindow catches it, shows the message via existing ShowMessageAsync/ShowYesNoAsync, then shuts down so the user can reopen and pick another location. Other save/export sites deferred pending a signed-build retest.",
+      "tags": [
+        "sqlite",
+        "error-14",
+        "sqlite-cantopen",
+        "controlled-folder-access",
+        "windows-defender",
+        "database-open",
+        "code-signing",
+        "documents-folder"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-04T18:22:03.582973Z"
     }
   ]
 }

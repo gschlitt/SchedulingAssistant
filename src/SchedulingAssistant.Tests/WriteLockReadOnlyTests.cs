@@ -83,6 +83,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly AcademicUnitRepository        _academicUnitRepo;
     private readonly ReleaseRepository             _releaseRepo;
     private readonly InstructorCommitmentRepository _commitmentRepo;
+    private readonly SchedulingNoteRepository       _noteRepo;
     private readonly MeetingRepository              _meetingRepo;
 
     // ── Services ──────────────────────────────────────────────────────────────
@@ -124,6 +125,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _academicUnitRepo = new AcademicUnitRepository(_db);
         _releaseRepo     = new ReleaseRepository(_db);
         _commitmentRepo  = new InstructorCommitmentRepository(_db);
+        _noteRepo        = new SchedulingNoteRepository(_db);
         _meetingRepo     = new MeetingRepository(_db);
 
         _semesterContext    = new SemesterContext();
@@ -184,7 +186,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates a fully-wired <see cref="InstructorListViewModel"/> in reader mode.</summary>
     private InstructorListViewModel CreateInstructorListVm() =>
         new(_instructorRepo, _propertyRepo, _sectionRepo, _courseRepo, _releaseRepo,
-            _commitmentRepo, _semesterRepo, _ayRepo, _semesterContext, _changeNotifier,
+            _commitmentRepo, _noteRepo, _semesterRepo, _ayRepo, _semesterContext, _changeNotifier,
             _dialog, _lock,
             new WorkloadMailerViewModel(_ayRepo, _semesterRepo, _instructorRepo, _sectionRepo, _releaseRepo, _courseRepo));
 

@@ -424,6 +424,28 @@ public partial class MainWindow : Window
             // The restore copied a backup over dbPath — re-initialize with the restored file.
             vm = App.InitializeServices(dbPath);
         }
+        catch (DatabaseFolderNotWritableException blockedEx)
+        {
+            // The database's folder refused writes (most often Windows Controlled Folder Access on a
+            // protected known folder such as Documents). Show a neutral, actionable message, offer
+            // the technical detail for IT on request, then close — the user can reopen and pick a
+            // different location.
+            await ShowMessageAsync("Can't Save to This Folder", blockedEx.UserMessage);
+
+            if (!string.IsNullOrEmpty(blockedEx.ItDetail))
+            {
+                var wantDetails = await ShowYesNoAsync(
+                    "Technical Details",
+                    "Would you like to see technical details for your IT support?");
+                if (wantDetails)
+                    await ShowMessageAsync("Technical Details (for IT)", blockedEx.ItDetail);
+            }
+
+            (Avalonia.Application.Current?.ApplicationLifetime as
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                ?.Shutdown();
+            return;
+        }
 
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
         await SetupMainWindowAsync(canonicalPath, vm);
