@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T04:40:14.946Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T15:14:46.968Z
 > Files: 34 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -206,7 +206,7 @@
 
 ## src/SchedulingAssistant/Assets/
 
-- `Icons.axaml` (~1723 tok)
+- `Icons.axaml` (~1783 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -279,7 +279,7 @@
 
 - `StickyNoteWindow.axaml` (~435 tok)
 - `StickyNoteWindow.axaml.cs` — A borderless, floating "sticky note" that hosts a detached workflow card (a <see cref="SchedulingAss (~378 tok)
-- `WorkloadPanelView.axaml` (~4368 tok)
+- `WorkloadPanelView.axaml` (~4407 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 

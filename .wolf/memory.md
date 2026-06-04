@@ -7737,3 +7737,13 @@
 | 21:38 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | expanded (+19 lines) | ~302 |
 | 21:40 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_scheduling_notes.md | modified viewer() | ~361 |
 | 21:40 | Session end: 21 writes across 11 files (ok-we-re-going-to-deep-crayon.md, ISchedulingNoteRepository.cs, SchedulingNoteRepository.cs, DemoSchedulingNoteRepository.cs, WorkloadRowViewModel.cs) | 22 reads | ~34274 tok |
+| 21:45 | Session end: 21 writes across 11 files (ok-we-re-going-to-deep-crayon.md, ISchedulingNoteRepository.cs, SchedulingNoteRepository.cs, DemoSchedulingNoteRepository.cs, WorkloadRowViewModel.cs) | 22 reads | ~34274 tok |
+
+## Session: 2026-06-04 08:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:14 | Edited src/SchedulingAssistant/Assets/Icons.axaml | document() → annotation() | ~105 |
+| 08:14 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 6→8 lines | ~78 |
+| 08:14 | Edited src/SchedulingAssistant/Views/WorkloadPanelView.axaml | 2→4 lines | ~45 |
+| 08:16 | Session end: 3 writes across 2 files (Icons.axaml, WorkloadPanelView.axaml) | 1 reads | ~1967 tok |

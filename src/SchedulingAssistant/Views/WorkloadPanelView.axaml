@@ -226,7 +226,9 @@
 													Data="{StaticResource NoteIcon}"
 													Fill="Transparent"
 													Stroke="{StaticResource TextFaint}"
-													StrokeThickness="1.5" />
+													StrokeJoin="Round"
+													StrokeLineCap="Round"
+													StrokeThickness="2" />
 											</Viewbox>
 										</ToggleButton>
 
@@ -295,7 +297,9 @@
 																		Data="{StaticResource NoteIcon}"
 																		Fill="Transparent"
 																		Stroke="{StaticResource TextFaint}"
-																		StrokeThickness="1.5" />
+																		StrokeJoin="Round"
+																		StrokeLineCap="Round"
+																		StrokeThickness="2" />
 																</Viewbox>
 															</ToggleButton>
 															<!--  Chips WrapPanel in col 1  -->
