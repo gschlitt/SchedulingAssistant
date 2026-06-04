@@ -84,6 +84,42 @@ public static class WriteAccessProbe
     }
 
     /// <summary>
+    /// Builds the user-facing wording shown when a folder rejects writes, so every entry point
+    /// (database open, the startup wizard, future export sites) phrases it identically.
+    /// </summary>
+    /// <param name="directory">The folder that could not be written to.</param>
+    /// <returns>
+    /// A tuple of:
+    /// <list type="bullet">
+    ///   <item><description><c>userMessage</c> — neutral, location-focused guidance safe for any
+    ///   audience. Deliberately omits app-lifecycle phrasing (e.g. "will now close") so it reads
+    ///   correctly both in a dialog and inline in the wizard.</description></item>
+    ///   <item><description><c>itDetail</c> — the Controlled Folder Access explanation for IT,
+    ///   non-null <b>only</b> when <paramref name="directory"/> is a protected known folder.</description></item>
+    /// </list>
+    /// </returns>
+    public static (string userMessage, string? itDetail) DescribeWriteBlock(string? directory)
+    {
+        var where = string.IsNullOrWhiteSpace(directory) ? "" : $"\n\n{directory}";
+        var userMessage =
+            "This folder doesn't allow the application to save changes, so the database can't be " +
+            $"used here:{where}\n\n" +
+            "Please choose a different location — a shared network folder, or a folder such as " +
+            "C:\\Schedules.";
+
+        var itDetail = IsProtectedKnownFolder(directory)
+            ? "This folder is one of Windows' protected locations (Documents, Desktop, Pictures, " +
+              "etc.). Windows Defender 'Controlled Folder Access' blocks applications it does not yet " +
+              "trust from creating or changing files there, which prevents the database's journal file " +
+              "from being created. Either store the database outside these folders (a shared network " +
+              "drive works well), or add this application under Windows Security → Virus & threat " +
+              "protection → Ransomware protection → Allow an app through Controlled folder access."
+            : null;
+
+        return (userMessage, itDetail);
+    }
+
+    /// <summary>
     /// True when <paramref name="fullPath"/> equals <paramref name="ancestor"/> or is nested
     /// beneath it. Comparison is case-insensitive (Windows paths) and separator-normalized.
     /// </summary>

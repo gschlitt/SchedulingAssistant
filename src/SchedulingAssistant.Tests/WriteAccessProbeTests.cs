@@ -91,4 +91,37 @@ public class WriteAccessProbeTests
     {
         Assert.False(WriteAccessProbe.IsProtectedKnownFolder(path));
     }
+
+    [Fact]
+    public void DescribeWriteBlock_ProtectedFolder_IncludesItDetailAndPath()
+    {
+        var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (string.IsNullOrEmpty(docs)) return;
+        var folder = Path.Combine(docs, "SchedulerData");
+
+        var (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(folder);
+
+        Assert.False(string.IsNullOrWhiteSpace(userMessage));
+        Assert.Contains(folder, userMessage);
+        Assert.NotNull(itDetail);
+        Assert.Contains("Controlled Folder Access", itDetail!);
+    }
+
+    [Fact]
+    public void DescribeWriteBlock_UnprotectedFolder_HasNoItDetail()
+    {
+        var (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(Path.GetTempPath());
+
+        Assert.False(string.IsNullOrWhiteSpace(userMessage));
+        Assert.Null(itDetail);
+    }
+
+    [Fact]
+    public void DescribeWriteBlock_NullDirectory_ReturnsMessageWithoutDetail()
+    {
+        var (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(null);
+
+        Assert.False(string.IsNullOrWhiteSpace(userMessage));
+        Assert.Null(itDetail);
+    }
 }

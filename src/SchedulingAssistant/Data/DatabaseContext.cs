@@ -90,24 +90,8 @@ public class DatabaseContext : IDatabaseContext
             var dir = Path.GetDirectoryName(dbPath);
             if (LooksLikeWriteBlock(ex) && !WriteAccessProbe.CanCreateFileIn(dir))
             {
-                var userMessage =
-                    "This folder doesn't allow the application to save changes, so the database " +
-                    $"could not be opened here:\n\n{dir}\n\n" +
-                    "Please choose a different location — a shared network folder, or a folder such " +
-                    "as C:\\Schedules. The application will now close; reopen it and pick another folder.";
-
-                // Only mention Controlled Folder Access when the cause actually fits it: a protected
-                // Windows known folder. Otherwise leave the IT detail off and stay generic.
-                var itDetail = WriteAccessProbe.IsProtectedKnownFolder(dir)
-                    ? "This folder is one of Windows' protected locations (Documents, Desktop, " +
-                      "Pictures, etc.). Windows Defender 'Controlled Folder Access' blocks applications " +
-                      "it does not yet trust from creating or changing files there, which prevents the " +
-                      "database's journal file from being created. Either store the database outside " +
-                      "these folders (a shared network drive works well), or add this application under " +
-                      "Windows Security → Virus & threat protection → Ransomware protection " +
-                      "→ Allow an app through Controlled folder access."
-                    : null;
-
+                // Shared wording so the ctor and the startup wizard phrase this identically.
+                var (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(dir);
                 throw new DatabaseFolderNotWritableException(dbPath, userMessage, itDetail, ex);
             }
 

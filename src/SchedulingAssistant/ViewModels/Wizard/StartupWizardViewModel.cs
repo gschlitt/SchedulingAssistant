@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Data;
 using SchedulingAssistant.Data.Repositories;
+using SchedulingAssistant.Exceptions;
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.Wizard.Steps;
@@ -295,7 +296,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            s1a.ErrorMessage = $"Could not open the database: {ex.Message}";
+            s1a.ErrorMessage = DescribeDbFailure(ex, dbPath, "open");
             App.Logger.LogError(ex, "StartupWizard: step 1a existing-DB validation failed");
             return false;
         }
@@ -344,10 +345,53 @@ public partial class StartupWizardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            s3.ErrorMessage = $"Could not create the database: {ex.Message}";
+            s3.ErrorMessage = DescribeDbFailure(ex, dbPath, "create");
             App.Logger.LogError(ex, "StartupWizard: step 3 DB creation failed");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Builds the inline error message for a failed database open/create. When the failure is a
+    /// folder that won't accept writes — our <see cref="DatabaseFolderNotWritableException"/> from
+    /// the open path, or a raw <see cref="UnauthorizedAccessException"/> from the wizard's own
+    /// <c>Directory.CreateDirectory</c> on the create path (Controlled Folder Access on a protected
+    /// known folder such as Documents) — it returns neutral, actionable guidance instead of the raw
+    /// exception text. All other failures fall back to the original "Could not {verb} the database"
+    /// message.
+    /// </summary>
+    /// <param name="ex">The exception thrown while opening or creating the database.</param>
+    /// <param name="dbPath">The full database path the user chose.</param>
+    /// <param name="verb">"open" or "create", used only in the generic fallback message.</param>
+    private static string DescribeDbFailure(Exception ex, string? dbPath, string verb)
+    {
+        var folder = string.IsNullOrWhiteSpace(dbPath) ? null : Path.GetDirectoryName(dbPath);
+
+        string? userMessage = null;
+        string? itDetail    = null;
+
+        if (ex is DatabaseFolderNotWritableException dfnw)
+        {
+            // Open path: DatabaseContext already classified and worded this.
+            userMessage = dfnw.UserMessage;
+            itDetail    = dfnw.ItDetail;
+        }
+        else if (!WriteAccessProbe.CanCreateFileIn(folder))
+        {
+            // Create path: the throw happened before DatabaseContext (e.g. the wizard's own
+            // Directory.CreateDirectory). The probe is the gate — only treat it as a write block
+            // when the folder genuinely cannot accept a new file.
+            (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(folder);
+        }
+
+        if (userMessage is null)
+            return $"Could not {verb} the database: {ex.Message}";
+
+        // The wizard shows a single inline string, so point IT-relevant detail elsewhere rather than
+        // dumping the full Controlled Folder Access explanation into the field.
+        return itDetail is null
+            ? userMessage
+            : userMessage + "\n\nAsk your IT department for details.";
     }
 
     // ── Commit ───────────────────────────────────────────────────────────────
