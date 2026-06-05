@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-05T05:00:02.785Z
-> Files: 49 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-05T05:10:51.791Z
+> Files: 52 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -30,6 +30,7 @@
 ## ../../../.claude/plans/
 
 - `an-odd-thing-under-composed-bonbon.md` — Fix invisible DataGrid row selection (~772 tok)
+- `can-we-look-at-frolicking-wozniak.md` — Splash → In-Window Loading Curtain (~1866 tok)
 - `does-the-room-browser-lazy-deer.md` — Plan: Campus-aware Room Availability Browser (~1128 tok)
 - `hold-off-there-s-some-eager-puppy.md` — Section Capacity Feature (Phase 1) (~2988 tok)
 - `there-are-lots-of-swirling-star.md` — Plan: Friendly "folder won't accept writes" message at database open (CFA-aware) (~2643 tok)
@@ -212,8 +213,10 @@
 ## src/SchedulingAssistant/
 
 - `App.axaml` (~1752 tok)
+- `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5359 tok)
 - `AppColors.axaml` (~3857 tok)
-- `MainWindow.axaml.cs` — Executes a save command if it exists and can currently execute. Returns true if the command was exec (~16417 tok)
+- `MainWindow.axaml` (~472 tok)
+- `MainWindow.axaml.cs` — Minimum time the loading curtain stays up, to avoid a flicker on fast loads. (~17528 tok)
 
 ## src/SchedulingAssistant/Assets/
 

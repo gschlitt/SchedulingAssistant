@@ -29,6 +29,24 @@ public partial class MainWindow : Window
     private DetachedPanelWindow? _workloadWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
 
+    // ── Loading curtain ──────────────────────────────────────────────────────
+    // The curtain (a full-window gradient overlay defined in MainWindow.axaml)
+    // covers MainView from app launch until the schedule grid renders its first
+    // frame, so the user never sees the window assemble itself. See LiftCurtainAsync.
+    private DateTime _curtainShownAt = DateTime.UtcNow;
+    private bool _curtainLifted;
+    private DispatcherTimer? _curtainSafetyTimer;
+    private EventHandler<SizeChangedEventArgs>? _curtainGridHandler;
+
+    /// <summary>Minimum time the loading curtain stays up, to avoid a flicker on fast loads.</summary>
+    private static readonly TimeSpan CurtainMinDisplay = TimeSpan.FromMilliseconds(600);
+
+    /// <summary>Fade-out duration; must match the DoubleTransition on LoadingCurtain in the AXAML.</summary>
+    private static readonly TimeSpan CurtainFadeDuration = TimeSpan.FromMilliseconds(350);
+
+    /// <summary>Backstop: lift the curtain even if the grid never reports a first layout pass.</summary>
+    private static readonly TimeSpan CurtainSafetyTimeout = TimeSpan.FromSeconds(4);
+
     public ScheduleGridView? ScheduleGridViewInstance => MainViewControl?.ScheduleGridViewInstance;
 
     public MainWindow()
@@ -570,23 +588,17 @@ public partial class MainWindow : Window
         if (App.Services.GetService(typeof(AppNotificationService)) is AppNotificationService notifier)
             notifier.EnqueueUnseenAnnouncements();
 
-        // Hide the loading curtain after the ScheduleGrid completes its first layout pass.
-        // SizeChanged fires after Avalonia measures and arranges the control; by then
-        // ScheduleGridView's own SizeChanged handler has already called Render(), so the
-        // canvas is fully populated before the curtain lifts.
-        var gridView = MainViewControl?.ScheduleGridViewInstance;
-        if (gridView is not null)
-        {
-            EventHandler<SizeChangedEventArgs>? curtainHandler = null;
-            curtainHandler = (_, _) =>
-            {
-                gridView.SizeChanged -= curtainHandler;
-            };
-            gridView.SizeChanged += curtainHandler;
-        }
-
         IsVisible = true;
         Activate();
+
+        // Lift the loading curtain after the ScheduleGrid completes its first layout pass.
+        // SizeChanged fires after Avalonia measures and arranges the control; by then
+        // ScheduleGridView's own SizeChanged handler has already called Render(), so the
+        // canvas is fully populated before the curtain lifts. A safety timer is the backstop
+        // in case no SizeChanged fires (empty schedule, or a database switch where the grid
+        // size is unchanged) so the curtain can never get stuck up. Re-arming here means a
+        // database switch from the Files menu also gets a clean curtain over the reload.
+        ArmCurtainLift();
 
         // Evaluate tour auto-triggers after the window is visible and laid out.
         // Deferred to the next dispatcher tick so the overlay has valid bounds.
@@ -599,8 +611,78 @@ public partial class MainWindow : Window
         await Task.CompletedTask;
     }
 
-   
-    
+    /// <summary>
+    /// Arms the loading-curtain lift: shows the curtain, then waits for the schedule
+    /// grid's first <see cref="Layoutable.SizeChanged"/> (its render-complete signal),
+    /// with a safety timer as a backstop. Both routes call <see cref="LiftCurtainAsync"/>,
+    /// which is idempotent. Safe to call again on a database switch — it re-shows the
+    /// curtain over the reload.
+    /// </summary>
+    private void ArmCurtainLift()
+    {
+        // Re-show the curtain (covers the case where this is a database switch and the
+        // curtain was already lifted on a previous load) and reset the timing/guard state.
+        if (LoadingCurtain is not null)
+        {
+            LoadingCurtain.IsVisible = true;
+            LoadingCurtain.IsHitTestVisible = true;
+            LoadingCurtain.Opacity = 1;
+        }
+        _curtainLifted = false;
+        _curtainShownAt = DateTime.UtcNow;
+
+        // First grid layout pass → lift.
+        var gridView = MainViewControl?.ScheduleGridViewInstance;
+        if (gridView is not null)
+        {
+            if (_curtainGridHandler is not null)
+                gridView.SizeChanged -= _curtainGridHandler;
+
+            _curtainGridHandler = (_, _) => _ = LiftCurtainAsync();
+            gridView.SizeChanged += _curtainGridHandler;
+        }
+
+        // Backstop in case the grid never reports a size change.
+        _curtainSafetyTimer?.Stop();
+        _curtainSafetyTimer = new DispatcherTimer { Interval = CurtainSafetyTimeout };
+        _curtainSafetyTimer.Tick += (_, _) => _ = LiftCurtainAsync();
+        _curtainSafetyTimer.Start();
+    }
+
+    /// <summary>
+    /// Fades out and hides the loading curtain. Idempotent: the grid signal and the
+    /// safety timer race to call this, and only the first call has any effect. Honors a
+    /// minimum display time so the curtain never flickers on a fast load.
+    /// </summary>
+    private async Task LiftCurtainAsync()
+    {
+        if (_curtainLifted) return;
+        _curtainLifted = true;
+
+        // Tear down both lift triggers so neither fires again.
+        var gridView = MainViewControl?.ScheduleGridViewInstance;
+        if (gridView is not null && _curtainGridHandler is not null)
+            gridView.SizeChanged -= _curtainGridHandler;
+        _curtainGridHandler = null;
+
+        _curtainSafetyTimer?.Stop();
+        _curtainSafetyTimer = null;
+
+        if (LoadingCurtain is null) return;
+
+        // Hold the curtain up for the minimum display time so fast loads don't flash.
+        var elapsed = DateTime.UtcNow - _curtainShownAt;
+        if (elapsed < CurtainMinDisplay)
+            await Task.Delay(CurtainMinDisplay - elapsed);
+
+        // Fade out (the DoubleTransition on LoadingCurtain animates the opacity change),
+        // then collapse it once the fade has finished.
+        LoadingCurtain.IsHitTestVisible = false;
+        LoadingCurtain.Opacity = 0;
+        await Task.Delay(CurtainFadeDuration);
+        LoadingCurtain.IsVisible = false;
+    }
+
     /// <summary>
     /// Switches to a different database without restarting the app. Handles the full
     /// release → checkout → re-initialize cycle. Called from the Files menu, from the

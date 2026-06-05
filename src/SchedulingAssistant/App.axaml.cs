@@ -94,11 +94,11 @@ public partial class App : Application
 #if !BROWSER
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Show the splash as the initial main window so Avalonia's lifecycle
-            // renders it immediately. The splash creates the real MainWindow,
-            // swaps desktop.MainWindow, and closes itself after a minimum 2s display.
-            var splash = new Views.SplashScreen();
-            desktop.MainWindow = splash;
+            // MainWindow is the initial window. It carries its own in-window loading
+            // curtain (a gradient "TermPoint / Loading…" overlay) that renders immediately
+            // and stays up until the schedule grid finishes its first render, so the user
+            // never sees the window assemble itself. See MainWindow.LiftCurtainAsync.
+            desktop.MainWindow = new MainWindow();
 
             _ = new UpdateService().CheckForUpdatesAsync(Logger);
         }

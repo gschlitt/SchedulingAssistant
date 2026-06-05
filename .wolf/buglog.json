@@ -13943,6 +13943,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-05T04:42:35.064Z"
+    },
+    {
+      "id": "bug-871",
+      "timestamp": "2026-06-05T05:10:36.126Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T05:10:36.126Z"
     }
   ]
 }
