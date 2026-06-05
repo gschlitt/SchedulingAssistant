@@ -40,6 +40,7 @@
                                     <TextBlock Text="Subject" />
                                     <ComboBox
                                         DisplayMemberBinding="{Binding Name}"
+                                        IsEnabled="{Binding IsIdentityEditable}"
                                         ItemsSource="{Binding Subjects}"
                                         SelectedItem="{Binding SelectedSubject}" />
 
@@ -56,7 +57,10 @@
                                     <!--  Course number + auto-suggested level side by side  -->
                                     <TextBlock Text="Course number (e.g. 101 or 111LAB, max 8 characters)" />
                                     <Grid ColumnDefinitions="*,12,Auto,8,Auto">
-                                        <TextBox Grid.Column="0" Text="{Binding CourseNumber}" />
+                                        <TextBox
+                                            Grid.Column="0"
+                                            IsEnabled="{Binding IsIdentityEditable}"
+                                            Text="{Binding CourseNumber}" />
                                         <TextBlock
                                             Grid.Column="2"
                                             VerticalAlignment="Center"
@@ -78,6 +82,14 @@
                                         Padding="8,4"
                                         Background="{StaticResource SubtleBackground}"
                                         Text="{Binding ComputedCalendarCode}" />
+
+                                    <!--  Identity-lock notice: subject + number are frozen once sections exist  -->
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource TextMuted}"
+                                        IsVisible="{Binding IsIdentityLocked}"
+                                        Text="Subject and course number can't be changed because this course has sections scheduled. You can still edit the title and other fields."
+                                        TextWrapping="Wrap" />
 
                                     <TextBlock
                                         FontSize="12"

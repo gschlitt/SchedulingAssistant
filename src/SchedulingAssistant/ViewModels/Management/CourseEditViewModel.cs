@@ -55,6 +55,21 @@ public partial class CourseEditViewModel : ViewModelBase
     public string FormTitle => IsNew ? "Add Course" : "Edit Course";
     public bool IsNew { get; }
 
+    /// <summary>
+    /// True when this course already has sections scheduled in one or more semesters,
+    /// which permanently locks the subject and course-number (i.e. the course's
+    /// identity). The title, level, capacity, tags, and active flag remain editable.
+    /// Always false for new courses. This mirrors the rule that forbids deleting a
+    /// course once sections of it exist.
+    /// </summary>
+    public bool IsIdentityLocked { get; }
+
+    /// <summary>
+    /// Inverse of <see cref="IsIdentityLocked"/>. Bound to <c>IsEnabled</c> on the
+    /// subject and course-number controls so they can't be changed once sections exist.
+    /// </summary>
+    public bool IsIdentityEditable => !IsIdentityLocked;
+
     public string ComputedCalendarCode => SelectedSubject is null
         ? string.Empty
         : $"{SelectedSubject.CalendarAbbreviation}{CourseNumber}";
@@ -120,6 +135,7 @@ public partial class CourseEditViewModel : ViewModelBase
     /// <param name="codeExists">Delegate that returns true when the calendar code is already in use.</param>
     /// <param name="subjects">All subjects, used to populate the Subject dropdown.</param>
     /// <param name="applyTagsToAll">Optional callback that applies the given tag IDs to all sections of this course. Returns the number of sections updated.</param>
+    /// <param name="identityLocked">When true (and not a new course), the subject and course-number fields are locked because the course already has sections scheduled.</param>
     public CourseEditViewModel(
         Course course,
         bool isNew,
@@ -128,10 +144,12 @@ public partial class CourseEditViewModel : ViewModelBase
         Action onCancel,
         Func<string, bool> codeExists,
         ObservableCollection<Subject> subjects,
-        Func<List<string>, Task<int>>? applyTagsToAll = null)
+        Func<List<string>, Task<int>>? applyTagsToAll = null,
+        bool identityLocked = false)
     {
         _course = course;
         IsNew = isNew;
+        IsIdentityLocked = identityLocked && !isNew;
         _onSave = onSave;
         _onCancel = onCancel;
         _codeExists = codeExists;

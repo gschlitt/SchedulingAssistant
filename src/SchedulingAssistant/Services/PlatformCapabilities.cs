@@ -26,6 +26,15 @@ public static class PlatformCapabilities
     public static bool SupportsSemesterMutations => false;
 
     /// <summary>
+    /// True when the user may switch the active semester via the picker.
+    /// False in the browser demo: the demo loads a single busy semester at startup, and
+    /// re-selecting it would re-run the (WASM-slow) full section-list realization. Disabling
+    /// the picker keeps that one-time cost hidden behind the splash and prevents an in-session
+    /// rebuild lag that does not occur on desktop.
+    /// </summary>
+    public static bool SupportsSemesterSwitching => false;
+
+    /// <summary>
     /// True when the platform supports saving to and auto-saving the database file.
     /// False in the browser demo — the demo database is in-memory only.
     /// </summary>
@@ -55,6 +64,9 @@ public static class PlatformCapabilities
 
     /// <inheritdoc cref="SupportsSemesterMutations"/>
     public static bool SupportsSemesterMutations => true;
+
+    /// <inheritdoc cref="SupportsSemesterSwitching"/>
+    public static bool SupportsSemesterSwitching => true;
 
     /// <inheritdoc cref="SupportsSave"/>
     public static bool SupportsSave => true;

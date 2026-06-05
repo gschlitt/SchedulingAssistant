@@ -178,8 +178,15 @@ public partial class SemesterContext : ObservableObject
 
     // ── Commands ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// True when the user may open the semester picker and switch semesters.
+    /// False in the browser demo (see <see cref="PlatformCapabilities.SupportsSemesterSwitching"/>);
+    /// gates <see cref="ToggleSemesterPickerCommand"/> so the picker button is disabled there.
+    /// </summary>
+    public bool CanSwitchSemester => PlatformCapabilities.SupportsSemesterSwitching;
+
     /// <summary>Toggles the semester picker Popup open or closed.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSwitchSemester))]
     private void ToggleSemesterPicker() => IsSemesterPickerOpen = !IsSemesterPickerOpen;
 
     /// <summary>

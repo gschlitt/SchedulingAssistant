@@ -370,7 +370,8 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
                     capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
                     ghosts => _setGhostBlocks?.Invoke(ghosts),
                     onAccept,
-                    onCancel);
+                    onCancel,
+                    campusId: string.IsNullOrEmpty(vm.SelectedCampusId) ? null : vm.SelectedCampusId);
             };
         }
 
@@ -484,7 +485,8 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
                         capturedSemId, semDisplay.Semester.Name, semDisplay.Semester.Color,
                         ghosts => _setGhostBlocks?.Invoke(ghosts),
                         onAccept,
-                        onCancel);
+                        onCancel,
+                        campusId: string.IsNullOrEmpty(vm.SelectedCampusId) ? null : vm.SelectedCampusId);
                 };
             }
         }

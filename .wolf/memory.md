@@ -7876,3 +7876,111 @@
 | 16:08 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/feedback_validated_textbox_over_updown.md | — | ~213 |
 | 16:09 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~79 |
 | 16:09 | Session end: 54 writes across 20 files (hold-off-there-s-some-eager-puppy.md, Course.cs, Section.cs, AppSettings.cs, CourseEditViewModel.cs) | 25 reads | ~45965 tok |
+
+## Session: 2026-06-04 16:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:16 | Created .git/SA_COMMIT_MSG.txt | — | ~266 |
+| 16:16 | Session end: 1 writes across 1 files (SA_COMMIT_MSG.txt) | 0 reads | ~285 tok |
+
+## Session: 2026-06-04 16:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:39 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | modified PROBE() | ~270 |
+| 16:39 | Session end: 1 writes across 1 files (SectionListView.axaml) | 5 reads | ~60431 tok |
+| 16:42 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 16→13 lines | ~219 |
+| 16:49 | Session end: 2 writes across 1 files (SectionListView.axaml) | 8 reads | ~63597 tok |
+| 16:51 | Edited src/SchedulingAssistant/Services/PlatformCapabilities.cs | expanded (+9 lines) | ~203 |
+| 16:52 | Edited src/SchedulingAssistant/Services/PlatformCapabilities.cs | 2→5 lines | ~61 |
+| 16:52 | Edited src/SchedulingAssistant/Services/SemesterContext.cs | expanded (+7 lines) | ~167 |
+| 16:53 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wasm_semester_switch_disabled.md | — | ~561 |
+| 16:54 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~107 |
+| 16:54 | Session end: 7 writes across 5 files (SectionListView.axaml, PlatformCapabilities.cs, SemesterContext.cs, wasm_semester_switch_disabled.md, MEMORY.md) | 10 reads | ~64773 tok |
+| 16:55 | Session end: 7 writes across 5 files (SectionListView.axaml, PlatformCapabilities.cs, SemesterContext.cs, wasm_semester_switch_disabled.md, MEMORY.md) | 10 reads | ~64773 tok |
+| 16:57 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+6 lines) | ~178 |
+| 16:59 | Session end: 8 writes across 6 files (SectionListView.axaml, PlatformCapabilities.cs, SemesterContext.cs, wasm_semester_switch_disabled.md, MEMORY.md) | 10 reads | ~64964 tok |
+
+## Session: 2026-06-05 17:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-05 19:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-05 20:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-05 20:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-05 20:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:19 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 2→5 lines | ~116 |
+| 20:19 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | 2→5 lines | ~115 |
+| 20:22 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | added optional chaining | ~387 |
+| 20:23 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs | added optional chaining | ~387 |
+| 20:23 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | removed 11 lines | ~39 |
+| 20:23 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | removed 11 lines | ~35 |
+| 20:23 | Session end: 6 writes across 4 files (SectionListView.axaml, MeetingListView.axaml, SectionEditViewModel.cs, MeetingEditViewModel.cs) | 5 reads | ~41004 tok |
+| 20:40 | Session end: 6 writes across 4 files (SectionListView.axaml, MeetingListView.axaml, SectionEditViewModel.cs, MeetingEditViewModel.cs) | 5 reads | ~41093 tok |
+
+## Session: 2026-06-05 21:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:26 | Created ../../../.claude/plans/does-the-room-browser-lazy-deer.md | — | ~1204 |
+| 21:27 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | expanded (+6 lines) | ~101 |
+| 21:28 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 3→4 lines | ~26 |
+| 21:28 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 1→2 lines | ~18 |
+| 21:28 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | 3→5 lines | ~113 |
+| 21:28 | Edited src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs | expanded (+6 lines) | ~182 |
+| 21:29 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | expanded (+7 lines) | ~109 |
+| 21:29 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | 3→4 lines | ~54 |
+| 21:29 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 3→4 lines | ~65 |
+| 21:29 | Edited src/SchedulingAssistant/ViewModels/Management/MeetingListViewModel.cs | 5→6 lines | ~102 |
+| 21:32 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_room_availability_browser.md | 1→3 lines | ~217 |
+| 21:32 | Session end: 11 writes across 6 files (does-the-room-browser-lazy-deer.md, RoomAvailabilityBrowserViewModel.cs, SectionEditViewModel.cs, SectionListViewModel.cs, MeetingListViewModel.cs) | 12 reads | ~45861 tok |
+
+## Session: 2026-06-05 21:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:42 | Created ../../../.claude/plans/an-odd-thing-under-composed-bonbon.md | — | ~824 |
+| 21:42 | Edited src/SchedulingAssistant/AppColors.axaml | 2→5 lines | ~78 |
+| 21:42 | Edited src/SchedulingAssistant/App.axaml | 3→3 lines | ~63 |
+
+## Session: 2026-06-05 21:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:46 | Edited src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs | expanded (+15 lines) | ~221 |
+| 21:46 | Edited src/SchedulingAssistant/ViewModels/Management/CourseEditViewModel.cs | modified CourseEditViewModel() | ~222 |
+| 21:46 | Edited src/SchedulingAssistant/ViewModels/Management/CourseListViewModel.cs | 3→5 lines | ~105 |
+| 21:46 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 5→6 lines | ~114 |
+| 21:46 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 2→5 lines | ~94 |
+| 21:47 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | expanded (+8 lines) | ~238 |
+| 21:48 | Session end: 6 writes across 3 files (CourseEditViewModel.cs, CourseListViewModel.cs, CourseListView.axaml) | 3 reads | ~9117 tok |
+
+## Session: 2026-06-05 21:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:55 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 16→13 lines | ~219 |
+
+## Session: 2026-06-05 21:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:00 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 7→9 lines | ~169 |
+| 22:00 | Session end: 1 writes across 1 files (SectionListView.axaml) | 1 reads | ~24429 tok |

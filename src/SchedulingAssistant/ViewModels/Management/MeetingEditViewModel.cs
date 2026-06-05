@@ -323,6 +323,35 @@ public partial class MeetingEditViewModel : ViewModelBase
     public bool IsRoomBrowserOpen => RoomBrowserVm != null;
 
     /// <summary>
+    /// True only when the browser is open AND it found alternative times/rooms.
+    /// Drives visibility of the "Show Alternatives" toggle. Exposed as a single
+    /// bool so the XAML never binds through a null <see cref="RoomBrowserVm"/>
+    /// (a null path leg yields UnsetValue, which makes IsVisible default to true).
+    /// </summary>
+    public bool HasBrowserAlternatives => RoomBrowserVm?.HasAlternatives == true;
+
+    /// <summary>
+    /// Keeps <see cref="HasBrowserAlternatives"/> in sync: re-evaluates when the
+    /// browser opens/closes and subscribes to the browser's HasAlternatives changes.
+    /// </summary>
+    partial void OnRoomBrowserVmChanged(
+        RoomAvailabilityBrowserViewModel? oldValue,
+        RoomAvailabilityBrowserViewModel? newValue)
+    {
+        if (oldValue != null)
+            oldValue.PropertyChanged -= OnRoomBrowserPropertyChanged;
+        if (newValue != null)
+            newValue.PropertyChanged += OnRoomBrowserPropertyChanged;
+        OnPropertyChanged(nameof(HasBrowserAlternatives));
+    }
+
+    private void OnRoomBrowserPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(RoomAvailabilityBrowserViewModel.HasAlternatives))
+            OnPropertyChanged(nameof(HasBrowserAlternatives));
+    }
+
+    /// <summary>
     /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.
     /// Receives the meeting's slot specs and callbacks for accept/cancel.
     /// </summary>

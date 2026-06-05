@@ -115,9 +115,9 @@
 			<Setter Property="Background" Value="{StaticResource ChromeBackground}" />
 		</Style>
 
-		<!--  DataGrid row selection: use ButtonBackground across all grids  -->
+		<!--  DataGrid row selection highlight (visible across all grids)  -->
 		<Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-			<Setter Property="Fill" Value="{StaticResource UserInteractionBrush}" />
+			<Setter Property="Fill" Value="{StaticResource ListRowSelectedBackground}" />
 			<Setter Property="Opacity" Value="1" />
 		</Style>
 

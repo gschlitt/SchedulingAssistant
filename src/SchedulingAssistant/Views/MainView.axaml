@@ -166,6 +166,11 @@
 							FontSize="13"
 							Foreground="{StaticResource TextSemesterLabel}"
 							Text="Academic Year:" />
+						<!--
+							IsEnabled is gated by CanSwitchSemester so the demo (browser build) locks
+							the year chooser the same way the semester picker is locked, for consistency.
+							Disabled, the ComboBox still shows the single loaded year greyed out.
+						-->
 						<ComboBox
 							Height="24"
 							MinWidth="10"
@@ -174,6 +179,7 @@
 							BorderThickness="0"
 							DisplayMemberBinding="{Binding Name}"
 							FontSize="13"
+							IsEnabled="{Binding SemesterContext.CanSwitchSemester}"
 							ItemsSource="{Binding SemesterContext.AcademicYears}"
 							SelectedItem="{Binding SemesterContext.SelectedAcademicYear}" />
 

@@ -1051,7 +1051,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                         ghosts => _setGhostBlocks?.Invoke(ghosts),
                         onAccept,
                         onCancel,
-                        minCapacity: editVm.CurrentSectionCapacity);
+                        minCapacity: editVm.CurrentSectionCapacity,
+                        campusId: editVm.CurrentSectionCampusId);
                 };
             }
         }

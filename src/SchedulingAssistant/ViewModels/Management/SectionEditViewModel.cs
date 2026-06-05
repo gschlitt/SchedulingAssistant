@@ -29,6 +29,13 @@ public partial class SectionEditViewModel : ViewModelBase
     public int? CurrentSectionCapacity => ParsedCapacity;
 
     /// <summary>
+    /// The section's current campus as the user has it in the editor, or null if none, used to
+    /// scope the Room Browser to rooms on that campus. Read by the parent VM's browser factory.
+    /// </summary>
+    public string? CurrentSectionCampusId =>
+        string.IsNullOrEmpty(SelectedCampusId) ? null : SelectedCampusId;
+
+    /// <summary>
     /// Advisory shown when a chosen room's known capacity is below the section capacity.
     /// Non-blocking and dismissable; recomputed when a meeting's room or the capacity changes.
     /// </summary>
@@ -718,6 +725,35 @@ public partial class SectionEditViewModel : ViewModelBase
 
     /// <summary>True when the browser panel is visible.</summary>
     public bool IsRoomBrowserOpen => RoomBrowserVm != null;
+
+    /// <summary>
+    /// True only when the browser is open AND it found alternative times/rooms.
+    /// Drives visibility of the "Show Alternatives" toggle. Exposed as a single
+    /// bool so the XAML never binds through a null <see cref="RoomBrowserVm"/>
+    /// (a null path leg yields UnsetValue, which makes IsVisible default to true).
+    /// </summary>
+    public bool HasBrowserAlternatives => RoomBrowserVm?.HasAlternatives == true;
+
+    /// <summary>
+    /// Keeps <see cref="HasBrowserAlternatives"/> in sync: re-evaluates when the
+    /// browser opens/closes and subscribes to the browser's HasAlternatives changes.
+    /// </summary>
+    partial void OnRoomBrowserVmChanged(
+        RoomAvailabilityBrowserViewModel? oldValue,
+        RoomAvailabilityBrowserViewModel? newValue)
+    {
+        if (oldValue != null)
+            oldValue.PropertyChanged -= OnRoomBrowserPropertyChanged;
+        if (newValue != null)
+            newValue.PropertyChanged += OnRoomBrowserPropertyChanged;
+        OnPropertyChanged(nameof(HasBrowserAlternatives));
+    }
+
+    private void OnRoomBrowserPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(RoomAvailabilityBrowserViewModel.HasAlternatives))
+            OnPropertyChanged(nameof(HasBrowserAlternatives));
+    }
 
     /// <summary>
     /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.

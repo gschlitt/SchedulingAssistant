@@ -159,14 +159,8 @@
                             IsChecked="{Binding RoomBrowserVm.ShowAlternatives}"
                             ToolTip.Tip="Show alternative times/rooms"
                             CornerRadius="3"
-                            HorizontalAlignment="Left">
-                    <CheckBox.IsVisible>
-                      <MultiBinding Converter="{x:Static BoolConverters.And}">
-                        <Binding Path="IsRoomBrowserOpen"/>
-                        <Binding Path="RoomBrowserVm.HasAlternatives"/>
-                      </MultiBinding>
-                    </CheckBox.IsVisible>
-                  </CheckBox>
+                            HorizontalAlignment="Left"
+                            IsVisible="{Binding HasBrowserAlternatives}"/>
                 </Grid>
 
                 <!--  Schedule slots  -->

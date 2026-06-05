@@ -76,6 +76,9 @@
 	<Color x:Key="ButtonPressedColor">#94c6f7</Color>
 	<SolidColorBrush x:Key="ButtonPressed" Color="{StaticResource ButtonPressedColor}" />
 
+	<!--  Selected row in management list DataGrids  -->
+	<SolidColorBrush x:Key="ListRowSelectedBackground" Color="{StaticResource ButtonHoverColor}" />
+
 	<!--  Filters and Overlays ────────────────────────────────  -->
 
 	<SolidColorBrush x:Key="FilterBarBackground" Color="{StaticResource AppBackgroundColor}" />
@@ -143,12 +146,12 @@
 
 	<!--  ── Text roles  ───────────────────────────────────────────────────  -->
 	<!--  Primary: dark navy-gray — not pure black, but still high contrast  -->
-	<SolidColorBrush x:Key="TextPrimary" Color="#1A2433" />
+	<SolidColorBrush x:Key="TextPrimary" Color="Black" />
 	<SolidColorBrush x:Key="TextSecondary" Color="#1e2938" />
 	<SolidColorBrush x:Key="TextMuted" Color="#1e2836" />
 	<SolidColorBrush x:Key="TextFaint" Color="#475569" />
 	<SolidColorBrush x:Key="TextSubtle" Color="#4A5568" />
-	<SolidColorBrush x:Key="TextLabel" Color="#64748B" />
+	<SolidColorBrush x:Key="TextLabel" Color="Black" />
 	<SolidColorBrush x:Key="TextDimLabel" Color="#64748B" />
 	<SolidColorBrush x:Key="TextSemesterLabel" Color="#475569" />
 	<SolidColorBrush x:Key="TextValidationError" Color="#C53030" />

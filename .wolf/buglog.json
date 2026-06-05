@@ -13879,6 +13879,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-04T23:06:27.236Z"
+    },
+    {
+      "id": "bug-867",
+      "timestamp": "2026-06-05T03:22:37.634Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T03:22:37.634Z"
+    },
+    {
+      "id": "bug-868",
+      "timestamp": "2026-06-05T03:23:01.005Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/MeetingEditViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T03:23:01.005Z"
+    },
+    {
+      "id": "bug-869",
+      "timestamp": "2026-06-05T04:28:58.083Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/RoomAvailabilityBrowserViewModel.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 5→11 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T04:28:58.083Z"
+    },
+    {
+      "id": "bug-870",
+      "timestamp": "2026-06-05T04:42:35.064Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant/App.axaml",
+      "root_cause": "Had \"{StaticResource UserInteractionBrush}\"",
+      "fix": "Changed to \"{StaticResource ListRowSelectedBackground}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "axaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T04:42:35.064Z"
     }
   ]
 }

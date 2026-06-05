@@ -39,6 +39,11 @@
             <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
         </Style>
 
+        <Style Selector="Button">
+			<Setter Property="BorderBrush" Value="Black"/>
+            <Setter Property="BorderThickness" Value="0.5"/>
+        </Style>
+
       
         <Style Selector="TextBlock">
           <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
@@ -72,10 +77,12 @@
                         Padding="3,2"
                         Command="{Binding SaveCommand}"
                         Content="Apply" 
+                        Background="{StaticResource TileFill}"
                         b:HelpTip.Text="Apply edits to this section"/>
                     <Button
                         Padding="3,2"
                         Command="{Binding CancelCommand}"
+                        Background="{StaticResource TileFill}"
                         Content="Cancel" />
                 </StackPanel>
 
@@ -279,7 +286,7 @@
                     <!--  Schedule  -->
                     <TextBlock
                         Margin="0,3,0,3"
-                        FontWeight="SemiBold"
+                        FontWeight="Normal"
                         Foreground="{StaticResource TextLabel}"
                         Text="Schedule" />
 
@@ -549,19 +556,21 @@
                     </StackPanel>
 
                     <!-- Room Availability Browser (compact inline controls) -->
-                    <Grid ColumnDefinitions="Auto,Auto,Auto,*" RowDefinitions="Auto,Auto"
-                          Margin="0,10,0,0"
-                          IsVisible="{Binding CreateRoomBrowser, Converter={x:Static ObjectConverters.IsNotNull}}">
+                   
+                    <Grid ColumnDefinitions="125,Auto,Auto,*" RowDefinitions="Auto,Auto" ShowGridLines="False"
+                          Margin="-2,6,0,0"
+                          IsVisible="{Binding CreateRoomBrowser, Converter={x:Static ObjectConverters.IsNotNull}}" >
 
                       <!-- Row 0, Col 0: Room Browser button + help icon -->
-                      <Panel Grid.Row="0" Grid.Column="0">
-                        <Button Padding="4,4,10,4"
+                      <Panel Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left">
+                        <Button Padding="2,2,2,2"
                                 Command="{Binding OpenRoomBrowserCommand}"
+                                HorizontalAlignment="Left"
                                 Content="Room Browser"
-                                FontSize="11" />
+                                FontSize="13" />
                         <!-- Superscript help icon — always clickable regardless of button state -->
                         <Button HorizontalAlignment="Right" VerticalAlignment="Top"
-                                Margin="0,-6,-6,0"
+                                Margin="0,-1,-1,0"
                                 Padding="0" MinWidth="0" MinHeight="0"
                                 Background="Transparent" BorderThickness="0"
                                 Cursor="Hand"
@@ -569,7 +578,7 @@
                                 b:HelpTip.Text="Open help for Room Browser">
                           <Viewbox Width="10" Height="10">
                             <Path Data="{StaticResource questionmark}"
-                                  Fill="{DynamicResource TextAttention}"
+                                  Fill="Black"
                                   />
                           </Viewbox>
                         </Button>
@@ -577,41 +586,41 @@
 
                       <!-- Row 0, Col 1: Solution stepping carets + counter -->
                       <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="0"
-                                  Margin="6,0,0,0" VerticalAlignment="Center"
+                                  Margin="1,1,0,0" VerticalAlignment="Center"
                                   IsVisible="{Binding IsRoomBrowserOpen}">
-                        <Button Content="&#x2039;" FontSize="12" Padding="3,1" MinWidth="0"
+                        <Button Content="&#x2039;" FontSize="20" Padding="3,1" MinWidth="0"
                                 Command="{Binding RoomBrowserVm.PreviousSolutionCommand}"
                                 IsEnabled="{Binding RoomBrowserVm.CanGoPrevious}"/>
                         <TextBlock Text="{Binding RoomBrowserVm.SolutionLabel}" FontSize="11"
                                    VerticalAlignment="Center" Margin="3,0"
                                    Foreground="{DynamicResource TextPrimary}"/>
-                        <Button Content="&#x203A;" FontSize="12" Padding="3,1" MinWidth="0"
+                        <Button Content="&#x203A;" FontSize="20" Padding="3,1" MinWidth="0"
                                 Command="{Binding RoomBrowserVm.NextSolutionCommand}"
                                 IsEnabled="{Binding RoomBrowserVm.CanGoNext}"/>
                       </StackPanel>
 
                       <!-- Row 0, Col 2: Tier/mode label -->
                       <TextBlock Grid.Row="0" Grid.Column="2"
-                                 Text="{Binding RoomBrowserVm.TierLabel}" FontSize="9"
-                                 VerticalAlignment="Center" Margin="6,0,0,0"
+                                 Text="{Binding RoomBrowserVm.TierLabel}" FontSize="10"
+                                 VerticalAlignment="Center" Margin="6,1,0,0"
                                  Foreground="{DynamicResource TextSecondary}"
                                  IsVisible="{Binding IsRoomBrowserOpen}"/>
 
-                      <!-- Row 1, Col 0: Accept -->
-                      <Button Grid.Row="1" Grid.Column="0"
-                              Content="Accept" FontSize="10" Padding="4,2"
-                              HorizontalAlignment="Stretch" Margin="0,3,0,0"
+                      <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
+                      <Button 
+                              Content="Accept Room" FontSize="11" Padding="4,2"
+                              HorizontalAlignment="Stretch" 
                               Command="{Binding RoomBrowserVm.AcceptSolutionCommand}"
                               IsEnabled="{Binding RoomBrowserVm.HasSolutions}"
                               IsVisible="{Binding IsRoomBrowserOpen}"/>
 
-                      <!-- Row 1, Col 1: Cancel -->
-                      <Button Grid.Row="1" Grid.Column="1"
-                              Content="Cancel" FontSize="10" Padding="4,2"
-                              Margin="6,3,0,0"
+                      
+                      <Button 
+                              Content="Cancel" FontSize="11" Padding="4,2"
+                              
                               Command="{Binding RoomBrowserVm.CancelCommand}"
                               IsVisible="{Binding IsRoomBrowserOpen}"/>
-
+                      </StackPanel>
                       <!-- Row 1, Col 2: Alt toggle (only when alternatives exist) -->
                       <CheckBox Grid.Row="0" Grid.Column="3"
                                     Content="Show Alternatives" FontSize="10" Padding="4,2"
@@ -621,29 +630,24 @@
                                     
                                     ToolTip.Tip="Show alternative times/rooms"
                                     CornerRadius="3"
-                                    HorizontalAlignment="Left">
-                          <CheckBox.IsVisible>
-							<MultiBinding Converter="{x:Static BoolConverters.And}">
-                         <Binding Path="IsRoomBrowserOpen"/>
-                         <Binding Path="RoomBrowserVm.HasAlternatives"/>
-                                 </MultiBinding>
-                                </CheckBox.IsVisible>                    
-                          </CheckBox>
+                                    HorizontalAlignment="Left"
+                                    IsVisible="{Binding HasBrowserAlternatives}"/>
                     </Grid>
+                       
 
                     <!--  Instructor  -->
                     <Grid
                         MaxWidth="400"
-                        Margin="0,4,0,0"
+                        Margin="0,6,0,0"
                         HorizontalAlignment="Left"
                         ColumnDefinitions="*,4,*">
                         <!--  Left: Instructor multi-select popup  -->
                         <StackPanel Grid.Column="0">
                             <TextBlock
-                                Margin="0,0,0,1"
+                                Margin="0,1,0,1"
                                 Foreground="{StaticResource TextLabel}"
                                 Text="Instructor(s)" />
-                            <Panel>
+                            <Panel Margin="0,2">
                                 <ToggleButton
                                     x:Name="InstructorToggle"
                                     b:HelpTip.Text="Select instructor(s) and optionally associated workload for this section"
@@ -702,7 +706,7 @@
                         MaxWidth="400"
                         Margin="0,4,0,0"
                         HorizontalAlignment="Left"
-                        ColumnDefinitions="*,4,*,4,*,4,*">
+                        ColumnDefinitions="*,8,*,8,*,8,*">
 
                         <StackPanel Grid.Column="0" Spacing="1">
                             <StackPanel Orientation="Horizontal">
@@ -935,11 +939,13 @@
                     <Button
                         Padding="3,2"
                         Command="{Binding SaveCommand}"
-                        Content="Apply" />
+                        Content="Apply"
+                        Background="{StaticResource TileFill}"/>
                     <Button
                         Padding="3,2"
                         Command="{Binding CancelCommand}"
-                        Content="Cancel" />
+                        Content="Cancel"
+                        Background="{StaticResource TileFill}"/>
                 </StackPanel>
 
             </StackPanel>
@@ -1020,7 +1026,8 @@
                         editor, the panel recalculates all item positions correctly.
                         VirtualizingStackPanel (the default) does not reflow on dynamic height
                         changes, which causes subsequent items to render at stale y-offsets and
-                        visually overlap the expanded editor.
+                        visually overlap the expanded editor (and scroll the editor out of view).
+                        Re-confirmed still broken on Avalonia 12 (June 2026 probe).
                     -->
                     <ListBox.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -1383,7 +1390,9 @@
                                             Padding="10,8,8,12"
                                             HorizontalAlignment="Left"
                                             Background="{StaticResource EditorBackground}"
-                                            BorderThickness="0"
+                                            BorderBrush="{StaticResource EditorBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
                                             IsVisible="{Binding IsExpanded}">
                                             <ContentControl Content="{Binding $parent[UserControl].DataContext.EditVm}" ContentTemplate="{StaticResource InlineEditFormTemplate}" />
                                         </Border>

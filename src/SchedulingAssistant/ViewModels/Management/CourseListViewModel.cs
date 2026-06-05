@@ -186,7 +186,9 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id),
             subjects: Subjects,
-            applyTagsToAll: tagIds => Task.FromResult(ApplyTagsToAllSections(clone.Id, tagIds)));
+            applyTagsToAll: tagIds => Task.FromResult(ApplyTagsToAllSections(clone.Id, tagIds)),
+            // Lock subject + course number once sections exist — same rule that forbids deletion.
+            identityLocked: _courseRepo.HasSections(SelectedCourse.Id));
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]

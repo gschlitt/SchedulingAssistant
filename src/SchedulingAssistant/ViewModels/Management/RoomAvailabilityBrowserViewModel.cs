@@ -24,6 +24,12 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// set are kept (unknown gets the benefit of the doubt).
     /// </summary>
     private readonly int? _minCapacity;
+
+    /// <summary>
+    /// Campus the edited section/meeting is assigned to, or null if none. When set, the browser
+    /// considers only rooms on this campus (hard exclude). Null means no campus restriction.
+    /// </summary>
+    private readonly string? _campusId;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<BlockPattern> _blockPatterns;
     private readonly string _semesterId;
@@ -71,6 +77,8 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// <param name="setGhostBlocks">Callback to push ghost blocks onto the schedule grid.</param>
     /// <param name="onAccept">Callback when the user accepts a solution.</param>
     /// <param name="onCancel">Callback when the user cancels browsing.</param>
+    /// <param name="minCapacity">Section capacity; rooms with a known smaller capacity are excluded.</param>
+    /// <param name="campusId">When set, only rooms on this campus are considered (hard exclude).</param>
     public RoomAvailabilityBrowserViewModel(
         IReadOnlyList<MeetingSpec> specs,
         IReadOnlyList<Room> allRooms,
@@ -86,11 +94,13 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         Action<List<GhostBlock>?> setGhostBlocks,
         Action<IReadOnlyList<SpecSolution>> onAccept,
         Action onCancel,
-        int? minCapacity = null)
+        int? minCapacity = null,
+        string? campusId = null)
     {
         _specs = specs;
         _allRooms = allRooms;
         _minCapacity = minCapacity;
+        _campusId = campusId;
         _legalStartTimes = legalStartTimes;
         _blockPatterns = blockPatterns;
         _semesterId = semesterId;
@@ -151,11 +161,17 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
 
     private void Recompute()
     {
-        // Capacity filter: drop rooms whose known capacity is below the section's; keep
-        // unknown-capacity rooms (benefit of the doubt). No-op when the section has no capacity.
-        var rooms = _allRooms
-            .Where(r => _minCapacity == null || r.Capacity == null || r.Capacity >= _minCapacity)
-            .ToList();
+        // Filter candidate rooms by campus and capacity via the shared helper.
+        //  • Campus: when the section/meeting has a campus, only rooms on that campus qualify
+        //    (hard exclude — note this also drops rooms with no campus set, unlike capacity).
+        //  • Capacity: drop rooms whose known capacity is below the section's; unknown capacity
+        //    gets the benefit of the doubt. Both filters are no-ops when their value is null.
+        var rooms = RoomAvailabilityService.ApplyFilter(
+            _allRooms,
+            campusId:    _campusId,
+            building:    null,
+            roomTypeId:  null,
+            minCapacity: _minCapacity);
 
         _solutions = _service.GenerateSolutionsFromSpecs(
             _specs, rooms, _index, _legalStartTimes, _blockPatterns);
