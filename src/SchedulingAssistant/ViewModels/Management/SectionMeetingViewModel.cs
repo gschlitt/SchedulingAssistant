@@ -69,6 +69,13 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <summary>Master room list (unfiltered). Not bound to UI directly.</summary>
     private readonly IReadOnlyList<Room> _allRooms;
 
+    /// <summary>
+    /// The owning section's campus id, or null/empty when no campus is set. When non-empty,
+    /// <see cref="RefreshFilteredRooms"/> confines the room list to rooms on that campus plus
+    /// rooms that specify no campus. Empty means no campus filter — all rooms are shown.
+    /// </summary>
+    private string? _sectionCampusId;
+
     /// <summary>Rooms filtered by the selected room type. Bound to the Room combobox.</summary>
     public ObservableCollection<Room> FilteredRooms { get; } = new();
 
@@ -153,6 +160,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// The block-length display unit (Hours or Minutes). Controls formatting and parsing of
     /// the Length field throughout this meeting's lifetime.
     /// </param>
+    /// <param name="sectionCampusId">
+    /// The owning section's campus id. When non-empty, the room list is confined to rooms on
+    /// that campus plus rooms with no campus assigned. Null/empty means show all rooms.
+    /// </param>
     public SectionMeetingViewModel(
         IReadOnlyList<LegalStartTime> legalStartTimes,
         bool includeSaturday,
@@ -163,13 +174,15 @@ public partial class SectionMeetingViewModel : ViewModelBase
         SectionDaySchedule? existing = null,
         double? defaultBlockLength = null,
         Func<string, Task>? onWarning = null,
-        BlockLengthUnit unit = BlockLengthUnit.Hours)
+        BlockLengthUnit unit = BlockLengthUnit.Hours,
+        string? sectionCampusId = null)
     {
         _legalStartTimes    = legalStartTimes;
         _defaultBlockLength = defaultBlockLength;
         _onWarning          = onWarning;
         _unit               = unit;
         _allRooms           = rooms;
+        _sectionCampusId    = sectionCampusId;
 
         // Build the immutable reference set of all start times for RefreshStartTimes.
         _allStartTimeStrings = legalStartTimes
@@ -266,8 +279,22 @@ public partial class SectionMeetingViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Rebuilds <see cref="FilteredRooms"/> based on the selected room type.
-    /// Shows all rooms when "(none)" is selected; disables when "Remote".
+    /// Sets the owning section's campus and re-filters the room list. Called by the parent
+    /// section editor at construction and whenever the section's campus selection changes.
+    /// </summary>
+    /// <param name="campusId">The section's campus id, or null/empty for no campus filter.</param>
+    public void SetSectionCampus(string? campusId)
+    {
+        _sectionCampusId = campusId;
+        RefreshFilteredRooms();
+    }
+
+    /// <summary>
+    /// Rebuilds <see cref="FilteredRooms"/> based on the selected room type and the section's
+    /// campus. Shows all rooms when "(none)" room type is selected; disables when "Remote".
+    /// When the section has a campus, the list is confined to rooms on that campus plus rooms
+    /// with no campus assigned. The currently-selected room is always kept in the list so an
+    /// existing (possibly off-campus) choice is never silently dropped.
     /// </summary>
     private void RefreshFilteredRooms()
     {
@@ -277,10 +304,29 @@ public partial class SectionMeetingViewModel : ViewModelBase
         var typeId = SelectedRoomType?.Id;
         foreach (var room in _allRooms)
         {
-            if (typeId == null || typeId == SectionDaySchedule.RemoteRoomTypeId || room.RoomTypeId == typeId)
-                FilteredRooms.Add(room);
+            bool typeMatch = typeId == null
+                             || typeId == SectionDaySchedule.RemoteRoomTypeId
+                             || room.RoomTypeId == typeId;
+            if (!typeMatch)
+                continue;
+
+            // Apply the campus filter, but always keep the already-selected room visible.
+            if (!CampusAllowsRoom(room) && room.Id != SelectedRoomId)
+                continue;
+
+            FilteredRooms.Add(room);
         }
     }
+
+    /// <summary>
+    /// True when the room may be offered for selection under the current section campus:
+    /// either no section campus is set, the room specifies no campus, or the room's campus
+    /// matches the section's.
+    /// </summary>
+    private bool CampusAllowsRoom(Room room) =>
+        string.IsNullOrEmpty(_sectionCampusId)
+        || string.IsNullOrEmpty(room.CampusId)
+        || room.CampusId == _sectionCampusId;
 
     // ── Frequency helpers ─────────────────────────────────────────────────────
 

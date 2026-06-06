@@ -370,6 +370,17 @@ public partial class SectionEditViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// When the section's campus changes, re-confine every meeting's room list to rooms on
+    /// that campus (plus rooms with no campus). An empty value clears the filter so all rooms
+    /// are shown again.
+    /// </summary>
+    partial void OnSelectedCampusIdChanged(string? value)
+    {
+        foreach (var meeting in Meetings)
+            meeting.SetSectionCampus(value);
+    }
+
+    /// <summary>
     /// Called when the user selects a code pattern from the chooser.
     /// Generates the next unused code for the selected course and semester,
     /// pre-fills campus and section type if the pattern specifies them,
@@ -615,7 +626,7 @@ public partial class SectionEditViewModel : ViewModelBase
         // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
         foreach (var entry in section.Schedule)
             Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, _roomTypeOptions, entry, defaultBlockLength, _showMeetingWarning,
-                unit: AppSettings.Current.BlockLengthUnit));
+                unit: AppSettings.Current.BlockLengthUnit, sectionCampusId: SelectedCampusId));
 
         WireMeetingDurationWatch();
 
@@ -842,7 +853,7 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms, _roomTypeOptions,
             defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
-            unit: AppSettings.Current.BlockLengthUnit));
+            unit: AppSettings.Current.BlockLengthUnit, sectionCampusId: SelectedCampusId));
     }
 
     [RelayCommand]
@@ -897,7 +908,7 @@ public partial class SectionEditViewModel : ViewModelBase
             // it to all follower meetings just like a manual change would.
             var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms, _roomTypeOptions,
                 defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
-                unit: AppSettings.Current.BlockLengthUnit);
+                unit: AppSettings.Current.BlockLengthUnit, sectionCampusId: SelectedCampusId);
             meeting.SelectedDay = day;
             created.Add(meeting);
             Meetings.Add(meeting);
