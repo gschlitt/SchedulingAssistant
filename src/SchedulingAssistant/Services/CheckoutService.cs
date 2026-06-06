@@ -152,6 +152,22 @@ public sealed class CheckoutService : IDisposable
     public LockFileData? CurrentHolder { get; private set; }
 
     /// <summary>
+    /// True when the last write-access checkout took over the lock from a holder whose process
+    /// was provably dead (a crashed previous session on this machine). The startup path reads
+    /// this to show a "recovered from a previous session" notice. Pass-through of
+    /// <see cref="WriteLockService.ReclaimedDeadSession"/>, snapshotted at checkout time.
+    /// </summary>
+    public bool ReclaimedDeadSession { get; private set; }
+
+    /// <summary>
+    /// True when this instance went read-only because the lock is held by another
+    /// <b>still-running instance on the same machine</b>. Lets the read-only banner explain
+    /// that a second window is already editing this database. Pass-through of
+    /// <see cref="WriteLockService.HolderIsLiveSameMachine"/>, snapshotted at checkout time.
+    /// </summary>
+    public bool HolderIsLiveSameMachine { get; private set; }
+
+    /// <summary>
     /// True when this instance is in read-only mode using a D'' (local snapshot) working copy.
     /// False in write-access mode.
     /// <para>
@@ -343,10 +359,15 @@ public sealed class CheckoutService : IDisposable
         if (!_lockService.IsWriter)
         {
             // Read-only mode: set up D'' via the shared helper so D is never held open.
-            CurrentHolder = _lockService.CurrentHolder;
+            CurrentHolder           = _lockService.CurrentHolder;
+            HolderIsLiveSameMachine = _lockService.HolderIsLiveSameMachine;
             var d2 = await SetupReadOnlySnapshotAsync();
             return d2 is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
         }
+
+        // We hold the lock. Capture whether we got it by reclaiming a dead session, so the UI
+        // can tell the user we recovered it. (Cleared for clean acquisitions.)
+        ReclaimedDeadSession = _lockService.ReclaimedDeadSession;
 
         // Write-access path: copy D to D' (existing logic).
         WorkingPath = ComputeWorkingPath(sourcePath);
@@ -929,8 +950,14 @@ public sealed class CheckoutService : IDisposable
 
         if (saveFirst && Mode == CheckoutMode.WriteAccess)
             await SaveAsync(releaseLockAfter: true);
-        else
-            _lockService.Release();
+
+        // Always release the lock on shutdown. SaveAsync only deletes the lock on its
+        // success path, so a failed save (network unreachable, source modified, lock lost,
+        // copy error, …) would otherwise leave the lock orphaned until it ages out as stale.
+        // Release() is idempotent — if SaveAsync already released, IsWriter is false and this
+        // is a no-op — and it only deletes the file when it is still ours, so it can never
+        // double-delete or trample a holder that took over.
+        _lockService.Release();
 
         Mode = CheckoutMode.ReadOnly;
     }

@@ -157,6 +157,12 @@ public partial class MainWindow : Window
             App.Checkout.StopAutoSave();
             await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
 
+            // Close any detached panels / sticky notes BEFORE disposing the DI container,
+            // so windows whose content binds to view models are torn down while those VMs
+            // still exist. ShutdownMode.OnMainWindowClose would close them anyway, but doing
+            // it here is deterministic and suppresses the detach-reattach side effect.
+            CloseSecondaryWindows();
+
             // Dispose the DI container, which closes the SQLite connection cleanly.
             (App.Services as IDisposable)?.Dispose();
 
@@ -176,6 +182,14 @@ public partial class MainWindow : Window
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+
+        // Never boot the real app inside the Avalonia XAML previewer. The previewer
+        // (Avalonia.Designer.HostApp) loads this assembly to render .axaml files in a
+        // separate VS-owned process; without this guard it runs the full startup path
+        // (DB checkout → WriteLockService.TryAcquire), acquiring and heartbeating the
+        // write lock on the user's REAL database and leaving an orphaned .lock file.
+        if (Avalonia.Controls.Design.IsDesignMode) return;
+
         try
         {
             await RunStartupAsync();
@@ -586,7 +600,19 @@ public partial class MainWindow : Window
 
         // Enqueue any feature announcements the user hasn't seen yet.
         if (App.Services.GetService(typeof(AppNotificationService)) is AppNotificationService notifier)
+        {
+            // If we took write access by reclaiming a crashed previous session on this machine,
+            // let the user know it was recovered automatically (no 180s wait, no prompt).
+            if (App.Checkout.ReclaimedDeadSession)
+                notifier.Enqueue(new AppNotification
+                {
+                    Message          = "Recovered the lock from a previous session that closed unexpectedly.",
+                    Severity         = NotificationSeverity.Info,
+                    AutoDismissAfter = TimeSpan.FromSeconds(8)
+                });
+
             notifier.EnqueueUnseenAnnouncements();
+        }
 
         IsVisible = true;
         Activate();
@@ -1451,6 +1477,27 @@ public partial class MainWindow : Window
         stack.Children.Add(overlayTextBlock);
 
         return stack;
+    }
+
+    /// <summary>
+    /// Closes all secondary top-level windows owned by this main window during shutdown:
+    /// the three detachable-panel windows and any floating workflow sticky notes. Reattach
+    /// is suppressed on the detached panels so their close handlers don't try to reattach to
+    /// a main window that is itself tearing down. Called from <see cref="OnClosing"/>.
+    /// </summary>
+    private void CloseSecondaryWindows()
+    {
+        foreach (var w in new[] { _sectionViewWindow, _workloadWindow, _scheduleGridWindow })
+        {
+            if (w is null) continue;
+            w.SuppressReattach = true; // don't reattach into a tearing-down main window
+            w.Close();
+        }
+        _sectionViewWindow  = null;
+        _workloadWindow     = null;
+        _scheduleGridWindow = null;
+
+        Views.Management.WorkflowsView.CloseAllNotes();
     }
 
     // ── Core detach mechanism ───────────────────────────────────────────────

@@ -254,6 +254,12 @@ public partial class MainWindowViewModel : ViewModelBase
         get
         {
             if (_lockService.IsWriter) return null;
+
+            // A second live instance on this same machine — be explicit so the user knows
+            // it's their own other window, not a colleague, blocking edit access.
+            if (_lockService.HolderIsLiveSameMachine)
+                return "Read-only — another TermPoint window is already editing this database on this computer.";
+
             var h = _lockService.CurrentHolder;
             return h is null
                 ? "Read-only — database is locked by another instance."

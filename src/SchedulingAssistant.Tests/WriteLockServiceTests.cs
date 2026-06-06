@@ -1,6 +1,7 @@
 using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -100,6 +101,30 @@ public sealed class WriteLockServiceTests : IDisposable
     private static LockFileData ReadLockFile(string lockPath) =>
         JsonSerializer.Deserialize<LockFileData>(File.ReadAllText(lockPath))
         ?? throw new InvalidOperationException("Lock file was empty or null.");
+
+    /// <summary>
+    /// Writes a lock file with full control over machine + process identity, used to
+    /// exercise the PID-liveness reclaim logic (dead holder vs. live same-machine sibling).
+    /// </summary>
+    private static void WriteExternalLockFileEx(
+        string lockPath, string machine, int processId,
+        DateTime? processStartTimeUtc, int heartbeatAgeSeconds)
+    {
+        var now = DateTime.UtcNow;
+        var data = new LockFileData
+        {
+            Username            = "external_user",
+            Machine             = machine,
+            ProcessId           = processId,
+            ProcessStartTimeUtc = processStartTimeUtc,
+            Acquired            = now.AddSeconds(-heartbeatAgeSeconds),
+            Heartbeat           = now.AddSeconds(-heartbeatAgeSeconds),
+        };
+        File.WriteAllText(lockPath, JsonSerializer.Serialize(data));
+    }
+
+    /// <summary>A process id that is effectively never assigned, so it reads as "not running".</summary>
+    private const int DeadPid = int.MaxValue - 1;
 
     // ═════════════════════════════════════════════════════════════════════════
     // Group 1 — Acquisition
@@ -744,5 +769,205 @@ public sealed class WriteLockServiceTests : IDisposable
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
             svc.ForceRenewHeartbeat();
         Assert.Equal(2, eventCount);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 7 — PID liveness: auto-reclaim a dead holder, never steal a live one
+    //
+    // The lock file records the holder's ProcessId + ProcessStartTimeUtc. On the
+    // SAME machine the service can tell a crashed holder (reclaim) from a live
+    // second instance (stay read-only, even if the heartbeat looks stale).
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Same machine, holder PID does not exist → provably dead → auto-reclaimed.
+    /// Uses a FRESH heartbeat to prove liveness (not heartbeat age) drives the reclaim.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_DeadHolderSameMachine_ReclaimsImmediately()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFileEx(lock_, Environment.MachineName, DeadPid,
+            processStartTimeUtc: DateTime.UtcNow.AddMinutes(-5), heartbeatAgeSeconds: 0);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+
+        Assert.True(svc.IsWriter);
+        Assert.True(svc.ReclaimedDeadSession);
+        Assert.False(svc.IsStaleLock);
+
+        // Lock file rewritten with our identity.
+        var data = ReadLockFile(lock_);
+        Assert.Equal(Environment.UserName,    data.Username);
+        Assert.Equal(Environment.MachineName, data.Machine);
+        Assert.Equal(Environment.ProcessId,   data.ProcessId);
+    }
+
+    /// <summary>
+    /// THE DOUBLE-LAUNCH CASE: same machine, holder PID is a live process (we use this
+    /// test process's own id + start time), AND the heartbeat is stale. The lock must NOT
+    /// be stolen — read-only, IsStaleLock false, HolderIsLiveSameMachine true.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_LiveHolderSameMachine_StaleHeartbeat_NotStolen()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+
+        var ourStart = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        WriteExternalLockFileEx(lock_, Environment.MachineName, Environment.ProcessId,
+            processStartTimeUtc: ourStart,
+            heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 120);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+
+        Assert.False(svc.IsWriter);
+        Assert.False(svc.IsStaleLock);               // must NOT offer a takeover prompt
+        Assert.False(svc.ReclaimedDeadSession);      // must NOT have been reclaimed
+        Assert.True(svc.HolderIsLiveSameMachine);    // banner can explain "another window"
+
+        // External lock left untouched.
+        var data = ReadLockFile(lock_);
+        Assert.Equal("external_user", data.Username);
+    }
+
+    /// <summary>
+    /// Same machine, PID matches a live process but the recorded start time differs →
+    /// PID reuse → original holder is gone → reclaimed.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_PidReusedSameMachine_TreatedAsDead_Reclaims()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+
+        // Our PID, but a start time that does not match this process → looks reused.
+        WriteExternalLockFileEx(lock_, Environment.MachineName, Environment.ProcessId,
+            processStartTimeUtc: DateTime.UtcNow.AddHours(-3), heartbeatAgeSeconds: 0);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+
+        Assert.True(svc.IsWriter);
+        Assert.True(svc.ReclaimedDeadSession);
+    }
+
+    /// <summary>
+    /// Cross-machine stale lock → liveness is Unknown (can't inspect a remote PID) → falls
+    /// back to the existing heartbeat-age stale-prompt path (IsStaleLock), unchanged.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_StaleLockOtherMachine_FallsBackToStalePrompt()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFileEx(lock_, "OTHER-PC", processId: 4321,
+            processStartTimeUtc: DateTime.UtcNow.AddMinutes(-10),
+            heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+
+        Assert.True(svc.IsStaleLock);
+        Assert.False(svc.IsWriter);
+        Assert.False(svc.ReclaimedDeadSession);
+        Assert.False(svc.HolderIsLiveSameMachine);
+    }
+
+    /// <summary>
+    /// Old-format lock (no ProcessId) that is stale → liveness Unknown → existing
+    /// heartbeat stale-prompt path, preserving backward compatibility.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_OldFormatStaleLock_FallsBackToStalePrompt()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        // ProcessId 0 / null start time = a lock written by a build before this feature.
+        WriteExternalLockFileEx(lock_, Environment.MachineName, processId: 0,
+            processStartTimeUtc: null,
+            heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+
+        Assert.True(svc.IsStaleLock);
+        Assert.False(svc.IsWriter);
+    }
+
+    /// <summary>
+    /// A normal fresh acquisition stamps the lock with this process's id and start time,
+    /// so other instances can perform the liveness check.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_NoLockFile_StampsProcessIdentity()
+    {
+        using var svc = new WriteLockService();
+        var db = DbPath();
+        svc.TryAcquire(db);
+
+        var data = ReadLockFile(LockPath(db));
+        Assert.Equal(Environment.ProcessId, data.ProcessId);
+        Assert.NotNull(data.ProcessStartTimeUtc);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 8 — Heartbeat vs. Release race (the "lock recreated itself" fix)
+    //
+    // Timer.Dispose() does not wait for an in-flight RenewHeartbeat, which rewrites
+    // the lock file via File.Move. The _lockFileSync mutex + IsWriter re-check inside
+    // RenewHeartbeat must ensure a heartbeat that runs at/after Release cannot
+    // resurrect the deleted lock file.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A heartbeat renewal that runs AFTER <see cref="WriteLockService.Release"/> must be a
+    /// no-op — it must not re-create the lock file. (<see cref="WriteLockService.ForceRenewHeartbeat"/>
+    /// drives <c>RenewHeartbeat</c> directly, standing in for an in-flight timer callback.)
+    /// </summary>
+    [Fact]
+    public void ForceRenewHeartbeat_AfterRelease_DoesNotRecreateLockFile()
+    {
+        var db = DbPath();
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        Assert.True(File.Exists(LockPath(db)));
+
+        svc.Release();
+        Assert.False(File.Exists(LockPath(db)));
+
+        // Simulate an in-flight heartbeat callback completing after Release deleted the file.
+        svc.ForceRenewHeartbeat();
+
+        Assert.False(File.Exists(LockPath(db)),
+            "A heartbeat renewal after Release must not resurrect the lock file.");
+    }
+
+    /// <summary>
+    /// Firing a heartbeat and a release concurrently must always end with the lock file
+    /// gone, regardless of scheduling. Both paths serialize on the same mutex and the
+    /// ownership flag is cleared inside it, so neither interleaving can orphan the lock.
+    /// </summary>
+    [Fact]
+    public async Task ForceRenewHeartbeat_ConcurrentWithRelease_NeverOrphansLock()
+    {
+        var db = DbPath();
+
+        for (int iter = 0; iter < 40; iter++)
+        {
+            using var svc = new WriteLockService();
+            svc.TryAcquire(db);
+            Assert.True(File.Exists(LockPath(db)));
+
+            var renew   = Task.Run(() => svc.ForceRenewHeartbeat());
+            var release = Task.Run(() => svc.Release());
+            await Task.WhenAll(renew, release);
+
+            Assert.False(File.Exists(LockPath(db)),
+                $"Lock file was orphaned by a concurrent heartbeat/release on iteration {iter}.");
+        }
     }
 }

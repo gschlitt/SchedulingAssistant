@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using SchedulingAssistant.Models;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -78,6 +79,16 @@ public sealed class WriteLockService : IDisposable
 
     // ── State ──────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Serializes all mutations of the lock file (heartbeat renewal vs. release/delete).
+    /// <see cref="Timer.Dispose()"/> does not wait for an in-flight heartbeat callback, so
+    /// without this mutex a <see cref="RenewHeartbeat"/> already running when
+    /// <see cref="Release"/> deletes the file could re-create it via <c>File.Move</c>,
+    /// orphaning the lock. The lock also serializes the wake-driven
+    /// <see cref="ForceRenewHeartbeat"/> against the scheduled heartbeat.
+    /// </summary>
+    private readonly object _lockFileSync = new();
+
     private string? _lockFilePath;
     private Timer? _heartbeatTimer;
     /// <summary>
@@ -127,6 +138,22 @@ public sealed class WriteLockService : IDisposable
     /// Reset to false at the start of each <see cref="TryAcquire"/> call.
     /// </summary>
     public bool IsStaleLock { get; private set; }
+
+    /// <summary>
+    /// True when the most recent <see cref="TryAcquire"/> took over the lock from a holder
+    /// whose process was <b>provably dead</b> (same machine, recorded PID gone or reused).
+    /// Lets the startup path surface a "recovered from a previous session" notice.
+    /// Reset to false at the start of each <see cref="TryAcquire"/> call.
+    /// </summary>
+    public bool ReclaimedDeadSession { get; private set; }
+
+    /// <summary>
+    /// True when <see cref="TryAcquire"/> went read-only because the lock is held by a
+    /// <b>still-running process on this same machine</b> (a second live instance). Lets the
+    /// read-only banner explain the situation precisely instead of the generic message.
+    /// Reset to false at the start of each <see cref="TryAcquire"/> call.
+    /// </summary>
+    public bool HolderIsLiveSameMachine { get; private set; }
 
     // ── Events ─────────────────────────────────────────────────────────────────
 
@@ -184,11 +211,20 @@ public sealed class WriteLockService : IDisposable
     /// </param>
     public void TryAcquire(string dbPath)
     {
+        // Never touch the real lock file inside the Avalonia XAML previewer. The
+        // Designer HostApp loads this assembly in a separate VS-owned process; if it
+        // reaches this method it would create and heartbeat a .lock file against the
+        // user's real database. Bail out doing no file I/O. (Belt-and-suspenders — the
+        // primary guard is in MainWindow.OnOpened.)
+        if (Avalonia.Controls.Design.IsDesignMode) return;
+
         // Release any lock we currently hold (handles DB-switching).
         Release();
 
         WriteLockBecameAvailable = false;
         IsStaleLock = false;
+        ReclaimedDeadSession = false;
+        HolderIsLiveSameMachine = false;
         _lockFilePath = Path.ChangeExtension(dbPath, ".lock");
 
         if (TryCreateLockFile())
@@ -239,31 +275,42 @@ public sealed class WriteLockService : IDisposable
         _wakeDetectionTimer?.Dispose();
         _wakeDetectionTimer = null;
 
-        if (IsWriter && _lockFilePath is not null)
+        bool wasWriter;
+
+        // Hold the lock-file mutex so we cannot race an in-flight RenewHeartbeat. The
+        // Dispose() above stops *future* ticks but does not wait for a callback already
+        // running; if one is mid-flight it is either blocked entering this mutex (and will
+        // see IsWriter=false below and bail) or it finishes its File.Move first and we then
+        // delete the file it just rewrote. Either ordering ends with the file deleted — the
+        // lock can never be left orphaned by a heartbeat that fired during release.
+        lock (_lockFileSync)
         {
-            if (LockFileStillOurs(_lockFilePath))
+            wasWriter = IsWriter;
+
+            if (IsWriter && _lockFilePath is not null)
             {
-                try
+                if (LockFileStillOurs(_lockFilePath))
                 {
-                    File.Delete(_lockFilePath);
-                    App.Logger.LogInfo($"[WriteLockService] Released write lock: {_lockFilePath}");
+                    try
+                    {
+                        File.Delete(_lockFilePath);
+                        App.Logger.LogInfo($"[WriteLockService] Released write lock: {_lockFilePath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.LogInfo($"[WriteLockService] Warning — could not delete lock file on release: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    App.Logger.LogInfo($"[WriteLockService] Warning — could not delete lock file on release: {ex.Message}");
+                    App.Logger.LogInfo($"[WriteLockService] Release: lock file at {_lockFilePath} is no longer ours; skipping delete.");
                 }
             }
-            else
-            {
-                App.Logger.LogInfo($"[WriteLockService] Release: lock file at {_lockFilePath} is no longer ours; skipping delete.");
-            }
+
+            IsWriter = false;
+            CurrentHolder = null;
+            _lockFilePath = null;
         }
-
-        var wasWriter = IsWriter;
-
-        IsWriter = false;
-        CurrentHolder = null;
-        _lockFilePath = null;
 
         // Notify subscribers (MainWindowViewModel, SubjectListViewModel, etc.) so any
         // UI enablement bound to IsWriter re-evaluates. Without this, a demotion from
@@ -316,6 +363,9 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     public void ForceAcquire()
     {
+        // See TryAcquire — never break/create a lock file in the XAML previewer.
+        if (Avalonia.Controls.Design.IsDesignMode) return;
+
         if (_lockFilePath is null) return;
         try { File.Delete(_lockFilePath); } catch (Exception ex)
         {
@@ -394,18 +444,138 @@ public sealed class WriteLockService : IDisposable
     }
 
     /// <summary>
-    /// Top-level lock acquisition attempt. First tries to create the file
-    /// atomically; if the file exists and its heartbeat is stale, sets
-    /// <see cref="IsStaleLock"/> and returns false so the caller can prompt the user.
-    /// Populates <see cref="CurrentHolder"/> on failure.
+    /// Top-level lock acquisition attempt.
+    /// <list type="number">
+    ///   <item>Try to create the file atomically (<see cref="TryCreateOnce"/>). Success ⇒ writer.</item>
+    ///   <item>Otherwise an existing lock is present and <see cref="CurrentHolder"/> is populated.
+    ///         Decide based on whether the <b>holding process is alive</b>:
+    ///     <list type="bullet">
+    ///       <item><b>Dead</b> (same machine, recorded PID gone or reused): auto-reclaim — delete
+    ///             and re-create the lock. Sets <see cref="ReclaimedDeadSession"/>.</item>
+    ///       <item><b>Alive</b> (same machine, PID still running): a live sibling instance — go
+    ///             read-only and set <see cref="HolderIsLiveSameMachine"/>. Never reclaimed,
+    ///             regardless of heartbeat age, so a paused/sleeping sibling is never stolen from.</item>
+    ///       <item><b>Unknown</b> (different machine, or a lock from an older build with no PID,
+    ///             or the process state can't be read): fall back to heartbeat-age
+    ///             <see cref="DetectStaleLock"/>, which sets <see cref="IsStaleLock"/> for the
+    ///             caller's user-confirmation prompt.</item>
+    ///     </list>
+    ///   </item>
+    /// </list>
     /// </summary>
-    /// <returns>
-    /// True if this instance successfully created the lock file and became the
-    /// writer; false if another instance holds a lock (fresh or stale).
-    /// </returns>
+    /// <returns>True if this instance now holds the lock (freshly created or reclaimed from a
+    /// dead holder); false otherwise.</returns>
     private bool TryCreateLockFile()
     {
-        return TryCreateOnce() || DetectStaleLock();
+        if (TryCreateOnce())
+            return true;
+
+        // An existing lock blocked us; CurrentHolder is now populated.
+        switch (GetHolderLiveness(CurrentHolder))
+        {
+            case HolderLiveness.Dead:
+                if (TryReclaimDeadHolder())
+                    return true;
+                // Lost the race (someone re-created the lock between our delete and create);
+                // re-read the new holder and fall through to the heartbeat path.
+                ReadCurrentHolder();
+                return DetectStaleLock();
+
+            case HolderLiveness.Alive:
+                // A live process on this machine holds the lock — a second instance. Do NOT
+                // reclaim, do NOT mark stale (even if the heartbeat looks old, e.g. the sibling
+                // is paused at a breakpoint or mid-sleep). Read-only is the only safe outcome.
+                HolderIsLiveSameMachine = true;
+                return false;
+
+            default: // Unknown — cross-machine, old-format lock, or unreadable process state.
+                return DetectStaleLock();
+        }
+    }
+
+    /// <summary>Liveness of the process that currently holds the lock.</summary>
+    private enum HolderLiveness
+    {
+        /// <summary>The holder process is still running on this machine.</summary>
+        Alive,
+        /// <summary>The holder process is provably gone (same machine; PID absent or reused).</summary>
+        Dead,
+        /// <summary>Can't tell — different machine, old-format lock, or the process can't be queried.</summary>
+        Unknown
+    }
+
+    /// <summary>
+    /// Determines whether the recorded lock holder's process is still alive. Only conclusive
+    /// on the <b>same machine</b> (a PID is meaningless across machines). Returns
+    /// <see cref="HolderLiveness.Unknown"/> whenever it cannot be certain, so we never steal a
+    /// lock on a guess.
+    /// </summary>
+    private HolderLiveness GetHolderLiveness(LockFileData? holder)
+    {
+        if (holder is null) return HolderLiveness.Unknown;
+        if (!string.Equals(holder.Machine, Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+            return HolderLiveness.Unknown;       // can't inspect a PID on another machine
+        if (holder.ProcessId <= 0)
+            return HolderLiveness.Unknown;       // lock written by an older build — no PID
+
+        try
+        {
+            using var p = Process.GetProcessById(holder.ProcessId);
+
+            // The PID is in use. Guard against PID reuse: if we recorded a start time and the
+            // live process started at a different time, the original holder is gone and this is
+            // an unrelated process that happened to inherit the id.
+            if (holder.ProcessStartTimeUtc is { } recordedStart)
+            {
+                DateTime liveStart;
+                try { liveStart = p.StartTime.ToUniversalTime(); }
+                catch { return HolderLiveness.Unknown; } // can't read start time → don't guess
+
+                if (Math.Abs((liveStart - recordedStart).TotalSeconds) > 2)
+                    return HolderLiveness.Dead;  // PID reused — original holder is gone
+            }
+
+            return HolderLiveness.Alive;
+        }
+        catch (ArgumentException)
+        {
+            // No process with that id exists — the holder is gone.
+            return HolderLiveness.Dead;
+        }
+        catch (Exception ex)
+        {
+            // Access denied or any other failure — be conservative and don't reclaim.
+            App.Logger.LogInfo($"[WriteLockService] Could not determine holder liveness (PID {holder.ProcessId}): {ex.Message}");
+            return HolderLiveness.Unknown;
+        }
+    }
+
+    /// <summary>
+    /// Breaks a lock whose holder process is provably dead and re-acquires it atomically.
+    /// Sets <see cref="ReclaimedDeadSession"/> on success. Returns false if another instance
+    /// won the race to re-create the lock between our delete and create.
+    /// </summary>
+    private bool TryReclaimDeadHolder()
+    {
+        var deadHolder = CurrentHolder;
+        try { File.Delete(_lockFilePath!); }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[WriteLockService] Could not delete dead holder's lock: {ex.Message}");
+            return false;
+        }
+
+        if (TryCreateOnce())
+        {
+            ReclaimedDeadSession = true;
+            App.Logger.LogInfo(
+                $"[WriteLockService] Reclaimed lock from dead session " +
+                $"(PID {deadHolder?.ProcessId}, {deadHolder?.Username}@{deadHolder?.Machine}).");
+            return true;
+        }
+
+        App.Logger.LogInfo("[WriteLockService] TryReclaimDeadHolder: lost race — another instance re-created the lock.");
+        return false;
     }
 
     /// <summary>
@@ -499,13 +669,28 @@ public sealed class WriteLockService : IDisposable
         var now = DateTime.UtcNow;
         var data = new LockFileData
         {
-            Username    = Environment.UserName,
-            Machine     = Environment.MachineName,
-            SessionGuid = SessionGuid,
-            Acquired    = now,
-            Heartbeat   = now
+            Username            = Environment.UserName,
+            Machine             = Environment.MachineName,
+            SessionGuid         = SessionGuid,
+            Acquired            = now,
+            Heartbeat           = now,
+            ProcessId           = Environment.ProcessId,
+            ProcessStartTimeUtc = _processStartTimeUtc
         };
         JsonSerializer.Serialize(fs, data);
+    }
+
+    /// <summary>
+    /// This process's start time in UTC, captured once. Used to stamp the lock file so that
+    /// another instance can tell a live holder from a crashed one (and detect PID reuse).
+    /// Null if the start time could not be read (then PID-reuse defense is skipped).
+    /// </summary>
+    private static readonly DateTime? _processStartTimeUtc = TryGetProcessStartTimeUtc();
+
+    private static DateTime? TryGetProcessStartTimeUtc()
+    {
+        try { return Process.GetCurrentProcess().StartTime.ToUniversalTime(); }
+        catch { return null; }
     }
 
     /// <summary>
@@ -516,40 +701,55 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     private void RenewHeartbeat()
     {
-        if (_lockFilePath is null || !IsWriter) return;
-        try
+        bool raiseFailed = false;
+
+        // Serialize against Release() (and any concurrent ForceRenewHeartbeat) so we never
+        // re-create the lock file after it has been deleted. The ownership re-check inside
+        // the lock is the guard: if Release() already ran, IsWriter is false / _lockFilePath
+        // is null and we bail without touching the filesystem.
+        lock (_lockFileSync)
         {
-            // Read the existing data to preserve the original Acquired timestamp,
-            // then update the heartbeat.
-            var json   = File.ReadAllText(_lockFilePath);
-            var data   = JsonSerializer.Deserialize<LockFileData>(json) ?? new LockFileData();
-            data.Heartbeat = DateTime.UtcNow;
-
-            // Write to a temp file first, then atomically replace. This ensures
-            // a reader never observes a partially-written JSON file.
-            var tmp = _lockFilePath + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(data));
-            File.Move(tmp, _lockFilePath, overwrite: true);
-
-            // Successful renewal: reset the consecutive-failure counter. (F11.)
-            _heartbeatConsecutiveFailures = 0;
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogInfo($"[WriteLockService] Heartbeat renewal failed: {ex.Message}");
-
-            // Escalate after enough consecutive failures: the lock file is likely stale
-            // from the perspective of readers. (F11, data-integrity-agenda 2026-05-04.)
-            _heartbeatConsecutiveFailures++;
-            if (_heartbeatConsecutiveFailures >= HeartbeatFailureThreshold)
+            if (_lockFilePath is null || !IsWriter) return;
+            var path = _lockFilePath;
+            try
             {
-                _heartbeatConsecutiveFailures = 0; // reset so a second run fires again
-                App.Logger.LogInfo(
-                    $"[WriteLockService] {HeartbeatFailureThreshold} consecutive heartbeat " +
-                    "failures — raising HeartbeatFailed.");
-                HeartbeatFailed?.Invoke();
+                // Read the existing data to preserve the original Acquired timestamp,
+                // then update the heartbeat.
+                var json   = File.ReadAllText(path);
+                var data   = JsonSerializer.Deserialize<LockFileData>(json) ?? new LockFileData();
+                data.Heartbeat = DateTime.UtcNow;
+
+                // Write to a temp file first, then atomically replace. This ensures
+                // a reader never observes a partially-written JSON file.
+                var tmp = path + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(data));
+                File.Move(tmp, path, overwrite: true);
+
+                // Successful renewal: reset the consecutive-failure counter. (F11.)
+                _heartbeatConsecutiveFailures = 0;
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogInfo($"[WriteLockService] Heartbeat renewal failed: {ex.Message}");
+
+                // Escalate after enough consecutive failures: the lock file is likely stale
+                // from the perspective of readers. (F11, data-integrity-agenda 2026-05-04.)
+                _heartbeatConsecutiveFailures++;
+                if (_heartbeatConsecutiveFailures >= HeartbeatFailureThreshold)
+                {
+                    _heartbeatConsecutiveFailures = 0; // reset so a second run fires again
+                    App.Logger.LogInfo(
+                        $"[WriteLockService] {HeartbeatFailureThreshold} consecutive heartbeat " +
+                        "failures — raising HeartbeatFailed.");
+                    raiseFailed = true;
+                }
             }
         }
+
+        // Raise OUTSIDE the mutex so a handler that calls back into this service (Release,
+        // EnterReaderMode, …) cannot deadlock on _lockFileSync.
+        if (raiseFailed)
+            HeartbeatFailed?.Invoke();
     }
 
     // ── Timer management ───────────────────────────────────────────────────────

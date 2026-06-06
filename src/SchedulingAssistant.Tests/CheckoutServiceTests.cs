@@ -726,6 +726,33 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")));
     }
 
+    /// <summary>
+    /// On graceful shutdown the lock must be released even when the save-on-exit FAILS.
+    /// Here D is modified externally so SaveAsync returns SourceModified; ReleaseAsync must
+    /// still release the lock. Before this fix, ReleaseAsync only released on the save-success
+    /// path, so any failed save-on-exit orphaned the lock.
+    /// </summary>
+    [Fact]
+    public async Task ReleaseAsync_SaveFails_StillReleasesLock()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "original");
+
+        await svc.CheckoutAsync(db);
+        Assert.True(lockSvc.IsWriter); // precondition: we hold the lock
+
+        // Make the shutdown save fail: externally modify D so its hash no longer matches
+        // HashAtCheckout → SaveAsync returns SourceModified (before any lock release).
+        File.WriteAllText(db, "externally-changed");
+
+        await svc.ReleaseAsync(saveFirst: true);
+
+        Assert.False(lockSvc.IsWriter);
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")),
+            "Lock must be released on shutdown even when the save-on-exit fails.");
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Group 5 — Database switch
     //

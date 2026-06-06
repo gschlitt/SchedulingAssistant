@@ -31,4 +31,21 @@ public class LockFileData
     /// indicates the holding process has died and the lock can safely be reclaimed.
     /// </summary>
     public DateTime Heartbeat { get; set; }
+
+    /// <summary>
+    /// OS process id of the holder. Used together with <see cref="Machine"/> and
+    /// <see cref="ProcessStartTimeUtc"/> to determine — on the same machine only — whether
+    /// the holding process is still alive, so a crashed holder can be auto-reclaimed while a
+    /// live sibling instance is never stolen from. Zero for locks written by older builds
+    /// (no process identity); those fall back to heartbeat-age stale detection.
+    /// </summary>
+    public int ProcessId { get; set; }
+
+    /// <summary>
+    /// UTC start time of the holding process. Compared against the live process with the
+    /// same <see cref="ProcessId"/> to defend against PID reuse (the OS may assign a dead
+    /// process's id to an unrelated one): a mismatch means the original holder is gone.
+    /// Null for locks written by older builds.
+    /// </summary>
+    public DateTime? ProcessStartTimeUtc { get; set; }
 }

@@ -18,6 +18,13 @@ public partial class DetachedPanelWindow : Window
 
     public Action? OnReattach { get; init; }
 
+    /// <summary>
+    /// When true, <see cref="OnReattach"/> is NOT invoked on close. Set during app shutdown
+    /// so closing this window doesn't try to reattach its content to a main window that is
+    /// itself tearing down (its DI container may already be disposed).
+    /// </summary>
+    public bool SuppressReattach { get; set; }
+
     public DetachedPanelWindow()
     {
         InitializeComponent();
@@ -54,6 +61,6 @@ public partial class DetachedPanelWindow : Window
         if (headerArea is not null) headerArea.Content = null;
 
         base.OnClosed(e);
-        OnReattach?.Invoke();
+        if (!SuppressReattach) OnReattach?.Invoke();
     }
 }

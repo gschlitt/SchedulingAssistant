@@ -100,6 +100,13 @@ public partial class App : Application
             // never sees the window assemble itself. See MainWindow.LiftCurtainAsync.
             desktop.MainWindow = new MainWindow();
 
+            // Exit when the MAIN window closes, not when the last window closes (Avalonia's
+            // default). TermPoint has secondary top-level windows (sticky notes, detached
+            // panels); under the default, one left open would keep the process alive with no
+            // visible main window — a "silent zombie" that can perpetually hold the DB write
+            // lock. OnMainWindowClose makes a normal close tear the whole app down.
+            desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
+
             _ = new UpdateService().CheckForUpdatesAsync(Logger);
         }
 #else

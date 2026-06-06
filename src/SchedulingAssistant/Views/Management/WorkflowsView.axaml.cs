@@ -15,6 +15,18 @@ public partial class WorkflowsView : UserControl
     /// </summary>
     private static readonly List<StickyNoteWindow> _openNotes = new();
 
+    /// <summary>
+    /// Closes every open sticky note. Called during app shutdown so no floating note keeps
+    /// the process alive after the main window closes. Iterates a snapshot because each
+    /// note's <c>Closed</c> handler removes itself from <see cref="_openNotes"/>.
+    /// </summary>
+    public static void CloseAllNotes()
+    {
+        foreach (var note in _openNotes.ToArray())
+            note.Close();
+        _openNotes.Clear();
+    }
+
     public WorkflowsView()
     {
         InitializeComponent();

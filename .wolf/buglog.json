@@ -13959,6 +13959,238 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-05T05:10:36.126Z"
+    },
+    {
+      "id": "bug-872",
+      "timestamp": "2026-06-05T16:20:57.819Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "No early return/throw for edge case: Avalonia.Controls.Design.IsDesignMode",
+      "fix": "Added guard clause: if (Avalonia.Controls.Design.IsDesignMode)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T16:20:57.819Z"
+    },
+    {
+      "id": "bug-873",
+      "timestamp": "2026-06-05T16:21:11.331Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "No early return/throw for edge case: Avalonia.Controls.Design.IsDesignMode",
+      "fix": "Added guard clause: if (Avalonia.Controls.Design.IsDesignMode)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T16:21:11.331Z"
+    },
+    {
+      "id": "bug-874",
+      "timestamp": "2026-06-05T16:21:16.819Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Condition was: if (_lockFilePath is null)",
+      "fix": "Changed to: if (Avalonia.Controls.Design.IsDesignMode)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T16:21:16.819Z"
+    },
+    {
+      "id": "bug-875",
+      "timestamp": "2026-06-05T16:26:29.269949+00:00",
+      "error_message": "Orphaned .lock file reappears after graceful app shutdown; 'SchedulingAssistant (Running)' process lingers in VS even after stopping the debugger; intermittent.",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "The Avalonia XAML previewer (Avalonia.Designer.HostApp, a separate VS-parented dotnet.exe) loads the app assembly (TermPoint.dll) to render .axaml files and ran the real startup path (MainWindow.OnOpened -> RunStartupAsync -> DB checkout -> WriteLockService.TryAcquire). With no Design.IsDesignMode guard anywhere, the previewer acquired and heartbeated the write lock on the user's REAL database, recreating GEOG-TT.lock. Confirmed via Win32_Process (dotnet exec Avalonia.Designer.HostApp.dll TermPoint.dll, parent=devenv.exe) and the live lock file: a different SessionGuid than the real app, Acquired 5s after the previewer process start, heartbeat advancing with no real app running.",
+      "fix": "Guard real-world side effects behind Avalonia.Controls.Design.IsDesignMode: early-return in MainWindow.OnOpened before RunStartupAsync(); early-return at top of WriteLockService.TryAcquire and ForceAcquire (no file I/O in design mode).",
+      "tags": [
+        "avalonia",
+        "xaml-previewer",
+        "design-mode",
+        "write-lock",
+        "checkout",
+        "db",
+        "shutdown",
+        "process-lifetime"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T16:26:29.269949+00:00"
+    },
+    {
+      "id": "bug-876",
+      "timestamp": "2026-06-05T16:41:10.345Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 37→52 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T16:41:10.345Z"
+    },
+    {
+      "id": "bug-876",
+      "timestamp": "2026-06-05T19:52:58.285973+00:00",
+      "error_message": "Write lock can be orphaned on shutdown / recreated after release (two latent races).",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "(1) CheckoutService.ReleaseAsync only released the lock on the SaveAsync success path; a failed save-on-exit (network/source-modified/lock-lost) skipped release and orphaned the lock. (2) WriteLockService.Release disposed the heartbeat timer but Timer.Dispose does not await an in-flight RenewHeartbeat, which could re-create the lock file via File.Move(overwrite) AFTER Release deleted it.",
+      "fix": "(1) ReleaseAsync now always calls _lockService.Release() after the save attempt (idempotent; only deletes if still ours). (2) Added a _lockFileSync mutex serializing RenewHeartbeat vs Release; IsWriter is set false inside the lock before the delete so a queued heartbeat bails; HeartbeatFailed is raised outside the lock to avoid deadlock. 156 write-lock/checkout tests pass.",
+      "tags": [
+        "write-lock",
+        "checkout",
+        "shutdown",
+        "race-condition",
+        "heartbeat",
+        "timer-dispose",
+        "orphaned-lock"
+      ],
+      "related_bugs": [
+        "bug-875"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T19:52:58.285973+00:00"
+    },
+    {
+      "id": "bug-878",
+      "timestamp": "2026-06-05T19:53:15.800Z",
+      "error_message": "Missing await",
+      "file": "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/avalonia_previewer_grabs_db_lock.md",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T19:53:15.800Z"
+    },
+    {
+      "id": "bug-879",
+      "timestamp": "2026-06-05T20:54:21.924Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: /// Top-level lock acquisition attempt.; /// <list type=\"number\">",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-05T20:55:08.999Z"
+    },
+    {
+      "id": "bug-877",
+      "timestamp": "2026-06-05T21:35:12.631303+00:00",
+      "error_message": "Feature: crashed writer on the same machine should recover the write lock instantly, but auto-reclaim must never steal the lock from a second live instance on the same machine.",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Username+Machine+SessionGuid cannot distinguish a crashed previous session from a live second instance on the same machine; the only reliable discriminator is whether the holder PROCESS is still running.",
+      "fix": "Record ProcessId + ProcessStartTimeUtc in LockFileData. New GetHolderLiveness(holder): same-machine + PID gone or start-time mismatch => Dead (auto-reclaim via TryReclaimDeadHolder, sets ReclaimedDeadSession); same-machine + PID alive => never reclaim, never mark stale, set HolderIsLiveSameMachine (read-only); different machine / old-format / unreadable => Unknown -> existing 180s heartbeat stale-prompt path. CheckoutService surfaces ReclaimedDeadSession + HolderIsLiveSameMachine; MainWindow shows a recovery toast; LockStatusMessage explains the same-machine live sibling. 162 lock/checkout tests pass incl. the double-launch case (live same-machine + stale heartbeat => not stolen).",
+      "tags": [
+        "write-lock",
+        "pid-liveness",
+        "auto-reclaim",
+        "double-launch",
+        "crash-recovery",
+        "checkout"
+      ],
+      "related_bugs": [
+        "bug-875",
+        "bug-876"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T21:35:12.631303+00:00"
+    },
+    {
+      "id": "bug-881",
+      "timestamp": "2026-06-05T21:44:34.025Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant.Tests/WriteLockServiceTests.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T21:44:34.025Z"
+    },
+    {
+      "id": "bug-882",
+      "timestamp": "2026-06-05T21:45:05.249Z",
+      "error_message": "Function not marked async",
+      "file": "src/SchedulingAssistant.Tests/CheckoutServiceTests.cs",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-05T21:45:05.249Z"
+    },
+    {
+      "id": "bug-883",
+      "timestamp": "2026-06-06T03:38:49.744Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "No early return/throw for edge case: w is null",
+      "fix": "Added guard clause: if (w is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T03:38:49.744Z"
+    },
+    {
+      "id": "bug-878",
+      "timestamp": "2026-06-06T03:43:02.617713+00:00",
+      "error_message": "Closing the main window does not reliably exit the process; a lingering 'silent zombie' can keep running (and historically could perpetually hold the DB write lock).",
+      "file": "src/SchedulingAssistant/App.axaml.cs",
+      "root_cause": "Avalonia's default ShutdownMode is OnLastWindowClose and TermPoint never overrode it. With a secondary top-level window open (sticky note or detached panel), closing the main window leaves the app running with no visible main window.",
+      "fix": "Set desktop.ShutdownMode = ShutdownMode.OnMainWindowClose in App.OnFrameworkInitializationCompleted. Plus deterministic teardown: DetachedPanelWindow gains SuppressReattach (OnClosed skips reattach when set); WorkflowsView.CloseAllNotes() closes all sticky notes; MainWindow.CloseSecondaryWindows() closes the 3 detached panels (suppress reattach) + notes, called in OnClosing after ReleaseAsync and before disposing the DI container. Build clean; 165 lock/checkout tests green. Residual: ShutdownMode governs windows+dispatcher, not a rogue foreground thread (none app-owned today).",
+      "tags": [
+        "shutdown",
+        "shutdownmode",
+        "avalonia",
+        "zombie-process",
+        "write-lock",
+        "window-lifecycle"
+      ],
+      "related_bugs": [
+        "bug-875",
+        "bug-876",
+        "bug-877"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T03:43:02.617713+00:00"
     }
   ]
 }
