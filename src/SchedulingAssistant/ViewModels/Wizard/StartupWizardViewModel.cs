@@ -280,14 +280,19 @@ public partial class StartupWizardViewModel : ViewModelBase
         {
             _services.InitializeServices(dbPath);
 
-            // Acquire the write lock so the wizard has write access to the database.
+            // Acquire the write lock so the wizard has write access to the database — but
+            // only when NOT joining as an observer. In reader mode we must never touch the
+            // lock (so we can't block a writer); the real read-only checkout runs right
+            // after the wizard via SwitchDatabaseAsync → CheckoutAsync.
             // TryAcquire() is atomic; it will fail if another instance holds the lock
             // (collision-detection handled by WriteLockService).
-            App.LockService.TryAcquire(dbPath);
+            if (!s1a.OpenInReaderMode)
+                App.LockService.TryAcquire(dbPath);
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
             settings.BackupFolderPath = s1a.BackupFolder;
+            settings.OpenInReaderMode = s1a.OpenInReaderMode;
             // IsInitialSetupComplete is set in FinishAsync, not here
             settings.Save();
 

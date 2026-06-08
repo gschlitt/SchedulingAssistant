@@ -61,6 +61,25 @@ public class PreferencesViewModel : ViewModelBase
         OnPropertyChanged(nameof(FilterExpandsSection));
     }
 
+    // ── Access Mode ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Mirrors <see cref="AppSettings.OpenInReaderMode"/>. When true, the app opens as a
+    /// read-only observer that never acquires the write lock (so it can never block a writer).
+    /// The change takes effect on the next app start. Persists immediately on change.
+    /// </summary>
+    public bool OpenInReaderMode
+    {
+        get => AppSettings.Current.OpenInReaderMode;
+        set
+        {
+            if (AppSettings.Current.OpenInReaderMode == value) return;
+            AppSettings.Current.OpenInReaderMode = value;
+            AppSettings.Current.Save();
+            OnPropertyChanged();
+        }
+    }
+
     // ── Schedule View ─────────────────────────────────────────────────────────
 
     /// <summary>Font size options shown in the tile font size selector.</summary>

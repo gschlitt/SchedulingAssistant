@@ -94,7 +94,41 @@
                 </StackPanel>
               </StackPanel>
 
-               
+
+
+        </StackPanel>
+
+        <!--  ═══ Access Mode ═══════════════════════════════════════  -->
+        <StackPanel Spacing="12">
+
+            <!--  Sub-heading + rule  -->
+            <StackPanel Spacing="4">
+                <TextBlock
+                    FontSize="{StaticResource FontSizeLarge}"
+                    FontWeight="SemiBold"
+                    Text="Access Mode" />
+                <Border
+                    Height="1"
+                    Background="{StaticResource SeparatorLine}"
+                    Opacity="0.2" />
+            </StackPanel>
+
+            <!--  Open in reader (observer) mode  -->
+            <CheckBox
+                Content="Open in reader mode (observe only — never lock the database)"
+                IsChecked="{Binding OpenInReaderMode}">
+                <CheckBox.Styles>
+                    <Style Selector="CheckBox /template/ Border#NormalRectangle">
+                        <Setter Property="Width" Value="18" />
+                        <Setter Property="Height" Value="18" />
+                    </Style>
+                </CheckBox.Styles>
+            </CheckBox>
+            <TextBlock
+                FontSize="{StaticResource FontSizeSmall}"
+                Foreground="{StaticResource ForegroundMuted}"
+                Text="In reader mode you can view and filter the schedule but not edit it. This instance never takes the write lock, so it can never block someone who needs to make changes. Use Refresh to pull the latest saved data. Takes effect the next time you start the app."
+                TextWrapping="Wrap" />
 
         </StackPanel>
 

@@ -303,6 +303,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (_lockService.IsWriter) return null;
 
+            // Voluntary observer: read-only by the user's own choice, not because someone
+            // else holds the lock. The "locked by another instance" wording would mislead.
+            if (AppSettings.Current.OpenInReaderMode)
+                return "Reader mode — opened as an observer. Editing is disabled; click Refresh to pull the latest data.";
+
             // A second live instance on this same machine — be explicit so the user knows
             // it's their own other window, not a colleague, blocking edit access.
             if (_lockService.HolderIsLiveSameMachine)

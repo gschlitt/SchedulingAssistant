@@ -98,6 +98,15 @@ public class AppSettings
     public bool OpenWithAllSectionsCollapsed { get; set; } = false;
 
     /// <summary>
+    /// When true, this instance opens as a read-only observer: it never acquires the
+    /// write lock (so it can never block a writer), never polls for the lock, and never
+    /// offers to take over write access. It opens against a read-only snapshot (D'') and
+    /// can still manually Refresh to pull a writer's saved changes.
+    /// Changing this value takes effect on the next app start. Default: false.
+    /// </summary>
+    public bool OpenInReaderMode { get; set; } = false;
+
+    /// <summary>
     /// Default font size for section label text inside schedule grid tiles.
     /// The user may override this per-session via the in-grid selector; this value
     /// is applied on startup. Default: 11.

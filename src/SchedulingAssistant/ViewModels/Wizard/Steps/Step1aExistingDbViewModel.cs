@@ -52,6 +52,14 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
     [ObservableProperty]
     private string _backupFolder = string.Empty;
 
+    /// <summary>
+    /// When true, the user wants to join this shared database as a read-only observer.
+    /// Persisted to <c>AppSettings.OpenInReaderMode</c> by the orchestrator so the
+    /// real checkout opens read-only without ever acquiring the write lock. Never gates Next.
+    /// </summary>
+    [ObservableProperty]
+    private bool _openInReaderMode = false;
+
     /// <summary>Validation error set by the orchestrator on a failed open attempt.</summary>
     [ObservableProperty]
     private string _errorMessage = string.Empty;

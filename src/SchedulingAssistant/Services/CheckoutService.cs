@@ -342,6 +342,19 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.WriteAccess;
         }
 
+        // ── Voluntary reader (observer) mode ──────────────────────────────────
+        // The user chose to open as an observer. Never call TryAcquire: this instance
+        // must not create the .lock file (so it can never block a writer), must not poll,
+        // and must not offer to take over write access. Open against a read-only snapshot
+        // (D'') instead. Only meaningful when D already exists — the !exists shortcut above
+        // ignores reader mode and runs the normal write path.
+        if (AppSettings.Current.OpenInReaderMode)
+        {
+            CurrentHolder = null;   // no specific holder — read-only by the user's own choice
+            var d2Reader = await SetupReadOnlySnapshotAsync();
+            return d2Reader is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
+        }
+
         // ── Normal path — D exists ────────────────────────────────────────────
         var lockAcquireCompleted = await NetworkFileOps.RunAsync(
             () => _lockService.TryAcquire(sourcePath), "lock acquire");

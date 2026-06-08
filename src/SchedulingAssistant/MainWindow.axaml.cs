@@ -414,7 +414,9 @@ public partial class MainWindow : Window
         await App.Checkout.CleanupOrphanedTmpAsync(dbPath);
         App.Checkout.CleanupStaleCrashArtifacts(dbPath);
 
-        if (App.Checkout.DetectCrashRecovery(dbPath))
+        // Crash recovery implies taking over a prior *write* session — wrong for an
+        // observer, who never holds the lock. Skip it in reader mode.
+        if (!AppSettings.Current.OpenInReaderMode && App.Checkout.DetectCrashRecovery(dbPath))
             await HandleCrashRecoveryAsync(dbPath);
 
         var checkoutResult = await RunCheckoutAsync(dbPath);

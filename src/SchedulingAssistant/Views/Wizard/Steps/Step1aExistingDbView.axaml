@@ -78,6 +78,20 @@
                     </Grid>
                 </StackPanel>
 
+                <!--  Reader (observer) mode  -->
+                <StackPanel Spacing="6">
+                    <CheckBox
+                        Content="Open as a read-only observer (reader mode)"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        IsChecked="{Binding OpenInReaderMode}" />
+                    <TextBlock
+                        Margin="28,0,0,0"
+                        FontSize="{DynamicResource FontSizeSmall}"
+                        Foreground="{StaticResource ForegroundMuted}"
+                        Text="Choose this if you only need to view and filter the schedule, not edit it. Reader mode never locks the database, so you'll never block a colleague who needs to make changes. You can change this later under Configuration → Preferences (it takes effect on the next start)."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
                 <!--  Error message  -->
                 <TextBlock
                     FontSize="{DynamicResource FontSizeSmall}"
