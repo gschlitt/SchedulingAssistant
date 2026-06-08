@@ -779,6 +779,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     slot.Day, slot.StartMinutes, slot.EndMinutes,
                     isOverlay, label, initials, section.Id, section.SemesterId, semName, semColor,
                     SectionDaySchedule.FormatFrequency(slot.Frequency),
+                    Flag: section.Flag,
                     IsDeemphasized: isDeemphasized,
                     IsEmphasized: isEmphasized));
             }
@@ -862,7 +863,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
-                        SectionDaySchedule.FormatFrequency(slot.Frequency)));
+                        SectionDaySchedule.FormatFrequency(slot.Frequency),
+                        Flag: section.Flag));
                 }
             }
         }
@@ -891,7 +893,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
-                        SectionDaySchedule.FormatFrequency(slot.Frequency)));
+                        SectionDaySchedule.FormatFrequency(slot.Frequency),
+                        Flag: section.Flag));
                 }
             }
         }
@@ -1226,7 +1229,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

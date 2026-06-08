@@ -460,10 +460,37 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// Constructs a single <see cref="SectionListItemViewModel"/> for <paramref name="s"/>
     /// using the shared <paramref name="lk"/> lookups and the owning semester's display fields.
     /// </summary>
-    private static SectionListItemViewModel CreateSectionItem(
+    private SectionListItemViewModel CreateSectionItem(
         Section s, ItemLookups lk, string semesterName, string semesterColor) =>
         new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
-            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor);
+            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
+            onFlagChanged: SaveSectionFlag);
+
+    /// <summary>
+    /// Persists a section's attention flag after it was changed via the card's right-click
+    /// picker, then refreshes the Schedule Grid and Workload panel so the flag shows there too.
+    /// The card itself already reflects the new flag via its own observable property, so this
+    /// deliberately skips rebuilding the section list (avoids a full ListBox container reset).
+    /// </summary>
+    private void SaveSectionFlag(Section s)
+    {
+        try
+        {
+            _sectionRepo.Update(s);
+
+            // Notify the Grid + Workload panel (store raises SectionsChanged), but suppress this
+            // VM's own Reload so the list — and the card the user just clicked — is left intact.
+            var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
+            _sectionStore.SectionsChanged -= Reload;
+            _sectionStore.Reload(_sectionRepo, semIds);
+            _sectionStore.SectionsChanged += Reload;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SectionListViewModel.SaveSectionFlag");
+            LastErrorMessage = "The flag could not be saved. Please try again.";
+        }
+    }
 
     /// <summary>
     /// Fast path for refreshing the list after editing a single existing section: replaces just
@@ -622,6 +649,18 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         Dictionary<string, Course> courseLookup,
         Dictionary<string, Room> roomLookup)
     {
+        // Conflict detection is suppressed in multi-semester mode, mirroring the
+        // room availability browser: reasoning about room collisions across multiple
+        // (possibly non-overlapping) semesters is not well-defined, so we show no
+        // warnings rather than misleading ones. Clearing (not just returning) wipes any
+        // stale warnings left over from when only one semester was selected.
+        if (_semesterContext.IsMultiSemesterMode)
+        {
+            foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+                item.RoomConflictWarning = null;
+            return;
+        }
+
         var courseCodeById = courseLookup.ToDictionary(
             kv => kv.Key,
             kv => kv.Value.CalendarCode ?? kv.Value.Id);

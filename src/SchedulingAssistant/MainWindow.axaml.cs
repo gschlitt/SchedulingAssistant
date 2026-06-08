@@ -1100,10 +1100,10 @@ public partial class MainWindow : Window
             vm.SetDirty();
     }
 
-    private void OnCheckoutSaveFailed(string message)
+    private void OnCheckoutSaveFailed(string message, bool autoDismiss)
     {
         if (DataContext is MainWindowViewModel vm)
-            vm.SetSaveError(message);
+            vm.SetSaveError(message, autoDismiss);
     }
 
     /// <summary>
@@ -1156,14 +1156,16 @@ public partial class MainWindow : Window
                             App.Logger.LogError(ex, "OnWriteLockLost: ReinitializeConnection failed — database is unavailable until reopened");
                             vm?.SetSaveError(
                                 "The database connection could not be restored after losing write access. " +
-                                "Please close and reopen the database file.");
+                                "Please close and reopen the database file.",
+                                autoDismiss: false);
                         }
                     }
                 }
 
                 var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);
 
-                vm?.SetSaveError(banner);
+                // Lock loss is sticky — the user must act (reopen/check the share).
+                vm?.SetSaveError(banner, autoDismiss: false);
 
                 if (ok && vm is not null)
                 {

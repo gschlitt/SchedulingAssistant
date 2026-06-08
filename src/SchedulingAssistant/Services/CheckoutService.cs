@@ -226,14 +226,18 @@ public sealed class CheckoutService : IDisposable
     public event Action? BeforeDirtyMarkerDeleted;
 
     /// <summary>
-    /// Raised on the UI thread when <see cref="SaveAsync"/> fails for a reason
-    /// other than a transient copy error. The string parameter contains a
-    /// human-readable description suitable for display to the user.
+    /// Raised on the UI thread when <see cref="SaveAsync"/> fails.
+    /// <para>The <c>string</c> parameter is a human-readable description suitable for
+    /// display to the user. The <c>bool</c> parameter is <c>autoDismiss</c>: when
+    /// <c>true</c> the error is transient and the banner should clear itself after a
+    /// short delay (a background autosave will retry on its own); when <c>false</c>
+    /// the error is sticky and requires user attention (e.g. lock lost, source
+    /// modified, or a failed manual save).</para>
     /// Autosave stops when this is raised for <see cref="SaveOutcome.LockLost"/>
     /// or <see cref="SaveOutcome.SourceModified"/>; it continues on
     /// <see cref="SaveOutcome.CopyError"/> (transient — worth retrying).
     /// </summary>
-    public event Action<string>? SaveFailed;
+    public event Action<string, bool>? SaveFailed;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -534,8 +538,14 @@ public sealed class CheckoutService : IDisposable
     /// When true, deletes the lock file after a successful save.
     /// Pass true only on graceful shutdown.
     /// </param>
+    /// <param name="isAutoSave">
+    /// When true, the save was triggered by the autosave timer rather than the user.
+    /// Transient failures (<see cref="SaveOutcome.CopyError"/>) then raise
+    /// <see cref="SaveFailed"/> with an auto-dismissing, "will retry automatically"
+    /// message, because the next autosave cycle will retry on its own.
+    /// </param>
     /// <returns>A <see cref="SaveOutcome"/> describing the result.</returns>
-    public async Task<SaveOutcome> SaveAsync(bool releaseLockAfter = false)
+    public async Task<SaveOutcome> SaveAsync(bool releaseLockAfter = false, bool isAutoSave = false)
     {
         if (Mode != CheckoutMode.WriteAccess)
             return SaveOutcome.NotInWriteMode;
@@ -551,7 +561,7 @@ public sealed class CheckoutService : IDisposable
 
         try
         {
-            return await SaveAsyncCore(releaseLockAfter);
+            return await SaveAsyncCore(releaseLockAfter, isAutoSave);
         }
         finally
         {
@@ -559,7 +569,23 @@ public sealed class CheckoutService : IDisposable
         }
     }
 
-    private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter)
+    /// <summary>
+    /// Raises <see cref="SaveFailed"/> for a transient <see cref="SaveOutcome.CopyError"/>.
+    /// For an autosave the message gains a "will retry automatically" note and the banner
+    /// is marked auto-dismissing (the next autosave cycle retries on its own); for a manual
+    /// save the message is shown as-is and the banner stays until the next successful save.
+    /// </summary>
+    /// <param name="message">Base human-readable error message.</param>
+    /// <param name="isAutoSave">Whether the originating save was an autosave.</param>
+    private void RaiseTransientSaveError(string message, bool isAutoSave)
+    {
+        var text = isAutoSave
+            ? message + " The app will retry automatically."
+            : message;
+        _dispatch(() => SaveFailed?.Invoke(text, isAutoSave));
+    }
+
+    private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
     {
         // New-database mode — D never existed at checkout time, so there is no
         // separate D'. WorkingPath points directly at the authoritative database;
@@ -578,7 +604,7 @@ public sealed class CheckoutService : IDisposable
         if (lockResult == LockVerificationResult.Unreachable)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
+            RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -596,7 +622,7 @@ public sealed class CheckoutService : IDisposable
             if (!hashCompleted)
             {
                 _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-                _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
+                RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
                 return SaveOutcome.CopyError;
             }
 
@@ -604,7 +630,8 @@ public sealed class CheckoutService : IDisposable
             {
                 const string msg = "The database was modified outside this session. Save aborted.";
                 _logger.LogInfo("CheckoutService: source hash mismatch — " + msg);
-                _dispatch(() => SaveFailed?.Invoke(msg));
+                // Sticky: a genuine conflict the user must resolve — never auto-dismiss.
+                _dispatch(() => SaveFailed?.Invoke(msg, false));
                 return SaveOutcome.SourceModified;
             }
         }
@@ -624,7 +651,7 @@ public sealed class CheckoutService : IDisposable
             {
                 _logger.LogInfo("CheckoutService: D.tmp backup timed out — network unreachable");
                 await NetworkFileOps.DeleteAsync(tmpPath);
-                _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
+                RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
                 return SaveOutcome.CopyError;
             }
         }
@@ -632,7 +659,7 @@ public sealed class CheckoutService : IDisposable
         {
             var msg = $"Failed to write to database location: {ex.Message}";
             _logger.LogError(ex, "CheckoutService: D.tmp copy failed");
-            _dispatch(() => SaveFailed?.Invoke(msg));
+            RaiseTransientSaveError(msg, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -648,7 +675,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D.tmp hash timed out — network unreachable");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
+            RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -660,7 +687,7 @@ public sealed class CheckoutService : IDisposable
             if (!renameCompleted)
             {
                 _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                _dispatch(() => SaveFailed?.Invoke(NetworkFileOps.UnreachableMessage));
+                RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
                 return SaveOutcome.CopyError;
             }
         }
@@ -669,7 +696,7 @@ public sealed class CheckoutService : IDisposable
             var msg = $"Failed to finalize save: {ex.Message}";
             _logger.LogError(ex, "CheckoutService: D.tmp rename failed");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            _dispatch(() => SaveFailed?.Invoke(msg));
+            RaiseTransientSaveError(msg, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -1022,7 +1049,7 @@ public sealed class CheckoutService : IDisposable
     {
         if (Mode != CheckoutMode.WriteAccess) return;
 
-        var outcome = await SaveAsync();
+        var outcome = await SaveAsync(isAutoSave: true);
         if (outcome is SaveOutcome.LockLost or SaveOutcome.SourceModified)
             StopAutoSave(); // SaveFailed event is already raised inside SaveAsync.
         // CopyError: keep the timer running — transient, worth retrying next cycle.

@@ -68,12 +68,12 @@
                       IsReadOnly="True"
                       CanUserSortColumns="False">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Building"  Binding="{Binding Room.Building}"   Width="*" />
-                    <DataGridTextColumn Header="Room #"    Binding="{Binding Room.RoomNumber}"  Width="80" />
-                    <DataGridTextColumn Header="Campus"    Binding="{Binding CampusName}"       Width="120" />
-                    <DataGridTextColumn Header="Type"      Binding="{Binding RoomTypeName}"     Width="100" />
-                    <DataGridTextColumn Header="Capacity"  Binding="{Binding Room.Capacity}"    Width="80" />
-                    <DataGridTextColumn Header="Features"  Binding="{Binding Room.Features}"    Width="*" />
+                    <DataGridTextColumn Header="Building"  Binding="{Binding Room.Building}"   Width="Auto" />
+                    <DataGridTextColumn Header="Room #"    Binding="{Binding Room.RoomNumber}"  Width="Auto" />
+                    <DataGridTextColumn Header="Campus"    Binding="{Binding CampusName}"       Width="Auto" />
+                    <DataGridTextColumn Header="Type"      Binding="{Binding RoomTypeName}"     Width="Auto" />
+                    <DataGridTextColumn Header="Capacity"  Binding="{Binding Room.Capacity}"    Width="Auto" />
+                    <DataGridTextColumn Header="Features"  Binding="{Binding Room.Features}"    Width="Auto" />
                 </DataGrid.Columns>
             </DataGrid>
 

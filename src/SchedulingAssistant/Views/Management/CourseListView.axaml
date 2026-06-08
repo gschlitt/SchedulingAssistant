@@ -245,7 +245,10 @@
                     <!--  SUBJECTS SECTION  -->
                     <!--  ═══════════════════════════════════════════════════════════  -->
 
-                    <StackPanel Margin="0,20,0,0" Spacing="12">
+                    <StackPanel
+                        Margin="0,20,0,0"
+                        IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                        Spacing="12">
                         <TextBlock
                             FontSize="{StaticResource FontSizeLarge}"
                             FontWeight="SemiBold"

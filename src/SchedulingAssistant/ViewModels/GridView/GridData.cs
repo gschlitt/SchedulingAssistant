@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.ViewModels.GridView;
 
@@ -57,7 +58,8 @@ public record SectionMeetingBlock(
     string SemesterId = "", string SemesterName = "", string SemesterColor = "",
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false,
-    bool IsEmphasized = false
+    bool IsEmphasized = false,
+    SectionFlag Flag = SectionFlag.None
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -161,7 +163,9 @@ public record TileEntry(
     /// <summary>Full comma-separated attendee names shown in the tile hover tooltip. Empty for sections and commitments.</summary>
     string AttendeeList = "",
     /// <summary>True when this entry came from a <see cref="SharedScheduleBlock"/>. The renderer applies purple outlined styling.</summary>
-    bool IsSharedSchedule = false);
+    bool IsSharedSchedule = false,
+    /// <summary>The section's advisory attention flag, drawn as a small colored icon after the label. None = no icon.</summary>
+    SectionFlag Flag = SectionFlag.None);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

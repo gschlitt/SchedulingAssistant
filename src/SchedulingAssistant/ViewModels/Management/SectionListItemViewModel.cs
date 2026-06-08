@@ -1,6 +1,9 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
+using System;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -68,6 +71,47 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
     [ObservableProperty] private bool _isBeingCreated;
 
+    // ── Attention flag ───────────────────────────────────────────────────────
+    // Set via right-click on the card. The card shows a colored flag icon on its
+    // top line (collapsed and expanded); the value is persisted to the section's
+    // JSON through the parent VM's save callback.
+
+    /// <summary>This section's advisory attention flag (drives the top-line flag icon).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFlag))]
+    [NotifyPropertyChangedFor(nameof(FlagBrush))]
+    private SectionFlag _flag;
+
+    /// <summary>True when a flag is set (controls flag-icon visibility on the card).</summary>
+    public bool HasFlag => Flag != SectionFlag.None;
+
+    /// <summary>Brush for the top-line flag icon, or null when no flag is set.</summary>
+    public IBrush? FlagBrush => FlagVisuals.ResolveBrush(Flag);
+
+    /// <summary>True while the right-click flag picker popup is open over this card.</summary>
+    [ObservableProperty] private bool _isFlagMenuOpen;
+
+    /// <summary>Invoked after the flag changes so the parent can persist it and refresh the grid.</summary>
+    private readonly Action<Section>? _onFlagChanged;
+
+    /// <summary>Opens the right-click flag picker popup (wired to RightClickCommandBehavior).</summary>
+    [RelayCommand]
+    private void ShowFlagMenu() => IsFlagMenuOpen = true;
+
+    /// <summary>
+    /// Applies <paramref name="flag"/> to this section, updates the card immediately, persists
+    /// it through the parent callback, and closes the picker. Passing None clears the flag.
+    /// </summary>
+    [RelayCommand]
+    private void SetFlag(SectionFlag flag)
+    {
+        IsFlagMenuOpen = false;
+        if (Flag == flag) return;
+        Flag = flag;
+        Section.Flag = flag;
+        _onFlagChanged?.Invoke(Section);
+    }
+
     public string SortKeyInstructor { get; }
     public string SortKeySectionType { get; }
 
@@ -91,12 +135,16 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, SchedulingEnvironmentValue> reserveLookup,
         Dictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         string semesterName = "",
-        string semesterColor = "")
+        string semesterColor = "",
+        Action<Section>? onFlagChanged = null)
     {
         Section = section;
 
         SemesterName = semesterName;
         SemesterColor = semesterColor;
+
+        _flag = section.Flag;
+        _onFlagChanged = onFlagChanged;
 
         // Compute sort keys for instructor and section type
         var instructorNames = section.InstructorAssignments

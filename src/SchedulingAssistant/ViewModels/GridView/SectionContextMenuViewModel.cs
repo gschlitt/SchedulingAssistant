@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace SchedulingAssistant.ViewModels.GridView;
 
-public enum TileSubPanel { None, Instructors, Room, Tags }
+public enum TileSubPanel { None, Instructors, Room, Tags, Flag }
 
 public partial class SectionContextMenuViewModel : ObservableObject
 {
@@ -29,18 +29,32 @@ public partial class SectionContextMenuViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsInstructorPanelVisible))]
     [NotifyPropertyChangedFor(nameof(IsRoomPanelVisible))]
     [NotifyPropertyChangedFor(nameof(IsTagPanelVisible))]
+    [NotifyPropertyChangedFor(nameof(IsFlagPanelVisible))]
     private TileSubPanel _activeSubPanel;
 
     public bool HasSubPanel          => ActiveSubPanel != TileSubPanel.None;
     public bool IsInstructorPanelVisible => ActiveSubPanel == TileSubPanel.Instructors;
     public bool IsRoomPanelVisible   => ActiveSubPanel == TileSubPanel.Room;
     public bool IsTagPanelVisible    => ActiveSubPanel == TileSubPanel.Tags;
+    public bool IsFlagPanelVisible   => ActiveSubPanel == TileSubPanel.Flag;
 
     public ObservableCollection<ContextMenuItemVm> Instructors { get; } = [];
     public ObservableCollection<ContextMenuItemVm> Rooms       { get; } = [];
     public ObservableCollection<ContextMenuItemVm> Tags        { get; } = [];
 
     [ObservableProperty] private ContextMenuItemVm? _selectedRoom;
+
+    /// <summary>The fixed list of flag choices (None + the three colors) shown in the Flag sub-panel.</summary>
+    public ObservableCollection<FlagOptionVm> Flags { get; } =
+    [
+        new(SectionFlag.None, "(None)"),
+        new(SectionFlag.Red, "Red"),
+        new(SectionFlag.Blue, "Blue"),
+        new(SectionFlag.Green, "Green"),
+    ];
+
+    /// <summary>The flag option currently selected in the Flag sub-panel; committed on Confirm.</summary>
+    [ObservableProperty] private FlagOptionVm? _selectedFlag;
 
     public SectionContextMenuViewModel(ISectionRepository sectionRepo, Action onSaved, WriteLockService lockService)
     {
@@ -95,6 +109,9 @@ public partial class SectionContextMenuViewModel : ObservableObject
         var assignedTagIds = section.TagIds.ToHashSet();
         foreach (var tag in tags)
             Tags.Add(new ContextMenuItemVm(tag.Id, tag.Name, assignedTagIds.Contains(tag.Id)));
+
+        // Flag — single-select; seed from the section's current flag.
+        SelectedFlag = Flags.FirstOrDefault(f => f.Value == section.Flag) ?? Flags[0];
     }
 
     [RelayCommand]
@@ -105,6 +122,9 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowTags() => ActiveSubPanel = TileSubPanel.Tags;
+
+    [RelayCommand]
+    private void ShowFlag() => ActiveSubPanel = TileSubPanel.Flag;
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]
     private void Confirm()
@@ -135,6 +155,10 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
             case TileSubPanel.Tags:
                 _section.TagIds = Tags.Where(t => t.IsChecked).Select(t => t.Id).ToList();
+                break;
+
+            case TileSubPanel.Flag:
+                _section.Flag = SelectedFlag?.Value ?? SectionFlag.None;
                 break;
 
             default:

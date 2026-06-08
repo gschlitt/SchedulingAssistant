@@ -11,6 +11,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 
 namespace SchedulingAssistant.ViewModels;
 
@@ -199,16 +200,63 @@ public partial class MainWindowViewModel : ViewModelBase
 #endif
     }
 
+    /// <summary>
+    /// How long a transient (auto-dismissing) save-error banner stays visible before
+    /// it clears itself. Tuned to comfortably outlast a single autosave retry cycle
+    /// while not lingering long enough to feel stale.
+    /// </summary>
+    private static readonly TimeSpan SaveErrorAutoDismissDelay = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// One-shot timer that auto-clears a transient save-error banner. Null when no
+    /// auto-dismiss is pending. Recreated on demand so a fresh error restarts the clock.
+    /// </summary>
+    private DispatcherTimer? _saveErrorDismissTimer;
+
+    /// <summary>Stops and discards any pending auto-dismiss timer.</summary>
+    private void StopSaveErrorDismissTimer()
+    {
+        if (_saveErrorDismissTimer is null) return;
+        _saveErrorDismissTimer.Stop();
+        _saveErrorDismissTimer = null;
+    }
+
     /// <summary>Dismisses the save-error banner.</summary>
     [RelayCommand]
-    private void DismissSaveError() => SaveErrorMessage = null;
+    private void DismissSaveError()
+    {
+        StopSaveErrorDismissTimer();
+        SaveErrorMessage = null;
+    }
 
     /// <summary>Called by MainWindow when a save succeeds.</summary>
-    internal void ClearSaveError() => SaveErrorMessage = null;
+    internal void ClearSaveError()
+    {
+        StopSaveErrorDismissTimer();
+        SaveErrorMessage = null;
+    }
 
     /// <summary>Called by MainWindow when a save fails.</summary>
     /// <param name="message">Human-readable error message.</param>
-    internal void SetSaveError(string message) => SaveErrorMessage = message;
+    /// <param name="autoDismiss">
+    /// When true the error is transient (a background autosave will retry), so the
+    /// banner auto-clears after <see cref="SaveErrorAutoDismissDelay"/>. When false the
+    /// error is sticky and stays until the next successful save or manual dismissal.
+    /// </param>
+    internal void SetSaveError(string message, bool autoDismiss)
+    {
+        SaveErrorMessage = message;
+
+        // Always reset any previous timer first: a sticky error must cancel a pending
+        // dismiss, and a new transient error should restart the clock from now.
+        StopSaveErrorDismissTimer();
+
+        if (!autoDismiss) return;
+
+        _saveErrorDismissTimer = new DispatcherTimer { Interval = SaveErrorAutoDismissDelay };
+        _saveErrorDismissTimer.Tick += (_, _) => DismissSaveError();
+        _saveErrorDismissTimer.Start();
+    }
 
     // ── Write-lock properties ─────────────────────────────────────────────────
 

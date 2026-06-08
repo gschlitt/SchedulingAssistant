@@ -233,6 +233,11 @@
 	<SolidColorBrush x:Key="SharedScheduleBadgeText" Color="{StaticResource SharedScheduleColor}" />
 	<SolidColorBrush x:Key="SharedScheduleStripBackground" Color="#F5F0FF" />
 
+	<!--  ── Section attention flags (advisory cue applied via right-click)  ──  -->
+	<SolidColorBrush x:Key="FlagRed" Color="#D32F2F" />
+	<SolidColorBrush x:Key="FlagBlue" Color="#1976D2" />
+	<SolidColorBrush x:Key="FlagGreen" Color="#388E3C" />
+
 	<!--  ── Ghost tiles (Room Availability Browser candidate slots)  ────────  -->
 	<!--  Border outline around the full ghost block  -->
 	<SolidColorBrush x:Key="GhostOutline" Color="#C84CAF50" />

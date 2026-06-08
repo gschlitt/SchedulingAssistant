@@ -78,11 +78,12 @@ public static class NetworkFileOps
         => RunAsync(() => CopyWithSharing(source, dest), "CopyFile");
 
     /// <summary>
-    /// Timeout-aware <see cref="File.Move(string, string, bool)"/> with <c>overwrite: true</c>.
+    /// Timeout-aware <see cref="File.Move(string, string, bool)"/> with <c>overwrite: true</c>,
+    /// hardened against transient destination locks via <see cref="MoveWithRetry"/>.
     /// </summary>
     /// <returns><c>true</c> when the move completed within the deadline; <c>false</c> on timeout.</returns>
     public static Task<bool> MoveAsync(string source, string dest)
-        => RunAsync(() => File.Move(source, dest, overwrite: true), "File.Move");
+        => RunAsync(() => MoveWithRetry(source, dest), "File.Move");
 
     /// <summary>
     /// Timeout-aware <see cref="File.Delete(string)"/>. Non-throwing on timeout — cleanup
@@ -191,6 +192,59 @@ public static class NetworkFileOps
         using var stream = new FileStream(
             filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    /// <summary>
+    /// Number of attempts <see cref="MoveWithRetry"/> makes before giving up.
+    /// </summary>
+    internal const int MoveRetryAttempts = 3;
+
+    /// <summary>
+    /// Delay between <see cref="MoveWithRetry"/> attempts, in milliseconds.
+    /// </summary>
+    internal const int MoveRetryDelayMs = 150;
+
+    /// <summary>
+    /// <see cref="File.Move(string, string, bool)"/> (overwrite) with a bounded retry.
+    ///
+    /// <para>The atomic replace of an existing destination can fail with a transient
+    /// <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/> when an
+    /// external process is momentarily holding the destination (or the just-written
+    /// source) open — most commonly antivirus real-time scanning, the Windows Search
+    /// indexer, or a cloud-sync client (OneDrive/Dropbox). These locks clear in well
+    /// under a second, so we retry up to <see cref="MoveRetryAttempts"/> times with a
+    /// <see cref="MoveRetryDelayMs"/> pause between attempts.</para>
+    ///
+    /// <para>Runs on a thread-pool thread (inside <see cref="RunAsync(Action, string)"/>),
+    /// so a blocking <see cref="Thread.Sleep(int)"/> between attempts is acceptable. The
+    /// whole sequence is still bounded by the caller's <see cref="TimeoutMs"/> deadline.
+    /// On the final attempt the exception is re-thrown unchanged so genuine (persistent)
+    /// failures propagate to the caller exactly as before.</para>
+    /// </summary>
+    /// <param name="source">Path to move from.</param>
+    /// <param name="dest">Path to move to; overwritten if it exists.</param>
+    /// <exception cref="IOException">Persistent I/O failure after all attempts.</exception>
+    /// <exception cref="UnauthorizedAccessException">Persistent access failure after all attempts.</exception>
+    internal static void MoveWithRetry(string source, string dest)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(source, dest, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (
+                (ex is IOException || ex is UnauthorizedAccessException)
+                && attempt < MoveRetryAttempts)
+            {
+                App.Logger.LogInfo(
+                    $"NetworkFileOps: File.Move attempt {attempt}/{MoveRetryAttempts} " +
+                    $"failed ({ex.GetType().Name}) — likely a transient lock; " +
+                    $"retrying in {MoveRetryDelayMs}ms");
+                Thread.Sleep(MoveRetryDelayMs);
+            }
+        }
     }
 
     /// <summary>

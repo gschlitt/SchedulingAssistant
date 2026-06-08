@@ -192,6 +192,17 @@
 									Text="▶" />
 							</StackPanel>
 						</Button>
+							<Button Classes="CtxMenuItem" Command="{Binding ContextMenu.ShowFlagCommand}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock VerticalAlignment="Center" Text="Set Flag on Section" />
+									<TextBlock
+										Margin="0,1,0,0"
+										VerticalAlignment="Center"
+										FontSize="9"
+										Foreground="{StaticResource TextPrimary}"
+										Text="▶" />
+								</StackPanel>
+							</Button>
 					</StackPanel>
 
 					<!--  Sub-panel: appears when a menu item is chosen  -->
@@ -275,6 +286,24 @@
 													Classes="CtxCheck"
 													Content="{Binding Label}"
 													IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+											</DataTemplate>
+										</ListBox.ItemTemplate>
+									</ListBox>
+									<!--  Flag (single select)  -->
+									<ListBox
+										Classes="CtxList"
+										IsVisible="{Binding ContextMenu.IsFlagPanelVisible}"
+										ItemsSource="{Binding ContextMenu.Flags}"
+										SelectedItem="{Binding ContextMenu.SelectedFlag, Mode=TwoWay}"
+										SelectionMode="Single">
+										<ListBox.ItemTemplate>
+											<DataTemplate>
+												<StackPanel Orientation="Horizontal" Spacing="6">
+													<Viewbox Width="12" Height="12" VerticalAlignment="Center" IsVisible="{Binding HasIcon}">
+														<Path Data="{StaticResource FlagIcon}" Fill="{Binding Brush}" />
+													</Viewbox>
+													<TextBlock Padding="4,2" FontSize="11" Text="{Binding Label}" />
+												</StackPanel>
 											</DataTemplate>
 										</ListBox.ItemTemplate>
 									</ListBox>

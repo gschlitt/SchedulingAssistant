@@ -14191,6 +14191,205 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-06-06T03:43:02.617713+00:00"
+    },
+    {
+      "id": "bug-885",
+      "timestamp": "2026-06-06T04:34:05.487Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs",
+      "root_cause": "No early return/throw for edge case: !typeMatch",
+      "fix": "Added guard clause: if (!typeMatch)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T04:34:05.487Z"
+    },
+    {
+      "id": "bug-886",
+      "timestamp": "2026-06-06T17:10:58.948Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Services/NetworkFileOps.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T17:10:58.948Z"
+    },
+    {
+      "id": "bug-887",
+      "timestamp": "2026-06-06T17:11:14.492Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 9→13 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T17:11:14.492Z"
+    },
+    {
+      "id": "bug-888",
+      "timestamp": "2026-06-06T17:11:53.842Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/CheckoutService.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T17:11:53.842Z"
+    },
+    {
+      "id": "bug-889",
+      "timestamp": "2026-06-06T17:13:34.307Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "No early return/throw for edge case: _saveErrorDismissTimer is null",
+      "fix": "Added guard clause: if (_saveErrorDismissTimer is null)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T17:13:34.307Z"
+    },
+    {
+      "id": "bug-890",
+      "timestamp": "2026-06-06T17:30:00.000Z",
+      "error_message": "System.UnauthorizedAccessException at NetworkFileOps.MoveAsync (File.Move source->dest, overwrite:true) during autosave writeback (Step 5: rename D.tmp -> D)",
+      "file": "src/SchedulingAssistant/Services/NetworkFileOps.cs",
+      "root_cause": "File.Move(overwrite:true) must delete/replace the existing destination D; a transient external lock on D (or on the just-written D.tmp) — antivirus real-time scan, Windows Search indexer, or a cloud-sync client (OneDrive/Dropbox) — causes the atomic replace to fail with IOException/UnauthorizedAccessException. Surfaced as a debugger 'user-unhandled' first-chance break because the throw happens on a threadpool thread inside Task.Run (RunAsync); it is actually caught at CheckoutService.cs catch (Exception) in Step 5 and turned into SaveOutcome.CopyError.",
+      "fix": "Added internal NetworkFileOps.MoveWithRetry (3 attempts, 150ms backoff) catching only IOException/UnauthorizedAccessException and re-throwing on the final attempt, so sub-second transient locks no longer fail the writeback. Separately, widened CheckoutService.SaveFailed to Action<string,bool> (autoDismiss); transient autosave CopyError messages now append 'will retry automatically' and the VM (MainWindowViewModel.SetSaveError) auto-dismisses the banner after 30s via a DispatcherTimer, while sticky errors (LockLost/SourceModified/manual-save) stay until resolved.",
+      "tags": [
+        "file-io",
+        "file-move",
+        "unauthorizedaccess",
+        "transient-lock",
+        "checkout-writeback",
+        "autosave",
+        "retry",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-06T17:30:00.000Z"
+    },
+    {
+      "id": "bug-891",
+      "timestamp": "2026-06-08T18:47:26.023Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→13 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T18:47:26.023Z"
+    },
+    {
+      "id": "bug-892",
+      "timestamp": "2026-06-08T18:47:32.901Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: _section.Flag = SelectedFlag?.Value ?? SectionFlag.None;",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-08T18:47:37.844Z"
+    },
+    {
+      "id": "bug-893",
+      "timestamp": "2026-06-08T18:52:04.602Z",
+      "error_message": "Missing error handling in open",
+      "file": "../../../Documents/TermPointMedia/termpoint-landing.html",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T18:52:04.602Z"
+    },
+    {
+      "id": "bug-894",
+      "timestamp": "2026-06-08T18:54:51.902Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T18:54:51.903Z"
+    },
+    {
+      "id": "bug-895",
+      "timestamp": "2026-06-08T18:55:17.069Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T18:55:17.069Z"
+    },
+    {
+      "id": "bug-896",
+      "timestamp": "2026-06-08T19:01:21.556289Z",
+      "error_message": "CS0104: 'Path' is an ambiguous reference between 'Avalonia.Controls.Shapes.Path' and 'System.IO.Path'",
+      "file": "src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs",
+      "root_cause": "Code-behind has 'using System.IO;' (via Path.Combine elsewhere) alongside Avalonia.Controls.Shapes, so an unqualified 'new Path' for the flag icon shape was ambiguous.",
+      "fix": "Fully qualified the shape as 'new Avalonia.Controls.Shapes.Path' at the flag-icon construction site.",
+      "tags": [
+        "build-error",
+        "ambiguous-reference",
+        "avalonia",
+        "cs",
+        "section-flags"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T19:01:21.556289Z"
     }
   ]
 }

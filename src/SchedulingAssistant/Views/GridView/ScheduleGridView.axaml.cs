@@ -8,6 +8,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels.GridView;
 using System.ComponentModel;
@@ -123,6 +124,10 @@ public partial class ScheduleGridView : UserControl
     // Shared schedule tile brushes (cross-department CSV overlay)
     private static IBrush SharedScheduleBorder  => Res("SharedScheduleBorder");
     private static IBrush SharedScheduleText    => Res("SharedScheduleText");
+
+    // Section attention-flag geometry (resolved once; brush is per-flag via FlagVisuals).
+    private static Geometry? FlagGeometry =>
+        Application.Current!.Resources.TryGetResource("FlagIcon", null, out var v) && v is Geometry g ? g : null;
 
 
     private Canvas? _canvas;
@@ -788,6 +793,32 @@ public partial class ScheduleGridView : UserControl
                     IBrush entryRowBg = entry.IsMeeting   ? MeetingTileFill
                                       : entry.IsEmphasized ? FilterEmphasizedBg
                                       : Brushes.Transparent;
+
+                    // When the section carries an attention flag, draw a small colored flag icon
+                    // at the trailing edge of the line (after the initials). A DockPanel lets the
+                    // label keep its ellipsis trimming while the flag stays pinned and visible.
+                    Control entryContent = entryLabel;
+                    if (entry.Flag != SectionFlag.None
+                        && FlagVisuals.ResolveBrush(entry.Flag) is { } flagBrush
+                        && FlagGeometry is { } flagGeo)
+                    {
+                        var flagIcon = new Avalonia.Controls.Shapes.Path
+                        {
+                            Data              = flagGeo,
+                            Fill              = flagBrush,
+                            Width             = 9,
+                            Height            = 9,
+                            Stretch           = Stretch.Uniform,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Margin            = new Thickness(3, 0, 0, 0),
+                        };
+                        DockPanel.SetDock(flagIcon, Dock.Right);
+                        var dock = new DockPanel();
+                        dock.Children.Add(flagIcon);   // docked right (added first so it reserves space)
+                        dock.Children.Add(entryLabel); // fills remaining width, trims with ellipsis
+                        entryContent = dock;
+                    }
+
                     var entryRow = new Border
                     {
                         Background      = entryRowBg,
@@ -800,7 +831,7 @@ public partial class ScheduleGridView : UserControl
                         // but are still interactive, so they keep the hand cursor.
                         Cursor       = entry.IsCommitment && !entry.IsMeeting ? null : entryCursor,
                         Tag          = clickCtx,
-                        Child        = entryLabel,
+                        Child        = entryContent,
                     };
 
                     // Hover tint: darken the individual section row on pointer-over,

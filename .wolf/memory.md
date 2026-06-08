@@ -7997,3 +7997,231 @@
 | 22:10 | Edited src/SchedulingAssistant/App.axaml.cs | 5→5 lines | ~109 |
 | 22:12 | Session end: 6 writes across 4 files (can-we-look-at-frolicking-wozniak.md, MainWindow.axaml.cs, MainWindow.axaml, App.axaml.cs) | 10 reads | ~44218 tok |
 | 22:13 | Session end: 6 writes across 4 files (can-we-look-at-frolicking-wozniak.md, MainWindow.axaml.cs, MainWindow.axaml, App.axaml.cs) | 10 reads | ~44218 tok |
+
+## Session: 2026-06-05 07:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-05 08:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-05 08:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:18 | Edited src/SchedulingAssistant/Views/Management/CourseListView.axaml | 5→8 lines | ~110 |
+| 08:18 | Session end: 1 writes across 1 files (CourseListView.axaml) | 1 reads | ~5830 tok |
+| 08:21 | Session end: 1 writes across 1 files (CourseListView.axaml) | 2 reads | ~5830 tok |
+
+## Session: 2026-06-05 08:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:11 | Created ../../../.claude/plans/precious-spinning-puppy.md | — | ~1426 |
+| 09:20 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~171 |
+| 09:21 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added 1 condition(s) | ~158 |
+| 09:21 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added 1 condition(s) | ~59 |
+| 09:26 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/avalonia_previewer_grabs_db_lock.md | — | ~510 |
+| 09:26 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~78 |
+| 09:27 | Session end: 6 writes across 5 files (precious-spinning-puppy.md, MainWindow.axaml.cs, WriteLockService.cs, avalonia_previewer_grabs_db_lock.md, MEMORY.md) | 12 reads | ~25461 tok |
+| 09:29 | Session end: 6 writes across 5 files (precious-spinning-puppy.md, MainWindow.axaml.cs, WriteLockService.cs, avalonia_previewer_grabs_db_lock.md, MEMORY.md) | 12 reads | ~25461 tok |
+| 09:34 | Session end: 6 writes across 5 files (precious-spinning-puppy.md, MainWindow.axaml.cs, WriteLockService.cs, avalonia_previewer_grabs_db_lock.md, MEMORY.md) | 14 reads | ~25461 tok |
+| 09:40 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+10 lines) | ~197 |
+| 09:40 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified lock() | ~468 |
+| 09:41 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added 1 condition(s) | ~662 |
+| 09:41 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+6 lines) | ~190 |
+| 12:53 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/avalonia_previewer_grabs_db_lock.md | modified FIXED() | ~465 |
+| 12:53 | Session end: 11 writes across 6 files (precious-spinning-puppy.md, MainWindow.axaml.cs, WriteLockService.cs, avalonia_previewer_grabs_db_lock.md, MEMORY.md) | 14 reads | ~35899 tok |
+| 13:48 | Created ../../../.claude/plans/precious-spinning-puppy.md | — | ~2020 |
+| 13:50 | Edited src/SchedulingAssistant/Models/LockFileData.cs | modified reuse() | ~356 |
+| 13:50 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | 6→7 lines | ~44 |
+| 13:53 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+16 lines) | ~344 |
+| 13:54 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | 3→5 lines | ~57 |
+| 13:54 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added error handling | ~323 |
+| 13:55 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added error handling | ~1679 |
+| 13:55 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | expanded (+16 lines) | ~312 |
+| 13:55 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified if() | ~262 |
+| 13:56 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 1 condition(s) | ~185 |
+| 13:56 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~218 |
+| 13:57 | Edited src/SchedulingAssistant.Tests/WriteLockServiceTests.cs | 7→8 lines | ~52 |
+| 13:57 | Edited src/SchedulingAssistant.Tests/WriteLockServiceTests.cs | modified WriteExternalLockFileEx() | ~383 |
+| 13:58 | Edited src/SchedulingAssistant.Tests/WriteLockServiceTests.cs | modified TryAcquire_DeadHolderSameMachine_ReclaimsImmediately() | ~1579 |
+| 14:35 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/avalonia_previewer_grabs_db_lock.md | modified DONE() | ~247 |
+| 14:42 | Session end: 26 writes across 9 files (precious-spinning-puppy.md, MainWindow.axaml.cs, WriteLockService.cs, avalonia_previewer_grabs_db_lock.md, MEMORY.md) | 19 reads | ~64976 tok |
+| 14:44 | Edited src/SchedulingAssistant.Tests/WriteLockServiceTests.cs | modified TryAcquire_NoLockFile_StampsProcessIdentity() | ~789 |
+| 14:45 | Edited src/SchedulingAssistant.Tests/CheckoutServiceTests.cs | modified ReleaseAsync_SaveFails_StillReleasesLock() | ~386 |
+| 14:47 | Session end: 28 writes across 10 files (precious-spinning-puppy.md, MainWindow.axaml.cs, WriteLockService.cs, avalonia_previewer_grabs_db_lock.md, MEMORY.md) | 21 reads | ~66234 tok |
+
+## Session: 2026-06-06 17:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-06 19:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:32 | Created ../../../.claude/plans/precious-spinning-puppy.md | — | ~1495 |
+| 20:38 | Edited src/SchedulingAssistant/App.axaml.cs | expanded (+7 lines) | ~176 |
+| 20:38 | Edited src/SchedulingAssistant/Views/DetachedPanelWindow.axaml.cs | expanded (+7 lines) | ~103 |
+| 20:38 | Edited src/SchedulingAssistant/Views/DetachedPanelWindow.axaml.cs | added 1 condition(s) | ~21 |
+| 20:38 | Edited src/SchedulingAssistant/Views/Management/WorkflowsView.axaml.cs | modified CloseAllNotes() | ~139 |
+| 20:38 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | expanded (+6 lines) | ~203 |
+| 20:38 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | added 1 condition(s) | ~255 |
+| 20:39 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified CloseSecondaryWindows() | ~128 |
+| 20:43 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/avalonia_previewer_grabs_db_lock.md | modified DONE() | ~301 |
+| 20:43 | Session end: 9 writes across 6 files (precious-spinning-puppy.md, App.axaml.cs, DetachedPanelWindow.axaml.cs, WorkflowsView.axaml.cs, MainWindow.axaml.cs) | 2 reads | ~20846 tok |
+| 20:48 | Session end: 9 writes across 6 files (precious-spinning-puppy.md, App.axaml.cs, DetachedPanelWindow.axaml.cs, WorkflowsView.axaml.cs, MainWindow.axaml.cs) | 2 reads | ~20846 tok |
+| 20:53 | Session end: 9 writes across 6 files (precious-spinning-puppy.md, App.axaml.cs, DetachedPanelWindow.axaml.cs, WorkflowsView.axaml.cs, MainWindow.axaml.cs) | 2 reads | ~20846 tok |
+| 20:57 | Session end: 9 writes across 6 files (precious-spinning-puppy.md, App.axaml.cs, DetachedPanelWindow.axaml.cs, WorkflowsView.axaml.cs, MainWindow.axaml.cs) | 2 reads | ~20846 tok |
+
+## Session: 2026-06-06 21:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-06 21:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | expanded (+7 lines) | ~131 |
+| 21:33 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | modified SectionMeetingViewModel() | ~329 |
+| 21:34 | Edited src/SchedulingAssistant/ViewModels/Management/SectionMeetingViewModel.cs | added 1 condition(s) | ~564 |
+| 21:34 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~89 |
+| 21:34 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 4→4 lines | ~87 |
+| 21:34 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 3→3 lines | ~88 |
+| 21:34 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | modified OnSectionCodeChanged() | ~150 |
+| 21:36 | Session end: 7 writes across 2 files (SectionMeetingViewModel.cs, SectionEditViewModel.cs) | 6 reads | ~45278 tok |
+| 21:42 | Session end: 7 writes across 2 files (SectionMeetingViewModel.cs, SectionEditViewModel.cs) | 6 reads | ~45278 tok |
+
+## Session: 2026-06-06 22:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-06 10:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:06 | Created ../../../.claude/plans/any-thoughts-on-this-happy-church.md | — | ~1671 |
+| 10:10 | Edited src/SchedulingAssistant/Services/NetworkFileOps.cs | 6→7 lines | ~124 |
+| 10:10 | Edited src/SchedulingAssistant/Services/NetworkFileOps.cs | added error handling | ~776 |
+| 10:11 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 9→13 lines | ~228 |
+| 10:11 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified SaveAsync() | ~193 |
+| 10:11 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | modified SaveAsyncCore() | ~78 |
+| 10:11 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added optional chaining | ~247 |
+| 10:11 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 2→2 lines | ~35 |
+| 10:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 3→3 lines | ~60 |
+| 10:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 3→4 lines | ~77 |
+| 10:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 4→4 lines | ~66 |
+| 10:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 4→4 lines | ~73 |
+| 10:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 5→5 lines | ~77 |
+| 10:12 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | 3→3 lines | ~58 |
+| 10:13 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 2 condition(s) | ~607 |
+| 10:13 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 1→2 lines | ~16 |
+| 10:13 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | modified OnCheckoutSaveFailed() | ~50 |
+| 10:14 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 3→4 lines | ~77 |
+| 10:14 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 3→4 lines | ~64 |
+| 10:18 | Created src/SchedulingAssistant.Tests/NetworkFileOpsMoveRetryTests.cs | — | ~982 |
+
+## Session: 2026-06-06 — Writeback rename hardening + transient save-error banner
+
+| Action | Files | Outcome |
+|--------|-------|---------|
+| Bounded retry on writeback rename | `Services/NetworkFileOps.cs` | `MoveAsync` now calls internal `MoveWithRetry` (3 attempts, 150ms backoff) catching only `IOException`/`UnauthorizedAccessException`, re-throwing on the final attempt. Defeats sub-second transient locks (AV / Search indexer / OneDrive/Dropbox) on the atomic `D.tmp → D` replace. Still bounded by the 5s `RunAsync` deadline; persistent failures throw exactly as before. |
+| Transient-aware SaveFailed contract | `Services/CheckoutService.cs` | `SaveFailed` widened to `Action<string,bool>` (autoDismiss). New `RaiseTransientSaveError` helper + `isAutoSave` param threaded through `SaveAsync`/`SaveAsyncCore`; `AutoSaveTickAsync` passes `isAutoSave: true`. Autosave `CopyError` messages append "The app will retry automatically." with autoDismiss=true; `SourceModified`/lock-loss stay sticky (false). |
+| Auto-dismiss banner timer | `ViewModels/MainWindowViewModel.cs` | `SetSaveError(message, autoDismiss)`; transient errors start a 30s one-shot `DispatcherTimer` → `DismissSaveError`. Success/dismiss/new sticky error cancels it via `StopSaveErrorDismissTimer`. Addresses persistence-review.md §2.1 (stale banner). |
+| Subscriber + sticky sites | `MainWindow.axaml.cs` | `OnCheckoutSaveFailed(message, autoDismiss)` forwards both; the two write-lock-loss `SetSaveError` calls pass `autoDismiss: false`. |
+| Retry tests | `NetworkFileOpsMoveRetryTests.cs` | 2 tests: succeeds when a transient lock clears before attempts exhaust; re-throws IOException/UnauthorizedAccessException when the lock persists (source/dest untouched). All 71 CheckoutService+retry tests pass on net10.0. |
+| 10:20 | Session end: 20 writes across 6 files (any-thoughts-on-this-happy-church.md, NetworkFileOps.cs, CheckoutService.cs, MainWindowViewModel.cs, MainWindow.axaml.cs) | 4 reads | ~73717 tok |
+
+## Session: 2026-06-08 09:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-08 09:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-08 10:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-08 10:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:33 | Created ../../../.claude/plans/vivid-booping-metcalfe.md | — | ~987 |
+| 10:36 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added 1 condition(s) | ~212 |
+| 10:39 | Created src/SchedulingAssistant.Tests/RoomConflictMultiSemesterTests.cs | — | ~2562 |
+| 10:41 | Session end: 3 writes across 3 files (vivid-booping-metcalfe.md, SectionListViewModel.cs, RoomConflictMultiSemesterTests.cs) | 6 reads | ~33555 tok |
+| 10:43 | Session end: 3 writes across 3 files (vivid-booping-metcalfe.md, SectionListViewModel.cs, RoomConflictMultiSemesterTests.cs) | 6 reads | ~33555 tok |
+| 10:45 | Session end: 3 writes across 3 files (vivid-booping-metcalfe.md, SectionListViewModel.cs, RoomConflictMultiSemesterTests.cs) | 7 reads | ~57843 tok |
+| 10:48 | Session end: 3 writes across 3 files (vivid-booping-metcalfe.md, SectionListViewModel.cs, RoomConflictMultiSemesterTests.cs) | 7 reads | ~57843 tok |
+
+## Session: 2026-06-08 11:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-08 11:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:40 | Created ../../../.claude/plans/a-small-new-feature-keen-whale.md | — | ~2453 |
+| 11:44 | Created src/SchedulingAssistant/Models/SectionFlag.cs | — | ~132 |
+| 11:44 | Edited src/SchedulingAssistant/Models/Section.cs | expanded (+6 lines) | ~147 |
+| 11:44 | Edited src/SchedulingAssistant/AppColors.axaml | 2→7 lines | ~112 |
+| 11:44 | Edited src/SchedulingAssistant/Assets/Icons.axaml | 2→5 lines | ~104 |
+| 11:44 | Created src/SchedulingAssistant/Services/FlagVisuals.cs | — | ~378 |
+| 11:45 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 3→4 lines | ~29 |
+| 11:45 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 4→5 lines | ~64 |
+| 11:45 | Edited src/SchedulingAssistant/ViewModels/GridView/GridData.cs | 2→4 lines | ~93 |
+| 11:45 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 4→5 lines | ~88 |
+| 11:45 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | 1→2 lines | ~33 |
+| 11:46 | Edited src/SchedulingAssistant/ViewModels/GridView/ScheduleGridViewModel.cs | inline fix | ~50 |
+| 11:46 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | inline fix | ~18 |
+| 11:46 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | 13→18 lines | ~272 |
+| 11:46 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | 6→9 lines | ~95 |
+| 11:46 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | 2→5 lines | ~46 |
+| 11:46 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | 6→10 lines | ~81 |
+
+## Session: 2026-06-08 11:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:47 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | expanded (+9 lines) | ~156 |
+| 11:47 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | added nullish coalescing | ~44 |
+| 11:47 | Edited src/SchedulingAssistant/ViewModels/GridView/SectionContextMenuViewModel.cs | added optional chaining | ~35 |
+| 11:48 | Created src/SchedulingAssistant/ViewModels/GridView/FlagOptionVm.cs | — | ~256 |
+| 11:49 | Created ../../../.claude/plans/in-c-users-gregs-documents-termpointmedi-hazy-micali.md | — | ~1575 |
+| 11:50 | Edited ../../../Documents/TermPointMedia/termpoint-landing.html | expanded (+112 lines) | ~814 |
+| 11:50 | Edited ../../../Documents/TermPointMedia/termpoint-landing.html | 6→6 lines | ~78 |
+| 11:51 | Edited ../../../Documents/TermPointMedia/termpoint-landing.html | expanded (+52 lines) | ~702 |
+| 11:51 | Edited ../../../Documents/TermPointMedia/termpoint-landing.html | 2→2 lines | ~25 |
+| 11:52 | Edited ../../../Documents/TermPointMedia/termpoint-landing.html | added error handling | ~598 |
+| 11:52 | Edited .claude/launch.json | expanded (+7 lines) | ~84 |
+| 11:53 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→7 lines | ~127 |
+| 11:54 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→4 lines | ~38 |
+| 11:54 | Session end: 13 writes across 6 files (SectionContextMenuViewModel.cs, FlagOptionVm.cs, in-c-users-gregs-documents-termpointmedi-hazy-micali.md, termpoint-landing.html, launch.json) | 5 reads | ~6651 tok |
+| 11:54 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | added 1 condition(s) | ~705 |
+| 11:54 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | 5→8 lines | ~64 |
+| 11:54 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | added optional chaining | ~526 |
+| 11:54 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs | 8→12 lines | ~99 |
+| 11:55 | Edited src/SchedulingAssistant/ViewModels/Management/SectionListViewModel.cs | added error handling | ~416 |
+| 11:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 6→7 lines | ~178 |
+| 11:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | 4→4 lines | ~78 |
+| 11:56 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+12 lines) | ~499 |
+| 11:57 | Edited src/SchedulingAssistant/Views/Management/SectionListView.axaml | expanded (+74 lines) | ~1614 |
+| 11:58 | Edited src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs | 3→3 lines | ~42 |
+
+> **Section Flags feature (2026-06-08):** Added per-section advisory flag (None/Red/Blue/Green) — `Models/SectionFlag.cs`, `Section.Flag` (JSON-persisted, no DB col), `Services/FlagVisuals.cs` (flag→AppColors brush), `FlagIcon` in Icons.axaml, `FlagRed/Blue/Green` in AppColors.axaml. Section View: right-click card → flag picker popup (RightClickCommandBehavior + IsFlagMenuOpen), top-line flag icon (HasFlag/FlagBrush). Schedule View: "Set Flag" item in existing tile context menu (SectionContextMenuViewModel + FlagOptionVm), flag drawn after initials on every meeting tile via DockPanel. Persist path: SectionListViewModel.SaveSectionFlag (repo.Update + suppress-self store.Reload). Build verified (desktop + WASM).
+| 12:02 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_section_flags.md | — | ~555 |
+| 12:02 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/MEMORY.md | 1→2 lines | ~78 |
+| 12:02 | Session end: 25 writes across 11 files (SectionContextMenuViewModel.cs, FlagOptionVm.cs, in-c-users-gregs-documents-termpointmedi-hazy-micali.md, termpoint-landing.html, launch.json) | 8 reads | ~29177 tok |

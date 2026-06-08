@@ -36,4 +36,10 @@ public class Section : SchedulableBase
     /// Seeded at creation from the course's capacity, else the app default; freely editable.
     /// </summary>
     public int? Capacity { get; set; }
+
+    /// <summary>
+    /// Advisory attention flag for this section. <see cref="SectionFlag.None"/> means no flag.
+    /// Stored in the JSON data column; pre-existing sections without the field deserialize to None.
+    /// </summary>
+    public SectionFlag Flag { get; set; } = SectionFlag.None;
 }

@@ -1115,7 +1115,8 @@
                                     BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                                     BoxShadow="{StaticResource PanelBoxShadow}"
                                     Classes="SectionCard"
-                                    CornerRadius="4">
+                                    CornerRadius="4"
+                                    b:RightClickCommandBehavior.Command="{Binding ShowFlagMenuCommand}">
                                     <Border.BorderBrush>
                                         <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
                                             <Binding Path="SemesterName" />
@@ -1123,6 +1124,80 @@
                                         </MultiBinding>
                                     </Border.BorderBrush>
                                     <Grid>
+
+                                    <!--  Right-click flag picker popup  -->
+                                    <Popup
+                                        IsLightDismissEnabled="True"
+                                        IsOpen="{Binding IsFlagMenuOpen, Mode=TwoWay}"
+                                        Placement="Pointer">
+                                        <Border
+                                            Background="{StaticResource AppBackground}"
+                                            BorderBrush="{StaticResource SubduedBorder}"
+                                            BorderThickness="1"
+                                            BoxShadow="0 2 8 0 #33000000"
+                                            CornerRadius="4"
+                                            Padding="3">
+                                            <StackPanel MinWidth="120" Spacing="1">
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.Red}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagRed}" />
+                                                        </Viewbox>
+                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Red" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.Blue}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagBlue}" />
+                                                        </Viewbox>
+                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Blue" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.Green}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagGreen}" />
+                                                        </Viewbox>
+                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Green" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Border Height="1" Margin="2,2" Background="{StaticResource SubduedBorder}" />
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.None}">
+                                                    <TextBlock VerticalAlignment="Center" FontSize="11" Text="Clear flag" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+
                                     <StackPanel>
 
                                         <!--  Summary row (hidden while section is being created)  -->
@@ -1131,7 +1206,7 @@
                                             <Grid
                                                 Margin="6,6,8,3"
                                                 VerticalAlignment="Center"
-                                                ColumnDefinitions="Auto,Auto,130,Auto,Auto">
+                                                ColumnDefinitions="Auto,Auto,130,Auto,Auto,*,Auto">
                                                 <!--  Collapse/expand toggle  -->
                                                 <Button
                                                     Grid.Column="0"
@@ -1188,6 +1263,18 @@
                                                     IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Text="{Binding CapacityLabel}"
                                                     ToolTip.Tip="Section capacity" />
+                                                <!--  Attention flag (right-click to set; hidden when none)  -->
+                                                <Viewbox
+                                                    Grid.Column="6"
+                                                    Width="14"
+                                                    Height="14"
+                                                    Margin="6,0,0,0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding HasFlag}"
+                                                    ToolTip.Tip="Section flag (right-click the card to change)">
+                                                    <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagBrush}" />
+                                                </Viewbox>
                                             </Grid>
 
                                             <!--  Row 2: Meetings (when not collapsed)  -->
