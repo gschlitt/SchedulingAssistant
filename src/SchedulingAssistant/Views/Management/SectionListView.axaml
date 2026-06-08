@@ -1257,7 +1257,7 @@
                                                 <TextBlock
                                                     Grid.Column="4"
                                                     Margin="6,0,0,0"
-                                                    VerticalAlignment="Center"
+                                                    VerticalAlignment="Top"
                                                     FontSize="12"
                                                     Foreground="{StaticResource TextMuted}"
                                                     IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -1266,11 +1266,11 @@
                                                 <!--  Attention flag (right-click to set; hidden when none)  -->
                                                 <Viewbox
                                                     Grid.Column="6"
-                                                    Width="14"
-                                                    Height="14"
-                                                    Margin="6,0,0,0"
+                                                    Width="20"
+                                                    Height="20"
+                                                    Margin="6,-1,0,0"
                                                     HorizontalAlignment="Right"
-                                                    VerticalAlignment="Center"
+                                                    VerticalAlignment="Top"
                                                     IsVisible="{Binding HasFlag}"
                                                     ToolTip.Tip="Section flag (right-click the card to change)">
                                                     <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagBrush}" />

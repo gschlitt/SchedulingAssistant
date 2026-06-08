@@ -806,11 +806,11 @@ public partial class ScheduleGridView : UserControl
                         {
                             Data              = flagGeo,
                             Fill              = flagBrush,
-                            Width             = 9,
-                            Height            = 9,
+                            Width             = 12,
+                            Height            = 12,
                             Stretch           = Stretch.Uniform,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin            = new Thickness(3, 0, 0, 0),
+                            VerticalAlignment = VerticalAlignment.Top,
+                            Margin            = new Thickness(3, 2, 0, 0),
                         };
                         DockPanel.SetDock(flagIcon, Dock.Right);
                         var dock = new DockPanel();

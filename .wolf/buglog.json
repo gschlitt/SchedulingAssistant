@@ -14390,6 +14390,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-08T19:01:21.556289Z"
+    },
+    {
+      "id": "bug-897",
+      "timestamp": "2026-06-08T19:38:18.730Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../../Documents/TermPointMedia/termpoint-landing.html",
+      "root_cause": "Had \"cf-message\"",
+      "fix": "Changed to \"cf-message2\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-08T19:38:26.699Z"
+    },
+    {
+      "id": "bug-898",
+      "timestamp": "2026-06-08T19:46:27.453Z",
+      "error_message": "Missing error handling in flash",
+      "file": "../../../Documents/TermPointMedia/termpoint-landing.html",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T19:46:27.453Z"
     }
   ]
 }

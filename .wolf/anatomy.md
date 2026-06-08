@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-08T19:02:13.220Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-08T19:46:27.361Z
 > Files: 80 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
@@ -54,7 +54,7 @@
 
 ## ../../../Documents/TermPointMedia/
 
-- `termpoint-landing.html` — TermPoint — Timetabling Made Easy (~11039 tok)
+- `termpoint-landing.html` — TermPoint — Timetabling Made Easy (~13029 tok)
 
 ## ./
 
