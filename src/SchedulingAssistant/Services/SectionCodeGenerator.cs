@@ -1,3 +1,4 @@
+using System.Text;
 using SchedulingAssistant.Models;
 
 namespace SchedulingAssistant.Services;
@@ -65,10 +66,11 @@ public static class SectionCodeGenerator
 
         if (pattern.UseLetters)
         {
-            // Incrementing part must be exactly one uppercase letter in [FirstLetter, 'Z'].
-            return middle.Length == 1
-                && middle[0] >= pattern.FirstLetter
-                && middle[0] <= 'Z';
+            // Incrementing part is one or more uppercase letters in lexicographic order
+            // (A..Z, AA, AB, ...). It must be at or after the pattern's first letter.
+            long? ordinal = LettersToOrdinal(middle);
+            long? first   = LettersToOrdinal(pattern.FirstLetter.ToString());
+            return ordinal is not null && first is not null && ordinal.Value >= first.Value;
         }
         else
         {
@@ -94,11 +96,12 @@ public static class SectionCodeGenerator
     {
         if (pattern.UseLetters)
         {
-            for (int i = 0; i < 26 && i < MaxAttempts; i++)
+            // Lexicographic / Excel-column sequence starting at FirstLetter:
+            // A, B, ... Z, AA, AB, ... AZ, BA, ... Bounded only by MaxAttempts.
+            long start = LettersToOrdinal(pattern.FirstLetter.ToString()) ?? 1;
+            for (int i = 0; i < MaxAttempts; i++)
             {
-                char letter = (char)(pattern.FirstLetter + i);
-                if (letter > 'Z') yield break;
-                yield return $"{pattern.Prefix}{letter}{pattern.Suffix}";
+                yield return $"{pattern.Prefix}{OrdinalToLetters(start + i)}{pattern.Suffix}";
             }
         }
         else
@@ -112,5 +115,44 @@ public static class SectionCodeGenerator
                 yield return $"{pattern.Prefix}{numStr}{pattern.Suffix}";
             }
         }
+    }
+
+    /// <summary>
+    /// Converts an all-uppercase letter string to its 1-indexed position in the
+    /// lexicographic letter sequence (bijective base-26): A=1, ... Z=26, AA=27, AB=28, ...
+    /// </summary>
+    /// <param name="letters">The letter string to convert.</param>
+    /// <returns>
+    /// The 1-indexed position, or <c>null</c> if <paramref name="letters"/> is empty or
+    /// contains any character outside <c>A</c>–<c>Z</c> (case-sensitive).
+    /// </returns>
+    private static long? LettersToOrdinal(string letters)
+    {
+        if (string.IsNullOrEmpty(letters)) return null;
+
+        long value = 0;
+        foreach (char c in letters)
+        {
+            if (c < 'A' || c > 'Z') return null;
+            value = value * 26 + (c - 'A' + 1);
+        }
+        return value;
+    }
+
+    /// <summary>
+    /// Inverse of <see cref="LettersToOrdinal"/>: converts a 1-indexed position back to its
+    /// letter string (1 → "A", 26 → "Z", 27 → "AA", 28 → "AB", ...).
+    /// </summary>
+    /// <param name="ordinal">A 1-indexed position; assumed to be &gt;= 1.</param>
+    private static string OrdinalToLetters(long ordinal)
+    {
+        var sb = new StringBuilder();
+        while (ordinal > 0)
+        {
+            ordinal--;                                    // shift to 0-indexed for the modulo
+            sb.Insert(0, (char)('A' + ordinal % 26));
+            ordinal /= 26;
+        }
+        return sb.ToString();
     }
 }
