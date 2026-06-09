@@ -217,8 +217,15 @@ public class TourOverlayViewModelTests : IDisposable
 
         _runner.Start("tour1");
 
-        // ShowStepAsync retries 3x with 100ms delays; wait for it to finish
-        await Task.Delay(500);
+        // ShowStepAsync → PositionOverlayAsync retries target resolution (3x with 100ms
+        // delays) and, finding it unresolvable, calls ShowCentered which sets
+        // ActualPlacement = Auto and hides the highlight. Poll for that end state instead
+        // of racing a fixed delay — a flat Task.Delay flaked when the continuations slipped
+        // past the deadline under parallel test load. ActualPlacement is the lagging value
+        // (IsHighlightVisible is already false by default). Bounded so a real regression
+        // still fails, just later.
+        for (int i = 0; i < 200 && _vm.ActualPlacement != TourPlacement.Auto; i++)
+            await Task.Delay(20);
 
         Assert.False(_vm.IsHighlightVisible);
         Assert.Equal(TourPlacement.Auto, _vm.ActualPlacement);
