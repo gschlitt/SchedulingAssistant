@@ -1,0 +1,32 @@
+name: Tests
+
+# Runs the xUnit suite on every push to master and on every pull request
+# targeting master. Real-data integration tests that need a machine-local
+# database file are skipped automatically (see FactRequiresLocalDbAttribute),
+# so a clean checkout on the runner still goes green.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Run tests
+        run: >
+          dotnet test
+          src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj
+          --configuration Release
+          --verbosity normal

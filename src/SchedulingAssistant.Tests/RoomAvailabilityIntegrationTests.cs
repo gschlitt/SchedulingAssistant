@@ -16,7 +16,8 @@ namespace SchedulingAssistant.Tests;
 /// </summary>
 public class RoomAvailabilityIntegrationTests : IDisposable
 {
-    private const string SourceDbPath = @"C:\Users\gregs\SchedulerTest\BIOL-TT.db";
+    // internal so FactRequiresLocalDbAttribute can probe for the file at discovery time.
+    internal const string SourceDbPath = @"C:\Users\gregs\SchedulerTest\BIOL-TT.db";
 
     private readonly string _tempDbPath;
     private readonly DatabaseContext _db;
@@ -160,7 +161,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Data sanity checks
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void DatabaseLoads_WithNonEmptyData()
     {
         Assert.NotEmpty(_rooms);
@@ -179,7 +180,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Pinned times: primary solutions must respect the user's constraints
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedMWF_DifferentTimes_PrimaryHonorsAllTimes()
     {
         // M 0830, W 1000, F 0830 — the exact scenario that was buggy.
@@ -204,7 +205,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedMWF_SameTime_PrimaryHonorsTime()
     {
         // M/W/F all at 0900.
@@ -221,7 +222,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
                 "Primary solution should have all slots at 0900");
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedTR_DifferentTimes_PrimaryHonorsAllTimes()
     {
         // T 0830, R 1000.
@@ -246,7 +247,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Ordering: primaries must appear before alternatives
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedTimes_PrimariesSortBeforeAlternatives()
     {
         var specs = PinnedTimeSpecs(60, (1, 510), (3, 600), (5, 510));
@@ -268,7 +269,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
                 $"Last primary at index {lastPrimaryIdx} should be before first alternative at {firstAltIdx}");
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedTimes_AlternativesExist_WhenAllStartsFixed()
     {
         var specs = PinnedTimeSpecs(60, (1, 510), (3, 510), (5, 510));
@@ -287,7 +288,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Open specs: no alternatives should be generated
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void FullyOpenSpecs_NoAlternativesGenerated()
     {
         // When nothing is pinned, the primary scan already explores all options.
@@ -301,7 +302,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         Assert.Empty(alts);
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedDaysOnly_NoAlternativesGenerated()
     {
         // Days pinned, starts open — allStartsFixed should be false.
@@ -316,7 +317,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Pinned rooms: solver must respect locked room constraints
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedRoom_SolutionsUseOnlyThatRoom()
     {
         if (_rooms.Count == 0) return;
@@ -340,7 +341,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Mixed pinned: some times pinned, some open
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void MixedPinnedAndOpenStart_PrimaryHonorsPinnedSlot()
     {
         // M pinned at 0830, W open, F pinned at 0830.
@@ -372,7 +373,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
     // Room type filter
     // ═══════════════════════════════════════════════════════════════════════
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void PinnedRoomType_SolutionsRespectTypeFilter()
     {
         // Find a room type that exists in the DB.
@@ -414,7 +415,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         return match?.Id;
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void Accept_MixedDurationsAndRoomTypes_AllSpecsMapped()
     {
         // User scenario: M 1.5h SmCls, W 1.5h SmCls, Any 3h Lab24.
@@ -499,7 +500,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void Accept_SimulateTransferBack_AllFieldsFilled()
     {
         // Simulates AcceptBrowserSolution logic: "fill in only blank fields."
@@ -591,7 +592,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         return true;
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void SameDay_DiffDurations_DiffRoomTypes_AllNonOverlapping()
     {
         // Mon 1.5h SmCls + Mon 3h Lab24: every solution must have 2 non-overlapping slots.
@@ -625,7 +626,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void SameDay_SameRoomType_NonOverlapping()
     {
         // Two 1.5h specs on the same day, same room type.
@@ -654,7 +655,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void SameDay_ThreeSpecs_NonOverlapping()
     {
         // Three specs on one day: two 1h + one 1.5h. All must be non-overlapping.
@@ -677,7 +678,7 @@ public class RoomAvailabilityIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [FactRequiresLocalDb]
     public void DifferentDays_BehaviorUnchanged()
     {
         // MWF 1h specs on different days — should still produce solutions, regression check.
