@@ -4,6 +4,12 @@ name: Tests
 # targeting master. Real-data integration tests that need a machine-local
 # database file are skipped automatically (see FactRequiresLocalDbAttribute),
 # so a clean checkout on the runner still goes green.
+#
+# Runs on windows-latest because the app ships to Windows and macOS only.
+# Several tests assert Windows file-system semantics (invalid filename chars,
+# "\" path separators, file-locking behaviour) that legitimately differ on
+# Linux, so a Linux runner would report false failures for a platform we
+# don't support.
 on:
   push:
     branches: [master]
@@ -12,7 +18,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     # Hard backstop: a healthy run finishes in a few minutes. If anything hangs,
     # kill the whole job at 15 min instead of letting it run for hours.
     timeout-minutes: 15
