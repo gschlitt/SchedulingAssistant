@@ -13,6 +13,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Hard backstop: a healthy run finishes in a few minutes. If anything hangs,
+    # kill the whole job at 15 min instead of letting it run for hours.
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -30,3 +33,17 @@ jobs:
           src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj
           --configuration Release
           --verbosity normal
+          --results-directory ${{ github.workspace }}/TestResults
+          --blame-hang-timeout 3m
+          --blame-hang-dump-type none
+
+      # Always upload the blame "sequence" file. When a hang trips the 3-minute
+      # inactivity timer, this names the test that was last active before the
+      # host stalled — the thing keeping the process alive.
+      - name: Upload hang diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ${{ github.workspace }}/TestResults
+          if-no-files-found: ignore

@@ -141,6 +141,16 @@ public partial class TourOverlayViewModel : ViewModelBase
     /// </summary>
     public Func<TourTarget, Task<Rect?>>? ResolveTargetAsync { get; set; }
 
+    /// <summary>
+    /// Hook that yields once to let a pending layout pass settle before the next
+    /// step's target is measured. Defaults to a background-priority tick on the UI
+    /// dispatcher. Tests override it with a no-op so the unit-test host never has to
+    /// initialize Avalonia's dispatcher — doing so spins up UI threading that has no
+    /// app lifetime to tear it down, which keeps the test process alive after the run.
+    /// </summary>
+    public Func<Task> YieldForLayoutAsync { get; set; } =
+        async () => await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+
     // ── Debug authoring tools ────────────────────────────────────────────────
 
 #if DEBUG
@@ -330,7 +340,7 @@ public partial class TourOverlayViewModel : ViewModelBase
 
         // Let the layout pass settle after PostAction changes (e.g. closing a popup)
         // before measuring the next step's target bounds.
-        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        await YieldForLayoutAsync();
 
 #if DEBUG
         _debugPlacementOverride = null;

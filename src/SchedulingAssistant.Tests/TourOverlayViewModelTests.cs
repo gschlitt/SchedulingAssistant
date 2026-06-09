@@ -20,6 +20,11 @@ public class TourOverlayViewModelTests : IDisposable
         _vm = new TourOverlayViewModel(_runner);
         // Provide a default overlay size so positioning doesn't fall back to centered
         _vm.UpdateOverlaySize(new Size(1400, 800));
+        // Replace the real dispatcher "let layout settle" hop with a no-op. Touching
+        // Dispatcher.UIThread in a headless test host spins up Avalonia UI threading
+        // that nothing tears down, which keeps the test process alive after the run
+        // (the suite passes but the host never exits). The no-op keeps tests headless.
+        _vm.YieldForLayoutAsync = () => Task.CompletedTask;
     }
 
     public void Dispose() => TourCatalog.Reset();
