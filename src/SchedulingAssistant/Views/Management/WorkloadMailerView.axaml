@@ -275,9 +275,10 @@
 				<Button
 					Padding="12,5"
 					Command="{Binding OpenInMailCommand}"
-					Content="Open in Mail →"
+					Content="Open in Mail"
 					FontSize="11"
-					FontWeight="SemiBold" />
+					FontWeight="SemiBold"
+					IsEnabled="{Binding CanOpenMail}" />
 			</StackPanel>
 
 		</Grid>

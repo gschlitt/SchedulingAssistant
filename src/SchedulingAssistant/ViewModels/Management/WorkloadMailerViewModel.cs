@@ -158,6 +158,9 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     [ObservableProperty]
     private string _renderedBody = string.Empty;
 
+    /// <summary>True when the platform can open mailto: URIs. False in the browser demo.</summary>
+    public bool CanOpenMail => PlatformCapabilities.SupportsLinks;
+
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -388,7 +391,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
 
             // Header: semester name + underline
             sb.AppendLine(semester.Name);
-            sb.AppendLine(new string('─', Math.Max(semester.Name.Length, 9)));
+            sb.AppendLine(new string('-', Math.Max(semester.Name.Length, 9)));
 
             var sections = _sectionRepo.GetAll(semester.Id)
                 .Where(s => s.InstructorAssignments.Any(a => a.InstructorId == instructor.Id))
