@@ -69,10 +69,18 @@ public sealed partial class HelpViewModel : ViewModelBase
 
     // ── Computed properties ────────────────────────────────────────────────
 
-    /// <summary>True when the selected topic has an associated HTML file on disk.</summary>
+    /// <summary>
+    /// True when the selected topic has an associated HTML file.
+    /// On desktop, verifies the file exists on disk. On WASM, trusts the
+    /// file name (Help files are deployed as web assets alongside the app).
+    /// </summary>
     public bool HasArticle =>
         _selectedTopic?.HtmlFileName is string fileName &&
+#if BROWSER
+        fileName.Length > 0;
+#else
         File.Exists(Path.Combine(HelpDirectory, fileName));
+#endif
 
     /// <summary>True when the selected topic has a YouTube video URL.</summary>
     public bool HasVideo =>
@@ -107,8 +115,13 @@ public sealed partial class HelpViewModel : ViewModelBase
     private void OpenArticle()
     {
         if (_selectedTopic?.HtmlFileName is not string fileName) return;
+#if BROWSER
+        // WASM: Help files are deployed as web assets; open via relative URL
+        PlatformProcess.OpenLocalFile("Help/" + fileName);
+#else
         var path = Path.Combine(HelpDirectory, fileName);
         PlatformProcess.OpenLocalFile(path);
+#endif
     }
 
     /// <summary>

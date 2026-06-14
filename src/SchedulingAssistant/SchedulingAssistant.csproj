@@ -19,9 +19,10 @@
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
   </PropertyGroup>
 
-  <!-- Define BROWSER for #if guards in shared code -->
+  <!-- Define BROWSER for #if guards in shared code; enable unsafe for JSImport interop -->
   <PropertyGroup Condition="$(TargetFramework.Contains('browser'))">
     <DefineConstants>$(DefineConstants);BROWSER</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <!-- ── Cross-platform packages ──────────────────────────────────────────── -->

@@ -26,6 +26,8 @@
 
   <ItemGroup>
     <WasmExtraFilesToDeploy Include="wwwroot/index.html" TargetPath="index.html" />
+    <WasmExtraFilesToDeploy Include="..\SchedulingAssistant\Help\**" TargetPath="Help/%(Filename)%(Extension)" />
+    <WasmExtraFilesToDeploy Include="..\SchedulingAssistant\Assets\*.png" TargetPath="Assets/%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

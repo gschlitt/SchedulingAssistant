@@ -54,10 +54,10 @@ public static class PlatformCapabilities
     public static bool SupportsDetachedWindows => false;
 
     /// <summary>
-    /// True when the platform can open external URLs via the OS default handler.
-    /// False in the browser demo — there is no native process to launch.
+    /// True when the platform can open external URLs.
+    /// On WASM, opens in a new browser tab via <c>window.open</c>.
     /// </summary>
-    public static bool SupportsLinks => false;
+    public static bool SupportsLinks => true;
 #else
     /// <inheritdoc cref="SupportsFileDialogs"/>
     public static bool SupportsFileDialogs => true;

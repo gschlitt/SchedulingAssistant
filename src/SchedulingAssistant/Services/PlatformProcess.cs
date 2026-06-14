@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+#if BROWSER
+using System.Runtime.InteropServices.JavaScript;
+#endif
 
 namespace SchedulingAssistant.Services;
 
@@ -7,36 +10,55 @@ namespace SchedulingAssistant.Services;
 /// Cross-platform helpers for launching URLs, URIs, and executables
 /// via the OS default handler.
 /// </summary>
-public static class PlatformProcess
+public static partial class PlatformProcess
 {
+#if BROWSER
+    /// <summary>
+    /// JS interop: calls <c>window.open(url, '_blank')</c> to open a URL in a new browser tab.
+    /// </summary>
+    [JSImport("globalThis.window.open")]
+    private static partial void WindowOpen(string url, string target);
+#endif
+
     /// <summary>
     /// Opens a URL or URI (http, mailto, etc.) in the platform's default handler.
+    /// On WASM, opens in a new browser tab via <c>window.open</c>.
     /// </summary>
     /// <param name="uri">The URL or URI to open.</param>
     public static void OpenUri(string uri)
     {
+#if BROWSER
+        WindowOpen(uri, "_blank");
+#else
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             Process.Start("open", uri);
         else
             Process.Start("xdg-open", uri);
+#endif
     }
 
     /// <summary>
     /// Opens a local file using the OS default application for its type.
-    /// Prefer this over <see cref="OpenUri"/> for file-system paths — on Windows,
-    /// shell-executing a <c>file://</c> URI is unreliable, whereas a bare path works correctly.
+    /// On desktop, launches via the OS shell. On WASM, opens a relative URL
+    /// in a new browser tab (the file must be deployed as a web asset).
     /// </summary>
-    /// <param name="path">Absolute file-system path to the file to open.</param>
+    /// <param name="path">
+    /// Desktop: absolute file-system path. WASM: relative URL path (e.g. <c>"Help/navigating.html"</c>).
+    /// </param>
     public static void OpenLocalFile(string path)
     {
+#if BROWSER
+        WindowOpen(path, "_blank");
+#else
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             Process.Start("open", path);
         else
             Process.Start("xdg-open", path);
+#endif
     }
 
     /// <summary>
