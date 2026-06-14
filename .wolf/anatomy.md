@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-14T19:52:41.321Z
-> Files: 107 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-14T20:20:37.610Z
+> Files: 108 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -241,7 +241,7 @@
 
 - `App.axaml` (~1752 tok)
 - `App.axaml.cs` — Tour step actions (PreAction/PostAction callbacks), built once in <see cref="InitializeServices"/> a (~5506 tok)
-- `AppColors.axaml` (~3924 tok)
+- `AppColors.axaml` (~3939 tok)
 - `MainWindow.axaml` (~472 tok)
 - `MainWindow.axaml.cs` — Minimum time the loading curtain stays up, to avoid a flicker on fast loads. (~18557 tok)
 - `Program.cs` — Class: Program (~858 tok)
@@ -303,6 +303,7 @@
 
 - `AppSettings.cs` — Persists app-level settings (e.g. database path) in a small JSON file in a stable AppData location t (~3777 tok)
 - `CheckoutService.cs` — Manages the checkout / save lifecycle for every database the app opens. <para><b>Write-access mode:< (~20769 tok)
+- `FileAppLogger.cs` — Writes log entries to a rolling daily log file under %AppData%\TermPoint\Logs\app-YYYY-MM-DD.log. De (~1431 tok)
 - `FlagVisuals.cs` — Single source of truth for mapping a <see cref="SectionFlag"/> to its visual representation. Both th (~378 tok)
 - `GridChangeNotifier.cs` — Signals that non-section grid content has changed and the schedule grid should reload. Used by manag (~388 tok)
 - `NetworkFileOps.cs` — Timeout-aware wrappers for file operations against paths that may be on a network share (D, D.lock, (~3095 tok)
@@ -341,7 +342,7 @@
 - `RoomAvailabilityBrowserViewModel.cs` — Drives the Room Availability Browser panel inside the section editor. Reads partially-specified meet (~3218 tok)
 - `RoomEditViewModel.cs` — A campus item for campus dropdown pickers, with a sentinel "none" option. (~1311 tok)
 - `SectionEditViewModel.cs` — Section capacity as edited text; empty = null (unspecified). Parsed in Save(). (~13272 tok)
-- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3479 tok)
+- `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3723 tok)
 - `SectionListViewModel.cs` — Callback to push ghost blocks (Room Availability Browser) onto the schedule grid. Set by <see cref=" (~17328 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~9754 tok)
 
@@ -370,7 +371,7 @@
 - `MeetingListView.axaml` (~12157 tok)
 - `PreferencesView.axaml` (~1738 tok)
 - `RoomListView.axaml` (~1740 tok)
-- `SectionListView.axaml` (~26172 tok)
+- `SectionListView.axaml` (~26169 tok)
 - `WorkflowsView.axaml.cs` — Currently-open sticky notes, kept so new notes cascade rather than stack directly on top of one anot (~688 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/

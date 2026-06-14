@@ -1263,7 +1263,7 @@
                                                     IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Text="{Binding CapacityLabel}"
                                                     ToolTip.Tip="Section capacity" />
-                                                <!--  Attention flag (right-click to set; hidden when none)  -->
+                                                <!--  Attention flag — always visible; faint placeholder when unset  -->
                                                 <Viewbox
                                                     Grid.Column="6"
                                                     Width="20"
@@ -1271,9 +1271,9 @@
                                                     Margin="6,-1,0,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Top"
-                                                    IsVisible="{Binding HasFlag}"
-                                                    ToolTip.Tip="Section flag (right-click the card to change)">
-                                                    <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagBrush}" />
+                                                    Opacity="{Binding FlagOpacity}"
+                                                    ToolTip.Tip="{Binding FlagTooltip}">
+                                                    <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagDisplayBrush}" />
                                                 </Viewbox>
                                             </Grid>
 

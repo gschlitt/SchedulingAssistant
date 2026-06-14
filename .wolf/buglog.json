@@ -14803,6 +14803,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-14T19:51:59.400Z"
+    },
+    {
+      "id": "bug-922",
+      "timestamp": "2026-06-14T20:20:37.689Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-14T20:20:37.689Z"
     }
   ]
 }

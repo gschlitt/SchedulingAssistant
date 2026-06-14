@@ -41,7 +41,7 @@ public sealed class FileAppLogger : IAppLogger
         Write("ERROR", context, ex);
         // Bugsnag's internal BlockingCollection may be disposed during app
         // termination — the error reporter must never throw.
-        try { BugsnagClient?.Notify(ex); }
+        try { BugsnagClient?.Notify(ex, report => report.Event.Context = context); }
         catch (ObjectDisposedException) { }
         catch (Exception) { }
         // In dev mode, re-throw immediately so exceptions surface with a full stack

@@ -80,10 +80,26 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasFlag))]
     [NotifyPropertyChangedFor(nameof(FlagBrush))]
+    [NotifyPropertyChangedFor(nameof(FlagDisplayBrush))]
+    [NotifyPropertyChangedFor(nameof(FlagOpacity))]
+    [NotifyPropertyChangedFor(nameof(FlagTooltip))]
     private SectionFlag _flag;
 
     /// <summary>True when a flag is set (controls flag-icon visibility on the card).</summary>
     public bool HasFlag => Flag != SectionFlag.None;
+
+    /// <summary>Brush used by the flag icon — colored when set, muted grey when unset.</summary>
+    public IBrush FlagDisplayBrush => FlagVisuals.ResolveBrush(Flag)
+        ?? (Avalonia.Application.Current?.Resources.TryGetResource("FlagMuted", null, out var v) == true && v is IBrush b
+            ? b : Brushes.LightGray);
+
+    /// <summary>Opacity for the flag icon — full when set, faint hint when unset.</summary>
+    public double FlagOpacity => HasFlag ? 1.0 : 0.5;
+
+    /// <summary>Tooltip for the flag icon — instructional when unset, descriptive when set.</summary>
+    public string FlagTooltip => HasFlag
+        ? "Section flag (right-click the card to change)"
+        : "Right-click the card to set an attention flag";
 
     /// <summary>Brush for the top-line flag icon, or null when no flag is set.</summary>
     public IBrush? FlagBrush => FlagVisuals.ResolveBrush(Flag);
