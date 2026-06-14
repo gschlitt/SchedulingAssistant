@@ -1,6 +1,7 @@
 using System.Data.Common;
 using SchedulingAssistant.Demo;
 using SchedulingAssistant.Models;
+using SchedulingAssistant.Services;
 
 namespace SchedulingAssistant.Data.Repositories.Demo;
 
@@ -15,11 +16,34 @@ public class DemoInstructorRepository : IInstructorRepository
 
     /// <inheritdoc/>
     public List<Instructor> GetAll() =>
-        [.. _instructors.OrderBy(i => i.LastName).ThenBy(i => i.FirstName)];
+        [.. SortByCurrentMode(_instructors)];
 
     /// <inheritdoc/>
     public List<Instructor> GetAllActive() =>
-        [.. _instructors.Where(i => i.IsActive).OrderBy(i => i.LastName).ThenBy(i => i.FirstName)];
+        [.. SortByCurrentMode(_instructors.Where(i => i.IsActive))];
+
+    /// <summary>
+    /// Sorts instructors according to <see cref="AppSettings.InstructorSortMode"/>,
+    /// mirroring the SQL ORDER BY in <see cref="InstructorRepository.GetAll"/>.
+    /// StaffType falls back to last-name order here; the caller re-sorts in memory
+    /// after resolving display names.
+    /// </summary>
+    private static IOrderedEnumerable<Instructor> SortByCurrentMode(IEnumerable<Instructor> instructors)
+    {
+        return AppSettings.Current.InstructorSortMode switch
+        {
+            InstructorSortMode.FirstName => instructors
+                .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase),
+            InstructorSortMode.Initials => instructors
+                .OrderBy(i => i.Initials, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+            _ => instructors
+                .OrderBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase),
+        };
+    }
 
     /// <inheritdoc/>
     public Instructor? GetById(string id) =>
