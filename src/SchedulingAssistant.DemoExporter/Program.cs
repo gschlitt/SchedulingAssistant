@@ -126,6 +126,7 @@ public static class Program
         var tags         = envValues.Where(r => r[1] == "tag").ToList();
         var resources    = envValues.Where(r => r[1] == "resource").ToList();
         var reserves     = envValues.Where(r => r[1] == "reserve").ToList();
+        var roomTypes    = envValues.Where(r => r[1] == "roomType").ToList();
 
         // ── Print summary ───────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ public static class Program
         Console.WriteLine($"  {instructors.Count} instructors, {rooms.Count} rooms, {campuses.Count} campuses");
         Console.WriteLine($"  {blockPatterns.Count} block patterns, {legalStartTimes.Count} legal start time rows");
         Console.WriteLine($"  {sectionTypes.Count} section types, {meetingTypes.Count} meeting types, {staffTypes.Count} staff types");
-        Console.WriteLine($"  {tags.Count} tags, {resources.Count} resources, {reserves.Count} reserves");
+        Console.WriteLine($"  {tags.Count} tags, {resources.Count} resources, {reserves.Count} reserves, {roomTypes.Count} room types");
         Console.WriteLine($"  {sections.Count} sections, {meetings.Count} meetings");
         Console.WriteLine($"  {commitments.Count} commitments, {releases.Count} releases, {sectionCodePatterns.Count} code patterns");
         Console.WriteLine();
@@ -170,6 +171,7 @@ public static class Program
         var tagMap = BuildIdMap(tags.OrderBy(r => GetSortOrder(r[3])), "demo-tag");
         var resMap = BuildIdMap(resources.OrderBy(r => GetSortOrder(r[3])), "demo-res");
         var reserveMap = BuildIdMap(reserves.OrderBy(r => GetSortOrder(r[3])), "demo-reserve");
+        var roomTypeMap = BuildIdMap(roomTypes.OrderBy(r => GetSortOrder(r[3])), "demo-rt");
 
         var sectionMap = BuildIdMap(
             sections.OrderBy(r => r[1]).ThenBy(r => r[2]).ThenBy(r => r[3]),
@@ -189,7 +191,7 @@ public static class Program
 
         // Merge all env value maps for FK lookups
         var allEnvMap = new Dictionary<string, string>();
-        foreach (var m in new[] { stMap, mtMap, staffMap, tagMap, resMap, reserveMap })
+        foreach (var m in new[] { stMap, mtMap, staffMap, tagMap, resMap, reserveMap, roomTypeMap })
             foreach (var kv in m) allEnvMap[kv.Key] = kv.Value;
 
         // ── Generate and write files ────────────────────────────────────────
@@ -202,12 +204,12 @@ public static class Program
             ["DemoData.Subjects.cs"] = GenSubjects(subjects, subjectMap),
             ["DemoData.Courses.cs"] = GenCourses(courses, courseMap, subjectMap, tagMap),
             ["DemoData.Instructors.cs"] = GenInstructors(instructors, instructorMap, staffMap),
-            ["DemoData.Rooms.cs"] = GenRooms(rooms, roomMap, campusMap),
+            ["DemoData.Rooms.cs"] = GenRooms(rooms, roomMap, campusMap, roomTypeMap),
             ["DemoData.BlockPatterns.cs"] = GenBlockPatterns(blockPatterns, bpMap),
             ["DemoData.LegalStartTimes.cs"] = GenLegalStartTimes(legalStartTimes),
             ["DemoData.SchedulingEnvironment.cs"] = GenSchedulingEnvironment(
-                sectionTypes, meetingTypes, staffTypes, tags, resources, reserves,
-                stMap, mtMap, staffMap, tagMap, resMap, reserveMap),
+                sectionTypes, meetingTypes, staffTypes, tags, resources, reserves, roomTypes,
+                stMap, mtMap, staffMap, tagMap, resMap, reserveMap, roomTypeMap),
             ["DemoData.Sections.cs"] = GenSections(sections, sectionMap, semMap, courseMap, allEnvMap, campusMap, roomMap, instructorMap, tagMap, resMap, reserveMap),
             ["DemoData.Meetings.cs"] = GenMeetings(meetings, meetingMap, semMap, campusMap, roomMap, instructorMap, allEnvMap, tagMap, resMap),
             ["DemoData.InstructorCommitments.cs"] = GenCommitments(commitments, commitMap, instructorMap, semMap),
@@ -399,7 +401,7 @@ public static class Program
 
     /// <summary>Generates DemoData.Rooms.cs.</summary>
     private static string GenRooms(List<string[]> rows, Dictionary<string, string> map,
-        Dictionary<string, string> campusMap)
+        Dictionary<string, string> campusMap, Dictionary<string, string> roomTypeMap)
     {
         var sb = Header();
         sb.AppendLine("    public static readonly List<Room> Rooms =");
@@ -409,20 +411,29 @@ public static class Program
         {
             var data = Json(r[3]);
             var campusId = data["campusId"]?.GetValue<string>();
+            var roomTypeId = data["roomTypeId"]?.GetValue<string>();
             var capacity = data["capacity"]?.GetValue<int>() ?? 0;
+            var features = data["features"]?.GetValue<string>() ?? "";
+            var notes = data["notes"]?.GetValue<string>() ?? "";
             var sortOrder = data["sortOrder"]?.GetValue<int>() ?? 0;
 
             sb.AppendLine("        new()");
             sb.AppendLine("        {");
-            Prop(sb, "Id", Q(map[r[0]]), 10);
-            Prop(sb, "Building", Q(Esc(r[1])), 10);
-            Prop(sb, "RoomNumber", Q(Esc(r[2])), 10);
+            Prop(sb, "Id", Q(map[r[0]]), 11);
+            Prop(sb, "Building", Q(Esc(r[1])), 11);
+            Prop(sb, "RoomNumber", Q(Esc(r[2])), 11);
             if (capacity > 0)
-                Prop(sb, "Capacity", capacity.ToString(), 10);
+                Prop(sb, "Capacity", capacity.ToString(), 11);
+            if (!string.IsNullOrEmpty(features))
+                Prop(sb, "Features", Q(Esc(features)), 11);
+            if (!string.IsNullOrEmpty(notes))
+                Prop(sb, "Notes", Q(Esc(notes)), 11);
             if (!string.IsNullOrEmpty(campusId))
-                Prop(sb, "CampusId", Q(Remap(campusMap, campusId)), 10);
+                Prop(sb, "CampusId", Q(Remap(campusMap, campusId)), 11);
+            if (!string.IsNullOrEmpty(roomTypeId))
+                Prop(sb, "RoomTypeId", Q(Remap(roomTypeMap, roomTypeId)), 11);
             if (sortOrder != 0)
-                Prop(sb, "SortOrder", sortOrder.ToString(), 10);
+                Prop(sb, "SortOrder", sortOrder.ToString(), 11);
             RemoveTrailingComma(sb);
             sb.AppendLine("        },");
         }
@@ -486,10 +497,11 @@ public static class Program
     /// <summary>Generates DemoData.SchedulingEnvironment.cs with six lists.</summary>
     private static string GenSchedulingEnvironment(
         List<string[]> sectionTypes, List<string[]> meetingTypes, List<string[]> staffTypes,
-        List<string[]> tags, List<string[]> resources, List<string[]> reserves,
+        List<string[]> tags, List<string[]> resources, List<string[]> reserves, List<string[]> roomTypes,
         Dictionary<string, string> stMap, Dictionary<string, string> mtMap,
         Dictionary<string, string> staffMap, Dictionary<string, string> tagMap,
-        Dictionary<string, string> resMap, Dictionary<string, string> reserveMap)
+        Dictionary<string, string> resMap, Dictionary<string, string> reserveMap,
+        Dictionary<string, string> roomTypeMap)
     {
         var sb = Header();
 
@@ -502,6 +514,7 @@ public static class Program
         WriteEnvList(sb, "Tags", tags, tagMap);
         WriteEnvList(sb, "Resources", resources, resMap);
         WriteEnvList(sb, "Reserves", reserves, reserveMap);
+        WriteEnvList(sb, "RoomTypes", roomTypes, roomTypeMap);
 
         return Footer(sb);
     }

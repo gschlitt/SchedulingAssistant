@@ -9,392 +9,389 @@ public static partial class DemoData
         new()
         {
             Id          = "demo-inst-1",
-            FirstName   = "Kassandra",
-            LastName    = "Abbott",
-            Initials    = "KA",
-            IsActive    = true,
-            Email       = "kassandra.abbott@udelphi.edu",
-            StaffTypeId = "demo-staff-5"
+            FirstName   = "Dante",
+            LastName    = "Bahringer",
+            Initials    = "DB",
+            IsActive    = false,
+            Email       = "dante.bahringer@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-2",
-            FirstName   = "Michel",
-            LastName    = "Abernathy",
-            Initials    = "MA",
-            IsActive    = false,
-            Email       = "michel.abernathy@udelphi.edu",
+            FirstName   = "Ruthe",
+            LastName    = "Botsford",
+            Initials    = "RB",
+            IsActive    = true,
+            Email       = "ruthe.botsford@udelphi.edu",
             StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-3",
-            FirstName   = "Daphnee",
-            LastName    = "Abshire",
-            Initials    = "DA",
+            FirstName   = "Grover",
+            LastName    = "Brown",
+            Initials    = "GB",
             IsActive    = true,
-            Email       = "daphnee.abshire@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "grover.brown@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-4",
-            FirstName   = "Charlie",
-            LastName    = "Altenwerth",
-            Initials    = "CA",
-            IsActive    = true,
-            Email       = "charlie.altenwerth@udelphi.edu",
+            FirstName   = "Jazmyn",
+            LastName    = "Carroll",
+            Initials    = "JC",
+            IsActive    = false,
+            Email       = "jazmyn.carroll@udelphi.edu",
             StaffTypeId = "demo-staff-3"
         },
         new()
         {
             Id          = "demo-inst-5",
-            FirstName   = "Charity",
-            LastName    = "Aufderhar",
-            Initials    = "CA",
+            FirstName   = "Freida",
+            LastName    = "Cremin",
+            Initials    = "FC",
             IsActive    = true,
-            Email       = "charity.aufderhar@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "freida.cremin@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-6",
-            FirstName   = "Effie",
-            LastName    = "Bahringer",
-            Initials    = "EB",
+            FirstName   = "Santa",
+            LastName    = "Crooks",
+            Initials    = "SC",
             IsActive    = true,
-            Email       = "effie.bahringer@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "santa.crooks@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-7",
-            FirstName   = "Leo",
-            LastName    = "Beer",
-            Initials    = "LB",
+            FirstName   = "Sammy",
+            LastName    = "Donnelly",
+            Initials    = "PP",
             IsActive    = true,
-            Email       = "leo.beer@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "sammy.donnelly@udelphi.edu",
+            StaffTypeId = "demo-staff-3"
         },
         new()
         {
             Id          = "demo-inst-8",
-            FirstName   = "Pasquale",
-            LastName    = "Botsford",
-            Initials    = "PB",
+            FirstName   = "Paolo",
+            LastName    = "Dooley",
+            Initials    = "PD",
             IsActive    = true,
-            Email       = "pasquale.botsford@udelphi.edu",
+            Email       = "paolo.dooley@udelphi.edu",
             StaffTypeId = "demo-staff-4"
         },
         new()
         {
             Id          = "demo-inst-9",
-            FirstName   = "Rosetta",
-            LastName    = "Breitenberg",
-            Initials    = "RB",
-            IsActive    = false,
-            Email       = "rosetta.breitenberg@udelphi.edu",
+            FirstName   = "Abbigail",
+            LastName    = "Douglas",
+            Initials    = "AD",
+            IsActive    = true,
+            Email       = "abbigail.douglas@udelphi.edu",
             StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-10",
-            FirstName   = "Lesly",
-            LastName    = "Christiansen",
-            Initials    = "LC",
-            IsActive    = false,
-            Email       = "lesly.christiansen@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            FirstName   = "Johann",
+            LastName    = "Gleason",
+            Initials    = "JG",
+            IsActive    = true,
+            Email       = "johann.gleason@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-11",
-            FirstName   = "Eldridge",
-            LastName    = "Dickens",
-            Initials    = "ED",
-            IsActive    = true,
-            Email       = "eldridge.dickens@udelphi.edu",
-            StaffTypeId = "demo-staff-5"
+            FirstName   = "Rhea",
+            LastName    = "Grant",
+            Initials    = "RG",
+            IsActive    = false,
+            Email       = "rhea.grant@udelphi.edu"
         },
         new()
         {
             Id          = "demo-inst-12",
-            FirstName   = "Breanne",
-            LastName    = "Effertz",
-            Initials    = "BE",
+            FirstName   = "Charles",
+            LastName    = "Gulgowski",
+            Initials    = "CG",
             IsActive    = true,
-            Email       = "breanne.effertz@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
-        },
-        new()
-        {
-            Id          = "demo-inst-13",
-            FirstName   = "Alberto",
-            LastName    = "Hansen",
-            Initials    = "AH",
-            IsActive    = true,
-            Email       = "alberto.hansen@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
-        },
-        new()
-        {
-            Id          = "demo-inst-14",
-            FirstName   = "Libby",
-            LastName    = "Hartmann",
-            Initials    = "LH",
-            IsActive    = true,
-            Email       = "libby.hartmann@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
-        },
-        new()
-        {
-            Id          = "demo-inst-15",
-            FirstName   = "Otha",
-            LastName    = "Hayes",
-            Initials    = "OH",
-            IsActive    = true,
-            Email       = "otha.hayes@udelphi.edu",
+            Email       = "charles.gulgowski@udelphi.edu",
             StaffTypeId = "demo-staff-4"
         },
         new()
         {
-            Id          = "demo-inst-16",
-            FirstName   = "Jarvis",
-            LastName    = "Hermiston",
-            Initials    = "JH",
+            Id          = "demo-inst-13",
+            FirstName   = "Brielle",
+            LastName    = "Hartmann",
+            Initials    = "BH",
             IsActive    = true,
-            Email       = "jarvis.hermiston@udelphi.edu",
+            Email       = "brielle.hartmann@udelphi.edu",
+            StaffTypeId = "demo-staff-4"
+        },
+        new()
+        {
+            Id          = "demo-inst-14",
+            FirstName   = "Mac",
+            LastName    = "Herzog",
+            Initials    = "MH",
+            IsActive    = true,
+            Email       = "mac.herzog@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
+        },
+        new()
+        {
+            Id          = "demo-inst-15",
+            FirstName   = "Micah",
+            LastName    = "Hills",
+            Initials    = "MH",
+            IsActive    = true,
+            Email       = "micah.hills@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
+        },
+        new()
+        {
+            Id          = "demo-inst-16",
+            FirstName   = "Dax",
+            LastName    = "Hyatt",
+            Initials    = "DH",
+            IsActive    = true,
+            Email       = "dax.hyatt@udelphi.edu",
             StaffTypeId = "demo-staff-3"
         },
         new()
         {
             Id          = "demo-inst-17",
-            FirstName   = "Kristy",
-            LastName    = "Howe",
-            Initials    = "KH",
+            FirstName   = "Monserrat",
+            LastName    = "Jenkins",
+            Initials    = "MJ",
             IsActive    = true,
-            Email       = "kristy.howe@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "monserrat.jenkins@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-18",
-            FirstName   = "Judah",
-            LastName    = "Kemmer",
-            Initials    = "JK",
+            FirstName   = "Ramon",
+            LastName    = "Jones",
+            Initials    = "RJ",
             IsActive    = true,
-            Email       = "judah.kemmer@udelphi.edu",
-            StaffTypeId = "demo-staff-6"
+            Email       = "ramon.jones@udelphi.edu"
         },
         new()
         {
             Id          = "demo-inst-19",
-            FirstName   = "Alvera",
-            LastName    = "Kihn",
-            Initials    = "AK",
+            FirstName   = "Louie",
+            LastName    = "Konopelski",
+            Initials    = "LK",
             IsActive    = true,
-            Email       = "alvera.kihn@udelphi.edu",
-            StaffTypeId = "demo-staff-6"
+            Email       = "louie.konopelski@udelphi.edu",
+            StaffTypeId = "demo-staff-3"
         },
         new()
         {
             Id          = "demo-inst-20",
-            FirstName   = "Rickie",
-            LastName    = "Kohler",
-            Initials    = "RK",
+            FirstName   = "Hilton",
+            LastName    = "Kreiger",
+            Initials    = "HK",
             IsActive    = true,
-            Email       = "rickie.kohler@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "hilton.kreiger@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-21",
-            FirstName   = "Katelyn",
-            LastName    = "Kreiger",
-            Initials    = "KK",
-            IsActive    = true,
-            Email       = "katelyn.kreiger@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
+            FirstName   = "Delores",
+            LastName    = "Kshlerin",
+            Initials    = "DK",
+            IsActive    = false,
+            Email       = "delores.kshlerin@udelphi.edu"
         },
         new()
         {
             Id          = "demo-inst-22",
-            FirstName   = "Paxton",
-            LastName    = "McKenzie",
-            Initials    = "PM",
-            IsActive    = false,
-            Email       = "paxton.mckenzie@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
+            FirstName   = "Kasey",
+            LastName    = "Little",
+            Initials    = "KL",
+            IsActive    = true,
+            Email       = "kasey.little@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-23",
-            FirstName   = "Jamaal",
-            LastName    = "Mohr",
-            Initials    = "JM",
+            FirstName   = "Shaina",
+            LastName    = "Mueller",
+            Initials    = "SM",
             IsActive    = true,
-            Email       = "jamaal.mohr@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "shaina.mueller@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-24",
-            FirstName   = "Cedrick",
-            LastName    = "Mraz",
-            Initials    = "CM",
-            IsActive    = true,
-            Email       = "cedrick.mraz@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            FirstName   = "Katlynn",
+            LastName    = "Orn",
+            Initials    = "KO",
+            IsActive    = false,
+            Email       = "katlynn.orn@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-25",
-            FirstName   = "Hermina",
-            LastName    = "Mueller",
-            Initials    = "HM",
+            FirstName   = "Deondre",
+            LastName    = "Padberg",
+            Initials    = "DP",
             IsActive    = true,
-            Email       = "hermina.mueller@udelphi.edu",
+            Email       = "deondre.padberg@udelphi.edu",
             StaffTypeId = "demo-staff-3"
         },
         new()
         {
             Id          = "demo-inst-26",
-            FirstName   = "Carrie",
-            LastName    = "O'Kon",
-            Initials    = "CO",
+            FirstName   = "Jalyn",
+            LastName    = "Padberg",
+            Initials    = "JP",
             IsActive    = true,
-            Email       = "carrie.o'kon@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
+            Email       = "jalyn.padberg@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-27",
-            FirstName   = "Guido",
-            LastName    = "Okuneva",
-            Initials    = "GO",
+            FirstName   = "Gudrun",
+            LastName    = "Prohaska",
+            Initials    = "GP",
             IsActive    = true,
-            Email       = "guido.okuneva@udelphi.edu",
-            StaffTypeId = "demo-staff-5"
+            Email       = "gudrun.prohaska@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-28",
-            FirstName   = "Foster",
-            LastName    = "Pfannerstill",
-            Initials    = "FP",
+            FirstName   = "Jaylan",
+            LastName    = "Prosacco",
+            Initials    = "JP",
             IsActive    = true,
-            Email       = "foster.pfannerstill@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
-        },
-        new()
-        {
-            Id          = "demo-inst-29",
-            FirstName   = "Xzavier",
-            LastName    = "Pollich",
-            Initials    = "XP",
-            IsActive    = true,
-            Email       = "xzavier.pollich@udelphi.edu",
+            Email       = "jaylan.prosacco@udelphi.edu",
             StaffTypeId = "demo-staff-5"
         },
         new()
         {
-            Id          = "demo-inst-30",
-            FirstName   = "Kyra",
-            LastName    = "Sauer",
-            Initials    = "KS",
+            Id          = "demo-inst-29",
+            FirstName   = "Quentin",
+            LastName    = "Ruecker",
+            Initials    = "QR",
             IsActive    = true,
-            Email       = "kyra.sauer@udelphi.edu",
+            Email       = "quentin.ruecker@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
+        },
+        new()
+        {
+            Id          = "demo-inst-30",
+            FirstName   = "Valentine",
+            LastName    = "Sauer",
+            Initials    = "VS",
+            IsActive    = true,
+            Email       = "valentine.sauer@udelphi.edu",
             StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-31",
-            FirstName   = "Justus",
-            LastName    = "Schmidt",
-            Initials    = "JS",
+            FirstName   = "Kaelyn",
+            LastName    = "Sipes",
+            Initials    = "KS",
             IsActive    = true,
-            Email       = "justus.schmidt@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "kaelyn.sipes@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-32",
-            FirstName   = "Bernard",
-            LastName    = "Spencer",
-            Initials    = "BS",
+            FirstName   = "Curt",
+            LastName    = "Towne",
+            Initials    = "CT",
             IsActive    = true,
-            Email       = "bernard.spencer@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "curt.towne@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-33",
-            FirstName   = "Viviane",
-            LastName    = "Tillman",
-            Initials    = "VT",
+            FirstName   = "Rita",
+            LastName    = "Ullrich",
+            Initials    = "RU",
             IsActive    = true,
-            Email       = "viviane.tillman@udelphi.edu",
-            StaffTypeId = "demo-staff-3"
+            Email       = "rita.ullrich@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-34",
-            FirstName   = "Marilyne",
-            LastName    = "Toy",
-            Initials    = "MT",
+            FirstName   = "Adonis",
+            LastName    = "VonRueden",
+            Initials    = "AV",
             IsActive    = true,
-            Email       = "marilyne.toy@udelphi.edu",
-            StaffTypeId = "demo-staff-6"
+            Email       = "adonis.vonrueden@udelphi.edu",
+            StaffTypeId = "demo-staff-3"
         },
         new()
         {
             Id          = "demo-inst-35",
-            FirstName   = "Krista",
-            LastName    = "VonRueden",
-            Initials    = "KV",
+            FirstName   = "Elias",
+            LastName    = "Wehner",
+            Initials    = "EW",
             IsActive    = true,
-            Email       = "krista.vonrueden@udelphi.edu",
-            StaffTypeId = "demo-staff-7"
+            Email       = "elias.wehner@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-36",
-            FirstName   = "Will",
-            LastName    = "Wisoky",
-            Initials    = "WW",
+            FirstName   = "Misael",
+            LastName    = "Weissnat",
+            Initials    = "MW",
             IsActive    = true,
-            Email       = "will.wisoky@udelphi.edu",
-            StaffTypeId = "demo-staff-5"
+            Email       = "misael.weissnat@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-37",
-            FirstName   = "Vickie",
-            LastName    = "Witting",
-            Initials    = "VW",
-            IsActive    = false,
-            Email       = "vickie.witting@udelphi.edu",
-            StaffTypeId = "demo-staff-5"
+            FirstName   = "Antonia",
+            LastName    = "White",
+            Initials    = "AW",
+            IsActive    = true,
+            Email       = "antonia.white@udelphi.edu",
+            StaffTypeId = "demo-staff-2"
         },
         new()
         {
             Id          = "demo-inst-38",
-            FirstName   = "Clare",
-            LastName    = "Yost",
-            Initials    = "CY",
+            FirstName   = "Shanny",
+            LastName    = "Wilkinson",
+            Initials    = "SW",
             IsActive    = true,
-            Email       = "clare.yost@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "shanny.wilkinson@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         },
         new()
         {
             Id          = "demo-inst-39",
-            FirstName   = "Brooke",
-            LastName    = "Zemlak",
-            Initials    = "BZ",
+            FirstName   = "Aurore",
+            LastName    = "Yost",
+            Initials    = "AY",
             IsActive    = true,
-            Email       = "brooke.zemlak@udelphi.edu",
-            StaffTypeId = "demo-staff-4"
+            Email       = "aurore.yost@udelphi.edu",
+            StaffTypeId = "demo-staff-1"
         }
     ];
 }

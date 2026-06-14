@@ -18,6 +18,11 @@ public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentReposit
     private readonly List<SchedulingEnvironmentValue> _tags          = [.. DemoData.Tags];
     private readonly List<SchedulingEnvironmentValue> _resources     = [.. DemoData.Resources];
     private readonly List<SchedulingEnvironmentValue> _reserves      = [.. DemoData.Reserves];
+    private readonly List<SchedulingEnvironmentValue> _roomTypes     = [.. DemoData.RoomTypes];
+
+    /// <summary>All buckets, used by the type-agnostic operations (lookup, update, delete).</summary>
+    private List<SchedulingEnvironmentValue>[] AllBuckets =>
+        [_sectionTypes, _meetingTypes, _staffTypes, _tags, _resources, _reserves, _roomTypes];
 
     private List<SchedulingEnvironmentValue> ListFor(string type) => type switch
     {
@@ -27,16 +32,12 @@ public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentReposit
         SchedulingEnvironmentTypes.Tag         => _tags,
         SchedulingEnvironmentTypes.Resource    => _resources,
         SchedulingEnvironmentTypes.Reserve     => _reserves,
+        SchedulingEnvironmentTypes.RoomType    => _roomTypes,
         _                                      => []
     };
 
     private IEnumerable<SchedulingEnvironmentValue> AllValues =>
-        _sectionTypes
-            .Concat(_meetingTypes)
-            .Concat(_staffTypes)
-            .Concat(_tags)
-            .Concat(_resources)
-            .Concat(_reserves);
+        AllBuckets.SelectMany(b => b);
 
     /// <inheritdoc/>
     public List<SchedulingEnvironmentValue> GetAll(string type) =>
@@ -53,8 +54,7 @@ public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentReposit
     /// <inheritdoc/>
     public void Update(SchedulingEnvironmentValue value)
     {
-        var list = AllValues.ToList(); // find which list owns this id
-        foreach (var bucket in new[] { _sectionTypes, _meetingTypes, _staffTypes, _tags, _resources, _reserves })
+        foreach (var bucket in AllBuckets) // find which list owns this id
         {
             int i = bucket.FindIndex(v => v.Id == value.Id);
             if (i >= 0) { bucket[i] = value; return; }
@@ -64,7 +64,7 @@ public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentReposit
     /// <inheritdoc/>
     public void Delete(string id, DbTransaction? tx = null)
     {
-        foreach (var bucket in new[] { _sectionTypes, _meetingTypes, _staffTypes, _tags, _resources, _reserves })
+        foreach (var bucket in AllBuckets)
         {
             if (bucket.RemoveAll(v => v.Id == id) > 0) return;
         }

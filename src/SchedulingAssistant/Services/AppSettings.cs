@@ -74,6 +74,15 @@ public class AppSettings
     public bool ShowOnlyActiveInstructors { get; set; } = true;
 
     /// <summary>
+    /// Controls whether the developer Debug menu is shown in the main menu bar.
+    /// The Debug menu only exists in DEBUG builds at all; within a DEBUG build this flag
+    /// lets a developer hide it (e.g. for screenshots or design QC) without recompiling.
+    /// Read once at startup by <c>MainView</c>; changes take effect on the next app start.
+    /// Default: true (preserves the historical always-on DEBUG behavior).
+    /// </summary>
+    public bool ShowDebugMenu { get; set; } = true;
+
+    /// <summary>
     /// Default seating capacity applied to a new section when its course has no capacity of its own.
     /// Null means no default — such sections start with unspecified (null) capacity.
     /// </summary>

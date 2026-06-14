@@ -61,6 +61,41 @@ public class PreferencesViewModel : ViewModelBase
         OnPropertyChanged(nameof(FilterExpandsSection));
     }
 
+    // ── Developer ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// True only in DEBUG builds. Used to gate the "Show Debug menu" checkbox so it
+    /// never appears in Release builds (where the Debug menu does not exist at all).
+    /// </summary>
+    public bool IsDebugBuild
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Mirrors <see cref="AppSettings.ShowDebugMenu"/>. When false, the developer Debug
+    /// menu is hidden from the menu bar. Takes effect on the next app start. Persists
+    /// immediately on change. Only meaningful in DEBUG builds (see <see cref="IsDebugBuild"/>).
+    /// </summary>
+    public bool ShowDebugMenu
+    {
+        get => AppSettings.Current.ShowDebugMenu;
+        set
+        {
+            if (AppSettings.Current.ShowDebugMenu == value) return;
+            AppSettings.Current.ShowDebugMenu = value;
+            AppSettings.Current.Save();
+            OnPropertyChanged();
+        }
+    }
+
     // ── Access Mode ──────────────────────────────────────────────────────────
 
     /// <summary>

@@ -9,14 +9,15 @@ public static partial class DemoData
         new()
         {
             Id           = "demo-campus-1",
-            Name         = "Lakeview",
-            Abbreviation = "LV"
+            Name         = "Westbrook",
+            Abbreviation = "WB"
         },
         new()
         {
             Id           = "demo-campus-2",
-            Name         = "Westbrook",
-            Abbreviation = "WB"
+            Name         = "Lakeview",
+            Abbreviation = "LV",
+            SortOrder    = 1
         }
     ];
 }

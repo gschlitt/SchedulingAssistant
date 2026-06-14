@@ -17,8 +17,8 @@
     -->
     <StackPanel Margin="16,0,16,8" Spacing="8">
 
-        <TextBlock Text="Common scheduling tasks and how to accomplish them."
-                   FontSize="{StaticResource FontSizeNormal}"
+        <TextBlock Text="Common scheduling tasks and how to accomplish them (use the popout icon to create a sticky note)"
+                   FontSize="{StaticResource FontSizeLarge}"
                    Margin="0,0,0,4" />
 
         <WrapPanel Orientation="Horizontal">
@@ -27,10 +27,10 @@
                                   Title="I need to fill a room"
                                   Accent="#DBEAFE"
                                   StoryText="The registrar gives us rooms we have to fill as much as possible.">
-                <c:WorkflowCardChrome.StepsText>1. Use the [[Room filter]] and select 'unroomed'. Section meetings without rooms are shown.[br]
+                <c:WorkflowCardChrome.StepsText>1. Use the [[Room filter|success]] and select 'unroomed'. Section meetings without rooms are shown.[br]
                     2. Choose a room not yet full, and use the [[Room|success]] overlay to see that room's bookings (in red).[br]
                     3. Look for unroomed meetings which do not conflict with the chosen room.[br]
-                    4. **Right-click** to assign the room.[br]
+                    4. Right-click to assign the room.[br]
                     5. Repeat until that room is full, then move on to the next room.
                 </c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
@@ -39,21 +39,21 @@
                                   Title="Where and when to put a section?"
                                   Accent="#D1FAE5"
                                   StoryText="I have to balance the instructor's schedule, room availability and program considerations.">
-                <c:WorkflowCardChrome.StepsText>1. Use [[Filters]] to narrow to a relevant view, showing the sections the new section interacts with.[br]
-                    2. [[Overlay]] the instructor's schedule as decided so far.[br]
+                <c:WorkflowCardChrome.StepsText>1. Use [[Filters]] to narrow to a relevant view, showing just the sections relevant to the new section (e.g. sections of the same course, or tagged as being in the same program).[br]
+                    2. [[Overlay]] the instructor's schedule as decided so far.[br]                   
                     3. Add the section and supply just the requirements you have of the meetings (at minimum the number of them and their length). Add more if you need it (days it must meet, room types).[br]
-                    4. Use the [[Room|success]] tool to compare the room proposals against your program requirement and the instructor's schedule.[br]
-                    [More on room proposals](https://github.com/gmsschlitt/SchedulingAssistant)</c:WorkflowCardChrome.StepsText>
+                    4. Use the [[Room|accent]] tool to compare the room proposals against your program requirement and the instructor's schedule. Accept a room and time that works.[br]
+                    [See a video](https://github.com/gmsschlitt/SchedulingAssistant)</c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
                                   Title="Staffing sections and assigning workload"
                                   Accent="#FEF3C7"
                                   StoryText="I know (mostly) when my sections will be offered. Now I need to assign instructors and fill their workload.">
-                <c:WorkflowCardChrome.StepsText>1. Pick an instructor whose workload is not yet full (check [[Workload View]]). [[Overlay]] their schedule as known so far (non-teaching commitments are entered under Instructors).[br]
+                <c:WorkflowCardChrome.StepsText>1. Pick an instructor whose workload is not yet full (check [[Workload View]]). [[Overlay]] their schedule as known so far (non-teaching time commitments, if relevant, are entered under Instructors).[br]
                     2. Use the [[Instructor filter]] to see unstaffed sections (isolated or emphasized).[br]
-                    3. Optionally combine with other filters to remove clutter (an instructor may teach only certain courses or tags).[br]
-                    4. Find a course that fits the instructor's schedule. **Right-click** to assign it.[br]
+                    3. Optionally combine with other filters to remove clutter (an instructor may teach only certain courses, subjects, on certain campusses etc.)[br]
+                    4. Find a course that fits the instructor's schedule. Right-click to assign it.[br]
                     5. Continue until that instructor's workload is full, then move on.</c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
@@ -61,7 +61,7 @@
                                   Title="Import a Shared Schedule"
                                   Accent="#F5F0FF"
                                   StoryText="I need to see another department's sections on my grid to make sure ours do not conflict.">
-                <c:WorkflowCardChrome.StepsText>1. Ask the other department to export from [[Sharing]] → Export. Encourage them to share a filtered view of just the relevant sections.[br]
+                <c:WorkflowCardChrome.StepsText>1. Ask the other department to use the [[Sharing]] tool. Encourage them to share a filtered view of just the relevant sections.[br]
                     2. They send you the CSV file or place it on a shared drive.[br]
                     3. Open [[Sharing]] → Import and select the CSV file.[br]
                     4. Shared sections appear on the grid as translucent overlay blocks.[br]
@@ -72,31 +72,48 @@
             <c:WorkflowCardChrome Margin="0,0,10,10"
                                   Title="Find an Open Room"
                                   Accent="#FFE4E6"
-                                  StoryText="I need to find a room that is available at a specific time.">
-                <c:WorkflowCardChrome.StepsText>1. Open the [[Filters]] bar and select a room from the Room dropdown.[br]
-                    2. The grid shows only sections assigned to that room — gaps are open slots.[br]
-                    3. To compare multiple rooms, clear the filter and try another.[br]
-                    4. Or use the [[Room Browser|success]] for a side-by-side availability view.</c:WorkflowCardChrome.StepsText>
+                                  StoryText="I need to find a room for a section or event. I know when it has to meet.">
+                <c:WorkflowCardChrome.StepsText>
+                   
+                    1. In Section View or Events View, open the section/event.[br]
+                    2. Provide just the details you require of the meeting(s) (at a minimum create the number of meetings you need
+                    and supply their length.) Leave unspecified anything that doesn't matter (perhaps room type) and leave rooms
+                    unspecified, as that's what you're looking for. [br]
+                    3. Click the [[Room Browser]] tool. The tool will show you what's available (framed in green on the Schedule View). You can click through alternatives using the chevrons. [br]
+                    4.Once you find something, [[Accept]] the room and it will be supplied. [[Apply]] to save.[br]
+                    5. Note that if the section has a capacity specified, only rooms that have that capacity will be shown.
+                    [See a video](https://github.com/gmsschlitt/SchedulingAssistant)
+                    
+                    </c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
                                   Title="Instructor's schedules"
-                                  Accent="#FFE4E6"
+                                  Accent="#FEF3C7"
                                   StoryText="I need a way to see the non-teaching schedules for instructors.">
-                <c:WorkflowCardChrome.StepsText>1. Enter non-teaching commitments under [[Instructors]].[br]
-                    2. [[Overlay]] an instructor's schedule from the overlay bar.[br]
-                    3. Their commitments appear alongside their teaching on the grid.</c:WorkflowCardChrome.StepsText>
+                <c:WorkflowCardChrome.StepsText>1. Access the [[Instructors]] flyout on the
+                top menu bar..[br]
+                2. Select an instructor [br]
+                    3. Enter any releases or non-teaching committments.[br]
+                    4. [[Overlay]] an instructor's schedule on schedule view. [br]
+                    3. Their commitments appear alongside their teaching schedule on the grid.[br]
+                    4. Any scheduling comments you make under the [[Instructors]] flyout are accessible by clicking
+                       the note icon in [[Workload View]]</c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
                                   Title="The timetable is complicated — it's easy to miss conflicts"
-                                  Accent="#FFE4E6"
+                                  Accent="#D1FAE5"
                                   StoryText="I need a way to ensure our students are offered **conflict-free** schedules.">
                 <c:WorkflowCardChrome.StepsText>1. [[Filters]] are your friend![br]
                     2. If certain courses together form a program, **tag** them.[br]
-                    3. You can tag individual sections (in the editor, or right-click a meeting) — but better, assign [[Tags]] to the courses in the course editor.[br]
-                    4. Then every new section of those courses inherits those tags.[br]
-                    5. When timetabling, filter to that tag and check the sections together form workable schedules.</c:WorkflowCardChrome.StepsText>
+                    3. You can tag individual sections (in the section editor, or right-click a meeting in schedule view) — but better, assign [[Tags]] to the courses in the course editor:
+                     Then every new section of those courses inherits those tags.[br]
+                    4. When timetabling, filter to that tag and check that the sections together form workable schedules.[br]
+                    5. You can also [[Filter]] by level, or [[Filter]] by course (selecting the courses that together make
+                    up a slate students take.)
+                
+                </c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
@@ -112,11 +129,14 @@
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
                                   Title="Tagging sections"
-                                  Accent="#FFE4E6"
+                                  Accent="#DBEAFE"
                                   StoryText="Adding [[Tags]] to sections sounds useful, but I forget!">
                 <c:WorkflowCardChrome.StepsText>1. Tag **courses** in the course editor — then every section of that course inherits those tags automatically.[br]
                     2. For one-offs, tag an individual section in its editor or by right-clicking its meeting.</c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
+
+
+            
 
         </WrapPanel>
 

@@ -8244,3 +8244,242 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-06-08 13:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-08 13:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:52 | Created ../../../.claude/plans/frequently-it-will-be-sorted-forest.md | — | ~2283 |
+
+## Session: 2026-06-08 14:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:56 | Edited src/SchedulingAssistant/Services/AppSettings.cs | expanded (+9 lines) | ~179 |
+| 14:56 | Edited src/SchedulingAssistant/Services/CheckoutService.cs | added 1 condition(s) | ~280 |
+| 14:57 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | 2→4 lines | ~81 |
+| 14:57 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 1 condition(s) | ~135 |
+| 14:57 | Edited src/SchedulingAssistant/ViewModels/Management/PreferencesViewModel.cs | added 1 condition(s) | ~291 |
+| 14:58 | Edited src/SchedulingAssistant/Views/Management/PreferencesView.axaml | expanded (+34 lines) | ~437 |
+| 14:58 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step1aExistingDbViewModel.cs | expanded (+8 lines) | ~139 |
+| 14:58 | Edited src/SchedulingAssistant/Views/Wizard/Steps/Step1aExistingDbView.axaml | expanded (+14 lines) | ~300 |
+| 14:58 | Edited src/SchedulingAssistant/ViewModels/Wizard/StartupWizardViewModel.cs | added 1 condition(s) | ~255 |
+| 14:58 | Edited src/SchedulingAssistant/ViewModels/Wizard/Steps/Step1aExistingDbViewModel.cs | 3→3 lines | ~71 |
+| 15:00 | Session end: 10 writes across 9 files (AppSettings.cs, CheckoutService.cs, MainWindow.axaml.cs, MainWindowViewModel.cs, PreferencesViewModel.cs) | 4 reads | ~53801 tok |
+| 15:00 | Session end: 10 writes across 9 files (AppSettings.cs, CheckoutService.cs, MainWindow.axaml.cs, MainWindowViewModel.cs, PreferencesViewModel.cs) | 4 reads | ~53801 tok |
+| 15:09 | Session end: 10 writes across 9 files (AppSettings.cs, CheckoutService.cs, MainWindow.axaml.cs, MainWindowViewModel.cs, PreferencesViewModel.cs) | 4 reads | ~53801 tok |
+
+## Session: 2026-06-08 16:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-09 17:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:31 | Edited src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs | 1→2 lines | ~47 |
+| 17:31 | Edited src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs | inline fix | ~7 |
+| 17:31 | Created src/SchedulingAssistant.Tests/FactRequiresLocalDbAttribute.cs | — | ~368 |
+| 17:32 | Created .github/workflows/tests.yml | — | ~237 |
+| 17:40 | Session end: 4 writes across 3 files (RoomAvailabilityIntegrationTests.cs, FactRequiresLocalDbAttribute.cs, tests.yml) | 7 reads | ~689 tok |
+
+## Session: 2026-06-09 19:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:07 | Edited .github/workflows/tests.yml | expanded (+17 lines) | ~350 |
+| 20:34 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | expanded (+10 lines) | ~208 |
+| 20:34 | Edited src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs | inline fix | ~10 |
+| 20:34 | Edited src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs | 3→8 lines | ~158 |
+| 20:38 | Session end: 4 writes across 3 files (tests.yml, TourOverlayViewModel.cs, TourOverlayViewModelTests.cs) | 3 reads | ~991 tok |
+| 20:44 | Edited .github/workflows/tests.yml | expanded (+6 lines) | ~171 |
+| 20:44 | Edited .github/workflows/tests.yml | inline fix | ~8 |
+| 20:47 | Session end: 6 writes across 3 files (tests.yml, TourOverlayViewModel.cs, TourOverlayViewModelTests.cs) | 3 reads | ~1170 tok |
+| 20:53 | Created ../../../.claude/plans/prancy-swinging-pretzel.md | — | ~1378 |
+| 20:57 | Created ../../../.claude/plans/prancy-swinging-pretzel.md | — | ~1666 |
+| 20:58 | Edited src/SchedulingAssistant/Services/SectionCodeGenerator.cs | 3→4 lines | ~25 |
+| 20:58 | Edited src/SchedulingAssistant/Services/SectionCodeGenerator.cs | modified if() | ~121 |
+| 20:58 | Edited src/SchedulingAssistant/Services/SectionCodeGenerator.cs | added nullish coalescing | ~124 |
+| 20:58 | Edited src/SchedulingAssistant/Services/SectionCodeGenerator.cs | added 2 condition(s) | ~415 |
+| 20:59 | Created src/SchedulingAssistant.Tests/SectionCodeGeneratorTests.cs | — | ~2334 |
+| 21:01 | Created src/SchedulingAssistant.Tests/SectionCapacityTests.cs | — | ~1914 |
+| 21:08 | Edited src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs | 6→10 lines | ~145 |
+| 21:10 | Edited src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs | 11→14 lines | ~222 |
+| 21:18 | Session end: 16 writes across 7 files (tests.yml, TourOverlayViewModel.cs, TourOverlayViewModelTests.cs, prancy-swinging-pretzel.md, SectionCodeGenerator.cs) | 7 reads | ~32989 tok |
+
+## Session: 2026-06-09 07:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:47 | Edited src/SchedulingAssistant/Services/AppSettings.cs | expanded (+9 lines) | ~155 |
+| 07:47 | Edited src/SchedulingAssistant/Views/MainView.axaml.cs | 5→7 lines | ~101 |
+| 07:48 | Edited src/SchedulingAssistant/ViewModels/Management/PreferencesViewModel.cs | added 1 condition(s) | ~307 |
+| 07:48 | Edited src/SchedulingAssistant/Views/Management/PreferencesView.axaml | expanded (+35 lines) | ~551 |
+| 07:50 | Session end: 4 writes across 4 files (AppSettings.cs, MainView.axaml.cs, PreferencesViewModel.cs, PreferencesView.axaml) | 5 reads | ~13793 tok |
+
+## Session: 2026-06-09 10:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-09 10:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-09 10:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-09 10:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-09 11:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:10 | Created src/SchedulingAssistant/Help/navigating.html | — | ~355 |
+| 11:10 | Created src/SchedulingAssistant/Help/schedule-grid-detail.html | — | ~423 |
+| 11:10 | Created src/SchedulingAssistant/Help/multi-semester.html | — | ~297 |
+| 11:10 | Created src/SchedulingAssistant/Help/rooming-tool.html | — | ~366 |
+| 11:10 | Created src/SchedulingAssistant/Help/multi-user.html | — | ~392 |
+| 11:10 | Session end: 5 writes across 5 files (navigating.html, schedule-grid-detail.html, multi-semester.html, rooming-tool.html, multi-user.html) | 4 reads | ~1963 tok |
+| 11:13 | Created src/SchedulingAssistant/Help/navigating.html | — | ~153 |
+| 11:13 | Session end: 6 writes across 5 files (navigating.html, schedule-grid-detail.html, multi-semester.html, rooming-tool.html, multi-user.html) | 4 reads | ~2127 tok |
+
+## Session: 2026-06-09 14:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:34 | Edited src/SchedulingAssistant/Services/PlatformProcess.cs | added 2 condition(s) | ~344 |
+| 14:34 | Edited src/SchedulingAssistant/ViewModels/Management/HelpViewModel.cs | inline fix | ~12 |
+| 14:34 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:35 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:42 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:48 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:48 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:51 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:57 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 14:58 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 15:00 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+| 15:08 | Session end: 2 writes across 2 files (PlatformProcess.cs, HelpViewModel.cs) | 2 reads | ~382 tok |
+
+## Session: 2026-06-09 15:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-10 21:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-10 21:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-10 21:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:57 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | 6→7 lines | ~146 |
+| 21:57 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | 6→7 lines | ~170 |
+| 21:57 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | 3→3 lines | ~60 |
+| 21:57 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | 6→6 lines | ~135 |
+| 21:57 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | "  {tags.Count} tags, {res" → "  {tags.Count} tags, {res" | ~37 |
+| 21:58 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | added 3 condition(s) | ~491 |
+| 21:58 | Edited src/SchedulingAssistant.DemoExporter/Program.cs | modified GenSchedulingEnvironment() | ~293 |
+| 21:59 | Session end: 7 writes across 1 files (Program.cs) | 5 reads | ~1802 tok |
+| 22:06 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingEnvironmentRepository.cs | 25→26 lines | ~432 |
+| 22:06 | Edited src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingEnvironmentRepository.cs | modified Update() | ~134 |
+| 22:08 | Session end: 9 writes across 2 files (Program.cs, DemoSchedulingEnvironmentRepository.cs) | 5 reads | ~2408 tok |
+| 22:16 | Session end: 9 writes across 2 files (Program.cs, DemoSchedulingEnvironmentRepository.cs) | 6 reads | ~3193 tok |
+
+## Session: 2026-06-10 07:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-10 14:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-10 14:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:22 | Created ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/nomenclature_events_meetings.md | — | ~234 |
+| 14:23 | Edited src/SchedulingAssistant/Views/Management/MeetingListView.axaml | expanded (+7 lines) | ~206 |
+| 14:23 | Session end: 2 writes across 2 files (nomenclature_events_meetings.md, MeetingListView.axaml) | 3 reads | ~28160 tok |
+| 14:25 | Session end: 2 writes across 2 files (nomenclature_events_meetings.md, MeetingListView.axaml) | 5 reads | ~35969 tok |
+| 14:29 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | modified AddSlotWithDuration() | ~2229 |
+| 14:31 | Session end: 3 writes across 3 files (nomenclature_events_meetings.md, MeetingListView.axaml, EditorFlowTests.cs) | 8 reads | ~41575 tok |
+| 14:33 | Session end: 3 writes across 3 files (nomenclature_events_meetings.md, MeetingListView.axaml, EditorFlowTests.cs) | 9 reads | ~54847 tok |
+| 14:35 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | added nullish coalescing | ~125 |
+| 14:35 | Edited src/SchedulingAssistant.Tests/EditorFlowTests.cs | modified AddMeetingWithDuration() | ~2139 |
+| 14:36 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~40 |
+| 14:36 | Edited src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs | 2→2 lines | ~35 |
+| 14:37 | Session end: 7 writes across 4 files (nomenclature_events_meetings.md, MeetingListView.axaml, EditorFlowTests.cs, SectionEditViewModel.cs) | 9 reads | ~57353 tok |
+
+## Session: 2026-06-10 14:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:36 | Edited src/SchedulingAssistant/Program.cs | added error handling | ~304 |
+| 16:36 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | expanded (+7 lines) | ~148 |
+| 16:38 | Session end: 2 writes across 2 files (Program.cs, MainWindow.axaml.cs) | 5 reads | ~30433 tok |
+
+## Session: 2026-06-11 22:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:08 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified catch() | ~198 |
+| 23:20 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+12 lines) | ~264 |
+| 23:20 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | 3→4 lines | ~46 |
+| 23:20 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added 1 condition(s) | ~288 |
+| 23:21 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | added 1 condition(s) | ~513 |
+| 23:21 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified DescribeLockWriteFailure() | ~512 |
+| 23:21 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 1 condition(s) | ~185 |
+| 23:23 | Edited ../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/final_testing_watchlist.md | modified repro() | ~537 |
+| 23:24 | Session end: 8 writes across 3 files (WriteLockService.cs, MainWindowViewModel.cs, final_testing_watchlist.md) | 6 reads | ~65341 tok |
+
+## Session: 2026-06-13 16:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-14 12:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:50 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | expanded (+8 lines) | ~338 |
+| 12:50 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | 2→3 lines | ~34 |
+| 12:50 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | 5→7 lines | ~121 |
+| 12:51 | Edited src/SchedulingAssistant/Services/WriteLockService.cs | modified DescribeLockWriteFailure() | ~626 |
+| 12:51 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | modified DismissLockBanner() | ~302 |
+| 12:51 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | added 1 condition(s) | ~224 |
+| 12:52 | Edited src/SchedulingAssistant/MainWindow.axaml.cs | expanded (+11 lines) | ~170 |
+| 12:52 | Edited src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs | 6→7 lines | ~92 |
+| 12:52 | Session end: 8 writes across 3 files (WriteLockService.cs, MainWindowViewModel.cs, MainWindow.axaml.cs) | 5 reads | ~49536 tok |
+| 12:52 | Edited src/SchedulingAssistant/Views/MainView.axaml | expanded (+9 lines) | ~289 |
+
+## Session: 2026-06-14 13:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-14 13:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

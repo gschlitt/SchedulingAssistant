@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using SchedulingAssistant.Services;
+using Avalonia.Controls;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -107,7 +108,7 @@ public sealed partial class HelpViewModel : ViewModelBase
     {
         if (_selectedTopic?.HtmlFileName is not string fileName) return;
         var path = Path.Combine(HelpDirectory, fileName);
-        OpenInBrowser(new Uri(path).AbsoluteUri);
+        PlatformProcess.OpenLocalFile(path);
     }
 
     /// <summary>
@@ -143,91 +144,43 @@ public sealed partial class HelpViewModel : ViewModelBase
     /// </summary>
     private static IReadOnlyList<HelpTopic> BuildTopicTree() =>
     [
+        
+
         new()
         {
-            Title       = "Welcome",
-            Description = "An overview of TermPoint and what it can do.",
-            HtmlFileName = "welcome.html",
-            // VideoUrl = "https://www.youtube.com/watch?v=VIDEO_ID",
+            Title        = "Navigating TermPoint and Section Editing",
+            Description  = "The basics of getting around TermPoint and editing sections",
+            HtmlFileName =  "navigating.html",
+            VideoUrl  = "https://youtu.be/SZsPk6b7laA",
+        },
+
+        
+
+        
+        
+
+        new()
+        {
+            Title        = "Using the Rooming Tool",
+            Description  = "Use the room tool to find a room for a section",
+            HtmlFileName = "rooming-tool.html",
+             VideoUrl  = "https://youtu.be/WhcNJaS62d4",
         },
 
         new()
         {
-            Title        = "Getting Started",
-            Description  = "How to launch TermPoint, open or create a database, and navigate the three-panel layout.",
-            HtmlFileName = "getting-started.html",
-            // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
+            Title  =  "Handling Multiple Users",
+            Description = "How TermPoint handles multiple users",
+            HtmlFileName = "multi-user.html"
         },
 
-        new()
-        {
-            Title        = "The Schedule Grid",
-            Description  = "How sections are displayed on the weekly grid, including co-scheduled sections, overlaps, and multi-semester colouring.",
-            HtmlFileName = "schedule-grid.html",
-            Children     =
-            [
-                new()
-                {
-                    Title        = "Reading the Grid",
-                    Description  = "Anatomy of a tile, selecting sections, and the right-click context menu.",
-                    HtmlFileName = "schedule-grid.html",
-                    // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-                },
-                new()
-                {
-                    Title        = "Using Filters",
-                    Description  = "Filter the grid by instructor, room, subject, campus, section type, tag, meeting type, or level — with AND/OR logic.",
-                    HtmlFileName = "schedule-grid-filters.html",
-                    // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-                },
-            ]
-        },
+         new()
+         {
+             Title="Workflows",
+             Description="Check out Workflow Guides under the Workflows Tab"
+         }
 
-        new()
-        {
-            Title        = "Managing Sections",
-            Description  = "Adding, editing, and copying sections using the inline step-gate editor.",
-            HtmlFileName = "managing-sections.html",
-            // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-        },
 
-        new()
-        {
-            Title        = "Managing Instructors",
-            Description  = "Instructor records, standing commitments, the workload panel, and the Workload Mailer.",
-            HtmlFileName = "managing-instructors.html",
-            // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-        },
 
-        new()
-        {
-            Title        = "Exporting",
-            Description  = "Exporting the schedule as a PNG image and generating workload reports and emails.",
-            HtmlFileName = "exporting.html",
-            // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-        },
-
-        new()
-        {
-            Title       = "Workflows",
-            Description = "Step-by-step guides for common scheduling tasks.",
-            Children    =
-            [
-                new()
-                {
-                    Title        = "Make Workload Easy",
-                    Description  = "Use the Unstaffed filter and instructor overlays together to assign sections to instructors quickly and without conflicts.",
-                    HtmlFileName = "workload-assignment.html",
-                    // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-                },
-                new()
-                {
-                    Title        = "Section Editing Tips",
-                    Description  = "How copied sections get auto-incremented codes, and how block patterns propagate meeting times across all days in one step.",
-                    HtmlFileName = "section-editing-tips.html",
-                    // VideoUrl  = "https://www.youtube.com/watch?v=VIDEO_ID",
-                },
-            ]
-        },
     ];
 }

@@ -31,7 +31,8 @@ public static partial class DemoData
             CalendarCode = "GEOG111",
             Title        = "World Regional Geography",
             IsActive     = true,
-            Level        = "100"
+            Level        = "100",
+            TagIds       = ["demo-tag-1"]
         },
         new()
         {
@@ -40,7 +41,8 @@ public static partial class DemoData
             CalendarCode = "GEOG112",
             Title        = "Earth's Natural Environments",
             IsActive     = true,
-            Level        = "100"
+            Level        = "100",
+            TagIds       = ["demo-tag-3"]
         },
         new()
         {

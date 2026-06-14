@@ -59,10 +59,12 @@ public class EditorFlowTests
         Section section,
         bool isNew = true,
         Func<string, string, bool>? isDuplicate = null,
-        Func<Section, Task>? onSave = null)
+        Func<Section, Task>? onSave = null,
+        IReadOnlyList<BlockPattern>? blockPatterns = null)
     {
         var blockPatternRepo = new Mock<IBlockPatternRepository>();
-        blockPatternRepo.Setup(r => r.GetAll()).Returns(new List<BlockPattern>());
+        blockPatternRepo.Setup(r => r.GetAll())
+            .Returns((blockPatterns ?? new List<BlockPattern>()).ToList());
 
         return new SectionEditViewModel(
             section,
@@ -350,6 +352,396 @@ public class EditorFlowTests
         Assert.True(completed, "EditCompleted must fire on cancel.");
         repo.Verify(r => r.Insert(It.IsAny<Meeting>()), Times.Never,
             "Cancel must not persist anything.");
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // MeetingEditViewModel — Room Availability Browser wiring
+    //
+    // The solver/domain layer (occupancy, classification, solution generation,
+    // slot→spec mapping) is covered source-agnostically in RoomAvailabilityTests
+    // and RoomAvailabilityIntegrationTests, and those tests already include Events
+    // as room occupants. What was previously untested is the Event editor's own
+    // wiring around the browser: the open gate (CanOpenRoomBrowser), the factory
+    // invocation with the correct specs, and the transfer-back of an accepted
+    // solution into the slot rows (AcceptBrowserSolution). These tests close that
+    // gap by driving a real MeetingEditViewModel through those commands with a
+    // stubbed CreateRoomBrowser factory.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Adds a time slot to the meeting and gives it a committed block length so the
+    /// slot satisfies <c>CanOpenRoomBrowser</c>. Returns the created slot for further setup.
+    /// </summary>
+    private static SectionMeetingViewModel AddSlotWithDuration(
+        MeetingEditViewModel vm, double blockLengthHours = 1.0)
+    {
+        vm.AddSlotCommand.Execute(null);
+        var slot = vm.Slots[^1];
+        slot.SelectedBlockLength = blockLengthHours;   // commits a duration directly
+        return slot;
+    }
+
+    /// <summary>
+    /// Builds a <see cref="RoomAvailabilityBrowserViewModel"/> suitable as a
+    /// <c>CreateRoomBrowser</c> factory return value. All data lists are empty so it
+    /// computes no solutions; the accept/cancel callbacks are forwarded from the editor
+    /// so a test can invoke them to simulate the user accepting or cancelling.
+    /// </summary>
+    private static RoomAvailabilityBrowserViewModel MakeStubBrowser(
+        IReadOnlyList<MeetingSpec> specs,
+        Action<IReadOnlyList<SpecSolution>> accept,
+        Action cancel)
+    {
+        return new RoomAvailabilityBrowserViewModel(
+            specs,
+            allRooms:         new List<Room>(),
+            legalStartTimes:  new List<LegalStartTime>(),
+            blockPatterns:    new List<BlockPattern>(),
+            semesterSections: new List<Section>(),
+            semesterMeetings: new List<Meeting>(),
+            excludeSectionId: null,
+            excludeMeetingId: null,
+            semesterId:       "sem-1",
+            semesterName:     "Fall",
+            semesterColor:    "#FFFFFF",
+            setGhostBlocks:   _ => { },
+            onAccept:         accept,
+            onCancel:         cancel);
+    }
+
+    [Fact]
+    public void MeetingEdit_OpenRoomBrowser_NoSlots_CannotExecute()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+
+        Assert.Empty(vm.Slots);
+        Assert.False(vm.OpenRoomBrowserCommand.CanExecute(null),
+            "Room browser must be unavailable when the meeting has no time slots.");
+    }
+
+    [Fact]
+    public void MeetingEdit_OpenRoomBrowser_SlotWithoutDuration_CannotExecute()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        vm.AddSlotCommand.Execute(null);   // slot added but no block length committed
+
+        Assert.False(vm.OpenRoomBrowserCommand.CanExecute(null),
+            "Room browser must be unavailable while any slot is missing a duration.");
+    }
+
+    [Fact]
+    public void MeetingEdit_OpenRoomBrowser_SlotWithDuration_CanExecute()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        AddSlotWithDuration(vm);
+
+        Assert.True(vm.OpenRoomBrowserCommand.CanExecute(null),
+            "Room browser must be available once every slot has a duration.");
+    }
+
+    [Fact]
+    public void MeetingEdit_OpenRoomBrowser_InvokesFactory_WithSpecs_AndOpensPanel()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        var slot = AddSlotWithDuration(vm, blockLengthHours: 1.5);
+        slot.SelectedDay = 1;   // Monday
+
+        IReadOnlyList<MeetingSpec>? capturedSpecs = null;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedSpecs = specs;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+
+        Assert.True(vm.IsRoomBrowserOpen, "Accepting the factory result must mark the panel open.");
+        Assert.NotNull(vm.RoomBrowserVm);
+
+        // The slot's day/duration must reach the solver as a spec.
+        Assert.NotNull(capturedSpecs);
+        Assert.Single(capturedSpecs!);
+        Assert.Equal(1, capturedSpecs![0].Day);
+        Assert.Equal(90, capturedSpecs[0].DurationMinutes);
+        Assert.Null(vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void MeetingEdit_OpenRoomBrowser_AllRemoteSlots_SetsError_DoesNotOpen()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        var slot = AddSlotWithDuration(vm);
+        // Mark the only slot Remote — remote slots are excluded from the solver.
+        slot.SelectedRoomType =
+            slot.RoomTypeOptions.First(o => o.Id == SectionDaySchedule.RemoteRoomTypeId);
+
+        bool factoryCalled = false;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            factoryCalled = true;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+
+        Assert.False(factoryCalled, "Factory must not run when every slot is remote.");
+        Assert.False(vm.IsRoomBrowserOpen);
+        Assert.NotNull(vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void MeetingEdit_AcceptBrowserSolution_FillsBlankSlotFields_AndClosesPanel()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        var slot = AddSlotWithDuration(vm, blockLengthHours: 1.0);
+        // Day left at 0 ("any"), start time and room left blank.
+
+        Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedAccept = accept;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+        Assert.NotNull(capturedAccept);
+
+        // Simulate the user accepting a solution for spec index 0.
+        capturedAccept!(new List<SpecSolution>
+        {
+            new(SpecIndex: 0, Day: 3, StartMinutes: 540, DurationMinutes: 60,
+                RoomId: "room-1", RoomLabel: "A 101")
+        });
+
+        Assert.Equal(3, slot.SelectedDay);
+        Assert.Equal(540, slot.SelectedStartTime);
+        Assert.Equal("room-1", slot.SelectedRoomId);
+        Assert.False(vm.IsRoomBrowserOpen, "Accepting a solution must close the browser panel.");
+    }
+
+    [Fact]
+    public void MeetingEdit_AcceptBrowserSolution_DoesNotOverwriteAlreadyChosenDay()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        var slot = AddSlotWithDuration(vm, blockLengthHours: 1.0);
+        slot.SelectedDay = 1;   // Monday already chosen by the user
+
+        Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedAccept = accept;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+
+        capturedAccept!(new List<SpecSolution>
+        {
+            new(SpecIndex: 0, Day: 5, StartMinutes: 600, DurationMinutes: 60,
+                RoomId: "room-9", RoomLabel: "B 9")
+        });
+
+        // The user-chosen day must be preserved; blank fields still get filled.
+        Assert.Equal(1, slot.SelectedDay);
+        Assert.Equal(600, slot.SelectedStartTime);
+        Assert.Equal("room-9", slot.SelectedRoomId);
+    }
+
+    [Fact]
+    public void MeetingEdit_CloseRoomBrowser_ClearsPanel()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        AddSlotWithDuration(vm);
+        vm.CreateRoomBrowser = MakeStubBrowser;
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+        Assert.True(vm.IsRoomBrowserOpen);
+
+        vm.CloseRoomBrowserCommand.Execute(null);
+
+        Assert.False(vm.IsRoomBrowserOpen);
+        Assert.Null(vm.RoomBrowserVm);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SectionEditViewModel — Room Availability Browser wiring
+    //
+    // The Section editor has its OWN copy of the room-browser methods (separate from
+    // the Event editor's), so the Event-editor tests above do not exercise it. Items
+    // 1–3 below mirror the Event coverage for symmetry. The marquee test is the last
+    // one: it guards behavior that exists ONLY in the Section editor — pattern
+    // coupling. When meetings are coupled (apply a pattern, then set one field on the
+    // lead row and it propagates to the others), AcceptBrowserSolution must first call
+    // TearDownPatternCoupling(); otherwise writing the lead row's per-day start time
+    // would propagate and silently overwrite the other rows, collapsing a multi-time
+    // browser solution back to a single time.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Adds a meeting row to the section and gives it a committed block length so the
+    /// row satisfies <c>CanOpenRoomBrowser</c>. Returns the created row for further setup.
+    /// </summary>
+    private static SectionMeetingViewModel AddMeetingWithDuration(
+        SectionEditViewModel vm, double blockLengthHours = 1.0)
+    {
+        vm.AddMeetingCommand.Execute(null);
+        var meeting = vm.Meetings[^1];
+        meeting.SelectedBlockLength = blockLengthHours;
+        return meeting;
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_NoMeetings_CannotExecute()
+    {
+        var vm = MakeSectionEditVm(new Section());
+
+        Assert.Empty(vm.Meetings);
+        Assert.False(vm.OpenRoomBrowserCommand.CanExecute(null),
+            "Room browser must be unavailable when the section has no meetings.");
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_MeetingWithoutDuration_CannotExecute()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        vm.AddMeetingCommand.Execute(null);   // meeting added but no block length committed
+
+        Assert.False(vm.OpenRoomBrowserCommand.CanExecute(null),
+            "Room browser must be unavailable while any meeting is missing a duration.");
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_MeetingWithDuration_CanExecute()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        AddMeetingWithDuration(vm);
+
+        Assert.True(vm.OpenRoomBrowserCommand.CanExecute(null),
+            "Room browser must be available once every meeting has a duration.");
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_InvokesFactory_WithSpecs_AndOpensPanel()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        var meeting = AddMeetingWithDuration(vm, blockLengthHours: 1.5);
+        meeting.SelectedDay = 1;   // Monday
+
+        IReadOnlyList<MeetingSpec>? capturedSpecs = null;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedSpecs = specs;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+
+        Assert.True(vm.IsRoomBrowserOpen);
+        Assert.NotNull(vm.RoomBrowserVm);
+        Assert.NotNull(capturedSpecs);
+        Assert.Single(capturedSpecs!);
+        Assert.Equal(1, capturedSpecs![0].Day);
+        Assert.Equal(90, capturedSpecs[0].DurationMinutes);
+        Assert.Null(vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_AllRemoteMeetings_SetsError_DoesNotOpen()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        var meeting = AddMeetingWithDuration(vm);
+        meeting.SelectedRoomType =
+            meeting.RoomTypeOptions.First(o => o.Id == SectionDaySchedule.RemoteRoomTypeId);
+
+        bool factoryCalled = false;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            factoryCalled = true;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+
+        Assert.False(factoryCalled, "Factory must not run when every meeting is remote.");
+        Assert.False(vm.IsRoomBrowserOpen);
+        Assert.NotNull(vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void SectionEdit_AcceptBrowserSolution_FillsBlankMeetingFields_AndClosesPanel()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        var meeting = AddMeetingWithDuration(vm, blockLengthHours: 1.0);
+        // Day left at 0 ("any"), start time and room left blank.
+
+        Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedAccept = accept;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+        Assert.NotNull(capturedAccept);
+
+        capturedAccept!(new List<SpecSolution>
+        {
+            new(SpecIndex: 0, Day: 3, StartMinutes: 540, DurationMinutes: 60,
+                RoomId: "room-1", RoomLabel: "A 101")
+        });
+
+        Assert.Equal(3, meeting.SelectedDay);
+        Assert.Equal(540, meeting.SelectedStartTime);
+        Assert.Equal("room-1", meeting.SelectedRoomId);
+        Assert.False(vm.IsRoomBrowserOpen, "Accepting a solution must close the browser panel.");
+    }
+
+    /// <summary>
+    /// The marquee Section-only test. With a pattern applied, the meeting rows are
+    /// coupled: block length set on the lead row propagates to the others, but start
+    /// time has NOT yet propagated, so start-time coupling is still live. Accepting a
+    /// solution with a different start time per day must NOT collapse the rows to the
+    /// lead's time — proving AcceptBrowserSolution tore down the coupling first.
+    /// </summary>
+    [Fact]
+    public void SectionEdit_AcceptBrowserSolution_CoupledMeetings_KeepsPerDayStartTimes()
+    {
+        // One MWF pattern (days Mon/Wed/Fri) loaded into pattern slot 1.
+        var mwf = new BlockPattern { Id = "mwf", Name = "MWF", Days = new List<int> { 1, 3, 5 } };
+        var vm  = MakeSectionEditVm(new Section(), blockPatterns: new[] { mwf });
+
+        // Apply the pattern: creates 3 coupled rows (Mon, Wed, Fri), no durations yet.
+        vm.ApplyPattern1Command.Execute(null);
+        Assert.Equal(3, vm.Meetings.Count);
+
+        // Set the lead row's block length; coupling propagates it to the followers and
+        // decouples ONLY that field. Start-time coupling remains live — the risky state.
+        vm.Meetings[0].SelectedBlockLength = 1.0;
+        Assert.All(vm.Meetings, m => Assert.Equal(1.0, m.SelectedBlockLength));
+
+        Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedAccept = accept;
+            return MakeStubBrowser(specs, accept, cancel);
+        };
+
+        vm.OpenRoomBrowserCommand.Execute(null);
+        Assert.NotNull(capturedAccept);
+
+        // Solution assigns a DIFFERENT start time to each day.
+        capturedAccept!(new List<SpecSolution>
+        {
+            new(SpecIndex: 0, Day: 1, StartMinutes: 480, DurationMinutes: 60, RoomId: "r1", RoomLabel: "A 1"),
+            new(SpecIndex: 1, Day: 3, StartMinutes: 600, DurationMinutes: 60, RoomId: "r1", RoomLabel: "A 1"),
+            new(SpecIndex: 2, Day: 5, StartMinutes: 720, DurationMinutes: 60, RoomId: "r1", RoomLabel: "A 1"),
+        });
+
+        // Each row must keep its own start time. If coupling had survived, the lead's
+        // 0800 would have propagated to Wed and Fri before their slots were filled.
+        Assert.Equal(480, vm.Meetings[0].SelectedStartTime);
+        Assert.Equal(600, vm.Meetings[1].SelectedStartTime);
+        Assert.Equal(720, vm.Meetings[2].SelectedStartTime);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

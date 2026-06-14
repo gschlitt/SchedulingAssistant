@@ -54,9 +54,11 @@ public partial class MainView : UserControl
             ScheduleGridViewInstance = this.FindControl<ScheduleGridView>("ScheduleGridViewControl");
 
 #if DEBUG
+            // Debug menu exists only in DEBUG builds; honor the user's preference so it
+            // can be hidden without recompiling (e.g. for screenshots / design QC).
             var debugMenu = this.FindControl<Menu>("DebugMenu");
             if (debugMenu is not null)
-                debugMenu.IsVisible = true;
+                debugMenu.IsVisible = Services.AppSettings.Current.ShowDebugMenu;
 #endif
 
             // Wire overflow-set changes so the More flyout populates in both desktop and WASM.

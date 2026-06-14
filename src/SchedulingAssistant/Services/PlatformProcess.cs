@@ -24,6 +24,22 @@ public static class PlatformProcess
     }
 
     /// <summary>
+    /// Opens a local file using the OS default application for its type.
+    /// Prefer this over <see cref="OpenUri"/> for file-system paths — on Windows,
+    /// shell-executing a <c>file://</c> URI is unreliable, whereas a bare path works correctly.
+    /// </summary>
+    /// <param name="path">Absolute file-system path to the file to open.</param>
+    public static void OpenLocalFile(string path)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            Process.Start("open", path);
+        else
+            Process.Start("xdg-open", path);
+    }
+
+    /// <summary>
     /// Launches an executable by path. On macOS, uses <c>open</c> for .app bundles.
     /// </summary>
     /// <param name="exePath">Full path to the executable.</param>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handling Multiple Users — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+<h1>Handling Multiple Users</h1>
+
+<p>
+    TermPoint stores its data in a single database file (with backups stored elsewhere). When the database is on a shared network
+    drive, multiple people can open and view it — but only one person writes at a time. This is done to safeguard data integrity.
+    This article explains how TermPoint manages that safely.
+</p>
+
+    <ul>
+        <li>
+            Any user is either a 'reader' or a 'writer'. The first user to open TermPoint is made the writer (unless they have their preferences set to 'Open in reader mode'.)
+            Anyone else who opens TermPoint while the writer's session is still active is made a reader, and advised so in a overhead banner. A reader may view the data in any way they wish (including the use of filters and so on) but may not edit the data.
+        </li>
+        <li> There is protection against lockout situations wherein the writer's computer sleeps, or somehow crashes (writer access is 'stale'). Any other concurrent TermPoint instance (as reader)  periodically checks for write access availability and after 3 minutes of stale writer access, the reader is offered the opportunity to take over as writer. Similarly the first person to start up TermPoint is offered the opportunity to become a reader.
+     </li>
+        <li>
+            Some users may know in advance that will only have a reading role. Under 'preferences' they can select 'Open in reader mode'. On every TermPoint start after that they will be made readers automatically.
+        </li>
+        <li>
+            Emergency recovery: if for some (unlikely) reason users are locked out of writer access to TermPoint, a deletion of the '.lock' file in the same location as the database will permit the next person to become the writer. This needs
+            to be done carefully, as there is a danger two instances of TermPoint could have simultaneous write access.
+        </li>
+    </ul>
+
+
+<hr>
+
+<h2>Read vs. Write Access</h2>
+
+<p>
+    Any number of users can open the database in read-only mode simultaneously. When a user
+    begins editing, TermPoint checks out a write lock. Other users see a notice that the
+    database is locked and can continue browsing in read-only mode.
+</p>
+
+<h2>Write-Lock Checkout</h2>
+
+<p>
+    The write lock is acquired automatically when you start editing a section or any other
+    record. It is released when you save or discard your changes. Avoid leaving edits open
+    for long periods on a shared database.
+</p>
+
+<h2>Conflict Resolution</h2>
+
+<p>
+    If two users attempt to write at the same time, the second writer is notified and asked
+    to retry once the first save completes. No changes are lost.
+</p>
+
+</body>
+</html>

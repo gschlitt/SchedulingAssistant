@@ -9,22 +9,12 @@ public static partial class DemoData
         new()
         {
             Id           = "demo-commit-1",
-            InstructorId = "demo-inst-39",
+            InstructorId = "demo-inst-2",
             SemesterId   = "demo-sem-1",
-            Name         = "HdMtng",
-            Day          = 5,
-            StartMinutes = 600,
-            EndMinutes   = 720
-        },
-        new()
-        {
-            Id           = "demo-commit-2",
-            InstructorId = "demo-inst-39",
-            SemesterId   = "demo-sem-2",
-            Name         = "HdsMtng",
-            Day          = 5,
-            StartMinutes = 660,
-            EndMinutes   = 750
+            Name         = "Lib Comm",
+            Day          = 3,
+            StartMinutes = 840,
+            EndMinutes   = 1050
         }
     ];
 }

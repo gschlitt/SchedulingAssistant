@@ -13,7 +13,7 @@
           Col 1 (1 px)   — vertical separator
           Col 2 (*)      — content pane (topic summary + browser-launch buttons)
     -->
-    <Grid ColumnDefinitions="200,1,*"
+    <Grid ColumnDefinitions="300,1,*"
           Margin="16,0,16,4">
 
         <!-- ── Left: Topic navigation tree ──────────────────────────────── -->
@@ -30,7 +30,7 @@
                 -->
                 <TreeDataTemplate ItemsSource="{Binding Children}">
                     <TextBlock Text="{Binding Title}"
-                               FontSize="{StaticResource FontSizeSmall}"
+                               FontSize="{StaticResource FontSizeNormal}"
                                Padding="2,3"
                                TextWrapping="Wrap" />
                 </TreeDataTemplate>
@@ -48,7 +48,7 @@
             <!-- No topic selected yet -->
             <TextBlock Text="Select a topic from the list."
                        IsVisible="{Binding SelectedTopic, Converter={x:Static ObjectConverters.IsNull}}"
-                       FontSize="{StaticResource FontSizeSmall}"
+                       FontSize="{StaticResource FontSizeNormal}"
                        Foreground="{StaticResource TextSubtle}"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center" />
@@ -65,7 +65,7 @@
 
                 <!-- One-line description -->
                 <TextBlock Text="{Binding SelectedTopic.Description}"
-                           FontSize="{StaticResource FontSizeSmall}"
+                           FontSize="{StaticResource FontSizeNormal}"
                            TextWrapping="Wrap"
                            IsVisible="{Binding SelectedTopic.Description,
                                        Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -83,7 +83,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="📄" FontSize="12" VerticalAlignment="Center" />
                             <TextBlock Text="Open Article in Browser"
-                                       FontSize="{StaticResource FontSizeSmall}"
+                                       FontSize="{StaticResource FontSizeNormal}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -97,7 +97,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="▶" FontSize="12" VerticalAlignment="Center" />
                             <TextBlock Text="Watch Video"
-                                       FontSize="{StaticResource FontSizeSmall}"
+                                       FontSize="{StaticResource FontSizeNormal}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
