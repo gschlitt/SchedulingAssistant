@@ -308,13 +308,17 @@
                                         Grid.Row="0"
                                         Grid.Column="7"
                                         Width="20"
-                                        Padding="2,1"
+                                        Padding="0,0"
                                         HorizontalAlignment="Center"
                                         Command="{Binding DataContext.RemoveSlotCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}"
-                                        Content="✕"
-                                        FontSize="9"
-                                        ToolTip.Tip="Remove slot" />
+                                        ToolTip.Tip="Remove slot">
+                                        <Viewbox Width="10" Height="10">
+                                            <Path
+                                                Fill="{StaticResource TextPrimary}"
+                                                Data="{StaticResource RemoveIcon}" />
+                                        </Viewbox>
+                                    </Button>
                                 </Grid>
                             </Border>
                         </DataTemplate>

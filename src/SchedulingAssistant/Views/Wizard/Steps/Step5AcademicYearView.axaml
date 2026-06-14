@@ -50,9 +50,13 @@
                                 Grid.Column="2"
                                 Padding="6,4"
                                 Command="{Binding $parent[ItemsControl].DataContext.RemoveSemesterCommand}"
-                                CommandParameter="{Binding}"
-                                Content="✕"
-                                FontSize="{DynamicResource FontSizeSmall}" />
+                                CommandParameter="{Binding}">
+                                <Viewbox Width="10" Height="10">
+                                    <Path
+                                        Fill="{StaticResource TextPrimary}"
+                                        Data="{StaticResource RemoveIcon}" />
+                                </Viewbox>
+                            </Button>
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

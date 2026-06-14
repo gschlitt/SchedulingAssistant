@@ -72,10 +72,14 @@
 											<Button
 												DockPanel.Dock="Right"
 												Padding="4,1"
-												FontSize="9"
-												Content="×"
 												Command="{Binding $parent[ItemsControl].DataContext.DismissSourceCommand}"
-												CommandParameter="{Binding Set}" />
+												CommandParameter="{Binding Set}">
+												<Viewbox Width="9" Height="9">
+													<Path
+														Fill="{StaticResource TextPrimary}"
+														Data="{StaticResource RemoveIcon}" />
+												</Viewbox>
+											</Button>
 											<StackPanel Orientation="Horizontal" Spacing="6">
 												<TextBlock
 													FontSize="10"

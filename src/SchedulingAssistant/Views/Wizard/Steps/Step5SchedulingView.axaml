@@ -92,9 +92,13 @@
                                                     Padding="2,0"
                                                     VerticalAlignment="Center"
                                                     Command="{Binding $parent[ItemsControl].DataContext.RemoveTimeCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Content="×"
-                                                    FontSize="{DynamicResource FontSizeSmall}" />
+                                                    CommandParameter="{Binding}">
+                                                    <Viewbox Width="8" Height="8">
+                                                        <Path
+                                                            Fill="{StaticResource TextPrimary}"
+                                                            Data="{StaticResource RemoveIcon}" />
+                                                    </Viewbox>
+                                                </Button>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>

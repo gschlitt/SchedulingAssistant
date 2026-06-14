@@ -116,8 +116,13 @@
                                                 Text="{Binding Label}" />
                                             <Button
                                                 Padding="6,2"
-                                                Command="{Binding RemoveCommand}"
-                                                Content="✕" />
+                                                Command="{Binding RemoveCommand}">
+                                                <Viewbox Width="10" Height="10">
+                                                    <Path
+                                                        Fill="{StaticResource TextPrimary}"
+                                                        Data="{StaticResource RemoveIcon}" />
+                                                </Viewbox>
+                                            </Button>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

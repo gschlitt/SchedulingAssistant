@@ -65,10 +65,14 @@
 					Background="Transparent"
 					BorderThickness="0"
 					Command="{Binding DismissErrorCommand}"
-					Content="✕"
 					DockPanel.Dock="Right"
-					FontSize="11"
-					ToolTip.Tip="Dismiss" />
+					ToolTip.Tip="Dismiss">
+					<Viewbox Width="10" Height="10">
+						<Path
+							Fill="{StaticResource TextPrimary}"
+							Data="{StaticResource RemoveIcon}" />
+					</Viewbox>
+				</Button>
 				<TextBlock
 					VerticalAlignment="Center"
 					FontSize="11"
