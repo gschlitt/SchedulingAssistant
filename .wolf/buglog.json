@@ -2,6 +2,47 @@
   "version": 1,
   "bugs": [
     {
+      "id": "bug-cfa-writelock-falsereader",
+      "timestamp": "2026-06-10T23:20:00.000Z",
+      "error_message": "Published (unsigned) build opens in READER mode with banner 'Read-only, locked by another instance' even when no other instance is running and no lock file exists. Log: '[WriteLockService] Could not read lock file: Could not find file <db>.lock' then 'Read-only mode; lock held by @'. Dev/debug build opens as writer; published build opens as reader.",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "Windows Defender Controlled Folder Access (ransomware protection, EnableControlledFolderAccess=1) blocked the unsigned published TermPoint.exe from creating the write-lock file <db>.lock under the protected Documents folder (Defender event ID 1123). File.Open(FileMode.CreateNew) then threw FileNotFoundException (HResult 0x80070002). TryCreateOnce's 'catch (IOException)' assumed ANY failure meant 'file already exists => another holder', called ReadCurrentHolder (which also failed, file genuinely absent => CurrentHolder=null), GetHolderLiveness(null)=Unknown => DetectStaleLock=false => silent read-only with phantom '@' holder. Distinct CFA site from bug-848 (database -journal open). The debug build worked because devenv-launched processes are CFA-trusted.",
+      "fix": "WriteLockService.TryCreateOnce now disambiguates with File.Exists (a read; CFA does not block reads): file present => genuine existing lock (unchanged); file absent => real write failure => set new property LockWriteError via DescribeLockWriteFailure (handles 0x80070002/0x80070005 CFA-or-ACL, 0x80070070 disk-full), skip polling, surface accurate message through MainWindowViewModel.LockStatusMessage. Catch broadened to UnauthorizedAccessException too. Diagnose CFA blocks via 'Get-WinEvent -LogName Microsoft-Windows-Windows Defender/Operational -Id 1123,1124' and 'Get-MpPreference | Select EnableControlledFolderAccess'. Unblock for testing: allow the exe in CFA, or keep the DB out of Documents/Desktop.",
+      "tags": [
+        "controlled-folder-access",
+        "windows-defender",
+        "write-lock",
+        "reader-mode",
+        "code-signing",
+        "false-positive",
+        "cs"
+      ],
+      "related_bugs": [
+        "bug-848"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T23:20:00.000Z"
+    },
+    {
+      "id": "bug-singlefile-harmony",
+      "timestamp": "2026-06-10T22:25:00.000Z",
+      "error_message": "System.PlatformNotSupportedException: Could not locate clrjit library (at HarmonyLib.PatchFunctions.UpdateWrapper -> AvaloniaPatches.Apply, Program.cs:22). App shows wait cursor for a few seconds then exits with code 0xE0434352 (unhandled managed exception); no window, nothing logged to FileAppLogger.",
+      "file": "src/SchedulingAssistant/AvaloniaPatches.cs",
+      "root_cause": "Harmony does runtime IL patching which requires clrjit. Publishing with -p:PublishSingleFile=true bundles/relocates clrjit so Harmony cannot locate it, crashing on the very first line of Main before any window or logging. Production publish (publish.ps1) does NOT use single-file (folder-based --self-contained), so production is unaffected. The crash was an artifact of an ad-hoc single-file publish command used for a process-leak test.",
+      "fix": "Do NOT use PublishSingleFile with this app while AvaloniaPatches/Harmony is in Program.Main. Publish folder-based to match production: dotnet publish -f net10.0 -c Release -r win-x64 --self-contained -o <dir> (no PublishSingleFile). Verify clrjit.dll is present as a real file in the output folder. If single-file is ever required, guard AvaloniaPatches.Apply() in try/catch and/or drop the Harmony patch.",
+      "tags": [
+        "publish",
+        "single-file",
+        "harmony",
+        "clrjit",
+        "avalonia",
+        "startup-crash"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T22:25:00.000Z"
+    },
+    {
       "id": "bug-001",
       "timestamp": "2026-03-24T20:10:56.998Z",
       "error_message": "Null/undefined access in ",
@@ -14422,6 +14463,346 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-08T19:46:27.453Z"
+    },
+    {
+      "id": "bug-899",
+      "timestamp": "2026-06-08T21:57:12.311Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/MainWindow.axaml.cs",
+      "root_cause": "Condition was: if (App.Checkout.DetectCrashRecovery(dbPath)",
+      "fix": "Changed to: if (!AppSettings.Current.OpenInReaderMode && App.Check)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-08T21:57:12.311Z"
+    },
+    {
+      "id": "bug-900",
+      "timestamp": "2026-06-09T00:31:50.831Z",
+      "error_message": "Wrong reference: Fact should be FactRequiresLocalDb",
+      "file": "src/SchedulingAssistant.Tests/RoomAvailabilityIntegrationTests.cs",
+      "root_cause": "Used \"Fact\" instead of \"FactRequiresLocalDb\"",
+      "fix": "Changed Fact → FactRequiresLocalDb",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T00:31:50.831Z"
+    },
+    {
+      "id": "bug-901",
+      "timestamp": "2026-06-09T03:34:17.306Z",
+      "error_message": "Missing await",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T03:34:17.306Z"
+    },
+    {
+      "id": "bug-902",
+      "timestamp": "2026-06-09T03:34:23.220Z",
+      "error_message": "Wrong reference: Dispatcher should be YieldForLayoutAsync",
+      "file": "src/SchedulingAssistant/ViewModels/TourOverlayViewModel.cs",
+      "root_cause": "Used \"Dispatcher\" instead of \"YieldForLayoutAsync\"",
+      "fix": "Changed Dispatcher → YieldForLayoutAsync",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T03:34:23.220Z"
+    },
+    {
+      "id": "bug-903",
+      "timestamp": "2026-06-09T03:44:12.801Z",
+      "error_message": "Wrong reference: ubuntu should be windows",
+      "file": ".github/workflows/tests.yml",
+      "root_cause": "Used \"ubuntu\" instead of \"windows\"",
+      "fix": "Changed ubuntu → windows",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T03:44:12.801Z"
+    },
+    {
+      "id": "bug-904",
+      "timestamp": "2026-06-09T03:58:31.423Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/SectionCodeGenerator.cs",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→8 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T03:58:31.423Z"
+    },
+    {
+      "id": "bug-905",
+      "timestamp": "2026-06-09T03:58:31.912Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant/Services/SectionCodeGenerator.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T03:58:31.912Z"
+    },
+    {
+      "id": "bug-906",
+      "timestamp": "2026-06-09T03:58:35.238Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/Services/SectionCodeGenerator.cs",
+      "root_cause": "No early return/throw for edge case: string.IsNullOrEmpty(letters",
+      "fix": "Added guard clause: if (string.IsNullOrEmpty(letters)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T03:58:35.238Z"
+    },
+    {
+      "id": "bug-907",
+      "timestamp": "2026-06-09T04:08:05.203Z",
+      "error_message": "Function not marked async",
+      "file": "src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T04:08:05.204Z"
+    },
+    {
+      "id": "bug-908",
+      "timestamp": "2026-06-09T04:10:54.978Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.Tests/TourOverlayViewModelTests.cs",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 11→14 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T04:10:54.978Z"
+    },
+    {
+      "id": "bug-909",
+      "timestamp": "2026-06-09T14:48:02.903Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/Management/PreferencesViewModel.cs",
+      "root_cause": "No early return/throw for edge case: AppSettings.Current.ShowDebugMenu == value",
+      "fix": "Added guard clause: if (AppSettings.Current.ShowDebugMenu == val)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T14:48:02.903Z"
+    },
+    {
+      "id": "bug-910",
+      "timestamp": "2026-06-10T04:57:59.441Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/SchedulingAssistant.DemoExporter/Program.cs",
+      "root_cause": "Had \"  {tags.Count} tags, {resources.Count} resources,",
+      "fix": "Changed to \"  {tags.Count} tags, {resources.Count} resources,",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T04:57:59.441Z"
+    },
+    {
+      "id": "bug-911",
+      "timestamp": "2026-06-10T04:58:17.615Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant.DemoExporter/Program.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 28→37 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T04:58:17.615Z"
+    },
+    {
+      "id": "bug-912",
+      "timestamp": "2026-06-09T00:00:00.000Z",
+      "error_message": "WASM demo: room types not importing and room-type CRUD non-functional (cannot create/read/edit/delete room types in browser demo)",
+      "file": "src/SchedulingAssistant/Data/Repositories/Demo/DemoSchedulingEnvironmentRepository.cs",
+      "root_cause": "Repository predates the roomType SchedulingEnvironmentValue type and was never extended for it. ListFor() had no RoomType case (returned []), and Update/Delete iterated a hardcoded six-bucket array omitting room types. Separately, the DemoExporter never partitioned/remapped/emitted roomType env values or Room.RoomTypeId, so DemoData had no RoomTypes list and rooms lost their type FK.",
+      "fix": "Exporter (SchedulingAssistant.DemoExporter/Program.cs): added roomTypes partition + roomTypeMap (demo-rt-N) merged into allEnvMap, emit RoomTypes list in GenSchedulingEnvironment, and read/emit RoomTypeId (plus Features/Notes) in GenRooms. Demo repo: added _roomTypes bucket, RoomType case in ListFor, and a shared AllBuckets array used by AllValues/Update/Delete so all seven env types stay in sync.",
+      "tags": [
+        "wasm",
+        "demo",
+        "room-types",
+        "scheduling-environment",
+        "crud",
+        "demo-exporter",
+        "translation"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-09T00:00:00.000Z"
+    },
+    {
+      "id": "bug-913",
+      "timestamp": "2026-06-10T21:35:17.621Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/SchedulingAssistant.Tests/EditorFlowTests.cs",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T21:35:17.621Z"
+    },
+    {
+      "id": "bug-914",
+      "timestamp": "2026-06-10T21:36:15.257Z",
+      "error_message": "Wrong reference: TearDownPatternCoupling should be TEMP",
+      "file": "src/SchedulingAssistant/ViewModels/Management/SectionEditViewModel.cs",
+      "root_cause": "Used \"TearDownPatternCoupling\" instead of \"TEMP\"",
+      "fix": "Changed TearDownPatternCoupling → TEMP",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-10T21:36:49.804Z"
+    },
+    {
+      "id": "bug-915",
+      "timestamp": "2026-06-10T23:36:29.585Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "src/SchedulingAssistant/Program.cs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T23:36:29.585Z"
+    },
+    {
+      "id": "bug-917",
+      "timestamp": "2026-06-11T06:21:04.223Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/SchedulingAssistant/Services/WriteLockService.cs",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 14→30 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-11T06:21:04.223Z"
+    },
+    {
+      "id": "bug-918",
+      "timestamp": "2026-06-11T06:21:28.496Z",
+      "error_message": "Wrong condition in logic",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "Condition was: if (_lockService.HolderIsLiveSameMachine)",
+      "fix": "Changed to: if (_lockService.LockWriteError is { } writeError)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-11T06:21:28.496Z"
+    },
+    {
+      "id": "bug-919",
+      "timestamp": "2026-06-11T06:23:28.081Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "../../../.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/final_testing_watchlist.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-11T06:23:28.081Z"
+    },
+    {
+      "id": "bug-921",
+      "timestamp": "2026-06-14T19:51:59.400Z",
+      "error_message": "Missing guard clause",
+      "file": "src/SchedulingAssistant/ViewModels/MainWindowViewModel.cs",
+      "root_cause": "No early return/throw for edge case: MainWindowReference is null || _lockService.LockWriteItDetai",
+      "fix": "Added guard clause: if (MainWindowReference is null || _lockServ)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-14T19:51:59.400Z"
     }
   ]
 }

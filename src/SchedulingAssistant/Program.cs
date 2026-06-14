@@ -40,6 +40,22 @@ class Program
         };
          BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 
+        // ── Shutdown checkpoint #2 ───────────────────────────────────────────
+        // Reaching here means the Avalonia dispatcher loop has exited and Main is
+        // about to return — i.e. managed code is done. If the OS process
+        // (TermPoint.exe) still lingers in Task Manager AFTER this line is logged,
+        // the cause is NOT our shutdown logic: it is either the Visual Studio
+        // debugger holding the debuggee, or a native handle / non-background
+        // thread outside our control. This is the discriminator for the
+        // "stray process after shutdown" investigation.
+        try
+        {
+            var threadCount = System.Diagnostics.Process.GetCurrentProcess().Threads.Count;
+            App.Logger.LogInfo(
+                $"[Shutdown] Dispatcher loop exited; Main returning. OS threads still alive: {threadCount}. " +
+                "If TermPoint.exe persists past this point, the cause is the debugger or a native handle, not managed shutdown.");
+        }
+        catch { /* never let shutdown logging throw */ }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

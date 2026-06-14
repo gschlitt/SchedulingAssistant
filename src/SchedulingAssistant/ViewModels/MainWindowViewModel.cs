@@ -308,6 +308,12 @@ public partial class MainWindowViewModel : ViewModelBase
             if (AppSettings.Current.OpenInReaderMode)
                 return "Reader mode — opened as an observer. Editing is disabled; click Refresh to pull the latest data.";
 
+            // Not contention at all — the lock file could not be created (Controlled Folder Access,
+            // an ACL denial, disk full, …). Show the precise, actionable reason rather than implying
+            // another instance holds the lock.
+            if (_lockService.LockWriteError is { } writeError)
+                return writeError;
+
             // A second live instance on this same machine — be explicit so the user knows
             // it's their own other window, not a colleague, blocking edit access.
             if (_lockService.HolderIsLiveSameMachine)
@@ -333,6 +339,13 @@ public partial class MainWindowViewModel : ViewModelBase
     /// held and the user should be prompted to switch to edit mode.
     /// </summary>
     public bool ShowWriteLockAvailablePrompt => _lockService.WriteLockBecameAvailable;
+
+    /// <summary>
+    /// True when the lock-file failure has a technical IT-detail string that can be shown
+    /// via the "Details for IT" button. Only relevant when <see cref="LockWriteError"/> is set
+    /// and the cause is a CFA/permission block (not disk-full or other non-CFA failures).
+    /// </summary>
+    public bool HasLockWriteItDetail => _lockService.LockWriteItDetail is not null;
 
     /// <summary>
     /// Dismisses the lock advisory banner. A compact "Reader Mode" indicator
@@ -529,6 +542,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowReaderModeIndicator));
         OnPropertyChanged(nameof(LockStatusMessage));
         OnPropertyChanged(nameof(ShowWriteLockAvailablePrompt));
+        OnPropertyChanged(nameof(HasLockWriteItDetail));
     }
 
     /// <summary>
@@ -575,6 +589,19 @@ public partial class MainWindowViewModel : ViewModelBase
         if (sourcePath is null) return;
 
         await MainWindowReference.SwitchDatabaseAsync(sourcePath);
+    }
+
+    /// <summary>
+    /// Shows a dialog with technical details about the lock-file write failure, aimed at IT support.
+    /// Matches the "Details for IT" UX used by <see cref="DatabaseFolderNotWritableException"/> on the
+    /// database-open path, so both CFA-blocked scenarios present a consistent experience.
+    /// </summary>
+    [RelayCommand]
+    private async Task ShowLockWriteDetails()
+    {
+        if (MainWindowReference is null || _lockService.LockWriteItDetail is null) return;
+        await MainWindowReference.ShowItDetailAsync(
+            "Technical Details (for IT)", _lockService.LockWriteItDetail);
     }
 #endif
 

@@ -328,7 +328,8 @@
 						Margin="0,4"
 						VerticalAlignment="Center"
 						Background="Transparent"
-						IsVisible="False">
+						IsVisible="False"
+					     >
 						<MenuItem
 							Padding="14,5.5"
 							Classes="nav"
@@ -371,6 +372,15 @@
 					FontSize="{StaticResource FontSizeNormal}"
 					IsVisible="{Binding ShowWriteLockAvailablePrompt}"
 					ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding ShowLockWriteDetailsCommand}"
+					Content="Details for IT"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					IsVisible="{Binding HasLockWriteItDetail}"
+					ToolTip.Tip="Show technical details about this issue for your IT support." />
 				<Button
 					Margin="8,0,0,0"
 					Padding="8,2"

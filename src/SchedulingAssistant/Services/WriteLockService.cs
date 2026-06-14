@@ -155,6 +155,26 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     public bool HolderIsLiveSameMachine { get; private set; }
 
+    /// <summary>
+    /// Non-null when the most recent <see cref="TryAcquire"/> could not even <b>create</b> the
+    /// lock file — as opposed to losing it to an existing holder. Set when <c>CreateNew</c> fails
+    /// with a write/permission error (Windows Controlled Folder Access, an NTFS ACL denial, a
+    /// disk-full condition, or a sharing violation) <i>and</i> no lock file is actually present.
+    /// <para>This is a fundamentally different situation from contention: there is no other
+    /// instance to wait for. Callers should surface this message to the user instead of the
+    /// generic "locked by another instance" wording, and should not poll for the lock to free up.
+    /// Reset to null at the start of every <see cref="TryAcquire"/>.</para>
+    /// </summary>
+    public string? LockWriteError { get; private set; }
+
+    /// <summary>
+    /// Optional technical detail aimed at IT support when <see cref="LockWriteError"/> is set.
+    /// Names Controlled Folder Access and the allow-an-app remedy so the user can forward it
+    /// to their IT department. Null when the failure is not CFA-related (e.g. disk full) or
+    /// when no lock-write failure occurred.
+    /// </summary>
+    public string? LockWriteItDetail { get; private set; }
+
     // ── Events ─────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -225,6 +245,8 @@ public sealed class WriteLockService : IDisposable
         IsStaleLock = false;
         ReclaimedDeadSession = false;
         HolderIsLiveSameMachine = false;
+        LockWriteError = null;
+        LockWriteItDetail = null;
         _lockFilePath = Path.ChangeExtension(dbPath, ".lock");
 
         if (TryCreateLockFile())
@@ -238,6 +260,15 @@ public sealed class WriteLockService : IDisposable
         {
             IsWriter = false;
             App.Logger.LogInfo($"[WriteLockService] Stale lock detected for {CurrentHolder?.Username}@{CurrentHolder?.Machine} — awaiting user confirmation to take over.");
+        }
+        else if (LockWriteError is not null)
+        {
+            // We could not even create the lock file (a blocked write — Controlled Folder Access,
+            // an ACL denial, disk full, etc.). There is no holder to wait for, so polling for the
+            // lock to free up is pointless and would only spawn a misleading "switch to edit"
+            // prompt that is guaranteed to fail again. Stay read-only; the banner explains why.
+            IsWriter = false;
+            App.Logger.LogInfo($"[WriteLockService] Read-only mode — lock-file write blocked: {LockWriteError}");
         }
         else
         {
@@ -591,10 +622,36 @@ public sealed class WriteLockService : IDisposable
             WriteLockData(fs);
             return true;
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // File already exists — read it to populate CurrentHolder.
-            ReadCurrentHolder();
+            // CreateNew failed. Two fundamentally different causes share this catch:
+            //   (a) the lock file ALREADY EXISTS → another instance holds it (normal contention).
+            //   (b) the create/write was BLOCKED → Windows Controlled Folder Access (ransomware
+            //       protection), an NTFS ACL denial, a disk-full condition, or a sharing violation.
+            //       In this case NO lock file exists and we are NOT contending with another holder.
+            //
+            // FileMode.CreateNew throws an IOException for BOTH a pre-existing file (ERROR_FILE_EXISTS)
+            // and a blocked write (e.g. Controlled Folder Access surfaces ERROR_FILE_NOT_FOUND /
+            // ERROR_ACCESS_DENIED), so the exception type alone is ambiguous. Disambiguate by asking
+            // whether the file is actually present: a READ (File.Exists) is not restricted by
+            // Controlled Folder Access, which only blocks modification.
+            if (File.Exists(_lockFilePath!))
+            {
+                // (a) genuine existing lock — read the holder and report contention.
+                ReadCurrentHolder();
+                return false;
+            }
+
+            // (b) write failure — no lock exists, but we could not create one. Record an accurate,
+            // actionable reason so the caller surfaces it instead of silently demoting to read-only
+            // with a phantom "locked by another instance" holder.
+            CurrentHolder  = null;
+            var (userMsg, itDetail) = DescribeLockWriteFailure(ex);
+            LockWriteError    = userMsg;
+            LockWriteItDetail = itDetail;
+            App.Logger.LogInfo(
+                $"[WriteLockService] Lock-file create blocked (no lock present): type={ex.GetType().Name} " +
+                $"hresult=0x{ex.HResult:X8} msg=\"{ex.Message}\" path={_lockFilePath}");
             return false;
         }
     }
@@ -656,6 +713,45 @@ public sealed class WriteLockService : IDisposable
             App.Logger.LogInfo($"[WriteLockService] Could not read lock file: {ex.Message}");
             CurrentHolder = null;
         }
+    }
+
+    /// <summary>
+    /// Builds a neutral user-facing message and an optional IT-detail string for a failure to
+    /// <b>create</b> the lock file (as distinct from contending with one that already exists).
+    /// Recognises the common Windows HResults so the read-only banner can tell the user something
+    /// actionable — and, for CFA/permission blocks, offer a "Details for IT" button with the
+    /// specific Controlled Folder Access remedy.
+    /// </summary>
+    /// <param name="ex">The <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/>
+    /// thrown by <c>CreateNew</c>.</param>
+    /// <returns>A tuple of (neutral user-facing message, optional IT detail). The IT detail is null
+    /// when the failure is not CFA/permission-related (e.g. disk full).</returns>
+    private static (string UserMessage, string? ItDetail) DescribeLockWriteFailure(Exception ex)
+    {
+        // 0x80070002 ERROR_FILE_NOT_FOUND and 0x80070005 ERROR_ACCESS_DENIED are both surfaced by
+        // Controlled Folder Access when it blocks a write to a protected folder (Documents, Desktop,
+        // etc.); access-denied is also a plain NTFS permission problem.
+        // 0x80070070 ERROR_DISK_FULL is a full volume.
+        return (uint)ex.HResult switch
+        {
+            0x80070002 or 0x80070005 => (
+                "Read-only — this folder's security settings prevented TermPoint from opening the database for editing.",
+                "Windows Controlled Folder Access (ransomware protection) is blocking TermPoint from " +
+                "writing to this folder. To fix this, either allow TermPoint in Windows Security → " +
+                "Virus & Threat Protection → Ransomware Protection → Allow an app through Controlled " +
+                "Folder Access, or move the database to a folder that is not protected (outside of " +
+                "Documents, Desktop, etc.)."
+            ),
+            0x80070070 => (
+                "Read-only — couldn't open the database for editing because the disk is full.",
+                null
+            ),
+            _ => (
+                "Read-only — this folder's settings prevented TermPoint from opening the database for editing. " +
+                "Check the folder's permissions and your antivirus settings.",
+                null
+            ),
+        };
     }
 
     /// <summary>

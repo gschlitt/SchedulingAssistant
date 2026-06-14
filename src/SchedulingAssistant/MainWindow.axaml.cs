@@ -176,6 +176,13 @@ public partial class MainWindow : Window
             App.Logger.LogError(ex, "Error during shutdown — some changes may not have been saved");
         }
 
+        // ── Shutdown checkpoint #1 ───────────────────────────────────────────
+        // Managed teardown (save → release lock → dispose DI container → cleanup
+        // working copy) has finished. Pairs with checkpoint #2 in Program.Main:
+        // if BOTH lines are logged but TermPoint.exe lingers, the leftover is a
+        // debugger/native artifact, not our code.
+        App.Logger.LogInfo("[Shutdown] Managed teardown complete; closing main window.");
+
         Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
     }   
     
@@ -1032,6 +1039,17 @@ public partial class MainWindow : Window
         ok.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
         await msg.ShowDialog(this);
     }
+
+    /// <summary>
+    /// Shows a dialog with technical IT-detail text. Called from
+    /// <see cref="MainWindowViewModel.ShowLockWriteDetailsCommand"/> so the ViewModel
+    /// can surface lock-write failure details through the same dialog infrastructure
+    /// used by the database-open CFA handler.
+    /// </summary>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">The IT-facing technical detail string.</param>
+    public Task ShowItDetailAsync(string title, string message)
+        => ShowMessageAsync(title, message);
 
     private async Task ShowMessageAsync(string title, string message)
     {
