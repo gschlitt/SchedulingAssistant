@@ -58,6 +58,13 @@ public static class PlatformCapabilities
     /// On WASM, opens in a new browser tab via <c>window.open</c>.
     /// </summary>
     public static bool SupportsLinks => true;
+
+    /// <summary>
+    /// True on desktop targets, false in the browser demo.
+    /// Use for UI features that are desktop-only but don't map to a specific capability
+    /// (e.g. hiding a color-picker column that would be impractical in WASM).
+    /// </summary>
+    public static bool IsDesktop => false;
 #else
     /// <inheritdoc cref="SupportsFileDialogs"/>
     public static bool SupportsFileDialogs => true;
@@ -79,5 +86,8 @@ public static class PlatformCapabilities
 
     /// <inheritdoc cref="SupportsLinks"/>
     public static bool SupportsLinks => true;
+
+    /// <inheritdoc cref="IsDesktop"/>
+    public static bool IsDesktop => true;
 #endif
 }

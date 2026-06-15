@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-14T20:20:37.610Z
-> Files: 108 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-14T22:53:58.975Z
+> Files: 123 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../c/Users/gregs/source/repos/SchedulingAssistant/.wolf/
 
@@ -35,6 +35,7 @@
 - `can-we-look-at-frolicking-wozniak.md` — Splash → In-Window Loading Curtain (~1866 tok)
 - `does-the-room-browser-lazy-deer.md` — Plan: Campus-aware Room Availability Browser (~1128 tok)
 - `frequently-it-will-be-sorted-forest.md` — Reader (Observer) Mode (~2140 tok)
+- `here-s-a-puzzler-in-luminous-pony.md` — Diagnose: WASM Instructor List Sort Broken for Most Columns (~1018 tok)
 - `hold-off-there-s-some-eager-puppy.md` — Section Capacity Feature (Phase 1) (~2988 tok)
 - `in-c-users-gregs-documents-termpointmedi-hazy-micali.md` — Add a "Contact TermPoint Developers" form to the landing page (~1477 tok)
 - `prancy-swinging-pretzel.md` — Plan: Fix alphabetic section-code rollover + unit-test SectionCodeGenerator and capacity inheritance (~1562 tok)
@@ -214,6 +215,7 @@
 
 ## src/SchedulingAssistant.Browser/
 
+- `SchedulingAssistant.Browser.csproj` (~330 tok)
 
 ## src/SchedulingAssistant.Browser/wwwroot/
 
@@ -245,10 +247,11 @@
 - `MainWindow.axaml` (~472 tok)
 - `MainWindow.axaml.cs` — Minimum time the loading curtain stays up, to avoid a flicker on fast loads. (~18557 tok)
 - `Program.cs` — Class: Program (~858 tok)
+- `SchedulingAssistant.csproj` (~1677 tok)
 
 ## src/SchedulingAssistant/Assets/
 
-- `Icons.axaml` (~1810 tok)
+- `Icons.axaml` (~1926 tok)
 
 ## src/SchedulingAssistant/Behaviors/
 
@@ -265,9 +268,11 @@
 
 ## src/SchedulingAssistant/Data/Repositories/
 
+- `InstructorRepository.cs` — Returns all instructors, ordered according to the persisted <see cref="AppSettings.InstructorSortMod (~1918 tok)
 
 ## src/SchedulingAssistant/Data/Repositories/Demo/
 
+- `DemoInstructorRepository.cs` — In-memory demo implementation of <see cref="IInstructorRepository"/> backed by a mutable copy of <se (~823 tok)
 - `DemoSchedulingEnvironmentRepository.cs` — In-memory demo implementation of <see cref="ISchedulingEnvironmentRepository"/> backed by mutable co (~918 tok)
 
 ## src/SchedulingAssistant/Demo/
@@ -307,8 +312,8 @@
 - `FlagVisuals.cs` — Single source of truth for mapping a <see cref="SectionFlag"/> to its visual representation. Both th (~378 tok)
 - `GridChangeNotifier.cs` — Signals that non-section grid content has changed and the schedule grid should reload. Used by manag (~388 tok)
 - `NetworkFileOps.cs` — Timeout-aware wrappers for file operations against paths that may be on a network share (D, D.lock, (~3095 tok)
-- `PlatformCapabilities.cs` — Compile-time feature flags for platform-specific capabilities. All properties are compile-time const (~935 tok)
-- `PlatformProcess.cs` — Cross-platform helpers for launching URLs, URIs, and executables via the OS default handler. (~785 tok)
+- `PlatformCapabilities.cs` — Compile-time feature flags for platform-specific capabilities. All properties are compile-time const (~1033 tok)
+- `PlatformProcess.cs` — Cross-platform helpers for launching URLs, URIs, and executables via the OS default handler. (~936 tok)
 - `RoomAvailabilityService.cs` — Tracks room bookings for a semester and answers availability queries. Built once per browser session (~9842 tok)
 - `SectionCodeGenerator.cs` — Generates the next available section code for a given <see cref="SectionCodePattern"/>. (~1772 tok)
 - `SemesterContext.cs` — Pairs a Semester with a formatted display label. DisplayName uses the full "Year — Semester" form fo (~4480 tok)
@@ -333,7 +338,7 @@
 
 - `CourseEditViewModel.cs` — The level band the user has selected (e.g. "100", "300"), or null when none is chosen. Auto-suggeste (~2847 tok)
 - `CourseListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~3550 tok)
-- `HelpViewModel.cs` — Represents a single node in the help documentation tree. A node may be a navigable article (when <se (~1824 tok)
+- `HelpViewModel.cs` — Represents a single node in the help documentation tree. A node may be a navigable article (when <se (~1930 tok)
 - `InstructorListViewModel.cs` — True when this instance holds the write lock; gates all write-capable buttons. (~4826 tok)
 - `LegalStartTimeListViewModel.cs` — Represents one item in the "Preferred block length" ComboBox. (~4023 tok)
 - `MeetingEditViewModel.cs` — Inline editor for a <see cref="Meeting"/>. No step-gate is required — the Title field is the only pr (~5942 tok)
@@ -345,6 +350,7 @@
 - `SectionListItemViewModel.cs` — Display wrapper for a section row in the sections list panel. Holds formatted strings so the view ne (~3723 tok)
 - `SectionListViewModel.cs` — Callback to push ghost blocks (Room Availability Browser) onto the schedule grid. Set by <see cref=" (~17328 tok)
 - `SectionMeetingViewModel.cs` — Represents a single scheduled meeting within a section — day, time, room, meeting type, and frequenc (~9754 tok)
+- `WorkloadMailerViewModel.cs` — Represents the current UI step of the Workload Mailer flyout. (~5531 tok)
 
 ## src/SchedulingAssistant/ViewModels/Wizard/
 
@@ -359,20 +365,27 @@
 - `DetachedPanelWindow.axaml.cs` — When true, <see cref="OnReattach"/> is NOT invoked on close. Set during app shutdown so closing this (~651 tok)
 - `MainView.axaml` (~6675 tok)
 - `MainView.axaml.cs` — Top-level UserControl containing the full application UI. Extracted from MainWindow so the same UI c (~1345 tok)
+- `SectionPanelContent.axaml` (~1893 tok)
 
 ## src/SchedulingAssistant/Views/GridView/
 
+- `ScheduleGridView.axaml` (~2884 tok)
 - `ScheduleGridView.axaml.cs` — Snapshot of every entry row rendered during the last full <see cref="Render"/> call. Used by <see cr (~18872 tok)
 
 ## src/SchedulingAssistant/Views/Management/
 
 - `CourseListView.axaml` (~5752 tok)
-- `LegalStartTimeListView.axaml` (~3491 tok)
-- `MeetingListView.axaml` (~12157 tok)
+- `HelpView.axaml` (~1601 tok)
+- `InstructorListView.axaml.cs` — Responds to property changes on the ViewModel that require the view to take action. Handles EditVm p (~1843 tok)
+- `LegalStartTimeListView.axaml` (~3592 tok)
+- `MeetingListView.axaml` (~12234 tok)
 - `PreferencesView.axaml` (~1738 tok)
 - `RoomListView.axaml` (~1740 tok)
 - `SectionListView.axaml` (~26169 tok)
+- `SemesterManagerView.axaml` (~1718 tok)
+- `SemesterManagerView.axaml.cs` — Class: SemesterManagerView (~93 tok)
 - `WorkflowsView.axaml.cs` — Currently-open sticky notes, kept so new notes cascade rather than stack directly on top of one anot (~688 tok)
+- `WorkloadMailerView.axaml` (~2475 tok)
 
 ## src/SchedulingAssistant/Views/Wizard/
 
@@ -380,6 +393,8 @@
 ## src/SchedulingAssistant/Views/Wizard/Steps/
 
 - `Step1aExistingDbView.axaml` (~1355 tok)
+- `Step5AcademicYearView.axaml` (~1329 tok)
+- `Step5SchedulingView.axaml` (~2492 tok)
 
 ## src/SchedulingAssistant/bin/Debug/net8.0/
 

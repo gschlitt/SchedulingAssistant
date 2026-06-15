@@ -52,7 +52,7 @@
 
 	<tour:TourStepData x:Key="wasm.welcome"
 		Title="Welcome to the TermPoint Demo"
-		Body="This is a live demo with sample data. A short tour will present some basics, after which you will be  able to experiment yourself.{p} TermPoint is best viewed full-screen in your brower (three dots menu, find Zoom, set full-screen).
+		Body="This is a live demo with sample data. A short tour will present some basics, after which you will be able to experiment yourself.{p}TermPoint is best viewed full-screen in your browser (three dots menu, find Zoom, set full-screen).
 		{p}Please keep in mind that this is a web-based demonstration and may run a little slowly. TermPoint itself is a desktop application and runs quickly."
 		TargetKind="None"
 		CardWidth="700" />
@@ -127,7 +127,7 @@
 
 	<tour:TourStepData x:Key="filter.tags"
 	Title="Filter by Tag"
-    Body="Let's see the sections in Cohort 1.|Just the sections serving students in Cohort 1 are shown."
+    Body="Let's see the sections serving the Bachelor of Science.|Just the sections serving students in the BSc are shown."
     TargetKind="Region"
     TargetValue="ScheduleGridPanel.TagsPanel"
     Placement="Above" />

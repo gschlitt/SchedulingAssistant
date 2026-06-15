@@ -1,78 +1,33 @@
 {
-  "session_id": "session-2026-06-14-1315",
-  "started": "2026-06-14T20:15:46.670Z",
+  "session_id": "session-2026-06-15-2234",
+  "started": "2026-06-15T05:34:31.463Z",
   "files_read": {
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FlagVisuals.cs": {
-      "count": 1,
-      "tokens": 378,
-      "first_read": "2026-06-14T20:15:58.810Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml": {
-      "count": 2,
-      "tokens": 26172,
-      "first_read": "2026-06-14T20:16:02.999Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs": {
-      "count": 3,
-      "tokens": 3479,
-      "first_read": "2026-06-14T20:16:03.723Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml": {
-      "count": 1,
-      "tokens": 3924,
-      "first_read": "2026-06-14T20:16:26.406Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/App.axaml.cs": {
-      "count": 1,
-      "tokens": 5506,
-      "first_read": "2026-06-14T20:19:09.428Z"
-    },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs": {
+    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/project_wasm_demo.md": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-06-14T20:20:00.540Z"
+      "first_read": "2026-06-15T05:34:38.826Z"
     },
-    "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/GridView/ScheduleGridView.axaml.cs": {
+    "C:/Users/gregs/.claude/projects/C--Users-gregs-source-repos-SchedulingAssistant/memory/wasm_demo_build.md": {
       "count": 1,
-      "tokens": 18872,
-      "first_read": "2026-06-14T20:20:48.131Z"
+      "tokens": 0,
+      "first_read": "2026-06-15T05:34:38.860Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/.github/workflows/deploy-wasm.yml": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-15T05:34:48.724Z"
+    },
+    "C:/Users/gregs/source/repos/SchedulingAssistant/publish-wasm.ps1": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-15T05:34:49.229Z"
     }
   },
-  "files_written": [
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/AppColors.axaml",
-      "action": "edit",
-      "tokens": 62,
-      "at": "2026-06-14T20:20:03.065Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Views/Management/SectionListView.axaml",
-      "action": "edit",
-      "tokens": 274,
-      "at": "2026-06-14T20:20:14.736Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/Services/FileAppLogger.cs",
-      "action": "edit",
-      "tokens": 24,
-      "at": "2026-06-14T20:20:25.206Z"
-    },
-    {
-      "file": "C:/Users/gregs/source/repos/SchedulingAssistant/src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs",
-      "action": "edit",
-      "tokens": 398,
-      "at": "2026-06-14T20:20:37.651Z"
-    }
-  ],
-  "edit_counts": {
-    "src/SchedulingAssistant/AppColors.axaml": 1,
-    "src/SchedulingAssistant/Views/Management/SectionListView.axaml": 1,
-    "src/SchedulingAssistant/Services/FileAppLogger.cs": 1,
-    "src/SchedulingAssistant/ViewModels/Management/SectionListItemViewModel.cs": 1
-  },
-  "anatomy_hits": 6,
-  "anatomy_misses": 1,
-  "repeated_reads_warned": 3,
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
+  "anatomy_misses": 4,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 3
+  "stop_count": 1
 }

@@ -80,6 +80,7 @@
             IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
 
             <DataGrid
+                x:Name="SemesterGrid"
                 Grid.Column="0"
                 AutoGenerateColumns="False"
                 CanUserSortColumns="False"

@@ -659,7 +659,7 @@
 		Grid.Column="2"
 		Margin="10,0,0,0">
 			<CheckBox
-			Content="Workload Mailer"
+			Content="Show Workload Mailer"
 			FontSize="{StaticResource FontSizeNormal}"
 			IsChecked="{Binding ShowWorkloadMailer}" />
 			<Border

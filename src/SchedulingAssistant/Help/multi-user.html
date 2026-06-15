@@ -27,36 +27,13 @@
             Some users may know in advance that will only have a reading role. Under 'preferences' they can select 'Open in reader mode'. On every TermPoint start after that they will be made readers automatically.
         </li>
         <li>
-            Emergency recovery: if for some (unlikely) reason users are locked out of writer access to TermPoint, a deletion of the '.lock' file in the same location as the database will permit the next person to become the writer. This needs
-            to be done carefully, as there is a danger two instances of TermPoint could have simultaneous write access.
+            Emergency recovery: in the unlikely circumstance that users are locked out of writer access to TermPoint, a deletion of the '.lock' file in the same location as the database will permit the next person to become the writer. 
         </li>
     </ul>
 
 
-<hr>
 
-<h2>Read vs. Write Access</h2>
 
-<p>
-    Any number of users can open the database in read-only mode simultaneously. When a user
-    begins editing, TermPoint checks out a write lock. Other users see a notice that the
-    database is locked and can continue browsing in read-only mode.
-</p>
-
-<h2>Write-Lock Checkout</h2>
-
-<p>
-    The write lock is acquired automatically when you start editing a section or any other
-    record. It is released when you save or discard your changes. Avoid leaving edits open
-    for long periods on a shared database.
-</p>
-
-<h2>Conflict Resolution</h2>
-
-<p>
-    If two users attempt to write at the same time, the second writer is notified and asked
-    to retry once the first save completes. No changes are lost.
-</p>
 
 </body>
 </html>
