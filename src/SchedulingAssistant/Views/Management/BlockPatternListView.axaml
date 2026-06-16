@@ -7,18 +7,18 @@
     x:DataType="vm:BlockPatternListViewModel">
 
     <StackPanel
-        MaxWidth="500"
+        MaxWidth="600"
         Margin="10,0"
         HorizontalAlignment="Left"
         Spacing="16">
 
         <TextBlock
-            FontSize="{StaticResource FontSizeXLarge}"
+            FontSize="{DynamicResource FontSizeXLarge}"
             FontWeight="SemiBold"
             Text="Block Patterns" />
 
         <TextBlock
-            FontSize="{StaticResource FontSizeNormal}"
+            FontSize="{DynamicResource FontSizeNormal}"
             
             TextWrapping="Wrap">
             Sections with multiple meetings during the week may typically follow a pattern at your institution (meeting Monday, Wednesday and Friday, for example, or Tuesdays and Thursdays).
@@ -55,13 +55,13 @@
                                         Padding="8,3"
                                         Command="{Binding EditCommand}"
                                         Content="Edit"
-                                        FontSize="{StaticResource FontSizeNormal}"
+                                        FontSize="{DynamicResource FontSizeNormal}"
                                         IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}" />
                                     <Button
                                         Padding="8,3"
                                         Command="{Binding ClearCommand}"
                                         Content="Clear"
-                                        FontSize="{StaticResource FontSizeNormal}"
+                                        FontSize="{DynamicResource FontSizeNormal}"
                                         IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                 </StackPanel>
                                 <TextBlock
@@ -78,18 +78,18 @@
                                         <StackPanel Spacing="8">
                                             <StackPanel Spacing="4">
                                                 <TextBlock
-                                                    FontSize="{StaticResource FontSizeSmall}"
+                                                    FontSize="{DynamicResource FontSizeSmall}"
                                                     Foreground="{StaticResource TextLabel}"
                                                     Text="Name" />
                                                 <TextBox
                                                     Width="200"
                                                     HorizontalAlignment="Left"
-                                                    FontSize="{StaticResource FontSizeNormal}"
+                                                    FontSize="{DynamicResource FontSizeNormal}"
                                                     Text="{Binding Name}" />
                                             </StackPanel>
                                             <StackPanel Spacing="4">
                                                 <TextBlock
-                                                    FontSize="{StaticResource FontSizeSmall}"
+                                                    FontSize="{DynamicResource FontSizeSmall}"
                                                     Foreground="{StaticResource TextLabel}"
                                                     Text="Days" />
                                                 <ItemsControl ItemsSource="{Binding Days}">
@@ -102,14 +102,14 @@
                                                         <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
                                                             <CheckBox
                                                                 Content="{Binding DayName}"
-                                                                FontSize="{StaticResource FontSizeNormal}"
+                                                                FontSize="{DynamicResource FontSizeNormal}"
                                                                 IsChecked="{Binding IsChecked}" />
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </StackPanel>
                                             <TextBlock
-                                                FontSize="{StaticResource FontSizeSmall}"
+                                                FontSize="{DynamicResource FontSizeSmall}"
                                                 Foreground="{StaticResource TextValidationError}"
                                                 IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                 Text="{Binding ValidationError}" />

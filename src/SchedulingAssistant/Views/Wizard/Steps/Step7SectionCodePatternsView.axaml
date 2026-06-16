@@ -5,7 +5,7 @@
     xmlns:mgmt="using:SchedulingAssistant.Views.Management"
     x:CompileBindings="False">
 
-    <StackPanel MaxWidth="900" Spacing="16">
+    <StackPanel MaxWidth="1100" Spacing="16">
 
        
         

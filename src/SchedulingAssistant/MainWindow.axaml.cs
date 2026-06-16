@@ -315,6 +315,16 @@ public partial class MainWindow : Window
             IsVisible = true;
             Activate();
 
+            // Hide the loading curtain so the tour overlay is visible and interactive.
+            // Without this the opaque gradient sits on top of the tour, blocking all
+            // user interaction, and the tour can never complete — hanging the app.
+            if (LoadingCurtain is not null)
+            {
+                LoadingCurtain.IsHitTestVisible = false;
+                LoadingCurtain.Opacity = 0;
+                LoadingCurtain.IsVisible = false;
+            }
+
             // Start the tour on the next UI tick so layout has settled
             var runner = demoProvider.GetRequiredService<TourRunner>();
             var tcs = new TaskCompletionSource();
@@ -331,6 +341,15 @@ public partial class MainWindow : Window
             await tcs.Task;
             runner.TourCompleted -= onDone;
             runner.TourDismissed -= onDone;
+
+            // Re-show the loading curtain before transitioning to the wizard so the
+            // window doesn't flash bare content while minimized/restoring.
+            if (LoadingCurtain is not null)
+            {
+                LoadingCurtain.Opacity = 1;
+                LoadingCurtain.IsHitTestVisible = true;
+                LoadingCurtain.IsVisible = true;
+            }
 
             // Minimize and clear the demo VM before transitioning to the wizard.
             // Don't set IsVisible = false — the wizard needs a visible owner window.

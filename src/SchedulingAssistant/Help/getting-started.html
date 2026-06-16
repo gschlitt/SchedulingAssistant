@@ -11,18 +11,17 @@
 <h1>Getting Started</h1>
 
 <p>
-    This page walks you through launching TermPoint for the first time, opening or creating a
-    database, and getting oriented with the main layout.
+    This page walks you through the first steps you need to take to get set up.
 </p>
 
 <!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
-<div class="video-section">
+<!--<div class="video-section">
     <p class="video-label">Video: Getting Started</p>
     <div class="video-placeholder">
         <div class="icon">🎬</div>
         <strong>Getting Started Video — Coming Soon</strong>
         <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>getting-started.html</code> and add your YouTube video ID.</p>
-    </div>
+    </div>-->
     <!--
     <div class="video-container">
         <iframe
@@ -33,55 +32,54 @@
         </iframe>
     </div>
     -->
-</div>
+
 
 <!-- ── CONTENT ────────────────────────────────────────────────────────── -->
-<h2>First Launch</h2>
-<p>
-    When you open TermPoint for the first time, you will be prompted to either
-    <strong>open an existing database</strong> or <strong>create a new one</strong>.
-    TermPoint stores all data in a single SQLite file (a <code>.db</code> file) that you keep
-    anywhere on your drive.
-</p>
-<ul>
-    <li><strong>New database</strong> — choose a location and file name. TermPoint will create the
-        file and seed it with default scheduling settings.</li>
-    <li><strong>Open existing</strong> — browse to a <code>.db</code> file you already have.
-        Recent files are listed in the <strong>Files</strong> menu for quick access.</li>
-</ul>
 
-<div class="tip">
-    <p>Keep the database file on a network share if multiple administrators need to take turns
-    editing. TermPoint uses a write-lock so only one person edits at a time — others can still
-    open the file in read-only mode.</p>
-</div>
+<h2>Getting your data into TermPoint</h2>
 
-<h2>The Main Layout</h2>
-<p>Once a database is open you'll see three panels:</p>
-<ul>
-    <li><strong>Section List</strong> (left top) — lists every section in the current semester.
-        Click a section to select it on the grid; double-click to open its editor.</li>
-    <li><strong>Workload Panel</strong> (left bottom) — summarizes teaching load per instructor.</li>
-    <li><strong>Schedule Grid</strong> (right) — the main weekly view, Monday–Friday,
-        08:30–22:00.</li>
-</ul>
-<p>
-    The panels can be detached into floating windows using the <strong>⎘</strong> icon in each
-    panel header. Drag them wherever suits your screen.
+<p>The start-up wizard guided you through some basic configuration (section codes, block structure and so on).
+    It's time to enter subjects, courses and instructors</p>
 </p>
 
-<h2>Choosing an Academic Year and Semester</h2>
-<p>
-    The <strong>Academic Year</strong> dropdown and the <strong>Semester</strong> checkboxes in the
-    top-right corner of the toolbar control which data is shown. Select one or more semesters to
-    compare them side by side on the grid.
-</p>
+<h3>Courses</h3>
+    <ul>
+        <li>
+            In the top menu, select 'Courses' and use the bottom dialog to enter the Subjects you schedule, along with their calendar codes. For example a Biology department might schedule courses in both 'Biology' ('BIOL') and 'BioChemistry' (''BIOC').
+        </li>
+        <li>
+            With subjects in place, you can begin entering your courses. Note that using Tags to filter your views can be very effective. If you can already think of some Tags that might be useful (perhaps 'PreMed' or 'Honours') create them first (under 'Scheduling Environment'). If you then choose some of those tags for the courses you create, every section of those courses will automatically inherit those tags. But you can always do this later if you wish.
+        </li>
+    </ul> 
+    <p>
+        With courses in place, you can already begin scheduling: select an academic year and semester (top menu) and enter sections in the 'Section View' pane on the left. (There's more help on this available if you need it.) But you might
+        want to enter some instructors first.
+    </p>
+<h3>
+    Instructors
+</h3>
+    <ul>
+        <li>
+            In the top menu, select 'Instructors' and use the dialog to enter instructor details. Selecting an instructor will
+            allow you to enter any relevant scheduling information for the semesters you're about to schedule.
+        </li>
+    </ul>
 
-<div class="note">
-    <p>Academic years must be created before semesters can be added to them. Use
-    <strong>Academic Years</strong> in the toolbar, then add semesters from the semester list
-    inside that flyout.</p>
-</div>
+<h3>
+    Scheduling Environment
+</h3>
+    <p>
+        Under 'Scheduling Environment' you can enter the various aspects sections might have (a 'Type' for example, (perhaps 'Online')). If you're responsible for rooming your sections, enter room types and rooms here. Tags provide a particularly
+        effective means of filtering your semester view to just the information you need. An example tag might be 'Cohort 1': which you could use to tag the sections serving a certain student cohort. Then filtering by that tag eliminates all the 
+        clutter, allowing you to see just the sections involved.
+    </p>
+
+<h3>
+    Configuration
+</h3>
+    <p>
+       The start-up wizard guided you through setting these general scheduling parameters. But you can always revise them if you wish, under 'Configuration.'
+    </p>
 
 <h2>Keyboard Shortcuts</h2>
 <table style="border-collapse:collapse; font-size:12.5px; width:100%;">

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using SchedulingAssistant.Services;
 using Avalonia.Controls;
+using System.Runtime.ExceptionServices;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
@@ -158,6 +159,15 @@ public sealed partial class HelpViewModel : ViewModelBase
     private static IReadOnlyList<HelpTopic> BuildTopicTree() =>
     [
         
+        new()
+        {
+            Title="First Steps: Getting going with TermPoint",
+            Description="How to get started using TermPoint",
+            HtmlFileName="getting-started.html"
+        },
+
+
+
 
         new()
         {

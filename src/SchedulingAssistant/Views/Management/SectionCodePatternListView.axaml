@@ -13,7 +13,7 @@
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="{x:Type vm:SectionCodePatternEditViewModel}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="8" MaxWidth="480" HorizontalAlignment="Left">
+                        <StackPanel Spacing="8" MaxWidth="680" HorizontalAlignment="Left">
 
                             <TextBlock Text="{Binding Title}"
                                        FontSize="{StaticResource FontSizeLarge}"
@@ -30,7 +30,7 @@
                                 <Run Text="(This will appear as a menu choice when you are editing a section)"/>
                                 </TextBlock>
                             <TextBox Text="{Binding Name}" 
-                                     PlaceholderText="e.g. Lecture, Lab, Tutorial" />
+                                     PlaceholderText="e.g. Main-Lecture, SouthC-Lab, Tutorial" />
                             <TextBlock Text="{Binding ValidationError}"
                                        Foreground="{StaticResource TextError}"
                                        FontSize="{StaticResource FontSizeNormal}"
@@ -166,7 +166,7 @@
         <TextBlock Text="Section Codes" FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold"/>
 
         <TextBlock Margin="0,10,0,0" MaxWidth="700" HorizontalAlignment="Left"
-                   Text="Section codes distinguish multiple offerings of the same course, or label different components of the same course (e.g. a lecture and a lab, or tutorial). Some examples are below.&#10;&#10;Set the section coding schemes your institution uses here and avoid having to enter them manually as you create or edit sections. Once configured, TermPoint will supply the section codes for new sections automatically. You can always over-ride if you wish. &#10;&#10; If a section code format corresponds to a campus or a particular section type, you can set that here. When a section of that format is created, the campus and section types will be chosen automatically."
+                   Text="Section codes distinguish multiple offerings of the same course, or label different components of the same course (e.g. a lecture and a lab, or tutorial). Some examples are below.&#10;&#10;Set the section coding schemes your institution uses here and avoid having to enter them manually as you create or edit sections. Once configured, TermPoint will supply the section codes for new sections automatically. You can always over-ride if you wish."
                    TextWrapping="Wrap"
                     />
 
@@ -174,7 +174,7 @@
                 <StackPanel Spacing="8" Margin="0,6,0,0">
                     <TextBlock TextWrapping="Wrap" local:InlineFormatter.Text="The following are examples of {red}section codes{/} in use at various universities." />
 
-                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,5,Auto,5,Auto,5">
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,5,Auto,5,*">
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Sections" FontWeight="SemiBold"/>
                         <TextBlock Grid.Row="0" Grid.Column="2" Text="Role" FontWeight="SemiBold"/>
@@ -183,46 +183,47 @@
 
                         <TextBlock Grid.Row="1" Grid.Column="0" local:InlineFormatter.Text="CHEM 111 {red}AB1{/}, CHEM 111 {red}AB2{/} " />
                         <TextBlock Grid.Row="1" Grid.Column="2" Text="Two lecture sections of CHEM 111" />
-                        <TextBlock Grid.Row="1" Grid.Column="4" Width="320" Text="Prefix AB denotes campus. Sections increment numerically by 1" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="1" Grid.Column="4" Text="Prefix AB denotes campus. Sections increment numerically by 1" TextWrapping="Wrap"/>
                         
 
                         <TextBlock Grid.Row="2" Grid.Column="0" local:InlineFormatter.Text="CHEM 111 {red}A#A{/}, CHEM 111 {red}A#B{/} " />
                         <TextBlock Grid.Row="2" Grid.Column="2" Text="Two lab sections of CHEM 111" />
-                        <TextBlock Grid.Row="2" Grid.Column="4" Width="320" Text="Sections increment alphabetically" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="Sections increment alphabetically" TextWrapping="Wrap"/>
                         
 
                         <TextBlock Grid.Row="3" Grid.Column="0" local:InlineFormatter.Text="HIST 106 {red}D100{/}, HIST 106 {red}D200{/} " />
                         <TextBlock Grid.Row="3" Grid.Column="2" Text="Two lecture sections of HIST 106" />
-                        <TextBlock Grid.Row="3" Grid.Column="4" Width="320" Text="Prefix D denotes daytime. Number increments by 100" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="3" Grid.Column="4" Text="Prefix D denotes daytime. Number increments by 100"  TextWrapping="Wrap"/>
                         
 
                         <TextBlock Grid.Row="4" Grid.Column="0" local:InlineFormatter.Text="HIST 106 {red}D101{/}, HIST 106 {red}D102{/} " />
                         <TextBlock Grid.Row="4" Grid.Column="2" Text="Two tutorial sections of HIST 106 D100" />
-                        <TextBlock Grid.Row="4" Grid.Column="4" Width="320" Text="" />
+                        <TextBlock Grid.Row="4" Grid.Column="4" Text="" />
                         
 
                         <TextBlock Grid.Row="5" Grid.Column="0" local:InlineFormatter.Text="BIO 219 {red}010{/}, BIO 219 {red}011{/} " />
                         <TextBlock Grid.Row="5" Grid.Column="2" Text="Two lecture sections of BIO 219" />
-                        <TextBlock Grid.Row="5" Grid.Column="4" Width="320" Text="No prefix." TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="5" Grid.Column="4" Text="No prefix." TextWrapping="Wrap" />
                         
 
                         <TextBlock Grid.Row="6" Grid.Column="0" local:InlineFormatter.Text="BIO 219 {red}020L{/}, BIO {red}021L{/} " />
                         <TextBlock Grid.Row="6" Grid.Column="2" Text="Two labs of BIO 219 010" />
-                        <TextBlock Grid.Row="6" Grid.Column="4" Width="320" Text="Suffix L denotes lab" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="6" Grid.Column="4" Text="Suffix L denotes lab" TextWrapping="Wrap" />
                         
 
                     </Grid>
 
-                    <TextBlock Text="Any section code that follows the format below can be configured in TermPoint:" TextWrapping="Wrap" />
-                    <TextBlock FontWeight="SemiBold" Text="A Prefix (possibly empty) (e.g. 'A#' or 'D') + number or alphabetical incrementor (e.g. '100' or '011' or 'A' ) + Suffix (possibly empty)" TextWrapping="Wrap" />
+                    
                 </StackPanel>
             </Expander>
+            <TextBlock Text="Any section code that follows the format below can be configured in TermPoint:" TextWrapping="Wrap" />
+                    <TextBlock  Text="A Prefix (possibly empty) (e.g. 'A#' or 'D') + number or alphabetical incrementor (e.g. '100' or '011' or 'A' ) + Suffix (possibly empty)" TextWrapping="Wrap" />
             </StackPanel>
 
-        <StackPanel Grid.Row="1" Width="400" HorizontalAlignment="Left"
+        <StackPanel Grid.Row="1" Width="500" HorizontalAlignment="Left"
                     IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
         <TextBlock Text="Section Codes" FontSize="{StaticResource FontSizeLarge}" Margin="0,10"/>
-        <TextBlock Text="Create and edit your section codes here. Two examples are provided to edit or delete as you wish." TextWrapping="Wrap"/>
+        <TextBlock Text="Create and edit your section codes here." TextWrapping="Wrap"/>
         <!--  List (shown when EditVm is null)  -->
         <DataGrid x:Name="PatternsDataGrid"
                   

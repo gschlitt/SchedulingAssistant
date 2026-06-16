@@ -3,30 +3,20 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mgmt="using:SchedulingAssistant.Views.Management"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
     x:CompileBindings="False">
 
     <StackPanel MaxWidth="900" Spacing="16">
-
-        <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{StaticResource ForegroundMuted}"
-            TextWrapping="Wrap">
-            Block patterns define which days of the week a class typically meets.
-            For example, a 1.5-hour block may typically meet Monday/Wednesday/Friday (MWF)
-            or Tuesday/Thursday (TR).
-        </TextBlock>
-
-        <TextBlock
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{StaticResource ForegroundMuted}"
-            TextWrapping="Wrap">
-            TermPoint uses these patterns to make data entry faster when you add a section.
-            You can define multiple patterns to cover the day combinations
-            used at your institution. Block patterns can be changed later in Settings, and you are not
-            confined to use them when scheduling.
-        </TextBlock>
-
-        <mgmt:BlockPatternListView DataContext="{Binding BlockPatterns}" />
-
+        <Border>
+            <Border.Resources>
+                <sys:Double x:Key="FontSizeXLarge">22</sys:Double>
+                <sys:Double x:Key="FontSizeNormal">16</sys:Double>
+                <sys:Double x:Key="FontSizeSmall">14</sys:Double>
+            </Border.Resources>
+            <mgmt:BlockPatternListView DataContext="{Binding BlockPatterns}" />
+        </Border>
     </StackPanel>
 </UserControl>
+
+
+
