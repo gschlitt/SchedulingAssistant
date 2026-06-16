@@ -6,12 +6,10 @@ using SchedulingAssistant.Models;
 using SchedulingAssistant.Services;
 using SchedulingAssistant.ViewModels;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Text;
 
 namespace SchedulingAssistant.ViewModels.Management;
 
-public enum CopyState { Ready, FlaggedWarning, Complete }
+public enum CopyState { Ready, Complete }
 
 public partial class CopySemesterViewModel : ViewModelBase, IDisposable
 {
@@ -19,9 +17,6 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     private readonly ISemesterRepository _semRepo;
     private readonly ISectionRepository _sectionRepo;
     private readonly IDatabaseContext _db;
-    private readonly ScheduleValidationService _scheduleValidation;
-    private readonly ICourseRepository _courseRepo;
-    private readonly ISubjectRepository _subjectRepo;
     private readonly WriteLockService _lockService;
 
     /// <summary>True when the current user holds the write lock; gates all Copy Semester controls.</summary>
@@ -30,9 +25,7 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
     private bool CanWrite() => _lockService.IsWriter;
 
-    // Cached between Copy() and ContinueCopy()
     private List<Section>? _sourceSections;
-    private List<(Section section, List<SectionDaySchedule> badMeetings)>? _flaggedSections;
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _fromAcademicYear;
@@ -77,16 +70,12 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     // UI state
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReady))]
-    [NotifyPropertyChangedFor(nameof(IsFlaggedWarning))]
     [NotifyPropertyChangedFor(nameof(IsComplete))]
     private CopyState _state = CopyState.Ready;
 
     [ObservableProperty] private string? _statusMessage;
-    [ObservableProperty] private bool _writeCsvReport = true;
-    [ObservableProperty] private ObservableCollection<string> _flaggedDescriptions = new();
 
     public bool IsReady => State == CopyState.Ready;
-    public bool IsFlaggedWarning => State == CopyState.FlaggedWarning;
     public bool IsComplete => State == CopyState.Complete;
 
     public CopySemesterViewModel(
@@ -94,18 +83,12 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
         ISemesterRepository semRepo,
         ISectionRepository sectionRepo,
         IDatabaseContext db,
-        ScheduleValidationService scheduleValidation,
-        ICourseRepository courseRepo,
-        ISubjectRepository subjectRepo,
         WriteLockService lockService)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
         _sectionRepo = sectionRepo;
         _db = db;
-        _scheduleValidation = scheduleValidation;
-        _courseRepo = courseRepo;
-        _subjectRepo = subjectRepo;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
         Load();
@@ -126,7 +109,6 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(IsWriteEnabled));
         CopyCommand.NotifyCanExecuteChanged();
-        ContinueCopyCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnFromAcademicYearChanged(AcademicYear? value)
@@ -204,45 +186,10 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        // Schedule compatibility check (only when copying meeting times)
-        if (CopyAndMore && IncludeAllMeetingTimes)
-        {
-            _flaggedSections = _scheduleValidation.FindIncompatibleSections(
-                _sourceSections, ToAcademicYear!.Id);
-
-            if (_flaggedSections.Count > 0)
-            {
-                BuildFlaggedDescriptions();
-                State = CopyState.FlaggedWarning;
-                return;
-            }
-        }
-
-        // No flags — proceed
-        ExecuteCopy(new HashSet<string>());
+        ExecuteCopy();
     }
 
-    [RelayCommand]
-    private void AbortCopy()
-    {
-        State = CopyState.Ready;
-        StatusMessage = null;
-        _flaggedSections = null;
-        _sourceSections = null;
-        FlaggedDescriptions = new ObservableCollection<string>();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanWrite))]
-    private void ContinueCopy()
-    {
-        if (WriteCsvReport)
-            WriteFlaggedCsv();
-
-        var flaggedIds = new HashSet<string>(_flaggedSections!.Select(f => f.section.Id));
-        ExecuteCopy(flaggedIds);
-    }
-
-    private void ExecuteCopy(HashSet<string> flaggedIds)
+    private void ExecuteCopy()
     {
         var count = 0;
 
@@ -253,8 +200,7 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
         {
             foreach (var source in _sourceSections!)
             {
-                var isFlagged = flaggedIds.Contains(source.Id);
-                var newSection = BuildNewSection(source, isFlagged);
+                var newSection = BuildNewSection(source);
                 _sectionRepo.Insert(newSection, tx);
                 count++;
             }
@@ -266,15 +212,11 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
             throw;
         }
 
-        var msg = $"Copied {count} section(s) to {ToSemester!.Name}.";
-        if (flaggedIds.Count > 0)
-            msg += $" {flaggedIds.Count} section(s) copied without schedules.";
-
-        StatusMessage = msg;
+        StatusMessage = $"Copied {count} section(s) to {ToSemester!.Name}.";
         State = CopyState.Complete;
     }
 
-    private Section BuildNewSection(Section source, bool stripSchedule)
+    private Section BuildNewSection(Section source)
     {
         var s = new Section
         {
@@ -301,7 +243,7 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
                     Workload = null
                 }).ToList();
 
-        if (IncludeAllMeetingTimes && !stripSchedule)
+        if (IncludeAllMeetingTimes)
             s.Schedule = source.Schedule
                 .Select(m => new SectionDaySchedule
                 {
@@ -322,123 +264,6 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
                 }).ToList();
 
         return s;
-    }
-
-    private void BuildFlaggedDescriptions()
-    {
-        var courses = new Dictionary<string, Course>();
-        var subjects = new Dictionary<string, Subject>();
-        var descriptions = new List<string>();
-
-        foreach (var (section, badMeetings) in _flaggedSections!)
-        {
-            var courseLabel = "?";
-            if (section.CourseId is not null)
-            {
-                if (!courses.TryGetValue(section.CourseId, out var course))
-                {
-                    course = _courseRepo.GetById(section.CourseId);
-                    if (course is not null) courses[section.CourseId] = course;
-                }
-                if (course is not null)
-                {
-                    if (!subjects.TryGetValue(course.SubjectId, out var subject))
-                    {
-                        subject = _subjectRepo.GetById(course.SubjectId);
-                        if (subject is not null) subjects[course.SubjectId] = subject;
-                    }
-                    var subjectAbbrev = subject?.CalendarAbbreviation ?? "?";
-                    courseLabel = $"{subjectAbbrev} {course.CalendarCode}";
-                }
-            }
-
-            descriptions.Add(
-                $"{courseLabel} {section.SectionCode} — {badMeetings.Count} meeting(s) incompatible");
-        }
-
-        FlaggedDescriptions = new ObservableCollection<string>(descriptions);
-    }
-
-    private void WriteFlaggedCsv()
-    {
-        var dbPath = AppSettings.Current.DatabasePath;
-        if (string.IsNullOrEmpty(dbPath)) return;
-
-        var dir = Path.GetDirectoryName(dbPath);
-        if (string.IsNullOrEmpty(dir)) return;
-
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var fromName = SanitizeFileName(FromSemester?.Name ?? "source");
-        var toName = SanitizeFileName(ToSemester?.Name ?? "target");
-        var fileName = $"CopySemester_Flagged_{fromName}_to_{toName}_{timestamp}.csv";
-        var filePath = Path.Combine(dir, fileName);
-
-        var courses = new Dictionary<string, Course>();
-        var subjects = new Dictionary<string, Subject>();
-        var dayNames = new[] { "", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-
-        var sb = new StringBuilder();
-        sb.AppendLine("Subject,Course,Section Code,Day,Start Time,Duration (min),Issue");
-
-        foreach (var (section, badMeetings) in _flaggedSections!)
-        {
-            var subjectAbbrev = "?";
-            var calendarCode = "?";
-
-            if (section.CourseId is not null)
-            {
-                if (!courses.TryGetValue(section.CourseId, out var course))
-                {
-                    course = _courseRepo.GetById(section.CourseId);
-                    if (course is not null) courses[section.CourseId] = course;
-                }
-                if (course is not null)
-                {
-                    calendarCode = course.CalendarCode;
-                    if (!subjects.TryGetValue(course.SubjectId, out var subject))
-                    {
-                        subject = _subjectRepo.GetById(course.SubjectId);
-                        if (subject is not null) subjects[course.SubjectId] = subject;
-                    }
-                    subjectAbbrev = subject?.CalendarAbbreviation ?? "?";
-                }
-            }
-
-            foreach (var meeting in badMeetings)
-            {
-                var day = meeting.Day >= 1 && meeting.Day < dayNames.Length
-                    ? dayNames[meeting.Day] : meeting.Day.ToString();
-                var startTime = FormatMinutes(meeting.StartMinutes);
-                var issue = "Start time not valid for block length";
-
-                sb.AppendLine($"{CsvEscape(subjectAbbrev)},{CsvEscape(calendarCode)},{CsvEscape(section.SectionCode)},{day},{startTime},{meeting.DurationMinutes},{CsvEscape(issue)}");
-            }
-        }
-
-        File.WriteAllText(filePath, sb.ToString());
-        StatusMessage = $"Flagged sections report written to {fileName}";
-    }
-
-    private static string FormatMinutes(int minutes)
-    {
-        var h = minutes / 60;
-        var m = minutes % 60;
-        var ampm = h >= 12 ? "PM" : "AM";
-        var h12 = h > 12 ? h - 12 : (h == 0 ? 12 : h);
-        return $"{h12}:{m:D2} {ampm}";
-    }
-
-    private static string CsvEscape(string value)
-    {
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
-            return $"\"{value.Replace("\"", "\"\"")}\"";
-        return value;
-    }
-
-    private static string SanitizeFileName(string name)
-    {
-        var invalid = Path.GetInvalidFileNameChars();
-        return string.Concat(name.Select(c => Array.IndexOf(invalid, c) >= 0 ? '_' : c));
     }
 
     [RelayCommand]

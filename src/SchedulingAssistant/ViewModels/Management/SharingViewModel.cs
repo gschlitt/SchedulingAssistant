@@ -20,6 +20,7 @@ public partial class SharingViewModel : ViewModelBase
     private readonly ICourseRepository _courseRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
+    private readonly SectionStore _sectionStore;
     private readonly MainWindowViewModel _mainVm;
 
     [ObservableProperty] private string? _statusMessage;
@@ -34,6 +35,7 @@ public partial class SharingViewModel : ViewModelBase
         ICourseRepository courseRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
+        SectionStore sectionStore,
         MainWindowViewModel mainVm)
     {
         _sharedScheduleService = sharedScheduleService;
@@ -43,6 +45,7 @@ public partial class SharingViewModel : ViewModelBase
         _courseRepo = courseRepo;
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
+        _sectionStore = sectionStore;
         _mainVm = mainVm;
 
         UpdateSharedFolderDisplay();
@@ -140,26 +143,34 @@ public partial class SharingViewModel : ViewModelBase
             return;
         }
 
-        // Get sections visible in the current semester
+        // Get sections in the current semester, restricted to the active grid filter if any
         var semesterIds = semesters.Select(s => s.Semester.Id).ToHashSet();
         var sections = _sectionRepo.GetAll()
             .Where(s => !string.IsNullOrEmpty(s.SemesterId) && semesterIds.Contains(s.SemesterId))
             .ToList();
 
+        var filteredIds = _sectionStore.FilteredSectionIds;
+        bool isFiltered = filteredIds is not null;
+        if (isFiltered)
+            sections = sections.Where(s => filteredIds!.Contains(s.Id)).ToList();
+
         if (sections.Count == 0)
         {
-            StatusMessage = "No sections to export in the current semester.";
+            StatusMessage = isFiltered
+                ? "No sections match the current filter."
+                : "No sections to export in the current semester.";
             return;
         }
 
         // Build course lookup
         var courses = _courseRepo.GetAll().ToDictionary(c => c.Id, c => c.CalendarCode ?? c.Id);
 
-        // Default filename
-        var unit = _academicUnitService.GetUnit();
-        var unitName = !string.IsNullOrWhiteSpace(unit?.Name) ? unit!.Name : null;
+        // Default filename: derive from the source description, sanitized for the filesystem
+        var sourceLabel = ExportSourceLabel.Trim();
+        var ayName = _semesterContext.SelectedAcademicYear?.Name ?? "";
         var semName = semesters.First().Semester.Name;
-        var defaultName = unitName is not null ? $"{unitName} Schedule {semName}.csv" : $"Schedule {semName}.csv";
+        var safeName = SanitizeFileName($"{sourceLabel} {ayName} {semName}");
+        var defaultName = string.IsNullOrWhiteSpace(safeName) ? "Shared Schedule.csv" : $"{safeName}.csv";
 
         var storageProvider = window.StorageProvider;
         var startFolder = await GetStartFolder(storageProvider);
@@ -175,15 +186,13 @@ public partial class SharingViewModel : ViewModelBase
 
         if (file is null) return;
 
-        var sourceLabel = ExportSourceLabel.Trim();
-
         await using var stream = await file.OpenWriteAsync();
         var error = _exporter.Export(stream, sourceLabel, sections, id => courses.GetValueOrDefault(id, id));
 
         if (error is not null)
             StatusMessage = error;
         else
-            StatusMessage = $"Exported {sections.Count} sections to {file.Name}.";
+            StatusMessage = $"Exported {sections.Count} sections{(isFiltered ? " (filtered)" : "")} to {file.Name}.";
 #endif
     }
 
@@ -232,6 +241,33 @@ public partial class SharingViewModel : ViewModelBase
     private void UpdateExportSourceLabel()
     {
         ExportSourceLabel = string.Empty;
+    }
+
+    /// <summary>
+    /// Strips characters that are illegal in Windows/macOS filenames and collapses
+    /// runs of whitespace into a single space.
+    /// </summary>
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        var sb = new System.Text.StringBuilder(name.Length);
+        bool prevSpace = false;
+        foreach (var ch in name)
+        {
+            if (Array.IndexOf(invalid, ch) >= 0 || ch == '~')
+                continue;
+            if (char.IsWhiteSpace(ch))
+            {
+                if (!prevSpace) sb.Append(' ');
+                prevSpace = true;
+            }
+            else
+            {
+                sb.Append(ch);
+                prevSpace = false;
+            }
+        }
+        return sb.ToString().Trim();
     }
 
 #if !BROWSER

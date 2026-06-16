@@ -226,12 +226,12 @@
 	<SolidColorBrush x:Key="PrefixDesignatorBackground" Color="LightSalmon" />
 
 	<!--  ── Shared schedule tiles (cross-department CSV overlay)  ────────────  -->
-	<Color x:Key="SharedScheduleColor">#4a0be6</Color>
+	<Color x:Key="SharedScheduleColor">#e66a0b</Color>
 	<SolidColorBrush x:Key="SharedScheduleBorder" Color="{StaticResource SharedScheduleColor}" />
 	<SolidColorBrush x:Key="SharedScheduleText" Color="{StaticResource SharedScheduleColor}" />
 	<SolidColorBrush x:Key="SharedScheduleBodyFill" Color="#0C7C5CCC" />
 	<SolidColorBrush x:Key="SharedScheduleBadgeText" Color="{StaticResource SharedScheduleColor}" />
-	<SolidColorBrush x:Key="SharedScheduleStripBackground" Color="#F5F0FF" />
+	<SolidColorBrush x:Key="SharedScheduleStripBackground" Color="#edeae8" />
 
 	<!--  ── Section attention flags (advisory cue applied via right-click)  ──  -->
 	<SolidColorBrush x:Key="FlagRed" Color="#D32F2F" />

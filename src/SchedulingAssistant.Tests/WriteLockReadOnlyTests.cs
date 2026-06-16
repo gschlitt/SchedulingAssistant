@@ -93,7 +93,6 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private readonly SectionStore                 _sectionStore;
     private readonly MeetingStore                 _meetingStore;
     private readonly AcademicUnitService          _academicUnitService;
-    private readonly ScheduleValidationService    _scheduleValidation;
     private readonly IDialogService               _dialog;
 
     /// <summary>
@@ -133,7 +132,6 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         _sectionStore       = new SectionStore();
         _meetingStore       = new MeetingStore();
         _academicUnitService = new AcademicUnitService(_academicUnitRepo);
-        _scheduleValidation  = new ScheduleValidationService(_legalStartTimeRepo);
         _dialog             = new NullDialogService();
     }
 
@@ -443,17 +441,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void CopySemester_CopyCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new CopySemesterViewModel(_ayRepo, _semesterRepo, _sectionRepo, _db,
-            _scheduleValidation, _courseRepo, _subjectRepo, _lock);
+        var vm = new CopySemesterViewModel(_ayRepo, _semesterRepo, _sectionRepo, _db, _lock);
         Assert.False(vm.CopyCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public void CopySemester_ContinueCopyCommand_CanExecuteIsFalseInReaderMode()
-    {
-        var vm = new CopySemesterViewModel(_ayRepo, _semesterRepo, _sectionRepo, _db,
-            _scheduleValidation, _courseRepo, _subjectRepo, _lock);
-        Assert.False(vm.ContinueCopyCommand.CanExecute(null));
     }
 
     // ═════════════════════════════════════════════════════════════════════════

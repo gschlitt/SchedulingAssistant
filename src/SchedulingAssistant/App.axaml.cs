@@ -201,7 +201,6 @@ public partial class App : Application
         services.AddSingleton<BackupService>();
         services.AddSingleton<AppNotificationService>();
         services.AddSingleton<AcademicUnitService>();
-        services.AddSingleton<ScheduleValidationService>();
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
@@ -306,7 +305,6 @@ public partial class App : Application
         services.AddSingleton<WriteLockService>();
         services.AddSingleton<AppNotificationService>();
         services.AddSingleton<AcademicUnitService>();
-        services.AddSingleton<ScheduleValidationService>();
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();

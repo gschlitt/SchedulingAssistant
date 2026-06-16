@@ -39,3 +39,29 @@ Thumbs.db
 
 # Windows reserved device name (should not exist)
 nul
+
+# Build macros
+publish.ps1
+publish-wasm.ps1
+publish-output.txt
+publish-verbose.txt
+
+#Notes
+multi-user-text.txt
+migration.txt
+CodeComments.txt
+publish.mac.sh
+
+#Markdown
+AUDIT.md
+CLAUDE.md
+data-integrity-agenda.md
+persistence-review.md
+spec_responsive_menu_overflow.md
+TEST_SCENARIO.md
+WORKAROUNDS.md
+
+#WOLF
+.wolf/
+
+
