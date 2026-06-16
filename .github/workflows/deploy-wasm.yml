@@ -1,6 +1,8 @@
 name: Deploy WASM Demo
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
