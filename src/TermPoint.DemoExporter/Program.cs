@@ -566,6 +566,10 @@ public static class Program
             var campusId = data["campusId"]?.GetValue<string>();
             var tagIds = GetStringArray(data, "tagIds");
             var resourceIds = GetStringArray(data, "resourceIds");
+            var level = data["level"]?.GetValue<string>() ?? "";
+            var capacity = data["capacity"]?.GetValue<int?>();
+            var flag = data["flag"]?.GetValue<int>() ?? 0;
+            var notes = data["notes"]?.GetValue<string>() ?? "";
 
             sb.AppendLine("        new()");
             sb.AppendLine("        {");
@@ -573,6 +577,14 @@ public static class Program
             Prop(sb, "SemesterId", Q(Remap(semMap, r[1])), 13);
             Prop(sb, "CourseId", Q(Remap(courseMap, r[2])), 13);
             Prop(sb, "SectionCode", Q(Esc(r[3])), 13);
+            if (!string.IsNullOrEmpty(level))
+                Prop(sb, "Level", Q(Esc(level)), 13);
+            if (capacity is > 0)
+                Prop(sb, "Capacity", capacity.Value.ToString(), 13);
+            if (flag != 0)
+                Prop(sb, "Flag", $"SectionFlag.{FlagName(flag)}", 13);
+            if (!string.IsNullOrEmpty(notes))
+                Prop(sb, "Notes", Q(Esc(notes)), 13);
             if (!string.IsNullOrEmpty(sectionTypeId))
                 Prop(sb, "SectionTypeId", Q(Remap(envMap, sectionTypeId)), 13);
             if (!string.IsNullOrEmpty(campusId))
@@ -584,6 +596,7 @@ public static class Program
 
             WriteSchedule(sb, data, roomMap, envMap);
             WriteInstructorAssignments(sb, data, instMap);
+            WriteReserves(sb, data, reserveMap);
 
             RemoveTrailingComma(sb);
             sb.AppendLine("        },");
@@ -852,7 +865,51 @@ public static class Program
         sb.AppendLine("            ],");
     }
 
+    /// <summary>Writes the Reserves list for a section.</summary>
+    private static void WriteReserves(StringBuilder sb, JsonNode data,
+        Dictionary<string, string> reserveMap)
+    {
+        var reserves = data["reserves"]?.AsArray();
+        if (reserves == null || reserves.Count == 0) return;
+
+        if (reserves.Count == 1 && reserves[0] != null)
+        {
+            var rv = reserves[0]!;
+            var reserveId = rv["reserveId"]?.GetValue<string>() ?? "";
+            var code = rv["code"]?.GetValue<int>() ?? 0;
+
+            var parts = $"ReserveId = \"{Remap(reserveMap, reserveId)}\", Code = {code}";
+            sb.AppendLine($"            Reserves = [ new() {{ {parts} }} ],");
+            return;
+        }
+
+        sb.AppendLine("            Reserves =");
+        sb.AppendLine("            [");
+
+        foreach (var rv in reserves)
+        {
+            if (rv == null) continue;
+            var reserveId = rv["reserveId"]?.GetValue<string>() ?? "";
+            var code = rv["code"]?.GetValue<int>() ?? 0;
+
+            var parts = $"ReserveId = \"{Remap(reserveMap, reserveId)}\", Code = {code}";
+            sb.AppendLine($"                new() {{ {parts} }},");
+        }
+
+        RemoveTrailingComma(sb);
+        sb.AppendLine("            ],");
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
+
+    /// <summary>Maps a SectionFlag integer value to its enum name.</summary>
+    private static string FlagName(int flag) => flag switch
+    {
+        1 => "Red",
+        2 => "Blue",
+        3 => "Green",
+        _ => "None"
+    };
 
     /// <summary>Builds the standard file header.</summary>
     private static StringBuilder Header()

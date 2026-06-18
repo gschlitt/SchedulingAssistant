@@ -11,9 +11,10 @@ public static partial class DemoData
             Id          = "demo-meeting-1",
             SemesterId  = "demo-sem-1",
             Title       = "DeptMtng",
+            CampusId    = "demo-campus-2",
             Schedule =
             [
-                new() { Day = 3, StartMinutes = 870, DurationMinutes = 180, Frequency = "4" }
+                new() { Day = 3, StartMinutes = 870, DurationMinutes = 180, RoomId = "demo-room-1" }
             ],
             InstructorAssignments =
             [

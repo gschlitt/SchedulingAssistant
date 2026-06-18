@@ -12,6 +12,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-1",
             SectionCode   = "ON1",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-2", Workload = 2m } ]
         },
@@ -21,6 +22,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-1",
             SectionCode   = "ON2",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-33", Workload = 1m } ]
         },
@@ -30,6 +32,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-1",
             SectionCode   = "ON3",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = []
         },
@@ -39,6 +42,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-1",
             SectionCode   = "ON4",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = []
         },
@@ -48,6 +52,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-9",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -63,6 +68,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-9",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -78,6 +84,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-6",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -93,6 +100,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-3",
             CourseId      = "demo-course-6",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -109,6 +117,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "L#A",
+            Level         = "100",
+            Capacity      = 10,
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-2",
             Schedule =
@@ -123,6 +133,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "L#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-2",
             Schedule =
@@ -137,6 +148,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "LK1",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-2",
             Schedule =
@@ -153,6 +165,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#A",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -167,6 +180,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -181,6 +195,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#C",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -195,6 +210,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#D",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -209,6 +225,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#F",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -223,6 +240,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#G",
+            Level         = "100",
+            Flag          = SectionFlag.Red,
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -237,6 +256,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#H",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -251,6 +271,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#I",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-1"],
@@ -258,7 +279,8 @@ public static partial class DemoData
             [
                 new() { Day = 4, StartMinutes = 870, DurationMinutes = 180, RoomId = "demo-room-4", MeetingTypeId = "demo-mt-3" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-13", Workload = 0.5m } ]
+            InstructorAssignments = [ new() { InstructorId = "demo-inst-13", Workload = 0.5m } ],
+            Reserves = [ new() { ReserveId = "demo-reserve-1", Code = 12 } ]
         },
         new()
         {
@@ -266,6 +288,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#K",
+            Level         = "100",
+            Flag          = SectionFlag.Red,
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -280,6 +304,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#L",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -294,6 +319,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#M",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -308,6 +334,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "W#N",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -322,6 +349,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS1",
+            Level         = "100",
+            Capacity      = 36,
             SectionTypeId = "demo-st-2",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-3"],
@@ -339,6 +368,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS2",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -355,6 +385,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS3",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -371,6 +402,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS4",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -387,6 +419,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS5",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -403,6 +436,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-3",
             SectionCode   = "WS6",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -419,6 +453,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-5",
             SectionCode   = "LK1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-2",
             TagIds        = ["demo-tag-3"],
@@ -434,6 +469,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-5",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-3"],
@@ -449,6 +485,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-5",
             SectionCode   = "W#B",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-3"],
@@ -464,6 +501,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-5",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-1", "demo-tag-3"],
@@ -480,6 +518,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-5",
             SectionCode   = "WS2",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-2", "demo-tag-3"],
@@ -496,6 +535,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-5",
             SectionCode   = "WS3",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-3"],
@@ -512,6 +552,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-16",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -526,6 +567,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-1",
             SectionCode   = "LK1",
+            Level         = "100",
+            Capacity      = 40,
             CampusId      = "demo-campus-2",
             TagIds        = ["demo-tag-1"],
             Schedule =
@@ -541,6 +584,9 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-1",
             SectionCode   = "LK2",
+            Level         = "100",
+            Capacity      = 36,
+            Flag          = SectionFlag.Red,
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-1"],
@@ -548,7 +594,8 @@ public static partial class DemoData
             [
                 new() { Day = 1, StartMinutes = 600, DurationMinutes = 90, RoomId = "demo-room-1" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-37", Workload = 1m } ]
+            InstructorAssignments = [ new() { InstructorId = "demo-inst-37", Workload = 1m } ],
+            Reserves = [ new() { ReserveId = "demo-reserve-1", Code = 24 } ]
         },
         new()
         {
@@ -556,6 +603,9 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-1",
             SectionCode   = "LK3",
+            Level         = "100",
+            Capacity      = 24,
+            Notes         = "For the high-school liaison program",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-2",
             Schedule =
@@ -563,7 +613,8 @@ public static partial class DemoData
                 new() { Day = 1, StartMinutes = 510, DurationMinutes = 90, RoomId = "demo-room-4" },
                 new() { Day = 5, StartMinutes = 1050, DurationMinutes = 180, RoomId = "demo-room-3" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-37", Workload = 1m } ]
+            InstructorAssignments = [ new() { InstructorId = "demo-inst-37", Workload = 1m } ],
+            Reserves = [ new() { ReserveId = "demo-reserve-2", Code = 20 } ]
         },
         new()
         {
@@ -571,6 +622,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-1",
             SectionCode   = "ON1",
+            Level         = "100",
+            Capacity      = 36,
             SectionTypeId = "demo-st-2",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-10", Workload = 2m } ]
@@ -581,6 +634,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-1",
             SectionCode   = "ON2",
+            Level         = "100",
+            Capacity      = 36,
             SectionTypeId = "demo-st-2",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-10", Workload = 2m } ]
@@ -591,6 +646,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-9",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -605,6 +661,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-9",
             SectionCode   = "W#B",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -619,6 +676,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-9",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -634,6 +692,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-9",
             SectionCode   = "WS2",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -649,6 +708,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-9",
             SectionCode   = "WS3",
+            Level         = "200",
+            Capacity      = 40,
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-2"],
             Schedule =
@@ -656,7 +717,8 @@ public static partial class DemoData
                 new() { Day = 1, StartMinutes = 780, DurationMinutes = 90, MeetingTypeId = "demo-mt-1" },
                 new() { Day = 3, StartMinutes = 780, DurationMinutes = 90, MeetingTypeId = "demo-mt-1" }
             ],
-            InstructorAssignments = [ new() { InstructorId = "demo-inst-3", Workload = 1m } ]
+            InstructorAssignments = [ new() { InstructorId = "demo-inst-3", Workload = 1m } ],
+            Reserves = [ new() { ReserveId = "demo-reserve-1", Code = 32 } ]
         },
         new()
         {
@@ -664,6 +726,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-19",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -679,6 +742,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-50",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -694,6 +758,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-35",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -709,6 +774,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -723,6 +789,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#B",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-1"],
@@ -738,6 +805,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "W#C",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -752,6 +820,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-2"],
@@ -768,6 +837,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-7",
             SectionCode   = "WS2",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-1"],
@@ -784,6 +854,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-21",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -799,6 +870,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-32",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -814,6 +886,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-30",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-4"],
@@ -829,6 +902,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-38",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -844,6 +918,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-26",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-4"],
@@ -861,6 +936,8 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-11",
             SectionCode   = "WS1",
+            Level         = "300",
+            Flag          = SectionFlag.Red,
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -877,6 +954,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-24",
             SectionCode   = "WS1",
+            Level         = "300",
             CampusId      = "demo-campus-1",
             Schedule =
             [
@@ -890,6 +968,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-15",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "demo-campus-1",
             TagIds        = ["demo-tag-4"],
@@ -907,6 +986,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-1",
             CourseId      = "demo-course-15",
             SectionCode   = "WS2",
+            Level         = "300",
             SectionTypeId = "demo-st-2",
             CampusId      = "demo-campus-1",
             Schedule =
@@ -922,6 +1002,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-3",
             SectionCode   = "W#A",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -936,6 +1017,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-3",
             SectionCode   = "W#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -950,6 +1032,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-3",
             SectionCode   = "WS1",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -966,6 +1049,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-45",
             SectionCode   = "ON1",
+            Level         = "400",
             Schedule =
             [
                 new() { Day = 5, StartMinutes = 690, DurationMinutes = 180, MeetingTypeId = "demo-mt-2" }
@@ -978,6 +1062,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-4",
             SectionCode   = "W#A",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -993,6 +1078,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-4",
             SectionCode   = "W#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1008,6 +1094,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-4",
             SectionCode   = "WS1",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1025,6 +1112,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-4",
             CourseId      = "demo-course-47",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1040,6 +1128,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-31",
             SectionCode   = "W#A",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1054,6 +1143,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-31",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1068,6 +1158,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "W#A",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1082,6 +1173,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "W#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1096,6 +1188,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "W#C",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1110,6 +1203,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "W#D",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1124,6 +1218,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "W#E",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1138,6 +1233,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "WS1",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1154,6 +1250,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-3",
             SectionCode   = "WS2",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1169,6 +1266,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-42",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1184,6 +1282,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-5",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-1", "demo-tag-3"],
@@ -1200,6 +1299,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-5",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-1", "demo-tag-3"],
@@ -1215,6 +1315,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-1",
             SectionCode   = "ON1",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-37", Workload = 2m } ]
         },
@@ -1224,6 +1325,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-1",
             SectionCode   = "ON2",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-10", Workload = 3m } ]
         },
@@ -1233,6 +1335,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-1",
             SectionCode   = "ON3",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-18", Workload = 2m } ]
         },
@@ -1242,6 +1345,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-1",
             SectionCode   = "ON4",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-2", Workload = 2m } ]
         },
@@ -1251,6 +1355,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-1",
             SectionCode   = "ON5",
+            Level         = "100",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-14", Workload = 2m } ]
         },
@@ -1260,6 +1365,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-9",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1274,6 +1380,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-9",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1288,6 +1395,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-19",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1303,6 +1411,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-40",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1317,6 +1426,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "L#A",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-6495e97c",
             TagIds        = ["demo-tag-3"],
@@ -1332,6 +1442,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "L#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-6495e97c",
             TagIds        = ["demo-tag-3"],
@@ -1347,6 +1458,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "LK1",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-6495e97c",
             TagIds        = ["demo-tag-3"],
@@ -1363,6 +1475,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#A",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1378,6 +1491,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#B",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1393,6 +1507,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#C",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1408,6 +1523,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#D",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1423,6 +1539,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#F",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1438,6 +1555,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#G",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1453,6 +1571,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#H",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1465,6 +1584,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#I",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1480,6 +1600,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "W#J",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1495,6 +1616,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "WS1",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1512,6 +1634,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "WS2",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1529,6 +1652,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-4",
             SectionCode   = "WS3",
+            Level         = "100",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             TagIds        = ["demo-tag-3"],
@@ -1546,6 +1670,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "W#A",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1560,6 +1685,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "W#B",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1574,6 +1700,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "W#C",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1588,6 +1715,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "W#D",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1602,6 +1730,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "WS1",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1617,6 +1746,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "WS2",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1632,6 +1762,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-6",
             SectionCode   = "WS3",
+            Level         = "200",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1646,6 +1777,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-41",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1661,6 +1793,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-54",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1676,6 +1809,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-12",
             SectionCode   = "W#A",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1690,6 +1824,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-12",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1704,6 +1839,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-29",
             SectionCode   = "ON1",
+            Level         = "300",
             Schedule = [],
             InstructorAssignments = [ new() { InstructorId = "demo-inst-37", Workload = 1m } ]
         },
@@ -1713,6 +1849,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-39",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1728,6 +1865,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-17",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1743,6 +1881,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-15",
             SectionCode   = "W#A",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1757,6 +1896,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-15",
             SectionCode   = "WS1",
+            Level         = "300",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1772,6 +1912,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-43",
             SectionCode   = "W#A",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1786,6 +1927,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-43",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1801,6 +1943,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-48",
             SectionCode   = "W#A",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
@@ -1815,6 +1958,7 @@ public static partial class DemoData
             SemesterId    = "demo-sem-2",
             CourseId      = "demo-course-48",
             SectionCode   = "WS1",
+            Level         = "400",
             SectionTypeId = "demo-st-1",
             CampusId      = "UNMAPPED-69bce1ca",
             Schedule =
