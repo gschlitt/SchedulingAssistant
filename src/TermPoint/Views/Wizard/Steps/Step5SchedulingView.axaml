@@ -1,0 +1,179 @@
+<UserControl
+    x:Class="TermPoint.Views.Wizard.Steps.Step5SchedulingView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TermPoint.ViewModels.Wizard.Steps"
+    x:CompileBindings="False">
+
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,15">
+
+        <TextBlock TextWrapping="Wrap">
+            <Span>
+                TermPoint uses the 24-hour clock to specify time of day (so that 1:30 pm = 1330). A typical 'block'  is scheduled using the start time (e.g. 1330) and a length, measured either in minutes or hours (e.g. 75 minutes or 1.25 hours) as you prefer.
+            </Span>
+            <LineBreak />
+            <LineBreak />
+            <Span>
+                You can specify the start-times your institution uses, and associated block lengths. It will speed up your section editing to do so, as the start times will be available from a menu, rather than requiring manual entry.
+            </Span>
+        </TextBlock>
+
+
+        <!--  Block length unit toggle  -->
+        <StackPanel
+            Margin="0,10,0,10"
+            Orientation="Horizontal"
+            Spacing="12">
+            <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
+            <RadioButton
+                Content="Hours"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsHoursUnit}" />
+            <RadioButton
+                Content="Minutes"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsMinutesUnit}" />
+        </StackPanel>
+
+        <!--  One card per block length  -->
+        <ItemsControl ItemsSource="{Binding BlockLengths}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="local:WizardBlockLengthEntry">
+
+                    <Border
+                        Margin="0,0,0,8"
+                        Padding="14,10"
+                        BorderBrush="{StaticResource SeparatorLine}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <StackPanel Spacing="8">
+
+                            <!--  Card header: label + remove button  -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    FontSize="{DynamicResource FontSizeNormal}"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding Label}" />
+                                <Button
+                                    Grid.Column="1"
+                                    Padding="8,3"
+                                    Command="{Binding $parent[UserControl].DataContext.RemoveBlockLengthCommand}"
+                                    CommandParameter="{Binding}"
+                                    Content="Remove block"
+                                    FontSize="{DynamicResource FontSizeSmall}" />
+                            </Grid>
+
+                            <!--  Start time chips — each has a × remove button  -->
+                            <ItemsControl ItemsSource="{Binding StartTimes}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="local:WizardStartTimeEntry">
+                                        <Border
+                                            Margin="0,0,5,5"
+                                            Padding="2,2"
+                                            Background="{StaticResource ChromeBackground}"
+                                            BorderBrush="{StaticResource ChromeBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="3">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontFamily="Consolas"
+                                                    FontSize="{DynamicResource FontSizeSmall}"
+                                                    Text="{Binding Hhmm}" />
+                                                <Button
+                                                    Padding="2,0"
+                                                    VerticalAlignment="Center"
+                                                    Command="{Binding $parent[ItemsControl].DataContext.RemoveTimeCommand}"
+                                                    CommandParameter="{Binding}">
+                                                    <Viewbox Width="8" Height="8">
+                                                        <Path
+                                                            Fill="{StaticResource TextPrimary}"
+                                                            Data="{StaticResource RemoveIcon}" />
+                                                    </Viewbox>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!--  Add time row  -->
+                            <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBox
+                                        Width="80"
+                                        FontSize="{DynamicResource FontSizeSmall}"
+                                        Text="{Binding NewTimeInput}"
+                                        PlaceholderText="HHMM" />
+                                    <Button
+                                        Command="{Binding AddTimeCommand}"
+                                        Content="Add time"
+                                        FontSize="{DynamicResource FontSizeSmall}" />
+                                </StackPanel>
+                                <TextBlock
+                                    FontSize="{DynamicResource FontSizeSmall}"
+                                    Foreground="{StaticResource ErrorForeground}"
+                                    IsVisible="{Binding AddTimeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Text="{Binding AddTimeError}" />
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Border>
+
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!--  Add a new block length  -->
+        <Border
+            Padding="14,10"
+            BorderBrush="{StaticResource SubduedBorder}"
+            BorderThickness="1"
+            CornerRadius="4">
+            <StackPanel Spacing="6">
+                <TextBlock
+                    FontSize="{DynamicResource FontSizeNormal}"
+                    FontWeight="SemiBold"
+                    Text="Add a block length" />
+                <StackPanel
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <TextBox
+                        Width="72"
+                        FontFamily="Consolas"
+                        FontSize="{DynamicResource FontSizeSmall}"
+                        Text="{Binding NewBlockLengthInput}"
+                        PlaceholderText="{Binding NewBlockLengthWatermark}" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="{DynamicResource FontSizeSmall}"
+                        Text="{Binding NewBlockLengthWatermark}" />
+                    <Button
+                        Command="{Binding AddBlockLengthCommand}"
+                        Content="Add block length"
+                        FontSize="{DynamicResource FontSizeSmall}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!--  Weekend day availability  -->
+        <StackPanel Spacing="6">
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="Weekend days" />
+            <CheckBox Content="Include Saturday as an available scheduling day" IsChecked="{Binding IncludeSaturday}" />
+            <CheckBox Content="Include Sunday as an available scheduling day" IsChecked="{Binding IncludeSunday}" />
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,1511 @@
+<UserControl
+    x:Class="TermPoint.Views.Management.SectionListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:TermPoint.Behaviors"
+    xmlns:models="using:TermPoint.Models"
+    xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+    xmlns:vm="using:TermPoint.ViewModels.Management"
+    b:LostFocusForwardBehavior.Command="{Binding CommitEditSectionCodeCommand}"
+    b:LostFocusForwardBehavior.TargetName="SectionCodeBox"
+    x:CompileBindings="False"
+    x:DataType="vm:SectionListViewModel">
+
+    <UserControl.Styles>
+
+        <!--  Compact popup trigger button: looks like a bordered label, toggles popup open/closed  -->
+        <Style Selector="ToggleButton.EditorPopupTrigger">
+            <Setter Property="Background" Value="{StaticResource FilterExpanderContent}" />
+            <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="5,4" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="ToggleButton.EditorPopupTrigger:pointerover">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.EditorPopupTrigger:checked">
+            <Setter Property="Background" Value="{StaticResource FilterExpanderBorder}" />
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{StaticResource SectionEditorControls}" />
+            <Setter Property="BorderBrush" Value="{StaticResource SubduedBorder}" />
+        </Style>
+
+        <Style Selector="Button">
+			<Setter Property="BorderBrush" Value="Black"/>
+            <Setter Property="BorderThickness" Value="0.5"/>
+        </Style>
+
+      
+        <Style Selector="TextBlock">
+          <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+        </Style>
+      
+
+        <!--
+            Hover tint on section cards. Because the card's Background is a local binding
+            (CardBackgroundBrush), a style setter cannot override it. Instead, a transparent
+            overlay Border (Classes="SectionCardHover") sits on top of the card content.
+            That overlay has no binding on Background, so the style setter below can apply
+            the tint freely without fighting the binding priority system.
+        -->
+        <Style Selector="ListBox.SectionList ListBoxItem:pointerover Border.SectionCardHover">
+            <Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
+        </Style>
+
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+        <!--  Shared template for the inline edit form, used for both Add and Edit  -->
+        <DataTemplate x:Key="InlineEditFormTemplate" DataType="{x:Type vm:SectionEditViewModel}">
+            <StackPanel Spacing="4">
+
+                <!--  Save / Cancel (top)  -->
+                <StackPanel
+                    Margin="0,0,0,2"
+                    Orientation="Horizontal"
+                    Spacing="6">
+                    <Button
+                        Padding="3,2"
+                        Command="{Binding SaveCommand}"
+                        Content="Apply" 
+                        Background="{StaticResource TileFill}"
+                        b:HelpTip.Text="Apply edits to this section"/>
+                    <Button
+                        Padding="3,2"
+                        Command="{Binding CancelCommand}"
+                        Background="{StaticResource TileFill}"
+                        Content="Cancel" />
+                </StackPanel>
+
+                <!--  Inline validation error — shown inside the editor so it's near the failing field  -->
+                <TextBlock
+                    FontSize="10"
+                    Foreground="{StaticResource TextError}"
+                    IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Text="{Binding LastErrorMessage}"
+                    TextWrapping="Wrap" />
+
+                <!--  Dismissable capacity advisory — room seats fewer than the section capacity  -->
+                <Border
+                    Padding="6,3"
+                    Background="{StaticResource FilterExpanderContent}"
+                    BorderBrush="{StaticResource SubduedBorder}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    IsVisible="{Binding CapacityWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{DynamicResource TextAttention}"
+                            Text="{Binding CapacityWarning}"
+                            TextWrapping="Wrap" />
+                        <Button
+                            Grid.Column="1"
+                            Margin="6,0,0,0"
+                            Padding="4,1"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Command="{Binding DismissCapacityWarningCommand}"
+                            Content="Dismiss" />
+                    </Grid>
+                </Border>
+
+                <!--  Subject + Course Number + Pattern + Section Code + Section Type side by side  -->
+                <!--  The Pattern column (col 2) is Auto-width and collapses when HasCodePatterns is false  -->
+                <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,Auto,80,90,60">
+                    <!--  Subject dropdown  -->
+                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Subject" />
+                        <ComboBox
+                            HorizontalAlignment="Stretch"
+                            CornerRadius="4"
+                            DisplayMemberBinding="{Binding CalendarAbbreviation}"
+                            FontSize="11"
+                            ItemsSource="{Binding Subjects}"
+                            SelectedItem="{Binding SelectedSubject}" />
+                    </StackPanel>
+
+                    <!--  Course Number dropdown (filtered by subject)  -->
+                    <StackPanel Grid.Column="1" Margin="0,0,4,0">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Course #" />
+                        <ComboBox
+                            HorizontalAlignment="Stretch"
+                            CornerRadius="4"
+                            FontSize="11"
+                            IsEnabled="{Binding HasAvailableCourseNumbers}"
+                            ItemsSource="{Binding CourseNumbers}"
+                            SelectedItem="{Binding SelectedCourseNumber}" />
+                    </StackPanel>
+
+                    <!--  Code pattern chooser (new sections only; collapses when no patterns configured)  -->
+                    <StackPanel
+                        Grid.Column="2"
+                        IsVisible="{Binding HasCodePatterns}"
+                        Margin="0,0,4,0">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Section Code format" 
+                            b:HelpTip.Text="Section code formats are set under 'Configuration'"/>
+                        <ComboBox
+                            MinWidth="90"
+                            CornerRadius="4"
+                            DisplayMemberBinding="{Binding Name}"
+                            FontSize="11"
+                            IsEnabled="{Binding IsSectionCodeEnabled}"
+                            ItemsSource="{Binding CodePatterns}"
+                            PlaceholderText="(auto-fill)"
+                            SelectedItem="{Binding SelectedPattern}" />
+                    </StackPanel>
+
+                    <!--  Section Code  -->
+                    <StackPanel Grid.Column="3" Margin="0,0,4,0">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Section Code" />
+                        <TextBox
+                            x:Name="SectionCodeBox"
+                            Height="24"
+                            Background="{StaticResource SectionEditorControls}"
+                            BorderBrush="{StaticResource SubduedBorder}"
+                            CornerRadius="4"
+                            FontSize="11"
+                            IsEnabled="{Binding IsSectionCodeEnabled}"
+                            Text="{Binding SectionCode}" />
+                        <TextBlock
+                            Margin="0,1,0,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextValidationError}"
+                            IsVisible="{Binding SectionCodeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Text="{Binding SectionCodeError}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <!--  Section Type  -->
+                    <StackPanel Grid.Column="4" IsEnabled="{Binding AreOtherFieldsEnabled}">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Section Type" />
+                        <ComboBox
+                            HorizontalAlignment="Stretch"
+                            CornerRadius="4"
+                            DisplayMemberBinding="{Binding Name}"
+                            FontSize="11"
+                            ItemsSource="{Binding SectionTypes}"
+                            SelectedValue="{Binding SelectedSectionTypeId}"
+                            SelectedValueBinding="{Binding Id}" />
+                    </StackPanel>
+
+                    <!--  Capacity (optional; empty = unspecified)  -->
+                    <StackPanel Grid.Column="5" Margin="4,0,0,0" IsEnabled="{Binding AreOtherFieldsEnabled}">
+                        <TextBlock
+                            FontSize="10"
+                            Foreground="{StaticResource TextLabel}"
+                            Text="Capacity" />
+                        <TextBox
+                            Height="24"
+                            Background="{StaticResource SectionEditorControls}"
+                            BorderBrush="{StaticResource SubduedBorder}"
+                            CornerRadius="4"
+                            FontSize="11"
+                            Text="{Binding CapacityText}"
+                            PlaceholderText="—" />
+                    </StackPanel>
+                </Grid>
+
+                <!--  Fields below Course+Code are disabled until course and unique code are committed  -->
+                <StackPanel IsEnabled="{Binding AreOtherFieldsEnabled}" Spacing="0">
+
+                    <StackPanel
+                        Margin="0,2,0,0"
+                        IsEnabled="{Binding AreOtherFieldsEnabled}"
+                        Orientation="Horizontal"
+                        Spacing="4">
+                        <Button
+                            Margin="0,0,4,0"
+                            Padding="4,2,4,3"
+                            FontSize="11"
+                            Command="{Binding AddMeetingCommand}"
+                            Content="+Meeting" />                        
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern1Command}"
+                            Content="{Binding Pattern1Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern1}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern2Command}"
+                            Content="{Binding Pattern2Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern2}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern3Command}"
+                            Content="{Binding Pattern3Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern3}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings"/>
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern4Command}"
+                            Content="{Binding Pattern4Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern4}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                        <Button
+                            VerticalAlignment="Bottom"
+                            Command="{Binding ApplyPattern5Command}"
+                            Content="{Binding Pattern5Label}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasPattern5}"
+                            b:HelpTip.Text="Apply Pattern. Changes made to the first meeting will propagate to the remaining meetings" />
+                    </StackPanel>
+
+                    <!--  Schedule  -->
+                    <TextBlock
+                        Margin="0,3,0,3"
+                        FontWeight="Normal"
+                        Foreground="{StaticResource TextLabel}"
+                        Text="Schedule" />
+
+
+                    <!--  Column headers + meeting rows share column widths via SharedSizeGroup  -->
+                    <StackPanel Grid.IsSharedSizeScope="True">
+
+                    <!--  Column headers (rendered once above all meeting slots)  -->
+                    <Grid Margin="0,0,0,1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDay"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgStart"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgLen"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgFreq"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgMtgType"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRmType"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRoom"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDel"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            Grid.Column="0"
+                            Margin="0,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Day" />
+                        <TextBlock
+                            Grid.Column="1"
+                            Margin="2,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Start" />
+                        <TextBlock
+                            Grid.Column="2"
+                            Margin="2,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Length" />
+                        <TextBlock
+                            Grid.Column="3"
+                            Margin="2,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Freq" />
+                        <TextBlock
+                            Grid.Column="4"
+                            Margin="2,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Mtg Type" />
+                        <TextBlock
+                            Grid.Column="5"
+                            Margin="2,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Rm Type" />
+                        <TextBlock
+                            Grid.Column="6"
+                            Margin="2,0,2,0"
+                            FontSize="9"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Room" />
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding Meetings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SectionMeetingViewModel}">
+                                <!--  Meeting row  -->
+                                <Border
+                                    Margin="0,0,0,4"
+                                    Padding="0,4"
+                                    Background="{StaticResource SectionScheduleArea}"
+                                    BorderThickness="0"
+                                    CornerRadius="3">
+
+                                    <Grid RowDefinitions="Auto,Auto">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDay"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgStart"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgLen"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgFreq"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgMtgType"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRmType"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRoom"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDel"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!--  Day  -->
+                                        <ComboBox
+                                            Grid.Row="0"
+                                            Grid.Column="0"
+                                            Margin="0,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="60"
+                                            CornerRadius="4"
+                                            FontSize="11"
+                                            ItemsSource="{Binding AvailableDays}"
+                                            SelectedValue="{Binding SelectedDay}"
+                                            SelectedValueBinding="{Binding Day}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:DayOption}">
+                                                    <TextBlock FontSize="11" Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <!--
+                                            Start — AutoCompleteBox with MinimumPrefixLength=0 and FilterMode=None
+                                            so the full preset list always appears in the popup (not filtered by
+                                            what the user is typing). Typed custom values are preserved and
+                                            committed on LostFocus via LostFocusCommandBehavior.
+                                        -->
+                                        <AutoCompleteBox
+                                            Grid.Row="0"
+                                            Grid.Column="1"
+                                            Margin="2,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="42"
+                                            b:LostFocusCommandBehavior.Command="{Binding CommitStartTimeCommand}"
+                                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                                            Background="{StaticResource SectionEditorControls}"
+                                            BorderBrush="{StaticResource SubduedBorder}"
+                                            CornerRadius="4"
+                                            FilterMode="None"
+                                            FontSize="11"
+                                            ItemsSource="{Binding AvailableStartTimeStrings}"
+                                            MinimumPrefixLength="0"
+                                            Text="{Binding StartTimeText, Mode=TwoWay}"
+                                            ToolTip.Tip="{Binding StartTimeError}"
+                                            PlaceholderText="HHMM" />
+
+                                        <!--
+                                            Length — same pattern. ItemsSource populated by RefreshBlockLengths()
+                                            after start time is committed; falls back to all known lengths for
+                                            custom start times so the dropdown is never empty.
+                                        -->
+                                        <AutoCompleteBox
+                                            Grid.Row="0"
+                                            Grid.Column="2"
+                                            Margin="2,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="36"
+                                            b:LostFocusCommandBehavior.Command="{Binding CommitBlockLengthCommand}"
+                                            b:OpenDropDownOnFocusBehavior.IsEnabled="True"
+                                            Background="{StaticResource SectionEditorControls}"
+                                            BorderBrush="{StaticResource SubduedBorder}"
+                                            CornerRadius="4"
+                                            FilterMode="None"
+                                            FontSize="11"
+                                            ItemsSource="{Binding AvailableBlockLengthStrings}"
+                                            MinimumPrefixLength="0"
+                                            Text="{Binding BlockLengthText, Mode=TwoWay}"
+                                            ToolTip.Tip="{Binding BlockLengthError}"
+                                            PlaceholderText="{Binding BlockLengthWatermark}" />
+
+                                        <!--  Frequency  -->
+                                        <ComboBox
+                                            Grid.Row="0"
+                                            Grid.Column="3"
+                                            Margin="2,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="55"
+                                            CornerRadius="4"
+                                            FontSize="11"
+                                            ItemsSource="{Binding FrequencyOptions}"
+                                            PlaceholderText="—"
+                                            SelectedItem="{Binding SelectedFrequencyOption}" />
+
+                                        <!--
+                                            Custom weeks input — sits directly below the Frequency ComboBox in the
+                                            same column (col 3), so both controls share the same width. Only
+                                            visible when Frequency="Custom".
+                                        -->
+                                        <StackPanel
+                                            Grid.Row="1"
+                                            Grid.Column="3"
+                                            Margin="2,2,2,0"
+                                            IsVisible="{Binding IsCustomFrequency}">
+                                            <TextBox
+                                                Padding="3,1"
+                                                HorizontalAlignment="Stretch"
+                                                FontSize="11"
+                                                Text="{Binding CustomWeeksText}"
+                                                ToolTip.Tip="{Binding CustomWeeksError}"
+                                                PlaceholderText="e.g. 1,3,5" />
+                                            <TextBlock
+                                                FontSize="9"
+                                                Foreground="{StaticResource ErrorText}"
+                                                IsVisible="{Binding CustomWeeksError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                Text="{Binding CustomWeeksError}"
+                                                TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <!--  Meeting Type  -->
+                                        <ComboBox
+                                            Grid.Row="0"
+                                            Grid.Column="4"
+                                            Margin="2,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="55"
+                                            CornerRadius="4"
+                                            DisplayMemberBinding="{Binding Name}"
+                                            FontSize="11"
+                                            ItemsSource="{Binding MeetingTypes}"
+                                            SelectedValue="{Binding SelectedMeetingTypeId}"
+                                            SelectedValueBinding="{Binding Id}" />
+
+                                        <!--  Room Type  -->
+                                        <ComboBox
+                                            Grid.Row="0"
+                                            Grid.Column="5"
+                                            Margin="2,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="55"
+                                            CornerRadius="4"
+                                            DisplayMemberBinding="{Binding Name}"
+                                            FontSize="11"
+                                            ItemsSource="{Binding RoomTypeOptions}"
+                                            SelectedItem="{Binding SelectedRoomType}" />
+
+                                        <!--  Room  -->
+                                        <ComboBox
+                                            Grid.Row="0"
+                                            Grid.Column="6"
+                                            Margin="2,0,2,0"
+                                            Padding="3,1"
+                                            MinWidth="55"
+                                            IsEnabled="{Binding IsRoomEnabled}"
+                                            CornerRadius="4"
+                                            FontSize="11"
+                                            ItemsSource="{Binding FilteredRooms}"
+                                            SelectedValue="{Binding SelectedRoomId}"
+                                            SelectedValueBinding="{Binding Id}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:Room}">
+                                                    <TextBlock FontSize="11">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="{}{0} {1}">
+                                                                <Binding Path="Building" />
+                                                                <Binding Path="RoomNumber" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <!--  Remove button  -->
+                                        <Button
+                                            Grid.Row="0"
+                                            Grid.Column="7"
+                                            Margin="2,0,0,0"
+                                            Padding="0,0"
+                                            Command="{Binding $parent[ItemsControl].DataContext.RemoveMeetingCommand}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip.Tip="Remove">
+                                            <Viewbox Width="10" Height="10">
+                                                <Path
+                                                    Fill="{StaticResource TextPrimary}"
+                                                    Data="{StaticResource RemoveIcon}" />
+                                            </Viewbox>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </StackPanel>
+
+                    <!-- Room Availability Browser (compact inline controls) -->
+                   
+                    <Grid ColumnDefinitions="125,Auto,Auto,*" RowDefinitions="Auto,Auto" ShowGridLines="False"
+                          Margin="-2,6,0,0"
+                          IsVisible="{Binding CreateRoomBrowser, Converter={x:Static ObjectConverters.IsNotNull}}" >
+
+                      <!-- Row 0, Col 0: Room Browser button + help icon -->
+                      <Panel Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left">
+                        <Button Padding="2,2,2,2"
+                                Command="{Binding OpenRoomBrowserCommand}"
+                                HorizontalAlignment="Left"
+                                Content="Room Browser"
+                                FontSize="13" />
+                        <!-- Superscript help icon — always clickable regardless of button state -->
+                        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,-1,-1,0"
+                                Padding="0" MinWidth="0" MinHeight="0"
+                                Background="Transparent" BorderThickness="0"
+                                Cursor="Hand"
+                                Click="OnRoomBrowserHelpClick"
+                                b:HelpTip.Text="Open help for Room Browser">
+                          <Viewbox Width="10" Height="10">
+                            <Path Data="{StaticResource questionmark}"
+                                  Fill="Black"
+                                  />
+                          </Viewbox>
+                        </Button>
+                      </Panel>
+
+                      <!-- Row 0, Col 1: Solution stepping carets + counter -->
+                      <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="0"
+                                  Margin="1,1,0,0" VerticalAlignment="Center"
+                                  IsVisible="{Binding IsRoomBrowserOpen}">
+                        <Button Content="&#x2039;" FontSize="20" Padding="3,1" MinWidth="0"
+                                Command="{Binding RoomBrowserVm.PreviousSolutionCommand}"
+                                IsEnabled="{Binding RoomBrowserVm.CanGoPrevious}"/>
+                        <TextBlock Text="{Binding RoomBrowserVm.SolutionLabel}" FontSize="11"
+                                   VerticalAlignment="Center" Margin="3,0"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <Button Content="&#x203A;" FontSize="20" Padding="3,1" MinWidth="0"
+                                Command="{Binding RoomBrowserVm.NextSolutionCommand}"
+                                IsEnabled="{Binding RoomBrowserVm.CanGoNext}"/>
+                      </StackPanel>
+
+                      <!-- Row 0, Col 2: Tier/mode label -->
+                      <TextBlock Grid.Row="0" Grid.Column="2"
+                                 Text="{Binding RoomBrowserVm.TierLabel}" FontSize="10"
+                                 VerticalAlignment="Center" Margin="6,1,0,0"
+                                 Foreground="{DynamicResource TextSecondary}"
+                                 IsVisible="{Binding IsRoomBrowserOpen}"/>
+
+                      <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
+                      <Button 
+                              Content="Accept Room" FontSize="11" Padding="4,2"
+                              HorizontalAlignment="Stretch" 
+                              Command="{Binding RoomBrowserVm.AcceptSolutionCommand}"
+                              IsEnabled="{Binding RoomBrowserVm.HasSolutions}"
+                              IsVisible="{Binding IsRoomBrowserOpen}"/>
+
+                      
+                      <Button 
+                              Content="Cancel" FontSize="11" Padding="4,2"
+                              
+                              Command="{Binding RoomBrowserVm.CancelCommand}"
+                              IsVisible="{Binding IsRoomBrowserOpen}"/>
+                      </StackPanel>
+                      <!-- Row 1, Col 2: Alt toggle (only when alternatives exist) -->
+                      <CheckBox Grid.Row="0" Grid.Column="3"
+                                    Content="Show Alternatives" FontSize="10" Padding="4,2"
+                                    Width="110"
+                                    Margin="6,3,0,0"
+                                    IsChecked="{Binding RoomBrowserVm.ShowAlternatives}"
+                                    
+                                    ToolTip.Tip="Show alternative times/rooms"
+                                    CornerRadius="3"
+                                    HorizontalAlignment="Left"
+                                    IsVisible="{Binding HasBrowserAlternatives}"/>
+                    </Grid>
+                       
+
+                    <!--  Instructor  -->
+                    <Grid
+                        MaxWidth="400"
+                        Margin="0,6,0,0"
+                        HorizontalAlignment="Left"
+                        ColumnDefinitions="*,4,*">
+                        <!--  Left: Instructor multi-select popup  -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock
+                                Margin="0,1,0,1"
+                                Foreground="{StaticResource TextLabel}"
+                                Text="Instructor(s)" />
+                            <Panel Margin="0,2">
+                                <ToggleButton
+                                    x:Name="InstructorToggle"
+                                    b:HelpTip.Text="Select instructor(s) and optionally associated workload for this section"
+                                    Classes="EditorPopupTrigger"
+                                    Content="{Binding InstructorSummary}" />
+                                <Popup
+                                    IsLightDismissEnabled="True"
+                                    IsOpen="{Binding #InstructorToggle.IsChecked, Mode=TwoWay}"
+                                    Placement="Bottom"
+                                    PlacementTarget="{Binding #InstructorToggle}">
+                                    <Border
+                                        MinWidth="160"
+                                        MaxHeight="160"
+                                        Padding="2"
+                                        Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl Margin="2" ItemsSource="{Binding InstructorSelections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
+                                                        <Grid Margin="2,1,2,1" ColumnDefinitions="Auto,*,Auto">
+                                                            <CheckBox
+                                                                Grid.Column="0"
+                                                                Padding="2,1"
+                                                                VerticalAlignment="Center"
+                                                                Content="{Binding DisplayName}"
+                                                                FontSize="{StaticResource FontSizeNormal}"
+                                                                IsChecked="{Binding IsSelected}" />
+                                                            <TextBox
+                                                                Grid.Column="2"
+                                                                Width="36"
+                                                                Height="22"
+                                                                Margin="3,0,0,0"
+                                                                Padding="3,1"
+                                                                VerticalAlignment="Center"
+                                                                FontSize="11"
+                                                                IsVisible="{Binding IsSelected}"
+                                                                Text="{Binding WorkloadText}"
+                                                                TextAlignment="Center"
+                                                                PlaceholderText="1" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Panel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!--  Tags Reserve Codes + Resources + Campus  -->
+                    <Grid
+                        MaxWidth="400"
+                        Margin="0,4,0,0"
+                        HorizontalAlignment="Left"
+                        ColumnDefinitions="*,8,*,8,*,8,*">
+
+                        <StackPanel Grid.Column="0" Spacing="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,0,1"
+                                    FontSize="10"
+                                    Foreground="{StaticResource TextLabel}"
+                                    Text="Tags" />
+                                <Viewbox Width="16" Height="16" Margin="3,0,0,0" VerticalAlignment="Center">
+                                    <Path
+                                        Fill="Transparent"
+                                        Stroke="{StaticResource TextLabel}"
+                                        StrokeThickness="2"
+                                        StrokeLineCap="Round"
+                                        StrokeJoin="Round"
+                                        Data="{StaticResource TagIcon}" />
+                                </Viewbox>
+                            </StackPanel>
+                            <Panel>
+                                <ToggleButton
+                                    x:Name="TagsToggle"
+                                    Classes="EditorPopupTrigger"
+                                    Content="{Binding TagSummary}"
+                                    b:HelpTip.Text="Choose tags for this section. Tags are set under Scheduling Environment."/>
+                                <Popup
+                                    IsLightDismissEnabled="True"
+                                    IsOpen="{Binding #TagsToggle.IsChecked, Mode=TwoWay}"
+                                    Placement="Bottom"
+                                    PlacementTarget="{Binding #TagsToggle}">
+                                    <Border
+                                        MinWidth="140"
+                                        MaxHeight="160"
+                                        Padding="2"
+                                        Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl Margin="2" ItemsSource="{Binding TagSelections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
+                                                        <CheckBox
+                                                            Margin="2,0,0,1"
+                                                            Padding="2,1"
+                                                            Content="{Binding Value.Name}"
+                                                            FontSize="11"
+                                                            IsChecked="{Binding IsSelected}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Panel>
+                        </StackPanel>
+
+                        <!--  Reserve Codes popup  -->
+                        <StackPanel Grid.Column="2" Spacing="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,1,1"
+                                    FontSize="10"
+                                    Foreground="{StaticResource TextLabel}"
+                                    Text="Reserve Codes" />
+                                <Viewbox Width="16" Height="16" Margin="3,0,0,0" VerticalAlignment="Center">
+                                    <Path
+                                        Fill="Transparent"
+                                        Stroke="{StaticResource TextLabel}"
+                                        StrokeThickness="2"
+                                        StrokeLineCap="Round"
+                                        StrokeJoin="Round"
+                                        Data="{StaticResource TicketIcon}" />
+                                </Viewbox>
+                            </StackPanel>
+                            <Panel>
+                                <ToggleButton
+                                    x:Name="ReservesToggle"
+                                    Classes="EditorPopupTrigger"
+                                    Content="{Binding ReserveSummary}"
+                                    b:HelpTip.Text="Choose reserve codes for this section. Reserve codes are set under Scheduling Environment."/>
+                                <Popup
+                                    IsLightDismissEnabled="True"
+                                    IsOpen="{Binding #ReservesToggle.IsChecked, Mode=TwoWay}"
+                                    Placement="Bottom"
+                                    PlacementTarget="{Binding #ReservesToggle}">
+                                    <Border
+                                        MinWidth="160"
+                                        MaxHeight="180"
+                                        Padding="2"
+                                        Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl Margin="2" ItemsSource="{Binding ReserveSelections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:ReserveSelectionViewModel}">
+                                                        <Grid Margin="2,1,2,1" ColumnDefinitions="Auto,*,Auto">
+                                                            <CheckBox
+                                                                Grid.Column="0"
+                                                                Padding="2,1"
+                                                                VerticalAlignment="Center"
+                                                                Content="{Binding Value.Name}"
+                                                                FontSize="11"
+                                                                IsChecked="{Binding IsSelected}" />
+                                                            <TextBox
+                                                                Grid.Column="2"
+                                                                Width="44"
+                                                                Height="22"
+                                                                Margin="6,0,0,0"
+                                                                Padding="3,1"
+                                                                VerticalAlignment="Center"
+                                                                FontSize="11"
+                                                                IsVisible="{Binding IsSelected}"
+                                                                Text="{Binding CodeText}"
+                                                                TextAlignment="Center"
+                                                                PlaceholderText="#" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Panel>
+                        </StackPanel>
+
+                        <!--  Resources popup  -->
+                        <StackPanel Grid.Column="4" Spacing="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,0,1"
+                                    FontSize="10"
+                                    Foreground="{StaticResource TextLabel}"
+                                    Text="Resources" />
+                                <Viewbox Width="16" Height="16" Margin="3,0,0,0" VerticalAlignment="Center">
+                                    <Path
+                                        Fill="Transparent"
+                                        Stroke="{StaticResource TextLabel}"
+                                        StrokeThickness="2"
+                                        StrokeLineCap="Round"
+                                        StrokeJoin="Round"
+                                        Data="{StaticResource ToolsIcon}" />
+                                </Viewbox>
+                            </StackPanel>
+                            <Panel>
+                                <ToggleButton
+                                    x:Name="ResourcesToggle"
+                                    Classes="EditorPopupTrigger"
+                                    Content="{Binding ResourceSummary}"
+                                    b:HelpTip.Text="Choose resources for this section. Resources are set under Scheduling Environment."/>
+                                <Popup
+                                    IsLightDismissEnabled="True"
+                                    IsOpen="{Binding #ResourcesToggle.IsChecked, Mode=TwoWay}"
+                                    Placement="Bottom"
+                                    PlacementTarget="{Binding #ResourcesToggle}">
+                                    <Border
+                                        MinWidth="140"
+                                        MaxHeight="160"
+                                        Padding="2"
+                                        Background="{StaticResource FilterExpanderContent}"
+                                        BorderBrush="{StaticResource SubduedBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl Margin="2" ItemsSource="{Binding ResourceSelections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:ResourceSelectionViewModel}">
+                                                        <CheckBox
+                                                            Margin="2,0,0,1"
+                                                            Padding="2,1"
+                                                            Content="{Binding Value.Name}"
+                                                            FontSize="11"
+                                                            IsChecked="{Binding IsSelected}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Panel>
+                        </StackPanel>
+
+                        <!--  Campus dropdown  -->
+                        <StackPanel Grid.Column="6" Spacing="1">
+                            <TextBlock
+                                Height="16"
+                                VerticalAlignment="Center"
+                                FontSize="10"
+                                Foreground="{StaticResource TextLabel}"
+                                Text="Campus" />
+                            <ComboBox
+                                HorizontalAlignment="Stretch"
+                                CornerRadius="4"
+                                DisplayMemberBinding="{Binding Name}"
+                                FontSize="11"
+                                ItemsSource="{Binding Campuses}"
+                                SelectedValue="{Binding SelectedCampusId}"
+                                SelectedValueBinding="{Binding Id}" />
+                        </StackPanel>
+
+
+
+                    </Grid>
+
+                    <!--  Notes (at bottom)  -->
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        FontSize="10"
+                        Foreground="{StaticResource TextLabel}"
+                        Text="Notes" />
+                    <TextBox
+                        Height="44"
+                        Width="275"
+                        HorizontalAlignment="Left"
+                        Padding="4,2"
+                        AcceptsReturn="True"
+                        FontSize="11"
+                        TextWrapping="Wrap"
+                        Text="{Binding Notes}" />
+
+                </StackPanel>
+                <!--  End AreOtherFieldsEnabled gate  -->
+
+                <!--  Save / Cancel (bottom)  -->
+                <StackPanel
+                    Margin="0,6,0,0"
+                    Orientation="Horizontal"
+                    Spacing="6">
+                    <Button
+                        Padding="3,2"
+                        Command="{Binding SaveCommand}"
+                        Content="Apply"
+                        Background="{StaticResource TileFill}"/>
+                    <Button
+                        Padding="3,2"
+                        Command="{Binding CancelCommand}"
+                        Content="Cancel"
+                        Background="{StaticResource TileFill}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*" ColumnDefinitions="Auto">
+
+        <!--  Add-to-semester prompt — shown in multi-semester mode when Add is clicked  -->
+        <Border
+            Grid.Row="0"
+            Padding="8,6"
+            Background="{StaticResource EditorBackground}"
+            BorderBrush="{StaticResource EditorBorder}"
+            BorderThickness="0,0,0,1"
+            IsVisible="{Binding IsAddSemesterPromptVisible}">
+            <StackPanel Spacing="4">
+                <TextBlock
+                    FontSize="11"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource TextPrimary}"
+                    Text="Add section to which semester?" />
+                <ItemsControl ItemsSource="{Binding AddSemesterOptions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button
+                                Margin="0,2,0,0"
+                                Padding="8,4"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Command="{Binding $parent[UserControl].DataContext.AddToSemesterCommand}"
+                                CommandParameter="{Binding SemesterId}"
+                                Content="{Binding SemesterName}">
+                                <Button.Background>
+                                    <MultiBinding Converter="{StaticResource SemesterBackgroundBrushConverter}">
+                                        <Binding Path="SemesterName" />
+                                        <Binding Path="SemesterColor" />
+                                    </MultiBinding>
+                                </Button.Background>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button
+                    Margin="0,2,0,0"
+                    Padding="8,3"
+                    HorizontalAlignment="Left"
+                    Command="{Binding CancelAddPromptCommand}"
+                    Content="Cancel" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel
+            x:Name="ListContentPanel"
+            Grid.Row="1"
+            HorizontalAlignment="Stretch">
+
+                <!--
+                    DoubleTapCommandBehavior replaces the OnListBoxDoubleTapped code-behind handler.
+                    Double-tapping an item sets it as SelectedItem (Avalonia's single-select model
+                    does this on pointer-down) and then invokes EditCommand, which opens the inline
+                    editor for the currently selected item.
+                -->
+                <ListBox
+                    x:Name="SectionListBox"
+                    Margin="5,0"
+                    b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
+                    b:EnterKeyCommandBehavior.Command="{Binding EditCommand}"
+                    Background="{StaticResource AppBackground}"
+                    BorderThickness="0"
+                    Classes="SectionList"
+                    ItemsSource="{Binding SectionItems}"
+                    SelectedItem="{Binding SelectedItem}"
+                    SelectionMode="Single"
+                   >
+                    <!--
+                        Disable virtualisation so that when an item expands to show the inline
+                        editor, the panel recalculates all item positions correctly.
+                        VirtualizingStackPanel (the default) does not reflow on dynamic height
+                        changes, which causes subsequent items to render at stale y-offsets and
+                        visually overlap the expanded editor (and scroll the editor out of view).
+                        Re-confirmed still broken on Avalonia 12 (June 2026 probe).
+                    -->
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemContainerTheme>
+                        <ControlTheme BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <!--
+                                Suppress the SimpleTheme selection highlight on the ListBoxItem's
+                                ContentPresenter (the template root). All five selection/focus/hover
+                                state combinations are overridden here so none of them paint a
+                                background — our card borders carry all selection feedback.
+                                External Style rules cannot override /template/ setters defined in
+                                the base ControlTheme, so these must live inside this ControlTheme.
+                            -->
+                            <Style Selector="^:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="^:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="^:selected:focus /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="^:selected:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="^:selected:focus:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                        </ControlTheme>
+                    </ListBox.ItemContainerTheme>
+                    <ListBox.DataTemplates>
+
+                        <!--
+                            Semester group banner — shown at the top of each semester's section group.
+                            IsHitTestVisible="False" on the content prevents the click from registering
+                            as a meaningful "item selection", though the ListBoxItem container itself
+                            may still become highlighted; the ViewModel ignores banner selections.
+                        -->
+                        <DataTemplate DataType="{x:Type vm:SemesterBannerViewModel}">
+                            <!--  Semester group header: pill-style chip with margin to breathe  -->
+                            <Border
+                                Margin="0,10,0,4"
+                                Padding="10,4"
+                                BorderThickness="0"
+                                CornerRadius="4"
+                                IsHitTestVisible="False">
+                                <Border.Background>
+                                    <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+                                        <Binding Path="SemesterName" />
+                                        <Binding Path="SemesterColor" />
+                                    </MultiBinding>
+                                </Border.Background>
+                                <TextBlock
+                                    FontSize="11"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="{Binding SemesterName}" />
+                            </Border>
+                        </DataTemplate>
+
+                        <!--  Section card with multi-semester left border indicator  -->
+                        <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
+                            <!--
+                                Selection feedback:
+                                Outer border (UserSelectedSectionBorderColor): visible when the user
+                                has actively selected this section (cross-view).
+                                Card background (CardBackgroundBrush): tinted when this section passes
+                                the active Schedule Grid filter
+                            -->
+                            <Border
+                                Margin="0,2,0,2"
+                                HorizontalAlignment="Left"
+                                MinWidth="400"                                
+                                BorderBrush="{StaticResource UserSelectedSectionBorderColor}"
+                                BorderThickness="{Binding IsSelected, Converter={StaticResource FilterBorderThicknessConverter}}"
+                                CornerRadius="5">
+                                <!--Dynamic thickness allows for Multi-semester border on the left-->
+                                <Border
+                                    Background="{Binding IsFilterHighlighted, Converter={StaticResource FilterHighlightBackgroundConverter}}"
+                                    BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
+                                    BoxShadow="{StaticResource PanelBoxShadow}"
+                                    Classes="SectionCard"
+                                    CornerRadius="4"
+                                    b:RightClickCommandBehavior.Command="{Binding ShowFlagMenuCommand}">
+                                    <Border.BorderBrush>
+                                        <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
+                                            <Binding Path="SemesterName" />
+                                            <Binding Path="SemesterColor" />
+                                        </MultiBinding>
+                                    </Border.BorderBrush>
+                                    <Grid>
+
+                                    <!--  Right-click flag picker popup  -->
+                                    <Popup
+                                        IsLightDismissEnabled="True"
+                                        IsOpen="{Binding IsFlagMenuOpen, Mode=TwoWay}"
+                                        Placement="Pointer">
+                                        <Border
+                                            Background="{StaticResource AppBackground}"
+                                            BorderBrush="{StaticResource SubduedBorder}"
+                                            BorderThickness="1"
+                                            BoxShadow="0 2 8 0 #33000000"
+                                            CornerRadius="4"
+                                            Padding="3">
+                                            <StackPanel MinWidth="120" Spacing="1">
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.Red}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagRed}" />
+                                                        </Viewbox>
+                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Red" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.Blue}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagBlue}" />
+                                                        </Viewbox>
+                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Blue" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.Green}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagGreen}" />
+                                                        </Viewbox>
+                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Green" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Border Height="1" Margin="2,2" Background="{StaticResource SubduedBorder}" />
+                                                <Button
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="6,4"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding SetFlagCommand}"
+                                                    CommandParameter="{x:Static models:SectionFlag.None}">
+                                                    <TextBlock VerticalAlignment="Center" FontSize="11" Text="Clear flag" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+
+                                    <StackPanel>
+
+                                        <!--  Summary row (hidden while section is being created)  -->
+                                        <StackPanel IsVisible="{Binding !IsBeingCreated}" Spacing="1">
+                                            <!--  Row 1: Toggle + Heading + Instructor + Section Type + Property indicators  -->
+                                            <Grid
+                                                Margin="6,6,8,3"
+                                                VerticalAlignment="Center"
+                                                ColumnDefinitions="Auto,Auto,130,Auto,Auto,*,Auto">
+                                                <!--  Collapse/expand toggle  -->
+                                                <Button
+                                                    Grid.Column="0"
+                                                    MinWidth="0"
+                                                    MinHeight="0"
+                                                    Padding="2,0"
+                                                    VerticalAlignment="Top"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Command="{Binding ToggleCollapsedCommand}"
+                                                    Cursor="Hand">
+                                                    <Panel>
+                                                        <TextBlock
+                                                            FontSize="8"
+                                                            Foreground="{StaticResource TextLabel}"
+                                                            IsVisible="{Binding IsCollapsed}"
+                                                            Text="▶" />
+                                                        <TextBlock
+                                                            FontSize="8"
+                                                            Foreground="{StaticResource TextLabel}"
+                                                            IsVisible="{Binding !IsCollapsed}"
+                                                            Text="▼" />
+                                                    </Panel>
+                                                </Button>
+                                                <!--  Heading  -->
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    Margin="2,0,4,0"
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Text="{Binding Heading}" />
+                                                <!--  Instructor  -->
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    FontSize="12"
+                                                    IsVisible="{Binding InstructorHeaderLine, Converter={x:Static           StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding InstructorHeaderLine}"
+                                                    TextWrapping="Wrap"
+                                                    />
+                                                <!--  Section Type  -->
+                                                <TextBlock
+                                                    Grid.Column="3"
+                                                    Margin="4,0,0,0"
+                                                    FontSize="12"
+                                                    IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding SectionTypeName}" />
+                                                <!--  Capacity (no label; hidden when unspecified)  -->
+                                                <TextBlock
+                                                    Grid.Column="4"
+                                                    Margin="6,0,0,0"
+                                                    VerticalAlignment="Top"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource TextMuted}"
+                                                    IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding CapacityLabel}"
+                                                    ToolTip.Tip="Section capacity" />
+                                                <!--  Attention flag — always visible; faint placeholder when unset  -->
+                                                <Viewbox
+                                                    Grid.Column="6"
+                                                    Width="20"
+                                                    Height="20"
+                                                    Margin="6,-1,0,0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Opacity="{Binding FlagOpacity}"
+                                                    ToolTip.Tip="{Binding FlagTooltip}">
+                                                    <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagDisplayBrush}" />
+                                                </Viewbox>
+                                            </Grid>
+
+                                            <!--  Row 2: Meetings (when not collapsed)  -->
+                                            <StackPanel
+                                                Margin="6,2,8,6"
+                                                Grid.IsSharedSizeScope="True"
+                                                IsVisible="{Binding !IsCollapsed}"
+                                                Spacing="0">
+                                                <!--
+                                                    Headers: Day, Start, End, Freq (col 3, hidden when all meetings are weekly), Room, Type.
+                                                    Col 3 uses SharedSizeGroup="FreqCol" so it grows to match the widest frequency
+                                                    value across all data rows; when the header is hidden (all-weekly sections),
+                                                    there is no content in the group and the column collapses to zero.
+                                                -->
+                                                <Grid Margin="0,0,0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="45" />
+                                                        <ColumnDefinition Width="45" />
+                                                        <ColumnDefinition Width="45" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="RoomCol"/>
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock
+                                                        Grid.Column="0"
+                                                        Margin="2,0,2,0"
+                                                        FontSize="9"
+                                                        Foreground="{StaticResource TextMuted}"
+                                                        Text="Day" />
+                                                    <TextBlock
+                                                        Grid.Column="1"
+                                                        Margin="2,0,2,0"
+                                                        FontSize="9"
+                                                        Foreground="{StaticResource TextMuted}"
+                                                        Text="Start" />
+                                                    <TextBlock
+                                                        Grid.Column="2"
+                                                        Margin="2,0,2,0"
+                                                        FontSize="9"
+                                                        Foreground="{StaticResource TextMuted}"
+                                                        Text="End" />
+                                                    <TextBlock
+                                                        Grid.Column="3"
+                                                        Margin="2,0,2,0"
+                                                        FontSize="9"
+                                                        Foreground="{StaticResource TextMuted}"
+                                                        IsVisible="{Binding HasNonDefaultFrequency}"
+                                                        Text="Freq" />
+                                                    <TextBlock
+                                                        Grid.Column="4"
+                                                        Margin="2,0,2,0"
+                                                        FontSize="9"
+                                                        Foreground="{StaticResource TextMuted}"
+                                                        Text="Room" />
+                                                    <TextBlock
+                                                        Grid.Column="5"
+                                                        Margin="2,0,0,0"
+                                                        FontSize="9"
+                                                        Foreground="{StaticResource TextMuted}"
+                                                        Text="Type" />
+                                                </Grid>
+
+                                                <!--  Meetings  -->
+                                                <ItemsControl ItemsSource="{Binding MeetingDetails}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
+                                                            <Grid Margin="0,1,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="45" />
+                                                                    <ColumnDefinition Width="45" />
+                                                                    <ColumnDefinition Width="45" />
+                                                                    <!--  Col 3: same SharedSizeGroup as the header — auto-sizes to the widest frequency value across all rows  -->
+                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
+                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="RoomCol" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock
+                                                                    Grid.Column="0"
+                                                                    Margin="2,1,2,1"
+                                                                    FontSize="11"
+                                                                    Text="{Binding Day}" />
+                                                                <TextBlock
+                                                                    Grid.Column="1"
+                                                                    Margin="2,1,2,1"
+                                                                    FontSize="11"
+                                                                    Text="{Binding StartTime}" />
+                                                                <TextBlock
+                                                                    Grid.Column="2"
+                                                                    Margin="2,1,2,1"
+                                                                    FontSize="11"
+                                                                    Text="{Binding EndTime}" />
+                                                                <TextBlock
+                                                                    Grid.Column="3"
+                                                                    Margin="2,1,2,1"
+                                                                    FontSize="11"
+                                                                    Text="{Binding Frequency}" />
+                                                                <TextBlock
+                                                                    Grid.Column="4"
+                                                                    Margin="2,1,2,1"
+                                                                    FontSize="11"
+                                                                    Text="{Binding Room}" />
+                                                                <TextBlock
+                                                                    Grid.Column="5"
+                                                                    Margin="2,1,0,1"
+                                                                    FontSize="11"
+                                                                    Text="{Binding MeetingType}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <!--  Row 3: Properties (tags, reserves, resources) when not collapsed  -->
+                                            <StackPanel
+                                                Margin="6,0,8,6"
+                                                IsVisible="{Binding !IsCollapsed}"
+                                                Spacing="2">
+                                                <!--  Room conflict warning  -->
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextError}"
+                                                    IsVisible="{Binding RoomConflictWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding RoomConflictWarning}"
+                                                    TextWrapping="Wrap" />
+                                                <!--  Tags  -->
+                                                <StackPanel
+                                                    IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Orientation="Horizontal"
+                                                    Spacing="4">
+                                                    <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                                                        <Path
+                                                            Fill="Transparent"
+                                                            Stroke="{StaticResource TextMuted}"
+                                                            StrokeThickness="2"
+                                                            StrokeLineCap="Round"
+                                                            StrokeJoin="Round"
+                                                            Data="{StaticResource TagIcon}" />
+                                                    </Viewbox>
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Text="{Binding TagLine}" />
+                                                </StackPanel>
+                                                <!--  Reserves  -->
+                                                <StackPanel
+                                                    IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Orientation="Horizontal"
+                                                    Spacing="4">
+                                                    <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                                                        <Path
+                                                            Fill="Transparent"
+                                                            Stroke="{StaticResource TextMuted}"
+                                                            StrokeThickness="2"
+                                                            StrokeLineCap="Round"
+                                                            StrokeJoin="Round"
+                                                            Data="{StaticResource TicketIcon}" />
+                                                    </Viewbox>
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Text="{Binding ReserveLine}" />
+                                                </StackPanel>
+                                                <!--  Resources  -->
+                                                <StackPanel
+                                                    IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Orientation="Horizontal"
+                                                    Spacing="4">
+                                                    <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                                                        <Path
+                                                            Fill="Transparent"
+                                                            Stroke="{StaticResource TextMuted}"
+                                                            StrokeThickness="2"
+                                                            StrokeLineCap="Round"
+                                                            StrokeJoin="Round"
+                                                            Data="{StaticResource ToolsIcon}" />
+                                                    </Viewbox>
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Text="{Binding ResourceLine}" />
+                                                </StackPanel>
+                                                <!--  Notes  -->
+                                                <TextBlock
+                                                    MaxWidth="275"
+                                                    HorizontalAlignment="Left"
+                                                    Margin="0,2,0,0"
+                                                    FontSize="11"
+                                                    IsVisible="{Binding NoteLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    MaxLines="1"
+                                                    Text="{Binding NoteLine}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!--  Inline edit form — shown when this item IsExpanded  -->
+                                        <Border
+                                            Classes="inline-editor"
+                                            Padding="10,8,8,12"
+                                            HorizontalAlignment="Left"
+                                            Background="{StaticResource EditorBackground}"
+                                            BorderBrush="{StaticResource EditorBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            IsVisible="{Binding IsExpanded}">
+                                            <ContentControl Content="{Binding $parent[UserControl].DataContext.EditVm}" ContentTemplate="{StaticResource InlineEditFormTemplate}" />
+                                        </Border>
+
+                                    </StackPanel>
+                                    <!--
+                                        Hover overlay: transparent by default; tinted by the SectionCardHover style
+                                        when the ListBoxItem is in :pointerover state. Using a separate overlay Border
+                                        avoids competing with the CardBackgroundBrush local binding on the card's own
+                                        Border (local bindings have higher priority than style setters in Avalonia).
+                                    -->
+                                    <Border
+                                        Classes="SectionCardHover"
+                                        CornerRadius="4"
+                                        IsHitTestVisible="False"
+                                        IsVisible="{Binding IsExpanded, Converter={StaticResource NotConverter}}" />
+                                    </Grid>
+                                </Border>
+                            </Border>
+                        </DataTemplate>
+
+                    </ListBox.DataTemplates>
+                </ListBox>
+
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

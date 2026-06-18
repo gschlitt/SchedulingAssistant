@@ -1,0 +1,275 @@
+<UserControl
+    x:Class="TermPoint.Views.Management.LegalStartTimeListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:TermPoint.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:LegalStartTimeListViewModel"
+    xmlns:b="using:TermPoint.Behaviors">
+
+    <Grid
+        MaxWidth="1000"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto">
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock
+                Margin="0,0,0,12"
+                FontSize="20"
+                FontWeight="SemiBold"
+                Text="Scheduling" />
+            <TextBlock TextWrapping="Wrap">
+                <Span>
+                    TermPoint uses the 24-hour clock to specify time of day (so that 1:30 pm = 1330). A typical 'block'  is scheduled using the start time (e.g. 1330) and a length, measured either in minutes or hours (e.g. 75 minutes or 1.25 hours) as you prefer.
+                </Span>
+                <LineBreak />
+                <LineBreak />
+                <Span>
+                    You can specify the start-times your institution uses, and associated block lengths. It will speed up your section editing to do so, as the start times will be available from a menu, rather than requiring manual entry.
+                </Span>
+                <LineBreak />
+                <LineBreak />
+                <Span>
+                Choose as a preferred block length the length you most commonly schedule: it will be supplied automatically, and you can override if need be.
+                </Span>
+                <LineBreak />
+                <LineBreak />
+                <Span>
+					Note that Block-Length/Start-times can vary with the academic year. You need to have an academic year and semester selected before they can be edited here.
+                </Span>
+            </TextBlock>
+        </StackPanel>
+
+        <!--  Block length unit toggle  -->
+
+        <StackPanel
+            Grid.Row="1"
+            Margin="0,6,0,12"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="12">
+            <TextBlock VerticalAlignment="Center" Text="Block length unit:" />
+            <RadioButton
+                Content="Hours"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsHoursUnit}" />
+            <RadioButton
+                Content="Minutes"
+                GroupName="BLUnit"
+                IsChecked="{Binding IsMinutesUnit}" />
+        </StackPanel>
+
+        <ContentControl Grid.Row="3" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:LegalStartTimeEditViewModel}">
+                    <Grid
+                        MaxWidth="700"
+                        HorizontalAlignment="Left"
+                        ColumnDefinitions="*,300"
+                        RowDefinitions="Auto,Auto,*,Auto">
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.ColumnSpan="2"
+                            Margin="0,0,0,12"
+                            FontSize="{StaticResource FontSizeLarge}"
+                            
+                            Text="{Binding Title}" />
+
+                        <!--  Block length (only editable when new)  -->
+                        <StackPanel
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Margin="0,0,16,12"
+                            Spacing="4">
+                            <TextBlock Text="{Binding BlockLengthLabel}" />
+                            <NumericUpDown
+                                Background="{StaticResource UserInteractionColor}"
+                                FormatString="{Binding NumericFormatString}"
+                                Increment="{Binding NumericIncrement}"
+                                IsEnabled="{Binding IsNew}"
+                                Maximum="{Binding NumericMaximum}"
+                                Minimum="{Binding NumericMinimum}"
+                                Value="{Binding BlockLengthDisplay}"
+                                b:HelpTip.Text="Use the up/down to select a length, or enter manually"/>
+                        </StackPanel>
+
+                        <!--  Start times list  -->
+                        <StackPanel
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Margin="0,0,16,0"
+                            Spacing="3">
+                            <TextBlock FontSize="{StaticResource FontSizeLarge}" Text="Choose Start Times" />
+                            <ItemsControl ItemsSource="{Binding StartTimeRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StartTimeRowViewModel}">
+                                        <StackPanel
+                                            Margin="0,2"
+                                            Orientation="Horizontal"
+                                            Spacing="8">
+                                            <TextBlock
+                                                Width="60"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding Label}" />
+                                            <Button
+                                                Padding="6,2"
+                                                Command="{Binding RemoveCommand}">
+                                                <Viewbox Width="10" Height="10">
+                                                    <Path
+                                                        Fill="{StaticResource TextPrimary}"
+                                                        Data="{StaticResource RemoveIcon}" />
+                                                </Viewbox>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!--  Add start time  -->
+                        <StackPanel
+                            Grid.Row="3"
+                            Grid.Column="0"
+                            Margin="0,12,16,0"
+                            Spacing="4">
+                            <TextBlock Text="Add Start Time (e.g. 0830 or 1420)" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Width="120" Text="{Binding NewStartTime}" />
+                                <Button Command="{Binding AddStartTimeCommand}" Content="Add" />
+                            </StackPanel>
+                            <TextBlock
+                                Foreground="{StaticResource TextError}"
+                                IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                Text="{Binding ValidationError}" />
+                        </StackPanel>
+
+                        <!--  Save / Cancel  -->
+                        <StackPanel
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            VerticalAlignment="Bottom"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <Button Command="{Binding SaveCommand}" Content="Apply" />
+                            <Button Command="{Binding CancelCommand}" Content="Cancel" />
+                        </StackPanel>
+
+                    </Grid>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <DataGrid
+            Grid.Row="2"
+            AutoGenerateColumns="False"
+            CanUserSortColumns="True"
+            IsReadOnly="True"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            ItemsSource="{Binding DisplayEntries}"
+            SelectedItem="{Binding SelectedRow}">
+            <DataGrid.Columns>
+                <!--  Block Length column — header and cell both reflect the active unit  -->
+                <DataGridTemplateColumn Width="160">
+                    <DataGridTemplateColumn.Header>
+                        <TextBlock Text="{Binding DataContext.BlockLengthColumnHeader, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Margin="4,2" Text="{Binding BlockLengthDisplay}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="*" Header="Start Times">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock
+                                Margin="4,2"
+                                Text="{Binding StartTimesDisplay}"
+                                TextWrapping="Wrap" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel
+            Grid.Row="3"
+            Margin="0,12,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Command="{Binding AddCommand}" Content="Add" />
+            <Button
+                Command="{Binding EditCommand}"
+                Content="Edit"
+                IsEnabled="{Binding SelectedRow, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button
+                Command="{Binding DeleteCommand}"
+                Content="Delete"
+                IsEnabled="{Binding SelectedRow, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+        <!--  Inline error message  -->
+        <TextBlock
+            FontSize="10"
+            Foreground="{StaticResource TextError}"
+            IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Text="{Binding LastErrorMessage}"
+            TextWrapping="Wrap"
+            Margin="0,4,0,0" />
+
+        <!--  Preferred block length preference  -->
+        <StackPanel
+            Grid.Row="4"
+            Margin="0,16,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Preferred block length:" />
+            <ComboBox
+                Width="120"
+                DisplayMemberBinding="{Binding Label}"
+                ItemsSource="{Binding PreferredBlockLengthOptions}"
+                SelectedItem="{Binding SelectedPreferredOption}" />
+        </StackPanel>
+
+        <!--  Default section capacity preference  -->
+        <StackPanel
+            Grid.Row="5"
+            Margin="0,16,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <TextBlock VerticalAlignment="Center" Text="Default section capacity:" />
+            <TextBox
+                Width="120"
+                Text="{Binding DefaultSectionCapacityText}"
+                PlaceholderText="—"
+                b:HelpTip.Text="Applied to new sections whose course has no capacity. Leave blank for none." />
+            <TextBlock
+                VerticalAlignment="Center"
+                Foreground="{StaticResource TextError}"
+                IsVisible="{Binding DefaultSectionCapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Text="{Binding DefaultSectionCapacityError}" />
+        </StackPanel>
+
+
+
+        <!--  Weekend day inclusion settings  -->
+        <StackPanel
+            Grid.Row="6"
+            Margin="0,24,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Spacing="6">
+            <CheckBox Content="Include Saturday as an available scheduling day" IsChecked="{Binding IncludeSaturday}" />
+            <CheckBox Content="Include Sunday as an available scheduling day" IsChecked="{Binding IncludeSunday}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

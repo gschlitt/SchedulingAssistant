@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-browser</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);CS8632;IL2026;IL2057;IL2075;IL2104</NoWarn>
+    <TrimMode>partial</TrimMode>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <WasmNativeOptimization>-O1</WasmNativeOptimization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TermPoint\TermPoint.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TrimmerRootAssembly Include="TermPoint" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Browser" Version="12.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <WasmExtraFilesToDeploy Include="wwwroot/index.html" TargetPath="index.html" />
+    <WasmExtraFilesToDeploy Include="..\TermPoint\Help\**" TargetPath="Help/%(Filename)%(Extension)" />
+    <WasmExtraFilesToDeploy Include="..\TermPoint\Assets\*.png" TargetPath="Assets/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

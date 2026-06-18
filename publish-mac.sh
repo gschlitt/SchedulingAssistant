@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CSPROJ="src/SchedulingAssistant/SchedulingAssistant.csproj"
+CSPROJ="src/TermPoint/TermPoint.csproj"
 REPO_URL="https://github.com/gschlitt/SchedulingAssistant"
 PACK_ID="TermPoint"
 TOKEN_FILE=".publish-token"

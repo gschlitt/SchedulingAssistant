@@ -1,0 +1,138 @@
+<UserControl
+    x:Class="TermPoint.Views.Management.BlockPatternListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:TermPoint.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:BlockPatternListViewModel">
+
+    <StackPanel
+        MaxWidth="600"
+        Margin="10,0"
+        HorizontalAlignment="Left"
+        Spacing="16">
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeXLarge}"
+            FontWeight="SemiBold"
+            Text="Block Patterns" />
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            
+            TextWrapping="Wrap">
+            Sections with multiple meetings during the week may typically follow a pattern at your institution (meeting Monday, Wednesday and Friday, for example, or Tuesdays and Thursdays).
+            Save up to five favourite day patterns (e.g. "MW" for Monday/Wednesday) and create section meetings  with one click when building a schedule.
+        </TextBlock>
+
+        <ItemsControl ItemsSource="{Binding Slots}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="16" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:BlockPatternSlotViewModel}">
+                    <Border
+                        Padding="12"
+                        BorderBrush="{StaticResource SubduedBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <StackPanel Spacing="8">
+
+                            <DockPanel>
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    DockPanel.Dock="Left"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding Label}" />
+                                <StackPanel
+                                    DockPanel.Dock="Right"
+                                    IsEnabled="{Binding $parent[UserControl].DataContext.IsWriteEnabled}"
+                                    Orientation="Horizontal"
+                                    Spacing="6">
+                                    <Button
+                                        Padding="8,3"
+                                        Command="{Binding EditCommand}"
+                                        Content="Edit"
+                                        FontSize="{DynamicResource FontSizeNormal}"
+                                        IsEnabled="{Binding $parent[UserControl].DataContext.IsEditingAny, Converter={x:Static BoolConverters.Not}}" />
+                                    <Button
+                                        Padding="8,3"
+                                        Command="{Binding ClearCommand}"
+                                        Content="Clear"
+                                        FontSize="{DynamicResource FontSizeNormal}"
+                                        IsEnabled="{Binding Pattern, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Margin="8,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{StaticResource TextSubtle}"
+                                    Text="{Binding DisplayName}" />
+                            </DockPanel>
+
+                            <!--  Inline edit form  -->
+                            <ContentControl Content="{Binding EditVm}">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate DataType="{x:Type vm:BlockPatternEditViewModel}">
+                                        <StackPanel Spacing="8">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock
+                                                    FontSize="{DynamicResource FontSizeSmall}"
+                                                    Foreground="{StaticResource TextLabel}"
+                                                    Text="Name" />
+                                                <TextBox
+                                                    Width="200"
+                                                    HorizontalAlignment="Left"
+                                                    FontSize="{DynamicResource FontSizeNormal}"
+                                                    Text="{Binding Name}" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock
+                                                    FontSize="{DynamicResource FontSizeSmall}"
+                                                    Foreground="{StaticResource TextLabel}"
+                                                    Text="Days" />
+                                                <ItemsControl ItemsSource="{Binding Days}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="10" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:DayCheckViewModel}">
+                                                            <CheckBox
+                                                                Content="{Binding DayName}"
+                                                                FontSize="{DynamicResource FontSizeNormal}"
+                                                                IsChecked="{Binding IsChecked}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                            <TextBlock
+                                                FontSize="{DynamicResource FontSizeSmall}"
+                                                Foreground="{StaticResource TextValidationError}"
+                                                IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                Text="{Binding ValidationError}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Button
+                                                    Padding="10,4"
+                                                    Command="{Binding SaveCommand}"
+                                                    Content="Apply" />
+                                                <Button
+                                                    Padding="10,4"
+                                                    Command="{Binding CancelCommand}"
+                                                    Content="Cancel" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+    </StackPanel>
+</UserControl>

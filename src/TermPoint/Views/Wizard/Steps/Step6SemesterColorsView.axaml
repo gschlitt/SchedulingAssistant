@@ -1,0 +1,74 @@
+<UserControl
+    x:Class="TermPoint.Views.Wizard.Steps.Step6SemesterColorsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:TermPoint.ViewModels.Wizard.Steps"
+    x:CompileBindings="False">
+
+    <StackPanel MaxWidth="840" Spacing="20">
+
+        <!--  Guidance  -->
+        <TextBlock
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{StaticResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Each semester is shown in a distinct color on the schedule grid, which is especially useful when scheduling courses in overlapping semesters.
+            Expand any row to open the color picker and choose your own.
+        </TextBlock>
+
+        <!--  One Expander per semester  -->
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:SemesterColorRowViewModel">
+
+                    <Expander Margin="0,0,0,6" IsExpanded="False">
+
+                        <!--  Header: semester name + current color swatch  -->
+                        <Expander.Header>
+                            <StackPanel
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="16">
+                                <TextBlock
+                                    Width="160"
+                                    VerticalAlignment="Center"
+                                    FontSize="{DynamicResource FontSizeNormal}"
+                                    Text="{Binding Name}" />
+                                <Border
+                                    Width="72"
+                                    Height="24"
+                                    VerticalAlignment="Center"
+                                    BorderBrush="{StaticResource SeparatorLine}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="{Binding HexColor, Converter={StaticResource HexToColorConverter}}" />
+                                    </Border.Background>
+                                </Border>
+                            </StackPanel>
+                        </Expander.Header>
+
+                        <!--  Content: palette swatches only — no spectrum, sliders, or text inputs  -->
+                        <ColorView
+                            Margin="0,8,0,4"
+                            IsAlphaEnabled="False"
+                            IsAlphaVisible="False"
+                            IsColorSpectrumVisible="False"
+                            IsColorSpectrumSliderVisible="False"
+                            IsComponentSliderVisible="False"
+                            IsColorPreviewVisible="False"
+                            IsColorComponentsVisible="False"
+                            IsColorModelVisible="False"
+                            IsHexInputVisible="False"
+                            IsAccentColorsVisible="False"
+                            IsColorPaletteVisible="True"
+                            Color="{Binding HexColor, Mode=TwoWay, Converter={StaticResource HexToColorConverter}}" />
+
+                    </Expander>
+
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+    </StackPanel>
+</UserControl>

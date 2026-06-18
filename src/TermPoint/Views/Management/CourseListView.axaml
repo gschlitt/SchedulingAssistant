@@ -1,0 +1,374 @@
+<UserControl
+    x:Class="TermPoint.Views.Management.CourseListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:TermPoint.Behaviors"
+    xmlns:v="using:TermPoint.Views.Management"
+    xmlns:vm="using:TermPoint.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:CourseListViewModel">
+
+    <Border Padding="0,0,12,12">
+        <Grid Margin="10,0" ColumnDefinitions="Auto,1,*">
+
+            <!--  ═══════════════════════════════════════════════════════════  -->
+            <!--  LEFT COLUMN: COURSES AND SUBJECTS (SCROLLABLE)  -->
+            <!--  ═══════════════════════════════════════════════════════════  -->
+
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,12,0" Spacing="12">
+
+
+                    <!--  Advisory message when no subjects exist  -->
+                    <TextBlock
+                        FontSize="13"
+                        Foreground="{StaticResource TextMuted}"
+                        IsVisible="{Binding HasSubjects, Converter={x:Static BoolConverters.Not}}"
+                        Text="Create at least one subject first" />
+
+                    
+                    <!--  Course edit form  -->
+                    <ContentControl Content="{Binding EditVm}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="{x:Type vm:CourseEditViewModel}">
+                                <StackPanel HorizontalAlignment="Left" Spacing="12">
+                                    <TextBlock
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text="{Binding FormTitle}" />
+
+                                    <TextBlock Text="Subject" />
+                                    <ComboBox
+                                        DisplayMemberBinding="{Binding Name}"
+                                        IsEnabled="{Binding IsIdentityEditable}"
+                                        ItemsSource="{Binding Subjects}"
+                                        SelectedItem="{Binding SelectedSubject}" />
+
+                                    <TextBlock Text="Title" />
+                                    <TextBox Text="{Binding CourseTitle}" />
+
+                                    <TextBlock Text="Capacity (optional)" />
+                                    <TextBox
+                                        Width="120"
+                                        HorizontalAlignment="Left"
+                                        Text="{Binding CapacityText}"
+                                        PlaceholderText="—" />
+
+                                    <!--  Course number + auto-suggested level side by side  -->
+                                    <TextBlock Text="Course number (e.g. 101 or 111LAB, max 8 characters)" />
+                                    <Grid ColumnDefinitions="*,12,Auto,8,Auto">
+                                        <TextBox
+                                            Grid.Column="0"
+                                            IsEnabled="{Binding IsIdentityEditable}"
+                                            Text="{Binding CourseNumber}" />
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Text="Level" />
+                                        <ComboBox
+                                            Grid.Column="4"
+                                            MinWidth="72"
+                                            ItemsSource="{Binding LevelOptions}"
+                                            PlaceholderText="—"
+                                            SelectedItem="{Binding SelectedLevel}" />
+                                    </Grid>
+
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource TextMuted}"
+                                        Text="Calendar Code (computed)" />
+                                    <TextBlock
+                                        Padding="8,4"
+                                        Background="{StaticResource SubtleBackground}"
+                                        Text="{Binding ComputedCalendarCode}" />
+
+                                    <!--  Identity-lock notice: subject + number are frozen once sections exist  -->
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource TextMuted}"
+                                        IsVisible="{Binding IsIdentityLocked}"
+                                        Text="Subject and course number can't be changed because this course has sections scheduled. You can still edit the title and other fields."
+                                        TextWrapping="Wrap" />
+
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource TextError}"
+                                        IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        Text="{Binding ValidationError}" />
+
+
+
+                                    <!--  Tag multi-select  -->
+                                    <Expander
+                                        Padding="0"
+                                        b:HelpTip.Text="Tags selected here will be applied to every newly created section of the course."
+                                        Header="{Binding TagSummary, StringFormat='Tags: {0}'}"
+                                        IsVisible="{Binding TagSelections.Count, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <ItemsControl Margin="4,4,0,0" ItemsSource="{Binding TagSelections}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:TagSelectionViewModel}">
+                                                    <CheckBox
+                                                        Margin="0,2"
+                                                        Content="{Binding Value.Name}"
+                                                        IsChecked="{Binding IsSelected}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                    <StackPanel IsVisible="{Binding CanApplyTagsToAll}" Orientation="Horizontal" Spacing="6">
+                                        <Button
+                                            Padding="6,2"
+                                            FontSize="10"
+                                            Command="{Binding ApplyTagsToAllSectionsCommand}"
+                                            Content="Apply to all sections"
+                                            ToolTip.Tip="Overwrite tags on all existing sections of this course across all semesters with the tags selected above." />
+                                        <TextBlock
+                                            FontSize="10"
+                                            VerticalAlignment="Center"
+                                            Foreground="{StaticResource TextMuted}"
+                                            IsVisible="{Binding ApplyTagsResult, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                            Text="{Binding ApplyTagsResult}" />
+                                    </StackPanel>
+
+                                    <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Command="{Binding SaveCommand}" Content="Apply" />
+                                        <Button Command="{Binding CancelCommand}" Content="Cancel" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+
+                    <TextBlock Text="Courses" FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold"/>
+
+                    
+                    <TextBlock IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" >
+                        <Run Text="{Binding SelectedCourse.CalendarCode}" FontSize="{StaticResource FontSizeLarge}"/>
+                        <Run Text="{Binding SelectedCourse.Title}" FontSize="{StaticResource FontSizeLarge}"/>
+                        </TextBlock>
+                        
+                    <!--  Show only active courses toggle  -->
+                    <CheckBox
+                        Content="Show only active courses"
+                        FontSize="10"
+                        IsChecked="{Binding ShowOnlyActive}"
+                        IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}" />
+
+                    <!--  Course list — columns auto-size to content  -->
+
+                    
+
+                    <!--
+                        HorizontalAlignment="Left" prevents the DataGrid from stretching beyond
+                        its content width, which would create a phantom filler column. All columns
+                        use Width="Auto" so they size to their actual content. The outer grid column
+                        is Width="Auto" and naturally sizes to whatever the DataGrid needs.
+                    -->
+                    <DataGrid
+                        x:Name="CoursesDataGrid"
+                        b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
+                        MaxHeight="300"
+                        HorizontalAlignment="Left"
+                        AutoGenerateColumns="False"
+                        CanUserSortColumns="True"
+                        
+                        IsReadOnly="True"
+                        IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                        ItemsSource="{Binding Courses}"
+                        ScrollViewer.AllowAutoHide="False"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        SelectedItem="{Binding SelectedCourse}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="Auto"
+                                MinWidth="90"
+                                Binding="{Binding CalendarCode}"
+                                Header="Calendar Code" />
+                            <DataGridTextColumn
+                                Width="Auto"
+                                MinWidth="130"
+                                Binding="{Binding Title}"
+                                Header="Title" />
+                            <DataGridTextColumn
+                                Width="Auto"
+                                MinWidth="80"
+                                Binding="{Binding TagSummary}">
+                                <DataGridTextColumn.Header>
+                                    <TextBlock b:HelpTip.Text="These tags will be applied to every section of the course" Text="Tags" />
+                                </DataGridTextColumn.Header>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn
+                                Width="Auto"
+                                MinWidth="55"
+                                Binding="{Binding Capacity}"
+                                Header="Capacity" />
+                            <DataGridCheckBoxColumn
+                                Width="Auto"
+                                MinWidth="55"
+                                Binding="{Binding IsActive}"
+                                Header="Active" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!--  Course toolbar — IsEnabled gates the entire group in read-only mode  -->
+                    <StackPanel
+                        IsEnabled="{Binding IsWriteEnabled}"
+                        IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                        Orientation="Horizontal"
+                        Spacing="8">
+                        <Button
+                            Command="{Binding AddCommand}"
+                            Content="Add Course"
+                            IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <Button
+                            Command="{Binding EditCommand}"
+                            Content="Edit Course"
+                            IsEnabled="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <Button
+                            Command="{Binding DeleteCommand}"
+                            Content="Delete Course"
+                            IsEnabled="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                    <!--  Inline error message  -->
+                    <TextBlock
+                        FontSize="10"
+                        Foreground="{StaticResource TextError}"
+                        IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        Text="{Binding LastErrorMessage}"
+                        TextWrapping="Wrap"
+                        Margin="0,4,0,0" />
+
+                    <!--  ═══════════════════════════════════════════════════════════  -->
+                    <!--  SUBJECTS SECTION  -->
+                    <!--  ═══════════════════════════════════════════════════════════  -->
+
+                    <StackPanel
+                        Margin="0,20,0,0"
+                        IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                        Spacing="12">
+                        <TextBlock
+                            FontSize="{StaticResource FontSizeLarge}"
+                            FontWeight="SemiBold"
+                            Text="Subjects" />
+
+                        <!--  Subject edit form  -->
+                        <ContentControl Content="{Binding SubjectEditVm}">
+                            <ContentControl.ContentTemplate>
+                                <DataTemplate DataType="{x:Type vm:SubjectEditViewModel}">
+                                    <StackPanel
+                                        MaxWidth="400"
+                                        HorizontalAlignment="Left"
+                                        Spacing="12">
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding Title}" />
+
+                                        <TextBlock Text="Name (e.g. Mathematics)" />
+                                        <TextBox Text="{Binding Name}" />
+
+                                        <TextBlock Text="Calendar Abbreviation (e.g. MATH)" />
+                                        <TextBox Text="{Binding CalendarAbbreviation}" />
+
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextError}"
+                                            IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                            Text="{Binding ValidationError}" />
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Command="{Binding SaveCommand}" Content="Apply" />
+                                            <Button Command="{Binding CancelCommand}" Content="Cancel" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ContentControl.ContentTemplate>
+                        </ContentControl>
+
+                        <!--  Subject list  -->
+                        <DataGrid
+                            x:Name="SubjectsDataGrid"
+                            b:DoubleTapCommandBehavior.Command="{Binding EditSubjectCommand}"
+                            MaxHeight="200"
+                            HorizontalAlignment="Left"
+                            AutoGenerateColumns="False"
+                            CanUserSortColumns="True"
+                            IsReadOnly="True"
+                            IsVisible="{Binding SubjectEditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                            ItemsSource="{Binding Subjects}"
+                            SelectedItem="{Binding SelectedSubject}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn
+                                    Width="Auto"
+                                    MinWidth="160"
+                                    Binding="{Binding Name}"
+                                    Header="Name" />
+                                <DataGridTextColumn
+                                    Width="Auto"
+                                    MinWidth="160"
+                                    Binding="{Binding CalendarAbbreviation}"
+                                    Header="Calendar Abbreviation" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!--  Subject toolbar  -->
+                        <StackPanel
+                            IsVisible="{Binding SubjectEditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <Button Command="{Binding AddSubjectCommand}" Content="Add Subject" />
+                            <Button
+                                Command="{Binding EditSubjectCommand}"
+                                Content="Edit Subject"
+                                IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <Button
+                                Command="{Binding DeleteSubjectCommand}"
+                                Content="Delete Subject"
+                                IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!--  ═══════════════════════════════════════════════════════════  -->
+            <!--  VERTICAL SEPARATOR  -->
+            <!--  ═══════════════════════════════════════════════════════════  -->
+
+            <Border Grid.Column="1" Background="{StaticResource InlineListBorder}" />
+
+            <!--  ═══════════════════════════════════════════════════════════  -->
+            <!--  RIGHT COLUMN: COURSE HISTORY  -->
+            <!--  ═══════════════════════════════════════════════════════════  -->
+
+            <StackPanel
+                Grid.Column="2"
+                Margin="12,18,0,0"
+                Spacing="8">
+                <TextBlock
+                    Margin="0,0,0,4"
+                    FontSize="{StaticResource FontSizeLarge}"                    
+                    FontWeight="SemiBold"
+                    Text="Course History" />
+
+                <TextBlock
+                    FontSize="12"
+                    Foreground="{StaticResource TextMuted}"
+                    IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNull}}"
+                    Text="Select a course to view its history" />
+
+                <ContentControl Content="{Binding CourseHistoryVm}" IsVisible="{Binding SelectedCourse, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="{x:Type vm:CourseHistoryViewModel}">
+                            <v:CourseHistoryView />
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+            </StackPanel>
+
+        </Grid>
+    </Border>
+
+</UserControl>

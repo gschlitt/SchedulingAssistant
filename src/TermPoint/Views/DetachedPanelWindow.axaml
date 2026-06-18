@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TermPoint.Views.DetachedPanelWindow"
+        CanResize="True"
+        Width="600" Height="700"
+        MinWidth="300" MinHeight="200">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header bar with context info -->
+        <Border Grid.Row="0" Background="{StaticResource ChromeBackground}"
+                BorderBrush="{StaticResource ChromeBorder}" BorderThickness="0,0,0,1"
+                Padding="8,4"
+                IsVisible="{Binding #Root.HasHeaderContext}">
+            <ContentPresenter x:Name="HeaderContextArea" />
+        </Border>
+
+        <!-- Content -->
+        <ContentControl Grid.Row="1" x:Name="ContentArea" />
+    </Grid>
+
+</Window>

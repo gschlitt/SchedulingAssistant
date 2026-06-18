@@ -1,0 +1,104 @@
+<UserControl
+    x:Class="TermPoint.Views.Wizard.Steps.Step5AcademicYearView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:TermPoint.Behaviors"
+    xmlns:vm="using:TermPoint.ViewModels.Wizard.Steps"
+    x:CompileBindings="False">
+
+    <StackPanel MaxWidth="840" Spacing="20">
+
+        <!--  Semester list — shown first  -->
+        <StackPanel Spacing="8">
+
+            <!--  Guidance text (user-editable placeholder)  -->
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                Foreground="{StaticResource ForegroundMuted}"
+                TextWrapping="Wrap">
+                Add the semesters that make up your academic year, in the order they run. Semesters can overlap
+                their scheduling periods.<LineBreak /><LineBreak />
+                Three common semesters are provided as a starting point — rename, remove,
+                or add more as needed.</TextBlock>
+
+            <!--  Semesters header + add button  -->
+            <Grid Margin="0,4,0,0" ColumnDefinitions="*,Auto">
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="{DynamicResource FontSizeNormal}"
+                    FontWeight="SemiBold"
+                    Text="Semesters" />
+                <Button
+                    Grid.Column="1"
+                    Command="{Binding AddSemesterCommand}"
+                    Content="+ Add semester"
+                    FontSize="{DynamicResource FontSizeSmall}" />
+            </Grid>
+
+            <!--  Semester rows  -->
+            <ItemsControl ItemsSource="{Binding Semesters}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:SemesterDefViewModel">
+                        <Grid Margin="0,0,0,4" ColumnDefinitions="*,8,Auto">
+                            <TextBox
+                                Grid.Column="0"
+                                FontSize="{DynamicResource FontSizeNormal}"
+                                Text="{Binding Name}"
+                                PlaceholderText="Semester name (e.g. Fall)" />
+                            <Button
+                                Grid.Column="2"
+                                Padding="6,4"
+                                Command="{Binding $parent[ItemsControl].DataContext.RemoveSemesterCommand}"
+                                CommandParameter="{Binding}">
+                                <Viewbox Width="10" Height="10">
+                                    <Path
+                                        Fill="{StaticResource TextPrimary}"
+                                        Data="{StaticResource RemoveIcon}" />
+                                </Viewbox>
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!--  Shown only when the user has removed all semesters  -->
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{StaticResource NotificationWarningText}"
+                IsVisible="{Binding !Semesters.Count}">
+                ⚠ Add at least one semester to continue.
+            </TextBlock>
+
+        </StackPanel>
+
+        <!--  Academic year name — shown below semesters  -->
+        <StackPanel Spacing="6">
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                FontWeight="SemiBold"
+                Text="First Academic Year" />
+            <TextBlock
+                FontSize="{DynamicResource FontSizeNormal}"
+                Foreground="{StaticResource ForegroundMuted}"
+                TextWrapping="Wrap">
+                Add the first academic year which you anticipate scheduling.
+                Type just the start year (e.g.<Italic>2025</Italic>
+                ) and it will expand
+                to<Italic>2025-2026</Italic>
+                automatically when you leave the field.</TextBlock>
+            <TextBox
+                b:LostFocusCommandBehavior.Command="{Binding CommitAcademicYearNameCommand}"
+                Text="{Binding AcademicYearName}"
+                PlaceholderText="e.g. 2025  or  2025-2026" />
+            <!--  Validation hint — only visible when there is an error message  -->
+            <TextBlock
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{StaticResource NotificationWarningText}"
+                IsVisible="{Binding AcademicYearNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Text="{Binding AcademicYearNameError}"
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

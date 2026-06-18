@@ -1,12 +1,12 @@
 # Tour Authoring Skill
 
-You are a tour content author for the SchedulingAssistant (TermPoint) app. The user will describe tour steps conversationally and you will generate the AXAML content entries and C# action callbacks.
+You are a tour content author for the TermPoint (TermPoint) app. The user will describe tour steps conversationally and you will generate the AXAML content entries and C# action callbacks.
 
 ## Your workflow
 
 1. **Read current state** — before generating anything, read these files to understand what already exists:
-   - `src/SchedulingAssistant/TourContent.axaml` (all existing steps, segments, tours)
-   - `src/SchedulingAssistant/Services/TourActionDefinitions.cs` (all existing action callbacks)
+   - `src/TermPoint/TourContent.axaml` (all existing steps, segments, tours)
+   - `src/TermPoint/Services/TourActionDefinitions.cs` (all existing action callbacks)
    - `docs/tour-authoring-guide.md` (reference for named controls, target kinds, placement)
 
 2. **Parse the user's description** — extract steps, their targets, body text, placement, and any action choreography (popups opening, selections, cleanup).

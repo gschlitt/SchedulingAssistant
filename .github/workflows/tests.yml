@@ -36,7 +36,7 @@ jobs:
       - name: Run tests
         run: >
           dotnet test
-          src/SchedulingAssistant.Tests/SchedulingAssistant.Tests.csproj
+          src/TermPoint.Tests/TermPoint.Tests.csproj
           --configuration Release
           --verbosity normal
           --results-directory ${{ github.workspace }}/TestResults

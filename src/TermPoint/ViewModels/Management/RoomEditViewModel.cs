@@ -1,0 +1,108 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using TermPoint.Models;
+
+namespace TermPoint.ViewModels.Management;
+
+/// <summary>A campus item for campus dropdown pickers, with a sentinel "none" option.</summary>
+/// <param name="Id">Campus GUID, or null for the "(none)" sentinel entry.</param>
+/// <param name="Name">Display name.</param>
+public record CampusOption(string? Id, string Name);
+
+/// <summary>A room type item for room type dropdown pickers, with a sentinel "none" option.</summary>
+/// <param name="Id">SchedulingEnvironmentValue GUID, or null for the "(none)" sentinel entry.</param>
+/// <param name="Name">Display name.</param>
+public record RoomTypeOption(string? Id, string Name);
+
+/// <summary>
+/// ViewModel for the inline Add/Edit form in the Rooms management panel.
+/// Communicates results back to the parent list via callbacks.
+/// </summary>
+public partial class RoomEditViewModel : ViewModelBase
+{
+    [ObservableProperty] private string _building = string.Empty;
+    [ObservableProperty] private string _roomNumber = string.Empty;
+
+    /// <summary>Capacity as edited text; empty = null (unspecified). Parsed in <see cref="ParsedCapacity"/>.</summary>
+    [ObservableProperty] private string _capacityText = string.Empty;
+
+    /// <summary>Parsed capacity, or null when blank/invalid (negatives treated as null).</summary>
+    private int? ParsedCapacity =>
+        int.TryParse(CapacityText.Trim(), out var n) && n >= 0 ? n : null;
+
+    [ObservableProperty] private string _features = string.Empty;
+    [ObservableProperty] private string _notes = string.Empty;
+
+    /// <summary>Campus choices for the campus dropdown, including a leading "(none)" sentinel.</summary>
+    public List<CampusOption> CampusOptions { get; }
+
+    /// <summary>Currently selected campus option; null falls back to "(none)".</summary>
+    [ObservableProperty] private CampusOption? _selectedCampus;
+
+    /// <summary>Room type choices for the room type dropdown, including a leading "(none)" sentinel.</summary>
+    public List<RoomTypeOption> RoomTypeOptions { get; }
+
+    /// <summary>Currently selected room type option; null falls back to "(none)".</summary>
+    [ObservableProperty] private RoomTypeOption? _selectedRoomType;
+
+    /// <summary>"Add Room" or "Edit Room" depending on <see cref="IsNew"/>.</summary>
+    public string Title => IsNew ? "Add Room" : "Edit Room";
+
+    /// <summary>True when adding a new room; false when editing an existing one.</summary>
+    public bool IsNew { get; }
+
+    private readonly Room _room;
+    private readonly Action<Room> _onSave;
+    private readonly Action _onCancel;
+
+    /// <param name="room">The model object to populate on save.</param>
+    /// <param name="isNew">True when adding; false when editing.</param>
+    /// <param name="campusOptions">Campus choices including the leading "(none)" entry.</param>
+    /// <param name="roomTypeOptions">Room type choices including the leading "(none)" entry.</param>
+    /// <param name="onSave">Called with the updated model when the user saves.</param>
+    /// <param name="onCancel">Called when the user cancels.</param>
+    public RoomEditViewModel(
+        Room room,
+        bool isNew,
+        List<CampusOption> campusOptions,
+        List<RoomTypeOption> roomTypeOptions,
+        Action<Room> onSave,
+        Action onCancel)
+    {
+        _room = room;
+        IsNew = isNew;
+        CampusOptions = campusOptions;
+        RoomTypeOptions = roomTypeOptions;
+        _onSave = onSave;
+        _onCancel = onCancel;
+
+        Building   = room.Building;
+        RoomNumber = room.RoomNumber;
+        CapacityText = room.Capacity?.ToString() ?? string.Empty;
+        Features   = room.Features;
+        Notes      = room.Notes;
+
+        SelectedCampus = campusOptions.FirstOrDefault(c => c.Id == room.CampusId)
+                         ?? campusOptions[0]; // "(none)" sentinel
+        SelectedRoomType = roomTypeOptions.FirstOrDefault(t => t.Id == room.RoomTypeId)
+                           ?? roomTypeOptions[0]; // "(none)" sentinel
+    }
+
+    /// <summary>Writes field values back to the model and invokes the save callback.</summary>
+    [RelayCommand]
+    private void Save()
+    {
+        _room.Building   = Building.Trim();
+        _room.RoomNumber = RoomNumber.Trim();
+        _room.Capacity   = ParsedCapacity;
+        _room.Features   = Features.Trim();
+        _room.Notes      = Notes.Trim();
+        _room.CampusId   = SelectedCampus?.Id; // null when "(none)" is selected
+        _room.RoomTypeId = SelectedRoomType?.Id; // null when "(none)" is selected
+        _onSave(_room);
+    }
+
+    /// <summary>Discards changes and invokes the cancel callback.</summary>
+    [RelayCommand]
+    private void Cancel() => _onCancel();
+}

@@ -1,0 +1,41 @@
+<UserControl
+	x:Class="TermPoint.Views.Management.WorkloadReportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:TermPoint.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:WorkloadReportViewModel">
+
+	<StackPanel MaxWidth="420" Spacing="16">
+
+		<TextBlock
+			FontSize="{StaticResource FontSizeLarge}"
+			FontWeight="SemiBold"
+			Text="Workload Report" />
+
+		<Border
+			Padding="12"
+			Background="{StaticResource FilterBarBackground}"
+			CornerRadius="4">
+			<StackPanel Spacing="6">
+				<TextBlock
+					FontSize="{StaticResource FontSizeNormal}"
+					Text="Exports a CSV summary of credited workload for all active instructors across semesters in the current academic year."
+					TextWrapping="Wrap" />
+				<Button
+					Margin="0,4,0,0"
+					Command="{Binding ExportWorkloadReportCommand}"
+					Content="Choose file and export…"
+					IsEnabled="{Binding !IsExporting}" />
+			</StackPanel>
+		</Border>
+
+		<TextBlock
+			FontSize="11"
+			IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+			Text="{Binding StatusMessage}"
+			TextWrapping="Wrap" />
+
+	</StackPanel>
+
+</UserControl>

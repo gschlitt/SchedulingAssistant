@@ -1,0 +1,95 @@
+using Avalonia.Platform.Storage;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using TermPoint.Services;
+using System;
+using System.IO;
+using System.Threading.Tasks;
+
+namespace TermPoint.ViewModels.Management;
+
+public partial class ExportViewModel : ViewModelBase
+{
+    /// <summary>Category label shown in the Export flyout sidebar.</summary>
+    public string DisplayName => "Print Schedule";
+
+    private readonly MainWindowViewModel _mainVm;
+
+    [ObservableProperty]
+    private string? _statusMessage;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExportSchedulePngCommand))]
+    private bool _isExporting;
+
+    public ExportViewModel(MainWindowViewModel mainVm)
+    {
+        _mainVm = mainVm;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExport))]
+    private async Task ExportSchedulePng()
+    {
+        if (!PlatformCapabilities.SupportsFileDialogs)
+        {
+            StatusMessage = "File export is not available in the browser demo.";
+            return;
+        }
+        // The await below is unreachable on desktop but satisfies the async signature
+        // in WASM builds where the #if !BROWSER block is excluded entirely.
+        await Task.CompletedTask;
+#if !BROWSER
+        var window = _mainVm.MainWindowReference;
+        if (window is null) return;
+
+        IsExporting = true;
+        StatusMessage = null;
+
+        try
+        {
+            var settings = AppSettings.Current;
+
+            IStorageFolder? suggestedFolder = null;
+            if (settings.LastExportPath is not null)
+            {
+                var dir = Path.GetDirectoryName(settings.LastExportPath);
+                if (dir is not null)
+                    suggestedFolder = await window.StorageProvider.TryGetFolderFromPathAsync(dir);
+            }
+
+            var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Export Schedule PNG",
+                SuggestedFileName = "schedule.png",
+                DefaultExtension = "png",
+                SuggestedStartLocation = suggestedFolder,
+                FileTypeChoices = new[]
+                {
+                    new FilePickerFileType("PNG Image") { Patterns = new[] { "*.png" } }
+                }
+            });
+
+            if (file is null) return;
+
+            var path = file.Path.LocalPath;
+
+            window.ScheduleGridViewInstance?.ExportToPng(path);
+
+            settings.LastExportPath = path;
+            settings.Save();
+
+            StatusMessage = $"Saved: {Path.GetFileName(path)}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+#endif
+    }
+
+    private bool CanExport() => !IsExporting;
+}

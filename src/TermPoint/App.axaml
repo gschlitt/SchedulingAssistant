@@ -1,0 +1,149 @@
+<Application
+	x:Class="TermPoint.App"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:conv="using:TermPoint.Converters"
+	xmlns:local="using:TermPoint"
+	RequestedThemeVariant="Light">
+
+ 
+  
+	<Application.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceInclude Source="avares://TermPoint/AppColors.axaml" />
+				<ResourceInclude Source="avares://TermPoint/AppLayout.axaml" />
+				<ResourceInclude Source="avares://TermPoint/Assets/Icons.axaml" />
+				<ResourceInclude Source="avares://TermPoint/TourContent.axaml" />
+			</ResourceDictionary.MergedDictionaries>
+      
+			<!--  Font sizes  -->
+			<x:Double x:Key="FontSizeSmall">10</x:Double>
+			<x:Double x:Key="FontSizeNormal">14</x:Double>
+			<x:Double x:Key="FontSizeMedium">14</x:Double>
+			<x:Double x:Key="FontSizeLarge">16</x:Double>
+			<x:Double x:Key="FontSizeXLarge">18</x:Double>
+			<x:Double x:Key="FontSizeSplash">72</x:Double>
+
+			<!--  Converters  -->
+			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
+			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
+			<conv:FilterBorderThicknessConverter x:Key="FilterBorderThicknessConverter" />
+			<conv:FilterHighlightBackgroundConverter x:Key="FilterHighlightBackgroundConverter" />
+			<conv:SemesterBorderBrushConverter x:Key="SemesterBorderBrushConverter" />
+			<conv:SemesterBackgroundBrushConverter x:Key="SemesterBackgroundBrushConverter" />
+			<conv:HexToColorConverter x:Key="HexToColorConverter" />
+			<conv:HexToBrushConverter x:Key="HexToBrushConverter" />
+			<conv:NotConverter x:Key="NotConverter" />
+		</ResourceDictionary>
+	</Application.Resources>
+
+	<Application.Styles>
+		<SimpleTheme />
+		<StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
+		<StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
+
+		<!--
+			Inter is the application-wide font. It is registered as the default in
+			Program.cs via .WithInterFont() — no explicit XAML style is needed.
+		-->
+		<!--  Flat buttons: no border, fill-based depth only.  -->
+
+		<Style Selector="Button">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="CornerRadius" Value="4" />
+		</Style>
+		<Style Selector="Button:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+		<Style Selector="Button:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonPressed}" />
+		</Style>
+		<Style Selector="ToggleButton:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+		<Style Selector="ToggleButton:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonPressed}" />
+		</Style>
+		<Style Selector="ToggleButton:checked /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonPressed}" />
+		</Style>
+		<Style Selector="Button.nav">
+			<Setter Property="Padding" Value="14,8" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="CornerRadius" Value="4" />
+			<Setter Property="FontSize" Value="13" />
+		</Style>
+		<Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+
+		<!--
+			Active-state highlight for nav buttons. Applied via Classes.active binding
+			(e.g. the "More…" button stays highlighted while the More flyout is open).
+		-->
+		<Style Selector="Button.nav.active /template/ ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+
+		<!--  Settings menu: strip chrome from the Menu container itself  -->
+		<Style Selector="Menu">
+			<Setter Property="Background" Value="Transparent" />
+		</Style>
+		<!--  Top-level MenuItem styled like a nav button  -->
+		<Style Selector="MenuItem.nav">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="CornerRadius" Value="4" />
+			<Style.Resources>
+				<SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="{StaticResource ButtonHoverColor}" />
+				<SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="{StaticResource ButtonPressedColor}" />
+			</Style.Resources>
+		</Style>
+
+		<Style Selector="TextBlock">
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+		</Style>
+
+		<!--  ScrollBar track background  -->
+		<Style Selector="ScrollBar /template/ Border#PART_Root">
+			<Setter Property="Background" Value="{StaticResource ChromeBackground}" />
+		</Style>
+
+		<!--  DataGrid row selection highlight (visible across all grids)  -->
+		<Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+			<Setter Property="Fill" Value="{StaticResource ListRowSelectedBackground}" />
+			<Setter Property="Opacity" Value="1" />
+		</Style>
+
+		<!--
+			Direct-input controls: any control where the user types or picks a value
+			gets UserInteractionColor as background so it stands out against panel surfaces.
+			ButtonBackground is the brush version of UserInteractionColor.
+			Views that need different behavior can override with a local Style.
+		-->
+		<Style Selector="TextBox">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+		<Style Selector="ComboBox">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+		<Style Selector="AutoCompleteBox">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+		<Style Selector="CheckBox /template/ Border#NormalRectangle">
+			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
+		</Style>
+
+	</Application.Styles>
+
+	<Application.DataTemplates>
+		<local:ViewLocator />
+	</Application.DataTemplates>
+
+</Application>

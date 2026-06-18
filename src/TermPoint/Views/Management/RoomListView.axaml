@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TermPoint.ViewModels.Management"
+             x:Class="TermPoint.Views.Management.RoomListView"
+             x:DataType="vm:RoomListViewModel"
+             x:CompileBindings="False">
+
+    <Grid RowDefinitions="Auto,*,Auto" MaxWidth="600">
+
+        <TextBlock Grid.Row="0" Text="Rooms" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <ContentControl Grid.Row="1" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:RoomEditViewModel}">
+                    <StackPanel Spacing="12" MaxWidth="420" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Building" Margin="0,0,8,4" />
+                            <TextBox   Grid.Row="1" Grid.Column="0" Text="{Binding Building}" Margin="0,0,8,8" />
+
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Room Number" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding RoomNumber}" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Campus" Margin="0,0,0,4" />
+                            <ComboBox  Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                       ItemsSource="{Binding CampusOptions}"
+                                       SelectedItem="{Binding SelectedCampus}"
+                                       DisplayMemberBinding="{Binding Name}"
+                                       Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Room Type" Margin="0,0,0,4" />
+                            <ComboBox  Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                                       ItemsSource="{Binding RoomTypeOptions}"
+                                       SelectedItem="{Binding SelectedRoomType}"
+                                       DisplayMemberBinding="{Binding Name}"
+                                       Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Text="Capacity (optional)" Margin="0,0,0,4" />
+                            <TextBox Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+                                     Text="{Binding CapacityText}" PlaceholderText="—" Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" Text="Features" Margin="0,0,0,4" />
+                            <TextBox   Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Features}" Margin="0,0,0,8" />
+                        </Grid>
+
+                        <TextBlock Text="Notes" />
+                        <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="60" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Apply" Command="{Binding SaveCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!-- List + move buttons (shown when EditVm is null) -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto"
+              IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <DataGrid x:Name="RoomsDataGrid"
+                      Grid.Column="0"
+                      ItemsSource="{Binding Rooms}"
+                      SelectedItem="{Binding SelectedRow}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Building"  Binding="{Binding Room.Building}"   Width="Auto" />
+                    <DataGridTextColumn Header="Room #"    Binding="{Binding Room.RoomNumber}"  Width="Auto" />
+                    <DataGridTextColumn Header="Campus"    Binding="{Binding CampusName}"       Width="Auto" />
+                    <DataGridTextColumn Header="Type"      Binding="{Binding RoomTypeName}"     Width="Auto" />
+                    <DataGridTextColumn Header="Capacity"  Binding="{Binding Room.Capacity}"    Width="Auto" />
+                    <DataGridTextColumn Header="Features"  Binding="{Binding Room.Features}"    Width="Auto" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Up/Down ordering buttons, aligned to top-right of the list -->
+            <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4"
+                        Margin="6,0,0,0" VerticalAlignment="Top">
+                <Button Content="↑" Command="{Binding MoveUpCommand}" />
+                <Button Content="↓" Command="{Binding MoveDownCommand}" />
+            </StackPanel>
+
+        </Grid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0"
+                    IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+                    IsEnabled="{Binding IsWriteEnabled}">
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="Edit" Command="{Binding EditCommand}"
+                    IsEnabled="{Binding SelectedRow, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button Content="Delete" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding SelectedRow, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+        <!--  Inline error message  -->
+        <TextBlock
+            FontSize="10"
+            Foreground="{StaticResource TextError}"
+            IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Text="{Binding LastErrorMessage}"
+            TextWrapping="Wrap"
+            Margin="0,4,0,0" />
+
+    </Grid>
+</UserControl>

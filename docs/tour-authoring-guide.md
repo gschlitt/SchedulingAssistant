@@ -1,6 +1,6 @@
 # Tour Authoring Guide
 
-A reference for creating walkthrough tour content in SchedulingAssistant. All tour
+A reference for creating walkthrough tour content in TermPoint. All tour
 text and structure is defined in **`TourContent.axaml`** (hot-reloadable via
 HotAvalonia). PreAction/PostAction callbacks live in C# and are merged by
 TourCatalog at startup.

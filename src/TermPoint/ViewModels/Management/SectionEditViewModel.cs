@@ -1,0 +1,1096 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using TermPoint.Data.Repositories;
+using TermPoint.Models;
+using TermPoint.Services;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+
+namespace TermPoint.ViewModels.Management;
+
+public partial class SectionEditViewModel : ViewModelBase
+{
+    [ObservableProperty] private string? _selectedCourseId;
+    [ObservableProperty] private string _sectionCode = string.Empty;
+    [ObservableProperty] private string _notes = string.Empty;
+
+    /// <summary>Section capacity as edited text; empty = null (unspecified). Parsed in Save().</summary>
+    [ObservableProperty] private string _capacityText = string.Empty;
+
+    /// <summary>Parsed capacity, or null when blank/invalid (treats negative as null).</summary>
+    private int? ParsedCapacity =>
+        int.TryParse(CapacityText.Trim(), out var n) && n >= 0 ? n : null;
+
+    /// <summary>
+    /// The section's current capacity as the user has it in the editor, for the Room Browser's
+    /// minimum-capacity filter. Read by the parent VM's browser factory at browse time.
+    /// </summary>
+    public int? CurrentSectionCapacity => ParsedCapacity;
+
+    /// <summary>
+    /// The section's current campus as the user has it in the editor, or null if none, used to
+    /// scope the Room Browser to rooms on that campus. Read by the parent VM's browser factory.
+    /// </summary>
+    public string? CurrentSectionCampusId =>
+        string.IsNullOrEmpty(SelectedCampusId) ? null : SelectedCampusId;
+
+    /// <summary>
+    /// Advisory shown when a chosen room's known capacity is below the section capacity.
+    /// Non-blocking and dismissable; recomputed when a meeting's room or the capacity changes.
+    /// </summary>
+    [ObservableProperty] private string? _capacityWarning;
+
+    /// <summary>Clears the capacity advisory until the next room/capacity change re-triggers it.</summary>
+    [RelayCommand]
+    private void DismissCapacityWarning() => CapacityWarning = null;
+
+    partial void OnCapacityTextChanged(string value) => CheckRoomCapacities();
+
+    /// <summary>
+    /// Scans every meeting's selected room and flags any whose known capacity is below the
+    /// section's (non-null) capacity. Rooms with no capacity set are never flagged. Sets or
+    /// clears <see cref="CapacityWarning"/> accordingly.
+    /// </summary>
+    private void CheckRoomCapacities()
+    {
+        var needed = ParsedCapacity;
+        if (needed is null)
+        {
+            CapacityWarning = null;
+            return;
+        }
+
+        var undersized = Meetings
+            .Select(m => string.IsNullOrEmpty(m.SelectedRoomId)
+                ? null
+                : _rooms.FirstOrDefault(r => r.Id == m.SelectedRoomId))
+            .Where(r => r is not null && r.Capacity is int cap && cap < needed.Value)
+            .Select(r => $"{r!.Building} {r.RoomNumber}".Trim())
+            .Distinct()
+            .ToList();
+
+        CapacityWarning = undersized.Count switch
+        {
+            0 => null,
+            1 => $"Room {undersized[0]} seats fewer than the section capacity of {needed.Value}.",
+            _ => $"{undersized.Count} selected rooms seat fewer than the section capacity of {needed.Value}.",
+        };
+    }
+
+    // ── Section code pattern chooser ─────────────────────────────────────────
+
+    /// <summary>
+    /// Available code patterns for this session, loaded once at editor construction.
+    /// Only relevant for new sections; editing an existing section ignores patterns.
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<SectionCodePattern> _codePatterns = new();
+
+    /// <summary>
+    /// The currently selected code pattern, or null when the user wants to type the code manually.
+    /// Setting this auto-fills the section code, campus, and section type.
+    /// </summary>
+    [ObservableProperty] private SectionCodePattern? _selectedPattern;
+
+    /// <summary>True when at least one code pattern is configured; shows the pattern chooser row.</summary>
+    public bool HasCodePatterns => IsNew && !IsCopy && CodePatterns.Count > 0;
+    [ObservableProperty] private ObservableCollection<SectionMeetingViewModel> _meetings = new();
+    [ObservableProperty] private ObservableCollection<Course> _courses;
+
+    // Subject and filtered course numbers
+    [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
+    [NotifyPropertyChangedFor(nameof(HasAvailableCourseNumbers))]
+    private Subject? _selectedSubject;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
+    [NotifyPropertyChangedFor(nameof(HasAvailableCourseNumbers))]
+    private ObservableCollection<string> _courseNumbers = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSectionCodeEnabled))]
+    private string? _selectedCourseNumber;
+
+    // ── Step-gate state ──────────────────────────────────────────────────────
+
+    /// <summary>True once a course is selected; enables the Section Code field.</summary>
+    public bool IsSectionCodeEnabled => !string.IsNullOrEmpty(SelectedCourseId);
+
+    /// <summary>True when a subject is selected and course numbers are available to choose from.</summary>
+    public bool HasAvailableCourseNumbers => SelectedSubject is not null && CourseNumbers.Count > 0;
+
+    /// <summary>
+    /// True when course is selected, section code is non-empty, and the code has been
+    /// validated as unique (by CommitSectionCode on LostFocus or at construction).
+    /// Purely derived from the validated course+code snapshot.
+    /// </summary>
+    public bool AreOtherFieldsEnabled =>
+        !string.IsNullOrEmpty(SelectedCourseId)
+        && !string.IsNullOrEmpty(SectionCode.Trim())
+        && SectionCodeError == null
+        && _validatedCourseId == SelectedCourseId
+        && string.Equals(_validatedSectionCode, SectionCode.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Error message shown beneath Section Code; null when no error.</summary>
+    [ObservableProperty] private string? _sectionCodeError;
+
+    /// <summary>Snapshot of the course+code pair that was last validated successfully.</summary>
+    private string? _validatedCourseId;
+    private string? _validatedSectionCode;
+
+    private readonly Func<string, string, bool> _isSectionCodeDuplicate;
+
+    /// <summary>
+    /// Callback passed to each <see cref="SectionMeetingViewModel"/> so that meeting-level
+    /// warnings (e.g. clamped start time) surface in this editor's <see cref="ViewModelBase.LastErrorMessage"/>
+    /// rather than being routed through the parent list VM.
+    /// </summary>
+    private readonly Func<string, Task> _showMeetingWarning;
+
+    // Instructor multi-select
+    [ObservableProperty] private ObservableCollection<InstructorSelectionViewModel> _instructorSelections = new();
+
+    // Section-level single-select property collections (include a leading "(none)" sentinel)
+    [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _sectionTypes = new();
+    [ObservableProperty] private ObservableCollection<Campus> _campuses = new();
+
+    // Section-level single-select selections (empty string = null / none)
+    [ObservableProperty] private string? _selectedSectionTypeId;
+    [ObservableProperty] private string? _selectedCampusId;
+
+    // Multi-select collections
+    [ObservableProperty] private ObservableCollection<TagSelectionViewModel> _tagSelections = new();
+    [ObservableProperty] private ObservableCollection<ResourceSelectionViewModel> _resourceSelections = new();
+    [ObservableProperty] private ObservableCollection<ReserveSelectionViewModel> _reserveSelections = new();
+
+    /// <summary>Comma-joined names (with workload) of selected instructors, for the Expander header.</summary>
+    public string InstructorSummary
+    {
+        get
+        {
+            var parts = InstructorSelections
+                .Where(i => i.IsSelected)
+                .Select(i =>
+                {
+                    var w = i.ParsedWorkload;
+                    return w.HasValue ? $"{i.DisplayName} [{w.Value:0.##}]" : i.DisplayName;
+                })
+                .ToList();
+            return parts.Count > 0 ? string.Join(", ", parts) : "(none)";
+        }
+    }
+
+    /// <summary>Comma-joined names of selected tags, for the Expander header.</summary>
+    public string TagSummary =>
+        TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Name) is var names && names.Any()
+            ? string.Join(", ", names)
+            : "(none)";
+
+    /// <summary>Comma-joined names of selected resources, for the Expander header.</summary>
+    public string ResourceSummary =>
+        ResourceSelections.Where(r => r.IsSelected).Select(r => r.Value.Name) is var names && names.Any()
+            ? string.Join(", ", names)
+            : "(none)";
+
+    /// <summary>Summary of selected reserves with their counts, for the Expander header.</summary>
+    public string ReserveSummary
+    {
+        get
+        {
+            var parts = ReserveSelections
+                .Where(r => r.IsSelected)
+                .Select(r =>
+                {
+                    var code = r.ParsedCode;
+                    return code.HasValue ? $"{r.Value.Name}:{code.Value}" : r.Value.Name;
+                })
+                .ToList();
+            return parts.Count > 0 ? string.Join(", ", parts) : "(none)";
+        }
+    }
+
+    public string FormTitle => IsNew ? "Add Section" : "Edit Section";
+    public bool IsNew { get; }
+    public bool IsCopy { get; }
+
+    private readonly Section _section;
+    private readonly Func<Section, Task> _onSave;
+    private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
+    private readonly IReadOnlyList<SchedulingEnvironmentValue> _meetingTypes;
+    private readonly IReadOnlyList<Room> _rooms;
+    private readonly IReadOnlyList<RoomTypeOption> _roomTypeOptions;
+    private readonly IReadOnlyList<BlockPattern> _blockPatterns;
+    private readonly bool _includeSaturday;
+    private readonly bool _includeSunday;
+    private readonly double? _defaultBlockLength;
+
+    /// <summary>App-level fallback capacity for a new section whose course declares none.</summary>
+    private readonly int? _defaultSectionCapacity;
+    private readonly IReadOnlyList<Subject> _allSubjects;
+
+    /// <summary>
+    /// True once the constructor has finished. Used to suppress course-tag merging
+    /// during construction for existing sections (where tags are already populated),
+    /// while still allowing it after construction when the user changes the course.
+    /// </summary>
+    private bool _isConstructed;
+
+    // ── Pattern coupling state ─────────────────────────────────────────────────
+    // After ApplyPattern creates meetings, the lead meeting's first change to each
+    // of these three fields is propagated once to all follower meetings, then decoupled.
+
+    private SectionMeetingViewModel? _couplingLeader;
+    private List<SectionMeetingViewModel> _couplingFollowers = new();
+    private HashSet<string> _couplingRemainingFields = new();
+    private PropertyChangedEventHandler? _couplingHandler;
+
+    // ── Block-pattern shortcuts ───────────────────────────────────────────────
+
+    private readonly BlockPattern? _pattern1;
+    private readonly BlockPattern? _pattern2;
+    private readonly BlockPattern? _pattern3;
+    private readonly BlockPattern? _pattern4;
+    private readonly BlockPattern? _pattern5;
+
+    /// <summary>Label for the "Apply" button for Pattern 1 (null when no pattern is saved).</summary>
+    public string? Pattern1Label => _pattern1 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 2 (null when no pattern is saved).</summary>
+    public string? Pattern2Label => _pattern2 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 3 (null when no pattern is saved).</summary>
+    public string? Pattern3Label => _pattern3 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 4 (null when no pattern is saved).</summary>
+    public string? Pattern4Label => _pattern4 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>Label for the "Apply" button for Pattern 5 (null when no pattern is saved).</summary>
+    public string? Pattern5Label => _pattern5 is { Name.Length: > 0 } p ? p.Name : null;
+
+    /// <summary>True when Pattern 1 is configured and can be applied.</summary>
+    public bool HasPattern1 => _pattern1 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 2 is configured and can be applied.</summary>
+    public bool HasPattern2 => _pattern2 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 3 is configured and can be applied.</summary>
+    public bool HasPattern3 => _pattern3 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 4 is configured and can be applied.</summary>
+    public bool HasPattern4 => _pattern4 is { Days.Count: > 0 };
+
+    /// <summary>True when Pattern 5 is configured and can be applied.</summary>
+    public bool HasPattern5 => _pattern5 is { Days.Count: > 0 };
+
+    /// <summary>
+    /// Set by the view to close the hosting window when Save or Cancel is invoked.
+    /// </summary>
+    public Action? RequestClose { get; set; }
+
+    // ── Step-gate partial callbacks ──────────────────────────────────────────
+    // These only clear stale errors and re-raise the computed properties.
+    // AreOtherFieldsEnabled compares the live values against the validated snapshot,
+    // so no mutable flag needs to be maintained here.
+
+    partial void OnSectionCodeErrorChanged(string? value)
+    {
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    partial void OnSelectedCourseIdChanged(string? value)
+    {
+        SectionCodeError = null;
+        OnPropertyChanged(nameof(IsSectionCodeEnabled));
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+
+        // Post-construction course changes (including initial selection on a new section):
+        // merge the new course's tags into the tag selections without removing any
+        // tags the user may have already chosen.
+        if (_isConstructed && !string.IsNullOrEmpty(value))
+        {
+            MergeCourseTags(value);
+
+            // Seed capacity for a brand-new section from the chosen course (else the app
+            // default). Course is step 1 of the step-gate, so re-deriving on each course
+            // change is predictable. Edits and Copies keep their existing capacity.
+            if (IsNew && !IsCopy)
+            {
+                var course = Courses.FirstOrDefault(c => c.Id == value);
+                var inherited = course?.Capacity ?? _defaultSectionCapacity;
+                CapacityText = inherited?.ToString() ?? string.Empty;
+            }
+        }
+    }
+
+    partial void OnSelectedSubjectChanged(Subject? value)
+    {
+        // Update course numbers when subject changes
+        SelectedCourseNumber = null;
+        if (value is not null)
+        {
+            var courseNumbers = Courses
+                .Where(c => c.SubjectId == value.Id)
+                .Where(c => c.CalendarCode.Length >= value.CalendarAbbreviation.Length)
+                .Select(c => c.CalendarCode[value.CalendarAbbreviation.Length..])
+                .OrderBy(n => n)
+                .Distinct()
+                .ToList();
+            CourseNumbers = new ObservableCollection<string>(courseNumbers);
+        }
+        else
+        {
+            CourseNumbers = new ObservableCollection<string>();
+        }
+        OnPropertyChanged(nameof(IsSectionCodeEnabled));
+    }
+
+    partial void OnSelectedCourseNumberChanged(string? value)
+    {
+        // Update SelectedCourseId based on selected subject and course number
+        if (!string.IsNullOrEmpty(value) && SelectedSubject is not null)
+        {
+            var calendarCode = $"{SelectedSubject.CalendarAbbreviation}{value}";
+            var course = Courses.FirstOrDefault(c =>
+                c.CalendarCode.Equals(calendarCode, StringComparison.OrdinalIgnoreCase));
+            if (course is not null)
+            {
+                SelectedCourseId = course.Id;
+            }
+        }
+        else
+        {
+            SelectedCourseId = null;
+        }
+    }
+
+    partial void OnSectionCodeChanged(string value)
+    {
+        SectionCodeError = null;
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    /// <summary>
+    /// When the section's campus changes, re-confine every meeting's room list to rooms on
+    /// that campus (plus rooms with no campus). An empty value clears the filter so all rooms
+    /// are shown again.
+    /// </summary>
+    partial void OnSelectedCampusIdChanged(string? value)
+    {
+        foreach (var meeting in Meetings)
+            meeting.SetSectionCampus(value);
+    }
+
+    /// <summary>
+    /// Called when the user selects a code pattern from the chooser.
+    /// Generates the next unused code for the selected course and semester,
+    /// pre-fills campus and section type if the pattern specifies them,
+    /// and immediately validates the code snapshot so all other fields unlock.
+    /// </summary>
+    partial void OnSelectedPatternChanged(SectionCodePattern? value)
+    {
+        if (value is null || string.IsNullOrEmpty(SelectedCourseId)) return;
+
+        var nextCode = SectionCodeGenerator.GetNextCode(
+            value,
+            code => _isSectionCodeDuplicate(SelectedCourseId, code));
+
+        if (nextCode is not null)
+        {
+            SectionCode      = nextCode;
+            SectionCodeError = null;
+            _validatedCourseId    = SelectedCourseId;
+            _validatedSectionCode = nextCode;
+        }
+        else
+        {
+            // All codes in sequence already taken — leave code blank for manual entry.
+            SectionCode      = string.Empty;
+            SectionCodeError = "All codes in this pattern are already taken for this course.";
+            _validatedCourseId    = null;
+            _validatedSectionCode = null;
+        }
+
+        // Pre-fill campus and section type when the pattern specifies them.
+        if (!string.IsNullOrEmpty(value.CampusId))
+            SelectedCampusId = value.CampusId;
+        if (!string.IsNullOrEmpty(value.SectionTypeId))
+            SelectedSectionTypeId = value.SectionTypeId;
+
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    /// <summary>
+    /// Called when the Section Code field loses focus (hooked in the view's code-behind).
+    /// Validates uniqueness and, if valid, records the validated course+code pair so that
+    /// <see cref="AreOtherFieldsEnabled"/> becomes true.
+    /// </summary>
+    public void CommitSectionCode()
+    {
+        var code = SectionCode.Trim();
+        if (string.IsNullOrEmpty(SelectedCourseId) || string.IsNullOrEmpty(code))
+        {
+            OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+            return;
+        }
+
+        if (_isSectionCodeDuplicate(SelectedCourseId, code))
+        {
+            SectionCodeError = "A section with this code already exists for this course in the selected semester.";
+            _validatedCourseId = null;
+            _validatedSectionCode = null;
+        }
+        else
+        {
+            SectionCodeError = null;
+            _validatedCourseId = SelectedCourseId;
+            _validatedSectionCode = code;
+        }
+        OnPropertyChanged(nameof(AreOtherFieldsEnabled));
+    }
+
+    /// <summary>
+    /// Constructs the inline section editor view-model.
+    /// </summary>
+    /// <param name="section">The section being edited (or a blank one for Add).</param>
+    /// <param name="isNew">True when creating a new section; false when editing an existing one.</param>
+    /// <param name="courses">Active courses available for selection.</param>
+    /// <param name="subjects">All subjects, used to populate the Subject dropdown.</param>
+    /// <param name="instructors">All instructors for the multi-select panel.</param>
+    /// <param name="rooms">All rooms, passed to each meeting editor.</param>
+    /// <param name="legalStartTimes">Valid start times for the academic year.</param>
+    /// <param name="includeSaturday">Whether Saturday is shown as a meeting day.</param>
+    /// <param name="includeSunday">Whether Sunday is shown as a meeting day.</param>
+    /// <param name="sectionTypes">All section-type property values.</param>
+    /// <param name="meetingTypes">All meeting-type property values.</param>
+    /// <param name="campuses">All campus entities.</param>
+    /// <param name="allTags">All tag property values.</param>
+    /// <param name="allResources">All resource property values.</param>
+    /// <param name="allReserves">All reserve property values.</param>
+    /// <param name="codePatterns">
+    /// Available section code patterns for the pattern chooser.
+    /// Only used when <paramref name="isNew"/> is true; ignored for existing sections.
+    /// </param>
+    /// <param name="isSectionCodeDuplicate">
+    /// Delegate that returns true when a given (courseId, code) pair already exists
+    /// in the target semester.  Scoped by the caller to the correct semester.
+    /// </param>
+    /// <param name="onSave">Async callback invoked when the user saves.</param>
+    /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
+    /// <param name="roomTypes">Room type scheduling environment values for the room type dropdown.</param>
+    /// <param name="defaultBlockLength">Optional preferred block length pre-filled on new meetings.</param>
+    public SectionEditViewModel(
+        Section section,
+        bool isNew,
+        bool isCopy,
+        IReadOnlyList<Course> courses,
+        IReadOnlyList<Subject> subjects,
+        IReadOnlyList<Instructor> instructors,
+        IReadOnlyList<Room> rooms,
+        IReadOnlyList<LegalStartTime> legalStartTimes,
+        bool includeSaturday,
+        bool includeSunday,
+        IReadOnlyList<SchedulingEnvironmentValue> sectionTypes,
+        IReadOnlyList<SchedulingEnvironmentValue> meetingTypes,
+        IReadOnlyList<Campus> campuses,
+        IReadOnlyList<SchedulingEnvironmentValue> allTags,
+        IReadOnlyList<SchedulingEnvironmentValue> allResources,
+        IReadOnlyList<SchedulingEnvironmentValue> allReserves,
+        IReadOnlyList<SectionCodePattern> codePatterns,
+        Func<string, string, bool> isSectionCodeDuplicate,
+        Func<Section, Task> onSave,
+        IBlockPatternRepository blockPatternRepository,
+        IReadOnlyList<SchedulingEnvironmentValue> roomTypes,
+        double? defaultBlockLength = null,
+        int? defaultSectionCapacity = null)
+    {
+        _section = section;
+        IsNew = isNew;
+        IsCopy = isCopy;
+        _onSave = onSave;
+
+        // Route meeting-level warnings (e.g. clamped start time) to this editor's LastErrorMessage
+        // so the feedback appears inline in the editor, close to where the user is working.
+        _showMeetingWarning = msg => { LastErrorMessage = msg; return Task.CompletedTask; };
+
+        _legalStartTimes = legalStartTimes;
+        _meetingTypes = meetingTypes;
+        _rooms = rooms;
+        _includeSaturday = includeSaturday;
+        _includeSunday = includeSunday;
+
+        // Build room type options: "(none)" + DB types + "Remote"
+        var rto = new List<RoomTypeOption> { new(null, "(none)") };
+        rto.AddRange(roomTypes.Select(v => new RoomTypeOption(v.Id, v.Name)));
+        rto.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
+        _roomTypeOptions = rto;
+        _defaultBlockLength = defaultBlockLength;
+        _defaultSectionCapacity = defaultSectionCapacity;
+        _isSectionCodeDuplicate = isSectionCodeDuplicate;
+
+        // Load saved block patterns for the shortcut buttons and room browser templates
+        var allPatterns = blockPatternRepository.GetAll();
+        _blockPatterns = allPatterns;
+        _pattern1 = allPatterns.Count > 0 ? allPatterns[0] : null;
+        _pattern2 = allPatterns.Count > 1 ? allPatterns[1] : null;
+        _pattern3 = allPatterns.Count > 2 ? allPatterns[2] : null;
+        _pattern4 = allPatterns.Count > 3 ? allPatterns[3] : null;
+        _pattern5 = allPatterns.Count > 4 ? allPatterns[4] : null;
+
+        // Populate the code pattern chooser (only used for new sections).
+        CodePatterns = new ObservableCollection<SectionCodePattern>(codePatterns);
+
+        Courses = new ObservableCollection<Course>(courses);
+        _allSubjects = subjects;
+        Subjects = new ObservableCollection<Subject>(subjects);
+
+        // Initialize subject and course number (for both editing and copying)
+        if (!string.IsNullOrEmpty(section.CourseId))
+        {
+            // Editing or copying: extract from existing course
+            var existingCourse = courses.FirstOrDefault(c => c.Id == section.CourseId);
+            if (existingCourse is not null)
+            {
+                var subject = subjects.FirstOrDefault(s => s.Id == existingCourse.SubjectId);
+                if (subject is not null)
+                {
+                    SelectedSubject = subject;
+                    // Extract course number from calendar code
+                    var courseNumber = existingCourse.CalendarCode.Length >= subject.CalendarAbbreviation.Length
+                        ? existingCourse.CalendarCode[subject.CalendarAbbreviation.Length..]
+                        : string.Empty;
+                    // OnSelectedSubjectChanged will populate CourseNumbers, so we can now set the selection
+                    SelectedCourseNumber = courseNumber;
+                }
+            }
+        }
+        else if (subjects.Count > 0)
+        {
+            // New section: pre-select first subject to populate course numbers
+            SelectedSubject = subjects[0];
+        }
+
+        SelectedCourseId = section.CourseId;
+        SectionCode      = section.SectionCode;
+        Notes            = section.Notes;
+        CapacityText     = section.Capacity?.ToString() ?? string.Empty;
+
+        // If both fields are already populated (edit or copy-with-code), record them as
+        // the validated pair so AreOtherFieldsEnabled computes to true immediately.
+        // This is immune to Avalonia re-firing setters — the computed property just
+        // compares live values against these snapshots.
+        if (!string.IsNullOrEmpty(section.CourseId) && !string.IsNullOrEmpty(section.SectionCode))
+        {
+            _validatedCourseId = section.CourseId;
+            _validatedSectionCode = section.SectionCode;
+        }
+
+        // Instructor multi-select with workload
+        InstructorSelections = new ObservableCollection<InstructorSelectionViewModel>(
+            instructors.Select(i =>
+            {
+                var assignment = section.InstructorAssignments.FirstOrDefault(a => a.InstructorId == i.Id);
+                return new InstructorSelectionViewModel(i, assignment is not null, assignment?.Workload);
+            }));
+        WireSelectionSummary(InstructorSelections, nameof(InstructorSummary));
+
+        // Build single-select lists with a leading "(none)" sentinel
+        SectionTypes = BuildSentinelList(sectionTypes);
+
+        // Build campuses list sorted by SortOrder, with a "(none)" sentinel prepended
+        var campusList = new List<Campus>
+            { new Campus { Id = "", Name = "(none)" } };
+        campusList.AddRange(campuses.OrderBy(c => c.SortOrder));
+        Campuses = new ObservableCollection<Campus>(campusList);
+
+        SelectedSectionTypeId = section.SectionTypeId ?? "";
+        SelectedCampusId      = section.CampusId      ?? "";
+
+        // Build multi-select lists
+        TagSelections = new ObservableCollection<TagSelectionViewModel>(
+            allTags.Select(t => new TagSelectionViewModel(t, section.TagIds.Contains(t.Id))));
+        WireSelectionSummary(TagSelections, nameof(TagSummary));
+
+        ResourceSelections = new ObservableCollection<ResourceSelectionViewModel>(
+            allResources.Select(r => new ResourceSelectionViewModel(r, section.ResourceIds.Contains(r.Id))));
+        WireSelectionSummary(ResourceSelections, nameof(ResourceSummary));
+
+        ReserveSelections = new ObservableCollection<ReserveSelectionViewModel>(
+            allReserves.Select(r =>
+            {
+                var existing = section.Reserves.FirstOrDefault(x => x.ReserveId == r.Id);
+                return new ReserveSelectionViewModel(r, existing?.Code);
+            }));
+        WireReserveSummary();
+
+        // Meetings — pass rooms down so each meeting can show its own room picker.
+        // defaultBlockLength is passed but has no effect on existing meetings (only new ones).
+        foreach (var entry in section.Schedule)
+            Meetings.Add(new SectionMeetingViewModel(legalStartTimes, includeSaturday, includeSunday, meetingTypes, rooms, _roomTypeOptions, entry, defaultBlockLength, _showMeetingWarning,
+                unit: AppSettings.Current.BlockLengthUnit, sectionCampusId: SelectedCampusId));
+
+        WireMeetingDurationWatch();
+
+        // Mark construction complete so OnSelectedCourseIdChanged can merge tags going forward.
+        _isConstructed = true;
+
+        // For new sections (Add or Copy) that already have a course pre-set, immediately merge
+        // the course's tags. On Copy the section may already have tags; MergeCourseTags only
+        // adds missing ones.
+        if (isNew && !string.IsNullOrEmpty(SelectedCourseId))
+            MergeCourseTags(SelectedCourseId);
+    }
+
+    /// <summary>
+    /// Wires up collection + per-item PropertyChanged so that the named summary property
+    /// fires OnPropertyChanged whenever any IsSelected (or WorkloadText for instructors) changes.
+    /// </summary>
+    private void WireSelectionSummary<T>(ObservableCollection<T> collection, string summaryPropertyName)
+        where T : INotifyPropertyChanged
+    {
+        foreach (var item in collection)
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is "IsSelected" or "WorkloadText")
+                    OnPropertyChanged(summaryPropertyName);
+            };
+
+        collection.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is not null)
+                foreach (T item in e.NewItems)
+                    item.PropertyChanged += (_, pe) =>
+                    {
+                        if (pe.PropertyName is "IsSelected" or "WorkloadText")
+                            OnPropertyChanged(summaryPropertyName);
+                    };
+            OnPropertyChanged(summaryPropertyName);
+        };
+    }
+
+    /// <summary>
+    /// Wires ReserveSelections so ReserveSummary updates on IsSelected or CodeText changes.
+    /// </summary>
+    private void WireReserveSummary()
+    {
+        foreach (var item in ReserveSelections)
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is "IsSelected" or "CodeText")
+                    OnPropertyChanged(nameof(ReserveSummary));
+            };
+
+        ReserveSelections.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is not null)
+                foreach (ReserveSelectionViewModel item in e.NewItems)
+                    item.PropertyChanged += (_, pe) =>
+                    {
+                        if (pe.PropertyName is "IsSelected" or "CodeText")
+                            OnPropertyChanged(nameof(ReserveSummary));
+                    };
+            OnPropertyChanged(nameof(ReserveSummary));
+        };
+    }
+
+    /// <summary>
+    /// Subscribes to <see cref="Meetings"/> collection changes and each meeting's
+    /// <c>SelectedBlockLength</c> so the Room Browser command re-evaluates CanExecute.
+    /// </summary>
+    private void WireMeetingDurationWatch()
+    {
+        foreach (var m in Meetings)
+            m.PropertyChanged += OnMeetingBlockLengthChanged;
+
+        Meetings.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is not null)
+                foreach (SectionMeetingViewModel m in e.NewItems)
+                    m.PropertyChanged += OnMeetingBlockLengthChanged;
+            OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+        };
+    }
+
+    private void OnMeetingBlockLengthChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
+            OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+        else if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedRoomId))
+            CheckRoomCapacities();
+    }
+
+    private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
+        IReadOnlyList<SchedulingEnvironmentValue> values)
+    {
+        var list = new List<SchedulingEnvironmentValue>
+            { new SchedulingEnvironmentValue { Id = "", Name = "(none)" } };
+        list.AddRange(values);
+        return new ObservableCollection<SchedulingEnvironmentValue>(list);
+    }
+
+    // ── Room Availability Browser ──────────────────────────────────────────
+
+    /// <summary>
+    /// The room availability browser VM, or null when the browser panel is closed.
+    /// </summary>
+    [ObservableProperty] private RoomAvailabilityBrowserViewModel? _roomBrowserVm;
+
+    /// <summary>True when the browser panel is visible.</summary>
+    public bool IsRoomBrowserOpen => RoomBrowserVm != null;
+
+    /// <summary>
+    /// True only when the browser is open AND it found alternative times/rooms.
+    /// Drives visibility of the "Show Alternatives" toggle. Exposed as a single
+    /// bool so the XAML never binds through a null <see cref="RoomBrowserVm"/>
+    /// (a null path leg yields UnsetValue, which makes IsVisible default to true).
+    /// </summary>
+    public bool HasBrowserAlternatives => RoomBrowserVm?.HasAlternatives == true;
+
+    /// <summary>
+    /// Keeps <see cref="HasBrowserAlternatives"/> in sync: re-evaluates when the
+    /// browser opens/closes and subscribes to the browser's HasAlternatives changes.
+    /// </summary>
+    partial void OnRoomBrowserVmChanged(
+        RoomAvailabilityBrowserViewModel? oldValue,
+        RoomAvailabilityBrowserViewModel? newValue)
+    {
+        if (oldValue != null)
+            oldValue.PropertyChanged -= OnRoomBrowserPropertyChanged;
+        if (newValue != null)
+            newValue.PropertyChanged += OnRoomBrowserPropertyChanged;
+        OnPropertyChanged(nameof(HasBrowserAlternatives));
+    }
+
+    private void OnRoomBrowserPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(RoomAvailabilityBrowserViewModel.HasAlternatives))
+            OnPropertyChanged(nameof(HasBrowserAlternatives));
+    }
+
+    /// <summary>
+    /// Factory delegate set by the parent VM to create a <see cref="RoomAvailabilityBrowserViewModel"/>.
+    /// Receives the section's meeting specs and callbacks for accept/cancel.
+    /// </summary>
+    public Func<IReadOnlyList<MeetingSpec>, Action<IReadOnlyList<SpecSolution>>, Action, RoomAvailabilityBrowserViewModel>?
+        CreateRoomBrowser { get; set; }
+
+    /// <summary>
+    /// Room Browser requires at least one meeting, and every meeting must have a duration.
+    /// </summary>
+    private bool CanOpenRoomBrowser() =>
+        Meetings.Count > 0 && Meetings.All(m => m.SelectedBlockLength.HasValue);
+
+
+    [RelayCommand(CanExecute = nameof(CanOpenRoomBrowser))]
+    private void OpenRoomBrowser()
+    {
+        if (CreateRoomBrowser == null) return;
+
+        var specs = Meetings
+            .Select((m, i) => m.ToMeetingSpec(i))
+            .Where(s => s != null)
+            .Cast<MeetingSpec>()
+            .Where(s => !s.IsRemote)
+            .ToList();
+
+        if (specs.Count == 0)
+        {
+            LastErrorMessage = "Every meeting must have a duration before browsing. Remote meetings are excluded.";
+            return;
+        }
+
+        LastErrorMessage = null;
+        RoomBrowserVm = CreateRoomBrowser(specs, AcceptBrowserSolution, () =>
+        {
+            RoomBrowserVm = null;
+            OnPropertyChanged(nameof(IsRoomBrowserOpen));
+        });
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    [RelayCommand]
+    private void CloseRoomBrowser()
+    {
+        RoomBrowserVm?.CancelCommand.Execute(null);
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    /// <summary>
+    /// Accepts a browser solution by filling in blank fields on existing meeting rows
+    /// rather than creating new rows.
+    /// </summary>
+    private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
+    {
+        // Disconnect pattern coupling so per-day solutions don't fight the propagation handler.
+        TearDownPatternCoupling();
+
+        foreach (var sol in solutions)
+        {
+            if (sol.SpecIndex < 0 || sol.SpecIndex >= Meetings.Count) continue;
+            var meeting = Meetings[sol.SpecIndex];
+
+            // Fill in only the fields that were unspecified.
+            if (meeting.SelectedDay == 0)
+                meeting.SelectedDay = sol.Day;
+
+            if (!meeting.SelectedStartTime.HasValue)
+            {
+                meeting.StartTimeText = SectionMeetingViewModel.FormatTime(sol.StartMinutes);
+                // Trigger commit so SelectedStartTime gets set.
+                meeting.CommitStartTimeCommand.Execute(null);
+            }
+
+            if (string.IsNullOrEmpty(meeting.SelectedRoomId))
+                meeting.SelectedRoomId = sol.RoomId;
+        }
+
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+    }
+
+    [RelayCommand]
+    private void AddMeeting()
+    {
+        Meetings.Add(new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms, _roomTypeOptions,
+            defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
+            unit: AppSettings.Current.BlockLengthUnit, sectionCampusId: SelectedCampusId));
+    }
+
+    [RelayCommand]
+    private void RemoveMeeting(SectionMeetingViewModel meeting)
+    {
+        // Keep coupling state consistent when meetings are manually removed.
+        if (meeting == _couplingLeader)
+            TearDownPatternCoupling();     // Leader gone — coupling has no source; discard entirely.
+        else
+            _couplingFollowers.Remove(meeting); // Remove from propagation targets if it was a follower.
+
+        Meetings.Remove(meeting);
+    }
+
+    [RelayCommand]
+    private void ApplyPattern1() => ApplyPattern(_pattern1);
+
+    [RelayCommand]
+    private void ApplyPattern2() => ApplyPattern(_pattern2);
+
+    [RelayCommand]
+    private void ApplyPattern3() => ApplyPattern(_pattern3);
+
+    [RelayCommand]
+    private void ApplyPattern4() => ApplyPattern(_pattern4);
+
+    [RelayCommand]
+    private void ApplyPattern5() => ApplyPattern(_pattern5);
+
+    /// <summary>
+    /// Replaces the current meeting list with one blank meeting per day in the pattern.
+    /// The new meetings start with no block length, start time, or meeting type pre-filled.
+    /// After creation, the meetings are coupled: the first time the user sets
+    /// <c>SelectedBlockLength</c>, <c>SelectedStartTime</c>, or <c>SelectedMeetingTypeId</c>
+    /// on the lead (first) meeting, that value is propagated once to all other meetings.
+    /// After a field has propagated, it decouples permanently — subsequent changes to either
+    /// meeting do not affect the other.
+    /// </summary>
+    private void ApplyPattern(BlockPattern? pattern)
+    {
+        if (pattern is null || pattern.Days.Count == 0) return;
+
+        TearDownPatternCoupling();
+        Meetings.Clear();
+
+        var created = new List<SectionMeetingViewModel>();
+        foreach (var day in pattern.Days.Order())
+        {
+            // Pass the preferred block length so that when the user commits a start time on
+            // any meeting, the block length is auto-filled when valid. For the lead meeting,
+            // the auto-fill fires OnSelectedBlockLengthChanged and the coupling propagates
+            // it to all follower meetings just like a manual change would.
+            var meeting = new SectionMeetingViewModel(_legalStartTimes, _includeSaturday, _includeSunday, _meetingTypes, _rooms, _roomTypeOptions,
+                defaultBlockLength: _defaultBlockLength, onWarning: _showMeetingWarning,
+                unit: AppSettings.Current.BlockLengthUnit, sectionCampusId: SelectedCampusId);
+            meeting.SelectedDay = day;
+            created.Add(meeting);
+            Meetings.Add(meeting);
+        }
+
+        if (created.Count > 1)
+            SetupPatternCoupling(created[0], created.Skip(1).ToList());
+    }
+
+    /// <summary>
+    /// Subscribes to PropertyChanged on <paramref name="leader"/> and, for each of the three
+    /// coupled fields, propagates the leader's new value to every follower the first time that
+    /// field changes. Once all three fields have fired, the subscription is removed.
+    /// </summary>
+    /// <param name="leader">The first meeting in the pattern group — the source of propagation.</param>
+    /// <param name="followers">All other meetings in the group — the propagation targets.</param>
+    private void SetupPatternCoupling(SectionMeetingViewModel leader, List<SectionMeetingViewModel> followers)
+    {
+        _couplingLeader = leader;
+        _couplingFollowers = followers;
+        _couplingRemainingFields = new HashSet<string>
+        {
+            nameof(SectionMeetingViewModel.SelectedBlockLength),
+            nameof(SectionMeetingViewModel.SelectedStartTime),
+            nameof(SectionMeetingViewModel.SelectedMeetingTypeId),
+        };
+
+        _couplingHandler = (_, e) =>
+        {
+            if (e.PropertyName is null || !_couplingRemainingFields.Contains(e.PropertyName)) return;
+
+            // Decouple this field and propagate its current value to all followers.
+            _couplingRemainingFields.Remove(e.PropertyName);
+            foreach (var follower in _couplingFollowers)
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(SectionMeetingViewModel.SelectedBlockLength):
+                        follower.SelectedBlockLength = leader.SelectedBlockLength;
+                        break;
+                    case nameof(SectionMeetingViewModel.SelectedStartTime):
+                        follower.SelectedStartTime = leader.SelectedStartTime;
+                        break;
+                    case nameof(SectionMeetingViewModel.SelectedMeetingTypeId):
+                        follower.SelectedMeetingTypeId = leader.SelectedMeetingTypeId;
+                        break;
+                }
+            }
+
+            // Once all three fields have propagated, tear down the coupling entirely.
+            if (_couplingRemainingFields.Count == 0)
+                TearDownPatternCoupling();
+        };
+
+        leader.PropertyChanged += _couplingHandler;
+    }
+
+    /// <summary>
+    /// Unsubscribes the coupling handler from the leader and resets all coupling state.
+    /// Safe to call even when no coupling is active.
+    /// </summary>
+    private void TearDownPatternCoupling()
+    {
+        if (_couplingLeader != null && _couplingHandler != null)
+            _couplingLeader.PropertyChanged -= _couplingHandler;
+
+        _couplingLeader = null;
+        _couplingFollowers = new();
+        _couplingRemainingFields = new();
+        _couplingHandler = null;
+    }
+
+    /// <summary>
+    /// Merges the tags of the specified course into <see cref="TagSelections"/>.
+    /// Any tag already checked is left unchanged; unchecked tags that belong to the course
+    /// are checked on. Tags not on the course are never unchecked — this is a merge, not
+    /// a replace.
+    /// </summary>
+    /// <param name="courseId">The course whose tags should be merged in.</param>
+    private void MergeCourseTags(string courseId)
+    {
+        var course = Courses.FirstOrDefault(c => c.Id == courseId);
+        if (course is null || course.TagIds.Count == 0) return;
+
+        foreach (var tagSelection in TagSelections)
+        {
+            if (!tagSelection.IsSelected && course.TagIds.Contains(tagSelection.Value.Id))
+                tagSelection.IsSelected = true;
+        }
+    }
+
+    [RelayCommand]
+    private async Task Save()
+    {
+        // Clear any prior validation advisory so it does not persist across save attempts.
+        LastErrorMessage = null;
+
+        var trimmedCode = SectionCode.Trim();
+
+        // Guard: must have course and section code
+        if (string.IsNullOrEmpty(SelectedCourseId) || string.IsNullOrEmpty(trimmedCode))
+            return;
+
+        // Guard: section code must be unique (re-check in case user bypassed LostFocus)
+        if (_isSectionCodeDuplicate(SelectedCourseId, trimmedCode))
+        {
+            SectionCodeError = "A section with this code already exists for this course in the selected semester.";
+            return;
+        }
+
+        // Guard: validate all meetings have both start time and block length.
+        // The error is set on this VM's LastErrorMessage so it appears inside the editor,
+        // close to where the user is working, rather than at the top of the section list.
+        var incomplete = Meetings
+            .Where(m => (m.SelectedStartTime.HasValue && !m.SelectedBlockLength.HasValue) ||
+                        (!m.SelectedStartTime.HasValue && m.SelectedBlockLength.HasValue))
+            .ToList();
+        if (incomplete.Any())
+        {
+            LastErrorMessage = incomplete.Count == 1
+                ? "One meeting has a start time but no block length. Please complete it or delete it."
+                : $"{incomplete.Count} meetings are incomplete. Each needs both a start time and block length.";
+            return;
+        }
+
+        // Guard: meetings with day "(any)" (sentinel 0) cannot be saved — they are
+        // placeholders for the Room Availability Browser to fill in.
+        var unassignedDay = Meetings
+            .Where(m => m.SelectedDay == 0 && (m.SelectedStartTime.HasValue || m.SelectedBlockLength.HasValue))
+            .ToList();
+        if (unassignedDay.Any())
+        {
+            LastErrorMessage = unassignedDay.Count == 1
+                ? "One meeting has no day assigned. Use Browse to assign days, or select a day manually."
+                : $"{unassignedDay.Count} meetings have no day assigned. Use Browse to assign days, or select days manually.";
+            return;
+        }
+
+        _section.CourseId = SelectedCourseId;
+        _section.SectionCode = trimmedCode;
+
+        // Copy the course's level band to the section so it can be filtered
+        // without a course lookup (e.g. "100", "300", or empty when not set).
+        _section.Level = Courses.FirstOrDefault(c => c.Id == SelectedCourseId)?.Level;
+        _section.Notes = Notes.Trim();
+        _section.Capacity = ParsedCapacity;
+        _section.Schedule = Meetings
+            .Select(m => m.ToSchedule())
+            .Where(s => s is not null)
+            .Cast<SectionDaySchedule>()
+            .ToList();
+
+        // Multi-select instructors with workload
+        _section.InstructorAssignments = InstructorSelections
+            .Where(i => i.IsSelected)
+            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload })
+            .ToList();
+
+        // Single-select properties (treat empty string sentinel as null)
+        _section.SectionTypeId = string.IsNullOrEmpty(SelectedSectionTypeId) ? null : SelectedSectionTypeId;
+        _section.CampusId      = string.IsNullOrEmpty(SelectedCampusId)      ? null : SelectedCampusId;
+
+        // Multi-select properties
+        _section.TagIds = TagSelections
+            .Where(t => t.IsSelected)
+            .Select(t => t.Value.Id)
+            .ToList();
+
+        _section.ResourceIds = ResourceSelections
+            .Where(r => r.IsSelected)
+            .Select(r => r.Value.Id)
+            .ToList();
+
+        _section.Reserves = ReserveSelections
+            .Where(r => r.IsSelected && r.ParsedCode.HasValue)
+            .Select(r => new SectionReserve { ReserveId = r.Value.Id, Code = r.ParsedCode!.Value })
+            .ToList();
+
+        await _onSave(_section);
+        RequestClose?.Invoke();
+    }
+
+    [RelayCommand]
+    private void Cancel() => RequestClose?.Invoke();
+}

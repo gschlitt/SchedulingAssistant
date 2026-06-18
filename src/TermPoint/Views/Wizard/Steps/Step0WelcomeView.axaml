@@ -1,0 +1,44 @@
+<UserControl
+    x:Class="TermPoint.Views.Wizard.Steps.Step0WelcomeView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False">
+
+    <StackPanel MaxWidth="840" Spacing="16">
+        <TextBlock
+            FontSize="{DynamicResource FontSizeXLarge}"
+            FontWeight="Bold"
+            Text="Welcome to TermPoint!" />
+
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
+            TermPoint helps university administrators visualize and manage how course sections
+            fit together across a weekly schedule.
+        </TextBlock>
+
+        <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
+            This short setup wizard will guide you through:
+        </TextBlock>
+
+        <StackPanel Margin="16,0,0,0" Spacing="6">
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Your institution and academic unit name" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Where to store your database and backups" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Block lengths, start times, and section code patterns" />
+            <TextBlock FontSize="{DynamicResource FontSizeMedium}" Text="• Your first academic year and its semesters" />
+        </StackPanel>
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeMedium}"
+            Foreground="{StaticResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Although most configuration can also be done later, it is easier when guided by this set-up wizard, and full configuration will greatly speed up your scheduling workflow.
+        </TextBlock>
+
+
+        <TextBlock
+            FontSize="{DynamicResource FontSizeMedium}"
+            Foreground="{StaticResource ForegroundMuted}"
+            TextWrapping="Wrap">
+            Click Next to begin.
+        </TextBlock>
+    </StackPanel>
+</UserControl>

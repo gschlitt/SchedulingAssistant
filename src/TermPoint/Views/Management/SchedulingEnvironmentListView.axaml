@@ -1,0 +1,134 @@
+<UserControl
+    x:Class="TermPoint.Views.Management.SchedulingEnvironmentListView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="using:TermPoint.Behaviors"
+    xmlns:vm="using:TermPoint.ViewModels.Management"
+    x:CompileBindings="False"
+    x:DataType="vm:SchedulingEnvironmentListViewModel">
+
+    <Grid
+        MaxWidth="420"
+        Margin="10,0"
+        RowDefinitions="Auto,Auto,*,Auto">
+
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,6"
+            FontSize="20"
+            FontWeight="SemiBold"
+            Text="{Binding DisplayName}" />
+
+        <!--  Per-type description — hidden when Description is null or empty  -->
+        <TextBlock
+            Grid.Row="1"
+            Margin="0,0,0,10"
+            FontSize="{StaticResource FontSizeNormal}"
+            Foreground="{StaticResource TextSecondary}"
+            IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+            Text="{Binding Description}"
+            TextWrapping="Wrap" />
+
+        <!--  Edit form (shown when EditVm is not null)  -->
+        <ContentControl Grid.Row="2" Content="{Binding EditVm}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="{x:Type vm:SchedulingEnvironmentEditViewModel}">
+                    <StackPanel
+                        MaxWidth="320"
+                        HorizontalAlignment="Left"
+                        Spacing="10">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="{Binding Title}" />
+                        <TextBlock Text="Name" />
+                        <TextBox Text="{Binding Name}" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{StaticResource TextError}"
+                            IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Text="{Binding ValidationError}" />
+                        <!--  Abbreviation field — only shown for Campus  -->
+                        <StackPanel IsVisible="{Binding ShowAbbreviation}" Spacing="4">
+                            <TextBlock Text="Section Code Abbreviation" />
+                            <TextBox Text="{Binding Abbreviation}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Command="{Binding SaveCommand}" Content="Apply" />
+                            <Button Command="{Binding CancelCommand}" Content="Cancel" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!--  List + move buttons (shown when EditVm is null)  -->
+        <Grid
+            Grid.Row="2"
+            ColumnDefinitions="*,Auto"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <DataGrid
+                x:Name="EnvironmentDataGrid"
+                b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
+                Grid.Column="0"
+                AutoGenerateColumns="False"
+                CanUserSortColumns="False"
+                IsReadOnly="True"
+                ItemsSource="{Binding Items}"
+                SelectedItem="{Binding SelectedItem}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn
+                        Width="*"
+                        Binding="{Binding Name}"
+                        Header="Name" />
+                    <DataGridTextColumn
+                        Width="140"
+                        Binding="{Binding SectionCodeAbbreviation}"
+                        Header="Abbreviation"
+                        IsVisible="{Binding $parent[UserControl].DataContext.ShowAbbreviation}" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!--  Up/Down ordering buttons, aligned to top-right of the list  -->
+            <StackPanel
+                Grid.Column="1"
+                Margin="6,0,0,0"
+                VerticalAlignment="Top"
+                Orientation="Vertical"
+                Spacing="4">
+                <Button Command="{Binding MoveUpCommand}" Content="↑" />
+                <Button Command="{Binding MoveDownCommand}" Content="↓" />
+            </StackPanel>
+
+        </Grid>
+
+        <!--  Toolbar — IsEnabled gates the entire group in read-only mode  -->
+        <StackPanel
+            Grid.Row="3"
+            Margin="0,12,0,0"
+            IsEnabled="{Binding IsWriteEnabled}"
+            IsVisible="{Binding EditVm, Converter={x:Static ObjectConverters.IsNull}}"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button Command="{Binding AddCommand}" Content="Add" />
+            <Button
+                Command="{Binding EditCommand}"
+                Content="Edit"
+                IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Button
+                Command="{Binding DeleteCommand}"
+                Content="Delete"
+                IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+        <!--  Inline error message  -->
+        <TextBlock
+            FontSize="10"
+            Foreground="{StaticResource TextError}"
+            IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Text="{Binding LastErrorMessage}"
+            TextWrapping="Wrap"
+            Margin="0,4,0,0" />
+
+    </Grid>
+</UserControl>
