@@ -231,7 +231,7 @@ public partial class SectionListView : UserControl
     /// </summary>
     private void OnRoomBrowserHelpClick(object? sender, RoutedEventArgs e)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Help", "room-browser.html");
+        var path = Path.Combine(AppContext.BaseDirectory, "Help", "rooming-tool.html");
         PlatformProcess.OpenUri(new Uri(path).AbsoluteUri);
     }
 }

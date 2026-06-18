@@ -201,7 +201,13 @@ public sealed partial class HelpViewModel : ViewModelBase
          {
              Title="Workflows",
              Description="Check out Workflow Guides under the Workflows Tab"
-         }
+         },
+
+        new()
+        {
+            Title="Contact",
+            Description="Contact the developers: admin@termpoint.ca"
+        }
 
 
 

@@ -112,7 +112,7 @@
                            FontSize="11"
                            Foreground="{StaticResource TextSubtle}"
                            FontStyle="Italic"
-                           Text="No video for this topic yet. Add a VideoUrl to the topic in HelpViewModel.cs." />
+                           Text="" />
 
             </StackPanel>
 

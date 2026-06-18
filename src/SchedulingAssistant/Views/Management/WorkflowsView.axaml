@@ -43,7 +43,7 @@
                     2. [[Overlay]] the instructor's schedule as decided so far.[br]                   
                     3. Add the section and supply just the requirements you have of the meetings (at minimum the number of them and their length). Add more if you need it (days it must meet, room types).[br]
                     4. Use the [[Room|accent]] tool to compare the room proposals against your program requirement and the instructor's schedule. Accept a room and time that works.[br]
-                    [See a video](https://github.com/gmsschlitt/SchedulingAssistant)</c:WorkflowCardChrome.StepsText>
+                    </c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
@@ -66,7 +66,7 @@
                     3. Open [[Sharing]] → Import and select the CSV file.[br]
                     4. Shared sections appear on the grid as translucent overlay blocks.[br]
                     5. Use these overlays to avoid double-booking rooms or instructors.[br]
-                    [About CSV sharing](https://github.com/gmsschlitt/SchedulingAssistant)</c:WorkflowCardChrome.StepsText>
+                    </c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
@@ -75,14 +75,14 @@
                                   StoryText="I need to find a room for a section or event. I know when it has to meet.">
                 <c:WorkflowCardChrome.StepsText>
                    
-                    1. In Section View or Events View, open the section/event.[br]
+                    1. In [[Section View]] or [[Events]] View, open the section/event.[br]
                     2. Provide just the details you require of the meeting(s) (at a minimum create the number of meetings you need
                     and supply their length.) Leave unspecified anything that doesn't matter (perhaps room type) and leave rooms
                     unspecified, as that's what you're looking for. [br]
                     3. Click the [[Room Browser]] tool. The tool will show you what's available (framed in green on the Schedule View). You can click through alternatives using the chevrons. [br]
                     4.Once you find something, [[Accept]] the room and it will be supplied. [[Apply]] to save.[br]
                     5. Note that if the section has a capacity specified, only rooms that have that capacity will be shown.
-                    [See a video](https://github.com/gmsschlitt/SchedulingAssistant)
+                   
                     
                     </c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
@@ -129,10 +129,10 @@
 
             <c:WorkflowCardChrome Margin="0,0,10,10"
                                   Title="Tagging sections"
-                                  Accent="#DBEAFE"
+                                  Accent="#D1FAE5"
                                   StoryText="Adding [[Tags]] to sections sounds useful, but I forget!">
                 <c:WorkflowCardChrome.StepsText>1. Tag **courses** in the course editor — then every section of that course inherits those tags automatically.[br]
-                    2. For one-offs, tag an individual section in its editor or by right-clicking its meeting.</c:WorkflowCardChrome.StepsText>
+                    2. For one-offs, tag an individual section in its editor or by right-clicking one if its meetings in Schedule View.</c:WorkflowCardChrome.StepsText>
             </c:WorkflowCardChrome>
 
 
