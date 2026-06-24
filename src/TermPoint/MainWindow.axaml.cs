@@ -446,7 +446,6 @@ public partial class MainWindow : Window
             await HandleCrashRecoveryAsync(dbPath);
 
         var checkoutResult = await RunCheckoutAsync(dbPath);
-        App.Logger.LogInfo($"[Startup] Checkout result: {checkoutResult ?? "(null)"}");
         if (checkoutResult is null)
         {
             // Network unreachable — dialog already shown. Close the app since this
@@ -771,24 +770,11 @@ public partial class MainWindow : Window
             }
 
             // Stop the periodic backup timer BEFORE disposing the DI container.
-            // Timer.Dispose() does not wait for in-flight timer callbacks, so the
-            // BackupService's periodic backup could still be mid-execution when
-            // BackupService.Dispose() returns. An in-flight PerformBackupAsync would
-            // open a fresh Pooling=False connection to D' (F1 fix) and write to the
-            // backup folder — harmless, but unnecessary. Calling StopSession() here,
-            // before the DI disposal below, mirrors the OnClosing shutdown sequence
-            // and removes this race window. (F10, data-integrity-agenda 2026-05-04.)
             if (App.Services?.GetService(typeof(BackupService)) is BackupService oldBackup)
                 oldBackup.StopSession();
 
             // Close the old DatabaseContext (and all other DI singletons) NOW, before
-            // CheckoutAsync copies D to D'.  InitializeServices also calls Dispose on
-            // App.Services, but that runs after the copy — too late on Windows, where
-            // SqliteConnection.Dispose() uses sqlite3_close_v2() which can defer the OS
-            // file-handle release.  File.Move(D.tmp → D) in SaveAsync would then fail
-            // with "Access to the path is denied" because D still has an open handle
-            // without FILE_SHARE_DELETE.  Disposing here guarantees D is fully closed
-            // before RunCheckoutAsync establishes D as the save target.
+            // CheckoutAsync copies D to D'.
             (App.Services as IDisposable)?.Dispose();
 
             // Now that the connection is closed, delete the old D' from the working directory.
@@ -801,17 +787,14 @@ public partial class MainWindow : Window
                 await HandleCrashRecoveryAsync(newDatabasePath);
 
             var checkoutPath = await RunCheckoutAsync(newDatabasePath);
-            if (checkoutPath is null) return; // Network unreachable — dialog already shown.
+            if (checkoutPath is null)
+                return; // Network unreachable — dialog already shown.
             newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.
-            // Pass the captured semester IDs so the selection is preserved across the
-            // teardown/rebuild cycle; falls back to AppSettings if nothing was captured.
             var vm = App.InitializeServices(newDatabasePath, savedYearId, savedSemesterIds);
 
             // Resolve the canonical source path D for the title bar and backup service.
-            // newDatabasePath is D' or D'' (the working copy), never the user-facing path.
-            // CheckoutService.SourcePath is always D regardless of mode.
             var canonicalPath = App.Checkout.SourcePath;
 
             vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
@@ -821,13 +804,10 @@ public partial class MainWindow : Window
             // shared helper used by every startup path.
             await SetupMainWindowAsync(canonicalPath, vm);
 
-            // Re-apply the semester selection after the DataContext swap. Avalonia
-            // re-fires the SelectedAcademicYear setter when it re-initialises the
-            // ComboBox binding, which resets the semester to nothing. Calling
-            // RestoreSelection here — after all binding initialisation has completed —
-            // overrides that reset without touching the database again.
+            // Re-apply the semester selection after the DataContext swap.
             if (savedYearId != null && savedSemesterIds != null)
                 vm.SemesterContext.RestoreSelection(savedYearId, savedSemesterIds);
+
         }
         catch (Exception ex)
         {
@@ -1146,34 +1126,32 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles <see cref="CheckoutService.WriteLockLost"/> — fired when
-    /// <see cref="CheckoutService.SaveAsync"/> or the wake-check discovered that
-    /// the write lock is no longer ours (deleted, stolen, or its <c>SessionGuid</c>
-    /// was modified).
+    /// Handles <see cref="CheckoutService.WriteLockLost"/> — fired when a mid-session
+    /// verification discovered that the write lock is no longer ours (taken over,
+    /// deleted, or its <c>SessionGuid</c> was modified).
     ///
-    /// <para>Demotes the session to read-only <b>in place</b>, without swapping the
-    /// DataContext. The existing <see cref="MainWindowViewModel"/> is kept so the
-    /// banner set by <see cref="MainWindowViewModel.SetSaveError"/> remains visible.
-    /// The <c>DatabaseContext</c> is closed, D'' is created from D, and the connection
-    /// is reopened against D''. A reload of <see cref="SectionStore"/> then refreshes
-    /// every panel from D'' (our unsaved in-memory edits in D' are gone by design).</para>
+    /// <para>Builds a cause-specific banner from <paramref name="reason"/> and
+    /// <see cref="CheckoutService.LockLossNewHolder"/>, then demotes the session to
+    /// read-only <b>in place</b> without swapping the DataContext. The banner is set
+    /// <b>before</b> demotion so that even a failed demotion leaves the user informed.</para>
     ///
     /// <para>The user is directed to restart the app to re-bid for write access;
     /// we deliberately do not auto-reacquire, because doing so would silently trample
     /// whoever now holds the lock.</para>
     /// </summary>
-    private async void OnWriteLockLost()
+    private async void OnWriteLockLost(WriteLockLostReason reason)
     {
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
             try
             {
-                const string banner =
-                    "You have lost write access. You can attempt to regain it " +
-                    "by exiting and restarting TermPoint.";
+                var banner = BuildLockLossBanner(reason);
 
                 var vm       = DataContext as MainWindowViewModel;
                 var dbContext = App.Services?.GetService<IDatabaseContext>() as DatabaseContext;
+
+                // Set the banner BEFORE demotion so it is visible even if demotion throws.
+                vm?.SetSaveError(banner, autoDismiss: false);
 
                 async Task BeforeClose()
                 {
@@ -1203,9 +1181,6 @@ public partial class MainWindow : Window
 
                 var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);
 
-                // Lock loss is sticky — the user must act (reopen/check the share).
-                vm?.SetSaveError(banner, autoDismiss: false);
-
                 if (ok && vm is not null)
                 {
                     try { vm.SectionListVm.ReloadFromDatabase(); }
@@ -1220,6 +1195,36 @@ public partial class MainWindow : Window
                 App.Logger.LogError(ex, "OnWriteLockLost: demotion failed");
             }
         });
+    }
+
+    /// <summary>
+    /// Builds a user-facing banner string explaining why write access was lost,
+    /// using the <paramref name="reason"/> enum and the identity of the new holder
+    /// (if any) from <see cref="CheckoutService.LockLossNewHolder"/>.
+    /// </summary>
+    private static string BuildLockLossBanner(WriteLockLostReason reason)
+    {
+        var sb = new System.Text.StringBuilder();
+
+        if (reason == WriteLockLostReason.TakenOver)
+        {
+            var holder = App.Checkout.LockLossNewHolder;
+            if (holder is not null && !string.IsNullOrWhiteSpace(holder.Username))
+                sb.Append($"Write access was taken over by {holder.Username} on {holder.Machine}.");
+            else
+                sb.Append("Write access was taken over by another user.");
+        }
+        else
+        {
+            sb.Append(
+                "The database lock file was removed by another program " +
+                "(possibly antivirus or cloud sync software).");
+        }
+
+        sb.Append(" Any unsaved changes since your last save have been discarded.");
+        sb.Append(" You can regain write access by exiting and restarting TermPoint.");
+
+        return sb.ToString();
     }
 
     private async Task<bool> ShowYesNoAsync(string title, string message)

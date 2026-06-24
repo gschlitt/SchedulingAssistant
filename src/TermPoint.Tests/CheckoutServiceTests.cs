@@ -1896,4 +1896,131 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(new[] { "before-delete", "save-completed" }, ordering);
     }
 
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 10 — W1: HeartbeatFailed verifies lock ownership before demoting
+    //
+    // The heartbeat-failure path now calls VerifyLockIsOursAsync (matching the
+    // save-time and wake-from-sleep paths) rather than demoting blindly. These
+    // tests confirm that each VerifyLockIsOursAsync outcome is handled correctly.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// When the lock file is genuinely gone (deleted by another user or by a
+    /// takeover) and the share directory is reachable, HeartbeatFailed must
+    /// trigger demotion: <see cref="CheckoutService.WriteLockLost"/> fires and
+    /// <see cref="CheckoutService.Mode"/> transitions to ReadOnly.
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatFailed_WhenLockGenuinelyTaken_Demotes()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+
+        var lockLostTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.WriteLockLost += (_) => lockLostTcs.TrySetResult();
+
+        // Delete the lock file — simulates another user deleting or overwriting it.
+        // The source directory still exists, so the reachability probe succeeds → NotOurs.
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        File.Delete(lockPath);
+
+        // Trigger threshold consecutive heartbeat failures → HeartbeatFailed event
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+            lockSvc.ForceRenewHeartbeat();
+
+        // Wait for the async verification + demotion
+        var completed = await Task.WhenAny(lockLostTcs.Task, Task.Delay(10_000));
+        Assert.True(completed == lockLostTcs.Task,
+            "WriteLockLost must fire when the lock is genuinely lost.");
+    }
+
+    /// <summary>
+    /// When the network share is unreachable (the cause of the heartbeat failure),
+    /// HeartbeatFailed must NOT demote the session. The writer keeps their state,
+    /// and a transient warning is surfaced via <see cref="CheckoutService.SaveFailed"/>.
+    /// This is the core W1 fix: a 2–4 minute WiFi/VPN interruption must not cause
+    /// a false-positive demotion with unsaved data loss.
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatFailed_WhenShareUnreachable_KeepsWriterState()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+
+        var lockLostFired = false;
+        svc.WriteLockLost += (_) => lockLostFired = true;
+
+        var saveFailedTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.SaveFailed += (msg, _) => saveFailedTcs.TrySetResult(msg);
+
+        // Delete the entire source directory — lock file AND source DB gone.
+        // VerifyLockIsOursAsync: lock not found → directory probe fails → Unreachable.
+        Directory.Delete(_tempDir, recursive: true);
+
+        // Trigger HeartbeatFailed
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+            lockSvc.ForceRenewHeartbeat();
+
+        // Wait for the transient warning
+        var completed = await Task.WhenAny(saveFailedTcs.Task, Task.Delay(10_000));
+        Assert.True(completed == saveFailedTcs.Task,
+            "SaveFailed must fire with a transient network-interruption warning.");
+
+        var message = saveFailedTcs.Task.Result;
+        Assert.Contains("Network connection interrupted", message);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.False(lockLostFired,
+            "WriteLockLost must NOT fire when the share is merely unreachable.");
+    }
+
+    /// <summary>
+    /// When the lock file is still ours (heartbeat write failed for a reason other
+    /// than ownership loss — e.g. a sharing violation or transient I/O error),
+    /// HeartbeatFailed must NOT demote. The session continues as writer and a
+    /// heartbeat renewal is attempted.
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatFailed_WhenLockStillOurs_DoesNotDemote()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+
+        var lockLostFired = false;
+        svc.WriteLockLost += (_) => lockLostFired = true;
+
+        // Make the lock file read-only: heartbeat writes fail (File.Move can't
+        // overwrite a read-only target) but verification reads succeed (sees our GUID).
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        File.SetAttributes(lockPath, FileAttributes.ReadOnly);
+
+        try
+        {
+            // Trigger HeartbeatFailed
+            for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+                lockSvc.ForceRenewHeartbeat();
+
+            // The handler runs async via Task.Run; local I/O completes in <100ms.
+            await Task.Delay(2000);
+
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.False(lockLostFired,
+                "WriteLockLost must NOT fire when the lock is still ours.");
+        }
+        finally
+        {
+            // Remove read-only so cleanup/Dispose can delete the file
+            try { File.SetAttributes(lockPath, FileAttributes.Normal); } catch { }
+            try { File.Delete(lockPath + ".tmp"); } catch { }
+        }
+    }
+
 }

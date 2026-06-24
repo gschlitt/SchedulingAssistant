@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TermPoint.Services;
 
 namespace TermPoint.ViewModels.Wizard.Steps;
 
@@ -16,8 +18,20 @@ namespace TermPoint.ViewModels.Wizard.Steps;
 public partial class Step1aExistingDbViewModel : WizardStepViewModel
 {
     private readonly Window _ownerWindow;
+    private readonly FolderAssessor _assessor;
 
     public override string StepTitle => "Existing Database";
+
+    /// <summary>
+    /// Advisory warnings for the folder containing the selected database file.
+    /// Non-blocking — the user can proceed despite warnings (the DB already exists there).
+    /// </summary>
+    public ObservableCollection<FolderWarning> DbFolderWarnings { get; } = new();
+
+    /// <summary>
+    /// Advisory warnings for the chosen backup folder.
+    /// </summary>
+    public ObservableCollection<FolderWarning> BackupFolderWarnings { get; } = new();
 
     // ── Choice ───────────────────────────────────────────────────────────────
 
@@ -75,9 +89,54 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
-    public Step1aExistingDbViewModel(Window ownerWindow) => _ownerWindow = ownerWindow;
+    public Step1aExistingDbViewModel(Window ownerWindow)
+        : this(ownerWindow, FolderAssessor.CreateForCurrentMachine()) { }
+
+    internal Step1aExistingDbViewModel(Window ownerWindow, FolderAssessor assessor)
+    {
+        _ownerWindow = ownerWindow;
+        _assessor    = assessor;
+    }
+
+    /// <summary>
+    /// Assesses the folder of the chosen database file whenever <see cref="DbPath"/> changes.
+    /// </summary>
+    partial void OnDbPathChanged(string value)
+    {
+        DbFolderWarnings.Clear();
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var folder = Path.GetDirectoryName(value);
+        if (string.IsNullOrEmpty(folder)) return;
+
+        var assessment = _assessor.Assess(folder);
+        foreach (var w in assessment.Warnings)
+        {
+            // For existing DBs, don't warn about writability — the DB is already there,
+            // and the user may intentionally open it read-only.
+            if (w.Kind == WarningKind.NotWritable) continue;
+            DbFolderWarnings.Add(w);
+        }
+    }
 
     // ── Browse commands ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Assesses the backup folder whenever <see cref="BackupFolder"/> changes.
+    /// </summary>
+    partial void OnBackupFolderChanged(string value)
+    {
+        BackupFolderWarnings.Clear();
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var assessment = _assessor.Assess(value);
+        foreach (var w in assessment.Warnings)
+        {
+            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+                continue;
+            BackupFolderWarnings.Add(w);
+        }
+    }
 
     /// <summary>Opens a file picker so the user can locate the existing .db file.</summary>
     [RelayCommand]

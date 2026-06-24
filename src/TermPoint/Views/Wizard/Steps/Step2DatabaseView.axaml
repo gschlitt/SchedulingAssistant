@@ -24,6 +24,41 @@
                 FontSize="{DynamicResource FontSizeNormal}"
                 FontWeight="SemiBold"
                 Text="Database folder" />
+
+            <!--  Suggested locations  -->
+            <ItemsControl
+                IsVisible="{Binding SuggestedFolders.Count, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                ItemsSource="{Binding SuggestedFolders}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button
+                            Margin="0,2"
+                            Padding="8,6"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Command="{Binding $parent[ItemsControl].DataContext.SelectSuggestionCommand}"
+                            CommandParameter="{Binding}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock
+                                    FontSize="{DynamicResource FontSizeSmall}"
+                                    Text="{Binding Path}" />
+                                <TextBlock
+                                    FontSize="{DynamicResource FontSizeSmall}"
+                                    Foreground="{StaticResource ForegroundMuted}"
+                                    Text="{Binding Description, StringFormat='({0})'}" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock
+                Margin="0,2,0,0"
+                FontSize="{DynamicResource FontSizeSmall}"
+                Foreground="{StaticResource ForegroundMuted}"
+                IsVisible="{Binding SuggestedFolders.Count, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Text="Or choose a different location:" />
+
             <Grid ColumnDefinitions="*,8,Auto">
                 <TextBox
                     Grid.Column="0"
@@ -35,6 +70,29 @@
                     Command="{Binding BrowseDbFolderCommand}"
                     Content="Browse…" />
             </Grid>
+
+            <!--  Folder suitability warnings (non-blocking advisories)  -->
+            <ItemsControl
+                IsVisible="{Binding DbFolderWarnings.Count, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                ItemsSource="{Binding DbFolderWarnings}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border
+                            Margin="0,2"
+                            Padding="10,6"
+                            Background="{StaticResource NotificationWarningBackground}"
+                            BorderBrush="{StaticResource NotificationWarningBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                            <TextBlock
+                                FontSize="{DynamicResource FontSizeSmall}"
+                                Foreground="{StaticResource NotificationWarningText}"
+                                Text="{Binding Message}"
+                                TextWrapping="Wrap" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
 
         <!--  Database filename — shown once a folder is chosen  -->
@@ -92,6 +150,29 @@
                     Command="{Binding BrowseBackupFolderCommand}"
                     Content="Browse…" />
             </Grid>
+
+            <!--  Backup folder suitability warnings (non-blocking advisories)  -->
+            <ItemsControl
+                IsVisible="{Binding BackupFolderWarnings.Count, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                ItemsSource="{Binding BackupFolderWarnings}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border
+                            Margin="0,2"
+                            Padding="10,6"
+                            Background="{StaticResource NotificationWarningBackground}"
+                            BorderBrush="{StaticResource NotificationWarningBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                            <TextBlock
+                                FontSize="{DynamicResource FontSizeSmall}"
+                                Foreground="{StaticResource NotificationWarningText}"
+                                Text="{Binding Message}"
+                                TextWrapping="Wrap" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!--  Same-folder recommendation — appears only when both folders are the same path  -->
             <Border

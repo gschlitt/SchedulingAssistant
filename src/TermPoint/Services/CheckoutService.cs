@@ -74,9 +74,13 @@ namespace TermPoint.Services;
 ///         same <see cref="HandleLockLossAsync"/> path. Triggers: another
 ///         user took over via stale-lock prompt while this machine slept.</item>
 ///   <item><b>Heartbeat renewal failure.</b> After <see cref="WriteLockService.HeartbeatFailureThreshold"/>
-///         consecutive failures, <see cref="WriteLockService.HeartbeatFailed"/> fires and
-///         <see cref="OnHeartbeatFailed"/> routes it through the same
-///         <see cref="HandleLockLossAsync"/> path. (F11, 2026-05-04.)</item>
+///         consecutive failures, <see cref="WriteLockService.HeartbeatFailed"/> fires.
+///         <see cref="OnHeartbeatFailed"/> calls <see cref="VerifyLockIsOursAsync"/> to
+///         distinguish "share unreachable" (keep writer state, show transient warning)
+///         from "lock genuinely taken" (demote via <see cref="HandleLockLossAsync"/>).
+///         This matches the save-time and wake-from-sleep paths, which already make
+///         this distinction, and prevents false-positive demotions during transient
+///         network interruptions. (F11, 2026-05-04; W1, 2026-06-24.)</item>
 /// </list>
 /// </summary>
 public sealed class CheckoutService : IDisposable
@@ -112,6 +116,14 @@ public sealed class CheckoutService : IDisposable
     /// "is a save running?" gate simultaneously.
     /// </summary>
     private int     _saveInFlight;
+
+    /// <summary>
+    /// 0 = idle, 1 = a heartbeat-failure verification is in flight. Prevents stacking
+    /// verification attempts if <see cref="WriteLockService.HeartbeatFailed"/> fires again
+    /// while an earlier <see cref="VerifyLockIsOursAsync"/> call is still awaiting the
+    /// network. Mutated via <see cref="Interlocked.CompareExchange(ref int, int, int)"/>.
+    /// </summary>
+    private int     _heartbeatVerifyInFlight;
 
     /// <summary>Current checkout mode.</summary>
     public CheckoutMode Mode { get; private set; } = CheckoutMode.ReadOnly;
@@ -182,6 +194,18 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     public string? ReadOnlyWorkingPath { get; private set; }
 
+    /// <summary>
+    /// Identity of the new lock holder when write access was lost to a takeover
+    /// (another user overwrote the lock file with their own <c>SessionGuid</c>).
+    /// Populated by <see cref="VerifyLockIsOursOnceAsync"/> when it reads a foreign
+    /// GUID from the lock file. Null when the lock file was simply deleted (no new
+    /// holder) or when no lock loss has occurred.
+    ///
+    /// <para>Read by <c>MainWindow.OnWriteLockLost</c> to build a cause-specific
+    /// banner that names the user who took over.</para>
+    /// </summary>
+    public LockFileData? LockLossNewHolder { get; private set; }
+
     // ── Events ─────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -190,13 +214,18 @@ public sealed class CheckoutService : IDisposable
     /// "Lock-loss scenarios" section on <see cref="CheckoutService"/> for the
     /// full list (save-time verification, wake-from-sleep check, …).
     ///
+    /// <para>The <see cref="WriteLockLostReason"/> parameter tells the handler
+    /// whether the loss was a takeover by another user or an external lock-file
+    /// deletion. The handler can also read <see cref="LockLossNewHolder"/> for the
+    /// new holder's identity (non-null only for <see cref="WriteLockLostReason.TakenOver"/>).</para>
+    ///
     /// <para>The handler (<c>MainWindow.OnWriteLockLost</c>) is expected to
-    /// call <see cref="DemoteToReadOnlyAsync"/> to transition into read-only
-    /// mode, surface a banner to the user, and reload the panels from the fresh
+    /// surface a cause-specific banner, then call <see cref="DemoteToReadOnlyAsync"/>
+    /// to transition into read-only mode and reload the panels from the fresh
     /// D'' snapshot. Unsaved changes in D' are lost by design — the alternative
     /// would be to trample whoever now holds the lock.</para>
     /// </summary>
-    public event Action? WriteLockLost;
+    public event Action<WriteLockLostReason>? WriteLockLost;
 
     /// <summary>
     /// Raised on the UI thread after each successful <see cref="SaveAsync"/> call.
@@ -298,6 +327,7 @@ public sealed class CheckoutService : IDisposable
     public async Task<CheckoutOutcome> CheckoutAsync(string sourcePath)
     {
         SourcePath = sourcePath;
+        LockLossNewHolder = null;
 
         //determine (respectively) if  the network location is reachable and that the database exists
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(sourcePath);
@@ -979,27 +1009,12 @@ public sealed class CheckoutService : IDisposable
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
 
-        // Timer.Dispose() does not wait for an in-flight callback. If the
-        // autosave fired moments before StopAutoSave(), AutoSaveTickAsync is
-        // already queued on the thread pool. Yield so it has a chance to run
-        // and either complete its save or, if our SaveAsync below grabs the
-        // gate first, observe _saveInFlight=1 and bail. The Interlocked guard
-        // in SaveAsync guarantees correctness either way; this just shortens
-        // the window during which the queued autosave is competing with us.
-        await Task.Yield();
-
         if (saveFirst && Mode == CheckoutMode.WriteAccess)
             await SaveAsync(releaseLockAfter: true);
 
-        // Always release the lock on shutdown. SaveAsync only deletes the lock on its
-        // success path, so a failed save (network unreachable, source modified, lock lost,
-        // copy error, …) would otherwise leave the lock orphaned until it ages out as stale.
-        // Release() is idempotent — if SaveAsync already released, IsWriter is false and this
-        // is a no-op — and it only deletes the file when it is still ours, so it can never
-        // double-delete or trample a holder that took over.
         _lockService.Release();
-
         Mode = CheckoutMode.ReadOnly;
+        LockLossNewHolder = null;
     }
 
     /// <summary>
@@ -1123,8 +1138,14 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Stops autosave and unhooks the wake handler, then raises
-    /// <see cref="WriteLockLost"/> on the UI thread. Does NOT transition
+    /// <see cref="WriteLockLost"/> on the UI thread with a cause-specific
+    /// <see cref="WriteLockLostReason"/>. Does NOT transition
     /// <see cref="Mode"/>, release the lock, delete D', or set up D''.
+    ///
+    /// <para>The reason is derived from <see cref="LockLossNewHolder"/>, which
+    /// was populated by <see cref="VerifyLockIsOursOnceAsync"/> during the
+    /// verification that preceded this call. Non-null = another user took over;
+    /// null = lock file was deleted or corrupted (external interference).</para>
     ///
     /// <para>The handler of <see cref="WriteLockLost"/> is responsible for the
     /// full demotion via <see cref="DemoteToReadOnlyAsync"/>, which closes the
@@ -1139,31 +1160,95 @@ public sealed class CheckoutService : IDisposable
         StopAutoSave();
         _lockService.WakeDetected    -= OnWake;
         _lockService.HeartbeatFailed -= OnHeartbeatFailed;   // F11 — unsubscribe on first loss
-        _dispatch(() => WriteLockLost?.Invoke());
+        var reason = LockLossNewHolder is not null
+            ? WriteLockLostReason.TakenOver
+            : WriteLockLostReason.LockFileRemoved;
+        _dispatch(() => WriteLockLost?.Invoke(reason));
         return Task.CompletedTask;
     }
 
     /// <summary>
     /// Called when <see cref="WriteLockService.HeartbeatFailed"/> fires — i.e., the heartbeat
     /// timer has failed to renew the lock file <see cref="WriteLockService.HeartbeatFailureThreshold"/>
-    /// consecutive times. The lock is likely stale from the perspective of other readers, who
-    /// may attempt a takeover.
+    /// consecutive times.
     ///
-    /// <para>Routes through <see cref="HandleLockLossAsync"/> — the same path used for
-    /// save-time verification failures and wake-from-sleep checks — which raises
-    /// <see cref="WriteLockLost"/> so MainWindow can demote the session in place.
-    /// (F11, data-integrity-agenda 2026-05-04.)</para>
+    /// <para><b>Why not demote immediately?</b> The heartbeat failed because a network-file
+    /// write failed — almost always because the share is unreachable. But the save-time and
+    /// wake-from-sleep paths both distinguish "share unreachable" (transient — keep writer
+    /// state) from "lock genuinely taken" (permanent — demote). If we skipped that check
+    /// here, a 2–4 minute WiFi/VPN interruption on the writer's own machine would trigger a
+    /// false-positive demotion and destroy unsaved edits, even though no other instance ever
+    /// contended for the lock. (W1, write-access-loss-agenda 2026-06-24.)</para>
     ///
-    /// <para>This handler is called from the heartbeat timer thread (not the UI thread);
-    /// <see cref="HandleLockLossAsync"/> dispatches to the UI thread via
-    /// <see cref="_dispatch"/> before raising <see cref="WriteLockLost"/>.</para>
+    /// <para><b>Sequence:</b> <see cref="VerifyLockIsOursAsync"/> reads the lock file with
+    /// the same reachability-probe logic used by the save and wake paths.
+    /// <list type="bullet">
+    ///   <item><see cref="LockVerificationResult.NotOurs"/> — genuine loss. Route through
+    ///         <see cref="HandleLockLossAsync"/> (same as before W1).</item>
+    ///   <item><see cref="LockVerificationResult.Unreachable"/> — transient network issue.
+    ///         Keep writer state; surface a transient, auto-dismissing warning via
+    ///         <see cref="SaveFailed"/> so the user knows saves are paused. The heartbeat
+    ///         timer continues; a successful renewal clears the warning naturally (the next
+    ///         autosave cycle succeeds and raises <see cref="SaveCompleted"/>).</item>
+    ///   <item><see cref="LockVerificationResult.Ours"/> — false alarm (heartbeat write
+    ///         failed for a reason other than ownership loss). Force-renew immediately.</item>
+    /// </list></para>
+    ///
+    /// <para>A re-entrancy guard (<see cref="_heartbeatVerifyInFlight"/>) prevents stacking
+    /// verification attempts if <see cref="WriteLockService.HeartbeatFailed"/> fires again
+    /// while an earlier verification is still awaiting the network.</para>
+    ///
+    /// <para>This handler is called from the heartbeat timer thread (not the UI thread).
+    /// The verification runs on a thread-pool thread via <see cref="Task.Run"/> (the SMB
+    /// reconnect can take 20–30 s); UI updates are dispatched through
+    /// <see cref="_dispatch"/>.</para>
     /// </summary>
     private void OnHeartbeatFailed()
     {
         if (Mode != CheckoutMode.WriteAccess) return;
-        _logger.LogInfo("CheckoutService: HeartbeatFailed — treating as lock-loss; demoting session.");
-        // Fire-and-forget: HandleLockLossAsync is synchronous today but marked Task for future use.
-        _ = HandleLockLossAsync();
+
+        if (Interlocked.CompareExchange(ref _heartbeatVerifyInFlight, 1, 0) != 0)
+        {
+            _logger.LogInfo("CheckoutService: HeartbeatFailed — verification already in flight; skipping.");
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                _logger.LogInfo("CheckoutService: HeartbeatFailed — verifying lock ownership before acting.");
+                var result = await VerifyLockIsOursAsync();
+                switch (result)
+                {
+                    case LockVerificationResult.NotOurs:
+                        _logger.LogInfo("CheckoutService: heartbeat verify — lock genuinely lost; demoting.");
+                        await HandleLockLossAsync();
+                        break;
+
+                    case LockVerificationResult.Unreachable:
+                        _logger.LogInfo("CheckoutService: heartbeat verify — share unreachable; keeping writer state.");
+                        _dispatch(() => SaveFailed?.Invoke(
+                            "Network connection interrupted — your changes are safe locally " +
+                            "but cannot be saved until the connection is restored.",
+                            true));
+                        break;
+
+                    case LockVerificationResult.Ours:
+                        _logger.LogInfo("CheckoutService: heartbeat verify — lock still ours; renewing.");
+                        _lockService.ForceRenewHeartbeat();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CheckoutService: heartbeat-verify task failed");
+            }
+            finally
+            {
+                Volatile.Write(ref _heartbeatVerifyInFlight, 0);
+            }
+        });
     }
 
     /// <summary>
@@ -1328,6 +1413,28 @@ public sealed class CheckoutService : IDisposable
     ///   <item><term>Found, parse error</term><term>Timeout</term><term>Unreachable</term></item>
     ///   <item><term>Found, parse error</term><term>Found</term><term>NotOurs (corrupt lock file)</term></item>
     /// </list>
+    ///
+    /// <para><b>Transient-rename retry:</b><br/>
+    /// The heartbeat timer in <see cref="WriteLockService"/> renews the lock file
+    /// using an atomic write-to-temp-then-rename pattern (<c>File.Move(.lock.tmp,
+    /// .lock, overwrite:true)</c>). On local NTFS this is truly atomic — a concurrent
+    /// reader always sees either the old or the new complete file. On SMB/network
+    /// shares, however, the rename may briefly make the file invisible or unreadable
+    /// to a remote reader (a sharing violation, a momentary "not found" from the
+    /// redirector, or a truncated read that fails JSON parsing).<br/><br/>
+    /// Because both the heartbeat and the save originate from the <i>same</i>
+    /// process, this transient would be a self-inflicted false-positive lock loss:
+    /// the save reads "not ours" and demotes to read-only even though no other user
+    /// touched the lock. The consequence is immediate, irreversible session demotion
+    /// with no confirmation dialog.<br/><br/>
+    /// To guard against this, the first <see cref="LockVerificationResult.NotOurs"/>
+    /// result triggers a single retry after a short pause
+    /// (<see cref="LockRetryDelayMs"/>). The delay is long enough for any in-flight
+    /// <c>File.Move</c> to settle (SMB renames complete in low milliseconds on a
+    /// healthy LAN) but short enough to be imperceptible in the save path. A genuine
+    /// lock loss — file deleted by another user, or GUID overwritten by a takeover —
+    /// will still be <c>NotOurs</c> on the retry and proceed to demotion. Only a
+    /// transient that self-heals within the retry window is absorbed.</para>
     /// </summary>
     /// <returns>
     /// <see cref="LockVerificationResult.Ours"/> — lock file exists and belongs to this session.<br/>
@@ -1337,6 +1444,41 @@ public sealed class CheckoutService : IDisposable
     ///     the caller should treat this as a transient failure, not a lock-loss event.
     /// </returns>
     private async Task<LockVerificationResult> VerifyLockIsOursAsync()
+    {
+        var result = await VerifyLockIsOursOnceAsync();
+
+        if (result == LockVerificationResult.NotOurs)
+        {
+            // A single retry absorbs transient "not found" / sharing-violation /
+            // corrupt-read results caused by our own heartbeat's atomic rename
+            // racing this read on a network share. A genuine lock loss (another
+            // user deleted or overwrote the file) will still be NotOurs after
+            // the delay and proceed to demotion normally.
+            _logger.LogInfo(
+                $"CheckoutService: lock verification returned NotOurs — retrying in " +
+                $"{LockRetryDelayMs}ms to rule out a transient heartbeat-rename overlap.");
+            await Task.Delay(LockRetryDelayMs);
+            result = await VerifyLockIsOursOnceAsync();
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Delay in milliseconds before retrying a <see cref="LockVerificationResult.NotOurs"/>
+    /// result. Long enough for an in-flight <c>File.Move</c> to settle on a network share
+    /// (SMB renames complete in low milliseconds on a healthy LAN), short enough to be
+    /// imperceptible in the save path.
+    /// </summary>
+    internal const int LockRetryDelayMs = 200;
+
+    /// <summary>
+    /// Single-attempt lock verification. Checks whether D.lock exists, reads its
+    /// JSON payload, and compares the <c>SessionGuid</c> to ours. Uses network-timeout
+    /// wrappers and the reachability probe for all file I/O. Called by
+    /// <see cref="VerifyLockIsOursAsync"/>, which wraps it in a one-retry loop.
+    /// </summary>
+    private async Task<LockVerificationResult> VerifyLockIsOursOnceAsync()
     {
         var lockPath = Path.ChangeExtension(SourcePath, ".lock");
 
@@ -1356,6 +1498,7 @@ public sealed class CheckoutService : IDisposable
                 return LockVerificationResult.Unreachable;
 
             // Share directory is reachable, so D.lock was genuinely deleted.
+            LockLossNewHolder = null;
             return LockVerificationResult.NotOurs;
         }
 
@@ -1367,9 +1510,13 @@ public sealed class CheckoutService : IDisposable
         try
         {
             var data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
-            return data?.SessionGuid == _lockService.SessionGuid
-                ? LockVerificationResult.Ours
-                : LockVerificationResult.NotOurs;
+            if (data?.SessionGuid == _lockService.SessionGuid)
+                return LockVerificationResult.Ours;
+
+            // Lock file belongs to a different session — capture the new holder
+            // so the WriteLockLost handler can name them in the banner.
+            LockLossNewHolder = data;
+            return LockVerificationResult.NotOurs;
         }
         catch
         {
@@ -1380,7 +1527,9 @@ public sealed class CheckoutService : IDisposable
             if (!probeCompleted)
                 return LockVerificationResult.Unreachable;
 
-            // Share is reachable but the lock file is genuinely unreadable.
+            // Share is reachable but the lock file is genuinely unreadable (corrupt).
+            // Treat as external interference — no known new holder.
+            LockLossNewHolder = null;
             return LockVerificationResult.NotOurs;
         }
     }
@@ -1633,4 +1782,26 @@ public enum RefreshOutcome
     Updated,
     /// <summary>D could not be reached or the copy hash never matched; D'' is unchanged.</summary>
     SourceUnavailable,
+}
+
+/// <summary>
+/// Why the writer lost their lock mid-session. Passed through the
+/// <see cref="CheckoutService.WriteLockLost"/> event so the UI can build
+/// a cause-specific banner.
+/// </summary>
+public enum WriteLockLostReason
+{
+    /// <summary>
+    /// The lock file now belongs to a different session — another user (or the same
+    /// user on another machine) took over the lock. <see cref="CheckoutService.LockLossNewHolder"/>
+    /// contains the new holder's identity.
+    /// </summary>
+    TakenOver,
+
+    /// <summary>
+    /// The lock file was deleted (or is unreadable) while the share is reachable.
+    /// Likely caused by antivirus, cloud-sync, or backup software.
+    /// <see cref="CheckoutService.LockLossNewHolder"/> will be <c>null</c>.
+    /// </summary>
+    LockFileRemoved,
 }

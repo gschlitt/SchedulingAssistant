@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,9 +29,24 @@ public partial class NewDatabaseViewModel : ViewModelBase
 {
     private readonly ShareViewModel  _shareVm;         // reuses SnapshotConfig
     private readonly SemesterContext _semesterContext;
+    private readonly FolderAssessor  _assessor;
 
     // Matches a bare 4-digit year such as "2024".
     private static readonly Regex _yearPattern = new(@"^\d{4}$", RegexOptions.Compiled);
+
+    /// <summary>Pre-assessed folder suggestions, populated at construction.</summary>
+    public ObservableCollection<FolderSuggestion> SuggestedFolders { get; } = new();
+
+    /// <summary>
+    /// Advisory warnings for the currently chosen database folder. Non-blocking — the user
+    /// can proceed despite warnings. Empty when the folder has no issues.
+    /// </summary>
+    public ObservableCollection<FolderWarning> DbFolderWarnings { get; } = new();
+
+    /// <summary>
+    /// Advisory warnings for the currently chosen backup folder.
+    /// </summary>
+    public ObservableCollection<FolderWarning> BackupFolderWarnings { get; } = new();
 
     // ── Callbacks set by MainWindowViewModel ─────────────────────────────────
 
@@ -198,12 +214,34 @@ public partial class NewDatabaseViewModel : ViewModelBase
         OnPropertyChanged(nameof(DbFullPath));
         OnPropertyChanged(nameof(SameFolderWarning));
         OnPropertyChanged(nameof(CanCreate));
+
+        DbFolderWarnings.Clear();
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var assessment = _assessor.Assess(value);
+        foreach (var w in assessment.Warnings)
+        {
+            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+                continue;
+            DbFolderWarnings.Add(w);
+        }
     }
 
     partial void OnBackupFolderChanged(string value)
     {
         OnPropertyChanged(nameof(SameFolderWarning));
         OnPropertyChanged(nameof(CanCreate));
+
+        BackupFolderWarnings.Clear();
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var assessment = _assessor.Assess(value);
+        foreach (var w in assessment.Warnings)
+        {
+            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+                continue;
+            BackupFolderWarnings.Add(w);
+        }
     }
 
     partial void OnTransferConfigChanged(bool value)
@@ -219,9 +257,45 @@ public partial class NewDatabaseViewModel : ViewModelBase
     partial void OnIsCreatingChanged(bool value)         => OnPropertyChanged(nameof(CanCreate));
 
     public NewDatabaseViewModel(ShareViewModel shareVm, SemesterContext semesterContext)
+        : this(shareVm, semesterContext, FolderAssessor.CreateForCurrentMachine()) { }
+
+    /// <summary>
+    /// Testable constructor that accepts an explicit <see cref="FolderAssessor"/>.
+    /// </summary>
+    internal NewDatabaseViewModel(ShareViewModel shareVm, SemesterContext semesterContext, FolderAssessor assessor)
     {
         _shareVm         = shareVm;
         _semesterContext = semesterContext;
+        _assessor        = assessor;
+
+        _ = LoadSuggestionsAsync();
+    }
+
+    /// <summary>
+    /// Populates <see cref="SuggestedFolders"/> on a background thread. Fire-and-forget
+    /// from the constructor — any failure results in an empty suggestion list (Browse
+    /// still works).
+    /// </summary>
+    private async Task LoadSuggestionsAsync()
+    {
+        try
+        {
+            var abbrev = AppSettings.Current.InstitutionAbbrev;
+            var results = await _assessor.SuggestLocationsAsync(abbrev);
+            foreach (var s in results)
+                SuggestedFolders.Add(s);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[NewDatabaseViewModel] Suggestion loading failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Selects a suggested folder as the database folder.</summary>
+    [RelayCommand]
+    private void SelectSuggestion(FolderSuggestion suggestion)
+    {
+        DbFolder = suggestion.Path;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

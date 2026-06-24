@@ -52,6 +52,29 @@
                             Command="{Binding BrowseDbFileCommand}"
                             Content="Browse…" />
                     </Grid>
+
+                    <!--  Folder suitability warnings (non-blocking advisories)  -->
+                    <ItemsControl
+                        IsVisible="{Binding DbFolderWarnings.Count, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        ItemsSource="{Binding DbFolderWarnings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border
+                                    Margin="0,2"
+                                    Padding="10,6"
+                                    Background="{StaticResource NotificationWarningBackground}"
+                                    BorderBrush="{StaticResource NotificationWarningBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="4">
+                                    <TextBlock
+                                        FontSize="{DynamicResource FontSizeSmall}"
+                                        Foreground="{StaticResource NotificationWarningText}"
+                                        Text="{Binding Message}"
+                                        TextWrapping="Wrap" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
 
                 <!--  Backup folder  -->
@@ -77,6 +100,29 @@
                             Content="Browse…" />
                     </Grid>
                 </StackPanel>
+
+                <!--  Backup folder suitability warnings  -->
+                <ItemsControl
+                    IsVisible="{Binding BackupFolderWarnings.Count, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    ItemsSource="{Binding BackupFolderWarnings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border
+                                Margin="0,2"
+                                Padding="10,6"
+                                Background="{StaticResource NotificationWarningBackground}"
+                                BorderBrush="{StaticResource NotificationWarningBorder}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                                <TextBlock
+                                    FontSize="{DynamicResource FontSizeSmall}"
+                                    Foreground="{StaticResource NotificationWarningText}"
+                                    Text="{Binding Message}"
+                                    TextWrapping="Wrap" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!--  Reader (observer) mode  -->
                 <StackPanel Spacing="6">

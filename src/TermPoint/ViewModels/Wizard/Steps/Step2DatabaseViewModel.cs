@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TermPoint.Services;
 
 namespace TermPoint.ViewModels.Wizard.Steps;
 
@@ -9,12 +11,33 @@ namespace TermPoint.ViewModels.Wizard.Steps;
 /// Step 2 — choose the database folder, confirm/edit the database filename, and choose the backup folder.
 /// The database filename is pre-seeded from the academic unit abbreviation and is editable by the user.
 /// Advancing creates the database file and sets IsInitialSetupComplete = true.
+///
+/// On construction, <see cref="FolderAssessor"/> surveys the machine for suitable database
+/// locations and presents them as clickable suggestions. When the user picks a folder (via
+/// suggestion or Browse), the folder is assessed and any warnings (CFA-protected, cloud-synced)
+/// are shown inline as advisories.
 /// </summary>
 public partial class Step2DatabaseViewModel : WizardStepViewModel
 {
     private readonly Window _ownerWindow;
+    private readonly FolderAssessor _assessor;
 
     public override string StepTitle => "Database Location";
+
+    /// <summary>Pre-assessed folder suggestions, populated at construction.</summary>
+    public ObservableCollection<FolderSuggestion> SuggestedFolders { get; } = new();
+
+    /// <summary>
+    /// Advisory warnings for the currently chosen database folder. Non-blocking — the user
+    /// can proceed despite warnings. Empty when the folder has no issues.
+    /// </summary>
+    public ObservableCollection<FolderWarning> DbFolderWarnings { get; } = new();
+
+    /// <summary>
+    /// Advisory warnings for the currently chosen backup folder. Same checks as the
+    /// database folder — CFA, cloud sync, writability.
+    /// </summary>
+    public ObservableCollection<FolderWarning> BackupFolderWarnings { get; } = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanAdvance))]
@@ -118,9 +141,82 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
         : Path.Combine(DbFolder, DbFilename.Trim());
 
     public Step2DatabaseViewModel(string acUnitAbbrev, Window ownerWindow)
+        : this(acUnitAbbrev, ownerWindow, FolderAssessor.CreateForCurrentMachine()) { }
+
+    /// <summary>
+    /// Testable constructor that accepts an explicit <see cref="FolderAssessor"/>.
+    /// </summary>
+    internal Step2DatabaseViewModel(string acUnitAbbrev, Window ownerWindow, FolderAssessor assessor)
     {
         _ownerWindow = ownerWindow;
+        _assessor    = assessor;
         _dbFilename  = BuildDbFilename(acUnitAbbrev);
+
+        _ = LoadSuggestionsAsync(acUnitAbbrev);
+    }
+
+    /// <summary>
+    /// Populates <see cref="SuggestedFolders"/> on a background thread. Fire-and-forget
+    /// from the constructor — any failure results in an empty suggestion list (Browse
+    /// still works). Marshals results back to the UI thread via the collection.
+    /// </summary>
+    private async Task LoadSuggestionsAsync(string? institutionAbbrev)
+    {
+        try
+        {
+            var results = await _assessor.SuggestLocationsAsync(institutionAbbrev);
+            foreach (var s in results)
+                SuggestedFolders.Add(s);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[Step2DatabaseViewModel] Suggestion loading failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Runs folder assessment whenever <see cref="DbFolder"/> changes (user Browse or suggestion click).
+    /// Populates <see cref="DbFolderWarnings"/> with any advisories.
+    /// </summary>
+    partial void OnDbFolderChanged(string value)
+    {
+        DbFolderWarnings.Clear();
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var assessment = _assessor.Assess(value);
+        foreach (var w in assessment.Warnings)
+        {
+            // NotWritable is expected for folders that don't exist yet — they'll be
+            // created at commit time. Only warn if the folder already exists.
+            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+                continue;
+            DbFolderWarnings.Add(w);
+        }
+    }
+
+    /// <summary>
+    /// Runs folder assessment whenever <see cref="BackupFolder"/> changes.
+    /// Populates <see cref="BackupFolderWarnings"/> with any advisories.
+    /// </summary>
+    partial void OnBackupFolderChanged(string value)
+    {
+        BackupFolderWarnings.Clear();
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        var assessment = _assessor.Assess(value);
+        foreach (var w in assessment.Warnings)
+        {
+            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+                continue;
+            BackupFolderWarnings.Add(w);
+        }
+    }
+
+    /// <summary>Selects a suggested folder as the database folder.</summary>
+    [RelayCommand]
+    private void SelectSuggestion(FolderSuggestion suggestion)
+    {
+        DbFolder = suggestion.Path;
     }
 
     /// <summary>

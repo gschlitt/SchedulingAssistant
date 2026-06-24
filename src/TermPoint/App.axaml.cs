@@ -108,7 +108,7 @@ public partial class App : Application
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
 
             if (!PlatformCapabilities.IsMsixPackage)
-                _ = new UpdateService().CheckForUpdatesAsync(Logger);
+                StartBackgroundUpdateCheck();
         }
 #else
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
@@ -122,6 +122,12 @@ public partial class App : Application
     }
 
 #if !BROWSER
+    // Extracted so the JIT only loads Velopack.dll (referenced by UpdateService)
+    // when we're actually running outside an MSIX package.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private void StartBackgroundUpdateCheck()
+        => _ = new UpdateService().CheckForUpdatesAsync(Logger);
+
     /// <summary>
     /// Called by MainWindow once a database path has been resolved.
     /// Builds the full DI container and returns the root view model.

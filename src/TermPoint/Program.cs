@@ -13,8 +13,10 @@ class Program
     {
         // Handles installer hooks and applies any staged updates.
         // Skipped when running as an MSIX package — the Store manages updates.
+        // Extracted to a separate method so the JIT only loads Velopack.dll
+        // when this branch actually runs; under MSIX the assembly is never resolved.
         if (!Services.PlatformCapabilities.IsMsixPackage)
-            VelopackApp.Build().Run();
+            RunVelopackStartup();
 
         // ── Avalonia bug #19892: suppress PointToScreen crash ────────────────
         // AutoCompleteBox dropdown click triggers a delayed crash from
@@ -59,6 +61,9 @@ class Program
         }
         catch { /* never let shutdown logging throw */ }
     }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void RunVelopackStartup() => VelopackApp.Build().Run();
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
