@@ -11,8 +11,10 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Must be the very first call — handles installer hooks and applies any staged updates.
-        VelopackApp.Build().Run();
+        // Handles installer hooks and applies any staged updates.
+        // Skipped when running as an MSIX package — the Store manages updates.
+        if (!Services.PlatformCapabilities.IsMsixPackage)
+            VelopackApp.Build().Run();
 
         // ── Avalonia bug #19892: suppress PointToScreen crash ────────────────
         // AutoCompleteBox dropdown click triggers a delayed crash from

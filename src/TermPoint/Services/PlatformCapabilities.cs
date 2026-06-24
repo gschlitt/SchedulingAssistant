@@ -90,4 +90,34 @@ public static class PlatformCapabilities
     /// <inheritdoc cref="IsDesktop"/>
     public static bool IsDesktop => true;
 #endif
+
+    /// <summary>
+    /// True when running as an installed MSIX package (e.g. from the Microsoft Store).
+    /// Velopack update checks are skipped in this case — the Store handles updates.
+    /// </summary>
+    public static bool IsMsixPackage { get; } = DetectMsixPackage();
+
+    private static bool DetectMsixPackage()
+    {
+#if BROWSER
+        return false;
+#else
+        try
+        {
+            int length = 0;
+            // ERROR_INSUFFICIENT_BUFFER (122) means we're in a package context.
+            // APPMODEL_ERROR_NO_PACKAGE (15700) means we're not.
+            return GetCurrentPackageFullName(ref length, null) != 15700;
+        }
+        catch
+        {
+            return false;
+        }
+#endif
+    }
+
+#if !BROWSER
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, char[]? packageFullName);
+#endif
 }

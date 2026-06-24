@@ -107,7 +107,8 @@ public partial class App : Application
             // lock. OnMainWindowClose makes a normal close tear the whole app down.
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
 
-            _ = new UpdateService().CheckForUpdatesAsync(Logger);
+            if (!PlatformCapabilities.IsMsixPackage)
+                _ = new UpdateService().CheckForUpdatesAsync(Logger);
         }
 #else
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
