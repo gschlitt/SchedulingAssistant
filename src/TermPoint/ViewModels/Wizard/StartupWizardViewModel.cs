@@ -43,6 +43,17 @@ public partial class StartupWizardViewModel : ViewModelBase
     private readonly Window _window;
     private readonly WizardServices _services;
 
+    /// <summary>
+    /// Raised when the user finishes setup successfully (any completion path). The host window
+    /// HIDES the wizard and proceeds — it deliberately does NOT <c>Close()</c> it. Closing disposes
+    /// the window's WinUI composition, and right after a native file-picker session that disposal
+    /// deadlocks the UI thread against the render/compositor thread (the proven startup-hang: the
+    /// Dispatcher and ServerCompositor locks get taken in opposite orders). Hiding never disposes
+    /// the composition, so there is nothing to deadlock on; the window is torn down harmlessly at
+    /// app shutdown, when the compositor is idle.
+    /// </summary>
+    public event Action? SetupCompleted;
+
     // ── Step tracking ────────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -278,7 +289,9 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         try
         {
+            Services.StartupTrace.Ctx("ValidateStep1a before InitializeServices");
             _services.InitializeServices(dbPath);
+            Services.StartupTrace.Ctx("ValidateStep1a after InitializeServices");
 
             // Acquire the write lock so the wizard has write access to the database — but
             // only when NOT joining as an observer. In reader mode we must never touch the
@@ -288,6 +301,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             // (collision-detection handled by WriteLockService).
             if (!s1a.OpenInReaderMode)
                 App.LockService.TryAcquire(dbPath);
+            Services.StartupTrace.Ctx("ValidateStep1a after TryAcquire");
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
@@ -443,7 +457,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
             IsComplete = true;
-            _window?.Close();
+            SetupCompleted?.Invoke();   // host hides the wizard; do NOT Close() (see SetupCompleted).
             return;
         }
 
@@ -453,7 +467,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
             IsComplete = true;
-            _window?.Close();
+            SetupCompleted?.Invoke();
             return;
         }
 
@@ -471,7 +485,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         AppSettings.Current.IsInitialSetupComplete = true;
         AppSettings.Current.Save();
         IsComplete = true;
-        _window?.Close();
+        SetupCompleted?.Invoke();
     }
 
     // ── Write records ─────────────────────────────────────────────────────────

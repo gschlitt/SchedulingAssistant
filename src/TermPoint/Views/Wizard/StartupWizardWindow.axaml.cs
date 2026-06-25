@@ -16,6 +16,14 @@ public partial class StartupWizardWindow : Window
     private StartupWizardViewModel? _vm;
     private bool _shutdownInProgress;
 
+    /// <summary>
+    /// Raised after the user finishes setup and the wizard has HIDDEN itself. The host
+    /// (<see cref="MainWindow.RunStartupAsync"/>) proceeds to open the database on this signal.
+    /// We hide rather than close so we never dispose the WinUI composition right after the native
+    /// file picker — that disposal deadlocks the UI thread against the compositor thread.
+    /// </summary>
+    public event EventHandler? SetupCompleted;
+
     public StartupWizardWindow()
     {
         InitializeComponent();
@@ -25,6 +33,15 @@ public partial class StartupWizardWindow : Window
         {
             _vm = new StartupWizardViewModel(this, WizardServices.FromApp());
             DataContext = _vm;
+
+            // On successful completion, HIDE the wizard (don't Close it) and notify the host.
+            // Closing disposes the composition and deadlocks against the compositor thread right
+            // after the file picker; hiding sidesteps that. The window is disposed at app shutdown.
+            _vm.SetupCompleted += () =>
+            {
+                Hide();
+                SetupCompleted?.Invoke(this, EventArgs.Empty);
+            };
         };
 
         Closing += (_, _2) =>

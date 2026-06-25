@@ -47,6 +47,13 @@ public partial class MainWindow : Window
     /// <summary>Backstop: lift the curtain even if the grid never reports a first layout pass.</summary>
     private static readonly TimeSpan CurtainSafetyTimeout = TimeSpan.FromSeconds(4);
 
+    /// <summary>
+    /// TEMPORARY debug switch. When false, the loading curtain is never shown, so anything
+    /// rendering or blocking behind it during startup is visible. Flip back to true once the
+    /// startup-visibility issue is resolved.
+    /// </summary>
+    private const bool CurtainEnabled = false;
+
     public ScheduleGridView? ScheduleGridViewInstance => MainViewControl?.ScheduleGridViewInstance;
 
     public MainWindow()
@@ -55,6 +62,14 @@ public partial class MainWindow : Window
 
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         Title = $"TermPoint v{version?.Major}.{version?.Minor}.{version?.Build}";
+
+        // [debug] Curtain disabled — keep it hidden from the very first frame.
+        if (!CurtainEnabled && LoadingCurtain is not null)
+        {
+            LoadingCurtain.IsVisible = false;
+            LoadingCurtain.IsHitTestVisible = false;
+            LoadingCurtain.Opacity = 0;
+        }
 
         // Ctrl+S is handled here to save editors in management views (works globally).
         KeyDown += (_, e) =>
@@ -142,6 +157,15 @@ public partial class MainWindow : Window
     {
         base.OnClosing(e);
 
+        // [startup-trace] Diagnose what is closing the main window — that nested close is the
+        // re-entrancy that deadlocks composition disposal. CloseReason + IsProgrammatic say
+        // whether it's the OS, app shutdown, an owner-close, or our own code; the managed stack
+        // names the caller.
+        App.Logger.LogInfo(
+            $"[startup-trace] MainWindow.OnClosing: CloseReason={e.CloseReason}, " +
+            $"IsProgrammatic={e.IsProgrammatic}, shuttingDown={_shuttingDown}\n" +
+            $"Managed stack:\n{Environment.StackTrace}");
+
         if (_shuttingDown) return; // Second pass — let it close.
 
         e.Cancel = true; // Defer: run async save first.
@@ -217,6 +241,17 @@ public partial class MainWindow : Window
     /// <returns></returns>
     private async Task RunStartupAsync()
     {
+        // [startup-trace] Build marker — if this line is absent from a trace, the running
+        // binary is NOT this build (stale install / wrong log file). Bump the tag on each
+        // diagnostic build so we can confirm at a glance which bits are deployed.
+        App.Logger.LogInfo("[startup-trace] BUILD MARKER = probe-v11 (File→Open uses native picker directly)");
+
+        // [startup-trace] Capture the healthy UI SynchronizationContext on entry (before the
+        // tour/wizard run any nested modal frames) so we can both detect a swap and restore
+        // it afterwards. See StartupTrace.
+        var goodSyncContext = System.Threading.SynchronizationContext.Current;
+        StartupTrace.Ctx("RunStartupAsync ENTER");
+
         var settings = AppSettings.Current;
 
         // ── First-run wizard ──────────────────────────────────────────────────
@@ -240,13 +275,62 @@ public partial class MainWindow : Window
                 }
             }
 
+            App.Logger.LogInfo("[startup-trace] RunStartupAsync: showing wizard");
             var wizard = new StartupWizardWindow();
             WindowState = WindowState.Minimized;
             wizard.Show(this);
 
-            var tcs = new TaskCompletionSource();
-            wizard.Closed += (_, _) => tcs.TrySetResult();
+            // RunContinuationsAsynchronously is load-bearing: without it, TrySetResult runs
+            // the await-continuation INLINE on the wizard's Closed → Window.Close() callstack,
+            // so the whole post-wizard checkout (SwitchDatabaseAsync) executes nested inside
+            // that button-click dispatcher job and then suspends mid-job at the first network
+            // await. A dispatcher job that suspends without completing wedges the job pump — the
+            // UI keeps servicing input but never runs another posted continuation, hanging the
+            // app on the loading curtain when the database is remote (a local DB completes the
+            // await synchronously, so it never suspends and never trips the wedge). With this
+            // flag the continuation is queued as its own top-level job that runs after the
+            // wizard fully closes — matching the returning-user path, which already works.
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Completion path: the wizard HIDES itself and raises SetupCompleted (no Close → no
+            // composition disposal → no compositor deadlock). Cancel / manual-close path: the
+            // window actually closes. Either signal proceeds; we then check IsInitialSetupComplete.
+            wizard.SetupCompleted += (_, _) =>
+            {
+                App.Logger.LogInfo("[startup-trace] wizard SetupCompleted (hidden, not closed)");
+                tcs.TrySetResult();
+            };
+            wizard.Closed += (_, _) =>
+            {
+                App.Logger.LogInfo("[startup-trace] wizard.Closed event fired");
+                tcs.TrySetResult();
+            };
             await tcs.Task;
+            App.Logger.LogInfo(
+                $"[startup-trace] RunStartupAsync: wizard closed " +
+                $"(tid={Environment.CurrentManagedThreadId}, ui={Dispatcher.UIThread.CheckAccess()})");
+
+            StartupTrace.Ctx("RunStartupAsync after wizard closed");
+            _ = goodSyncContext; // (context confirmed unchanged in trace; restore retired)
+
+            // [startup-trace] Three-way dispatcher/threadpool liveness probe. The context is
+            // confirmed healthy, yet posted await-continuations never run while the UI keeps
+            // taking input. These probes are queued/started here (before the inline checkout
+            // hangs) and report on the post-unwind state:
+            //   • ThreadPool stats (synchronous, always logs) — is the pool starved?
+            //   • Task.Run         — does the threadpool EXECUTE work?
+            //   • Post(priority)   — which dispatcher priorities get serviced?
+            // If Post(Send) runs but Post(Background) doesn't → priority starvation (something
+            // spinning above Background). If no Post runs but Task.Run does → the queue our
+            // continuation lives on isn't being pumped (nested frame). If Task.Run never runs
+            // → threadpool is the problem.
+            System.Threading.ThreadPool.GetAvailableThreads(out var avWorker, out var avIo);
+            App.Logger.LogInfo(
+                $"[startup-trace] PROBE threadpool stats: available worker={avWorker}, io={avIo}, " +
+                $"threadCount={System.Threading.ThreadPool.ThreadCount}, pending={System.Threading.ThreadPool.PendingWorkItemCount}");
+            _ = Task.Run(() => App.Logger.LogInfo("[startup-trace] PROBE Task.Run EXECUTED (threadpool alive)"));
+            Dispatcher.UIThread.Post(() => App.Logger.LogInfo("[startup-trace] PROBE Post(Send) ran"), DispatcherPriority.Send);
+            Dispatcher.UIThread.Post(() => App.Logger.LogInfo("[startup-trace] PROBE Post(Normal) ran"), DispatcherPriority.Normal);
+            Dispatcher.UIThread.Post(() => App.Logger.LogInfo("[startup-trace] PROBE Post(Background) ran"), DispatcherPriority.Background);
 
             WindowState = WindowState.Normal;
 
@@ -344,7 +428,7 @@ public partial class MainWindow : Window
 
             // Re-show the loading curtain before transitioning to the wizard so the
             // window doesn't flash bare content while minimized/restoring.
-            if (LoadingCurtain is not null)
+            if (CurtainEnabled && LoadingCurtain is not null)
             {
                 LoadingCurtain.Opacity = 1;
                 LoadingCurtain.IsHitTestVisible = true;
@@ -641,8 +725,15 @@ public partial class MainWindow : Window
             notifier.EnqueueUnseenAnnouncements();
         }
 
+        // Explicitly restore the window. The wizard path minimizes it, and a window left
+        // minimized here can stay stuck in the taskbar (clicking it won't expand) — the
+        // classic symptom of a modal child opened on a minimized owner.
+        WindowState = WindowState.Normal;
         IsVisible = true;
         Activate();
+        App.Logger.LogInfo(
+            $"[startup-trace] SetupMainWindowAsync: after Activate — " +
+            $"WindowState={WindowState}, IsActive={IsActive}, IsVisible={IsVisible}");
 
         // Lift the loading curtain after the ScheduleGrid completes its first layout pass.
         // SizeChanged fires after Avalonia measures and arranges the control; by then
@@ -673,6 +764,19 @@ public partial class MainWindow : Window
     /// </summary>
     private void ArmCurtainLift()
     {
+        // [debug] Curtain disabled — keep it down and don't arm any lift triggers.
+        if (!CurtainEnabled)
+        {
+            if (LoadingCurtain is not null)
+            {
+                LoadingCurtain.IsVisible = false;
+                LoadingCurtain.IsHitTestVisible = false;
+                LoadingCurtain.Opacity = 0;
+            }
+            _curtainLifted = true;
+            return;
+        }
+
         // Re-show the curtain (covers the case where this is a database switch and the
         // curtain was already lifted on a previous load) and reset the timing/guard state.
         if (LoadingCurtain is not null)
@@ -745,6 +849,17 @@ public partial class MainWindow : Window
     /// </summary>
     public async Task SwitchDatabaseAsync(string newDatabasePath)
     {
+        // [startup-trace] Temporary diagnostic breadcrumbs for the "hangs on loading
+        // curtain when switching to a REMOTE database during the first-launch session"
+        // bug. Each crumb is flushed to %AppData%\TermPoint\Logs immediately, so the
+        // LAST crumb in the log marks the step that never returned. tid = managed
+        // thread id; ui = whether we are on the UI thread at that point.
+        void Trace(string step) => App.Logger.LogInfo(
+            $"[startup-trace] SwitchDatabaseAsync: {step} " +
+            $"(tid={Environment.CurrentManagedThreadId}, ui={Dispatcher.UIThread.CheckAccess()})");
+
+        Trace($"ENTER newDatabasePath={newDatabasePath}");
+        StartupTrace.Ctx("SwitchDatabaseAsync ENTER");
         try
         {
             // Update settings and record in recent list
@@ -755,7 +870,9 @@ public partial class MainWindow : Window
 
             // Release the current checkout (saves if dirty) before opening the new DB.
             App.Checkout.StopAutoSave();
+            Trace($"before ReleaseAsync (Mode={App.Checkout.Mode})");
             await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
+            Trace("after ReleaseAsync");
 
             // Capture the current semester selection before DI teardown so it can be
             // restored after reinit without touching AppSettings (avoids a disk round-trip
@@ -775,24 +892,34 @@ public partial class MainWindow : Window
 
             // Close the old DatabaseContext (and all other DI singletons) NOW, before
             // CheckoutAsync copies D to D'.
+            Trace("before Services.Dispose");
             (App.Services as IDisposable)?.Dispose();
+            Trace("after Services.Dispose");
 
             // Now that the connection is closed, delete the old D' from the working directory.
             App.Checkout.CleanupWorkingCopy();
 
             // Run crash recovery + checkout for the new path.
+            Trace("before CleanupOrphanedTmpAsync");
+            StartupTrace.Ctx("SwitchDatabaseAsync before CleanupOrphanedTmpAsync");
             await App.Checkout.CleanupOrphanedTmpAsync(newDatabasePath);
+            Trace("before CleanupStaleCrashArtifacts");
             App.Checkout.CleanupStaleCrashArtifacts(newDatabasePath);
+            Trace("before DetectCrashRecovery");
             if (App.Checkout.DetectCrashRecovery(newDatabasePath))
                 await HandleCrashRecoveryAsync(newDatabasePath);
 
+            Trace("before RunCheckoutAsync");
             var checkoutPath = await RunCheckoutAsync(newDatabasePath);
+            Trace($"after RunCheckoutAsync checkoutPath={checkoutPath ?? "(null)"}");
             if (checkoutPath is null)
                 return; // Network unreachable — dialog already shown.
             newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.
+            Trace("before InitializeServices");
             var vm = App.InitializeServices(newDatabasePath, savedYearId, savedSemesterIds);
+            Trace("after InitializeServices");
 
             // Resolve the canonical source path D for the title bar and backup service.
             var canonicalPath = App.Checkout.SourcePath;
@@ -802,7 +929,9 @@ public partial class MainWindow : Window
             // Delegate the rest of window wiring (backup session, DataContext,
             // checkout event (re-)subscription, autosave restart, etc.) to the
             // shared helper used by every startup path.
+            Trace("before SetupMainWindowAsync");
             await SetupMainWindowAsync(canonicalPath, vm);
+            Trace("after SetupMainWindowAsync");
 
             // Re-apply the semester selection after the DataContext swap.
             if (savedYearId != null && savedSemesterIds != null)

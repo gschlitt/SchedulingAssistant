@@ -804,13 +804,26 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (MainWindowReference is null) return;
 
-        var dialog = new DatabaseLocationDialog(DatabaseLocationMode.OpenExisting);
-        await dialog.ShowDialog(MainWindowReference);
-
-        if (dialog.ChosenPath is not null)
+        // Open the native file picker DIRECTLY on the main window rather than via a
+        // DatabaseLocationDialog. Closing that dialog window right after the native picker
+        // disposes its WinUI composition, which deadlocks the UI thread against the compositor
+        // thread (Avalonia 12 bug — proven by the File→Open stack trace). A native picker is not
+        // an Avalonia window, so nothing is disposed here; the re-render inside
+        // SwitchDatabaseAsync is safe (verified by the wizard fix).
+        var files = await MainWindowReference.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            await MainWindowReference.SwitchDatabaseAsync(dialog.ChosenPath);
-        }
+            Title         = "Open existing database file",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("TermPoint Database") { Patterns = new[] { "*.db", "*.sqlite", "*.sqlite3" } },
+                new FilePickerFileType("All Files")          { Patterns = new[] { "*" } }
+            }
+        });
+
+        var path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (!string.IsNullOrEmpty(path))
+            await MainWindowReference.SwitchDatabaseAsync(path);
     }
 
     [RelayCommand]

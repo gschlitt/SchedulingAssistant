@@ -73,7 +73,13 @@ public class FolderAssessor
             parentToProbe = resolved;
         else
             parentToProbe = Directory.Exists(resolved) ? resolved : FindExistingAncestor(resolved);
+        // [startup-trace] This write-probe is SYNCHRONOUS and unguarded (unlike the
+        // timeout-wrapped probes in SuggestLocationsAsync). On the UI thread against a
+        // network path it can stall the dispatcher. If "Assess probe START" logs without
+        // a matching "DONE", this synchronous probe is the freeze point.
+        App.Logger.LogInfo($"[startup-trace] FolderAssessor Assess probe START path={parentToProbe ?? "(null)"} (tid={Environment.CurrentManagedThreadId})");
         var isWritable = parentToProbe != null && probe(parentToProbe);
+        App.Logger.LogInfo($"[startup-trace] FolderAssessor Assess probe DONE writable={isWritable}");
         if (!isWritable)
             warnings.Add(FolderWarning.NotWritable());
 

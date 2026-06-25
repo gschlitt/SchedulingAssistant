@@ -142,6 +142,7 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
     [RelayCommand]
     private async Task BrowseDbFile()
     {
+        Services.StartupTrace.Ctx("Step1a BrowseDbFile before picker");
         var result = await _ownerWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title         = "Select TermPoint Database",
@@ -152,6 +153,7 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
                 new FilePickerFileType("All Files")          { Patterns = ["*.*"] }
             ]
         });
+        Services.StartupTrace.Ctx("Step1a BrowseDbFile after picker");
 
         if (result.Count > 0)
         {
@@ -164,11 +166,13 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
     [RelayCommand]
     private async Task BrowseBackupFolder()
     {
+        Services.StartupTrace.Ctx("Step1a BrowseBackupFolder before picker");
         var result = await _ownerWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title         = "Choose Backup Folder",
             AllowMultiple = false
         });
+        Services.StartupTrace.Ctx("Step1a BrowseBackupFolder after picker");
 
         if (result.Count > 0)
             BackupFolder = result[0].TryGetLocalPath() ?? string.Empty;
