@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace TermPoint.Services;
 
@@ -88,16 +90,19 @@ public class FolderAssessor
 
     /// <summary>
     /// Suggests database folder locations by enumerating fixed and network drives
-    /// and filtering out unsuitable candidates. Returns a ranked list of suggestions.
+    /// and filtering out unsuitable candidates. Yields each suggestion as soon as
+    /// it is assessed, so local drives appear instantly while slow network probes
+    /// trickle in.
     ///
-    /// This method is async because network drive probes (IsReady, write-probe) can
-    /// hang on unreachable shares. Each probe runs with a per-drive timeout. The method
-    /// is fully defensive: any failure at any stage results in that candidate being
-    /// silently dropped, never in a crash or hang.
+    /// Network drive probes (IsReady, write-probe) can hang on unreachable shares.
+    /// Each probe runs with a per-drive timeout. The method is fully defensive: any
+    /// failure at any stage results in that candidate being silently dropped.
     /// </summary>
     /// <param name="institutionAbbrev">Optional institution abbreviation for folder naming.</param>
-    /// <returns>Ranked list of suggested locations, best first. Empty on total failure.</returns>
-    public async Task<IReadOnlyList<FolderSuggestion>> SuggestLocationsAsync(string? institutionAbbrev)
+    /// <returns>Suggestions yielded incrementally, local drives first.</returns>
+    public async IAsyncEnumerable<FolderSuggestion> SuggestLocationsAsync(
+        string? institutionAbbrev,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var appFolderName = "TermPoint";
         var subFolder = string.IsNullOrWhiteSpace(institutionAbbrev)
@@ -106,129 +111,145 @@ public class FolderAssessor
 
         var candidates = new List<(string path, string description, int priority, bool isNetwork)>();
 
+        DriveInfo[] allDrives;
         try
         {
-            // Enumerate drives. Access IsReady inside a per-drive try/catch because
-            // even reading the property can throw on some drive types.
-            var allDrives = DriveInfo.GetDrives();
-            var systemDrive = Path.GetPathRoot(
-                Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? "C:\\";
-
-            foreach (var drive in allDrives)
-            {
-                try
-                {
-                    if (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Network)
-                        continue;
-
-                    bool isNetwork = drive.DriveType == DriveType.Network;
-
-                    // For network drives, check IsReady with a timeout to avoid
-                    // hanging on unreachable shares.
-                    if (isNetwork)
-                    {
-                        var (completed, ready) = await RunWithTimeout(
-                            () => drive.IsReady, DriveProbeTimeoutMs);
-                        if (!completed || !ready)
-                            continue;
-                    }
-                    else
-                    {
-                        if (!drive.IsReady) continue;
-                    }
-
-                    var root = drive.Name;
-                    bool isSystemDrive = string.Equals(
-                        root, systemDrive, StringComparison.OrdinalIgnoreCase);
-
-                    var folderPath = string.IsNullOrEmpty(subFolder)
-                        ? Path.Combine(root, appFolderName)
-                        : Path.Combine(root, appFolderName, subFolder);
-
-                    if (isNetwork)
-                    {
-                        candidates.Add((folderPath, "Network drive", 5, true));
-                    }
-                    else if (isSystemDrive)
-                    {
-                        var programData = Environment.GetFolderPath(
-                            Environment.SpecialFolder.CommonApplicationData);
-                        if (!string.IsNullOrEmpty(programData))
-                        {
-                            var pdPath = string.IsNullOrEmpty(subFolder)
-                                ? Path.Combine(programData, appFolderName)
-                                : Path.Combine(programData, appFolderName, subFolder);
-                            candidates.Add((pdPath, "Shared application data folder", 20, false));
-                        }
-                        candidates.Add((folderPath, "System drive", 30, false));
-                    }
-                    else
-                    {
-                        candidates.Add((folderPath, "Secondary drive", 10, false));
-                    }
-                }
-                catch
-                {
-                    // Skip any drive that throws during property access.
-                }
-            }
+            allDrives = DriveInfo.GetDrives();
         }
         catch
         {
-            // DriveInfo.GetDrives() itself failed; return empty.
-            return Array.Empty<FolderSuggestion>();
+            yield break;
         }
 
-        // Filter: assess each candidate and keep only those with no substantive warnings.
-        var suggestions = new List<FolderSuggestion>();
-        foreach (var (candidatePath, description, priority, isNetwork) in candidates.OrderBy(c => c.priority))
+        var systemDrive = Path.GetPathRoot(
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? "C:\\";
+
+        // Phase 1: collect local-drive candidates synchronously (instant).
+        foreach (var drive in allDrives)
         {
             try
             {
-                var assessment = Assess(candidatePath);
+                if (drive.DriveType != DriveType.Fixed) continue;
+                if (!drive.IsReady) continue;
 
-                if (assessment.Warnings.Any(w => w.Kind != WarningKind.NotWritable))
-                    continue;
+                var root = drive.Name;
+                bool isSystemDrive = string.Equals(
+                    root, systemDrive, StringComparison.OrdinalIgnoreCase);
 
-                bool writable;
-                if (Directory.Exists(candidatePath))
+                var folderPath = string.IsNullOrEmpty(subFolder)
+                    ? Path.Combine(root, appFolderName)
+                    : Path.Combine(root, appFolderName, subFolder);
+
+                if (isSystemDrive)
                 {
-                    writable = assessment.IsWritable;
+                    var programData = Environment.GetFolderPath(
+                        Environment.SpecialFolder.CommonApplicationData);
+                    if (!string.IsNullOrEmpty(programData))
+                    {
+                        var pdPath = string.IsNullOrEmpty(subFolder)
+                            ? Path.Combine(programData, appFolderName)
+                            : Path.Combine(programData, appFolderName, subFolder);
+                        candidates.Add((pdPath, "Shared application data folder", 20, false));
+                    }
+                    candidates.Add((folderPath, "System drive", 30, false));
                 }
                 else
                 {
-                    var testDir = FindExistingAncestor(candidatePath);
-                    if (testDir == null) continue;
-
-                    // For network paths, run the write probe with a timeout.
-                    if (isNetwork)
-                    {
-                        var (completed, result) = await RunWithTimeout(
-                            () => {
-                                var p = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
-                                return p(testDir);
-                            }, DriveProbeTimeoutMs);
-                        writable = completed && result;
-                    }
-                    else
-                    {
-                        var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
-                        writable = probe(testDir);
-                    }
+                    candidates.Add((folderPath, "Secondary drive", 10, false));
                 }
-
-                if (!writable) continue;
-
-                suggestions.Add(new FolderSuggestion(
-                    candidatePath, description, Directory.Exists(candidatePath)));
             }
             catch
             {
-                // Any failure assessing a single candidate → skip it silently.
+                // Skip any drive that throws during property access.
             }
         }
 
-        return suggestions;
+        // Yield local candidates immediately (sorted by priority).
+        foreach (var c in candidates.OrderBy(c => c.priority))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var suggestion = await AssessCandidateAsync(c.path, c.description, c.isNetwork);
+            if (suggestion != null)
+                yield return suggestion;
+        }
+
+        // Phase 2: probe network drives (may be slow — each has a timeout).
+        foreach (var drive in allDrives)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FolderSuggestion? networkSuggestion = null;
+            try
+            {
+                if (drive.DriveType != DriveType.Network) continue;
+
+                var (completed, ready) = await RunWithTimeout(
+                    () => drive.IsReady, DriveProbeTimeoutMs);
+                if (!completed || !ready) continue;
+
+                var folderPath = string.IsNullOrEmpty(subFolder)
+                    ? Path.Combine(drive.Name, appFolderName)
+                    : Path.Combine(drive.Name, appFolderName, subFolder);
+
+                networkSuggestion = await AssessCandidateAsync(folderPath, "Network drive", isNetwork: true);
+            }
+            catch
+            {
+                // Skip any drive that throws.
+            }
+            if (networkSuggestion != null)
+                yield return networkSuggestion;
+        }
+    }
+
+    /// <summary>
+    /// Assesses a single candidate path and returns a <see cref="FolderSuggestion"/>
+    /// if it passes all checks, or null if it should be skipped.
+    /// </summary>
+    private async Task<FolderSuggestion?> AssessCandidateAsync(
+        string candidatePath, string description, bool isNetwork)
+    {
+        try
+        {
+            var assessment = Assess(candidatePath);
+
+            if (assessment.Warnings.Any(w => w.Kind != WarningKind.NotWritable))
+                return null;
+
+            bool writable;
+            if (Directory.Exists(candidatePath))
+            {
+                writable = assessment.IsWritable;
+            }
+            else
+            {
+                var testDir = FindExistingAncestor(candidatePath);
+                if (testDir == null) return null;
+
+                if (isNetwork)
+                {
+                    var (completed, result) = await RunWithTimeout(
+                        () => {
+                            var p = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
+                            return p(testDir);
+                        }, DriveProbeTimeoutMs);
+                    writable = completed && result;
+                }
+                else
+                {
+                    var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
+                    writable = probe(testDir);
+                }
+            }
+
+            if (!writable) return null;
+
+            return new FolderSuggestion(
+                candidatePath, description, Directory.Exists(candidatePath));
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>

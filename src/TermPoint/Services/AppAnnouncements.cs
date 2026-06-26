@@ -47,6 +47,6 @@ public static class AppAnnouncements
     [        
         new VersionedAnnouncement(
             SinceVersion: new Version(1,0,2),
-            Message     : "Good luck!")
+            Message     : "Welcome to TermPoint!")
     ];
 }

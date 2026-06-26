@@ -160,6 +160,8 @@
 	<SolidColorBrush x:Key="TextAttention" Color="Red"/>
 	<!--  Subtle tint — zebra rows, inactive areas, empty-state fills  -->
 	<SolidColorBrush x:Key="SubtleBackground" Color="#F0F4FA" />
+	<!--  Midpoint between SubtleBackground and ButtonHover — suggestion chips  -->
+	<SolidColorBrush x:Key="SuggestionBackground" Color="#CCE3FA" />
 
 
 

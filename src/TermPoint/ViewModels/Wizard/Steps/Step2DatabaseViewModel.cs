@@ -164,8 +164,7 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
     {
         try
         {
-            var results = await _assessor.SuggestLocationsAsync(institutionAbbrev);
-            foreach (var s in results)
+            await foreach (var s in _assessor.SuggestLocationsAsync(institutionAbbrev))
                 SuggestedFolders.Add(s);
         }
         catch (Exception ex)

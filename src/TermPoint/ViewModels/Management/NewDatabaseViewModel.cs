@@ -281,8 +281,7 @@ public partial class NewDatabaseViewModel : ViewModelBase
         try
         {
             var abbrev = AppSettings.Current.InstitutionAbbrev;
-            var results = await _assessor.SuggestLocationsAsync(abbrev);
-            foreach (var s in results)
+            await foreach (var s in _assessor.SuggestLocationsAsync(abbrev))
                 SuggestedFolders.Add(s);
         }
         catch (Exception ex)
