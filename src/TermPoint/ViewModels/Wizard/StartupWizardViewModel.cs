@@ -159,6 +159,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         _stepIndex  = index;
         CurrentStep = vm;
+        App.Logger.LogBreadcrumb("Wizard: step", new() { ["index"] = index.ToString(), ["type"] = vm.GetType().Name });
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanCancel));
         OnPropertyChanged(nameof(NextButtonText));
@@ -451,6 +452,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         // Existing-DB path — DB is already initialized; no records to write.
         if (_isExistingDbPath)
         {
+            App.Logger.LogBreadcrumb("Wizard: finish (existing DB)");
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
             IsComplete = true;
@@ -461,6 +463,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         // ExitNow path — DB created, wizard config skipped.
         if (_stepIndex == 5 && CurrentStep is Step3TpConfigViewModel { IsExitNowChoice: true })
         {
+            App.Logger.LogBreadcrumb("Wizard: finish (ExitNow)");
             AppSettings.Current.IsInitialSetupComplete = true;
             AppSettings.Current.Save();
             IsComplete = true;
@@ -469,6 +472,8 @@ public partial class StartupWizardViewModel : ViewModelBase
         }
 
         // Normal finish — user clicked Finish on the closing panel (step 11).
+        var path = _isImportPath ? "import" : "manual";
+        App.Logger.LogBreadcrumb($"Wizard: finish ({path})");
         try
         {
             await WriteDbRecordsAsync();

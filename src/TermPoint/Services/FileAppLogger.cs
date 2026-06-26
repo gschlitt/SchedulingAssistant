@@ -36,12 +36,19 @@ public sealed class FileAppLogger : IAppLogger
     
     
     public Bugsnag.IClient? BugsnagClient { get; set; }
-    public void LogError(Exception? ex, string? context = null)
+    public void LogError(Exception? ex, string? context = null, bool unhandled = false)
     {
         Write("ERROR", context, ex);
         // Bugsnag's internal BlockingCollection may be disposed during app
         // termination — the error reporter must never throw.
-        try { BugsnagClient?.Notify(ex, report => report.Event.Context = context); }
+        try
+        {
+            if (unhandled)
+                BugsnagClient?.Notify(ex, Bugsnag.Payload.HandledState.ForUnhandledException(),
+                    report => report.Event.Context = context);
+            else
+                BugsnagClient?.Notify(ex, report => report.Event.Context = context);
+        }
         catch (ObjectDisposedException) { }
         catch (Exception) { }
         // In dev mode, re-throw immediately so exceptions surface with a full stack
@@ -113,6 +120,19 @@ public sealed class FileAppLogger : IAppLogger
             try { Console.Error.WriteLine($"[FileAppLogger] Failed to write log: {logEx.Message}"); }
             catch { /* truly last resort */ }
         }
+    }
+
+    /// <inheritdoc/>
+    public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null)
+    {
+        try
+        {
+            if (metadata is { Count: > 0 })
+                BugsnagClient?.Breadcrumbs.Leave(message, BreadcrumbType.State, metadata!);
+            else
+                BugsnagClient?.Breadcrumbs.Leave(message);
+        }
+        catch { /* breadcrumbs must never throw */ }
     }
 
     /// <summary>

@@ -216,7 +216,7 @@ public class WatchCommandErrorsTests : IDisposable
         public string? LastLoggedMessage { get; private set; }
         public string? LastLoggedContext { get; private set; }
 
-        public void LogError(Exception? ex, string? context = null)
+        public void LogError(Exception? ex, string? context = null, bool unhandled = false)
         {
             ErrorWasLogged = true;
             LastLoggedMessage = ex?.Message;
@@ -226,5 +226,6 @@ public class WatchCommandErrorsTests : IDisposable
 
         public void LogWarning(string message, string? context = null) { }
         public void LogInfo(string message, string? context = null) { }
+        public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
     }
 }

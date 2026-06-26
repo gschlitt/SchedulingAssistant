@@ -15,7 +15,7 @@ public sealed class ConsoleAppLogger : IAppLogger
     public bool ThrowOnError { get; set; }
 
     /// <inheritdoc/>
-    public void LogError(Exception? ex, string? context = null)
+    public void LogError(Exception? ex, string? context = null, bool unhandled = false)
     {
         Write("ERROR", context, ex);
         if (ThrowOnError)
@@ -29,6 +29,9 @@ public sealed class ConsoleAppLogger : IAppLogger
     /// <inheritdoc/>
     public void LogInfo(string message, string? context = null)
         => Write("INFO", context ?? message, null);
+
+    /// <inheritdoc/>
+    public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
 
     private static void Write(string level, string? message, Exception? ex)
     {

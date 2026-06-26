@@ -48,6 +48,14 @@ public class AppSettings
     }
 
     /// <summary>
+    /// Anonymous install identifier, generated once on first launch and persisted.
+    /// Sent to BugSnag as the user ID so error reports can be grouped by install
+    /// without identifying the person. Never displayed in-app or transmitted anywhere
+    /// other than BugSnag error reports.
+    /// </summary>
+    public string InstallId { get; set; } = string.Empty;
+
+    /// <summary>
     /// True after the first-run wizard has successfully created a database.
     /// When false, the app routes to the startup wizard instead of the main window.
     /// </summary>
@@ -253,6 +261,16 @@ public class AppSettings
                 App.Logger.LogInfo($"[AppSettings] Could not load settings (using defaults): {ex.Message}");
                 result = new AppSettings();
             }
+        }
+
+        // Generate a stable anonymous install ID on first launch (or upgrade from
+        // a version that didn't have one). Saved immediately so it persists.
+        if (string.IsNullOrEmpty(result.InstallId))
+        {
+            result.InstallId = Guid.NewGuid().ToString("N");
+            _instance = result;
+            result.Save();
+            return result;
         }
 
         _instance = result;

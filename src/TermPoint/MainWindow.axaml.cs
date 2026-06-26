@@ -612,6 +612,8 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task SetupMainWindowAsync(string dbPath, MainWindowViewModel vm)
     {
+        App.Logger.LogBreadcrumb("MainWindow ready", new() { ["mode"] = App.Checkout.Mode.ToString() });
+
         // Start the automated backup session if this instance acquired the write lock.
         // Also wire the backup service into CheckoutService so pre-save snapshots use
         // the same service and naming convention as regular backups.
@@ -768,6 +770,7 @@ public partial class MainWindow : Window
     /// </summary>
     public async Task SwitchDatabaseAsync(string newDatabasePath)
     {
+        App.Logger.LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
         try
         {
             // Update settings and record in recent list
@@ -1157,6 +1160,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void OnWriteLockLost(WriteLockLostReason reason)
     {
+        App.Logger.LogBreadcrumb("WriteLockLost", new() { ["reason"] = reason.ToString() });
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
             try

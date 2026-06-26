@@ -377,11 +377,12 @@ public class AppNotificationServiceTests
         public bool ThrowOnError { get; set; }
         public event EventHandler<string>? ErrorLogged;
 
-        public void LogError(Exception? ex, string? context = null)
+        public void LogError(Exception? ex, string? context = null, bool unhandled = false)
             => ErrorLogged?.Invoke(this, context ?? ex?.Message ?? "error");
 
         public void LogWarning(string message, string? context = null) { }
         public void LogInfo(string message, string? context = null) { }
+        public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
 
         /// <summary>Directly fires the <see cref="ErrorLogged"/> event for test control.</summary>
         public void RaiseErrorLogged(string message) => ErrorLogged?.Invoke(this, message);

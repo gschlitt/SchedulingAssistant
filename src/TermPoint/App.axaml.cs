@@ -43,9 +43,26 @@ public partial class App : Application
     {
         BugsnagClient = new Bugsnag.Client(new Configuration("0433a4d8b6fc7e95c43cbb6a87935c31")
         {
-            ReleaseStage="production"
+            ReleaseStage = DetectReleaseStage(),
+            NotifyReleaseStages = new[] { "production", "development" },
+            AppVersion = System.Reflection.Assembly.GetExecutingAssembly()
+                             .GetName().Version?.ToString() ?? "0.0.0",
+            ProjectNamespaces = new[] { "TermPoint" },
         })
     };
+
+    /// <summary>
+    /// Returns "development" for debug builds, "production" for release builds.
+    /// MSIX vs sideload is not distinguished here — both are release builds.
+    /// </summary>
+    private static string DetectReleaseStage()
+    {
+#if DEBUG
+        return "development";
+#else
+        return "production";
+#endif
+    }
 #else
     public static IAppLogger Logger { get; private set; } = new ConsoleAppLogger();
 #endif
@@ -87,11 +104,25 @@ public partial class App : Application
         {
             if (Logger.ThrowOnError) return;
 
-            Logger.LogError(e.Exception, "Unexpected error (the app will try to continue)");
+            Logger.LogError(e.Exception, "Unexpected error (the app will try to continue)", unhandled: true);
             e.Handled = true;
         };
 
 #if !BROWSER
+        // Start a BugSnag session so errors during this run contribute to the
+        // per-release stability score (% crash-free sessions).
+        // Attach the anonymous install ID so errors can be grouped by install.
+        if (Logger is FileAppLogger { BugsnagClient: { } bugsnag })
+        {
+            bugsnag.SessionTracking.CreateSession();
+
+            var installId = AppSettings.Current.InstallId;
+            bugsnag.BeforeNotify(report =>
+            {
+                report.Event.User = new Bugsnag.Payload.User { Id = installId };
+            });
+        }
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // MainWindow is the initial window. It carries its own in-window loading

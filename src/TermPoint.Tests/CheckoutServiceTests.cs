@@ -180,11 +180,13 @@ public sealed class CheckoutServiceTests : IDisposable
         /// <inheritdoc/>
         public event EventHandler<string>? ErrorLogged;
         /// <inheritdoc/>
-        public void LogError(Exception? ex, string? context = null) { }
+        public void LogError(Exception? ex, string? context = null, bool unhandled = false) { }
         /// <inheritdoc/>
         public void LogWarning(string message, string? context = null) { }
         /// <inheritdoc/>
         public void LogInfo(string message, string? context = null) { }
+        /// <inheritdoc/>
+        public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
     }
 
     // ═════════════════════════════════════════════════════════════════════════

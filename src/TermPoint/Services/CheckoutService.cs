@@ -335,6 +335,7 @@ public sealed class CheckoutService : IDisposable
         if (!existsCompleted)
         {
             _logger.LogInfo("CheckoutService: File.Exists timed out — network unreachable");
+            _logger.LogBreadcrumb("Checkout: NetworkUnreachable", new() { ["path"] = sourcePath });
             return CheckoutOutcome.NetworkUnreachable;
         }
 
@@ -369,6 +370,7 @@ public sealed class CheckoutService : IDisposable
             }
 
             _lockService.WakeDetected += OnWake;
+            _logger.LogBreadcrumb("Checkout: WriteAccess (new DB)", new() { ["path"] = sourcePath });
             return CheckoutOutcome.WriteAccess;
         }
 
@@ -382,7 +384,9 @@ public sealed class CheckoutService : IDisposable
         {
             CurrentHolder = null;   // no specific holder — read-only by the user's own choice
             var d2Reader = await SetupReadOnlySnapshotAsync();
-            return d2Reader is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
+            var outcome = d2Reader is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
+            _logger.LogBreadcrumb($"Checkout: {outcome} (observer mode)", new() { ["path"] = sourcePath });
+            return outcome;
         }
 
         // ── Normal path — D exists ────────────────────────────────────────────
@@ -400,6 +404,7 @@ public sealed class CheckoutService : IDisposable
             // Pre-compute D' so ForceCheckoutAsync can use WorkingPath immediately.
             WorkingPath   = ComputeWorkingPath(sourcePath);
             CurrentHolder = _lockService.CurrentHolder;
+            _logger.LogBreadcrumb("Checkout: StaleHolder", new() { ["path"] = sourcePath, ["holder"] = CurrentHolder?.Username ?? "?" });
             return CheckoutOutcome.StaleHolder;
         }
 
@@ -409,7 +414,9 @@ public sealed class CheckoutService : IDisposable
             CurrentHolder           = _lockService.CurrentHolder;
             HolderIsLiveSameMachine = _lockService.HolderIsLiveSameMachine;
             var d2 = await SetupReadOnlySnapshotAsync();
-            return d2 is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
+            var outcome = d2 is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
+            _logger.LogBreadcrumb($"Checkout: {outcome}", new() { ["path"] = sourcePath, ["holder"] = CurrentHolder?.Username ?? "?" });
+            return outcome;
         }
 
         // We hold the lock. Capture whether we got it by reclaiming a dead session, so the UI
@@ -488,6 +495,7 @@ public sealed class CheckoutService : IDisposable
 
         _lockService.WakeDetected    += OnWake;
         _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
+        _logger.LogBreadcrumb("Checkout: WriteAccess", new() { ["path"] = sourcePath });
         return CheckoutOutcome.WriteAccess;
     }
 
@@ -569,6 +577,7 @@ public sealed class CheckoutService : IDisposable
 
         _lockService.WakeDetected    += OnWake;
         _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
+        _logger.LogBreadcrumb("ForceCheckout: WriteAccess");
         return CheckoutOutcome.WriteAccess;
     }
 
@@ -630,6 +639,12 @@ public sealed class CheckoutService : IDisposable
 
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
     {
+        _logger.LogBreadcrumb("Save: started", new()
+        {
+            ["autoSave"] = isAutoSave.ToString(),
+            ["releaseLock"] = releaseLockAfter.ToString(),
+        });
+
         // New-database mode — D never existed at checkout time, so there is no
         // separate D'. WorkingPath points directly at the authoritative database;
         // every write already went to the final location. No copy-back needed.
@@ -653,6 +668,7 @@ public sealed class CheckoutService : IDisposable
 
         if (lockResult == LockVerificationResult.NotOurs)
         {
+            _logger.LogBreadcrumb("Save: LockLost");
             await HandleLockLossAsync();
             return SaveOutcome.LockLost;
         }
@@ -673,6 +689,7 @@ public sealed class CheckoutService : IDisposable
             {
                 const string msg = "The database was modified outside this session. Save aborted.";
                 _logger.LogInfo("CheckoutService: source hash mismatch — " + msg);
+                _logger.LogBreadcrumb("Save: SourceModified");
                 // Sticky: a genuine conflict the user must resolve — never auto-dismiss.
                 _dispatch(() => SaveFailed?.Invoke(msg, false));
                 return SaveOutcome.SourceModified;
@@ -760,6 +777,7 @@ public sealed class CheckoutService : IDisposable
             _lockService.Release();
 
         _logger.LogInfo("CheckoutService: Save completed successfully.");
+        _logger.LogBreadcrumb("Save: Success");
         _dispatch(() => SaveCompleted?.Invoke());
         return SaveOutcome.Success;
     }
@@ -1006,6 +1024,7 @@ public sealed class CheckoutService : IDisposable
     /// </param>
     public async Task ReleaseAsync(bool saveFirst)
     {
+        _logger.LogBreadcrumb("Release", new() { ["saveFirst"] = saveFirst.ToString() });
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
 
@@ -1106,6 +1125,7 @@ public sealed class CheckoutService : IDisposable
     private void OnWake()
     {
         if (Mode != CheckoutMode.WriteAccess) return;
+        _logger.LogBreadcrumb("Wake detected");
 
         // Fire-and-forget — VerifyLockIsOursAsync uses NetworkFileOps internally
         // so the UI stays responsive during the SMB reconnect delay.
@@ -1163,6 +1183,11 @@ public sealed class CheckoutService : IDisposable
         var reason = LockLossNewHolder is not null
             ? WriteLockLostReason.TakenOver
             : WriteLockLostReason.LockFileRemoved;
+        _logger.LogBreadcrumb("Lock lost", new()
+        {
+            ["reason"] = reason.ToString(),
+            ["newHolder"] = LockLossNewHolder?.Username ?? "(none)",
+        });
         _dispatch(() => WriteLockLost?.Invoke(reason));
         return Task.CompletedTask;
     }
@@ -1206,6 +1231,7 @@ public sealed class CheckoutService : IDisposable
     private void OnHeartbeatFailed()
     {
         if (Mode != CheckoutMode.WriteAccess) return;
+        _logger.LogBreadcrumb("Heartbeat failed");
 
         if (Interlocked.CompareExchange(ref _heartbeatVerifyInFlight, 1, 0) != 0)
         {
@@ -1305,6 +1331,8 @@ public sealed class CheckoutService : IDisposable
     {
         if (Mode != CheckoutMode.WriteAccess)
             return false;
+
+        _logger.LogBreadcrumb("Demoting to read-only");
 
         // 1 & 2 — stop timers and release the lock (safe against foreign holders).
         StopAutoSave();

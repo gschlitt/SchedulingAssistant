@@ -34,12 +34,12 @@ class Program
         {
             var ex = e.ExceptionObject as Exception
                      ?? new Exception($"Non-CLR unhandled exception: {e.ExceptionObject}");
-            App.Logger.LogError(ex, "AppDomain.UnhandledException (terminating)");
+            App.Logger.LogError(ex, "AppDomain.UnhandledException (terminating)", unhandled: true);
         };
 
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
-            App.Logger.LogError(e.Exception, "TaskScheduler.UnobservedTaskException");
+            App.Logger.LogError(e.Exception, "TaskScheduler.UnobservedTaskException", unhandled: true);
             e.SetObserved(); // prevent process termination for fire-and-forget tasks
         };
          BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
