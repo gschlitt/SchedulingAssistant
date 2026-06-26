@@ -13,12 +13,23 @@ namespace TermPoint.Views;
 /// <remarks>
 /// The view model is created in the constructor and exposed via <see cref="Vm"/>
 /// so <see cref="MainWindow"/> can read the <see cref="DatabaseRecoveryViewModel.Outcome"/>
-/// after the window closes.
+/// after the window hides or closes.
+///
+/// On resolution the window HIDES (not Close) to avoid disposing the WinUI composition
+/// right after a native file picker — that deadlocks the UI thread against the compositor
+/// thread (Avalonia 12 bug). The window is disposed at app shutdown when the compositor is idle.
 /// </remarks>
 public partial class DatabaseRecoveryWindow : Window
 {
     /// <summary>
-    /// The view model for this window. Read by the caller after the window closes
+    /// Raised when the window is ready to hand control back to the caller — either the
+    /// VM signalled completion or the user clicked X. The window hides (never closes)
+    /// to avoid disposing the WinUI composition, which deadlocks the compositor.
+    /// </summary>
+    public event EventHandler? RecoveryCompleted;
+
+    /// <summary>
+    /// The view model for this window. Read by the caller after the window hides/closes
     /// to determine what action to take.
     /// </summary>
     public DatabaseRecoveryViewModel Vm { get; }
@@ -80,8 +91,23 @@ public partial class DatabaseRecoveryWindow : Window
             return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
         };
 
-        // Close the window when the VM signals it.
-        Vm.CloseRequested += Close;
+        // Hide (not Close) when the VM signals completion, then notify the caller.
+        // Closing disposes the WinUI composition and deadlocks against the compositor
+        // thread right after the file picker; hiding sidesteps that.
+        Vm.CloseRequested += () =>
+        {
+            Hide();
+            RecoveryCompleted?.Invoke(this, EventArgs.Empty);
+        };
+
+        // Also intercept the X-button: cancel the close, hide, and signal.
+        // Vm.Outcome remains RecoveryOutcome.None so the caller knows the user exited.
+        Closing += (_, e) =>
+        {
+            e.Cancel = true;
+            Hide();
+            RecoveryCompleted?.Invoke(this, EventArgs.Empty);
+        };
 
         DataContext = Vm;
     }

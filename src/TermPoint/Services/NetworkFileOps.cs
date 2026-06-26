@@ -146,14 +146,8 @@ public static class NetworkFileOps
     public static async Task<(bool Completed, T? Result)> RunAsync<T>(
         Func<T> operation, string label)
     {
-        // [startup-trace] If START logs but RESUMED never follows within ~5s, the
-        // Task.WhenAny continuation could not return to the captured context — i.e. the
-        // UI dispatcher is blocked/poisoned, NOT the network. (Task.Delay guarantees the
-        // await itself completes within TimeoutMs regardless of the operation.)
-        App.Logger.LogInfo($"[startup-trace] NetworkFileOps START {label} (tid={Environment.CurrentManagedThreadId})");
         var task = Task.Run(operation);
         var winner = await Task.WhenAny(task, Task.Delay(TimeoutMs));
-        App.Logger.LogInfo($"[startup-trace] NetworkFileOps RESUMED {label} (tid={Environment.CurrentManagedThreadId}, won={(winner == task ? "op" : "timeout")})");
 
         if (winner == task)
             return (true, await task);
@@ -172,10 +166,8 @@ public static class NetworkFileOps
     /// <param name="label">Human-readable label for log messages.</param>
     public static async Task<bool> RunAsync(Action operation, string label)
     {
-        App.Logger.LogInfo($"[startup-trace] NetworkFileOps START {label} (tid={Environment.CurrentManagedThreadId})");
         var task = Task.Run(operation);
         var winner = await Task.WhenAny(task, Task.Delay(TimeoutMs));
-        App.Logger.LogInfo($"[startup-trace] NetworkFileOps RESUMED {label} (tid={Environment.CurrentManagedThreadId}, won={(winner == task ? "op" : "timeout")})");
 
         if (winner == task)
         {

@@ -44,10 +44,16 @@ public partial class StartupWizardWindow : Window
             };
         };
 
-        Closing += (_, _2) =>
+        Closing += (_, e) =>
         {
+            // Always cancel Close and hide instead — disposing the WinUI composition
+            // right after a native file picker deadlocks the compositor (Avalonia 12 bug).
+            // The window is cleaned up at process exit.
+            e.Cancel = true;
+            Hide();
+
             // If the user manually closes the window before finishing, shut down the app.
-            // Guard against re-entry: Shutdown() closes all windows, which re-fires Closing.
+            // Guard against re-entry: Shutdown() may re-fire Closing on other windows.
             if (_shutdownInProgress) return;
             if (_vm is not null && !_vm.IsComplete)
             {

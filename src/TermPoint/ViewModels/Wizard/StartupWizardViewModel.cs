@@ -289,9 +289,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         try
         {
-            Services.StartupTrace.Ctx("ValidateStep1a before InitializeServices");
             _services.InitializeServices(dbPath);
-            Services.StartupTrace.Ctx("ValidateStep1a after InitializeServices");
 
             // Acquire the write lock so the wizard has write access to the database — but
             // only when NOT joining as an observer. In reader mode we must never touch the
@@ -301,7 +299,6 @@ public partial class StartupWizardViewModel : ViewModelBase
             // (collision-detection handled by WriteLockService).
             if (!s1a.OpenInReaderMode)
                 App.LockService.TryAcquire(dbPath);
-            Services.StartupTrace.Ctx("ValidateStep1a after TryAcquire");
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;

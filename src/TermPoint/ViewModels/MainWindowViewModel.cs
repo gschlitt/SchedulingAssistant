@@ -804,12 +804,11 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (MainWindowReference is null) return;
 
-        // Open the native file picker DIRECTLY on the main window rather than via a
-        // DatabaseLocationDialog. Closing that dialog window right after the native picker
-        // disposes its WinUI composition, which deadlocks the UI thread against the compositor
-        // thread (Avalonia 12 bug — proven by the File→Open stack trace). A native picker is not
-        // an Avalonia window, so nothing is disposed here; the re-render inside
-        // SwitchDatabaseAsync is safe (verified by the wizard fix).
+        // Yield so the menu popup closes and disposes BEFORE the native picker runs.
+        // The picker poisons the Avalonia 12 compositor; if the popup is already gone,
+        // its dispose can't deadlock (WinUiCompositedWindow.Dispose vs compositor thread).
+        await Task.Yield();
+
         var files = await MainWindowReference.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title         = "Open existing database file",

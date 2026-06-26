@@ -7,18 +7,18 @@
     <StackPanel MaxWidth="860" Spacing="20">
 
 
-        <TextBlock Text="Do you or your team have a TermPoint database (.db file) set up already? If not you should proceed with a fresh install." TextWrapping="Wrap" />
+        <TextBlock Text="Do you or your team have a TermPoint database (.db file) set up already?" TextWrapping="Wrap" />
 
         <!--  Radio: fresh install  -->
         <RadioButton
-            Content="This is a fresh install. I need to set up my own database."
+            Content="There's no database yet. I need to set up my own database."
             FontSize="{DynamicResource FontSizeNormal}"
             IsChecked="{Binding IsNewSetupChoice}" />
 
         <!--  Radio: existing database  -->
         <StackPanel Spacing="12">
             <RadioButton
-                Content="I already have a database and want to use that."
+                Content="We already have a database and I want to use that."
                 FontSize="{DynamicResource FontSizeNormal}"
                 IsChecked="{Binding IsExistingDbChoice}" />
 
@@ -28,12 +28,7 @@
                 IsVisible="{Binding IsExistingDbChoice}"
                 Spacing="16">
 
-                <!--  Placeholder text — user will supply  -->
-                <TextBlock
-                    FontSize="{DynamicResource FontSizeNormal}"
-                    Foreground="{StaticResource ForegroundMuted}"
-                    Text="[Placeholder — instructions for connecting to a shared database.]"
-                    TextWrapping="Wrap" />
+                
 
                 <!--  Database file  -->
                 <StackPanel Spacing="6">
