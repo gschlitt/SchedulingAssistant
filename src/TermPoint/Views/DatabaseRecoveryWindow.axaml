@@ -34,7 +34,7 @@
                 <TextBlock Text="TermPoint"
                            FontSize="{StaticResource FontSizeSmall}"
                            Foreground="{StaticResource TextMuted}" />
-                <TextBlock Text="Database Recovery"
+                <TextBlock Text="Choose Database"
                            FontSize="{StaticResource FontSizeLarge}"
                            FontWeight="SemiBold" />
             </StackPanel>
@@ -85,12 +85,10 @@
                                              IsHitTestVisible="False"
                                              VerticalAlignment="Center" />
                                 <StackPanel Spacing="2">
-                                    <TextBlock Text="Browse for your database"
+                                    <TextBlock Text="Browse for a database"
                                                FontSize="{StaticResource FontSizeNormal}"
                                                FontWeight="SemiBold" />
-                                    <TextBlock Text="Point TermPoint to the file wherever it now lives."
-                                               FontSize="{StaticResource FontSizeSmall}"
-                                               Foreground="{StaticResource TextMuted}" />
+                                    
                                 </StackPanel>
                             </StackPanel>
                         </Button>

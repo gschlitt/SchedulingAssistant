@@ -72,8 +72,8 @@ public partial class DatabaseRecoveryViewModel : ObservableObject
         LastKnownPath = lastKnownPath ?? "(not set)";
 
         ProblemDescription = reason == RecoveryReason.NotFound
-            ? "TermPoint could not find the database file at the location saved in your settings. " +
-              "It may have been moved, renamed, or deleted."
+            ? "TermPoint could not find your most recently used database at its previous location. " +
+              "It may have been moved, renamed, or deleted, or the drive may be inaccessible."
             : "TermPoint found the database file but it failed an integrity check and may be damaged. " +
               "It is not safe to open this file.";
     }
