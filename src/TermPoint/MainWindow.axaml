@@ -5,6 +5,7 @@
 	xmlns:vm="using:TermPoint.ViewModels"
 	xmlns:panelViews="using:TermPoint.Views"
 	x:Name="RootWindow"
+	Icon="/Assets/app.ico"
 	Title="TermPoint"
 	Width="1400"
 	Height="800"

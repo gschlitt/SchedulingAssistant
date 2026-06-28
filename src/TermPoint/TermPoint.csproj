@@ -72,11 +72,11 @@
     <Compile Remove="ViewModels\Management\NewDatabaseViewModel.cs" />
     <Compile Remove="MainWindow.axaml.cs" />
     <Compile Remove="Views\SplashScreen.axaml.cs" />
-    <Compile Remove="Views\DatabaseRecoveryWindow.axaml.cs" />
+    <Compile Remove="Views\DatabaseChooserWindow.axaml.cs" />
     <Compile Remove="Views\Wizard\**\*.cs" />
     <Compile Remove="ViewModels\Wizard\**\*.cs" />
     <Compile Remove="Exceptions\**\*.cs" />
-    <Compile Remove="ViewModels\DatabaseRecoveryViewModel.cs" />
+    <Compile Remove="ViewModels\DatabaseChooserViewModel.cs" />
     <Compile Remove="Views\MigrationView.axaml.cs" />
     <Compile Remove="Views\Management\SaveAndBackupView.axaml.cs" />
   </ItemGroup>
@@ -86,7 +86,7 @@
     <AvaloniaXaml Remove="MainWindow.axaml" />
     <AvaloniaXaml Remove="Views\MigrationView.axaml" />
     <AvaloniaXaml Remove="Views\SplashScreen.axaml" />
-    <AvaloniaXaml Remove="Views\DatabaseRecoveryWindow.axaml" />
+    <AvaloniaXaml Remove="Views\DatabaseChooserWindow.axaml" />
     <AvaloniaXaml Remove="Views\Management\SaveAndBackupView.axaml" />
     <AvaloniaXaml Remove="Views\Management\NewDatabaseView.axaml" />
     <AvaloniaXaml Remove="Views\Wizard\**\*.axaml" />
@@ -124,7 +124,10 @@
     <None Update="Assets\SectionEdit.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    
+    <None Update="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+
   </ItemGroup>
 
 </Project>

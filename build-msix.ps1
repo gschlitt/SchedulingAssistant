@@ -37,6 +37,7 @@ $CerPath      = Join-Path $MsixDir "TermPoint-cert.cer"
 
 $MakeAppx    = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\makeappx.exe"
 $SignTool    = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe"
+$MakePri     = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\makepri.exe"
 
 # ── Validate source inputs ───────────────────────────────────────────────
 if (-not (Test-Path $SourceManifest)) {
@@ -141,6 +142,25 @@ Get-ChildItem $PublishDir -File -Recurse -Force | ForEach-Object {
 
 $lines -join "`n" | Set-Content $MappingPath -Encoding UTF8
 Write-Host "Mapping file: $($lines.Count - 1) entries" -ForegroundColor Cyan
+
+# ── Generate resource index ─────────────────────────────────────────────
+# resources.pri lets Windows discover targetsize / altform-unplated icon
+# variants that aren't explicitly named in AppxManifest.xml.
+$PriConfigPath = Join-Path $MsixDir "priconfig.xml"
+$PriPath       = Join-Path $MsixDir "resources.pri"
+Write-Host "Generating resources.pri..." -ForegroundColor Cyan
+& $MakePri createconfig /cf $PriConfigPath /dq en-US /o
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "makepri createconfig failed"
+    exit 1
+}
+& $MakePri new /pr $MsixDir /cf $PriConfigPath /of $PriPath /o
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "makepri new failed"
+    exit 1
+}
+# Append resources.pri to the mapping file
+Add-Content $MappingPath "`"$PriPath`" `"resources.pri`""
 
 # ── Pack ─────────────────────────────────────────────────────────────────
 Write-Host "Packing MSIX..." -ForegroundColor Cyan

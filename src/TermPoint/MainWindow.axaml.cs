@@ -379,75 +379,118 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Shows the database chooser window and waits for the user to make a selection.
+    /// Returns the resolved database path, or null if the user exited or chose to
+    /// start the wizard (in which case the wizard is already routed to).
+    /// </summary>
+    /// <param name="mode">Normal chooser or recovery mode.</param>
+    /// <param name="reason">Why recovery was triggered (null in Normal mode).</param>
+    /// <param name="lastKnownPath">The path from settings, shown in recovery mode.</param>
+    private async Task<string?> ShowDatabaseChooserAsync(
+        ChooserMode mode, RecoveryReason? reason, string? lastKnownPath)
+    {
+        var settings = AppSettings.Current;
+        var chooser = new DatabaseChooserWindow(mode, reason, lastKnownPath);
+
+        // Show non-modally + await ChooserCompleted.
+        // ShowDialog(this) on an invisible owner corrupts the Avalonia
+        // dispatcher — subsequent awaits that yield to the thread pool
+        // never get their continuations dispatched back to the UI thread.
+        //
+        // The chooser window never closes — it always hides (both on VM completion
+        // and on X-button) to avoid the Avalonia 12 compositor deadlock. It raises
+        // ChooserCompleted in both cases; we then check Vm.Outcome.
+        WindowState = WindowState.Minimized;
+        chooser.Show(this);
+
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        chooser.ChooserCompleted += (_, _) => tcs.TrySetResult();
+        await tcs.Task;
+
+        WindowState = WindowState.Normal;
+
+        switch (chooser.Vm.Outcome)
+        {
+            case ChooserOutcome.Resolved:
+                var dbPath = chooser.Vm.ResolvedPath!;
+                settings.DatabasePath = dbPath;
+                settings.Save();
+                return dbPath;
+
+            case ChooserOutcome.StartWizard:
+                settings.IsInitialSetupComplete = false;
+                settings.DatabasePath           = null;
+                settings.Save();
+                await RunStartupAsync();
+                return null;
+
+            default: // ChooserOutcome.None — user exited
+                await ShowCancelMessageAsync();
+                (Avalonia.Application.Current?.ApplicationLifetime as
+                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                    ?.Shutdown();
+                return null;
+        }
+    }
+
+    /// <summary>
     /// Normal startup path for a returning user who already has a database configured.
-    /// Attempt to re-open the most recently accessed database.
-    /// Validates the saved database path, shows the recovery window if needed, then
-    /// calls App.InitializeServices and shows the main window.
+    /// When AlwaysOpenMostRecentDatabase is true, validates and opens the saved path
+    /// directly. Otherwise shows the database chooser so the user can pick from recent
+    /// databases, browse, create new, or restore. Falls back to the chooser in recovery
+    /// mode if the saved database is missing or corrupt.
     /// </summary>
     private async Task RunReturningUserStartupAsync(AppSettings settings)
     {
         string dbPath;
-        var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
-        if (validation == DatabaseValidationResult.Ok)
+
+        if (settings.AlwaysOpenMostRecentDatabase)
         {
-            // Happy path — file exists and passes integrity check.
-            dbPath = settings.DatabasePath!;
-        }
-        else if (validation == DatabaseValidationResult.Unreachable)
-        {
-            await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
-            Close();
-            return;
+            // Auto-open mode — validate the saved path and proceed if OK.
+            var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
+            if (validation == DatabaseValidationResult.Ok)
+            {
+                dbPath = settings.DatabasePath!;
+            }
+            else if (validation == DatabaseValidationResult.Unreachable)
+            {
+                await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
+                Close();
+                return;
+            }
+            else
+            {
+                // Saved DB is missing or corrupt — fall through to the chooser in recovery mode.
+                var reason = validation == DatabaseValidationResult.Corrupt
+                    ? RecoveryReason.Corrupt
+                    : RecoveryReason.NotFound;
+
+                var result = await ShowDatabaseChooserAsync(ChooserMode.Recovery, reason, settings.DatabasePath);
+                if (result is null) return; // user exited or wizard routed
+                dbPath = result;
+            }
         }
         else
         {
-            // File is missing or corrupt — show the recovery window.
-            var reason = validation == DatabaseValidationResult.Corrupt
-                ? RecoveryReason.Corrupt
-                : RecoveryReason.NotFound;
+            // Even in chooser mode, validate the saved path so we can warn the user
+            // if their most recent database has gone missing or is corrupt.
+            var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
+            var mode = ChooserMode.Normal;
+            RecoveryReason? reason = null;
 
-            var recovery = new DatabaseRecoveryWindow(reason, settings.DatabasePath);
-            // Show non-modally + await RecoveryCompleted.
-            // ShowDialog(this) on an invisible owner corrupts the Avalonia
-            // dispatcher — subsequent awaits that yield to the thread pool
-            // never get their continuations dispatched back to the UI thread.
-            //
-            // The recovery window never closes — it always hides (both on VM completion
-            // and on X-button) to avoid the Avalonia 12 compositor deadlock. It raises
-            // RecoveryCompleted in both cases; we then check Vm.Outcome.
-            WindowState = WindowState.Minimized;
-            recovery.Show(this);
-
-            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            recovery.RecoveryCompleted += (_, _) => tcs.TrySetResult();
-            await tcs.Task;
-
-            WindowState = WindowState.Normal;
-
-            switch (recovery.Vm.Outcome)
+            if (validation != DatabaseValidationResult.Ok
+                && validation != DatabaseValidationResult.Unreachable
+                && !string.IsNullOrEmpty(settings.DatabasePath))
             {
-                case RecoveryOutcome.Resolved:
-                    dbPath = recovery.Vm.ResolvedPath!;
-                    settings.DatabasePath = dbPath;
-                    settings.Save();
-                    break;
-
-                case RecoveryOutcome.StartWizard:
-                    // User wants a fresh start — clear the saved path and re-run
-                    // startup so the wizard is shown in the normal first-run path.
-                    settings.IsInitialSetupComplete = false;
-                    settings.DatabasePath           = null;
-                    settings.Save();
-                    await RunStartupAsync();
-                    return;
-
-                default: // RecoveryOutcome.None — user exited
-                    await ShowCancelMessageAsync();
-                    (Avalonia.Application.Current?.ApplicationLifetime as
-                        Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
-                        ?.Shutdown();
-                    return;
+                mode = ChooserMode.Recovery;
+                reason = validation == DatabaseValidationResult.Corrupt
+                    ? RecoveryReason.Corrupt
+                    : RecoveryReason.NotFound;
             }
+
+            var result = await ShowDatabaseChooserAsync(mode, reason, settings.DatabasePath);
+            if (result is null) return; // user exited or wizard routed
+            dbPath = result;
         }
 
         settings.AddRecentDatabase(dbPath);
@@ -1160,6 +1203,8 @@ public partial class MainWindow : Window
     /// </summary>
     private async void OnWriteLockLost(WriteLockLostReason reason)
     {
+        try
+        {
         App.Logger.LogBreadcrumb("WriteLockLost", new() { ["reason"] = reason.ToString() });
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
@@ -1215,6 +1260,11 @@ public partial class MainWindow : Window
                 App.Logger.LogError(ex, "OnWriteLockLost: demotion failed");
             }
         });
+        }
+        catch (System.Exception ex)
+        {
+            App.Logger.LogError(ex, "OnWriteLockLost: dispatch failed");
+        }
     }
 
     /// <summary>

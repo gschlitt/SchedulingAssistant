@@ -61,6 +61,15 @@ public class AppSettings
     /// </summary>
     public bool IsInitialSetupComplete { get; set; } = false;
 
+    /// <summary>
+    /// When true, the app skips the database chooser at startup and opens the most
+    /// recently used database directly. When false, the chooser is shown so the user
+    /// can pick from recent databases, open an existing file, or create a new one.
+    /// Togglable in the chooser itself and under Configuration &gt; Preferences.
+    /// Default: false (show the chooser).
+    /// </summary>
+    public bool AlwaysOpenMostRecentDatabase { get; set; } = false;
+
     /// <summary>Name of the institution (e.g. "Greendale Community College").</summary>
     public string InstitutionName { get; set; } = string.Empty;
 

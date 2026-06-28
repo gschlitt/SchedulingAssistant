@@ -1063,7 +1063,14 @@ public sealed class CheckoutService : IDisposable
         StopAutoSave();
         var intervalMs = Math.Max(AppSettings.Current.AutoSaveIntervalMinutes, 1) * 60_000;
         _autoSaveTimer = new Timer(
-            async _ => await AutoSaveTickAsync(),
+            _ =>
+            {
+                _ = Task.Run(async () =>
+                {
+                    try { await AutoSaveTickAsync(); }
+                    catch (Exception ex) { App.Logger.LogError(ex, "AutoSave tick failed"); }
+                });
+            },
             null,
             intervalMs,
             intervalMs);

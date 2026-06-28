@@ -870,7 +870,14 @@ public sealed class WriteLockService : IDisposable
     {
 #if !BROWSER
         var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
-        _pollTimer = new Timer(_ => Dispatcher.UIThread.Post(async () => await PollLockFile()), null, interval, interval);
+        _pollTimer = new Timer(_ =>
+        {
+            _ = Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                try { await PollLockFile(); }
+                catch (Exception ex) { App.Logger.LogError(ex, "[WriteLockService] PollLockFile failed"); }
+            });
+        }, null, interval, interval);
 #endif
     }
 

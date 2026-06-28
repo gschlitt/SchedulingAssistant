@@ -1,13 +1,14 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:TermPoint.ViewModels"
-        x:Class="TermPoint.Views.DatabaseRecoveryWindow"
+        x:Class="TermPoint.Views.DatabaseChooserWindow"
         x:CompileBindings="False"
-        x:DataType="vm:DatabaseRecoveryViewModel"
-        Title="TermPoint — Database Recovery"
+        x:DataType="vm:DatabaseChooserViewModel"
+        Title="{Binding WindowTitle}"
         Width="620"
         SizeToContent="Height"
         MinHeight="300"
+        MaxHeight="700"
         CanResize="False"
         WindowDecorations="BorderOnly"
         WindowStartupLocation="CenterScreen"
@@ -34,7 +35,7 @@
                 <TextBlock Text="TermPoint"
                            FontSize="{StaticResource FontSizeSmall}"
                            Foreground="{StaticResource TextMuted}" />
-                <TextBlock Text="Choose Database"
+                <TextBlock Text="{Binding WindowTitle}"
                            FontSize="{StaticResource FontSizeLarge}"
                            FontWeight="SemiBold" />
             </StackPanel>
@@ -46,55 +47,101 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,20,24,8" Spacing="14">
 
-                <!--  Problem description  -->
-                <TextBlock Text="{Binding ProblemDescription}"
-                           FontSize="{StaticResource FontSizeNormal}"
-                           TextWrapping="Wrap" />
-
-                <!--  Last-known path (highlighted as an error)  -->
-                <Border Background="{StaticResource SubtleBackground}"
-                        BorderBrush="{StaticResource SubduedBorder}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="10,7">
-                    <TextBlock Text="{Binding LastKnownPath}"
-                               FontSize="{StaticResource FontSizeSmall}"
-                               Foreground="{StaticResource TextError}"
+                <!--  ── Recovery banner (visible only in recovery mode) ──────────  -->
+                <StackPanel IsVisible="{Binding IsRecoveryMode}" Spacing="8">
+                    <TextBlock Text="{Binding ProblemDescription}"
+                               FontSize="{StaticResource FontSizeNormal}"
                                TextWrapping="Wrap" />
-                </Border>
 
-                <TextBlock Text="How would you like to proceed?"
-                           FontSize="{StaticResource FontSizeMedium}"
-                           FontWeight="SemiBold" />
+                    <Border Background="{StaticResource SubtleBackground}"
+                            BorderBrush="{StaticResource SubduedBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="10,7">
+                        <TextBlock Text="{Binding LastKnownPath}"
+                                   FontSize="{StaticResource FontSizeSmall}"
+                                   Foreground="{StaticResource TextError}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
 
-                <!--  ── Option A: Browse for the database ──────────────────────  -->
+                <!--  ── Recent Databases list ────────────────────────────────────  -->
+                <StackPanel IsVisible="{Binding HasRecentDatabases}" Spacing="8">
+                    <TextBlock Text="Recent Databases"
+                               FontSize="{StaticResource FontSizeMedium}"
+                               FontWeight="SemiBold" />
+
+                    <Border BorderBrush="{StaticResource SubduedBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Background="White"
+                            MaxHeight="200">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ListBox ItemsSource="{Binding RecentDatabases}"
+                                     SelectedItem="{Binding SelectedRecentDatabase}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0">
+                                <ListBox.Styles>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Padding" Value="12,8" />
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Path}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextMuted}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
+
+                <!--  Divider between recent list and action options  -->
+                <StackPanel IsVisible="{Binding HasRecentDatabases}" Spacing="0">
+                    <TextBlock Text="Or..."
+                               FontSize="{StaticResource FontSizeSmall}"
+                               Foreground="{StaticResource TextMuted}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!--  ── Option: Open an existing database ─────────────────────────  -->
                 <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Background="White">
                     <StackPanel>
-                        <!--  Clickable header row  -->
                         <Button Background="Transparent"
-                                Command="{Binding SelectOptionACommand}"
+                                Command="{Binding SelectOptionBrowseCommand}"
                                 Padding="12,10"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Left">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <RadioButton IsChecked="{Binding IsOptionASelected, Mode=OneWay}"
-                                             GroupName="RecoveryOption"
+                                <RadioButton IsChecked="{Binding IsOptionBrowseSelected, Mode=OneWay}"
+                                             GroupName="ChooserOption"
                                              IsHitTestVisible="False"
                                              VerticalAlignment="Center" />
                                 <StackPanel Spacing="2">
-                                    <TextBlock Text="Browse for a database"
+                                    <TextBlock Text="Open an existing database"
                                                FontSize="{StaticResource FontSizeNormal}"
                                                FontWeight="SemiBold" />
-                                    
+                                    <TextBlock Text="Browse for a database file on your computer or network."
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}" />
                                 </StackPanel>
                             </StackPanel>
                         </Button>
 
-                        <!--  Expanded detail panel  -->
-                        <StackPanel IsVisible="{Binding IsOptionAExpanded}"
+                        <StackPanel IsVisible="{Binding IsOptionBrowseExpanded}"
                                     Margin="12,0,12,12"
                                     Spacing="8">
                             <Border Height="1" Background="{StaticResource SeparatorLine}" />
@@ -118,21 +165,59 @@
                     </StackPanel>
                 </Border>
 
-                <!--  ── Option B: Restore from a backup ──────────────────────────  -->
+                <!--  ── Option: Create a new database ─────────────────────────────  -->
                 <Border BorderBrush="{StaticResource SubduedBorder}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Background="White">
                     <StackPanel>
-                        <!--  Clickable header row  -->
                         <Button Background="Transparent"
-                                Command="{Binding SelectOptionBCommand}"
+                                Command="{Binding SelectOptionCreateCommand}"
                                 Padding="12,10"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Left">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <RadioButton IsChecked="{Binding IsOptionBSelected, Mode=OneWay}"
-                                             GroupName="RecoveryOption"
+                                <RadioButton IsChecked="{Binding IsOptionCreateSelected, Mode=OneWay}"
+                                             GroupName="ChooserOption"
+                                             IsHitTestVisible="False"
+                                             VerticalAlignment="Center" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Create a new database"
+                                               FontSize="{StaticResource FontSizeNormal}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Launch the setup wizard to create a fresh database from scratch."
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Button>
+
+                        <StackPanel IsVisible="{Binding IsOptionCreateExpanded}"
+                                    Margin="12,0,12,12"
+                                    Spacing="8">
+                            <Border Height="1" Background="{StaticResource SeparatorLine}" />
+                            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                                       Foreground="{StaticResource TextMuted}"
+                                       TextWrapping="Wrap"
+                                       Text="The setup wizard will open and guide you through creating a new database. Your existing database files will not be affected." />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--  ── Option: Restore from a backup ─────────────────────────────  -->
+                <Border BorderBrush="{StaticResource SubduedBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Background="White">
+                    <StackPanel>
+                        <Button Background="Transparent"
+                                Command="{Binding SelectOptionRestoreCommand}"
+                                Padding="12,10"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <RadioButton IsChecked="{Binding IsOptionRestoreSelected, Mode=OneWay}"
+                                             GroupName="ChooserOption"
                                              IsHitTestVisible="False"
                                              VerticalAlignment="Center" />
                                 <StackPanel Spacing="2">
@@ -146,8 +231,7 @@
                             </StackPanel>
                         </Button>
 
-                        <!--  Expanded detail panel  -->
-                        <StackPanel IsVisible="{Binding IsOptionBExpanded}"
+                        <StackPanel IsVisible="{Binding IsOptionRestoreExpanded}"
                                     Margin="12,0,12,12"
                                     Spacing="10">
                             <Border Height="1" Background="{StaticResource SeparatorLine}" />
@@ -200,46 +284,18 @@
                     </StackPanel>
                 </Border>
 
-                <!--  ── Option C: Start over ─────────────────────────────────────  -->
-                <Border BorderBrush="{StaticResource SubduedBorder}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Background="White">
-                    <StackPanel>
-                        <!--  Clickable header row  -->
-                        <Button Background="Transparent"
-                                Command="{Binding SelectOptionCCommand}"
-                                Padding="12,10"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <RadioButton IsChecked="{Binding IsOptionCSelected, Mode=OneWay}"
-                                             GroupName="RecoveryOption"
-                                             IsHitTestVisible="False"
-                                             VerticalAlignment="Center" />
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="Start over with a new database"
-                                               FontSize="{StaticResource FontSizeNormal}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="Launch the setup wizard to create a fresh database from scratch."
-                                               FontSize="{StaticResource FontSizeSmall}"
-                                               Foreground="{StaticResource TextMuted}" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Button>
-
-                        <!--  Expanded detail panel  -->
-                        <StackPanel IsVisible="{Binding IsOptionCExpanded}"
-                                    Margin="12,0,12,12"
-                                    Spacing="8">
-                            <Border Height="1" Background="{StaticResource SeparatorLine}" />
-                            <TextBlock FontSize="{StaticResource FontSizeSmall}"
-                                       Foreground="{StaticResource TextMuted}"
-                                       TextWrapping="Wrap"
-                                       Text="The setup wizard will open and guide you through creating a new database. Your existing database file (if it still exists) will not be deleted — TermPoint will simply stop referencing it." />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                <!--  ── Always-open-recent checkbox ───────────────────────────────  -->
+                <CheckBox IsChecked="{Binding AlwaysOpenRecent}"
+                          Margin="0,4,0,0">
+                    <CheckBox.Styles>
+                        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+                            <Setter Property="Width" Value="18" />
+                            <Setter Property="Height" Value="18" />
+                        </Style>
+                    </CheckBox.Styles>
+                    <TextBlock Text="Always open my most recent database"
+                               FontSize="{StaticResource FontSizeSmall}" />
+                </CheckBox>
 
             </StackPanel>
         </ScrollViewer>

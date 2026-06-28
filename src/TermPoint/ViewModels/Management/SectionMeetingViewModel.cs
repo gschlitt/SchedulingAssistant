@@ -506,7 +506,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
     partial void OnStartTimeTextChanged(string value)
     {
         if (AvailableStartTimeStrings.Contains(value))
-            CommitStartTime();
+            _ = CommitStartTime().ContinueWith(
+                t => App.Logger.LogError(t.Exception!.InnerException!, "CommitStartTime failed"),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     /// <summary>
@@ -515,7 +517,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
     partial void OnBlockLengthTextChanged(string value)
     {
         if (AvailableBlockLengthStrings.Contains(value))
-            CommitBlockLength();
+            _ = CommitBlockLength().ContinueWith(
+                t => App.Logger.LogError(t.Exception!.InnerException!, "CommitBlockLength failed"),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     // ── Validation ────────────────────────────────────────────────────────────

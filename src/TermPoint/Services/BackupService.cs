@@ -588,7 +588,7 @@ public class BackupService : IDisposable
     /// </summary>
     private async Task RunGuardedBackupAsync()
     {
-        if (!_backupGuard.Wait(0)) return; // previous backup still running — skip this tick
+        if (!await _backupGuard.WaitAsync(0)) return; // previous backup still running — skip this tick
         try
         {
             // Detect wake-from-sleep: the timer interval is BackupIntervalMinutes, but
@@ -604,7 +604,7 @@ public class BackupService : IDisposable
                 _logger.LogInfo("BackupService: wake-from-sleep detected, deferring backup 60 s");
                 _backupGuard.Release();
                 await Task.Delay(TimeSpan.FromSeconds(60));
-                if (!_backupGuard.Wait(0)) return;
+                if (!await _backupGuard.WaitAsync(0)) return;
             }
 
             _lastTimerFire = now;

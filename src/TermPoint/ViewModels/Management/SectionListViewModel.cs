@@ -832,7 +832,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             // If a section is selected, default to its semester without prompting.
             // If nothing is selected, ask the user which semester to add to.
             if (SelectedSection is not null)
-                AddToSemester(SelectedSection.SemesterId);
+                await AddToSemester(SelectedSection.SemesterId);
             else
                 ShowAddSemesterPrompt();
             return;

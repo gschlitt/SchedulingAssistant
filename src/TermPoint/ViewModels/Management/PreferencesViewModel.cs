@@ -14,6 +14,25 @@ public class PreferencesViewModel : ViewModelBase
     /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
     public string DisplayName => "Preferences";
 
+    // ── Startup ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Mirrors <see cref="AppSettings.AlwaysOpenMostRecentDatabase"/>.
+    /// When true, the database chooser is skipped at startup and the most recently
+    /// used database is opened directly. Persists immediately on change.
+    /// </summary>
+    public bool AlwaysOpenMostRecentDatabase
+    {
+        get => AppSettings.Current.AlwaysOpenMostRecentDatabase;
+        set
+        {
+            if (AppSettings.Current.AlwaysOpenMostRecentDatabase == value) return;
+            AppSettings.Current.AlwaysOpenMostRecentDatabase = value;
+            AppSettings.Current.Save();
+            OnPropertyChanged();
+        }
+    }
+
     // ── Section View ─────────────────────────────────────────────────────────
 
     /// <summary>
