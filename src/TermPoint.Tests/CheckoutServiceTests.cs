@@ -1310,30 +1310,29 @@ public sealed class CheckoutServiceTests : IDisposable
         var db = DbPath("wizard");
         CreateSqliteDb(db);
 
-        // Step 2: wizard leaves D open (InitializeServices opens DatabaseContext).
+        // Step 1: D exists (created by standalone DatabaseContext in ValidateStep3).
+        // Simulate the brief window where the schema-creation connection is still open.
         using var sourceHandle = new FileStream(
             db, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 
-        // Step 3: checkout — must succeed while D is open (CopyWithSharing handles it).
+        // Step 2: checkout — must succeed while D is held open (CopyWithSharing).
         var checkoutOutcome = await svc.CheckoutAsync(db);
         Assert.Equal(CheckoutOutcome.WriteAccess, checkoutOutcome);
 
-        // Step 4: old container is disposed — D is released. In production,
-        // App.InitializeServices(D') disposes the old DatabaseContext before
-        // the user ever interacts with the app.
+        // Step 3: schema-creation handle released (the using block in ValidateStep3
+        // disposes the standalone DatabaseContext before DI is initialized).
         sourceHandle.Dispose();
 
-        // Step 5: simulate the new DatabaseContext editing D' and keeping the
-        // connection open (normal production state during an editing session).
+        // Step 4: simulate wizard/user editing D' with an open connection.
         InsertTestValue(svc.WorkingPath, "user-edited-content");
         using var workingConn = new SqliteConnection($"Data Source={svc.WorkingPath};Pooling=False");
         workingConn.Open();
 
-        // Step 6: user hits Save — D' held open by DatabaseContext, D is closed.
+        // Step 5: Save — D' held open by DatabaseContext, D is closed.
         var saveOutcome = await svc.SaveAsync();
         Assert.Equal(SaveOutcome.Success, saveOutcome);
 
-        // Step 7: verify D was updated.
+        // Step 6: verify D was updated.
         workingConn.Dispose();
         Assert.Equal("user-edited-content", ReadTestValue(db));
     }
@@ -1443,34 +1442,93 @@ public sealed class CheckoutServiceTests : IDisposable
         var (svc, _) = CreateService();
         var db = DbPath("wizard_ctx");
 
-        // ── Step 1: Degenerate checkout — D does not exist yet ────────────────────
-        var initialOutcome = await svc.CheckoutAsync(db);
-        Assert.Equal(CheckoutOutcome.WriteAccess, initialOutcome);
-        Assert.Equal(db, svc.WorkingPath); // degenerate: D' == D
+        // ── Step 1: Create D with schema using a standalone DatabaseContext ───────
+        // Mirrors ValidateStep3 creating D before checkout.
+        using (new TermPoint.Data.DatabaseContext(db)) { }
 
-        // ── Step 2: Open a real DatabaseContext against D ─────────────────────────
-        // Mirrors App.InitializeServices(D) in the wizard: creates the file, opens
-        // a pooled SqliteConnection, initialises the schema, and seeds data.
-        var ctx = new TermPoint.Data.DatabaseContext(db);
-
-        // ── Step 3: Release the degenerate session ────────────────────────────────
-        await svc.ReleaseAsync(saveFirst: true); // no-op save; releases the lock
-
-        // ── Step 4: Re-checkout — D now exists, so CheckoutAsync takes normal path ─
-        var reCheckoutOutcome = await svc.CheckoutAsync(db);
-        Assert.Equal(CheckoutOutcome.WriteAccess, reCheckoutOutcome);
+        // ── Step 2: Checkout — D exists, normal path: copies D → D' ──────────────
+        var checkoutOutcome = await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, checkoutOutcome);
         Assert.NotEqual(db, svc.WorkingPath); // D' != D confirms normal mode
 
-        // ── Step 5: Dispose the DatabaseContext ───────────────────────────────────
-        // Mirrors App.InitializeServices(D') disposing the old ServiceProvider.
-        // The fix: DatabaseContext.Dispose() calls SqliteConnection.ClearAllPools()
-        // to flush the connection pool and release D's OS file handle.
+        // ── Step 3: Open a DatabaseContext against D' (simulates wizard DI) ──────
+        var ctx = new TermPoint.Data.DatabaseContext(svc.WorkingPath);
+
+        // ── Step 4: Simulate wizard writes to D' ─────────────────────────────────
+        InsertTestValue(svc.WorkingPath, "wizard-data");
+
+        // ── Step 5: Dispose the DatabaseContext ──────────────────────────────────
         ctx.Dispose();
 
-        // ── Step 6: Save ──────────────────────────────────────────────────────────
+        // ── Step 6: Save — pushes D' → D ─────────────────────────────────────────
         var saveOutcome = await svc.SaveAsync();
-
         Assert.Equal(SaveOutcome.Success, saveOutcome);
+        Assert.Equal("wizard-data", ReadTestValue(db));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    /// <summary>
+    /// Full wizard lifecycle: create D → checkout → work against D' → release with
+    /// save → re-checkout. Mirrors the production flow: ValidateStep3 creates D with
+    /// a standalone DatabaseContext, checks out to D', wizard steps write to D',
+    /// SwitchDatabaseAsync releases (saving D' → D), then re-checks out for normal
+    /// operation.
+    /// </summary>
+    [Fact]
+    public async Task WizardLifecycle_CreateCheckoutWorkSaveReCheckout_Succeeds()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath("wizard_lifecycle");
+
+        // Phase 1: ValidateStep3 — create D, checkout to D'.
+        using (new TermPoint.Data.DatabaseContext(db)) { }
+        var outcome1 = await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome1);
+        Assert.NotEqual(db, svc.WorkingPath);
+
+        // Phase 2: Wizard writes entity data to D'.
+        InsertTestValue(svc.WorkingPath, "wizard-entity-data");
+
+        // Phase 3: SwitchDatabaseAsync — release with save (pushes D' → D).
+        await svc.ReleaseAsync(saveFirst: true);
+        Assert.Equal("wizard-entity-data", ReadTestValue(db));
+
+        // Phase 4: SwitchDatabaseAsync — re-checkout for normal operation.
+        var outcome2 = await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome2);
+        Assert.NotEqual(db, svc.WorkingPath);
+
+        // Phase 5: Normal editing against the fresh D'.
+        InsertTestValue(svc.WorkingPath, "post-wizard-edit");
+        var saveResult = await svc.SaveAsync();
+        Assert.Equal(SaveOutcome.Success, saveResult);
+        Assert.Equal("post-wizard-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// Mirrors the File → New flow: SwitchDatabaseAsync creates D with schema before
+    /// checkout, so CheckoutAsync takes the normal path (D' != D) and all subsequent
+    /// writes go to the local working copy.
+    /// </summary>
+    [Fact]
+    public async Task FileNew_CreateSchemaBeforeCheckout_WritesToWorkingCopy()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath("file_new");
+
+        // SwitchDatabaseAsync creates D with schema before calling CheckoutAsync.
+        using (new TermPoint.Data.DatabaseContext(db)) { }
+
+        var outcome = await svc.CheckoutAsync(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.NotEqual(db, svc.WorkingPath); // D' != D — not degenerate
+
+        // Simulate ApplyConfig + editing against D'.
+        InsertTestValue(svc.WorkingPath, "file-new-content");
+
+        var saveOutcome = await svc.SaveAsync();
+        Assert.Equal(SaveOutcome.Success, saveOutcome);
+        Assert.Equal("file-new-content", ReadTestValue(db));
     }
 
     // ═════════════════════════════════════════════════════════════════════════

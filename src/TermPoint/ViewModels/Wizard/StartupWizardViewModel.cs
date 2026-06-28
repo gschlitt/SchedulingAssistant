@@ -346,13 +346,30 @@ public partial class StartupWizardViewModel : ViewModelBase
             var folder = Path.GetDirectoryName(dbPath)!;
             Directory.CreateDirectory(folder);
 
-            _services.InitializeServices(dbPath);
+            // Create D at the target path with schema + migrations + seed data.
+            // This is a brief network operation if D is on a share. The standalone
+            // context is disposed immediately so its file handles are released
+            // before CheckoutAsync copies D → D'.
+            using (new Data.DatabaseContext(dbPath)) { }
 
-            // Acquire the write lock so wizard steps that manage entities (Campuses, Block Patterns, etc.)
-            // have write access. TryAcquire() is atomic; it succeeds here because no other instance
-            // holds the lock yet.
-            App.LockService.TryAcquire(dbPath);
+            // Checkout: copies D → D' (local working copy), acquires the write lock,
+            // and computes the baseline hash. All subsequent wizard writes target D'
+            // rather than D, protecting against SQLite's network-file vulnerability.
+            var (outcome, workingPath) = await _services.CheckoutDatabase(dbPath);
+            if (outcome != CheckoutOutcome.WriteAccess)
+            {
+                s3.ErrorMessage = outcome == CheckoutOutcome.NetworkUnreachable
+                    ? "Cannot reach the database location — check your network connection and try again."
+                    : "Could not acquire write access to the new database. Please try again.";
+                return false;
+            }
 
+            // Initialize DI against D' (the local working copy), NOT D. All
+            // wizard-step repositories (Campuses, Block Patterns, etc.) will
+            // write to D'. SaveAsync pushes D' → D post-wizard.
+            _services.InitializeServices(workingPath);
+
+            // Settings store D (the canonical source path), not D'.
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
             settings.BackupFolderPath = s3.BackupFolder;

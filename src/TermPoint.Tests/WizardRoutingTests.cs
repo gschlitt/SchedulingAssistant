@@ -52,6 +52,7 @@ public class WizardRoutingTests
 
         return new WizardServices(
             InitializeServices: _ => { /* no-op in tests */ },
+            CheckoutDatabase:   path => Task.FromResult((CheckoutOutcome.WriteAccess, path)),
             AcademicUnits:      () => new Mock<IAcademicUnitRepository>().Object,
             AcademicYears:      () => mockAy.Object,
             Semesters:          () => mockSem.Object,

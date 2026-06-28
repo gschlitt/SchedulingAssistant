@@ -923,7 +923,7 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     public void MarkDirty()
     {
-        if (Mode == CheckoutMode.WriteAccess)
+        if (Mode == CheckoutMode.WriteAccess && WorkingPath != SourcePath)
         {
             WriteDirtyMarker();
             _dispatch(() => BecameDirty?.Invoke());

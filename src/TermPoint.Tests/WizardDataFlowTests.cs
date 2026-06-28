@@ -82,6 +82,7 @@ public class WizardDataFlowTests : IDisposable
 
         return new WizardServices(
             InitializeServices: _ => { /* no-op */ },
+            CheckoutDatabase:   path => Task.FromResult((CheckoutOutcome.WriteAccess, path)),
             AcademicUnits:      () => mockAu.Object,
             AcademicYears:      () => mockAy.Object,
             Semesters:          () => mockSem.Object,
@@ -472,6 +473,7 @@ public class WizardDataFlowTests : IDisposable
 
         var services = new WizardServices(
             InitializeServices: _ => { },
+            CheckoutDatabase:   path => Task.FromResult((CheckoutOutcome.WriteAccess, path)),
             AcademicUnits:      () => mockAu.Object,
             AcademicYears:      () => mockAy.Object,
             Semesters:          () => mockSem.Object,

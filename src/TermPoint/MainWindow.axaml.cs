@@ -279,10 +279,10 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Wizard completed. App.Services was initialized against D (the real DB file)
-            // by the wizard. Now run the full checkout flow: acquire the write lock, copy D
-            // to D', and reinitialize services against D'. SwitchDatabaseAsync handles the
-            // no-op release (nothing held yet) + checkout + re-InitializeServices + SetupMainWindowAsync.
+            // Wizard completed. The wizard created D, checked it out to D', and initialized
+            // services against D'. SwitchDatabaseAsync will save D' → D (releasing the
+            // checkout), then re-checkout D → new D' and reinitialize services. This is
+            // a redundant cycle but correct for a one-time operation.
             await SwitchDatabaseAsync(settings.DatabasePath!);
             return;
         }
@@ -809,7 +809,9 @@ public partial class MainWindow : Window
     /// release → checkout → re-initialize cycle. Called from the Files menu, from the
     /// startup wizard completion path, and from <c>AcquireWriteLock</c> in the ViewModel
     /// when upgrading from read-only to write mode.
-    /// The database file will be created if it doesn't exist.
+    /// If the database file does not yet exist (File → New), it is created with the
+    /// schema before checkout so that <see cref="CheckoutService.CheckoutAsync"/> takes
+    /// the normal D → D' path and all writes go to the local working copy.
     /// </summary>
     public async Task SwitchDatabaseAsync(string newDatabasePath)
     {
@@ -848,6 +850,15 @@ public partial class MainWindow : Window
 
             // Now that the connection is closed, delete the old D' from the working directory.
             App.Checkout.CleanupWorkingCopy();
+
+            // If D does not exist yet (File → New, or a new wizard DB), create it
+            // with the schema so CheckoutAsync takes the normal D → D' path and
+            // all subsequent writes go to the local working copy.
+            if (!File.Exists(newDatabasePath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(newDatabasePath)!);
+                using (new Data.DatabaseContext(newDatabasePath)) { }
+            }
 
             // Run crash recovery + checkout for the new path.
             await App.Checkout.CleanupOrphanedTmpAsync(newDatabasePath);

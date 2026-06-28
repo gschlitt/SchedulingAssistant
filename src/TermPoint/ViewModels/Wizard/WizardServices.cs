@@ -22,6 +22,12 @@ namespace TermPoint.ViewModels.Wizard;
 ///   confirms the database path. In production this builds the DI container; in tests
 ///   it can be a no-op.
 /// </param>
+/// <param name="CheckoutDatabase">
+///   Runs checkout against D so that wizard steps write to D' (the local working copy).
+///   Returns the checkout outcome and the working-copy path. In production this calls
+///   <c>App.Checkout.CheckoutAsync</c>; in tests it can return <c>WriteAccess</c> with
+///   the input path unchanged.
+/// </param>
 /// <param name="AcademicUnits">Factory for <see cref="IAcademicUnitRepository"/>.</param>
 /// <param name="AcademicYears">Factory for <see cref="IAcademicYearRepository"/>.</param>
 /// <param name="Semesters">Factory for <see cref="ISemesterRepository"/>.</param>
@@ -44,6 +50,7 @@ namespace TermPoint.ViewModels.Wizard;
 /// </param>
 public record WizardServices(
     Action<string>                      InitializeServices,
+    Func<string, Task<(CheckoutOutcome Outcome, string WorkingPath)>> CheckoutDatabase,
     Func<IAcademicUnitRepository>       AcademicUnits,
     Func<IAcademicYearRepository>       AcademicYears,
     Func<ISemesterRepository>           Semesters,
@@ -63,6 +70,11 @@ public record WizardServices(
     /// </summary>
     public static WizardServices FromApp() => new(
         InitializeServices:     path => App.InitializeServices(path),
+        CheckoutDatabase:       async path =>
+        {
+            var outcome = await App.Checkout.CheckoutAsync(path);
+            return (outcome, App.Checkout.WorkingPath);
+        },
         AcademicUnits:          () => App.Services.GetRequiredService<IAcademicUnitRepository>(),
         AcademicYears:          () => App.Services.GetRequiredService<IAcademicYearRepository>(),
         Semesters:              () => App.Services.GetRequiredService<ISemesterRepository>(),
