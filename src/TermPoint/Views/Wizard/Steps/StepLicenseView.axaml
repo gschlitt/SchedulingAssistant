@@ -9,7 +9,7 @@
         <TextBlock
             FontSize="{DynamicResource FontSizeXLarge}"
             FontWeight="Bold"
-            Text="GNU General Public License (GPL)" />
+            Text="End User License Agreement" />
 
         <TextBlock FontSize="{DynamicResource FontSizeMedium}" TextWrapping="Wrap">
             This application is licensed under the following custom End User License Agreement 
