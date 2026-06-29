@@ -756,15 +756,35 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
+            // Tear the current session down the same way a clean shutdown does, so the
+            // relaunched instance starts from a consistent state. Mirrors MainWindow.OnClosing /
+            // SwitchDatabaseAsync: stop the backup timer, then release the checkout WITHOUT a
+            // final save (saveFirst:false) — the backup we're about to restore must win, and
+            // releasing also flips Mode to ReadOnly so the impending Shutdown→OnClosing pass
+            // doesn't attempt a redundant save-back over the freshly restored database.
             _services.GetRequiredService<BackupService>().StopSession();
-            _services.GetRequiredService<WriteLockService>().Release();
+            await App.Checkout.ReleaseAsync(saveFirst: false);
+
+            // Close the DB connection (dispose DI), THEN delete the working copy and its dirty
+            // marker. Clearing both is what prevents the relaunched instance from mistaking the
+            // leftovers for a crash and showing a false "did not close cleanly" message.
+            // (The stale edits are discarded either way, so this is UX, not data loss.)
             (App.Services as IDisposable)?.Dispose();
+            App.Checkout.CleanupWorkingCopy();
+            App.Checkout.DiscardCrash(mainDbPath);
 
             File.Copy(backupDbPath, mainDbPath, overwrite: true);
 
             var exePath = Environment.ProcessPath;
             if (exePath is not null)
                 Services.PlatformProcess.LaunchExecutable(exePath);
+
+            // Launching a new process does NOT exit this one. Shut the current instance down
+            // so the user gets a true restart (as the confirmation dialog promised) rather than
+            // a second window left beside a now-defunct original whose services are disposed.
+            (Avalonia.Application.Current?.ApplicationLifetime
+                as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                ?.Shutdown();
         }
         catch (Exception ex)
         {
