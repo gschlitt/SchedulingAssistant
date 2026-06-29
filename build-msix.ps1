@@ -12,10 +12,45 @@
     both together — install the .cer into Local Machine\Trusted Root
     Certification Authorities on the target machine, then double-click
     the .msix.
+
+.PARAMETER Store
+    Builds a Microsoft Store submission package instead of a sideload
+    package. In Store mode the script:
+      - Stamps the manifest with the identity reserved in Partner Center
+        (StoreIdentityName / StorePublisher / StorePublisherDisplayName).
+        These come from Partner Center -> Product -> Product identity.
+      - Does NOT sign the package (the Store re-signs on submission) and
+        does NOT export a .cer.
+      - Drops the .pdb from the payload to keep the package lean.
+    The result is still a single TermPoint.msix — upload that one file.
+
+.EXAMPLE
+    .\build-msix.ps1 -Store `
+        -StoreIdentityName "12345Publisher.TermPoint" `
+        -StorePublisher "CN=ABCDEF12-3456-7890-ABCD-EF1234567890" `
+        -StorePublisherDisplayName "Academic Solutions"
 #>
 param(
-    [string]$CertSubject = "CN=Academic-Solutions"
+    [string]$CertSubject = "CN=Academic-Solutions",
+
+    [switch]$Store,
+    [string]$StoreIdentityName,
+    [string]$StorePublisher,
+    [string]$StorePublisherDisplayName
 )
+
+# In Store mode all three Partner Center identity strings are required —
+# they must match the reserved identity exactly or submission is rejected.
+if ($Store) {
+    $missing = @()
+    if (-not $StoreIdentityName)        { $missing += "StoreIdentityName" }
+    if (-not $StorePublisher)           { $missing += "StorePublisher" }
+    if (-not $StorePublisherDisplayName){ $missing += "StorePublisherDisplayName" }
+    if ($missing.Count -gt 0) {
+        Write-Error "Store mode requires: $($missing -join ', '). Find these in Partner Center -> Product -> Product identity."
+        exit 1
+    }
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -57,32 +92,38 @@ New-Item -ItemType Directory -Force -Path $BuildAssetsDir | Out-Null
 Copy-Item (Join-Path $SourceAssetsDir "*") $BuildAssetsDir -Force
 
 # ── Locate or create signing cert ────────────────────────────────────────
-# Match by Subject. The cert's CN must exactly match the Publisher in
-# AppxManifest.xml or signtool will reject the package.
-$cert = Get-ChildItem Cert:\CurrentUser\My |
-    Where-Object { $_.Subject -eq $CertSubject -and $_.NotAfter -gt (Get-Date) } |
-    Sort-Object NotAfter -Descending |
-    Select-Object -First 1
+# Skipped entirely in Store mode — the Microsoft Store re-signs the package
+# on submission, so a self-signed cert would only cause an identity mismatch.
+if (-not $Store) {
+    # Match by Subject. The cert's CN must exactly match the Publisher in
+    # AppxManifest.xml or signtool will reject the package.
+    $cert = Get-ChildItem Cert:\CurrentUser\My |
+        Where-Object { $_.Subject -eq $CertSubject -and $_.NotAfter -gt (Get-Date) } |
+        Sort-Object NotAfter -Descending |
+        Select-Object -First 1
 
-if (-not $cert) {
-    Write-Host "No valid signing cert found for $CertSubject — creating one..." -ForegroundColor Yellow
-    $cert = New-SelfSignedCertificate `
-        -Type Custom `
-        -Subject $CertSubject `
-        -KeyUsage DigitalSignature `
-        -FriendlyName "TermPoint Dev Signing" `
-        -CertStoreLocation "Cert:\CurrentUser\My" `
-        -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}") `
-        -NotAfter (Get-Date).AddYears(3)
-    Write-Host "Created cert: thumbprint $($cert.Thumbprint)" -ForegroundColor Green
+    if (-not $cert) {
+        Write-Host "No valid signing cert found for $CertSubject — creating one..." -ForegroundColor Yellow
+        $cert = New-SelfSignedCertificate `
+            -Type Custom `
+            -Subject $CertSubject `
+            -KeyUsage DigitalSignature `
+            -FriendlyName "TermPoint Dev Signing" `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}") `
+            -NotAfter (Get-Date).AddYears(3)
+        Write-Host "Created cert: thumbprint $($cert.Thumbprint)" -ForegroundColor Green
+    } else {
+        Write-Host "Using existing cert: thumbprint $($cert.Thumbprint) (expires $($cert.NotAfter.ToString('yyyy-MM-dd')))" -ForegroundColor Cyan
+    }
+    $CertThumbprint = $cert.Thumbprint
+
+    # Export the public cert (.cer, no private key) for distribution.
+    Export-Certificate -Cert $cert -FilePath $CerPath -Type CERT -Force | Out-Null
+    Write-Host "Exported public cert: $CerPath" -ForegroundColor Cyan
 } else {
-    Write-Host "Using existing cert: thumbprint $($cert.Thumbprint) (expires $($cert.NotAfter.ToString('yyyy-MM-dd')))" -ForegroundColor Cyan
+    Write-Host "Store mode: skipping signing cert (the Store signs the package)." -ForegroundColor Yellow
 }
-$CertThumbprint = $cert.Thumbprint
-
-# Export the public cert (.cer, no private key) for distribution.
-Export-Certificate -Cert $cert -FilePath $CerPath -Type CERT -Force | Out-Null
-Write-Host "Exported public cert: $CerPath" -ForegroundColor Cyan
 
 # ── Read version from csproj ─────────────────────────────────────────────
 $csprojXml = [xml](Get-Content $CsprojPath)
@@ -103,6 +144,16 @@ Write-Host "Version from csproj: $version -> MSIX version: $msixVersion" -Foregr
 $manifestXml = [xml](Get-Content $ManifestPath)
 $identityNode = $manifestXml.Package.Identity
 $identityNode.Version = $msixVersion
+
+# In Store mode, overwrite the identity with the values reserved in Partner
+# Center. These must match exactly or the submission is rejected.
+if ($Store) {
+    $identityNode.Name      = $StoreIdentityName
+    $identityNode.Publisher = $StorePublisher
+    $manifestXml.Package.Properties.PublisherDisplayName = $StorePublisherDisplayName
+    Write-Host "Store identity: Name=$StoreIdentityName Publisher=$StorePublisher" -ForegroundColor Cyan
+}
+
 $manifestXml.Save($ManifestPath)
 Write-Host "Updated AppxManifest.xml to version $msixVersion" -ForegroundColor Cyan
 
@@ -117,7 +168,12 @@ if (Test-Path $MsixPath) {
 
 # ── Publish ──────────────────────────────────────────────────────────────
 Write-Host "Publishing TermPoint..." -ForegroundColor Cyan
-dotnet publish $CsprojPath -c Release -f net10.0 -r win-x64 --self-contained -o $PublishDir
+# Store packages ship no debug symbols — drop the .pdb to keep the upload lean.
+$publishArgs = @($CsprojPath, '-c', 'Release', '-f', 'net10.0', '-r', 'win-x64', '--self-contained', '-o', $PublishDir)
+if ($Store) {
+    $publishArgs += @('-p:DebugType=none', '-p:DebugSymbols=false')
+}
+dotnet publish @publishArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Error "dotnet publish failed"
     exit 1
@@ -171,18 +227,27 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ── Sign ─────────────────────────────────────────────────────────────────
-Write-Host "Signing MSIX..." -ForegroundColor Cyan
-& $SignTool sign /fd SHA256 /sha1 $CertThumbprint $MsixPath
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "signtool sign failed"
-    exit 1
+# Store mode leaves the package unsigned — the Store signs it on submission.
+if (-not $Store) {
+    Write-Host "Signing MSIX..." -ForegroundColor Cyan
+    & $SignTool sign /fd SHA256 /sha1 $CertThumbprint $MsixPath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "signtool sign failed"
+        exit 1
+    }
 }
 
 Write-Host ""
 Write-Host "Done!" -ForegroundColor Green
 Write-Host "  MSIX package: $MsixPath" -ForegroundColor Green
-Write-Host "  Signing cert: $CerPath" -ForegroundColor Green
-Write-Host ""
-Write-Host "To install on another machine: copy both files, then on the target" -ForegroundColor Gray
-Write-Host "import the .cer into Local Machine\Trusted Root Certification Authorities" -ForegroundColor Gray
-Write-Host "(certlm.msc, run as admin) and double-click the .msix." -ForegroundColor Gray
+if ($Store) {
+    Write-Host ""
+    Write-Host "Store submission package (unsigned). Upload this single .msix in" -ForegroundColor Gray
+    Write-Host "Partner Center -> your app -> Packages. The Store signs it for you." -ForegroundColor Gray
+} else {
+    Write-Host "  Signing cert: $CerPath" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "To install on another machine: copy both files, then on the target" -ForegroundColor Gray
+    Write-Host "import the .cer into Local Machine\Trusted Root Certification Authorities" -ForegroundColor Gray
+    Write-Host "(certlm.msc, run as admin) and double-click the .msix." -ForegroundColor Gray
+}
