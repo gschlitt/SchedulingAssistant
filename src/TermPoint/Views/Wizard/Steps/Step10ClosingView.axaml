@@ -20,7 +20,7 @@
         <!--  Body paragraph 2  -->
         <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">
             Clicking "Finish" will start-up TermPoint, with your first academic year set-up and ready to go. Your first steps
-            should be entering Subjects, Courses and probably at least some Instructors.
+            should be entering Subjects, Courses and probably Instructors.
         </TextBlock>
 
         <TextBlock FontSize="{DynamicResource FontSizeNormal}" TextWrapping="Wrap">

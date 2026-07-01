@@ -15,7 +15,7 @@
             <LineBreak />
             <LineBreak />
             <Span>
-                You can specify the start-times your institution uses, and associated block lengths. It will speed up your section editing to do so, as the start times will be available from a menu, rather than requiring manual entry.
+                You can specify the start-times your institution uses, and associated block lengths. It will speed up your section editing to do so, as the start times will be available from a menu, rather than requiring manual entry. Two block lengths and some associated start times are provided as an example. Delete them or revise them as you wish.
             </Span>
         </TextBlock>
 
