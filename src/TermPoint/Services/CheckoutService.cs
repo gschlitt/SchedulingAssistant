@@ -374,6 +374,18 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.WriteAccess;
         }
 
+        // ── License-gated read-only mode ────────────────────────────────────
+        // If the license evaluation determined ReadOnly access (unlicensed, expired,
+        // or trial elapsed), force read-only mode regardless of lock availability.
+        if (App.LicenseStatus.AccessLevel == Licensing.AccessLevel.ReadOnly)
+        {
+            CurrentHolder = null;
+            var d2License = await SetupReadOnlySnapshotAsync();
+            var outcome = d2License is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
+            _logger.LogBreadcrumb($"Checkout: {outcome} (license: {App.LicenseStatus.Reason})", new() { ["path"] = sourcePath });
+            return outcome;
+        }
+
         // ── Voluntary reader (observer) mode ──────────────────────────────────
         // The user chose to open as an observer. Never call TryAcquire: this instance
         // must not create the .lock file (so it can never block a writer), must not poll,

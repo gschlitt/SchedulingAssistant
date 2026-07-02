@@ -96,7 +96,7 @@
 			</Border>
 		</ScrollViewer>
 
-		<!--  Row 3: Footer bar - tile font size + zoom controls, all flushed right  -->
+		<!--  Row 3: Footer bar - license status (left) + tile font size + zoom controls (right)  -->
 		<Border
 			Grid.Row="3"
 			Height="26"
@@ -104,6 +104,34 @@
 			Background="{StaticResource ChromeBackground}"
 			BorderBrush="{StaticResource ChromeBorder}"
 			BorderThickness="0,1,0,0">
+			<Grid>
+				<!--  Left: license status  -->
+				<StackPanel
+					HorizontalAlignment="Left"
+					Orientation="Horizontal"
+					Spacing="6">
+					<TextBlock
+						VerticalAlignment="Center"
+						FontSize="10"
+						Foreground="{StaticResource TextSecondary}"
+						Text="{Binding LicenseStatusText}" />
+					<Button
+						VerticalAlignment="Center"
+						Background="Transparent"
+						BorderThickness="0"
+						Command="{Binding OpenPurchaseLinkCommand}"
+						Cursor="Hand"
+						IsVisible="{Binding ShowPurchaseLink}"
+						Padding="0">
+						<TextBlock
+							FontSize="10"
+							Foreground="{StaticResource WorkflowLinkText}"
+							Text="Purchase license"
+							TextDecorations="Underline" />
+					</Button>
+				</StackPanel>
+
+				<!--  Right: tile font size + zoom controls  -->
 			<StackPanel
 				HorizontalAlignment="Right"
 				Orientation="Horizontal"
@@ -144,6 +172,7 @@
 					Foreground="{StaticResource TextPrimary}"
 					TextAlignment="Right" />
 			</StackPanel>
+			</Grid>
 		</Border>
 
 		<!--  Tile right-click context menu popup  -->

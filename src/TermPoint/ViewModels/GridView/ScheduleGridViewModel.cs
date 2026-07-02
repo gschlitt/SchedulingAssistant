@@ -98,6 +98,45 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
+    // ── Licensing status (read once at construction, displayed in footer) ────
+
+#if !BROWSER
+    /// <summary>Text shown in the footer bar, e.g. "Licensed to: UBC Geography" or "Trial: 23 days remaining".</summary>
+    public string LicenseStatusText => FormatLicenseStatus();
+
+    /// <summary>True when the footer should show a clickable purchase link.</summary>
+    public bool ShowPurchaseLink => App.LicenseStatus.ShowPurchasePrompt;
+
+    [RelayCommand]
+    private static void OpenPurchaseLink() => PlatformProcess.OpenUri("https://termpoint.ca/buy");
+
+    private static string FormatLicenseStatus()
+    {
+        var status = App.LicenseStatus;
+        return status.Reason switch
+        {
+            Licensing.AccessReason.Licensed when status.DepartmentName != null && status.ExpiryDate.HasValue
+                => $"Licensed to: {status.DepartmentName} (expires {status.ExpiryDate.Value:MMM d, yyyy})",
+            Licensing.AccessReason.Licensed when status.DepartmentName != null
+                => $"Licensed to: {status.DepartmentName}",
+            Licensing.AccessReason.Licensed
+                => "Licensed",
+            Licensing.AccessReason.Trial when status.DaysRemaining.HasValue
+                => $"Trial: {status.DaysRemaining} days remaining",
+            Licensing.AccessReason.Trial
+                => "Trial",
+            Licensing.AccessReason.Expired
+                => "License expired",
+            Licensing.AccessReason.Unlicensed
+                => "Trial ended",
+            _ => string.Empty
+        };
+    }
+#else
+    public string LicenseStatusText => string.Empty;
+    public bool ShowPurchaseLink => false;
+#endif
+
     public ScheduleGridViewModel(
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,

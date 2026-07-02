@@ -61,6 +61,10 @@ spec_responsive_menu_overflow.md
 TEST_SCENARIO.md
 WORKAROUNDS.md
 
+# License signing keys — NEVER commit the private key
+termpoint-private.pem
+*.pem
+
 #WOLF
 .wolf/
 

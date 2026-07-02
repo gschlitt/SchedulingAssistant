@@ -495,6 +495,12 @@ public partial class MainWindow : Window
 
         settings.AddRecentDatabase(dbPath);
 
+        // ── License evaluation (must precede checkout so the license gate can
+        //    block lock acquisition when access is read-only) ──────────────────
+#if !BROWSER
+        App.EvaluateLicense(dbPath);
+#endif
+
         // ── Checkout flow ─────────────────────────────────────────────────────
         // Clean up any orphaned .tmp from a previous crashed save, then check for
         // an orphaned working copy (crash recovery), then acquire the write lock
@@ -703,6 +709,37 @@ public partial class MainWindow : Window
                     AutoDismissAfter = TimeSpan.FromSeconds(8)
                 });
 
+            // Licensing notification — shown when the user is in trial, expired, or unlicensed.
+#if !BROWSER
+            var ls = App.LicenseStatus;
+            if (ls.Reason == Licensing.AccessReason.Trial && ls.DaysRemaining.HasValue)
+                notifier.Enqueue(new AppNotification
+                {
+                    Message  = $"You have {ls.DaysRemaining} days remaining in your trial.",
+                    Severity = NotificationSeverity.Info,
+                    LinkText = "Purchase a license",
+                    LinkUrl  = "https://termpoint.ca/buy"
+                });
+            else if (ls.Reason == Licensing.AccessReason.Expired)
+                notifier.Enqueue(new AppNotification
+                {
+                    Message       = "Your license has expired. Editing is disabled.",
+                    Severity      = NotificationSeverity.Warning,
+                    IsDismissable = false,
+                    LinkText      = "Purchase or renew",
+                    LinkUrl       = "https://termpoint.ca/buy"
+                });
+            else if (ls.Reason == Licensing.AccessReason.Unlicensed)
+                notifier.Enqueue(new AppNotification
+                {
+                    Message       = "Your trial has ended. Editing is disabled.",
+                    Severity      = NotificationSeverity.Warning,
+                    IsDismissable = false,
+                    LinkText      = "Purchase a license",
+                    LinkUrl       = "https://termpoint.ca/buy"
+                });
+#endif
+
             notifier.EnqueueUnseenAnnouncements();
         }
 
@@ -859,6 +896,11 @@ public partial class MainWindow : Window
                 Directory.CreateDirectory(Path.GetDirectoryName(newDatabasePath)!);
                 using (new Data.DatabaseContext(newDatabasePath)) { }
             }
+
+            // Re-evaluate license for the new share directory before checkout.
+#if !BROWSER
+            App.EvaluateLicense(newDatabasePath);
+#endif
 
             // Run crash recovery + checkout for the new path.
             await App.Checkout.CleanupOrphanedTmpAsync(newDatabasePath);

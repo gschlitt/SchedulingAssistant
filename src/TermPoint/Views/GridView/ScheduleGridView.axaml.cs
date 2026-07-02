@@ -1415,4 +1415,5 @@ public partial class ScheduleGridView : UserControl
         };
         canvas.Children.Add(line);
     }
+
 }

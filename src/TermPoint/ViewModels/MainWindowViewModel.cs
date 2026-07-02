@@ -284,7 +284,11 @@ public partial class MainWindowViewModel : ViewModelBase
     /// True when the lock advisory banner should be shown. Hidden once the user
     /// dismisses it, but reappears when the write lock becomes available.
     /// </summary>
-    public bool ShowLockBanner => !_lockService.IsWriter && !_lockBannerDismissed;
+    public bool ShowLockBanner => !_lockService.IsWriter && !_lockBannerDismissed
+#if !BROWSER
+        && App.LicenseStatus.AccessLevel != Licensing.AccessLevel.ReadOnly
+#endif
+        ;
 
     /// <summary>
     /// True when the user has dismissed the lock banner but is still in read-only
@@ -302,6 +306,20 @@ public partial class MainWindowViewModel : ViewModelBase
         get
         {
             if (_lockService.IsWriter) return null;
+
+#if !BROWSER
+            // License-gated read-only takes priority — the user can't edit regardless
+            // of lock state, so show the licensing reason, not a contention message.
+            if (App.LicenseStatus.AccessLevel == Licensing.AccessLevel.ReadOnly)
+            {
+                return App.LicenseStatus.Reason switch
+                {
+                    Licensing.AccessReason.Expired => "Read-only — your license has expired. Purchase or renew at termpoint.ca/buy.",
+                    Licensing.AccessReason.Unlicensed => "Read-only — your trial has ended. Purchase a license at termpoint.ca/buy.",
+                    _ => "Read-only — no active license."
+                };
+            }
+#endif
 
             // Voluntary observer: read-only by the user's own choice, not because someone
             // else holds the lock. The "locked by another instance" wording would mislead.

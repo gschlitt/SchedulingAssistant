@@ -15,6 +15,7 @@ using TermPoint.Services;
 #if !BROWSER
 using TermPoint.Exceptions;
 #endif
+using TermPoint.Licensing;
 using TermPoint.ViewModels;
 using TermPoint.ViewModels.GridView;
 using TermPoint.ViewModels.Management;
@@ -77,6 +78,44 @@ public partial class App : Application
     /// Checkout service — manages D to D' copy, write lock, save-back, autosave, and crash recovery.
     /// </summary>
     public static CheckoutService Checkout { get; } = new CheckoutService(LockService, Logger);
+
+    /// <summary>
+    /// Combined license + trial evaluation result, set once per database open in
+    /// <see cref="InitializeServices"/>. ViewModels read this to gate write commands
+    /// and display licensing UI.
+    /// </summary>
+    public static AppAccessResult LicenseStatus { get; private set; } = new()
+    {
+        AccessLevel = AccessLevel.FullAccess,
+        Reason = AccessReason.Trial,
+        ShowPurchasePrompt = false
+    };
+
+    /// <summary>
+    /// Evaluates the license and trial state for the given database path.
+    /// Must be called before <see cref="CheckoutService.CheckoutAsync"/> so
+    /// the license gate can block lock acquisition when access is read-only.
+    /// </summary>
+    public static void EvaluateLicense(string dbPath)
+    {
+        var shareDir = Path.GetDirectoryName(dbPath) ?? string.Empty;
+#if DEBUG
+        var clock = FixedClock.FromEnvironmentOrSystem();
+        if (clock is FixedClock fc)
+            Logger.LogInfo($"[Licensing] DEBUG clock override: {fc.UtcNow:yyyy-MM-dd}");
+#else
+        var clock = new SystemClock();
+#endif
+        var licenseValidator = new LicenseValidator(LicenseKeys.PublicKeyPem, clock);
+        var trialService = new TrialService(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint"),
+            clock);
+        var licenseManager = new AppLicenseManager(licenseValidator, trialService);
+        LicenseStatus = licenseManager.EvaluateAccess(shareDir);
+        Logger.LogInfo($"[Licensing] {LicenseStatus.Reason}, access={LicenseStatus.AccessLevel}" +
+            (LicenseStatus.DepartmentName != null ? $", dept={LicenseStatus.DepartmentName}" : "") +
+            (LicenseStatus.DaysRemaining != null ? $", trial={LicenseStatus.DaysRemaining}d" : ""));
+    }
 #endif
 
     public override void Initialize()
