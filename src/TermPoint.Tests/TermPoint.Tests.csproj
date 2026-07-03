@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TermPoint\TermPoint.csproj" />
+    <ProjectReference Include="..\TermPoint.LicenseFulfillment\TermPoint.LicenseFulfillment.csproj" />
   </ItemGroup>
 
 </Project>
