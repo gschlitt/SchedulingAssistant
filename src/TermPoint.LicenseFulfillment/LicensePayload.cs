@@ -7,6 +7,7 @@ namespace TermPoint.LicenseFulfillment;
 public class LicensePayload
 {
     public string Department { get; set; } = string.Empty;
+    public string? Institution { get; set; }
     public string Issued { get; set; } = string.Empty;
     public string? Expiry { get; set; }
     public int LicenseVersion { get; set; } = 1;

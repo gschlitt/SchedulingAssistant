@@ -33,6 +33,7 @@ public class AppLicenseManager : IAppLicenseManager
                 AccessLevel = AccessLevel.FullAccess,
                 Reason = AccessReason.Licensed,
                 DepartmentName = license.Department,
+                InstitutionName = license.Institution,
                 ExpiryDate = license.Expiry,
                 DaysRemaining = null,
                 ShowPurchasePrompt = false
@@ -46,6 +47,7 @@ public class AppLicenseManager : IAppLicenseManager
                 AccessLevel = AccessLevel.ReadOnly,
                 Reason = AccessReason.Expired,
                 DepartmentName = license.Department,
+                InstitutionName = license.Institution,
                 ExpiryDate = license.Expiry,
                 DaysRemaining = null,
                 ShowPurchasePrompt = true

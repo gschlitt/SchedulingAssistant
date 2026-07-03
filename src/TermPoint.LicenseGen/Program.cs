@@ -11,6 +11,7 @@ namespace TermPoint.LicenseGen;
 public class LicensePayload
 {
     public string Department { get; set; } = string.Empty;
+    public string? Institution { get; set; }
     public string Issued { get; set; } = string.Empty;
     public string? Expiry { get; set; }
     public int LicenseVersion { get; set; } = 1;
@@ -91,6 +92,7 @@ public class Program
     private static int GenerateLicense(string[] args)
     {
         var department = GetArg(args, "--department");
+        var institution = GetArg(args, "--institution");
         var expiryArg = GetArg(args, "--expiry");
         var permanent = HasFlag(args, "--permanent");
         var privateKeyPath = GetArg(args, "--key") ?? "termpoint-private.pem";
@@ -115,6 +117,7 @@ public class Program
         var payload = new LicensePayload
         {
             Department = department,
+            Institution = institution,
             Issued = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd"),
             Expiry = permanent ? null : expiryArg,
             LicenseVersion = 1
@@ -135,6 +138,8 @@ public class Program
         var licenseContent = new StringBuilder();
         licenseContent.AppendLine("# TermPoint License");
         licenseContent.AppendLine($"# Department: {payload.Department}");
+        if (!string.IsNullOrWhiteSpace(payload.Institution))
+            licenseContent.AppendLine($"# Institution: {payload.Institution}");
         licenseContent.AppendLine($"# Issued:     {payload.Issued}");
         licenseContent.AppendLine($"# Expires:    {payload.Expiry ?? "Never"}");
         licenseContent.AppendLine("#");
@@ -148,6 +153,8 @@ public class Program
 
         Console.WriteLine($"License generated: {Path.GetFullPath(outputPath)}");
         Console.WriteLine($"  Department:      {payload.Department}");
+        if (!string.IsNullOrWhiteSpace(payload.Institution))
+            Console.WriteLine($"  Institution:     {payload.Institution}");
         Console.WriteLine($"  Issued:          {payload.Issued}");
         Console.WriteLine($"  Expiry:          {payload.Expiry ?? "(permanent)"}");
         Console.WriteLine($"  License version: {payload.LicenseVersion}");
@@ -193,6 +200,7 @@ public class Program
         Console.WriteLine();
         Console.WriteLine("  generate         Generate a signed license file");
         Console.WriteLine("    --department    Department name (required)");
+        Console.WriteLine("    --institution   Institution name (optional)");
         Console.WriteLine("    --expiry        Expiry date, YYYY-MM-DD");
         Console.WriteLine("    --permanent     No expiry (mutually exclusive with --expiry)");
         Console.WriteLine("    --key           Path to private key (default: termpoint-private.pem)");

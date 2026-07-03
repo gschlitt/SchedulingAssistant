@@ -50,7 +50,7 @@ public sealed class LicenseFulfillmentTests : IDisposable
     public void GeneratedLicense_ValidatesSuccessfully()
     {
         var content = LicenseFulfillment.LicenseGenerator.Generate(
-            "Test Department", expiryYears: 1, _privateKeyPem);
+            "Test Department", "Test University", expiryYears: 1, _privateKeyPem);
 
         WriteLicenseFile(content);
 
@@ -58,6 +58,26 @@ public sealed class LicenseFulfillmentTests : IDisposable
 
         Assert.Equal(LicenseState.Licensed, result.State);
         Assert.Equal("Test Department", result.Department);
+        Assert.Equal("Test University", result.Institution);
+    }
+
+    /// <summary>
+    /// A license generated without an institution name should still validate,
+    /// leaving Institution null (matches how older licenses behave).
+    /// </summary>
+    [Fact]
+    public void GeneratedLicense_WithoutInstitution_ValidatesSuccessfully()
+    {
+        var content = LicenseFulfillment.LicenseGenerator.Generate(
+            "Test Department", institution: null, expiryYears: 1, _privateKeyPem);
+
+        WriteLicenseFile(content);
+
+        var result = CreateValidator(ClockAt(2026, 7, 2)).ValidateLicenseFile(_tempDir);
+
+        Assert.Equal(LicenseState.Licensed, result.State);
+        Assert.Equal("Test Department", result.Department);
+        Assert.Null(result.Institution);
     }
 
     /// <summary>
@@ -67,7 +87,7 @@ public sealed class LicenseFulfillmentTests : IDisposable
     public void GeneratedLicense_ExpiresCorrectly()
     {
         var content = LicenseFulfillment.LicenseGenerator.Generate(
-            "Expiry Test Dept", expiryYears: 1, _privateKeyPem);
+            "Expiry Test Dept", institution: null, expiryYears: 1, _privateKeyPem);
 
         WriteLicenseFile(content);
 
@@ -85,7 +105,7 @@ public sealed class LicenseFulfillmentTests : IDisposable
     public void TamperedLicense_FailsValidation()
     {
         var content = LicenseFulfillment.LicenseGenerator.Generate(
-            "Tamper Test Dept", expiryYears: 1, _privateKeyPem);
+            "Tamper Test Dept", institution: null, expiryYears: 1, _privateKeyPem);
 
         // Corrupt the base64 payload line (not the comment header).
         // Find the first non-comment, non-blank line — that's the payload.
@@ -118,10 +138,11 @@ public sealed class LicenseFulfillmentTests : IDisposable
     public void GeneratedLicense_HasHumanReadableHeader()
     {
         var content = LicenseFulfillment.LicenseGenerator.Generate(
-            "Header Test Dept", expiryYears: 1, _privateKeyPem);
+            "Header Test Dept", "Header Test University", expiryYears: 1, _privateKeyPem);
 
         Assert.Contains("# TermPoint License", content);
         Assert.Contains("# Department: Header Test Dept", content);
+        Assert.Contains("# Institution: Header Test University", content);
         Assert.Contains("# Do not edit below this line.", content);
     }
 

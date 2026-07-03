@@ -45,6 +45,9 @@ public class AppAccessResult
     /// <summary>Department name from the license, if licensed.</summary>
     public string? DepartmentName { get; init; }
 
+    /// <summary>Institution name from the license, if licensed. Null for older licenses.</summary>
+    public string? InstitutionName { get; init; }
+
     /// <summary>Trial days remaining, if in trial.</summary>
     public int? DaysRemaining { get; init; }
 

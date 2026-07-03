@@ -15,20 +15,25 @@ public static class EmailSender
     /// <param name="senderAddress">Verified sender email address.</param>
     /// <param name="recipientEmail">Customer email address.</param>
     /// <param name="department">Department name (for the email subject/body).</param>
+    /// <param name="institution">Institution name (for the email body), or null if not provided.</param>
     /// <param name="licenseFileContent">The complete termpoint.lic file content.</param>
     public static async Task SendLicenseAsync(
         string connectionString,
         string senderAddress,
         string recipientEmail,
         string department,
+        string? institution,
         string licenseFileContent)
     {
         var client = new EmailClient(connectionString);
 
+        var licensee = string.IsNullOrWhiteSpace(institution) ? department : $"{department}, {institution}";
+        var licenseeHtml = System.Net.WebUtility.HtmlEncode(licensee);
+
         var content = new EmailContent("Your TermPoint License")
         {
             PlainText =
-                $"Thank you for purchasing a TermPoint license for {department}.\n\n" +
+                $"Thank you for purchasing a TermPoint license for {licensee}.\n\n" +
                 "Your license file (termpoint.lic) is attached to this email.\n\n" +
                 "To activate your license, place the termpoint.lic file in the same folder " +
                 "as your department's TermPoint database (.tpdb file). TermPoint will find " +
@@ -37,7 +42,7 @@ public static class EmailSender
                 "license file in each folder.\n\n" +
                 "Questions? Contact us at admin@termpoint.ca.",
             Html =
-                $"<p>Thank you for purchasing a TermPoint license for <strong>{department}</strong>.</p>" +
+                $"<p>Thank you for purchasing a TermPoint license for <strong>{licenseeHtml}</strong>.</p>" +
                 "<p>Your license file (<code>termpoint.lic</code>) is attached to this email.</p>" +
                 "<h3>How to install</h3>" +
                 "<p>Place the <code>termpoint.lic</code> file in the same folder as your " +

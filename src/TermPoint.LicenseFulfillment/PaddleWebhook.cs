@@ -40,13 +40,15 @@ public class PaddleWebhook
 
         var data = root.GetProperty("data");
 
-        // Extract department name from custom_data
-        var department = GetDepartmentFromCustomData(data);
+        // Extract department and institution names from custom_data
+        var department = GetCustomDataField(data, "department");
         if (string.IsNullOrWhiteSpace(department))
         {
             _logger.LogError("No department name found in custom_data.");
             return new BadRequestObjectResult("Missing department in custom_data.");
         }
+
+        var institution = GetCustomDataField(data, "institution");
 
         // Get customer email via Paddle API
         var customerId = data.GetProperty("customer_id").GetString()!;
@@ -60,11 +62,11 @@ public class PaddleWebhook
         // Generate the signed license file
         var privateKey = Environment.GetEnvironmentVariable("PRIVATE_KEY")!;
         var expiryYears = int.Parse(Environment.GetEnvironmentVariable("LICENSE_EXPIRY_YEARS") ?? "1");
-        var licenseContent = LicenseGenerator.Generate(department, expiryYears, privateKey);
+        var licenseContent = LicenseGenerator.Generate(department, institution, expiryYears, privateKey);
 
         _logger.LogInformation(
-            "License generated for {Department}, customer {Email}.",
-            department, customerEmail);
+            "License generated for {Department} ({Institution}), customer {Email}.",
+            department, institution ?? "(none)", customerEmail);
 
         // Email the license file to the customer
         var acsConnectionString = Environment.GetEnvironmentVariable("ACS_CONNECTION_STRING")!;
@@ -75,6 +77,7 @@ public class PaddleWebhook
             senderEmail,
             customerEmail,
             department,
+            institution,
             licenseContent);
 
         _logger.LogInformation("License emailed to {Email}.", customerEmail);
@@ -83,9 +86,9 @@ public class PaddleWebhook
     }
 
     /// <summary>
-    /// Extracts the department name from the transaction's custom_data object.
+    /// Extracts a named field from the transaction's custom_data object.
     /// </summary>
-    private static string? GetDepartmentFromCustomData(JsonElement data)
+    private static string? GetCustomDataField(JsonElement data, string fieldName)
     {
         if (!data.TryGetProperty("custom_data", out var customData))
             return null;
@@ -93,10 +96,10 @@ public class PaddleWebhook
         if (customData.ValueKind == JsonValueKind.Null)
             return null;
 
-        if (!customData.TryGetProperty("department", out var dept))
+        if (!customData.TryGetProperty(fieldName, out var field))
             return null;
 
-        return dept.GetString();
+        return field.GetString();
     }
 
     /// <summary>

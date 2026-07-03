@@ -168,6 +168,7 @@ public class LicenseValidator : ILicenseValidator
                 {
                     State = LicenseState.Expired,
                     Department = payload.Department,
+                    Institution = payload.Institution,
                     Expiry = expiryDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
                 };
 
@@ -175,6 +176,7 @@ public class LicenseValidator : ILicenseValidator
             {
                 State = LicenseState.Licensed,
                 Department = payload.Department,
+                Institution = payload.Institution,
                 Expiry = expiryDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
             };
         }
@@ -184,6 +186,7 @@ public class LicenseValidator : ILicenseValidator
         {
             State = LicenseState.Licensed,
             Department = payload.Department,
+            Institution = payload.Institution,
             Expiry = null
         };
     }

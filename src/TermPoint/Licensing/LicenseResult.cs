@@ -30,6 +30,9 @@ public class LicenseResult
     /// <summary>Department name from the payload, if the signature was valid.</summary>
     public string? Department { get; init; }
 
+    /// <summary>Institution name from the payload, if the signature was valid. Null for older licenses.</summary>
+    public string? Institution { get; init; }
+
     /// <summary>Expiry date from the payload, if the signature was valid. Null for permanent licenses.</summary>
     public DateTime? Expiry { get; init; }
 

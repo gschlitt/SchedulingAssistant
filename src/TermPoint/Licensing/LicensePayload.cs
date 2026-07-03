@@ -7,10 +7,16 @@ namespace TermPoint.Licensing;
 public class LicensePayload
 {
     /// <summary>
-    /// Display name of the licensed department (e.g. "UBC Geography").
+    /// Display name of the licensed department (e.g. "Geography").
     /// Shown in the app UI as "Licensed to: ...".
     /// </summary>
     public string Department { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name of the licensed institution (e.g. "University of British Columbia").
+    /// Null for older licenses issued before this field existed.
+    /// </summary>
+    public string? Institution { get; set; }
 
     /// <summary>
     /// ISO 8601 date when the key was generated (e.g. "2026-07-01").

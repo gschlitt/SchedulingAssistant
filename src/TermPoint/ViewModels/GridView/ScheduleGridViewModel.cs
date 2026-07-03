@@ -113,12 +113,16 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private static string FormatLicenseStatus()
     {
         var status = App.LicenseStatus;
+        var licensee = status.DepartmentName != null && status.InstitutionName != null
+            ? $"{status.DepartmentName}, {status.InstitutionName}"
+            : status.DepartmentName;
+
         return status.Reason switch
         {
-            Licensing.AccessReason.Licensed when status.DepartmentName != null && status.ExpiryDate.HasValue
-                => $"Licensed to: {status.DepartmentName} (expires {status.ExpiryDate.Value:MMM d, yyyy})",
-            Licensing.AccessReason.Licensed when status.DepartmentName != null
-                => $"Licensed to: {status.DepartmentName}",
+            Licensing.AccessReason.Licensed when licensee != null && status.ExpiryDate.HasValue
+                => $"Licensed to: {licensee} (expires {status.ExpiryDate.Value:MMM d, yyyy})",
+            Licensing.AccessReason.Licensed when licensee != null
+                => $"Licensed to: {licensee}",
             Licensing.AccessReason.Licensed
                 => "Licensed",
             Licensing.AccessReason.Trial when status.DaysRemaining.HasValue
