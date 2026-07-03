@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TermPoint Licensing &amp; Trial Overview</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 820px;
+    margin: 40px auto;
+    padding: 0 24px;
+    color: #1a1a1a;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.6em; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+  h2 { font-size: 1.25em; color: #2563eb; margin-top: 2em; }
+  h3 { font-size: 1.05em; margin-top: 1.4em; }
+  code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 0.92em; }
+  pre {
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    font-size: 0.88em;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+  th { background: #f0f4ff; }
+  .note {
+    background: #fffbe6;
+    border-left: 4px solid #e6a817;
+    padding: 10px 14px;
+    margin: 16px 0;
+    font-size: 0.95em;
+  }
+  .trust {
+    background: #f0f4ff;
+    border-left: 4px solid #2563eb;
+    padding: 10px 14px;
+    margin: 16px 0;
+    font-size: 0.95em;
+  }
+  .path { font-family: "Cascadia Code", Consolas, monospace; font-size: 0.9em; }
+  ul { padding-left: 1.4em; }
+  li { margin-bottom: 4px; }
+  footer { margin-top: 3em; font-size: 0.85em; color: #888; border-top: 1px solid #ddd; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>TermPoint &mdash; Licensing &amp; Trial Overview</h1>
+<p>
+  This document describes how TermPoint handles licensing and the free trial period.
+  It is intended for IT staff who may be asked to help with license installation,
+  and as a reference for the development team.
+</p>
+
+<h2>1. How Licensing Works</h2>
+<p>
+  TermPoint uses a <strong>department-level license</strong>, not a per-user license.
+  A single license file covers everyone in the department who points TermPoint at the
+  same shared database folder.
+</p>
+
+<h3>The license file</h3>
+<ul>
+  <li>Filename: <code>termpoint.lic</code></li>
+  <li>Location: the same folder as the department's <code>.tpdb</code> database file</li>
+  <li>Format: a small text file with a human-readable header and a cryptographic signature</li>
+</ul>
+<p>Opening the file in a text editor shows something like:</p>
+<pre>
+# TermPoint License
+# Department: Geography Department
+# Issued:     2026-09-01
+# Expires:    2027-09-01
+#
+# Do not edit below this line.
+
+eyJkZXBhcnRtZW50IjoiR2VvZ3Jh...   (encoded payload)
+
+uKZZWk7ct1LxQ39DqhRB+UlYPmP...   (digital signature)
+</pre>
+<p>
+  The encoded sections are digitally signed. Any modification to the file
+  (even changing a single character) invalidates it.
+  TermPoint verifies the signature on every launch &mdash; no internet connection is required.
+</p>
+
+<h3>Installing a license</h3>
+<p>
+  Place the <code>termpoint.lic</code> file (received after purchase) in the same
+  folder as the department's database. That's it &mdash; TermPoint finds it automatically
+  on the next launch.
+</p>
+<div class="note">
+  <strong>Multiple databases:</strong> If the department maintains databases in separate folders
+  (e.g. one per subject area), a copy of <code>termpoint.lic</code> is needed in each folder.
+</div>
+
+<h2>2. The 30-Day Trial</h2>
+<p>
+  When TermPoint launches without a license file, it offers a <strong>30-day free trial</strong>
+  with full editing access.
+</p>
+
+<h3>How the trial clock works</h3>
+<ul>
+  <li>On first launch, TermPoint creates a small file called <code>trial.json</code> in the
+      user's local application data folder:
+      <span class="path">%APPDATA%\TermPoint\trial.json</span></li>
+  <li>This file records the date of first launch. The trial period is calculated from that date.</li>
+  <li>The trial clock is <strong>per machine</strong> &mdash; each computer that runs TermPoint
+      has its own independent trial.</li>
+  <li>The trial clock starts on the very first launch, even if a license file is present.
+      This is by design (see <em>Trust Model</em> below).</li>
+</ul>
+
+<h3>What happens when the trial expires</h3>
+<p>
+  After 30 days without a license file, TermPoint enters <strong>read-only mode</strong>.
+  The user can still open and view the schedule, but cannot make edits.
+  A banner explains the situation and provides a link to purchase a license.
+</p>
+
+<h2>3. Access States</h2>
+<table>
+  <tr>
+    <th>License file</th>
+    <th>Trial status</th>
+    <th>Result</th>
+  </tr>
+  <tr>
+    <td>Valid (not expired)</td>
+    <td>(any)</td>
+    <td><strong>Full access</strong> &mdash; editing enabled</td>
+  </tr>
+  <tr>
+    <td>Permanent (no expiry)</td>
+    <td>(any)</td>
+    <td><strong>Full access</strong> &mdash; editing enabled</td>
+  </tr>
+  <tr>
+    <td>Expired</td>
+    <td>(any)</td>
+    <td><strong>Read-only</strong> &mdash; banner shown with renewal link</td>
+  </tr>
+  <tr>
+    <td>Missing or corrupt</td>
+    <td>Within 30 days</td>
+    <td><strong>Full access</strong> &mdash; trial active, days remaining shown</td>
+  </tr>
+  <tr>
+    <td>Missing or corrupt</td>
+    <td>Past 30 days</td>
+    <td><strong>Read-only</strong> &mdash; trial ended, purchase link shown</td>
+  </tr>
+</table>
+
+<h2>4. Common Scenarios</h2>
+
+<h3>New department setup</h3>
+<p>
+  Install TermPoint, create a database, start working. The 30-day trial begins immediately.
+  Purchase a license before it expires and place <code>termpoint.lic</code> in the database folder.
+</p>
+
+<h3>New staff member joins</h3>
+<p>
+  The new person installs TermPoint on their machine and points it at the existing shared
+  database folder. If a valid <code>termpoint.lic</code> is already there, they get full
+  access immediately &mdash; no separate license needed.
+</p>
+
+<h3>License renewal</h3>
+<p>
+  When a license expires, TermPoint enters read-only mode on the next launch.
+  Replace the old <code>termpoint.lic</code> with the renewed one. Full access is restored
+  on the next launch.
+</p>
+
+<h3>License file accidentally deleted</h3>
+<p>
+  If someone deletes <code>termpoint.lic</code> from the database folder, TermPoint falls
+  back to the trial. Since the trial clock started on the original first launch (typically
+  months earlier), the trial will already be expired and the app goes to read-only.
+  Restoring the license file from backup (or requesting a replacement) fixes it.
+</p>
+
+<h2>5. Trust Model</h2>
+<div class="trust">
+  <p>
+    TermPoint's licensing is designed for <strong>university departments</strong> &mdash;
+    a cooperative environment where the goal is honest compliance, not adversarial
+    copy protection.
+  </p>
+  <p>
+    The license file is a plain file on a shared drive. There is nothing preventing someone
+    from copying it to another department's folder. The system trusts that departments will
+    purchase their own licenses rather than share them. This is a deliberate trade-off:
+    simple, no-hassle licensing that works reliably in diverse university IT environments,
+    with no phone-home, no activation servers, and no internet requirement.
+  </p>
+  <p>
+    Similarly, a technically inclined user could reset their trial by deleting
+    <span class="path">%APPDATA%\TermPoint\trial.json</span>, but this is not a concern
+    for the target audience.
+  </p>
+</div>
+
+<h2>6. Troubleshooting</h2>
+
+<h3>TermPoint says "Trial ended" but we have a license</h3>
+<ul>
+  <li>Confirm that <code>termpoint.lic</code> is in the <em>same folder</em> as the <code>.tpdb</code> database file.</li>
+  <li>Open the <code>.lic</code> file in a text editor and check the <code># Expires:</code> line &mdash; is it in the past?</li>
+  <li>Make sure the file hasn't been modified. Even a stray character will invalidate the signature.</li>
+</ul>
+
+<h3>Different users see different license states</h3>
+<p>
+  Each machine has its own trial clock. If one person installed months ago and another
+  installed recently, they may have different trial states. This only matters when there
+  is no valid license file in the database folder.
+</p>
+
+<h3>Multiple database folders</h3>
+<p>
+  Each folder needs its own copy of <code>termpoint.lic</code>. If one folder has the
+  license and another doesn't, the user will see full access for one database and
+  trial/read-only for the other.
+</p>
+
+<h2>7. Files at a Glance</h2>
+<table>
+  <tr>
+    <th>File</th>
+    <th>Location</th>
+    <th>Purpose</th>
+  </tr>
+  <tr>
+    <td><code>termpoint.lic</code></td>
+    <td>Same folder as the <code>.tpdb</code> database</td>
+    <td>Signed department license (provided after purchase)</td>
+  </tr>
+  <tr>
+    <td><code>trial.json</code></td>
+    <td><span class="path">%APPDATA%\TermPoint\</span></td>
+    <td>Records trial start date (created automatically, per machine)</td>
+  </tr>
+  <tr>
+    <td>Log files</td>
+    <td><span class="path">%APPDATA%\TermPoint\Logs\</span></td>
+    <td>Contains <code>[Licensing]</code> entries showing the access decision on each launch</td>
+  </tr>
+</table>
+
+<footer>
+  TermPoint Licensing Overview &mdash; last updated July 2026
+</footer>
+
+</body>
+</html>

@@ -108,7 +108,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     public bool ShowPurchaseLink => App.LicenseStatus.ShowPurchasePrompt;
 
     [RelayCommand]
-    private static void OpenPurchaseLink() => PlatformProcess.OpenUri("https://termpoint.ca/buy");
+    private static void OpenPurchaseLink() => PlatformProcess.OpenUri("https://termpoint.ca/license");
 
     private static string FormatLicenseStatus()
     {

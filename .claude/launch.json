@@ -14,6 +14,13 @@
       "runtimeArgs": ["-m", "http.server", "8754", "--directory", "C:/Users/gregs/Documents/TermPointMedia"],
       "port": 8754,
       "autoPort": false
+    },
+    {
+      "name": "termpoint-pages",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8755", "--directory", "C:/Users/gregs/source/repos/TermPointPages"],
+      "port": 8755,
+      "autoPort": false
     }
   ]
 }

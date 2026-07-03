@@ -68,4 +68,16 @@ termpoint-private.pem
 #WOLF
 .wolf/
 
+# Secrets
+paddle_api_key.txt
+
+# Node / npm
+node_modules/
+
+# Deployment artifacts
+deploy.zip
+
+# Personal local dev overrides
+src/TermPoint/Properties/launchSettings.json
+
 

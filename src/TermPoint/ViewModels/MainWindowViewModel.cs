@@ -314,8 +314,8 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 return App.LicenseStatus.Reason switch
                 {
-                    Licensing.AccessReason.Expired => "Read-only — your license has expired. Purchase or renew at termpoint.ca/buy.",
-                    Licensing.AccessReason.Unlicensed => "Read-only — your trial has ended. Purchase a license at termpoint.ca/buy.",
+                    Licensing.AccessReason.Expired => "Read-only — your license has expired. Purchase or renew at termpoint.ca/license.",
+                    Licensing.AccessReason.Unlicensed => "Read-only — your trial has ended. Purchase a license at termpoint.ca/license.",
                     _ => "Read-only — no active license."
                 };
             }

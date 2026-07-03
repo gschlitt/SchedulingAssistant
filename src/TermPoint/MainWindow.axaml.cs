@@ -718,7 +718,7 @@ public partial class MainWindow : Window
                     Message  = $"You have {ls.DaysRemaining} days remaining in your trial.",
                     Severity = NotificationSeverity.Info,
                     LinkText = "Purchase a license",
-                    LinkUrl  = "https://termpoint.ca/buy"
+                    LinkUrl  = "https://termpoint.ca/license"
                 });
             else if (ls.Reason == Licensing.AccessReason.Expired)
                 notifier.Enqueue(new AppNotification
@@ -727,7 +727,7 @@ public partial class MainWindow : Window
                     Severity      = NotificationSeverity.Warning,
                     IsDismissable = false,
                     LinkText      = "Purchase or renew",
-                    LinkUrl       = "https://termpoint.ca/buy"
+                    LinkUrl       = "https://termpoint.ca/license"
                 });
             else if (ls.Reason == Licensing.AccessReason.Unlicensed)
                 notifier.Enqueue(new AppNotification
@@ -736,7 +736,7 @@ public partial class MainWindow : Window
                     Severity      = NotificationSeverity.Warning,
                     IsDismissable = false,
                     LinkText      = "Purchase a license",
-                    LinkUrl       = "https://termpoint.ca/buy"
+                    LinkUrl       = "https://termpoint.ca/license"
                 });
 #endif
 
