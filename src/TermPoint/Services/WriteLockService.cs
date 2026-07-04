@@ -352,6 +352,42 @@ public sealed class WriteLockService : IDisposable
     }
 
     /// <summary>
+    /// Stops all timers WITHOUT deleting the lock file, abandoning the lock in place.
+    /// Used on shutdown when the final save failed transiently (network unreachable):
+    /// the lock file is deliberately left behind so that no other instance acquires
+    /// write access and modifies D before this user's unsaved changes are restored
+    /// at their next launch. With the heartbeat stopped, the abandoned lock goes
+    /// stale after <see cref="StaleLockThresholdSeconds"/> and remains claimable by
+    /// anyone through the standard stale-lock takeover prompt — so another user is
+    /// inconvenienced, informed (the prompt names this user), but never blocked.
+    ///
+    /// <para>After this call <see cref="IsWriter"/> is false, so a subsequent
+    /// <see cref="Release"/> or <see cref="Dispose"/> will NOT delete the abandoned
+    /// lock file — the file must survive process exit.</para>
+    /// </summary>
+    public void Suspend()
+    {
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = null;
+        _pollTimer?.Dispose();
+        _pollTimer = null;
+        _wakeDetectionTimer?.Dispose();
+        _wakeDetectionTimer = null;
+
+        // Same mutex discipline as Release(): an in-flight heartbeat either bails on
+        // seeing IsWriter=false or finishes rewriting the file first — both orderings
+        // leave the lock file present, which is exactly what Suspend requires.
+        lock (_lockFileSync)
+        {
+            if (IsWriter)
+                App.Logger.LogInfo($"[WriteLockService] Suspended (lock file left in place): {_lockFilePath}");
+            IsWriter      = false;
+            CurrentHolder = null;
+            _lockFilePath = null;
+        }
+    }
+
+    /// <summary>
     /// Returns true when the lock file at <paramref name="path"/> exists and contains
     /// a JSON payload whose <see cref="LockFileData.SessionGuid"/> matches ours.
     /// Returns false for a missing file, unreadable file, parse error, or a mismatched

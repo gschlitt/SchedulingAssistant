@@ -125,6 +125,22 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     private int     _heartbeatVerifyInFlight;
 
+    /// <summary>
+    /// Hash of the D.tmp snapshot from a save whose step-5 rename was never confirmed
+    /// (timed out or threw). The abandoned <c>File.Move</c> thread can still complete
+    /// the rename seconds later — the "ghost rename" — leaving D updated while
+    /// <see cref="HashAtCheckout"/> is stale. Without this field, every subsequent save
+    /// would misread that state as an external modification (sticky
+    /// <see cref="SaveOutcome.SourceModified"/>, autosave stopped). Step 2 of
+    /// <see cref="SaveAsyncCore"/> compares a mismatched source hash against this value
+    /// and, on a match, adopts the ghost save as successful and continues.
+    /// Set by <see cref="RecordPendingSaveHash"/>, cleared on checkout and on every
+    /// confirmed save. Also persisted into the dirty marker (see
+    /// <see cref="Models.DirtyMarkerData.PendingSaveHash"/>) so recovery after a
+    /// restart can recognize a post-exit ghost.
+    /// </summary>
+    private string? _pendingSaveHash;
+
     /// <summary>Current checkout mode.</summary>
     public CheckoutMode Mode { get; private set; } = CheckoutMode.ReadOnly;
 
@@ -318,16 +334,26 @@ public sealed class CheckoutService : IDisposable
     /// working path (D' or D'') can be passed in.
     /// </summary>
     /// <param name="sourcePath">Full path to D — the database the user selected.</param>
+    /// <param name="recoverWorkingCopy">
+    /// When true, an existing D' left behind by a crashed session is adopted as the
+    /// working copy instead of being overwritten by a fresh D → D' copy. Recovery is
+    /// only completed when D's current hash still matches the hash recorded in the
+    /// dirty marker (proof no other writer touched D since the crash); otherwise
+    /// <see cref="CheckoutOutcome.RecoveryConflict"/> is returned and the caller
+    /// should offer to export the unsaved changes. See <see cref="InspectCrashRecovery"/>.
+    /// </param>
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists; use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
+    /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
     /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/> to open read-only.
     /// </returns>
-    public async Task<CheckoutOutcome> CheckoutAsync(string sourcePath)
+    public async Task<CheckoutOutcome> CheckoutAsync(string sourcePath, bool recoverWorkingCopy = false)
     {
         SourcePath = sourcePath;
         LockLossNewHolder = null;
+        _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
 
         //determine (respectively) if  the network location is reachable and that the database exists
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(sourcePath);
@@ -337,6 +363,16 @@ public sealed class CheckoutService : IDisposable
             _logger.LogInfo("CheckoutService: File.Exists timed out — network unreachable");
             _logger.LogBreadcrumb("Checkout: NetworkUnreachable", new() { ["path"] = sourcePath });
             return CheckoutOutcome.NetworkUnreachable;
+        }
+
+        // Recovery requested but D itself is gone (deleted or renamed while the
+        // unsaved changes were stranded). There is no source to verify against, so
+        // automatic recovery is off the table — surface the conflict and let the
+        // caller offer an exported copy of the unsaved changes instead.
+        if (!exists && recoverWorkingCopy)
+        {
+            _logger.LogBreadcrumb("Checkout: RecoveryConflict (source missing)", new() { ["path"] = sourcePath });
+            return CheckoutOutcome.RecoveryConflict;
         }
 
         // ── New-database shortcut ──────────────────────────────────────────────
@@ -435,6 +471,10 @@ public sealed class CheckoutService : IDisposable
         // can tell the user we recovered it. (Cleared for clean acquisitions.)
         ReclaimedDeadSession = _lockService.ReclaimedDeadSession;
 
+        // Recovery mode: adopt the crashed session's D' instead of copying D over it.
+        if (recoverWorkingCopy)
+            return await FinishRecoveryCheckoutAsync();
+
         // Write-access path: copy D to D' (existing logic).
         WorkingPath = ComputeWorkingPath(sourcePath);
 
@@ -516,11 +556,18 @@ public sealed class CheckoutService : IDisposable
     /// they wish to take over the abandoned session (i.e., after
     /// <see cref="CheckoutAsync"/> returned <see cref="CheckoutOutcome.StaleHolder"/>).
     /// </summary>
+    /// <param name="recoverWorkingCopy">
+    /// Same semantics as on <see cref="CheckoutAsync"/>: adopt the crashed session's
+    /// existing D' instead of copying D over it, verifying D against the dirty-marker
+    /// hash first. Pass the same value that was passed to the preceding
+    /// <see cref="CheckoutAsync"/> call.
+    /// </param>
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> on success.
+    /// <see cref="CheckoutOutcome.RecoveryConflict"/> when recovery was requested but cannot be applied safely.
     /// <see cref="CheckoutOutcome.Failed"/> if another instance won the race.
     /// </returns>
-    public async Task<CheckoutOutcome> ForceCheckoutAsync()
+    public async Task<CheckoutOutcome> ForceCheckoutAsync(bool recoverWorkingCopy = false)
     {
         var forceCompleted = await NetworkFileOps.RunAsync(
             () => _lockService.ForceAcquire(), "force lock acquire");
@@ -537,6 +584,10 @@ public sealed class CheckoutService : IDisposable
             CurrentHolder = _lockService.CurrentHolder;
             return CheckoutOutcome.Failed;
         }
+
+        // Recovery mode: adopt the crashed session's D' instead of copying D over it.
+        if (recoverWorkingCopy)
+            return await FinishRecoveryCheckoutAsync();
 
         // Lock acquired — now copy D to D' (same as CheckoutAsync write path).
         Directory.CreateDirectory(_workingDir);
@@ -594,9 +645,84 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Shared tail of <see cref="CheckoutAsync"/> and <see cref="ForceCheckoutAsync"/>
+    /// for crash recovery: adopts the crashed session's existing D' as the working copy
+    /// instead of overwriting it with a fresh D → D' copy.
+    ///
+    /// <para><b>Safety gate:</b> recovery only proceeds when D's current hash equals the
+    /// hash stored in the dirty marker — proof that no other writer modified D while the
+    /// unsaved changes were stranded. A missing D', an unreadable/legacy marker (no hash),
+    /// or a hash mismatch all return <see cref="CheckoutOutcome.RecoveryConflict"/> with
+    /// the lock released and D' + marker left intact, so the caller can offer to export
+    /// the unsaved changes before discarding them.</para>
+    ///
+    /// <para><b>On success:</b> the session resumes exactly as a normal write checkout
+    /// (mode, events, autosave eligibility), except the dirty marker is deliberately left
+    /// in place — D' still differs from D until the next successful save, so the marker
+    /// remains an accurate "unsaved changes exist" signal.</para>
+    ///
+    /// <para>Precondition: the caller has already acquired the write lock.</para>
+    /// </summary>
+    private async Task<CheckoutOutcome> FinishRecoveryCheckoutAsync()
+    {
+        WorkingPath = ComputeWorkingPath(SourcePath);
+        var marker = TryReadMarker(WorkingPath + ".dirty");
+
+        if (marker?.HashAtCheckout is null || !File.Exists(WorkingPath))
+        {
+            // No verifiable snapshot hash (legacy/corrupt marker) or D' vanished —
+            // automatic recovery would risk trampling D. Hand back to the caller.
+            _lockService.Release();
+            _logger.LogBreadcrumb("Recovery: conflict (no verifiable marker or missing D')");
+            return CheckoutOutcome.RecoveryConflict;
+        }
+
+        var (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+        if (!hashCompleted)
+        {
+            _lockService.Release();
+            _logger.LogInfo("CheckoutService: recovery hash timed out — network unreachable");
+            return CheckoutOutcome.NetworkUnreachable;
+        }
+
+        // D must match one of OUR hashes to prove no foreign writer touched it:
+        //  • HashAtCheckout — D unchanged since the crashed session checked out/saved.
+        //  • PendingSaveHash — D was updated by the crashed session's own ghost rename
+        //    (a save whose File.Move landed after its deadline, possibly after exit).
+        //    D then equals a snapshot of D' at that save, so D' is a superset — safe.
+        var matchesCheckout = string.Equals(sourceHash, marker.HashAtCheckout,  StringComparison.OrdinalIgnoreCase);
+        var matchesPending  = marker.PendingSaveHash is not null
+                           && string.Equals(sourceHash, marker.PendingSaveHash, StringComparison.OrdinalIgnoreCase);
+
+        if (!matchesCheckout && !matchesPending)
+        {
+            // D changed since the crash (another writer saved). The unsaved changes
+            // are based on a stale D and cannot be applied automatically.
+            _lockService.Release();
+            _logger.LogBreadcrumb("Recovery: conflict (source modified since crash)");
+            return CheckoutOutcome.RecoveryConflict;
+        }
+
+        if (matchesPending)
+            _logger.LogBreadcrumb("Recovery: matched via pending save hash (post-exit ghost rename)");
+
+        // D is byte-identical to what the crashed session checked out — safe to resume.
+        HashAtCheckout = sourceHash;
+        Mode           = CheckoutMode.WriteAccess;
+        SessionDirty   = true;
+        CurrentHolder  = null;
+
+        _lockService.WakeDetected    += OnWake;
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;
+        _logger.LogBreadcrumb("Recovery: WriteAccess (resumed crashed session)", new() { ["path"] = SourcePath });
+        return CheckoutOutcome.WriteAccess;
+    }
+
+    /// <summary>
     /// Saves D' back to D. Verifies the lock is still held and D has not been
-    /// externally modified, writes a timestamped backup of D', copies D' to a
-    /// temporary file, verifies it, then atomically renames it to D.
+    /// externally modified, snapshots D' to a temporary file via the SQLite Online
+    /// Backup API, hashes it, then atomically renames it to D. (Timestamped rotating
+    /// backups are a separate concern, handled by <see cref="BackupService"/>.)
     /// </summary>
     /// <param name="releaseLockAfter">
     /// When true, deletes the lock file after a successful save.
@@ -649,6 +775,47 @@ public sealed class CheckoutService : IDisposable
         _dispatch(() => SaveFailed?.Invoke(text, isAutoSave));
     }
 
+    /// <summary>
+    /// One-shot probe after a step-5 rename timeout: re-hashes D and reports whether it
+    /// already equals <paramref name="expectedHash"/> (the hash of the D.tmp snapshot).
+    /// True means the "timed-out" move actually landed just past the deadline and the
+    /// save succeeded. Any probe failure (timeout, file transiently missing mid-move,
+    /// I/O error) reports false — the caller then records the pending hash and the
+    /// step-2 self-heal / recovery paths pick the ghost up whenever it lands.
+    /// </summary>
+    /// <param name="expectedHash">Hash of the D.tmp snapshot that was being renamed onto D.</param>
+    private async Task<bool> ProbeGhostRenameLandedAsync(string? expectedHash)
+    {
+        if (expectedHash is null) return false;
+        try
+        {
+            var (completed, hash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+            return completed && string.Equals(hash, expectedHash, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Records the snapshot hash of a save whose rename was never confirmed, in memory
+    /// (<see cref="_pendingSaveHash"/>, for same-session self-heal in step 2) and in the
+    /// dirty marker file (for cross-restart recognition by
+    /// <see cref="FinishRecoveryCheckoutAsync"/>). The marker is only rewritten when one
+    /// already exists — no marker means no unsaved edits, in which case a post-exit
+    /// ghost is harmless (D' content and ghost content are identical) and the in-memory
+    /// copy covers the rest of this session.
+    /// Internal so tests can simulate the rename-timeout state deterministically.
+    /// </summary>
+    /// <param name="hash">Hash of the D.tmp snapshot whose rename is unconfirmed.</param>
+    internal void RecordPendingSaveHash(string? hash)
+    {
+        _pendingSaveHash = hash;
+        if (HasDirtyMarker)
+            WriteDirtyMarker();
+    }
+
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
     {
         _logger.LogBreadcrumb("Save: started", new()
@@ -699,12 +866,30 @@ public sealed class CheckoutService : IDisposable
 
             if (currentSourceHash != HashAtCheckout)
             {
-                const string msg = "The database was modified outside this session. Save aborted.";
-                _logger.LogInfo("CheckoutService: source hash mismatch — " + msg);
-                _logger.LogBreadcrumb("Save: SourceModified");
-                // Sticky: a genuine conflict the user must resolve — never auto-dismiss.
-                _dispatch(() => SaveFailed?.Invoke(msg, false));
-                return SaveOutcome.SourceModified;
+                // Ghost-rename self-heal: if D's hash equals the snapshot hash of a save
+                // whose rename was never confirmed, D was updated by OUR OWN delayed
+                // File.Move landing after its 5s deadline — not by another writer.
+                // Adopt that save as successful and continue with the current one.
+                // (SHA-256 equality with a foreign write is not a practical concern.)
+                if (_pendingSaveHash is not null &&
+                    string.Equals(currentSourceHash, _pendingSaveHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInfo("CheckoutService: source matches pending save hash — " +
+                                    "our delayed rename landed; treating prior save as successful.");
+                    _logger.LogBreadcrumb("Save: GhostRenameHealed");
+                    HashAtCheckout   = _pendingSaveHash;
+                    _pendingSaveHash = null;
+                    // Fall through to step 3 — the current save proceeds normally.
+                }
+                else
+                {
+                    const string msg = "The database was modified outside this session. Save aborted.";
+                    _logger.LogInfo("CheckoutService: source hash mismatch — " + msg);
+                    _logger.LogBreadcrumb("Save: SourceModified");
+                    // Sticky: a genuine conflict the user must resolve — never auto-dismiss.
+                    _dispatch(() => SaveFailed?.Invoke(msg, false));
+                    return SaveOutcome.SourceModified;
+                }
             }
         }
 
@@ -758,13 +943,36 @@ public sealed class CheckoutService : IDisposable
 
             if (!renameCompleted)
             {
-                _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
-                return SaveOutcome.CopyError;
+                // The 5s deadline elapsed, but the abandoned File.Move thread may
+                // still complete the rename ("ghost rename"). Probe once: if D
+                // already bears the snapshot hash, the move landed just past the
+                // deadline and this save actually succeeded.
+                if (await ProbeGhostRenameLandedAsync(newSourceHash))
+                {
+                    _logger.LogInfo("CheckoutService: rename timed out but D already matches " +
+                                    "the snapshot — treating save as successful.");
+                    _logger.LogBreadcrumb("Save: GhostRenameConfirmedByProbe");
+                    // Fall through to step 6 as a normal success.
+                }
+                else
+                {
+                    // Genuinely unconfirmed. Remember the snapshot hash (in memory and
+                    // in the dirty marker) so a ghost landing later — even after a
+                    // restart — is recognized as ours instead of as a foreign write.
+                    RecordPendingSaveHash(newSourceHash);
+                    _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
+                    RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+                    return SaveOutcome.CopyError;
+                }
             }
         }
         catch (Exception ex)
         {
+            // A thrown rename almost always means the move truly did not happen, but
+            // on a network share the failure report itself can be unreliable —
+            // recording the pending hash is harmless when the ghost never lands
+            // (it simply never matches anything).
+            RecordPendingSaveHash(newSourceHash);
             var msg = $"Failed to finalize save: {ex.Message}";
             _logger.LogError(ex, "CheckoutService: D.tmp rename failed");
             await NetworkFileOps.DeleteAsync(tmpPath);
@@ -773,8 +981,9 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Step 6: Update state ─────────────────────────────────────────────
-        HashAtCheckout = newSourceHash;
-        SessionDirty   = false;
+        HashAtCheckout   = newSourceHash;
+        _pendingSaveHash = null;   // this save is confirmed — no ghost outstanding
+        SessionDirty     = false;
 
         // D' now matches D — delete the dirty marker. If the user makes further
         // edits, DatabaseContext.MarkDirty() will re-write it (after ResetDirty rearms it).
@@ -1011,6 +1220,61 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Examines the crash artifacts for <paramref name="sourcePath"/> so the caller can
+    /// decide what recovery to offer. Call after <see cref="DetectCrashRecovery"/> returns
+    /// true (returns null when no artifacts exist).
+    ///
+    /// <para><b>Side effect (intentional):</b> the integrity check opens D' with a
+    /// read-write connection, which makes SQLite replay any hot rollback journal left by
+    /// the crash — completing SQLite's own crash recovery — before verifying the file.
+    /// A read-only open would refuse to roll back the journal and misreport a perfectly
+    /// recoverable D' as damaged.</para>
+    /// </summary>
+    /// <param name="sourcePath">The database path D whose crash artifacts to inspect.</param>
+    /// <returns>
+    /// Null when no crash artifacts exist; otherwise a <see cref="CrashRecoveryInfo"/>
+    /// with the working-copy path, the marker's recorded source hash (null for
+    /// legacy/unreadable markers), and whether D' passed the integrity check.
+    /// </returns>
+    public CrashRecoveryInfo? InspectCrashRecovery(string sourcePath)
+    {
+        if (!DetectCrashRecovery(sourcePath)) return null;
+
+        var workingPath = ComputeWorkingPath(sourcePath);
+        var markerHash  = TryReadMarkerHash(workingPath + ".dirty");
+        var intact      = BackupService.CheckIntegrity(workingPath, SqliteOpenMode.ReadWrite);
+        return new CrashRecoveryInfo(workingPath, markerHash, intact);
+    }
+
+    /// <summary>
+    /// Moves a damaged crash-recovery working copy aside (suffix
+    /// <c>.corrupt-yyyyMMdd-HHmmss</c>) instead of deleting it, and removes its dirty
+    /// marker. Archiving rather than deleting preserves a salvage option — a corrupt
+    /// SQLite file usually still yields most of its rows to <c>.recover</c>/<c>.dump</c>
+    /// in a support scenario — at zero cost to the user, who never sees the file.
+    /// </summary>
+    /// <param name="sourcePath">The database path D whose damaged working copy to archive.</param>
+    /// <returns>The archive path, or null when the move failed (the file is deleted instead).</returns>
+    public string? ArchiveCorruptWorkingCopy(string sourcePath)
+    {
+        var workingPath = ComputeWorkingPath(sourcePath);
+        var archivePath = workingPath + $".corrupt-{DateTime.Now:yyyyMMdd-HHmmss}";
+        try
+        {
+            File.Move(workingPath, archivePath, overwrite: true);
+            _logger.LogInfo($"CheckoutService: archived damaged working copy to {archivePath}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInfo($"CheckoutService: could not archive damaged working copy ({ex.Message}) — deleting instead.");
+            TryDelete(workingPath);
+            archivePath = null;
+        }
+        TryDelete(workingPath + ".dirty");
+        return archivePath;
+    }
+
+    /// <summary>
     /// Deletes any orphaned <c>D.tmp</c> file left alongside D from a previous
     /// crashed save. Call at startup before <see cref="CheckoutAsync"/>.
     /// </summary>
@@ -1030,22 +1294,78 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Releases the write lock and optionally saves first. Call on graceful shutdown.
+    ///
+    /// <para>Any in-flight save (e.g. an autosave tick that started just before
+    /// shutdown) is drained first, so the final save cannot be silently skipped by the
+    /// <see cref="_saveInFlight"/> gate and the lock is never released mid-write.</para>
+    ///
+    /// <para><b>Lock disposition on a failed final save:</b></para>
+    /// <list type="bullet">
+    ///   <item><see cref="SaveOutcome.CopyError"/> (transient — network down, I/O error):
+    ///         the lock file is deliberately LEFT IN PLACE via
+    ///         <see cref="WriteLockService.Suspend"/>. D' and its dirty marker survive for
+    ///         recovery at next launch, and the abandoned lock (stale after
+    ///         <see cref="WriteLockService.StaleLockThresholdSeconds"/>) keeps other users
+    ///         from writing D underneath those unsaved changes without an informed
+    ///         stale-lock takeover.</item>
+    ///   <item><see cref="SaveOutcome.SourceModified"/> / <see cref="SaveOutcome.LockLost"/>:
+    ///         the lock is released normally — holding it protects nothing (the changes
+    ///         can never be applied automatically; recovery will offer an export).</item>
+    /// </list>
     /// </summary>
     /// <param name="saveFirst">
     /// When true and in write mode, runs <see cref="SaveAsync"/> before releasing.
     /// </param>
-    public async Task ReleaseAsync(bool saveFirst)
+    /// <returns>
+    /// The outcome of the final save, so callers can decide whether it is safe to delete
+    /// the working copy (<see cref="CleanupWorkingCopy"/>) — only on
+    /// <see cref="SaveOutcome.Success"/>. Returns Success when no save was requested
+    /// or the session was not in write mode.
+    /// </returns>
+    public async Task<SaveOutcome> ReleaseAsync(bool saveFirst)
     {
         _logger.LogBreadcrumb("Release", new() { ["saveFirst"] = saveFirst.ToString() });
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
 
-        if (saveFirst && Mode == CheckoutMode.WriteAccess)
-            await SaveAsync(releaseLockAfter: true);
+        var outcome = SaveOutcome.Success;
 
-        _lockService.Release();
+        if (saveFirst && Mode == CheckoutMode.WriteAccess)
+        {
+            // StopAutoSave stops the timer but not a tick already in flight; wait for
+            // it so the final save below actually runs instead of hitting the
+            // _saveInFlight gate and being skipped.
+            await WaitForInFlightSaveAsync();
+
+            outcome = await SaveAsync(releaseLockAfter: true);
+
+            if (outcome == SaveOutcome.CopyError)
+                _lockService.Suspend();          // keep the lock file — see doc above
+            else if (outcome != SaveOutcome.Success)
+                _lockService.Release();          // SourceModified / LockLost
+            // Success: SaveAsync already released the lock (releaseLockAfter: true).
+        }
+        else
+        {
+            _lockService.Release();
+        }
+
         Mode = CheckoutMode.ReadOnly;
         LockLossNewHolder = null;
+        return outcome;
+    }
+
+    /// <summary>
+    /// Waits (bounded) for any in-flight <see cref="SaveAsync"/> to finish. A save is
+    /// bounded by a handful of 5-second-capped network operations plus retries, so the
+    /// 60-second ceiling comfortably covers the worst case without risking a hung
+    /// shutdown if something unforeseen wedges the save.
+    /// </summary>
+    private async Task WaitForInFlightSaveAsync()
+    {
+        const int maxWaitMs = 60_000, pollMs = 50;
+        for (var waited = 0; waited < maxWaitMs && Volatile.Read(ref _saveInFlight) == 1; waited += pollMs)
+            await Task.Delay(pollMs);
     }
 
     /// <summary>
@@ -1595,9 +1915,56 @@ public sealed class CheckoutService : IDisposable
         Unreachable
     }
 
-    /// <summary>Writes a dirty marker file alongside D' to track ungraceful exits.</summary>
+    /// <summary>
+    /// Writes a dirty marker file alongside D' to track ungraceful exits. The marker
+    /// carries <see cref="HashAtCheckout"/> (see <see cref="Models.DirtyMarkerData"/>)
+    /// so that crash recovery can later prove D was not modified by another writer
+    /// while the unsaved changes were stranded.
+    /// </summary>
     private void WriteDirtyMarker()
-        => TryWriteAllText(WorkingPath + ".dirty", DateTime.UtcNow.ToString("O"));
+        => TryWriteAllText(WorkingPath + ".dirty", JsonSerializer.Serialize(new DirtyMarkerData
+        {
+            Timestamp       = DateTime.UtcNow,
+            HashAtCheckout  = HashAtCheckout,
+            PendingSaveHash = _pendingSaveHash,
+        }));
+
+    /// <summary>
+    /// Reads and parses a dirty marker file. Returns null when the file is missing,
+    /// unreadable, or in the legacy bare-timestamp format — callers must treat null as
+    /// "cannot verify" and take the conservative (export) recovery path.
+    /// </summary>
+    /// <param name="markerPath">Full path to the .dirty marker file.</param>
+    internal static DirtyMarkerData? TryReadMarker(string markerPath)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<DirtyMarkerData>(File.ReadAllText(markerPath));
+        }
+        catch
+        {
+            return null; // missing file, legacy bare-timestamp marker, or corrupt JSON
+        }
+    }
+
+    /// <summary>
+    /// Convenience wrapper over <see cref="TryReadMarker"/> returning only the
+    /// <see cref="Models.DirtyMarkerData.HashAtCheckout"/> value.
+    /// </summary>
+    /// <param name="markerPath">Full path to the .dirty marker file.</param>
+    internal static string? TryReadMarkerHash(string markerPath)
+        => TryReadMarker(markerPath)?.HashAtCheckout;
+
+    /// <summary>
+    /// True when a dirty marker currently exists for this session's working copy —
+    /// i.e. unsaved user edits exist that have not yet been written back to D.
+    /// Used by shutdown paths to decide whether a failed final save means real data
+    /// is at stake (keep D' for recovery, warn the user) or nothing was lost.
+    /// </summary>
+    public bool HasDirtyMarker =>
+        !string.IsNullOrEmpty(WorkingPath)
+        && WorkingPath != SourcePath
+        && File.Exists(WorkingPath + ".dirty");
 
     /// <summary>Deletes the dirty marker file. Non-throwing.</summary>
     private void DeleteDirtyMarker()
@@ -1804,8 +2171,35 @@ public enum CheckoutOutcome
     /// <summary>Fatal error (hash mismatch or copy failure). Caller should attempt <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> as a fallback.</summary>
     Failed,
     /// <summary>Network share is unreachable (operation timed out). Do not attempt read-only fallback — D is inaccessible.</summary>
-    NetworkUnreachable
+    NetworkUnreachable,
+    /// <summary>
+    /// Crash recovery was requested but the unsaved changes cannot be applied safely:
+    /// D was modified since the crash, the marker carries no verifiable hash, or D/D'
+    /// is missing. D' and its marker are left intact; the caller should offer to export
+    /// the unsaved changes (then <see cref="CheckoutService.DiscardCrash"/>) and re-run
+    /// a normal checkout. The write lock is NOT held when this is returned.
+    /// </summary>
+    RecoveryConflict
 }
+
+/// <summary>
+/// Snapshot of the crash artifacts for a database, produced by
+/// <see cref="CheckoutService.InspectCrashRecovery"/> so the startup flow can decide
+/// which recovery offer to make.
+/// </summary>
+/// <param name="WorkingPath">Full path to the crashed session's working copy D'.</param>
+/// <param name="HashAtCheckout">
+/// Hash of D recorded in the dirty marker when the crashed session became dirty, or
+/// null when the marker is legacy/unreadable (recovery must then take the export path).
+/// </param>
+/// <param name="WorkingCopyIntact">
+/// True when D' passed a read-write integrity check (which also replays any hot
+/// journal). False means the file is damaged and only archiving/export salvage applies.
+/// </param>
+public sealed record CrashRecoveryInfo(
+    string WorkingPath,
+    string? HashAtCheckout,
+    bool WorkingCopyIntact);
 
 /// <summary>Result of a <see cref="CheckoutService.SaveAsync"/> call.</summary>
 public enum SaveOutcome

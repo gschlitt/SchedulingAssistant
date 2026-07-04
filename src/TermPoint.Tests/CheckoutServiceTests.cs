@@ -2083,4 +2083,598 @@ public sealed class CheckoutServiceTests : IDisposable
         }
     }
 
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 8 — Crash recovery (restore path) and shutdown save-outcome handling
+    //
+    // These tests cover the "keep, verify, restore" crash-recovery design:
+    //   • The dirty marker records HashAtCheckout as JSON (DirtyMarkerData).
+    //   • CheckoutAsync(recoverWorkingCopy: true) resumes a crashed session's D'
+    //     when D is provably unchanged, and returns RecoveryConflict otherwise.
+    //   • InspectCrashRecovery verifies D' integrity (replaying any hot journal).
+    //   • ReleaseAsync returns the final save's outcome, and on a transient failure
+    //     leaves the lock file in place so D is protected until recovery.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Simulates a process crash for a service that holds the write lock: stops the
+    /// heartbeat timers (a dead process sends no heartbeats) and deletes the lock file
+    /// (equivalent to the stale-lock takeover a recovering instance would perform,
+    /// but deterministic — no 90-second staleness wait in tests). D' and the dirty
+    /// marker are left exactly as the crash left them.
+    /// </summary>
+    private static void SimulateCrash(WriteLockService lockSvc, string dbPath)
+    {
+        lockSvc.Suspend();
+        try { File.Delete(Path.ChangeExtension(dbPath, ".lock")); } catch { }
+    }
+
+    /// <summary>
+    /// The dirty marker written by MarkDirty must be JSON carrying HashAtCheckout,
+    /// so a later crash recovery can verify D was not modified in the interim.
+    /// </summary>
+    [Fact]
+    public async Task MarkDirty_MarkerContainsHashAtCheckout()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+
+        var json = File.ReadAllText(svc.WorkingPath + ".dirty");
+        var data = JsonSerializer.Deserialize<TermPoint.Models.DirtyMarkerData>(json);
+
+        Assert.NotNull(data);
+        Assert.Equal(svc.HashAtCheckout, data!.HashAtCheckout);
+        Assert.True(data.Timestamp > DateTime.UtcNow.AddMinutes(-1), "Timestamp must be recent.");
+    }
+
+    /// <summary>
+    /// A legacy marker (bare ISO timestamp, pre-JSON format) must read as "hash
+    /// unknown" rather than throwing — recovery then takes the conservative path.
+    /// </summary>
+    [Fact]
+    public void TryReadMarkerHash_LegacyTimestampMarker_ReturnsNull()
+    {
+        var markerPath = Path.Combine(_tempDir, "legacy.dirty");
+        File.WriteAllText(markerPath, DateTime.UtcNow.ToString("O"));
+
+        Assert.Null(CheckoutService.TryReadMarkerHash(markerPath));
+    }
+
+    /// <summary>ReleaseAsync reports the outcome of a successful final save.</summary>
+    [Fact]
+    public async Task ReleaseAsync_SaveSucceeds_ReturnsSuccess()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        var outcome = await svc.ReleaseAsync(saveFirst: true);
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+    }
+
+    /// <summary>
+    /// ReleaseAsync reports SourceModified when the final save hit an external
+    /// conflict, so the caller knows NOT to delete the working copy.
+    /// (The lock is still released for this outcome — holding it protects nothing,
+    /// since the changes can never be applied automatically.)
+    /// </summary>
+    [Fact]
+    public async Task ReleaseAsync_SourceModified_ReturnsSourceModified()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "original");
+
+        await svc.CheckoutAsync(db);
+        File.WriteAllText(db, "externally-changed");
+
+        var outcome = await svc.ReleaseAsync(saveFirst: true);
+
+        Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.False(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// On a TRANSIENT final-save failure (CopyError), ReleaseAsync must leave the lock
+    /// file in place (via WriteLockService.Suspend) and preserve D' + dirty marker:
+    /// they are the only copy of the unsaved changes, and the abandoned lock keeps
+    /// other users from writing D underneath them without an informed stale takeover.
+    /// The save fails here because D' is not a valid SQLite file, so the Online Backup
+    /// API throws — the same CopyError path a network failure takes.
+    /// </summary>
+    [Fact]
+    public async Task ReleaseAsync_TransientSaveFailure_KeepsLockFileAndCrashArtifacts()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "not-a-sqlite-file");
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty(); // unsaved edits exist
+
+        var outcome = await svc.ReleaseAsync(saveFirst: true);
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.True(File.Exists(Path.ChangeExtension(db, ".lock")),
+            "Lock file must be left in place after a transient save failure — it goes stale " +
+            "and protects D until the unsaved changes are recovered.");
+        Assert.True(File.Exists(svc.WorkingPath), "D' must survive for recovery.");
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "Dirty marker must survive for recovery.");
+    }
+
+    /// <summary>
+    /// Happy-path recovery: after a crash with unsaved edits, a recovery-mode checkout
+    /// adopts the crashed session's D' (edits intact), enters write mode, and leaves
+    /// the dirty marker in place (the edits are still unsaved).
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_SourceUnchanged_ResumesSessionWithEditsIntact()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        // Previous session: checkout, edit D', mark dirty, crash.
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        svc1.MarkDirty();
+        var crashedWorkingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+
+        // Next launch: recovery-mode checkout.
+        var (svc2, _) = CreateService();
+        Assert.True(svc2.DetectCrashRecovery(db)); // precondition
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(CheckoutMode.WriteAccess, svc2.Mode);
+        Assert.Equal(crashedWorkingPath, svc2.WorkingPath);
+        Assert.Equal("unsaved-edit", ReadTestValue(svc2.WorkingPath));
+        Assert.NotNull(svc2.HashAtCheckout);
+        Assert.True(File.Exists(svc2.WorkingPath + ".dirty"),
+            "Marker must remain after recovery — the restored edits are still unsaved.");
+    }
+
+    /// <summary>
+    /// End-to-end recovery: the recovered session's SaveAsync pushes the crashed
+    /// session's edits back to D through the normal save pipeline.
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_ThenSave_PushesRecoveredEditsToSource()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "recovered-edit");
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+
+        var (svc2, _) = CreateService();
+        await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+        var saveOutcome = await svc2.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, saveOutcome);
+        Assert.Equal("recovered-edit", ReadTestValue(db));
+        Assert.False(File.Exists(svc2.WorkingPath + ".dirty"),
+            "Marker must be cleared once the recovered edits are safely in D.");
+    }
+
+    /// <summary>
+    /// When D was modified after the crash (another writer saved), recovery must NOT
+    /// touch D: the checkout returns RecoveryConflict, releases the lock, and leaves
+    /// D' + marker intact so the caller can offer an exported copy.
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_SourceChangedSinceCrash_ReturnsRecoveryConflict()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "stranded-edit");
+        svc1.MarkDirty();
+        var crashedWorkingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+
+        // Another writer changes D while our edits are stranded.
+        InsertTestValue(db, "someone-elses-edit");
+
+        var (svc2, lockSvc2) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.RecoveryConflict, outcome);
+        Assert.False(lockSvc2.IsWriter, "Lock must be released on RecoveryConflict.");
+        Assert.Equal("someone-elses-edit", ReadTestValue(db)); // D untouched
+        Assert.True(File.Exists(crashedWorkingPath), "D' must be preserved for export.");
+        Assert.True(File.Exists(crashedWorkingPath + ".dirty"), "Marker must be preserved.");
+    }
+
+    /// <summary>
+    /// A legacy marker carries no hash, so recovery cannot verify D — it must take
+    /// the conservative RecoveryConflict path rather than guessing.
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_LegacyMarker_ReturnsRecoveryConflict()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        svc1.MarkDirty();
+        // Overwrite the marker with the legacy bare-timestamp format.
+        File.WriteAllText(svc1.WorkingPath + ".dirty", DateTime.UtcNow.ToString("O"));
+        SimulateCrash(lockSvc1, db);
+
+        var (svc2, _) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.RecoveryConflict, outcome);
+    }
+
+    /// <summary>
+    /// When D itself vanished while the changes were stranded, there is nothing to
+    /// verify against — recovery returns RecoveryConflict (export-only path).
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_SourceMissing_ReturnsRecoveryConflict()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+        File.Delete(db); // D deleted/renamed while the app was closed
+
+        var (svc2, _) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.RecoveryConflict, outcome);
+    }
+
+    /// <summary>
+    /// When another writer holds a live lock, a recovery-mode checkout lands in
+    /// read-only exactly like a normal one — and the crash artifacts survive so
+    /// recovery can be offered again at the next write-mode open.
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_OtherWriterHoldsLock_ReadOnlyAndArtifactsKept()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        svc1.MarkDirty();
+        var crashedWorkingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+
+        WriteExternalFreshLock(db); // someone else is editing now
+
+        var (svc2, _) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        Assert.True(File.Exists(crashedWorkingPath), "D' must survive a deferred recovery.");
+        Assert.True(File.Exists(crashedWorkingPath + ".dirty"), "Marker must survive a deferred recovery.");
+    }
+
+    /// <summary>
+    /// InspectCrashRecovery reports an intact working copy with the marker's hash
+    /// for a normal crash (valid SQLite D' + JSON marker).
+    /// </summary>
+    [Fact]
+    public async Task InspectCrashRecovery_IntactWorkingCopy_ReportsIntactWithHash()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+
+        var (svc2, _) = CreateService();
+        var info = svc2.InspectCrashRecovery(db);
+
+        Assert.NotNull(info);
+        Assert.True(info!.WorkingCopyIntact);
+        Assert.Equal(svc1.HashAtCheckout, info.HashAtCheckout);
+    }
+
+    /// <summary>
+    /// A garbage (non-SQLite) working copy must be reported as not intact so the
+    /// caller archives it instead of offering a restore that cannot work.
+    /// </summary>
+    [Fact]
+    public async Task InspectCrashRecovery_CorruptWorkingCopy_ReportsNotIntact()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+
+        // Corrupt D' after the crash (e.g. torn write / disk fault).
+        File.WriteAllText(svc1.WorkingPath, "garbage-not-a-database");
+
+        var (svc2, _) = CreateService();
+        var info = svc2.InspectCrashRecovery(db);
+
+        Assert.NotNull(info);
+        Assert.False(info!.WorkingCopyIntact);
+    }
+
+    /// <summary>InspectCrashRecovery returns null when no crash artifacts exist.</summary>
+    [Fact]
+    public void InspectCrashRecovery_NoArtifacts_ReturnsNull()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        Assert.Null(svc.InspectCrashRecovery(db));
+    }
+
+    /// <summary>
+    /// ArchiveCorruptWorkingCopy moves D' aside (preserving salvage options) and
+    /// clears the marker, so the next launch starts clean.
+    /// </summary>
+    [Fact]
+    public async Task ArchiveCorruptWorkingCopy_MovesFileAndClearsMarker()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        svc1.MarkDirty();
+        var workingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+
+        var (svc2, _) = CreateService();
+        var archivePath = svc2.ArchiveCorruptWorkingCopy(db);
+
+        Assert.NotNull(archivePath);
+        Assert.True(File.Exists(archivePath!), "Archive file must exist.");
+        Assert.False(File.Exists(workingPath), "Original D' must be gone.");
+        Assert.False(File.Exists(workingPath + ".dirty"), "Marker must be cleared.");
+        Assert.False(svc2.DetectCrashRecovery(db), "No crash must be detected after archiving.");
+    }
+
+    /// <summary>
+    /// After a recovered session saves successfully and the app exits cleanly, the
+    /// next launch must NOT re-offer recovery — the cycle closes completely.
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_SaveAndRelease_NoRecoveryOfferedNextLaunch()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "edit");
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+
+        // Recovered session: restore, save, exit cleanly, clean up.
+        var (svc2, _) = CreateService();
+        await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+        var outcome = await svc2.ReleaseAsync(saveFirst: true);
+        Assert.Equal(SaveOutcome.Success, outcome);
+        svc2.CleanupWorkingCopy();
+
+        var (svc3, _) = CreateService();
+        Assert.False(svc3.DetectCrashRecovery(db));
+        Assert.Equal("edit", ReadTestValue(db));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 9 — Ghost-rename self-heal (finding #3)
+    //
+    // A save's step-5 rename (D.tmp → D) can exceed the network deadline yet still
+    // complete on the abandoned thread ("ghost rename"): D is updated while
+    // HashAtCheckout is stale, so every later save would misread the state as an
+    // external modification (sticky SourceModified, autosave stopped).
+    //
+    // The fix records the snapshot hash of the unconfirmed save (in memory and in
+    // the dirty marker). Step 2 then recognizes a D bearing that hash as "updated
+    // by our own delayed rename" and continues; recovery after a restart accepts
+    // the pending hash as proof of no foreign writer.
+    //
+    // The rename-timeout itself cannot be triggered deterministically on local
+    // disk, so these tests simulate its two effects directly: the ghost content
+    // landing in D (via the same Online Backup API the save uses) and the pending
+    // hash being recorded (via the same RecordPendingSaveHash call production uses).
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Applies a "ghost rename" to D: snapshots <paramref name="workingPath"/> into
+    /// <paramref name="dbPath"/> with the SQLite Online Backup API — the same
+    /// mechanism SaveAsync uses to produce D.tmp — and returns the resulting hash
+    /// of D (what step 4 would have recorded as the snapshot hash).
+    /// </summary>
+    private static string ApplyGhostRename(string workingPath, string dbPath)
+    {
+        using (var src = new SqliteConnection($"Data Source={workingPath};Pooling=False"))
+        using (var dst = new SqliteConnection($"Data Source={dbPath};Pooling=False"))
+        {
+            src.Open();
+            dst.Open();
+            src.BackupDatabase(dst);
+        }
+        return NetworkFileOps.ComputeHash(dbPath);
+    }
+
+    /// <summary>
+    /// When D bears the pending save hash (our own ghost rename landed), the next
+    /// save must self-heal and succeed instead of aborting with SourceModified —
+    /// including pushing edits made after the ghost save.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_GhostRenameLanded_SelfHealsAndSaves()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        InsertTestValue(svc.WorkingPath, "first-edit");
+        svc.MarkDirty();
+
+        // Simulate a save whose rename timed out but landed anyway: D now holds the
+        // snapshot of D', and the service recorded the snapshot hash as pending.
+        var ghostHash = ApplyGhostRename(svc.WorkingPath, db);
+        svc.RecordPendingSaveHash(ghostHash);
+
+        // The user keeps editing after the "failed" save.
+        InsertTestValue(svc.WorkingPath, "second-edit");
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Equal("second-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// The self-heal must only fire for OUR ghost's exact hash. A genuine foreign
+    /// modification (hash matching neither HashAtCheckout nor the pending hash)
+    /// must still abort with SourceModified.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_ForeignModificationWithPendingHashSet_StillSourceModified()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+        svc.RecordPendingSaveHash(new string('A', 64)); // pending from some failed save
+
+        // Another writer modifies D — its hash matches neither of our hashes.
+        InsertTestValue(db, "foreign-edit");
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.Equal("foreign-edit", ReadTestValue(db)); // D untouched by us
+    }
+
+    /// <summary>
+    /// RecordPendingSaveHash must persist the pending hash into the existing dirty
+    /// marker (alongside the unchanged checkout hash) so a post-exit ghost can be
+    /// recognized by next-launch recovery.
+    /// </summary>
+    [Fact]
+    public async Task RecordPendingSaveHash_RewritesMarkerWithBothHashes()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+
+        svc.RecordPendingSaveHash("ABC123");
+
+        var marker = CheckoutService.TryReadMarker(svc.WorkingPath + ".dirty");
+        Assert.NotNull(marker);
+        Assert.Equal(svc.HashAtCheckout, marker!.HashAtCheckout);
+        Assert.Equal("ABC123", marker.PendingSaveHash);
+    }
+
+    /// <summary>
+    /// Without a dirty marker there are no unsaved edits at stake, so
+    /// RecordPendingSaveHash must not create one (a spurious marker would trigger
+    /// a false crash-recovery offer at the next launch).
+    /// </summary>
+    [Fact]
+    public async Task RecordPendingSaveHash_NoMarker_DoesNotCreateOne()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db); // no MarkDirty — no edits, no marker
+
+        svc.RecordPendingSaveHash("ABC123");
+
+        Assert.False(File.Exists(svc.WorkingPath + ".dirty"));
+    }
+
+    /// <summary>
+    /// Cross-restart ghost: the rename lands AFTER the app exits (e.g. SMB reconnects
+    /// post-shutdown). At next launch, recovery must recognize D via the marker's
+    /// pending hash and restore the working copy — including post-ghost edits —
+    /// instead of reporting a conflict.
+    /// </summary>
+    [Fact]
+    public async Task RecoverCheckout_GhostLandedAfterExit_RestoresViaPendingHash()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "stranded-edit");
+        svc1.MarkDirty();
+
+        // The failed save records its snapshot hash; the user edits a bit more; the
+        // app dies; the ghost rename lands afterwards. (Order of the last two doesn't
+        // matter to recovery — D bears the pending hash either way.)
+        var ghostHash = ApplyGhostRename(svc1.WorkingPath, db);
+        svc1.RecordPendingSaveHash(ghostHash);
+        InsertTestValue(svc1.WorkingPath, "post-ghost-edit");
+        SimulateCrash(lockSvc1, db);
+
+        var (svc2, _) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal("post-ghost-edit", ReadTestValue(svc2.WorkingPath));
+
+        var saveOutcome = await svc2.SaveAsync();
+        Assert.Equal(SaveOutcome.Success, saveOutcome);
+        Assert.Equal("post-ghost-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// A confirmed save clears the pending hash: the marker written by the NEXT
+    /// edit must not carry a stale PendingSaveHash from an earlier failed save.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_Success_ClearsPendingHashFromSubsequentMarkers()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+        svc.RecordPendingSaveHash("STALE-PENDING"); // D still matches HashAtCheckout, so
+                                                    // the next save proceeds normally
+
+        var outcome = await svc.SaveAsync();
+        Assert.Equal(SaveOutcome.Success, outcome);
+
+        // Next edit cycle writes a fresh marker — pending must be gone.
+        svc.MarkDirty();
+        var marker = CheckoutService.TryReadMarker(svc.WorkingPath + ".dirty");
+        Assert.NotNull(marker);
+        Assert.Null(marker!.PendingSaveHash);
+    }
 }

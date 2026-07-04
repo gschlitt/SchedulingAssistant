@@ -310,21 +310,29 @@ public class BackupService : IDisposable
     // ── Static integrity check ───────────────────────────────────────────────
 
     /// <summary>
-    /// Opens a temporary read-only connection to <paramref name="dbPath"/> and runs
+    /// Opens a temporary connection (read-only by default) to <paramref name="dbPath"/> and runs
     /// <c>PRAGMA integrity_check</c>. Returns true when SQLite reports "ok", false on any
     /// structural problem or if the file cannot be opened. This is a static method so it
     /// can be called during startup before the BackupService session has started.
     /// </summary>
     /// <param name="dbPath">Full path to the SQLite file to check.</param>
+    /// <param name="mode">
+    /// Connection open mode. Defaults to <see cref="SqliteOpenMode.ReadOnly"/>, which never
+    /// modifies the file. Pass <see cref="SqliteOpenMode.ReadWrite"/> when checking a working
+    /// copy left behind by a crashed session: such a file usually has a hot rollback journal,
+    /// which SQLite cannot replay on a read-only connection (the open fails and the file would
+    /// be misreported as corrupt). A read-write open replays the journal — completing SQLite's
+    /// own crash recovery — and then verifies the result.
+    /// </param>
     /// <returns>True if the database passes integrity check; false otherwise.</returns>
-    public static bool CheckIntegrity(string dbPath)
+    public static bool CheckIntegrity(string dbPath, SqliteOpenMode mode = SqliteOpenMode.ReadOnly)
     {
         try
         {
             var cs = new SqliteConnectionStringBuilder
             {
                 DataSource = dbPath,
-                Mode       = SqliteOpenMode.ReadOnly
+                Mode       = mode
             }.ToString();
 
             using var conn = new SqliteConnection(cs);

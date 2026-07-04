@@ -18,6 +18,7 @@ using TermPoint.ViewModels.Management;
 using TermPoint.Views;
 using TermPoint.Views.GridView;
 using TermPoint.Views.Wizard;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using System.Reflection;
 
@@ -156,8 +157,9 @@ public partial class MainWindow : Window
                 bs.StopSession();
 
             // Stop autosave and save D' → D (releases lock on success).
+            var wasWriteMode = App.Checkout.Mode == CheckoutMode.WriteAccess;
             App.Checkout.StopAutoSave();
-            await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
+            var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode);
 
             // Close any detached panels / sticky notes BEFORE disposing the DI container,
             // so windows whose content binds to view models are torn down while those VMs
@@ -168,8 +170,23 @@ public partial class MainWindow : Window
             // Dispose the DI container, which closes the SQLite connection cleanly.
             (App.Services as IDisposable)?.Dispose();
 
-            // Now that the connection is closed, delete D' from the working directory.
-            App.Checkout.CleanupWorkingCopy();
+            // Delete the working copy ONLY when its content is safely in D (save
+            // succeeded) or nothing was ever edited (no dirty marker). Otherwise the
+            // working copy and its marker are deliberately left behind: they are the
+            // only copy of the user's unsaved changes, and the next launch will offer
+            // to restore them. (ReleaseAsync has already parked the write lock
+            // appropriately for each failure kind.)
+            if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
+            {
+                App.Checkout.CleanupWorkingCopy();
+            }
+            else if (wasWriteMode)
+            {
+                await ShowMessageAsync("Changes Not Saved",
+                    "Your latest changes could not be saved to the database. " +
+                    "They have been kept, and TermPoint will offer to restore them " +
+                    "the next time you open this database.");
+            }
         }
         catch (Exception ex)
         {
@@ -511,10 +528,11 @@ public partial class MainWindow : Window
 
         // Crash recovery implies taking over a prior *write* session — wrong for an
         // observer, who never holds the lock. Skip it in reader mode.
+        var recoverUnsaved = false;
         if (!AppSettings.Current.OpenInReaderMode && App.Checkout.DetectCrashRecovery(dbPath))
-            await HandleCrashRecoveryAsync(dbPath);
+            recoverUnsaved = await OfferCrashRecoveryAsync(dbPath);
 
-        var checkoutResult = await RunCheckoutAsync(dbPath);
+        var checkoutResult = await RunCheckoutAsync(dbPath, recoverUnsaved);
         if (checkoutResult is null)
         {
             // Network unreachable — dialog already shown. Close the app since this
@@ -577,6 +595,13 @@ public partial class MainWindow : Window
 
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
         await SetupMainWindowAsync(canonicalPath, vm);
+
+        // Restored unsaved changes are still only in the working copy — make them
+        // durable right away rather than leaving them one crash away from a second
+        // recovery. Failure is non-fatal: the standard save-error banner (wired by
+        // SetupMainWindowAsync) surfaces it and autosave/manual save will retry.
+        if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
+            await App.Checkout.SaveAsync();
     }
 
     /// <summary>
@@ -585,6 +610,13 @@ public partial class MainWindow : Window
     /// Handles stale-lock prompting inline.
     /// </summary>
     /// <param name="sourcePath">The database path D chosen by the user.</param>
+    /// <param name="recoverUnsaved">
+    /// True when the user chose to restore unsaved changes from a crashed session
+    /// (see <see cref="OfferCrashRecoveryAsync"/>). Passed through to
+    /// <see cref="CheckoutService.CheckoutAsync"/> / <see cref="CheckoutService.ForceCheckoutAsync"/>;
+    /// when the checkout cannot deliver write access, the crash artifacts are kept on
+    /// disk so recovery can be offered again at the next opportunity.
+    /// </param>
     /// <returns>
     /// <list type="bullet">
     /// <item><description><b>Write access:</b> D' (the local working copy).</description></item>
@@ -593,17 +625,26 @@ public partial class MainWindow : Window
     /// D'' via <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/>, or D as a last resort if that also fails.</description></item>
     /// </list>
     /// </returns>
-    private async Task<string?> RunCheckoutAsync(string sourcePath)
+    private async Task<string?> RunCheckoutAsync(string sourcePath, bool recoverUnsaved = false)
     {
-        var outcome = await App.Checkout.CheckoutAsync(sourcePath);
+        var outcome = await App.Checkout.CheckoutAsync(sourcePath, recoverUnsaved);
 
         switch (outcome)
         {
             case CheckoutOutcome.WriteAccess:
                 return App.Checkout.WorkingPath;
 
-            case CheckoutOutcome.ReadOnly:                
+            case CheckoutOutcome.ReadOnly:
+                if (recoverUnsaved)
+                    await ShowRecoveryDeferredMessageAsync();
                 return App.Checkout.WorkingPath;
+
+            case CheckoutOutcome.RecoveryConflict:
+                // The unsaved changes can't be applied automatically (D changed since
+                // the crash, or the marker is unverifiable). Offer an exported copy,
+                // then discard the artifacts and re-run a normal checkout.
+                await HandleRecoveryConflictAsync(sourcePath);
+                return await RunCheckoutAsync(sourcePath, recoverUnsaved: false);
 
             case CheckoutOutcome.StaleHolder:
                 {
@@ -622,9 +663,14 @@ public partial class MainWindow : Window
 
                     if (take)
                     {
-                        var forceOutcome = await App.Checkout.ForceCheckoutAsync();
+                        var forceOutcome = await App.Checkout.ForceCheckoutAsync(recoverUnsaved);
                         if (forceOutcome == CheckoutOutcome.WriteAccess)
                             return App.Checkout.WorkingPath;
+                        if (forceOutcome == CheckoutOutcome.RecoveryConflict)
+                        {
+                            await HandleRecoveryConflictAsync(sourcePath);
+                            return await RunCheckoutAsync(sourcePath, recoverUnsaved: false);
+                        }
                         if (forceOutcome == CheckoutOutcome.NetworkUnreachable)
                         {
                             await ShowMessageAsync("Network Unreachable",
@@ -635,7 +681,10 @@ public partial class MainWindow : Window
                     }
 
                     // User declined, or force-checkout lost the race.
-                    // Set up D'' so we never hold D open directly.
+                    // Set up D'' so we never hold D open directly. Crash artifacts (if
+                    // any) stay on disk so recovery can be offered at the next launch.
+                    if (recoverUnsaved)
+                        await ShowRecoveryDeferredMessageAsync();
                     return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
                 }
 
@@ -649,9 +698,22 @@ public partial class MainWindow : Window
                     "Could not open the database for editing. " +
                     "The application will open in read-only mode.");
                 // Best-effort: try to set up D'' even after failure so D stays handle-free.
+                // Crash artifacts (if any) stay on disk for the next launch.
                 return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
         }
     }
+
+    /// <summary>
+    /// Tells the user their unsaved changes are kept but can't be restored right now
+    /// because this session did not get write access. Shown when a recovery-mode
+    /// checkout lands in read-only (another writer holds the lock, or the user
+    /// declined a stale-lock takeover).
+    /// </summary>
+    private Task ShowRecoveryDeferredMessageAsync()
+        => ShowMessageAsync("Unsaved Changes Kept",
+            "Someone else is currently editing this database, so your unsaved changes " +
+            "can't be restored right now. They have been kept, and TermPoint will offer " +
+            "to restore them the next time you open this database with write access.");
 
     /// <summary>
     /// Final step of every startup path: wires the main window VM and makes the window visible.
@@ -862,8 +924,10 @@ public partial class MainWindow : Window
             settings.AddRecentDatabase(newDatabasePath);
 
             // Release the current checkout (saves if dirty) before opening the new DB.
+            var oldDbName    = Path.GetFileNameWithoutExtension(App.Checkout.SourcePath);
+            var wasWriteMode = App.Checkout.Mode == CheckoutMode.WriteAccess;
             App.Checkout.StopAutoSave();
-            await App.Checkout.ReleaseAsync(saveFirst: App.Checkout.Mode == CheckoutMode.WriteAccess);
+            var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode);
 
             // Capture the current semester selection before DI teardown so it can be
             // restored after reinit without touching AppSettings (avoids a disk round-trip
@@ -885,8 +949,21 @@ public partial class MainWindow : Window
             // CheckoutAsync copies D to D'.
             (App.Services as IDisposable)?.Dispose();
 
-            // Now that the connection is closed, delete the old D' from the working directory.
-            App.Checkout.CleanupWorkingCopy();
+            // Delete the old D' ONLY when its content is safely in the old D (save
+            // succeeded) or nothing was edited (no dirty marker). Otherwise leave the
+            // working copy and marker behind — the next time the user opens that
+            // database they'll be offered their unsaved changes back.
+            if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
+            {
+                App.Checkout.CleanupWorkingCopy();
+            }
+            else if (wasWriteMode)
+            {
+                await ShowMessageAsync("Changes Not Saved",
+                    $"Your latest changes to \"{oldDbName}\" could not be saved. " +
+                    "They have been kept, and TermPoint will offer to restore them " +
+                    "the next time you open that database.");
+            }
 
             // If D does not exist yet (File → New, or a new wizard DB), create it
             // with the schema so CheckoutAsync takes the normal D → D' path and
@@ -905,10 +982,11 @@ public partial class MainWindow : Window
             // Run crash recovery + checkout for the new path.
             await App.Checkout.CleanupOrphanedTmpAsync(newDatabasePath);
             App.Checkout.CleanupStaleCrashArtifacts(newDatabasePath);
+            var recoverUnsaved = false;
             if (App.Checkout.DetectCrashRecovery(newDatabasePath))
-                await HandleCrashRecoveryAsync(newDatabasePath);
+                recoverUnsaved = await OfferCrashRecoveryAsync(newDatabasePath);
 
-            var checkoutPath = await RunCheckoutAsync(newDatabasePath);
+            var checkoutPath = await RunCheckoutAsync(newDatabasePath, recoverUnsaved);
             if (checkoutPath is null)
                 return; // Network unreachable — dialog already shown.
             newDatabasePath = checkoutPath;
@@ -930,6 +1008,11 @@ public partial class MainWindow : Window
             if (savedYearId != null && savedSemesterIds != null)
                 vm.SemesterContext.RestoreSelection(savedYearId, savedSemesterIds);
 
+            // Restored unsaved changes are still only in the working copy — make them
+            // durable right away (mirrors the startup path; failure surfaces through
+            // the standard save-error banner).
+            if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
+                await App.Checkout.SaveAsync();
         }
         catch (Exception ex)
         {
@@ -1201,20 +1284,116 @@ public partial class MainWindow : Window
   
 
     /// <summary>
-    /// Handles crash recovery for <paramref name="sourcePath"/>: notifies the user
-    /// that unsaved changes were lost, then discards the orphaned working copy.
-    /// The working copy is not written back to D — a crash may have left D' corrupt,
-    /// and D is the last fully committed state.
+    /// Offers crash recovery for <paramref name="sourcePath"/> when unsaved changes from
+    /// a session that did not end cleanly are found on disk.
+    ///
+    /// <para>Sequence: verify the recovered data is structurally sound (a damaged file is
+    /// archived and the user informed), then ask Restore-or-Discard. Restore does not copy
+    /// anything by itself — it makes the subsequent checkout run in recovery mode
+    /// (<see cref="CheckoutService.CheckoutAsync"/> with <c>recoverWorkingCopy: true</c>),
+    /// which resumes the crashed session only after proving D is unchanged since the crash.</para>
+    ///
+    /// <para><b>UX rule:</b> the user is never told about working copies or file paths —
+    /// from their point of view TermPoint simply "kept their unsaved changes."</para>
     /// </summary>
-    /// <param name="sourcePath">The database path with an orphaned working copy.</param>
-    private async Task HandleCrashRecoveryAsync(string sourcePath)
+    /// <param name="sourcePath">The database path with crash artifacts.</param>
+    /// <returns>True when the checkout should run in recovery mode (user chose Restore).</returns>
+    private async Task<bool> OfferCrashRecoveryAsync(string sourcePath)
     {
-        await ShowMessageAsync(
-            "Unsaved Changes Lost",
-            "The application did not close cleanly. Any unsaved changes from the " +
-            "previous session have been discarded.");
+        var info = App.Checkout.InspectCrashRecovery(sourcePath);
+        if (info is null) return false;
+
+        if (!info.WorkingCopyIntact)
+        {
+            // The crash damaged the unsaved data beyond SQLite's own journal recovery.
+            // Archive it (support-level salvage stays possible) and tell the user honestly.
+            App.Checkout.ArchiveCorruptWorkingCopy(sourcePath);
+            await ShowMessageAsync("Unsaved Changes Lost",
+                "TermPoint did not close properly last time, and the unsaved changes " +
+                "from that session were damaged and could not be restored.");
+            return false;
+        }
+
+        var restore = await ShowChoiceAsync("Restore Unsaved Changes?",
+            "TermPoint did not close properly last time, but your unsaved changes " +
+            "from that session were kept.\n\nWould you like to restore them?",
+            "Restore", "Discard");
+
+        if (!restore)
+        {
+            App.Checkout.DiscardCrash(sourcePath);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Handles <see cref="CheckoutOutcome.RecoveryConflict"/>: the unsaved changes exist
+    /// and are intact, but D was modified since the crash (or the marker is unverifiable),
+    /// so restoring them automatically would overwrite someone else's work. Offers to
+    /// export the unsaved version as a separate file, then discards the crash artifacts.
+    /// A cancelled save-picker re-offers the choice rather than silently discarding.
+    /// </summary>
+    /// <param name="sourcePath">The database path whose recovery hit a conflict.</param>
+    private async Task HandleRecoveryConflictAsync(string sourcePath)
+    {
+        var info = App.Checkout.InspectCrashRecovery(sourcePath);
+
+        while (info is not null)
+        {
+            var export = await ShowChoiceAsync("Can't Restore Unsaved Changes",
+                "The database has been changed since your unsaved changes were made, " +
+                "so they can't be restored automatically.\n\n" +
+                "Would you like to save your version as a separate file instead? " +
+                "You can open it later from Files → Open Database.",
+                "Save a Copy…", "Discard");
+
+            if (!export)
+                break;
+
+            // Only stop asking once the copy actually landed — a cancelled picker or a
+            // failed copy must not silently destroy the user's last copy of their edits.
+            if (await ExportRecoveredCopyAsync(sourcePath, info.WorkingPath))
+                break;
+        }
 
         App.Checkout.DiscardCrash(sourcePath);
+    }
+
+    /// <summary>
+    /// Shows a save-file picker and copies the recovered working copy to the chosen
+    /// location. The exported file is a complete, standalone database that can be opened
+    /// via Files → Open Database.
+    /// </summary>
+    /// <param name="sourcePath">Original database path D (used for the suggested filename).</param>
+    /// <param name="workingPath">The intact working copy holding the unsaved changes.</param>
+    /// <returns>True when the copy was written; false on picker cancel or copy failure.</returns>
+    private async Task<bool> ExportRecoveredCopyAsync(string sourcePath, string workingPath)
+    {
+        var suggested = Path.GetFileNameWithoutExtension(sourcePath) + " (recovered).db";
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title             = "Save Recovered Copy",
+            SuggestedFileName = suggested,
+            DefaultExtension  = "db",
+        });
+
+        var destPath = file?.TryGetLocalPath();
+        if (destPath is null) return false; // user cancelled
+
+        try
+        {
+            File.Copy(workingPath, destPath, overwrite: true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "Failed to export recovered copy");
+            await ShowMessageAsync("Export Failed",
+                $"Could not save the copy: {ex.Message}");
+            return false;
+        }
     }
 
     // ── CheckoutService event handlers ───────────────────────────────────────
@@ -1350,7 +1529,19 @@ public partial class MainWindow : Window
         return sb.ToString();
     }
 
-    private async Task<bool> ShowYesNoAsync(string title, string message)
+    private Task<bool> ShowYesNoAsync(string title, string message)
+        => ShowChoiceAsync(title, message, "Yes", "No");
+
+    /// <summary>
+    /// Shows a modal two-button dialog with caller-supplied button labels
+    /// (e.g. "Restore" / "Discard"). Returns true when the affirmative
+    /// (first) button was clicked.
+    /// </summary>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="affirmative">Label of the confirming button (returned as true).</param>
+    /// <param name="negative">Label of the declining button (returned as false).</param>
+    private async Task<bool> ShowChoiceAsync(string title, string message, string affirmative, string negative)
     {
         var result = false;
         var dlg = new Window
@@ -1363,8 +1554,8 @@ public partial class MainWindow : Window
             ShowInTaskbar = true
         };
 
-        var yes   = new Button { Content = "Yes", HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
-        var no    = new Button { Content = "No",  HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
+        var yes   = new Button { Content = affirmative, HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
+        var no    = new Button { Content = negative,    HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
         var btns  = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
         btns.Children.Add(no);
         btns.Children.Add(yes);
