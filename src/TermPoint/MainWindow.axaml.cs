@@ -745,10 +745,14 @@ public partial class MainWindow : Window
         App.Checkout.SaveFailed      -= OnCheckoutSaveFailed;
         App.Checkout.WriteLockLost -= OnWriteLockLost;
         App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
+        App.Checkout.SaveStarted     -= OnCheckoutSaveStarted;
+        App.Checkout.SaveFinished    -= OnCheckoutSaveFinished;
         App.Checkout.SaveCompleted   += OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      += OnCheckoutSaveFailed;
         App.Checkout.WriteLockLost += OnWriteLockLost;
         App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
+        App.Checkout.SaveStarted     += OnCheckoutSaveStarted;
+        App.Checkout.SaveFinished    += OnCheckoutSaveFinished;
 
         // Start autosave if it was enabled in settings.
         if (AppSettings.Current.AutoSaveEnabled)
@@ -1309,14 +1313,17 @@ public partial class MainWindow : Window
             // Archive it (support-level salvage stays possible) and tell the user honestly.
             App.Checkout.ArchiveCorruptWorkingCopy(sourcePath);
             await ShowMessageAsync("Unsaved Changes Lost",
-                "TermPoint did not close properly last time, and the unsaved changes " +
-                "from that session were damaged and could not be restored.");
+                "Unsaved changes from a previous session with this database were " +
+                "found, but they were damaged and could not be restored.");
             return false;
         }
 
+        // Neutral phrasing: these artifacts can come from a crash, a failed
+        // save-on-exit, or a lock-loss demotion — "did not close properly" would
+        // be wrong for the latter two.
         var restore = await ShowChoiceAsync("Restore Unsaved Changes?",
-            "TermPoint did not close properly last time, but your unsaved changes " +
-            "from that session were kept.\n\nWould you like to restore them?",
+            "Unsaved changes from a previous session with this database were kept." +
+            "\n\nWould you like to restore them?",
             "Restore", "Discard");
 
         if (!restore)
@@ -1413,6 +1420,18 @@ public partial class MainWindow : Window
             vm.SetDirty();
     }
 
+    private void OnCheckoutSaveStarted()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.SetSaving();
+    }
+
+    private void OnCheckoutSaveFinished()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ClearSaving();
+    }
+
     private void OnCheckoutSaveFailed(string message, bool autoDismiss)
     {
         if (DataContext is MainWindowViewModel vm)
@@ -1438,6 +1457,11 @@ public partial class MainWindow : Window
         try
         {
         App.Logger.LogBreadcrumb("WriteLockLost", new() { ["reason"] = reason.ToString() });
+        // File-log line (breadcrumbs go only to Bugsnag): makes a genuine MID-SESSION
+        // demotion unambiguous in the app log, distinct from a fresh launch that opens
+        // read-only because it found an existing lock ("Read-only mode; lock held by ...").
+        App.Logger.LogInfo(
+            $"MainWindow: mid-session write-lock loss (reason={reason}) — demoting to read-only in place.");
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
             try
@@ -1523,7 +1547,12 @@ public partial class MainWindow : Window
                 "(possibly antivirus or cloud sync software).");
         }
 
-        sb.Append(" Any unsaved changes since your last save have been discarded.");
+        // Built BEFORE demotion runs, so HasDirtyMarker still reflects the write
+        // session: DemoteToReadOnlyAsync preserves D' + marker exactly when it is true.
+        sb.Append(App.Checkout.HasDirtyMarker
+            ? " Your unsaved changes have been kept — TermPoint will offer to restore " +
+              "them the next time you open this database with write access."
+            : " There were no unsaved changes at the time.");
         sb.Append(" You can regain write access by exiting and restarting TermPoint.");
 
         return sb.ToString();

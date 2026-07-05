@@ -1001,10 +1001,62 @@ public sealed class WriteLockService : IDisposable
         }
         else
         {
-            ReadCurrentHolder();
-            var age = CurrentHolder is null
-                ? double.MaxValue
-                : (DateTime.UtcNow - CurrentHolder.Heartbeat).TotalSeconds;
+            // Read the lock file via the timeout-aware wrapper (the raw File.ReadAllText this
+            // replaces ran on the UI thread and could hang for the full SMB timeout if the
+            // share died between the Exists check above and the read).
+            //
+            // The read can also THROW fast with a sharing violation when this poll collides
+            // with the writer's heartbeat rename of the same file — a guaranteed-occasional
+            // cross-process collision on a lossy share, same transient class as the save-path
+            // contended read in CheckoutService.VerifyLockIsOursOnceAsync. Both failure modes
+            // must SKIP the cycle: the previous code funnelled them into CurrentHolder = null,
+            // which the age computation treated as infinitely stale — flipping a PERMANENT
+            // false "write access available" offer (the poll timer is disposed on the first
+            // available=true) off a single transient, and inviting this reader to take over
+            // a live writer's lock.
+            string? json;
+            try
+            {
+                var (readCompleted, text) = await NetworkFileOps.ReadAllTextAsync(_lockFilePath);
+                if (!readCompleted)
+                {
+                    App.Logger.LogInfo("[WriteLockService] Poll: lock read timed out — skipping cycle.");
+                    return;
+                }
+                json = text;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                App.Logger.LogInfo(
+                    $"[WriteLockService] Poll: lock read contended ({ex.GetType().Name}) — skipping cycle.");
+                return;
+            }
+
+            double age;
+            try
+            {
+                // A successfully-read but corrupt lock file is deliberately classified as
+                // stale (matching ReadCurrentHolder's synthetic ancient-heartbeat holder):
+                // an unusable lock should be offered for takeover, not respected forever.
+                var data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
+                CurrentHolder = data;
+                age = data is null
+                    ? double.MaxValue
+                    : (DateTime.UtcNow - data.Heartbeat).TotalSeconds;
+            }
+            catch (JsonException)
+            {
+                App.Logger.LogInfo("[WriteLockService] Poll: lock file corrupted — treating as stale.");
+                CurrentHolder = new LockFileData
+                {
+                    Username  = "(corrupted)",
+                    Machine   = "(corrupted)",
+                    Acquired  = DateTime.MinValue,
+                    Heartbeat = DateTime.MinValue,
+                };
+                age = double.MaxValue;
+            }
+
             available = age > StaleLockThresholdSeconds;
             if (available)
                 App.Logger.LogInfo($"[WriteLockService] Poll: lock is stale (age {age:F0}s) — write access available.");

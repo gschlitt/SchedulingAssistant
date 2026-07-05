@@ -127,16 +127,41 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// True when the database has unsaved changes (first write since last save).
-    /// Cleared when a save completes. Drives the "Unsaved changes" indicator in the UI.
+    /// Cleared when a save completes. Drives the "Unsaved changes" indicator in the UI
+    /// (via <see cref="ShowDirtyIndicator"/>, which yields to "Saving…" mid-save).
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowDirtyIndicator))]
     private bool _isDirty;
+
+    /// <summary>
+    /// True while a save is writing to the database. Set/cleared by MainWindow from
+    /// <see cref="Services.CheckoutService.SaveStarted"/> / <c>SaveFinished</c>.
+    /// Drives the "Saving…" footer indicator — with stall-aware chunked transfers, a
+    /// large database on a slow link can legitimately save for tens of seconds.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowDirtyIndicator))]
+    private bool _isSaving;
+
+    /// <summary>
+    /// True when the "Unsaved changes" indicator should be visible: there are unsaved
+    /// changes AND no save is currently running ("Saving…" takes its place mid-save,
+    /// so the two indicators never appear side by side).
+    /// </summary>
+    public bool ShowDirtyIndicator => IsDirty && !IsSaving;
 
     /// <summary>Called by MainWindow when the database first becomes dirty.</summary>
     internal void SetDirty()   => IsDirty = true;
 
     /// <summary>Called by MainWindow when a save completes and dirty state is cleared.</summary>
     internal void ClearDirty() => IsDirty = false;
+
+    /// <summary>Called by MainWindow when a save attempt begins.</summary>
+    internal void SetSaving()   => IsSaving = true;
+
+    /// <summary>Called by MainWindow when a save attempt ends (any outcome).</summary>
+    internal void ClearSaving() => IsSaving = false;
 
     /// <summary>
     /// Human-readable description of a save error, or null when no error is active.

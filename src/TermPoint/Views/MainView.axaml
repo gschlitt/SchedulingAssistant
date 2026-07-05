@@ -135,9 +135,19 @@
 							FontStyle="Italic"
 							Foreground="Red"
 							IsEnabled="{Binding SupportsSave}"
-							IsVisible="{Binding IsDirty}"
+							IsVisible="{Binding ShowDirtyIndicator}"
 							Text="Unsaved changes"
 							ToolTip.Tip="You have unsaved changes" />
+						<!--  Replaces "Unsaved changes" while a save is writing; saves over a
+						      slow network can legitimately run for tens of seconds.  -->
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="11"
+							FontStyle="Italic"
+							Foreground="{StaticResource TextSecondary}"
+							IsVisible="{Binding IsSaving}"
+							Text="Saving…"
+							ToolTip.Tip="Writing your changes to the database" />
 						<CheckBox
 							VerticalAlignment="Center"
 							Content="Auto-save"

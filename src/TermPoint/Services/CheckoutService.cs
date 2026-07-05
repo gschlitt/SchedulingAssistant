@@ -250,6 +250,24 @@ public sealed class CheckoutService : IDisposable
     public event Action? SaveCompleted;
 
     /// <summary>
+    /// Raised on the UI thread when a save attempt begins (after the
+    /// <see cref="_saveInFlight"/> gate is passed). Drives the "Saving…" indicator:
+    /// with chunked stall-aware transfers, a large database on a slow link can
+    /// legitimately save for tens of seconds, and without feedback that is
+    /// indistinguishable from a dead Save button. Always followed by exactly one
+    /// <see cref="SaveFinished"/>, whatever the outcome.
+    /// </summary>
+    public event Action? SaveStarted;
+
+    /// <summary>
+    /// Raised on the UI thread when a save attempt ends — success or any failure.
+    /// Deliberately independent of <see cref="SaveCompleted"/>/<see cref="SaveFailed"/>:
+    /// some outcomes (e.g. <see cref="SaveOutcome.LockLost"/>) raise neither, and the
+    /// "Saving…" indicator must never be left stuck on.
+    /// </summary>
+    public event Action? SaveFinished;
+
+    /// <summary>
     /// Raised on the UI thread the first time the database is written to after a
     /// checkout or save. The UI can use this to show an "Unsaved changes" indicator.
     /// </summary>
@@ -720,9 +738,10 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Saves D' back to D. Verifies the lock is still held and D has not been
-    /// externally modified, snapshots D' to a temporary file via the SQLite Online
-    /// Backup API, hashes it, then atomically renames it to D. (Timestamped rotating
-    /// backups are a separate concern, handled by <see cref="BackupService"/>.)
+    /// externally modified, snapshots D' to a LOCAL temp file via the SQLite Online
+    /// Backup API, streams the snapshot to D.tmp with a stall-aware chunked copy,
+    /// verifies the copy by hash, then atomically renames it to D. (Timestamped
+    /// rotating backups are a separate concern, handled by <see cref="BackupService"/>.)
     /// </summary>
     /// <param name="releaseLockAfter">
     /// When true, deletes the lock file after a successful save.
@@ -751,11 +770,15 @@ public sealed class CheckoutService : IDisposable
 
         try
         {
+            _dispatch(() => SaveStarted?.Invoke());
             return await SaveAsyncCore(releaseLockAfter, isAutoSave);
         }
         finally
         {
             Volatile.Write(ref _saveInFlight, 0);
+            // Guaranteed counterpart to SaveStarted — fires on every outcome so the
+            // "Saving…" indicator can never be left stuck on.
+            _dispatch(() => SaveFinished?.Invoke());
         }
     }
 
@@ -847,9 +870,19 @@ public sealed class CheckoutService : IDisposable
 
         if (lockResult == LockVerificationResult.NotOurs)
         {
-            _logger.LogBreadcrumb("Save: LockLost");
-            await HandleLockLossAsync();
-            return SaveOutcome.LockLost;
+            // If the lock file was merely REMOVED (antivirus, cloud-sync — no new
+            // holder), try to re-create it atomically before giving up the session.
+            if (await TryRecoverRemovedLockAsync())
+            {
+                _logger.LogBreadcrumb("Save: lock re-acquired after external removal — continuing");
+                // Fall through — the save proceeds normally under the restored lock.
+            }
+            else
+            {
+                _logger.LogBreadcrumb("Save: LockLost");
+                await HandleLockLossAsync();
+                return SaveOutcome.LockLost;
+            }
         }
 
         // ── Step 2: Verify D has not been externally modified ─────────────────
@@ -893,46 +926,100 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
-        // ── Step 3: Copy D' → D.tmp via the SQLite Online Backup API ────────
-        // BackupSqliteDatabase coordinates with the SQLite engine rather than
-        // copying raw bytes. This guarantees a consistent snapshot even if a
-        // write transaction is mid-commit on the DatabaseContext connection
-        // (something a raw File.Copy cannot guarantee).
-        var tmpPath = SourcePath + ".tmp";
+        // ── Step 3: Snapshot D' locally, then stream the snapshot to D.tmp ───
+        // 3a. BackupSqliteDatabase coordinates with the SQLite engine rather than
+        //     copying raw bytes. This guarantees a consistent snapshot even if a
+        //     write transaction is mid-commit on the DatabaseContext connection
+        //     (something a raw File.Copy cannot guarantee). The backup targets a
+        //     LOCAL temp file: the consistency guarantee is about the engine-
+        //     coordinated READ of D'; the network only ever sees the finished,
+        //     quiescent snapshot. This keeps SQLite's page-level writes off SMB
+        //     and out from under any network deadline (finding #7).
+        var tmpPath   = SourcePath  + ".tmp";
+        var localTmp  = WorkingPath + ".savetmp";
+        string newSourceHash;
         try
         {
-            var backupCompleted = await NetworkFileOps.RunAsync(
-                () => BackupSqliteDatabase(WorkingPath, tmpPath), "D' → D.tmp backup");
-
-            if (!backupCompleted)
+            try
             {
-                _logger.LogInfo("CheckoutService: D.tmp backup timed out — network unreachable");
+                await Task.Run(() => BackupSqliteDatabase(WorkingPath, localTmp));
+            }
+            catch (Exception ex)
+            {
+                var msg = $"Failed to snapshot the database: {ex.Message}";
+                _logger.LogError(ex, "CheckoutService: local save snapshot failed");
+                RaiseTransientSaveError(msg, isAutoSave);
+                return SaveOutcome.CopyError;
+            }
+
+            // 3b. Hash the snapshot for post-save conflict detection. BackupDatabase
+            //     output is not byte-identical to D' (SQLite increments page-level
+            //     counters in the destination), so we hash the exact bytes that will
+            //     become the new D. Local file — no deadline needed.
+            try
+            {
+                newSourceHash = ComputeHash(localTmp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CheckoutService: could not hash local save snapshot");
+                RaiseTransientSaveError($"Failed to prepare the save: {ex.Message}", isAutoSave);
+                return SaveOutcome.CopyError;
+            }
+
+            // 3c. Stream the quiescent snapshot to D.tmp. CopyAsync is chunked with a
+            //     per-chunk stall deadline, so a large database on a slow link takes
+            //     as long as it takes; only genuine stalls fail. The snapshot is a
+            //     closed single file (no live connection, no journal sidecar), so a
+            //     raw byte copy is safe here.
+            try
+            {
+                var copyCompleted = await NetworkFileOps.CopyAsync(localTmp, tmpPath);
+
+                if (!copyCompleted)
+                {
+                    _logger.LogInfo("CheckoutService: snapshot → D.tmp copy stalled — network unreachable");
+                    await NetworkFileOps.DeleteAsync(tmpPath);
+                    RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+                    return SaveOutcome.CopyError;
+                }
+            }
+            catch (Exception ex)
+            {
+                var msg = $"Failed to write to database location: {ex.Message}";
+                _logger.LogError(ex, "CheckoutService: D.tmp copy failed");
                 await NetworkFileOps.DeleteAsync(tmpPath);
-                RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+                RaiseTransientSaveError(msg, isAutoSave);
                 return SaveOutcome.CopyError;
             }
         }
-        catch (Exception ex)
+        finally
         {
-            var msg = $"Failed to write to database location: {ex.Message}";
-            _logger.LogError(ex, "CheckoutService: D.tmp copy failed");
-            RaiseTransientSaveError(msg, isAutoSave);
+            // The local snapshot has served its purpose (or the save failed) —
+            // it is never needed after the network copy. A crash in this window
+            // leaves an orphan; CleanupStaleCrashArtifacts sweeps it at startup.
+            TryDelete(localTmp);
+        }
+
+        // ── Step 4: Verify the network copy before it becomes D ─────────────
+        // Guards against a torn/corrupted transfer: D.tmp must hash identically to
+        // the local snapshot before the rename makes it the authoritative database.
+        var (verifyCompleted, tmpHash) = await NetworkFileOps.ComputeHashAsync(tmpPath);
+
+        if (!verifyCompleted)
+        {
+            _logger.LogInfo("CheckoutService: D.tmp verification hash stalled — network unreachable");
+            await NetworkFileOps.DeleteAsync(tmpPath);
+            RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
-        // ── Step 4: Hash D.tmp for post-save conflict detection ──────────────
-        // BackupDatabase produces a semantically identical but not byte-identical
-        // copy of D' (SQLite increments page-level counters in the destination).
-        // We therefore hash D.tmp itself — the file that will become the new D —
-        // so that HashAtCheckout matches D after the rename and conflict detection
-        // on the next save works correctly.
-        var (hashTmpCompleted, newSourceHash) = await NetworkFileOps.ComputeHashAsync(tmpPath);
-
-        if (!hashTmpCompleted)
+        if (!string.Equals(tmpHash, newSourceHash, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInfo("CheckoutService: D.tmp hash timed out — network unreachable");
+            _logger.LogInfo("CheckoutService: D.tmp does not match the local snapshot — torn transfer; aborting save.");
+            _logger.LogBreadcrumb("Save: TornTransfer");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+            RaiseTransientSaveError("The save could not be verified after writing.", isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -1146,7 +1233,20 @@ public sealed class CheckoutService : IDisposable
     {
         if (Mode == CheckoutMode.WriteAccess && WorkingPath != SourcePath)
         {
-            WriteDirtyMarker();
+            // The marker is the ONLY thing standing between a crash and the startup
+            // sweep deleting D' as "no edits were made" — a silent write failure here
+            // would silently disarm crash protection. Retry once (transient AV holds
+            // clear in milliseconds), then warn the user honestly.
+            if (!WriteDirtyMarker() && !WriteDirtyMarker())
+            {
+                _logger.LogError(null,
+                    "CheckoutService: could not write the dirty marker — crash protection degraded for this session.");
+                _dispatch(() => SaveFailed?.Invoke(
+                    "TermPoint couldn't create its crash-protection file for this session. " +
+                    "Saving still works normally, but unsaved changes may not be recoverable " +
+                    "after a crash — save your work frequently.",
+                    true));
+            }
             _dispatch(() => BecameDirty?.Invoke());
         }
     }
@@ -1163,6 +1263,16 @@ public sealed class CheckoutService : IDisposable
     {
         var workingPath = ComputeWorkingPath(sourcePath);
         var markerPath  = workingPath + ".dirty";
+
+        // A crash between the local save-snapshot and the end of the network copy
+        // leaves an orphaned .savetmp beside D'. It is a derived artifact (D' is
+        // authoritative) — always safe to delete.
+        var saveTmpPath = workingPath + ".savetmp";
+        if (File.Exists(saveTmpPath))
+        {
+            TryDelete(saveTmpPath);
+            _logger.LogInfo($"CheckoutService: cleaned up orphaned save snapshot: {saveTmpPath}");
+        }
 
         bool hasWorking = File.Exists(workingPath);
         bool hasMarker  = File.Exists(markerPath);
@@ -1476,6 +1586,11 @@ public sealed class CheckoutService : IDisposable
                 switch (result)
                 {
                     case LockVerificationResult.NotOurs:
+                        if (await TryRecoverRemovedLockAsync())
+                        {
+                            _logger.LogInfo("CheckoutService: wake check — lock file was removed; re-acquired.");
+                            break;
+                        }
                         _logger.LogInfo("CheckoutService: wake check — lock is no longer ours. Timing out session.");
                         await HandleLockLossAsync();
                         break;
@@ -1493,6 +1608,47 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogError(ex, "CheckoutService: wake-check task failed");
             }
         });
+    }
+
+    /// <summary>
+    /// Attempts to recover from an <b>externally removed</b> lock file by atomically
+    /// re-creating it, instead of demoting the session and stranding the user's
+    /// unsaved edits.
+    ///
+    /// <para><b>Why this is safe:</b> this runs only when lock verification found the
+    /// file <i>missing</i> with the share reachable and no new holder
+    /// (<see cref="LockLossNewHolder"/> is null) — the signature of antivirus,
+    /// cloud-sync, or backup software deleting the file, not of another user taking
+    /// over. Re-creation goes through <see cref="WriteLockService.TryAcquire"/>, whose
+    /// <c>FileMode.CreateNew</c> is atomic at the SMB level: if another instance claims
+    /// the lock in the race window, our create loses cleanly and the normal demotion
+    /// path runs. A genuine takeover (foreign <c>SessionGuid</c> in the file) never
+    /// reaches this method — trampling a rightful holder remains impossible.</para>
+    ///
+    /// <para>On success the session simply continues as writer (TryAcquire restarted
+    /// the heartbeat and wake timers; our event subscriptions were never removed) and
+    /// an auto-dismissing banner tells the user what happened.</para>
+    /// </summary>
+    /// <returns>True when the lock was re-acquired and the session continues as writer.</returns>
+    private async Task<bool> TryRecoverRemovedLockAsync()
+    {
+        // A takeover has a new holder — never contest it.
+        if (LockLossNewHolder is not null) return false;
+
+        var completed = await NetworkFileOps.RunAsync(
+            () => _lockService.TryAcquire(SourcePath), "lock re-acquire after removal");
+
+        if (!completed || !_lockService.IsWriter)
+            return false;
+
+        _logger.LogInfo("CheckoutService: lock file was removed externally; re-acquired atomically — session continues.");
+        _logger.LogBreadcrumb("Lock re-acquired after external removal");
+        _dispatch(() => SaveFailed?.Invoke(
+            "The database lock file was removed by another program (possibly antivirus " +
+            "or cloud-sync software). TermPoint has restored it and your session " +
+            "continues normally.",
+            true)); // auto-dismiss — informational, nothing is wrong anymore
+        return true;
     }
 
     /// <summary>
@@ -1587,6 +1743,13 @@ public sealed class CheckoutService : IDisposable
                 switch (result)
                 {
                     case LockVerificationResult.NotOurs:
+                        if (await TryRecoverRemovedLockAsync())
+                        {
+                            // Heartbeats were failing because the file vanished; the
+                            // re-acquire recreated it and restarted the heartbeat timer.
+                            _logger.LogInfo("CheckoutService: heartbeat verify — lock file was removed; re-acquired.");
+                            break;
+                        }
                         _logger.LogInfo("CheckoutService: heartbeat verify — lock genuinely lost; demoting.");
                         await HandleLockLossAsync();
                         break;
@@ -1688,18 +1851,31 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
-        // 4 — delete D' and the dirty marker now that the connection is closed.
+        // 4 — dispose of D' now that the connection is closed. When unsaved edits
+        // exist (dirty marker present), D' and the marker are deliberately PRESERVED:
+        // they are the only copy of that work, and the crash-recovery flow will offer
+        // to restore or export it the next time this database is opened with write
+        // access (the marker's hash check decides which). With no marker, nothing
+        // unsaved is at stake and the files are cleaned up as before.
         if (WorkingPath != SourcePath && !string.IsNullOrEmpty(WorkingPath))
         {
-            if (File.Exists(WorkingPath))
+            if (HasDirtyMarker)
             {
-                try { File.Delete(WorkingPath); }
-                catch (Exception ex)
-                {
-                    _logger.LogInfo($"CheckoutService: DemoteToReadOnly — could not delete D': {ex.Message}");
-                }
+                _logger.LogInfo("CheckoutService: DemoteToReadOnly — preserving D' and dirty marker (unsaved changes kept for recovery).");
+                _logger.LogBreadcrumb("Demote: unsaved changes preserved");
             }
-            DeleteDirtyMarker();
+            else
+            {
+                if (File.Exists(WorkingPath))
+                {
+                    try { File.Delete(WorkingPath); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogInfo($"CheckoutService: DemoteToReadOnly — could not delete D': {ex.Message}");
+                    }
+                }
+                DeleteDirtyMarker();
+            }
         }
 
         SessionDirty = false;
@@ -1870,7 +2046,40 @@ public sealed class CheckoutService : IDisposable
         }
 
         // ── Step 2: Read and parse D.lock ────────────────────────────────────
-        var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(lockPath);
+        // The read can THROW (rather than time out) when D.lock is momentarily locked
+        // by another process — most commonly our OWN heartbeat timer, whose atomic
+        // write-temp-then-rename briefly holds the file open. On a network share that
+        // window widens under latency/loss and surfaces as ERROR_SHARING_VIOLATION
+        // ("the process cannot access the file because it is being used by another
+        // process"). NetworkFileOps deliberately lets such exceptions propagate (see its
+        // class doc), so we absorb them here: a contended read is a transient,
+        // self-inflicted condition, NOT a lock loss. We return Unreachable so the caller
+        // keeps writer state and retries next cycle. Demoting to read-only because our own
+        // heartbeat held the lock file for a few milliseconds would be exactly the
+        // false-positive loss of write access this whole verification path exists to prevent.
+        //
+        // Deliberate trade-off: FileNotFoundException is an IOException, so a lock file
+        // GENUINELY deleted in the race window between Step 1's ExistsAsync (true) and this
+        // read is also classified Unreachable here — a true lock loss whose detection is
+        // delayed by one cycle. The next verify (next save/heartbeat/wake) takes the
+        // !exists branch in Step 1, runs the directory reachability probe, and classifies
+        // it NotOurs correctly. One cycle of delayed true-positive is the price of never
+        // demoting on a transient — consistent with the design bias documented on
+        // VerifyLockIsOursAsync (transient beats destructive).
+        bool readCompleted;
+        string? json;
+        try
+        {
+            (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(lockPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogInfo(
+                $"CheckoutService: lock read contended ({ex.GetType().Name}: {ex.Message}) " +
+                "— treating as transient, keeping writer state.");
+            return LockVerificationResult.Unreachable;
+        }
+
         if (!readCompleted)
             return LockVerificationResult.Unreachable;
 
@@ -1921,7 +2130,8 @@ public sealed class CheckoutService : IDisposable
     /// so that crash recovery can later prove D was not modified by another writer
     /// while the unsaved changes were stranded.
     /// </summary>
-    private void WriteDirtyMarker()
+    /// <returns>True when the marker was written; false on any I/O failure.</returns>
+    private bool WriteDirtyMarker()
         => TryWriteAllText(WorkingPath + ".dirty", JsonSerializer.Serialize(new DirtyMarkerData
         {
             Timestamp       = DateTime.UtcNow,
@@ -2119,9 +2329,13 @@ public sealed class CheckoutService : IDisposable
     /// Use this whenever D' is the source; use <see cref="NetworkFileOps.CopyAsync"/> when
     /// copying a file that is not being actively written by <c>DatabaseContext</c>
     /// (e.g., D → D' at checkout time, or D → D'' at snapshot time).
+    /// <para>The destination should be a LOCAL path: the backup writes page-by-page —
+    /// the slowest possible I/O pattern for SMB and impossible to bound with a
+    /// deadline. The save pipeline snapshots locally, then streams the finished file
+    /// to the network with the stall-aware <see cref="NetworkFileOps.CopyAsync"/>.</para>
     /// </summary>
     /// <param name="sourcePath">Path to the source SQLite database (typically D').</param>
-    /// <param name="destPath">Path for the destination file (created or overwritten).</param>
+    /// <param name="destPath">Path for the destination file (created or overwritten; should be local).</param>
     /// <exception cref="Exception">Propagates any SQLite or I/O error to the caller.</exception>
     private static void BackupSqliteDatabase(string sourcePath, string destPath)
     {
@@ -2142,10 +2356,11 @@ public sealed class CheckoutService : IDisposable
         try { File.Delete(path); } catch { }
     }
 
-    /// <summary>Best-effort file write. Non-throwing — failures are silently ignored.</summary>
-    private static void TryWriteAllText(string path, string content)
+    /// <summary>Best-effort file write. Non-throwing; reports success so callers that
+    /// depend on the file existing (the dirty marker) can react to a failure.</summary>
+    private static bool TryWriteAllText(string path, string content)
     {
-        try { File.WriteAllText(path, content); } catch { }
+        try { File.WriteAllText(path, content); return true; } catch { return false; }
     }
 
 }

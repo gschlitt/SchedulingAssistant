@@ -709,6 +709,55 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
+    /// Regression test for the self-inflicted sharing-violation false-demotion bug.
+    ///
+    /// <para>On a degraded network the save-path lock verification (<c>File.ReadAllText</c>
+    /// on D.lock) can overlap the heartbeat timer's atomic write-temp-then-rename of the very
+    /// same file and fail fast with <c>ERROR_SHARING_VIOLATION</c> ("the process cannot access
+    /// the file because it is being used by another process"). That is a transient,
+    /// self-inflicted condition — the "other process" is our own heartbeat — NOT a lock loss.</para>
+    ///
+    /// <para>Before the fix, the <see cref="IOException"/> escaped the Ours/NotOurs/Unreachable
+    /// classification and propagated out of <see cref="CheckoutService.SaveAsync"/> as an
+    /// unhandled exception (and, from the abandoned timeout task, as an UnobservedTaskException).
+    /// Here we reproduce the exact contention deterministically by holding D.lock open with
+    /// <see cref="FileShare.None"/>, and assert that SaveAsync ABSORBS it: it must not throw,
+    /// must classify the read as transient (SaveOutcome.CopyError with a SaveFailed banner), and
+    /// must NOT demote — Mode stays <see cref="CheckoutMode.WriteAccess"/> and the lock is retained.</para>
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockFileContendedBySharingViolation_TreatedAsTransient_NoDemotion()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        Assert.True(lockSvc.IsWriter); // precondition: we hold the write lock
+
+        var transientErrorRaised = false;
+        svc.SaveFailed += (_, _) => transientErrorRaised = true;
+
+        var lockPath = Path.ChangeExtension(db, ".lock");
+
+        SaveOutcome outcome;
+        // Hold D.lock open denying all sharing so the verify's File.ReadAllText is refused
+        // with a sharing violation — the exact fault the heartbeat's rename causes on a lossy
+        // share, but forced deterministically rather than raced.
+        using (var holder = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            // Must NOT throw — before the fix this propagated the IOException out of SaveAsync.
+            outcome = await svc.SaveAsync();
+        }
+
+        // Transient, non-destructive outcome: writer state fully preserved, no demotion.
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+        Assert.True(transientErrorRaised);
+    }
+
+    /// <summary>
     /// When <paramref name="releaseLockAfter"/> is true and the save succeeds,
     /// the lock is released (lock file deleted) — suitable for graceful shutdown.
     /// </summary>
@@ -1965,10 +2014,14 @@ public sealed class CheckoutServiceTests : IDisposable
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// When the lock file is genuinely gone (deleted by another user or by a
-    /// takeover) and the share directory is reachable, HeartbeatFailed must
-    /// trigger demotion: <see cref="CheckoutService.WriteLockLost"/> fires and
-    /// <see cref="CheckoutService.Mode"/> transitions to ReadOnly.
+    /// When the lock file was genuinely TAKEN OVER (it now bears a foreign
+    /// SessionGuid) and the share is reachable, HeartbeatFailed must trigger
+    /// demotion: <see cref="CheckoutService.WriteLockLost"/> fires. The file is
+    /// made read-only so heartbeat renewals fail (reaching the threshold) while
+    /// verification can still read the foreign holder from it.
+    /// <para>Note: a merely DELETED lock file no longer demotes — that is the
+    /// antivirus/cloud-sync signature and is now healed by atomic re-acquisition
+    /// (see <c>HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting</c>).</para>
     /// </summary>
     [Fact]
     public async Task HeartbeatFailed_WhenLockGenuinelyTaken_Demotes()
@@ -1982,19 +2035,29 @@ public sealed class CheckoutServiceTests : IDisposable
         var lockLostTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         svc.WriteLockLost += (_) => lockLostTcs.TrySetResult();
 
-        // Delete the lock file — simulates another user deleting or overwriting it.
-        // The source directory still exists, so the reachability probe succeeds → NotOurs.
+        // Another session overwrites the lock with its own GUID; read-only makes our
+        // heartbeat renewals fail so the failure threshold is reached, while the
+        // verification read still sees the foreign holder → genuine takeover.
         var lockPath = Path.ChangeExtension(db, ".lock");
-        File.Delete(lockPath);
+        WriteExternalFreshLock(db);
+        File.SetAttributes(lockPath, FileAttributes.ReadOnly);
 
-        // Trigger threshold consecutive heartbeat failures → HeartbeatFailed event
-        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-            lockSvc.ForceRenewHeartbeat();
+        try
+        {
+            // Trigger threshold consecutive heartbeat failures → HeartbeatFailed event
+            for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+                lockSvc.ForceRenewHeartbeat();
 
-        // Wait for the async verification + demotion
-        var completed = await Task.WhenAny(lockLostTcs.Task, Task.Delay(10_000));
-        Assert.True(completed == lockLostTcs.Task,
-            "WriteLockLost must fire when the lock is genuinely lost.");
+            // Wait for the async verification + demotion
+            var completed = await Task.WhenAny(lockLostTcs.Task, Task.Delay(10_000));
+            Assert.True(completed == lockLostTcs.Task,
+                "WriteLockLost must fire when the lock is genuinely taken over.");
+        }
+        finally
+        {
+            try { File.SetAttributes(lockPath, FileAttributes.Normal); } catch { }
+            try { File.Delete(lockPath + ".tmp"); } catch { }
+        }
     }
 
     /// <summary>
@@ -2676,5 +2739,339 @@ public sealed class CheckoutServiceTests : IDisposable
         var marker = CheckoutService.TryReadMarker(svc.WorkingPath + ".dirty");
         Assert.NotNull(marker);
         Assert.Null(marker!.PendingSaveHash);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 11 — Removed-lock re-acquisition (finding #5) and marker-write
+    //            failure warning (finding #6)
+    //
+    // #5: a lock file deleted by antivirus/cloud-sync (no new holder) used to
+    //     demote the session and destroy D'. Now the lock is re-created atomically
+    //     and the session continues; when demotion does happen, D' + marker are
+    //     preserved whenever unsaved edits exist.
+    // #6: the dirty marker is the only thing standing between a crash and the
+    //     startup sweep deleting D'. Its write is now verified (retry + warning)
+    //     instead of silently swallowed.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// When the lock file was deleted externally (no new holder — the antivirus /
+    /// cloud-sync signature), SaveAsync must re-acquire the lock atomically and
+    /// complete the save instead of demoting with LockLost.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockFileDeletedExternally_ReacquiresAndSaves()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        InsertTestValue(svc.WorkingPath, "edit-during-av-delete");
+        svc.MarkDirty();
+
+        // Simulate antivirus deleting the lock file mid-session.
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        File.Delete(lockPath);
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.True(lockSvc.IsWriter, "Session must continue as writer after re-acquisition.");
+        Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.Equal("edit-during-av-delete", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// The heartbeat path heals a deleted lock file too: instead of demoting, the
+    /// lock is re-acquired, the informational banner fires, and the session
+    /// continues as writer with the file back in place.
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var lockLostFired = false;
+        svc.WriteLockLost += (_) => lockLostFired = true;
+
+        // The re-acquisition banner is the completion signal for the async handler.
+        var recoveredTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.SaveFailed += (msg, _) => recoveredTcs.TrySetResult(msg);
+
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        File.Delete(lockPath); // antivirus/cloud-sync deletion
+
+        // Missing file makes renewals throw → threshold → HeartbeatFailed.
+        for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+            lockSvc.ForceRenewHeartbeat();
+
+        var completed = await Task.WhenAny(recoveredTcs.Task, Task.Delay(10_000));
+        Assert.True(completed == recoveredTcs.Task, "Re-acquisition banner must fire.");
+        Assert.Contains("restored", recoveredTcs.Task.Result);
+        Assert.False(lockLostFired, "WriteLockLost must NOT fire for a healed removal.");
+        Assert.True(lockSvc.IsWriter);
+        Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+    }
+
+    /// <summary>
+    /// Re-acquisition must never contest a genuine takeover: a lock file bearing a
+    /// FOREIGN SessionGuid still demotes with LockLost, exactly as before.
+    /// (Complements SaveAsync_LockStolenByOtherSession_ReturnsLockLost.)
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockTakenOver_DoesNotReacquire()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        WriteExternalFreshLock(db); // foreign GUID overwrites ours
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        // The foreign holder's lock file must be untouched.
+        var holder = System.Text.Json.JsonSerializer.Deserialize<TermPoint.Models.LockFileData>(
+            File.ReadAllText(Path.ChangeExtension(db, ".lock")));
+        Assert.Equal("other_user", holder!.Username);
+    }
+
+    /// <summary>
+    /// Demotion with unsaved edits must PRESERVE D' and the dirty marker — they are
+    /// the only copy of that work, and recovery restores it at the next write-mode open.
+    /// </summary>
+    [Fact]
+    public async Task DemoteToReadOnly_WithUnsavedEdits_PreservesWorkingCopyAndMarker()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        InsertTestValue(svc.WorkingPath, "pre-demotion-edit");
+        svc.MarkDirty();
+        var workingPath = svc.WorkingPath;
+
+        var demoted = await svc.DemoteToReadOnlyAsync();
+
+        Assert.True(demoted);
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.True(File.Exists(workingPath), "D' must survive demotion when edits exist.");
+        Assert.True(File.Exists(workingPath + ".dirty"), "Marker must survive demotion when edits exist.");
+    }
+
+    /// <summary>
+    /// Demotion with NO unsaved edits cleans up D' as before — nothing is at stake,
+    /// and leaving it behind would trigger a false recovery offer at next launch.
+    /// </summary>
+    [Fact]
+    public async Task DemoteToReadOnly_NoEdits_DeletesWorkingCopy()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db); // no MarkDirty — no edits
+        var workingPath = svc.WorkingPath;
+
+        var demoted = await svc.DemoteToReadOnlyAsync();
+
+        Assert.True(demoted);
+        Assert.False(File.Exists(workingPath), "D' must be cleaned up when no edits exist.");
+        Assert.False(svc.DetectCrashRecovery(db), "No recovery must be offered after an edit-free demotion.");
+    }
+
+    /// <summary>
+    /// Full circle for a demotion with edits: the preserved D' is restored by a
+    /// recovery-mode checkout in a later session (D unchanged, so the hash matches),
+    /// and the edits reach D through a normal save.
+    /// </summary>
+    [Fact]
+    public async Task DemoteThenRecover_RestoresPreservedEdits()
+    {
+        var (svc1, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "demoted-edit");
+        svc1.MarkDirty();
+        await svc1.DemoteToReadOnlyAsync(); // releases the lock, preserves D' + marker
+
+        var (svc2, _) = CreateService();
+        Assert.True(svc2.DetectCrashRecovery(db)); // artifacts found
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal("demoted-edit", ReadTestValue(svc2.WorkingPath));
+
+        Assert.Equal(SaveOutcome.Success, await svc2.SaveAsync());
+        Assert.Equal("demoted-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// When the dirty-marker write fails (here: a directory squats on the marker
+    /// path), MarkDirty must warn the user that crash protection is degraded instead
+    /// of failing silently — a later crash would sweep D' as "no edits made."
+    /// </summary>
+    [Fact]
+    public async Task MarkDirty_MarkerWriteFails_RaisesDegradedProtectionWarning()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+
+        // Block the marker path: File.WriteAllText onto an existing directory throws.
+        var markerPath = svc.WorkingPath + ".dirty";
+        Directory.CreateDirectory(markerPath);
+
+        string? warning = null;
+        var autoDismiss = false;
+        svc.SaveFailed += (msg, dismiss) => { warning = msg; autoDismiss = dismiss; };
+
+        try
+        {
+            svc.MarkDirty();
+
+            Assert.NotNull(warning);
+            Assert.Contains("crash-protection", warning);
+            Assert.True(autoDismiss, "The warning is informational and should auto-dismiss.");
+        }
+        finally
+        {
+            Directory.Delete(markerPath);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 12 — Local-snapshot save pipeline (finding #7)
+    //
+    // SaveAsync now snapshots D' to a LOCAL .savetmp via the Online Backup API,
+    // streams the quiescent snapshot to D.tmp with the chunked stall-aware copy,
+    // and verifies the network copy by hash before the rename. These tests pin
+    // the lifecycle of the local snapshot; transfer fidelity is covered in
+    // NetworkFileOpsChunkedTests.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A successful save must clean up its local snapshot — .savetmp is a
+    /// transient artifact and must never accumulate in the working directory.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_Success_LeavesNoLocalSnapshotBehind()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        InsertTestValue(svc.WorkingPath, "edit");
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Equal("edit", ReadTestValue(db)); // pipeline end-to-end intact
+        Assert.False(File.Exists(svc.WorkingPath + ".savetmp"),
+            "Local save snapshot must be deleted after the save.");
+    }
+
+    /// <summary>
+    /// A failed snapshot (D' is not a valid SQLite file) must also leave no
+    /// .savetmp behind — the finally-cleanup covers the failure paths too.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_SnapshotFails_LeavesNoLocalSnapshotBehind()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "not-a-sqlite-file");
+
+        await svc.CheckoutAsync(db);
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.False(File.Exists(svc.WorkingPath + ".savetmp"),
+            "Local save snapshot must be cleaned up when the save fails.");
+    }
+
+    /// <summary>
+    /// An orphaned .savetmp (crash between snapshot and network copy) is swept at
+    /// startup by CleanupStaleCrashArtifacts — it is derived data, always safe to drop.
+    /// </summary>
+    [Fact]
+    public async Task CleanupStaleCrashArtifacts_RemovesOrphanedSaveSnapshot()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();
+        var saveTmp = svc.WorkingPath + ".savetmp";
+        File.WriteAllText(saveTmp, "orphaned-snapshot");
+        SimulateCrash(lockSvc, db);
+
+        var (svc2, _) = CreateService();
+        svc2.CleanupStaleCrashArtifacts(db);
+
+        Assert.False(File.Exists(saveTmp), "Orphaned .savetmp must be swept at startup.");
+        // The real crash artifacts must be untouched by the sweep (both present).
+        Assert.True(File.Exists(svc.WorkingPath), "D' must survive the sweep.");
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "Marker must survive the sweep.");
+    }
+
+    /// <summary>
+    /// SaveStarted and SaveFinished bracket a successful save in order — they drive
+    /// the "Saving…" indicator, which must appear before and disappear after.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_Success_RaisesSaveStartedThenFinished()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var events = new System.Collections.Generic.List<string>();
+        svc.SaveStarted   += () => events.Add("started");
+        svc.SaveCompleted += () => events.Add("completed");
+        svc.SaveFinished  += () => events.Add("finished");
+
+        await svc.SaveAsync();
+
+        Assert.Equal(new[] { "started", "completed", "finished" }, events);
+    }
+
+    /// <summary>
+    /// SaveFinished must fire on FAILED saves too — some outcomes raise neither
+    /// SaveCompleted nor SaveFailed (e.g. LockLost), and the "Saving…" indicator
+    /// must never be left stuck on.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_Failure_StillRaisesSaveFinished()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "original");
+        await svc.CheckoutAsync(db);
+
+        var finished = false;
+        svc.SaveFinished += () => finished = true;
+
+        File.WriteAllText(db, "externally-changed"); // force SourceModified
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.True(finished, "SaveFinished must fire even when the save fails.");
     }
 }
