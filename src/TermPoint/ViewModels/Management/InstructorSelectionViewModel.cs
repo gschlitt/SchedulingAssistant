@@ -10,18 +10,18 @@ public partial class InstructorSelectionViewModel : ObservableObject
     [ObservableProperty] private bool _isSelected;
 
     /// <summary>
-    /// Workload as a user-editable string (e.g. "1", "0.5", "0.33", "0.47").
-    /// Validated on save to a positive decimal with up to 2 decimal places.
+    /// Workload as a user-editable string (e.g. "1", "0.5", "0.33", "0.47", "0").
+    /// Validated on save to a non-negative decimal with up to 2 decimal places.
     /// Defaults to "1" when the instructor is first selected.
     /// </summary>
     [ObservableProperty] private string _workloadText = "1";
 
     public string DisplayName => $"{Value.FirstName} {Value.LastName}";
 
-    /// <summary>Parsed workload value, or null if the text is invalid/empty.</summary>
+    /// <summary>Parsed workload value, or null if the text is invalid/empty. Zero is a valid, explicit workload.</summary>
     public decimal? ParsedWorkload =>
         decimal.TryParse(WorkloadText, System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0
+            System.Globalization.CultureInfo.InvariantCulture, out var v) && v >= 0
             ? Math.Round(v, 2)
             : null;
 
