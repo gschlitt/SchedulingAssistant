@@ -268,6 +268,15 @@ public sealed class CheckoutService : IDisposable
     public event Action? SaveFinished;
 
     /// <summary>
+    /// Raised on the UI thread when a <see cref="SaveAsync"/> call is skipped because
+    /// another save is already in flight. Without it the skipped click is silent and
+    /// indistinguishable from a dead Save button — the field-test failure mode where
+    /// the user clicks Save repeatedly during a long post-outage save. The UI reacts
+    /// with a transient "A save is already in progress…" notice; no state changes.
+    /// </summary>
+    public event Action? SaveAlreadyInProgress;
+
+    /// <summary>
     /// Raised on the UI thread the first time the database is written to after a
     /// checkout or save. The UI can use this to show an "Unsaved changes" indicator.
     /// </summary>
@@ -765,6 +774,7 @@ public sealed class CheckoutService : IDisposable
         if (Interlocked.CompareExchange(ref _saveInFlight, 1, 0) != 0)
         {
             _logger.LogInfo("CheckoutService: SaveAsync skipped — a save is already in progress.");
+            _dispatch(() => SaveAlreadyInProgress?.Invoke());
             return SaveOutcome.CopyError;
         }
 

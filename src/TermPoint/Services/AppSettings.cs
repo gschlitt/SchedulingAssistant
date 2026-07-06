@@ -214,7 +214,7 @@ public class AppSettings
     /// When true, the app automatically saves D' to D on a timer while in write mode.
     /// The interval is controlled by <see cref="AutoSaveIntervalMinutes"/>.
     /// </summary>
-    public bool AutoSaveEnabled { get; set; } = false;
+    public bool AutoSaveEnabled { get; set; } = true;
 
     /// <summary>
     /// Interval in minutes between automatic saves when <see cref="AutoSaveEnabled"/> is true.

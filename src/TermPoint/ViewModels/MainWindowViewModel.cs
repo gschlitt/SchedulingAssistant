@@ -142,7 +142,72 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowDirtyIndicator))]
+    [NotifyPropertyChangedFor(nameof(ShowSavingIndicator))]
     private bool _isSaving;
+
+    /// <summary>
+    /// True while the transient "A save is already in progress…" notice is showing —
+    /// set when the user triggers Save while a save is already in flight (the click
+    /// would otherwise be silently swallowed by <see cref="Services.CheckoutService"/>'s
+    /// in-flight gate). Temporarily replaces the plain "Saving…" text, then a one-shot
+    /// timer reverts it. Cleared immediately when the save finishes.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSavingIndicator))]
+    private bool _showSaveBusyNotice;
+
+    /// <summary>
+    /// True when the plain "Saving…" indicator should be visible: a save is running
+    /// AND the "already in progress" notice isn't currently replacing it (the two
+    /// occupy the same footer slot and never appear side by side).
+    /// </summary>
+    public bool ShowSavingIndicator => IsSaving && !ShowSaveBusyNotice;
+
+    /// <summary>
+    /// How long the "A save is already in progress…" notice stays before reverting to
+    /// the plain "Saving…" text. Long enough to register, short enough that repeated
+    /// clicks keep refreshing it without it feeling stuck.
+    /// </summary>
+    private static readonly TimeSpan SaveBusyNoticeDismissDelay = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// One-shot timer that reverts the busy notice to "Saving…". Null when no revert
+    /// is pending. Recreated on demand so another click restarts the clock.
+    /// </summary>
+    private DispatcherTimer? _saveBusyNoticeTimer;
+
+    /// <summary>Stops and discards any pending busy-notice revert timer.</summary>
+    private void StopSaveBusyNoticeTimer()
+    {
+        if (_saveBusyNoticeTimer is null) return;
+        _saveBusyNoticeTimer.Stop();
+        _saveBusyNoticeTimer = null;
+    }
+
+    /// <summary>Hides the busy notice (reverting to "Saving…" if a save is still running).</summary>
+    private void ClearSaveBusyNotice()
+    {
+        StopSaveBusyNoticeTimer();
+        ShowSaveBusyNotice = false;
+    }
+
+    /// <summary>
+    /// Called by MainWindow when a Save request was skipped because a save is already
+    /// in flight. Shows the transient notice so the click is visibly acknowledged.
+    /// </summary>
+    internal void NotifySaveAlreadyInProgress()
+    {
+        // Raced past the finish line: the in-flight save completed between the click
+        // and this dispatched notification. Its outcome (cleared dirty indicator or an
+        // error banner) is already on screen — a busy notice now would be stale.
+        if (!IsSaving) return;
+
+        ShowSaveBusyNotice = true;
+        StopSaveBusyNoticeTimer();
+        _saveBusyNoticeTimer = new DispatcherTimer { Interval = SaveBusyNoticeDismissDelay };
+        _saveBusyNoticeTimer.Tick += (_, _) => ClearSaveBusyNotice();
+        _saveBusyNoticeTimer.Start();
+    }
 
     /// <summary>
     /// True when the "Unsaved changes" indicator should be visible: there are unsaved
@@ -161,7 +226,11 @@ public partial class MainWindowViewModel : ViewModelBase
     internal void SetSaving()   => IsSaving = true;
 
     /// <summary>Called by MainWindow when a save attempt ends (any outcome).</summary>
-    internal void ClearSaving() => IsSaving = false;
+    internal void ClearSaving()
+    {
+        IsSaving = false;
+        ClearSaveBusyNotice(); // "already in progress" is stale once the save has ended
+    }
 
     /// <summary>
     /// Human-readable description of a save error, or null when no error is active.

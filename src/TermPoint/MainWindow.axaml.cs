@@ -747,12 +747,14 @@ public partial class MainWindow : Window
         App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
         App.Checkout.SaveStarted     -= OnCheckoutSaveStarted;
         App.Checkout.SaveFinished    -= OnCheckoutSaveFinished;
+        App.Checkout.SaveAlreadyInProgress -= OnCheckoutSaveAlreadyInProgress;
         App.Checkout.SaveCompleted   += OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      += OnCheckoutSaveFailed;
         App.Checkout.WriteLockLost += OnWriteLockLost;
         App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
         App.Checkout.SaveStarted     += OnCheckoutSaveStarted;
         App.Checkout.SaveFinished    += OnCheckoutSaveFinished;
+        App.Checkout.SaveAlreadyInProgress += OnCheckoutSaveAlreadyInProgress;
 
         // Start autosave if it was enabled in settings.
         if (AppSettings.Current.AutoSaveEnabled)
@@ -1430,6 +1432,12 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel vm)
             vm.ClearSaving();
+    }
+
+    private void OnCheckoutSaveAlreadyInProgress()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.NotifySaveAlreadyInProgress();
     }
 
     private void OnCheckoutSaveFailed(string message, bool autoDismiss)

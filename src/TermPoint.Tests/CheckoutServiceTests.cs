@@ -3074,4 +3074,69 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.SourceModified, outcome);
         Assert.True(finished, "SaveFinished must fire even when the save fails.");
     }
+
+    /// <summary>
+    /// A SaveAsync call that arrives while another save is in flight must raise
+    /// SaveAlreadyInProgress (the UI's "A save is already in progress…" cue) instead
+    /// of being silently swallowed — the field-tested failure mode where repeated
+    /// Save clicks during a long post-outage save looked like a dead button.
+    /// The skipped call must raise neither SaveStarted nor SaveFinished: those
+    /// belong to the in-flight save, and a stray SaveFinished from the skipped call
+    /// would clear the "Saving…" indicator while the real save is still writing.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_WhileSaveInFlight_RaisesSaveAlreadyInProgress()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var busyCues     = 0;
+        var startedCount = 0;
+        var finishedCount = 0;
+        SaveOutcome? secondOutcome = null;
+        svc.SaveAlreadyInProgress += () => busyCues++;
+        svc.SaveFinished          += () => finishedCount++;
+
+        // The synchronous test dispatcher invokes SaveStarted inline, while the first
+        // save still holds the in-flight gate — the reentrant call below is therefore
+        // a deterministic "second click mid-save". Its skip path completes before any
+        // await, so blocking on it here cannot deadlock.
+        svc.SaveStarted += () =>
+        {
+            startedCount++;
+            if (startedCount == 1)
+                secondOutcome = svc.SaveAsync().GetAwaiter().GetResult();
+        };
+
+        var firstOutcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, firstOutcome);
+        Assert.Equal(SaveOutcome.CopyError, secondOutcome);
+        Assert.Equal(1, busyCues);
+        Assert.Equal(1, startedCount);  // the skipped call must not re-raise SaveStarted
+        Assert.Equal(1, finishedCount); // …nor raise its own SaveFinished
+    }
+
+    /// <summary>
+    /// SaveAlreadyInProgress is strictly a concurrency cue: a normal, uncontended
+    /// save must never raise it.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_Uncontended_DoesNotRaiseSaveAlreadyInProgress()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var busyCues = 0;
+        svc.SaveAlreadyInProgress += () => busyCues++;
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Equal(0, busyCues);
+    }
 }

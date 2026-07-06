@@ -145,9 +145,20 @@
 							FontSize="11"
 							FontStyle="Italic"
 							Foreground="{StaticResource TextSecondary}"
-							IsVisible="{Binding IsSaving}"
+							IsVisible="{Binding ShowSavingIndicator}"
 							Text="Saving…"
 							ToolTip.Tip="Writing your changes to the database" />
+						<!--  Briefly replaces "Saving…" when a Save click lands while a save
+						      is already running, so the click is acknowledged instead of
+						      being silently skipped.  -->
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="11"
+							FontStyle="Italic"
+							Foreground="{StaticResource TextSecondary}"
+							IsVisible="{Binding ShowSaveBusyNotice}"
+							Text="A save is already in progress…"
+							ToolTip.Tip="Your changes are still being written — no need to save again" />
 						<CheckBox
 							VerticalAlignment="Center"
 							Content="Auto-save"
