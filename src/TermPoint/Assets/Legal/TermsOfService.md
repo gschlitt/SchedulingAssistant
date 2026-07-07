@@ -14,7 +14,7 @@ TermPoint includes a 30-day free trial beginning at installation. No payment inf
 
 ## 3. Subscription and Payment
 
-Licensed use of TermPoint is available as an annual subscription at the then-current price (currently USD $39.95/year). All payments are processed by Paddle.com Market Limited ("Paddle"), who acts as the merchant of record for all transactions. Your purchase is subject to Paddle's terms of service and buyer policies in addition to these Terms.
+Licensed use of TermPoint is available as an annual subscription at the then-current price (currently CAD $39.95/year). All payments are processed by Paddle.com Market Limited ("Paddle"), who acts as the merchant of record for all transactions. Your purchase is subject to Paddle's terms of service and buyer policies in addition to these Terms.
 
 ## 4. Subscription Renewal and Cancellation
 
@@ -22,7 +22,7 @@ Subscriptions renew automatically on an annual basis. You may cancel at any time
 
 ## 5. Refunds
 
-Refund requests are handled in accordance with our refund policy, available at [termpoint.dev/refund-policy]. Because Paddle is the merchant of record, refunds are processed through Paddle.
+Refund requests are handled in accordance with our refund policy, available at termpoint.ca/refund-policy. Because Paddle is the merchant of record, refunds are processed through Paddle.
 
 ## 6. Updates
 
