@@ -70,6 +70,7 @@ termpoint-private.pem
 
 # Secrets
 paddle_api_key.txt
+src/TermPoint.LicenseFulfillment/local.settings.json
 
 # Node / npm
 node_modules/
