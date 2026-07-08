@@ -919,11 +919,18 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 #endif
 
-#if !BROWSER && DEBUG
+    // ── Dev Tools ─────────────────────────────────────────────────────────
+    // Toggled by Ctrl+Shift+D (see MainWindow.axaml.cs). Session-only, not persisted.
+
+    [ObservableProperty] private bool _isDevToolsVisible;
+
+#if !BROWSER
+    [RelayCommand]
+    private void NavigateToCsvImport() => OpenFlyout<CsvImportViewModel>("CSV Import");
+
     [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
 
-    // ONE-TIME MIGRATION UTILITY — remove after migration is complete
     [RelayCommand]
     private void OpenMigration() => OpenFlyout<MigrationViewModel>("Migration: CSV → JSON (one-time utility)");
 #endif

@@ -767,4 +767,602 @@ Schedule              = list of SectionDaySchedule built from MeetingRows:
 
 ## Phase 5: Architecture
 
+**Status:** LOCKED
+
+### Component overview
+
+```
+MainWindow.axaml.cs          ← Ctrl+Shift+D KeyDown handler (no #if DEBUG gate)
+MainWindowViewModel           ← IsDevToolsVisible, ToggleDevTools, NavigateToCsvImport
+MainView.axaml                ← Dev Tools menu (IsVisible bound to IsDevToolsVisible)
+
+Services/
+  CsvImportParser.cs          ← Stateless CSV parsing (3 file types)
+  CsvImportMatcher.cs         ← Stateless matching logic (instructors, courses,
+                                 environment values)
+
+ViewModels/Management/
+  CsvImportViewModel.cs       ← Top-level flyout VM; owns the three sub-VMs
+  InstructorImportViewModel.cs ← Instructor file: parse, preview, match, import
+  CourseImportViewModel.cs     ← Course file: parse, subject mapping, preview, import
+  SectionImportViewModel.cs   ← Section file: parse, env mapping, preview, import
+
+Views/Management/
+  CsvImportView.axaml          ← Flyout view (3 collapsible sections + log)
+  InstructorImportView.axaml   ← Instructor section (embedded UserControl)
+  CourseImportView.axaml       ← Course section
+  SectionImportView.axaml      ← Section section
+```
+
+### Dev Tools activation
+
+**MainWindow.axaml.cs** — Add a `KeyDown` handler for Ctrl+Shift+D
+(outside the `#if DEBUG` block). Toggles `IsDevToolsVisible` on
+`MainWindowViewModel`.
+
+```csharp
+// In the existing KeyDown handler, outside #if DEBUG:
+if (e.Key == Key.D
+    && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)
+    && DataContext is MainWindowViewModel dtVm)
+{
+    dtVm.IsDevToolsVisible = !dtVm.IsDevToolsVisible;
+    e.Handled = true;
+}
+```
+
+**MainWindowViewModel** — New property and commands:
+
+```csharp
+[ObservableProperty] private bool _isDevToolsVisible;
+
+[RelayCommand]
+private void NavigateToCsvImport()
+    => OpenFlyout<CsvImportViewModel>("CSV Import");
+
+// Existing debug commands (OpenDebug, OpenMigration) lose their
+// #if DEBUG gate and move under Dev Tools menu items.
+```
+
+**MainView.axaml** — Replace the existing `#if DEBUG` DebugMenu with:
+
+```xml
+<Menu x:Name="DevToolsMenu"
+      IsVisible="{Binding IsDevToolsVisible}"
+      ...>
+    <MenuItem Header="Dev Tools" Classes="nav">
+        <MenuItem Command="{Binding NavigateToCsvImportCommand}"
+                  Header="CSV Import..." />
+        <Separator />
+        <MenuItem Command="{Binding OpenDebugCommand}"
+                  Header="Debug View..." />
+        <MenuItem Command="{Binding OpenMigrationCommand}"
+                  Header="Migration: CSV→JSON..." />
+    </MenuItem>
+</Menu>
+```
+
+No `#if DEBUG` conditional compilation on the menu or its commands.
+The `ShowDebugMenu` AppSetting and its Preferences toggle are retired.
+
+### Service layer
+
+Two stateless service classes handle parsing and matching. They take
+data in, return results out — no side effects, no repository access.
+This makes them easy to unit-test.
+
+#### CsvImportParser
+
+Parses raw CSV text into typed row objects. One method per file type.
+
+```csharp
+class CsvImportParser
+{
+    /// Parses instructor CSV. Returns parsed rows + any parse errors.
+    CsvParseResult<InstructorRow> ParseInstructors(string csvText);
+
+    /// Parses course CSV. Returns parsed rows + any parse errors.
+    CsvParseResult<CourseRow> ParseCourses(string csvText);
+
+    /// Parses section CSV, grouping continuation rows into SectionRows.
+    CsvParseResult<SectionRow> ParseSections(string csvText);
+}
+
+record CsvParseResult<T>(List<T> Rows, List<CsvParseError> Errors);
+
+record CsvParseError(int LineNumber, string Message);
+```
+
+Implementation details:
+- Header row is required; columns matched by name (case-insensitive)
+- RFC 4180 quoting (double-quote escaping, newlines within quotes)
+- Section parser tracks "current section" state: a row with blank
+  CourseCode + SectionCode is a continuation (adds a MeetingRow)
+- Time/day parsing reuses the flexible patterns from
+  `SharedScheduleCsvParser` (full/short/single-letter day names,
+  "h:mm tt" time format, numeric day values)
+
+#### CsvImportMatcher
+
+Builds match indices and runs matching logic. Pure functions.
+
+```csharp
+class CsvImportMatcher
+{
+    /// Builds an instructor match index from existing DB instructors.
+    InstructorMatchIndex BuildInstructorIndex(List<Instructor> existing);
+
+    /// Matches a single InstructorRow against the index.
+    MatchResult<Instructor> MatchInstructor(
+        InstructorRow row, InstructorMatchIndex index);
+
+    /// Matches a CalendarCode against existing courses.
+    MatchResult<Course> MatchCourse(
+        string calendarCode, Dictionary<string, Course> courseIndex);
+
+    /// Matches a SubjectCode against existing subjects.
+    MatchResult<Subject> MatchSubject(
+        string subjectCode, Dictionary<string, Subject> subjectIndex);
+
+    /// Matches a CSV string value against a list of named DB records.
+    MatchResult<EnvironmentTarget> MatchEnvironmentValue(
+        string csvValue, List<EnvironmentTarget> dbValues);
+}
+```
+
+Name normalization (honorific stripping, case folding, whitespace
+collapse) lives here as private helpers.
+
+### ViewModel layer
+
+#### CsvImportViewModel (top-level flyout)
+
+Owns the three sub-VMs. Registered as `AddTransient` in DI.
+
+```csharp
+public partial class CsvImportViewModel : ViewModelBase
+{
+    // Sub-VMs — created in constructor, injected with repos + services
+    public InstructorImportViewModel InstructorVm { get; }
+    public CourseImportViewModel CourseVm { get; }
+    public SectionImportViewModel SectionVm { get; }
+
+    // Shared log visible at bottom of flyout
+    public ObservableCollection<string> Log { get; }
+}
+```
+
+Constructor receives all needed repositories and services via DI, then
+creates the three sub-VMs, passing them the repos they need plus a
+shared `Action<string> addLog` callback.
+
+#### InstructorImportViewModel
+
+```csharp
+public partial class InstructorImportViewModel : ViewModelBase
+{
+    // State
+    [ObservableProperty] private string? _fileName;
+    [ObservableProperty] private bool _isImported;
+    [ObservableProperty] private string? _errorBanner;
+
+    // Parsed + matched preview rows
+    public ObservableCollection<InstructorPreviewRow> PreviewRows { get; }
+
+    // Commands
+    [RelayCommand] private async Task ChooseFile();
+    [RelayCommand] private void Import();
+}
+```
+
+`InstructorPreviewRow` is a display model:
+```csharp
+class InstructorPreviewRow : ObservableObject
+{
+    string DisplayName;              // "Smith, John"
+    MatchStatus Status;              // New, Matched, Ambiguous
+    List<Instructor>? Candidates;    // populated when Ambiguous
+    Instructor? ResolvedMatch;       // operator's choice (for Ambiguous)
+    bool Skip;                       // operator chose to skip this row
+}
+```
+
+When `Status == Ambiguous`, the view shows an expander with a list of
+candidates. The operator selects one (sets `ResolvedMatch`) or checks
+`Skip`.
+
+#### CourseImportViewModel
+
+Same pattern, plus a **subject mapping step**:
+
+```csharp
+public partial class CourseImportViewModel : ViewModelBase
+{
+    [ObservableProperty] private string? _fileName;
+    [ObservableProperty] private bool _isImported;
+    [ObservableProperty] private bool _isMappingConfirmed;
+    [ObservableProperty] private string? _errorBanner;
+
+    // Subject mapping (shown before course preview)
+    public ObservableCollection<MappingEntryViewModel> SubjectMappings { get; }
+
+    // Course preview (shown after mapping confirmed)
+    public ObservableCollection<CoursePreviewRow> PreviewRows { get; }
+
+    [RelayCommand] private async Task ChooseFile();
+    [RelayCommand] private void ConfirmMappings();
+    [RelayCommand] private void Import();
+}
+```
+
+#### SectionImportViewModel
+
+Most complex — has environment mapping tables:
+
+```csharp
+public partial class SectionImportViewModel : ViewModelBase
+{
+    [ObservableProperty] private string? _fileName;
+    [ObservableProperty] private bool _isImported;
+    [ObservableProperty] private bool _isMappingConfirmed;
+    [ObservableProperty] private string? _errorBanner;
+
+    // Environment mapping tables (shown before section preview)
+    public ObservableCollection<MappingEntryViewModel> RoomMappings { get; }
+    public ObservableCollection<MappingEntryViewModel> SectionTypeMappings { get; }
+    public ObservableCollection<MappingEntryViewModel> CampusMappings { get; }
+    public ObservableCollection<MappingEntryViewModel> MeetingTypeMappings { get; }
+
+    // Section preview (shown after mapping confirmed)
+    public ObservableCollection<SectionPreviewRow> PreviewRows { get; }
+
+    [RelayCommand] private async Task ChooseFile();
+    [RelayCommand] private void ConfirmMappings();
+    [RelayCommand] private void Import();
+}
+```
+
+#### MappingEntryViewModel (shared)
+
+Used by both CourseImportViewModel (subjects) and SectionImportViewModel
+(rooms, section types, etc.):
+
+```csharp
+public partial class MappingEntryViewModel : ObservableObject
+{
+    public string CsvValue { get; }                    // raw CSV value
+    [ObservableProperty] private EnvironmentTarget? _selectedMatch;
+    public MatchStatus AutoMatchStatus { get; }        // Exact or Unmatched
+    public List<EnvironmentTarget> AvailableOptions { get; }  // ComboBox items
+}
+```
+
+`AvailableOptions` includes all DB entries for that category plus a
+"Skip (leave blank)" sentinel. Pre-selected to the auto-matched entry
+if `AutoMatchStatus == Exact`.
+
+### View layer
+
+#### CsvImportView.axaml
+
+A `UserControl` with a vertical `StackPanel`:
+1. Header text (title + instructions)
+2. Three `GroupBox` sections, each containing the corresponding
+   sub-view as a `ContentControl` with `Content="{Binding InstructorVm}"`.
+   The ViewLocator resolves `InstructorImportViewModel` →
+   `InstructorImportView`, etc.
+3. A `Separator` + scrollable `ItemsControl` for the log.
+
+#### InstructorImportView.axaml
+
+- "Choose File" button
+- File name display
+- Error banner (if parse errors)
+- `ItemsControl` with `InstructorPreviewRow` DataTemplate:
+  - Name + status badge
+  - Expander for ambiguous rows (candidate list + radio buttons)
+- "Import N new · M matched · K skipped" button
+
+#### CourseImportView.axaml
+
+- "Choose File" button
+- Subject mapping GroupBox (list of `MappingEntryViewModel` rows,
+  each with a label + ComboBox)
+- "Confirm Mappings" button
+- Course preview `ItemsControl`
+- "Import" button
+
+#### SectionImportView.axaml
+
+- "Choose File" button
+- Four mapping GroupBoxes (Rooms, Section Types, Campuses, Meeting
+  Types), each showing a list of `MappingEntryViewModel` rows.
+  Empty categories show "(no values in CSV)".
+- "Confirm Mappings" button
+- Section preview (grouped by semester)
+- "Import" button
+
+### DI registration
+
+In `App.axaml.cs` → `ConfigureServices`:
+
+```csharp
+// Services (stateless, singleton is fine)
+services.AddSingleton<CsvImportParser>();
+services.AddSingleton<CsvImportMatcher>();
+
+// ViewModels (transient — new instance each time flyout opens)
+services.AddTransient<CsvImportViewModel>();
+```
+
+The three sub-VMs (`InstructorImportViewModel`, `CourseImportViewModel`,
+`SectionImportViewModel`) are **not** registered in DI — they are
+created by `CsvImportViewModel`'s constructor, which passes them the
+repositories and services they need. This keeps the DI surface small
+and makes the parent-child relationship explicit.
+
+Remove the `#if DEBUG` gates from:
+- `DebugTestDataGenerator` / `DebugTestDataViewModel` / `MigrationViewModel`
+  DI registrations
+- `OpenDebugCommand` / `OpenMigrationCommand` on `MainWindowViewModel`
+
+### File organization
+
+```
+src/TermPoint/
+  Services/
+    CsvImportParser.cs
+    CsvImportMatcher.cs
+  Models/
+    CsvImportModels.cs       ← InstructorRow, CourseRow, SectionRow,
+                               MeetingRow, MatchResult<T>, MatchStatus,
+                               EnvironmentTarget, CsvParseResult<T>,
+                               CsvParseError, ImportResult
+  ViewModels/Management/
+    CsvImportViewModel.cs
+    InstructorImportViewModel.cs
+    CourseImportViewModel.cs
+    SectionImportViewModel.cs
+    MappingEntryViewModel.cs
+    InstructorPreviewRow.cs
+    CoursePreviewRow.cs
+    SectionPreviewRow.cs
+  Views/Management/
+    CsvImportView.axaml
+    CsvImportView.axaml.cs
+    InstructorImportView.axaml
+    InstructorImportView.axaml.cs
+    CourseImportView.axaml
+    CourseImportView.axaml.cs
+    SectionImportView.axaml
+    SectionImportView.axaml.cs
+```
+
 ## Phase 6: Implementation Plan
+
+**Status:** LOCKED
+
+Seven sessions. Each is self-contained — compiles and can be tested
+independently after completion.
+
+---
+
+### Session 1: Dev Tools menu + scaffolding
+
+**Goal:** Ctrl+Shift+D reveals a Dev Tools menu with a CSV Import item
+that opens an empty flyout.
+
+Tasks:
+1. **MainWindow.axaml.cs** — Add Ctrl+Shift+D `KeyDown` handler outside
+   `#if DEBUG`. Toggles `IsDevToolsVisible` on MainWindowViewModel.
+2. **MainWindowViewModel** — Add `[ObservableProperty] bool IsDevToolsVisible`.
+   Add `[RelayCommand] NavigateToCsvImport()` → `OpenFlyout<CsvImportViewModel>`.
+   Remove `#if DEBUG` from `OpenDebugCommand` and `OpenMigrationCommand`.
+3. **MainView.axaml** — Replace the `#if DEBUG` DebugMenu with a Dev Tools
+   menu bound to `IsDevToolsVisible`. Three items: CSV Import, Debug View,
+   Migration.
+4. **CsvImportViewModel** — Empty shell extending `ViewModelBase`. Registered
+   as `AddTransient` in DI.
+5. **CsvImportView.axaml** — Minimal flyout: title text + "Coming soon"
+   placeholder.
+6. **App.axaml.cs** — Remove `#if DEBUG` from `DebugTestDataGenerator`,
+   `DebugTestDataViewModel`, `MigrationViewModel` registrations. Add
+   `CsvImportViewModel` registration.
+7. **Retire `ShowDebugMenu`** — Remove the AppSetting and its Preferences
+   toggle. Remove the code-behind that reads it in MainView.axaml.cs.
+8. Compile check + manual test: Ctrl+Shift+D shows menu, CSV Import
+   opens empty flyout, Debug View and Migration still work.
+
+---
+
+### Session 2: Models + CSV parser
+
+**Goal:** All data types defined. Parser can read all three CSV formats.
+
+Tasks:
+1. **Models/CsvImportModels.cs** — Define all types:
+   - `InstructorRow`, `CourseRow`, `SectionRow`, `MeetingRow`
+   - `MatchResult<T>`, `MatchStatus` enum (Exact, Ambiguous, Unmatched,
+     Skipped)
+   - `EnvironmentTarget` (Id + DisplayName)
+   - `CsvParseResult<T>`, `CsvParseError`
+   - `ImportResult`
+2. **Services/CsvImportParser.cs** — Implement:
+   - RFC 4180 line/field parser (shared helper)
+   - `ParseInstructors(string csvText)` — header-matched, one row per
+     instructor
+   - `ParseCourses(string csvText)` — header-matched, one row per course
+   - `ParseSections(string csvText)` — header-matched, continuation-row
+     grouping, time/day parsing
+3. **DI** — Register `CsvImportParser` as singleton.
+4. **Tests** — Unit tests for each parse method:
+   - Happy path (well-formed CSV → correct rows)
+   - Missing required fields → CsvParseError with line number
+   - Quoted fields with commas and newlines
+   - Section continuation rows grouped correctly
+   - Flexible day/time parsing ("Monday", "Mon", "M", "1")
+
+---
+
+### Session 3: Matcher service
+
+**Goal:** All matching logic implemented and tested.
+
+Tasks:
+1. **Services/CsvImportMatcher.cs** — Implement:
+   - Name normalization: honorific stripping (Dr., Mr., Mrs., Ms., Prof.,
+     Professor), case folding, whitespace collapse
+   - `BuildInstructorIndex(List<Instructor>)` → dictionary by normalized
+     last name
+   - `MatchInstructor(InstructorRow, index)` → MatchResult with 4-tier
+     logic (exact, last-only, initial-compatible, ambiguous)
+   - `MatchCourse(calendarCode, courseIndex)` → MatchResult
+   - `MatchSubject(subjectCode, subjectIndex)` → MatchResult
+   - `MatchEnvironmentValue(csvValue, dbValues)` → MatchResult
+     (case-insensitive name comparison)
+   - Room composite matching: compare CSV `"{Building} {RoomNumber}"`
+     against same composite built from Room entities
+2. **DI** — Register `CsvImportMatcher` as singleton.
+3. **Tests** — Unit tests for each matching method:
+   - Instructor: exact match, last-only, initial-compatible ("J." →
+     "John"), ambiguous (two "Smith"s), honorific stripping
+   - Course: exact match, case-insensitive, whitespace-normalized
+   - Subject: matched by CalendarAbbreviation
+   - Environment: exact match, unmatched, case-insensitive
+
+---
+
+### Session 4: Instructor import (VM + View)
+
+**Goal:** Can choose an instructor CSV, see a preview with match statuses,
+resolve ambiguities, and import.
+
+Tasks:
+1. **InstructorPreviewRow.cs** — Display model with DisplayName, Status,
+   Candidates, ResolvedMatch, Skip properties.
+2. **InstructorImportViewModel.cs** — Implement:
+   - `ChooseFile()` — file picker (*.csv), read text, parse via
+     `CsvImportParser`, match each row via `CsvImportMatcher`, populate
+     `PreviewRows`
+   - `Import()` — iterate preview rows, create `Instructor` entities for
+     `New` rows (auto-generate initials with collision avoidance), insert
+     via `IInstructorRepository.Insert()`, wrapped in a transaction.
+     Log results.
+   - Error banner for parse errors. Import button disabled when no file
+     loaded or all rows matched/skipped.
+3. **InstructorImportView.axaml** — Layout:
+   - Choose File button + file name label
+   - Error banner
+   - ItemsControl with DataTemplate for preview rows (name + status badge)
+   - Expander for ambiguous rows with candidate list
+   - Import button with counts
+   - Post-import checkmark + summary
+4. **Wire into CsvImportViewModel** — Create `InstructorImportViewModel`
+   in constructor, expose as property.
+5. **Update CsvImportView.axaml** — Add Instructors GroupBox with
+   `ContentControl Content="{Binding InstructorVm}"`.
+6. Compile check + manual test with a sample instructor CSV.
+
+---
+
+### Session 5: Course import (VM + View + MappingEntryViewModel)
+
+**Goal:** Can import courses with subject mapping confirmation.
+
+Tasks:
+1. **MappingEntryViewModel.cs** — Shared mapping row VM: CsvValue,
+   SelectedMatch (ObservableProperty), AutoMatchStatus,
+   AvailableOptions list.
+2. **CoursePreviewRow.cs** — Display model with CalendarCode, Title,
+   Status, SubjectDisplay.
+3. **CourseImportViewModel.cs** — Implement:
+   - `ChooseFile()` — parse, scan distinct SubjectCodes, auto-match
+     against subjects, populate `SubjectMappings`
+   - `ConfirmMappings()` — validate all subjects mapped (reject rows
+     with unmapped subjects), populate `PreviewRows`
+   - `Import()` — create `Course` entities, set SubjectId from mapping,
+     check `ExistsByCalendarCode` for dedup, insert via
+     `ICourseRepository.Insert()`, transaction-wrapped. Log results.
+4. **CourseImportView.axaml** — Layout:
+   - Choose File button
+   - Subject mapping GroupBox (ItemsControl of MappingEntryViewModel
+     rows, each with label + ComboBox)
+   - Confirm Mappings button
+   - Course preview ItemsControl
+   - Import button
+5. **Wire into CsvImportViewModel** + update CsvImportView.axaml.
+6. Compile check + manual test.
+
+---
+
+### Session 6: Section import (VM + View)
+
+**Goal:** Can import sections with environment mapping, instructor/course
+resolution, and meeting schedule construction.
+
+Tasks:
+1. **SectionPreviewRow.cs** — Display model with CourseCode, SectionCode,
+   InstructorDisplay, MeetingSummary, Warnings list.
+2. **SectionImportViewModel.cs** — Implement:
+   - `ChooseFile()` — parse, scan distinct values in Room/SectionType/
+     Campus/MeetingType columns, auto-match each, populate four mapping
+     collections. Also resolve Semester + AcademicYear columns.
+   - `ConfirmMappings()` — lock mappings, resolve each SectionRow's
+     references (CourseCode → Course, Instructor names → Instructors,
+     mapped environment values → IDs), populate `PreviewRows` with
+     warnings for unresolved references.
+   - `Import()` — create `Section` entities with:
+     - New GUID
+     - CourseId, SemesterId from resolution
+     - InstructorAssignments with Workload = 1.0
+     - Schedule built from MeetingRows (day/time/duration/room/frequency/
+       meeting type)
+     - SectionTypeId, CampusId from mappings
+     - Check `ExistsBySectionCode` before inserting
+     - Transaction-wrapped
+   - Log results with per-section detail.
+3. **SectionImportView.axaml** — Layout:
+   - Choose File button
+   - Four mapping GroupBoxes (reusing MappingEntryViewModel pattern)
+   - Confirm Mappings button
+   - Section preview grouped by semester
+   - Import button
+4. **Wire into CsvImportViewModel** + update CsvImportView.axaml.
+5. **Add log panel** to CsvImportView.axaml — scrollable ItemsControl
+   bound to `CsvImportViewModel.Log`, visible across all three imports.
+6. Compile check + manual test.
+
+---
+
+### Session 7: Integration testing + polish
+
+**Goal:** End-to-end tested with realistic data. Edge cases handled.
+Ready for use.
+
+Tasks:
+1. **End-to-end test** — Scrape or hand-craft a realistic set of 3 CSVs
+   for a department. Import into a fresh database. Verify:
+   - All instructors created with correct fields
+   - All courses created with correct subject links
+   - All sections created with correct instructor assignments, meeting
+     schedules, and environment mappings
+   - Cross-references are correct (section's CourseId points to right
+     course, etc.)
+2. **Second-semester test** — Import a second semester's CSVs. Verify:
+   - Existing instructors matched and reused (not duplicated)
+   - Existing courses matched and reused
+   - New instructors/courses created as needed
+   - Sections created in the correct semester
+3. **Edge cases** — Test and fix:
+   - Empty CSV (header only, no data rows)
+   - CSV with only some columns populated
+   - Instructor with no first name
+   - Ambiguous instructor match (resolve in UI)
+   - Section with no meetings (unscheduled)
+   - Section with multiple meetings (continuation rows)
+   - Duplicate section code in CSV (should warn/reject)
+   - Environment value in CSV with no DB match (confirm left null)
+4. **Polish** — Adjust spacing, font sizes, error messages. Ensure the
+   flyout scrolls correctly with many rows. Verify log panel stays
+   readable.
+5. **Compile check + full test suite** to verify no regressions.

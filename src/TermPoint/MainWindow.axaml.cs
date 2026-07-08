@@ -90,6 +90,15 @@ public partial class MainWindow : Window
                 }
             }
 
+            // Ctrl+Shift+D toggles the Dev Tools menu (all builds, session-only).
+            if (e.Key == Key.D
+                && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)
+                && DataContext is MainWindowViewModel dtVm)
+            {
+                dtVm.IsDevToolsVisible = !dtVm.IsDevToolsVisible;
+                e.Handled = true;
+            }
+
 #if DEBUG
             if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)
                 && DataContext is MainWindowViewModel debugVm)

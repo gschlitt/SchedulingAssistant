@@ -1,0 +1,26 @@
+<UserControl
+	x:Class="TermPoint.Views.Management.CsvImportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:TermPoint.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:CsvImportViewModel">
+
+	<StackPanel Margin="16" Spacing="12">
+
+		<TextBlock FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold" Text="CSV Import" />
+		<TextBlock
+			FontSize="{StaticResource FontSizeNormal}"
+			Text="Import instructors, courses, and sections from CSV files. Import in order: instructors first, then courses, then sections."
+			TextWrapping="Wrap" />
+
+		<Separator Margin="0,4" />
+
+		<TextBlock
+			FontSize="{StaticResource FontSizeNormal}"
+			Foreground="{StaticResource TextFaint}"
+			Text="Import controls will appear here in upcoming sessions." />
+
+	</StackPanel>
+
+</UserControl>

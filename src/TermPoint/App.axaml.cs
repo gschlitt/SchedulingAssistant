@@ -308,11 +308,10 @@ public partial class App : Application
         services.AddTransient<SaveAndBackupViewModel>();
         services.AddTransient<NewDatabaseViewModel>();
 
-#if DEBUG
         services.AddTransient<DebugTestDataGenerator>();
         services.AddTransient<DebugTestDataViewModel>();
         services.AddTransient<MigrationViewModel>();
-#endif
+        services.AddTransient<CsvImportViewModel>();
     }
 #endif // !BROWSER
 

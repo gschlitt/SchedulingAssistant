@@ -344,19 +344,19 @@
 						Content="Help" />
 
 					<Menu
-						x:Name="DebugMenu"
+						x:Name="DevToolsMenu"
 						controls:ResponsiveMenuPanel.IsPriority="True"
 						Margin="0,4"
 						VerticalAlignment="Center"
 						Background="Transparent"
-						IsVisible="False"
-					     >
+						IsVisible="{Binding IsDevToolsVisible}">
 						<MenuItem
 							Padding="14,5.5"
 							Classes="nav"
-							Header="Debug">
-							<MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View..." />
+							Header="Dev Tools">
+							<MenuItem Command="{Binding NavigateToCsvImportCommand}" Header="CSV Import..." />
 							<Separator />
+							<MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View..." />
 							<MenuItem Command="{Binding OpenMigrationCommand}" Header="Migration: CSV -> JSON..." />
 						</MenuItem>
 					</Menu>

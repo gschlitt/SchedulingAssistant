@@ -166,40 +166,6 @@
 
         </StackPanel>
 
-        <!--  ═══ Developer ═══════════════════════════════════════════  -->
-        <!--  Only present in DEBUG builds; the Debug menu does not exist in Release.  -->
-        <StackPanel Spacing="12" IsVisible="{Binding IsDebugBuild}">
-
-            <!--  Sub-heading + rule  -->
-            <StackPanel Spacing="4">
-                <TextBlock
-                    FontSize="{StaticResource FontSizeLarge}"
-                    FontWeight="SemiBold"
-                    Text="Developer" />
-                <Border
-                    Height="1"
-                    Background="{StaticResource SeparatorLine}"
-                    Opacity="0.2" />
-            </StackPanel>
-
-            <!--  Show Debug menu  -->
-            <CheckBox
-                Content="Show Debug menu in the menu bar"
-                IsChecked="{Binding ShowDebugMenu}">
-                <CheckBox.Styles>
-                    <Style Selector="CheckBox /template/ Border#NormalRectangle">
-                        <Setter Property="Width" Value="18" />
-                        <Setter Property="Height" Value="18" />
-                    </Style>
-                </CheckBox.Styles>
-            </CheckBox>
-            <TextBlock
-                FontSize="{StaticResource FontSizeSmall}"
-                Foreground="{StaticResource ForegroundMuted}"
-                Text="Hides the developer Debug menu (test-data generation, migration utilities) without recompiling. Takes effect the next time you start the app."
-                TextWrapping="Wrap" />
-
-        </StackPanel>
 
     </StackPanel>
 </UserControl>
