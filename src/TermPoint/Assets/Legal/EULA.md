@@ -13,7 +13,6 @@ TERMINATION Without prejudice to any other rights, the Licensor may terminate th
 Copyright (C) 2026 Academic-Solutions
 
 
-
 Disclaimer of Warranty: This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 Limitation of Liability: In no event shall the Licensor be liable for any indirect, incidental, special, or consequential damages, or for damages exceeding the total fees paid by you under this Agreement in the twelve months preceding the claim.
