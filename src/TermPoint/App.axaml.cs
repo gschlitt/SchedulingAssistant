@@ -281,6 +281,7 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
+        services.AddSingleton<CsvImportParser>();
         services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, DialogService>();
 
@@ -384,6 +385,7 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
+        services.AddSingleton<CsvImportParser>();
         services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, NullDialogService>();
 
