@@ -10,16 +10,71 @@
 
 		<TextBlock FontSize="{StaticResource FontSizeLarge}" FontWeight="SemiBold" Text="CSV Import" />
 		<TextBlock
-			FontSize="{StaticResource FontSizeNormal}"
-			Text="Import instructors, courses, and sections from CSV files. Import in order: instructors first, then courses, then sections."
-			TextWrapping="Wrap" />
+			FontSize="{StaticResource FontSizeSmall}"
+			Foreground="{StaticResource TextFaint}"
+			TextWrapping="Wrap">
+			<Run FontWeight="SemiBold" Text="Before importing:" />
+			<LineBreak />
+			<Run Text="  Instructors — no prerequisites" />
+			<LineBreak />
+			<Run Text="  Courses — Subjects must be pre-created" />
+			<LineBreak />
+			<Run Text="  Sections — Semesters, Academic Years, and scheduling" />
+			<LineBreak />
+			<Run Text="    environment (rooms, campuses, section types, meeting" />
+			<LineBreak />
+			<Run Text="    types) should be configured; instructors and courses" />
+			<LineBreak />
+			<Run Text="    must already be imported" />
+		</TextBlock>
 
 		<Separator Margin="0,4" />
 
-		<TextBlock
-			FontSize="{StaticResource FontSizeNormal}"
-			Foreground="{StaticResource TextFaint}"
-			Text="Import controls will appear here in upcoming sessions." />
+		<!-- 1. Instructors -->
+		<HeaderedContentControl Header="1. Instructors" FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold">
+			<ContentControl Content="{Binding InstructorVm}" Margin="0,6,0,0" />
+		</HeaderedContentControl>
+
+		<Separator Margin="0,4" />
+
+		<!-- 2. Courses -->
+		<HeaderedContentControl Header="2. Courses" FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold">
+			<ContentControl Content="{Binding CourseVm}" Margin="0,6,0,0" />
+		</HeaderedContentControl>
+
+		<Separator Margin="0,4" />
+
+		<!-- 3. Sections (placeholder — Session 6) -->
+		<HeaderedContentControl Header="3. Sections" FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold">
+			<TextBlock
+				FontSize="{StaticResource FontSizeSmall}"
+				Foreground="{StaticResource TextFaint}"
+				Margin="0,4,0,0"
+				Text="(coming in a future session)" />
+		</HeaderedContentControl>
+
+		<Separator Margin="0,8" />
+
+		<!-- Log panel -->
+		<TextBlock FontSize="{StaticResource FontSizeSmall}" FontWeight="SemiBold" Text="Log" />
+		<Border BorderBrush="{StaticResource TextFaint}"
+				BorderThickness="1"
+				CornerRadius="4"
+				MaxHeight="200"
+				Padding="6">
+			<ScrollViewer VerticalScrollBarVisibility="Auto">
+				<ItemsControl ItemsSource="{Binding Log}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Foreground="{StaticResource TextFaint}"
+									   Text="{Binding}"
+									   TextWrapping="Wrap" />
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</ScrollViewer>
+		</Border>
 
 	</StackPanel>
 

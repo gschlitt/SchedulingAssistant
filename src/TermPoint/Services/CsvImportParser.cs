@@ -28,6 +28,33 @@ public class CsvImportParser
         ["7"] = 7, ["Sunday"] = 7, ["Sun"] = 7, ["Su"] = 7,
     };
 
+    /// <summary>
+    /// Maps common alternative CSV header names to the canonical names used by
+    /// <see cref="GetField"/>. Alias → Canonical, case-insensitive. The alias is
+    /// adopted only when the canonical name is absent from the header row.
+    /// </summary>
+    private static readonly (string Alias, string Canonical)[] HeaderAliases =
+    {
+        // Course CSV: CalendarAbbrev is the subject abbreviation (→ SubjectCode);
+        // CourseNumber is read directly and composed with CalendarAbbrev into
+        // CalendarCode inside ParseCourses — no alias needed for it.
+        ("CalendarAbbrev", "SubjectCode"),
+        ("CourseName",     "Title"),
+        ("CourseTitle",    "Title"),
+
+        // Instructor CSV alternatives
+        ("Surname",        "LastName"),
+        ("FamilyName",     "LastName"),
+        ("GivenName",      "FirstName"),
+
+        // Section CSV alternatives
+        ("Course",         "CourseCode"),
+        ("Section",        "SectionCode"),
+        ("Instructor",     "Instructors"),
+        ("Type",           "SectionType"),
+        ("Duration",       "DurationMin"),
+    };
+
     /// <summary>Parses an instructors CSV. Rows missing a required LastName are reported as errors.</summary>
     public CsvParseResult<InstructorRow> ParseInstructors(string csvText)
     {
@@ -61,7 +88,13 @@ public class CsvImportParser
         return new CsvParseResult<InstructorRow>(rows, errors);
     }
 
-    /// <summary>Parses a courses CSV. Rows missing a required CalendarCode are reported as errors.</summary>
+    /// <summary>
+    /// Parses a courses CSV. The file may supply a pre-composed <c>CalendarCode</c>
+    /// column (e.g. "CHEM201") or separate <c>CalendarAbbrev</c> / <c>CourseNumber</c>
+    /// columns — if separate, CalendarCode is composed as "{CalendarAbbrev}{CourseNumber}".
+    /// <c>CalendarAbbrev</c> is aliased to <c>SubjectCode</c> for subject matching.
+    /// Rows missing a CalendarCode (or the components to build one) are reported as errors.
+    /// </summary>
     public CsvParseResult<CourseRow> ParseCourses(string csvText)
     {
         var (columnIndex, dataLines, headerError) = ReadHeaderAndLines(csvText);
@@ -73,20 +106,42 @@ public class CsvImportParser
             return new CsvParseResult<CourseRow>(rows, errors);
         }
 
+        // Detect whether CalendarCode must be composed from separate columns.
+        var hasCourseNumber = columnIndex!.ContainsKey("CourseNumber");
+        var hasCalendarCode = columnIndex.ContainsKey("CalendarCode");
+
         foreach (var (lineNumber, fields) in dataLines)
         {
-            var calendarCode = GetField(columnIndex!, fields, "CalendarCode");
+            var subjectCode = GetField(columnIndex, fields, "SubjectCode");
+
+            string calendarCode;
+            if (hasCalendarCode)
+            {
+                calendarCode = GetField(columnIndex, fields, "CalendarCode");
+            }
+            else if (hasCourseNumber)
+            {
+                var courseNumber = GetField(columnIndex, fields, "CourseNumber");
+                calendarCode = !string.IsNullOrEmpty(subjectCode) && !string.IsNullOrEmpty(courseNumber)
+                    ? $"{subjectCode}{courseNumber}"
+                    : courseNumber;
+            }
+            else
+            {
+                calendarCode = "";
+            }
+
             if (string.IsNullOrEmpty(calendarCode))
             {
-                errors.Add(new CsvParseError(lineNumber, "Missing CalendarCode"));
+                errors.Add(new CsvParseError(lineNumber, "Missing CalendarCode (or CalendarAbbrev + CourseNumber)"));
                 continue;
             }
 
             rows.Add(new CourseRow
             {
-                SubjectCode = GetField(columnIndex!, fields, "SubjectCode"),
+                SubjectCode = subjectCode,
                 CalendarCode = calendarCode,
-                Title = GetField(columnIndex!, fields, "Title"),
+                Title = GetField(columnIndex, fields, "Title"),
             });
         }
 
@@ -268,6 +323,15 @@ public class CsvImportParser
             var h = headers[i].Trim();
             if (!string.IsNullOrEmpty(h))
                 columnIndex[h] = i;
+        }
+
+        // Register aliases so common alternative header names resolve to the
+        // canonical names used by GetField. Only adds the alias if the canonical
+        // name isn't already present (original header wins).
+        foreach (var (alias, canonical) in HeaderAliases)
+        {
+            if (!columnIndex.ContainsKey(canonical) && columnIndex.TryGetValue(alias, out var idx))
+                columnIndex[canonical] = idx;
         }
 
         var dataLines = new List<(int, string[])>();

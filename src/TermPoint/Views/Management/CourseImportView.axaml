@@ -1,0 +1,124 @@
+<UserControl
+	x:Class="TermPoint.Views.Management.CourseImportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:TermPoint.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:CourseImportViewModel">
+
+	<StackPanel Spacing="8">
+
+		<!-- Choose File row -->
+		<StackPanel Orientation="Horizontal" Spacing="8">
+			<Button Command="{Binding ChooseFileCommand}"
+					Content="Choose File..."
+					FontSize="{StaticResource FontSizeSmall}"
+					Padding="8,4" />
+			<TextBlock VerticalAlignment="Center"
+					   FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource TextFaint}"
+					   Text="{Binding FileName, FallbackValue='No file selected'}" />
+		</StackPanel>
+
+		<!-- Error banner -->
+		<Border Background="{StaticResource ErrorBannerBackground}"
+				BorderBrush="{StaticResource ErrorBannerBorder}"
+				BorderThickness="1"
+				CornerRadius="4"
+				IsVisible="{Binding ErrorBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+				Padding="8,6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource ErrorBannerText}"
+					   Text="{Binding ErrorBanner}"
+					   TextWrapping="Wrap" />
+		</Border>
+
+		<!-- Subject mapping table -->
+		<StackPanel IsVisible="{Binding HasFile}" Spacing="6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   FontWeight="SemiBold"
+					   Text="Subject Mapping" />
+
+			<ItemsControl ItemsSource="{Binding SubjectMappings}">
+				<ItemsControl.ItemTemplate>
+					<DataTemplate DataType="vm:MappingEntryViewModel">
+						<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Text="{Binding CsvValue}"
+									   VerticalAlignment="Center"
+									   MinWidth="80" />
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Foreground="{StaticResource TextFaint}"
+									   Text="&#x2192;"
+									   VerticalAlignment="Center" />
+							<ComboBox FontSize="{StaticResource FontSizeSmall}"
+									  ItemsSource="{Binding OptionLabels}"
+									  SelectedIndex="{Binding SelectedIndex}"
+									  MinWidth="220"
+									  Padding="4,2" />
+						</StackPanel>
+					</DataTemplate>
+				</ItemsControl.ItemTemplate>
+			</ItemsControl>
+
+			<!-- Confirm Mappings button -->
+			<Button Command="{Binding ConfirmMappingsCommand}"
+					Content="Confirm Mappings"
+					FontSize="{StaticResource FontSizeSmall}"
+					IsVisible="{Binding !IsMappingConfirmed}"
+					Padding="8,4" />
+		</StackPanel>
+
+		<!-- Course preview list (after mappings confirmed) -->
+		<ItemsControl IsVisible="{Binding IsMappingConfirmed}"
+					  ItemsSource="{Binding PreviewRows}">
+			<ItemsControl.ItemTemplate>
+				<DataTemplate DataType="vm:CoursePreviewRow">
+					<StackPanel Orientation="Horizontal" Spacing="6" Margin="0,1">
+						<TextBlock FontSize="{StaticResource FontSizeSmall}"
+								   Text="{Binding CalendarCode}" />
+						<TextBlock FontSize="{StaticResource FontSizeSmall}"
+								   Foreground="{StaticResource TextFaint}"
+								   Text="{Binding Title}" />
+						<TextBlock FontSize="{StaticResource FontSizeSmall}"
+								   FontStyle="Italic"
+								   Foreground="{StaticResource TextFaint}"
+								   Text="{Binding StatusLabel}" />
+					</StackPanel>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+
+		<!-- Summary bar -->
+		<TextBlock FontSize="{StaticResource FontSizeSmall}"
+				   Foreground="{StaticResource TextFaint}"
+				   IsVisible="{Binding IsMappingConfirmed}">
+			<Run Text="{Binding NewCount, StringFormat='{}{0} new'}" />
+			<Run Text=" · " />
+			<Run Text="{Binding MatchedCount, StringFormat='{}{0} matched'}" />
+			<Run Text=" · " />
+			<Run Text="{Binding RejectedCount, StringFormat='{}{0} rejected'}" />
+		</TextBlock>
+
+		<!-- Import button -->
+		<Button Command="{Binding ImportCommand}"
+				FontSize="{StaticResource FontSizeSmall}"
+				IsVisible="{Binding !IsImported}"
+				Content="{Binding NewCount, StringFormat='Import {0} new course(s)'}"
+				Padding="8,4" />
+
+		<!-- Post-import summary -->
+		<StackPanel IsVisible="{Binding IsImported}"
+					Orientation="Horizontal"
+					Spacing="6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource FlagGreen}"
+					   Text="&#x2713;" />
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource FlagGreen}"
+					   Text="{Binding ImportSummary}" />
+		</StackPanel>
+
+	</StackPanel>
+
+</UserControl>

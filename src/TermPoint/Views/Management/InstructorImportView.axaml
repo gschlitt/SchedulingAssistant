@@ -1,0 +1,113 @@
+<UserControl
+	x:Class="TermPoint.Views.Management.InstructorImportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:TermPoint.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:InstructorImportViewModel">
+
+	<StackPanel Spacing="8">
+
+		<!-- Choose File row -->
+		<StackPanel Orientation="Horizontal" Spacing="8">
+			<Button Command="{Binding ChooseFileCommand}"
+					Content="Choose File..."
+					FontSize="{StaticResource FontSizeSmall}"
+					Padding="8,4" />
+			<TextBlock VerticalAlignment="Center"
+					   FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource TextFaint}"
+					   Text="{Binding FileName, FallbackValue='No file selected'}" />
+		</StackPanel>
+
+		<!-- Error banner -->
+		<Border Background="{StaticResource ErrorBannerBackground}"
+				BorderBrush="{StaticResource ErrorBannerBorder}"
+				BorderThickness="1"
+				CornerRadius="4"
+				IsVisible="{Binding ErrorBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+				Padding="8,6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource ErrorBannerText}"
+					   Text="{Binding ErrorBanner}"
+					   TextWrapping="Wrap" />
+		</Border>
+
+		<!-- Preview list -->
+		<ItemsControl IsVisible="{Binding HasFile}"
+					  ItemsSource="{Binding PreviewRows}"
+					  Margin="0,4,0,0">
+			<ItemsControl.ItemTemplate>
+				<DataTemplate DataType="vm:InstructorPreviewRow">
+					<StackPanel Margin="0,1" Spacing="2">
+
+						<!-- Name + status badge row -->
+						<StackPanel Orientation="Horizontal" Spacing="6">
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Text="{Binding DisplayName}" />
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   FontStyle="Italic"
+									   Foreground="{StaticResource TextFaint}"
+									   Text="{Binding StatusLabel}" />
+						</StackPanel>
+
+						<!-- Ambiguous resolution: ComboBox for candidate selection -->
+						<StackPanel IsVisible="{Binding CandidateOptions, Converter={x:Static ObjectConverters.IsNotNull}}"
+									Margin="16,2,0,4"
+									Orientation="Horizontal"
+									Spacing="6">
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Foreground="{StaticResource ErrorBannerText}"
+									   Text="Match:"
+									   VerticalAlignment="Center" />
+							<ComboBox FontSize="{StaticResource FontSizeSmall}"
+									  ItemsSource="{Binding CandidateOptions}"
+									  SelectedIndex="{Binding SelectedCandidateIndex}"
+									  MinWidth="200"
+									  Padding="4,2" />
+							<CheckBox Content="Skip"
+									  FontSize="{StaticResource FontSizeSmall}"
+									  IsChecked="{Binding Skip}"
+									  VerticalAlignment="Center"
+									  Padding="4,1" />
+						</StackPanel>
+
+					</StackPanel>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+
+		<!-- Summary bar -->
+		<TextBlock FontSize="{StaticResource FontSizeSmall}"
+				   Foreground="{StaticResource TextFaint}"
+				   IsVisible="{Binding HasFile}">
+			<Run Text="{Binding NewCount, StringFormat='{}{0} new'}" />
+			<Run Text=" · " />
+			<Run Text="{Binding MatchedCount, StringFormat='{}{0} matched'}" />
+			<Run Text=" · " />
+			<Run Text="{Binding SkippedCount, StringFormat='{}{0} skipped'}" />
+			<Run Text="{Binding AmbiguousCount, StringFormat=' · {0} ambiguous'}" />
+		</TextBlock>
+
+		<!-- Import button (pre-import) -->
+		<Button Command="{Binding ImportCommand}"
+				FontSize="{StaticResource FontSizeSmall}"
+				IsVisible="{Binding !IsImported}"
+				Content="{Binding NewCount, StringFormat='Import {0} new instructor(s)'}"
+				Padding="8,4" />
+
+		<!-- Post-import summary -->
+		<StackPanel IsVisible="{Binding IsImported}"
+					Orientation="Horizontal"
+					Spacing="6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource FlagGreen}"
+					   Text="&#x2713;" />
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource FlagGreen}"
+					   Text="{Binding ImportSummary}" />
+		</StackPanel>
+
+	</StackPanel>
+
+</UserControl>
