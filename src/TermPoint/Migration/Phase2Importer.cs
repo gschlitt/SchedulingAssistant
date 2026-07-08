@@ -46,6 +46,7 @@ public class Phase2Importer
     private readonly IAcademicYearRepository    _ayRepo;
     private readonly ISemesterRepository        _semesterRepo;
     private readonly ISectionRepository         _sectionRepo;
+    private readonly IReleaseRepository         _releaseRepo;
 
     // ── Name → ID lookup caches (case-insensitive) ────────────────────────────
     // Pre-loaded from the DB, then extended as new rows are inserted so that
@@ -104,6 +105,19 @@ public class Phase2Importer
         = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Maps a WorkLoadRecord semester key (e.g. "Fall2026-2027", matching both the
+    /// property name on an instructor's WorkLoadRecord and the property name on a
+    /// year file's Semesters object) to the non-instructional workload entries
+    /// (IsSectionType == false — release time, admin duties, etc.) recorded for
+    /// that semester across all instructors. Populated during instructor import
+    /// (before semesters exist) and consumed in <see cref="ImportYearAndSections"/>
+    /// once the real Semester.Id is known, where each entry becomes a
+    /// <see cref="Release"/> row.
+    /// </summary>
+    private readonly Dictionary<string, List<(string OldInstructorKey, string Title, double Units)>>
+        _nonSectionWorkloadBySemesterKey = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Maps Course.Id to its level string (e.g. "100", "200").
     /// Populated from existing DB courses in <see cref="LoadExistingData"/> and
     /// extended as new courses are inserted, so sections can inherit the level
@@ -131,6 +145,7 @@ public class Phase2Importer
     private int _semestersInserted;
     private int _sectionsInserted;
     private int _sectionsSkipped;
+    private int _releasesInserted;
     private readonly List<string> _warnings = new();
 
     // ── Constructor ───────────────────────────────────────────────────────────
@@ -148,6 +163,7 @@ public class Phase2Importer
         _ayRepo         = new AcademicYearRepository(db);
         _semesterRepo   = new SemesterRepository(db);
         _sectionRepo    = new SectionRepository(db);
+        _releaseRepo    = new ReleaseRepository(db);
     }
 
     // ── Public entry point ────────────────────────────────────────────────────
@@ -235,6 +251,7 @@ public class Phase2Importer
         AppendLine(report, "Academic years", _ayInserted);
         AppendLine(report, "Semesters",      _semestersInserted);
         AppendLine(report, "Sections",       _sectionsInserted);
+        AppendLine(report, "Releases (non-instructional workload)", _releasesInserted);
         if (_sectionsSkipped > 0)
             report.AppendLine($"  {"Sections skipped",-28}  {_sectionsSkipped,4}");
         report.AppendLine();
@@ -779,7 +796,11 @@ public class Phase2Importer
             // (e.g. "Fall2024-2025").  Each value holds a $values array of
             // workload entries.  We collect every IsSectionType == true entry
             // so that ImportSection can find the credit for this instructor
-            // when it processes sections later.
+            // when it processes sections later.  IsSectionType == false entries
+            // are non-instructional workload (release time, admin duties, etc.)
+            // with no section to attach to; those are stashed by raw semester
+            // key in _nonSectionWorkloadBySemesterKey and turned into Release
+            // rows once ImportYearAndSections resolves the real Semester.Id.
             var workloadLookup = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             if (resolved["WorkLoadRecord"] is JObject workloadRecord)
             {
@@ -789,12 +810,26 @@ public class Phase2Importer
                     var semValue = Resolve(semProp.Value, refMap);
                     foreach (var entry in GetValues(semValue, refMap))
                     {
-                        var e       = Resolve(entry, refMap);
-                        if (e?["IsSectionType"]?.Value<bool>() != true) continue;
-                        var wlKey   = e["WorkLoadObjectKey"]?.Value<string>();
-                        var wlUnits = e["WorkLoadUnits"]?.Value<double>();
-                        if (!string.IsNullOrWhiteSpace(wlKey) && wlUnits.HasValue)
-                            workloadLookup[wlKey] = wlUnits.Value;
+                        var e = Resolve(entry, refMap);
+                        var wlUnits = e?["WorkLoadUnits"]?.Value<double>();
+                        if (!wlUnits.HasValue) continue;
+
+                        if (e?["IsSectionType"]?.Value<bool>() == true)
+                        {
+                            var wlKey = e["WorkLoadObjectKey"]?.Value<string>();
+                            if (!string.IsNullOrWhiteSpace(wlKey))
+                                workloadLookup[wlKey] = wlUnits.Value;
+                        }
+                        else
+                        {
+                            var title = e?["WorkIdentifier"]?.Value<string>();
+                            if (string.IsNullOrWhiteSpace(title))
+                                title = e?["WorkType"]?.Value<string>() ?? "Release";
+
+                            if (!_nonSectionWorkloadBySemesterKey.TryGetValue(semProp.Name, out var list))
+                                _nonSectionWorkloadBySemesterKey[semProp.Name] = list = new();
+                            list.Add((oldKey, title, wlUnits.Value));
+                        }
                     }
                 }
             }
@@ -841,6 +876,8 @@ public class Phase2Importer
             var semFullName = semObj["Name"]?.Value<string>() ?? semProp.Name;
             var seasonName  = ExtractSeasonName(semFullName, yearName);
             var semId       = EnsureSemester(ayId, seasonName, dryRun);
+
+            ImportNonSectionWorkload(semProp.Name, semId, dryRun);
 
             var sectionListToken = semObj["SectionList"];
             if (sectionListToken is null) continue;
@@ -907,6 +944,46 @@ public class Phase2Importer
         _semesterByKey[key] = semester.Id;
         _semestersInserted++;
         return semester.Id;
+    }
+
+    /// <summary>
+    /// Turns the non-instructional workload entries stashed for a WorkLoadRecord
+    /// semester key (see <see cref="_nonSectionWorkloadBySemesterKey"/>) into
+    /// <see cref="Release"/> rows against the now-known Semester.Id.
+    /// Entries whose instructor was never matched to a new Instructor.Id
+    /// (e.g. an instructor skipped for a missing Key) are dropped with a warning.
+    /// </summary>
+    /// <param name="rawSemesterKey">
+    ///   The WorkLoadRecord property name for this semester, e.g. "Fall2026-2027".
+    /// </param>
+    /// <param name="semesterId">The resolved new Semester.Id.</param>
+    /// <param name="dryRun">When true, count only — do not write to DB.</param>
+    private void ImportNonSectionWorkload(string rawSemesterKey, string semesterId, bool dryRun)
+    {
+        if (!_nonSectionWorkloadBySemesterKey.TryGetValue(rawSemesterKey, out var entries)) return;
+
+        foreach (var (oldInstructorKey, title, units) in entries)
+        {
+            if (!_instructorByOldKey.TryGetValue(oldInstructorKey, out var instructorId))
+            {
+                _warnings.Add($"Release '{title}' for semester '{rawSemesterKey}' references " +
+                              $"unknown instructor key '{oldInstructorKey}' — skipped.");
+                continue;
+            }
+
+            if (!dryRun)
+            {
+                _releaseRepo.Insert(new Release
+                {
+                    SemesterId    = semesterId,
+                    InstructorId  = instructorId,
+                    Title         = title,
+                    WorkloadValue = (decimal)units
+                });
+            }
+
+            _releasesInserted++;
+        }
     }
 
     /// <summary>
@@ -1160,13 +1237,15 @@ public class Phase2Importer
         _propInserted = _roomsInserted = _subjectsInserted = _coursesInserted = 0;
         _instructorsInserted = _ayInserted = _semestersInserted = 0;
         _sectionsInserted = _sectionsSkipped = 0;
+        _releasesInserted = 0;
         _warnings.Clear();
 
         _tagByName.Clear();         _staffTypeByName.Clear();  _sectionTypeByName.Clear();
         _meetingTypeByName.Clear(); _resourceByName.Clear();   _reserveByName.Clear();
         _campusByName.Clear();      _roomByName.Clear();
         _subjectByAbbr.Clear();     _subjectIdToAbbr.Clear();   _courseByKey.Clear();
-        _instructorByOldKey.Clear();
+        _instructorByOldKey.Clear(); _workloadByInstructorKey.Clear();
+        _nonSectionWorkloadBySemesterKey.Clear();
         _ayByName.Clear();          _semesterByKey.Clear();
     }
 }
