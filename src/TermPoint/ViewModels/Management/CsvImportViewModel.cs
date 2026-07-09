@@ -18,6 +18,9 @@ public partial class CsvImportViewModel : ViewModelBase
     /// <summary>Course import sub-VM: file selection, subject mapping, preview, import.</summary>
     public CourseImportViewModel CourseVm { get; }
 
+    /// <summary>Section import sub-VM: file selection, environment mapping, preview, import.</summary>
+    public SectionImportViewModel SectionVm { get; }
+
     /// <summary>Shared log entries visible at the bottom of the flyout, across all imports.</summary>
     public ObservableCollection<string> Log { get; } = new();
 
@@ -26,6 +29,12 @@ public partial class CsvImportViewModel : ViewModelBase
         IInstructorRepository instructorRepo,
         ICourseRepository courseRepo,
         ISubjectRepository subjectRepo,
+        ISectionRepository sectionRepo,
+        IRoomRepository roomRepo,
+        ICampusRepository campusRepo,
+        ISchedulingEnvironmentRepository schedEnvRepo,
+        ISemesterRepository semesterRepo,
+        IAcademicYearRepository academicYearRepo,
         IDatabaseContext db,
         CsvImportParser parser,
         CsvImportMatcher matcher)
@@ -35,6 +44,11 @@ public partial class CsvImportViewModel : ViewModelBase
 
         CourseVm = new CourseImportViewModel(
             mainVm, courseRepo, subjectRepo, db, parser, matcher, AddLog);
+
+        SectionVm = new SectionImportViewModel(
+            mainVm, sectionRepo, courseRepo, instructorRepo, roomRepo,
+            campusRepo, schedEnvRepo, semesterRepo, academicYearRepo,
+            db, parser, matcher, AddLog);
     }
 
     private void AddLog(string message)

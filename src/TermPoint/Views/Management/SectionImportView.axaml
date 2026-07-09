@@ -1,0 +1,243 @@
+<UserControl
+	x:Class="TermPoint.Views.Management.SectionImportView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:vm="using:TermPoint.ViewModels.Management"
+	x:CompileBindings="False"
+	x:DataType="vm:SectionImportViewModel">
+
+	<StackPanel Spacing="8">
+
+		<!-- Choose File row -->
+		<StackPanel Orientation="Horizontal" Spacing="8">
+			<Button Command="{Binding ChooseFileCommand}"
+					Content="Choose File..."
+					FontSize="{StaticResource FontSizeSmall}"
+					Padding="8,4" />
+			<TextBlock VerticalAlignment="Center"
+					   FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource TextFaint}"
+					   Text="{Binding FileName, FallbackValue='No file selected'}" />
+		</StackPanel>
+
+		<!-- Error banner -->
+		<Border Background="{StaticResource ErrorBannerBackground}"
+				BorderBrush="{StaticResource ErrorBannerBorder}"
+				BorderThickness="1"
+				CornerRadius="4"
+				IsVisible="{Binding ErrorBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+				Padding="8,6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource ErrorBannerText}"
+					   Text="{Binding ErrorBanner}"
+					   TextWrapping="Wrap" />
+		</Border>
+
+		<!-- Environment mapping tables (visible after file loaded) -->
+		<StackPanel IsVisible="{Binding HasFile}" Spacing="8">
+
+			<!-- Rooms -->
+			<StackPanel Spacing="4">
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   FontWeight="SemiBold"
+						   Text="Room Mapping" />
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   Foreground="{StaticResource TextFaint}"
+						   IsVisible="{Binding !RoomMappings.Count}"
+						   Text="(no room values in CSV)" />
+				<ItemsControl ItemsSource="{Binding RoomMappings}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate DataType="vm:MappingEntryViewModel">
+							<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Text="{Binding CsvValue}"
+										   VerticalAlignment="Center"
+										   MinWidth="120" />
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Foreground="{StaticResource TextFaint}"
+										   Text="&#x2192;"
+										   VerticalAlignment="Center" />
+								<ComboBox FontSize="{StaticResource FontSizeSmall}"
+										  ItemsSource="{Binding OptionLabels}"
+										  SelectedIndex="{Binding SelectedIndex}"
+										  MinWidth="220"
+										  Padding="4,2" />
+							</StackPanel>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
+
+			<!-- Section Types -->
+			<StackPanel Spacing="4">
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   FontWeight="SemiBold"
+						   Text="Section Type Mapping" />
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   Foreground="{StaticResource TextFaint}"
+						   IsVisible="{Binding !SectionTypeMappings.Count}"
+						   Text="(no section type values in CSV)" />
+				<ItemsControl ItemsSource="{Binding SectionTypeMappings}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate DataType="vm:MappingEntryViewModel">
+							<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Text="{Binding CsvValue}"
+										   VerticalAlignment="Center"
+										   MinWidth="120" />
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Foreground="{StaticResource TextFaint}"
+										   Text="&#x2192;"
+										   VerticalAlignment="Center" />
+								<ComboBox FontSize="{StaticResource FontSizeSmall}"
+										  ItemsSource="{Binding OptionLabels}"
+										  SelectedIndex="{Binding SelectedIndex}"
+										  MinWidth="220"
+										  Padding="4,2" />
+							</StackPanel>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
+
+			<!-- Campuses -->
+			<StackPanel Spacing="4">
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   FontWeight="SemiBold"
+						   Text="Campus Mapping" />
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   Foreground="{StaticResource TextFaint}"
+						   IsVisible="{Binding !CampusMappings.Count}"
+						   Text="(no campus values in CSV)" />
+				<ItemsControl ItemsSource="{Binding CampusMappings}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate DataType="vm:MappingEntryViewModel">
+							<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Text="{Binding CsvValue}"
+										   VerticalAlignment="Center"
+										   MinWidth="120" />
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Foreground="{StaticResource TextFaint}"
+										   Text="&#x2192;"
+										   VerticalAlignment="Center" />
+								<ComboBox FontSize="{StaticResource FontSizeSmall}"
+										  ItemsSource="{Binding OptionLabels}"
+										  SelectedIndex="{Binding SelectedIndex}"
+										  MinWidth="220"
+										  Padding="4,2" />
+							</StackPanel>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
+
+			<!-- Meeting Types -->
+			<StackPanel Spacing="4">
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   FontWeight="SemiBold"
+						   Text="Meeting Type Mapping" />
+				<TextBlock FontSize="{StaticResource FontSizeSmall}"
+						   Foreground="{StaticResource TextFaint}"
+						   IsVisible="{Binding !MeetingTypeMappings.Count}"
+						   Text="(no meeting type values in CSV)" />
+				<ItemsControl ItemsSource="{Binding MeetingTypeMappings}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate DataType="vm:MappingEntryViewModel">
+							<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Text="{Binding CsvValue}"
+										   VerticalAlignment="Center"
+										   MinWidth="120" />
+								<TextBlock FontSize="{StaticResource FontSizeSmall}"
+										   Foreground="{StaticResource TextFaint}"
+										   Text="&#x2192;"
+										   VerticalAlignment="Center" />
+								<ComboBox FontSize="{StaticResource FontSizeSmall}"
+										  ItemsSource="{Binding OptionLabels}"
+										  SelectedIndex="{Binding SelectedIndex}"
+										  MinWidth="220"
+										  Padding="4,2" />
+							</StackPanel>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
+
+			<!-- Confirm Mappings button -->
+			<Button Command="{Binding ConfirmMappingsCommand}"
+					Content="Confirm Mappings"
+					FontSize="{StaticResource FontSizeSmall}"
+					IsVisible="{Binding !IsMappingConfirmed}"
+					Padding="8,4" />
+		</StackPanel>
+
+		<!-- Section preview list (after mappings confirmed) -->
+		<ItemsControl IsVisible="{Binding IsMappingConfirmed}"
+					  ItemsSource="{Binding PreviewRows}">
+			<ItemsControl.ItemTemplate>
+				<DataTemplate DataType="vm:SectionPreviewRow">
+					<StackPanel Margin="0,2" Spacing="1">
+						<StackPanel Orientation="Horizontal" Spacing="6">
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   FontWeight="SemiBold"
+									   Text="{Binding CourseCode}" />
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Text="{Binding SectionCode}" />
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   Foreground="{StaticResource TextFaint}"
+									   Text="{Binding InstructorDisplay}" />
+							<TextBlock FontSize="{StaticResource FontSizeSmall}"
+									   FontStyle="Italic"
+									   Foreground="{StaticResource TextFaint}"
+									   Text="{Binding StatusLabel}" />
+						</StackPanel>
+						<TextBlock FontSize="10"
+								   Foreground="{StaticResource TextFaint}"
+								   Text="{Binding MeetingSummary}"
+								   Margin="12,0,0,0" />
+						<!-- Warning text (only shown when warnings exist) -->
+						<TextBlock FontSize="10"
+								   Foreground="{StaticResource WarningText}"
+								   IsVisible="{Binding HasWarnings}"
+								   Text="{Binding WarningsText}"
+								   TextWrapping="Wrap"
+								   Margin="12,0,0,0" />
+					</StackPanel>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+
+		<!-- Summary bar -->
+		<TextBlock FontSize="{StaticResource FontSizeSmall}"
+				   Foreground="{StaticResource TextFaint}"
+				   IsVisible="{Binding IsMappingConfirmed}">
+			<Run Text="{Binding NewCount, StringFormat='{}{0} new'}" />
+			<Run Text=" · " />
+			<Run Text="{Binding RejectedCount, StringFormat='{}{0} rejected'}" />
+			<Run Text=" · " />
+			<Run Text="{Binding WarningCount, StringFormat='{}{0} with warnings'}" />
+		</TextBlock>
+
+		<!-- Import button -->
+		<Button Command="{Binding ImportCommand}"
+				FontSize="{StaticResource FontSizeSmall}"
+				IsVisible="{Binding !IsImported}"
+				Content="{Binding NewCount, StringFormat='Import {0} section(s)'}"
+				Padding="8,4" />
+
+		<!-- Post-import summary -->
+		<StackPanel IsVisible="{Binding IsImported}"
+					Orientation="Horizontal"
+					Spacing="6">
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource FlagGreen}"
+					   Text="&#x2713;" />
+			<TextBlock FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource FlagGreen}"
+					   Text="{Binding ImportSummary}" />
+		</StackPanel>
+
+	</StackPanel>
+
+</UserControl>

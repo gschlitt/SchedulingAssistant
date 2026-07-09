@@ -44,13 +44,9 @@
 
 		<Separator Margin="0,4" />
 
-		<!-- 3. Sections (placeholder — Session 6) -->
+		<!-- 3. Sections -->
 		<HeaderedContentControl Header="3. Sections" FontSize="{StaticResource FontSizeNormal}" FontWeight="SemiBold">
-			<TextBlock
-				FontSize="{StaticResource FontSizeSmall}"
-				Foreground="{StaticResource TextFaint}"
-				Margin="0,4,0,0"
-				Text="(coming in a future session)" />
+			<ContentControl Content="{Binding SectionVm}" Margin="0,6,0,0" />
 		</HeaderedContentControl>
 
 		<Separator Margin="0,8" />
