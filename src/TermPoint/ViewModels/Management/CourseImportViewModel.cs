@@ -285,6 +285,7 @@ public partial class CourseImportViewModel : ViewModelBase
                     SubjectId = preview.SubjectId!,
                     CalendarCode = preview.CalendarCode,
                     Title = preview.Title,
+                    Level = CourseLevelParser.ParseLevel(preview.CalendarCode) ?? string.Empty,
                     IsActive = true
                 };
 

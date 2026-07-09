@@ -482,6 +482,7 @@ public partial class SectionImportViewModel : ViewModelBase
 
             // ── Course resolution (whitespace-insensitive) ─────────
             string? courseId = null;
+            string? courseLevel = null;
             var csvCourseKey = StripAllWhitespace(row.CourseCode);
             if (string.IsNullOrEmpty(csvCourseKey))
             {
@@ -491,6 +492,9 @@ public partial class SectionImportViewModel : ViewModelBase
             else if (courseIndex.TryGetValue(csvCourseKey, out var matchedCourse))
             {
                 courseId = matchedCourse.Id;
+                courseLevel = !string.IsNullOrEmpty(matchedCourse.Level)
+                    ? matchedCourse.Level
+                    : CourseLevelParser.ParseLevel(csvCourseKey);
             }
             else if (rejectionReason is null)
             {
@@ -526,6 +530,7 @@ public partial class SectionImportViewModel : ViewModelBase
                 row,
                 semester?.Id,
                 courseId,
+                courseLevel,
                 instructorDisplay,
                 meetingSummary,
                 resolvedInstructors,
@@ -755,6 +760,7 @@ public partial class SectionImportViewModel : ViewModelBase
                     SemesterId = preview.SemesterId!,
                     CourseId = preview.CourseId!,
                     SectionCode = preview.SectionCode,
+                    Level = preview.CourseLevel,
                     SectionTypeId = sectionTypeId,
                     CampusId = campusId,
                     InstructorAssignments = preview.ResolvedInstructors,

@@ -24,6 +24,9 @@ public class SectionPreviewRow
     /// <summary>Resolved course ID, or null if the course could not be matched.</summary>
     public string? CourseId { get; }
 
+    /// <summary>Level band from the matched course (e.g. "100", "300"), copied to the section for filtering.</summary>
+    public string? CourseLevel { get; }
+
     /// <summary>Display text for instructors — resolved names or CSV text with warning markers.</summary>
     public string InstructorDisplay { get; }
 
@@ -61,6 +64,7 @@ public class SectionPreviewRow
     /// <param name="row">Original parsed section row.</param>
     /// <param name="semesterId">Resolved semester ID, or null.</param>
     /// <param name="courseId">Resolved course ID, or null.</param>
+    /// <param name="courseLevel">Level band from the matched course, or null.</param>
     /// <param name="instructorDisplay">Formatted instructor display text.</param>
     /// <param name="meetingSummary">Formatted meeting schedule text.</param>
     /// <param name="resolvedInstructors">Matched instructor assignments.</param>
@@ -71,6 +75,7 @@ public class SectionPreviewRow
         SectionRow row,
         string? semesterId,
         string? courseId,
+        string? courseLevel,
         string instructorDisplay,
         string meetingSummary,
         List<InstructorAssignment> resolvedInstructors,
@@ -83,6 +88,7 @@ public class SectionPreviewRow
         SectionCode = row.SectionCode.Trim();
         SemesterId = semesterId;
         CourseId = courseId;
+        CourseLevel = courseLevel;
         InstructorDisplay = instructorDisplay;
         MeetingSummary = meetingSummary;
         ResolvedInstructors = resolvedInstructors;
