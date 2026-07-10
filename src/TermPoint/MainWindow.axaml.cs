@@ -1126,15 +1126,21 @@ public partial class MainWindow : Window
     private async Task<bool> ShowCorruptDatabaseDialogAsync(string dbPath)
     {
         // Enumerate backups for this database from the configured folder.
+        // Deadline-bounded probe — the backup folder may be on a network share.
         var folder = AppSettings.Current.BackupFolderPath;
         var dbName = Path.GetFileNameWithoutExtension(dbPath);
         var backups = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+        if (!string.IsNullOrWhiteSpace(folder))
         {
-            backups = Directory.GetFiles(folder, $"{dbName}_*.db")
-                               .OrderByDescending(f => f)
-                               .ToList();
+            var (dirOk, dirExists) = await NetworkFileOps.DirectoryExistsAsync(folder);
+            if (dirOk && dirExists)
+            {
+                var (filesOk, files) = await NetworkFileOps.RunAsync(
+                    () => Directory.GetFiles(folder, $"{dbName}_*.db"), "CorruptDialog.GetFiles");
+                if (filesOk && files is not null)
+                    backups = files.OrderByDescending(f => f).ToList();
+            }
         }
 
         var dlg = new Window

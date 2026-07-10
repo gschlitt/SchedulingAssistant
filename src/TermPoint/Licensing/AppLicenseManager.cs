@@ -16,6 +16,36 @@ public class AppLicenseManager : IAppLicenseManager
         _trialService = trialService;
     }
 
+    /// <summary>
+    /// Returns the access result based solely on the trial clock, without reading
+    /// the license file. Used as a fallback when the share directory is unreachable
+    /// and the license file cannot be read within the network deadline.
+    /// </summary>
+    public AppAccessResult EvaluateAccessWithoutLicense()
+    {
+        var trial = _trialService.GetTrialStatus();
+        if (trial.IsInTrial)
+            return new AppAccessResult
+            {
+                AccessLevel = AccessLevel.FullAccess,
+                Reason = AccessReason.Trial,
+                DepartmentName = null,
+                ExpiryDate = null,
+                DaysRemaining = trial.DaysRemaining,
+                ShowPurchasePrompt = true
+            };
+
+        return new AppAccessResult
+        {
+            AccessLevel = AccessLevel.ReadOnly,
+            Reason = AccessReason.Unlicensed,
+            DepartmentName = null,
+            ExpiryDate = null,
+            DaysRemaining = null,
+            ShowPurchasePrompt = true
+        };
+    }
+
     /// <inheritdoc />
     public AppAccessResult EvaluateAccess(string shareDirectoryPath)
     {

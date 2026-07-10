@@ -189,6 +189,36 @@ public partial class WorkloadPanelViewModel : ViewModelBase
             foreach (var row in rows)
                 row.AcademicYearTotal = ayTotals.GetValueOrDefault(row.InstructorId, 0m);
 
+            // Instructor conflict detection (suppressed in multi-semester mode)
+            if (!isMultiSemester)
+            {
+                var courseCodeById = new Dictionary<string, string>(courseCache);
+                var allInstrConflicts = new Dictionary<string, List<string>>();
+                foreach (var (semId, semSections) in _sectionStore.SectionsBySemester)
+                {
+                    var semConflicts = Services.InstructorConflictService.DetectConflictsByInstructor(
+                        semSections, courseCodeById);
+                    foreach (var (instrId, lines) in semConflicts)
+                    {
+                        if (!allInstrConflicts.TryGetValue(instrId, out var existing))
+                        {
+                            existing = new List<string>();
+                            allInstrConflicts[instrId] = existing;
+                        }
+                        existing.AddRange(lines);
+                    }
+                }
+
+                foreach (var row in rows)
+                {
+                    if (allInstrConflicts.TryGetValue(row.InstructorId, out var conflictLines))
+                    {
+                        row.HasConflict = true;
+                        row.ConflictTooltip = string.Join("\n", conflictLines);
+                    }
+                }
+            }
+
             Rows = new ObservableCollection<WorkloadRowViewModel>(rows);
         }
         catch (Exception ex)

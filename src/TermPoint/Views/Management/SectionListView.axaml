@@ -1400,6 +1400,14 @@
                                                     IsVisible="{Binding RoomConflictWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Text="{Binding RoomConflictWarning}"
                                                     TextWrapping="Wrap" />
+                                                <!--  Instructor conflict warning  -->
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextError}"
+                                                    IsVisible="{Binding InstructorConflictWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding InstructorConflictWarning}"
+                                                    TextWrapping="Wrap" />
                                                 <!--  Tags  -->
                                                 <StackPanel
                                                     IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

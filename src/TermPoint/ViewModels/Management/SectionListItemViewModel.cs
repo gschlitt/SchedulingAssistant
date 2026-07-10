@@ -68,6 +68,14 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     [ObservableProperty]
     private string? _roomConflictWarning;
 
+    /// <summary>
+    /// Advisory warning text describing instructor-scheduling conflicts with other sections
+    /// in the same semester. Null when no conflicts exist.
+    /// Set externally by <see cref="SectionListViewModel.ApplyInstructorConflicts"/>.
+    /// </summary>
+    [ObservableProperty]
+    private string? _instructorConflictWarning;
+
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
     [ObservableProperty] private bool _isBeingCreated;
 

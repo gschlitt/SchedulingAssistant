@@ -412,8 +412,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // Apply any active grid filter highlights to the freshly built items.
         ApplyFilterHighlights();
 
-        // Flag sections that share a room+day+time with another section.
+        // Flag sections that share a room+day+time or instructor+day+time with another section.
         ApplyRoomConflicts(lk.Courses, lk.Rooms);
+        ApplyInstructorConflicts(lk.Courses, lk.Instructors);
 
         if (selectSectionId is not null)
             SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
@@ -538,9 +539,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
         SelectedItem = newVm;
 
-        // Re-derive the cheap per-card flags (no container rebuild): filter highlight and room conflicts.
+        // Re-derive the cheap per-card flags (no container rebuild): filter highlight and conflicts.
         ApplyFilterHighlights();
         ApplyRoomConflicts(lk.Courses, lk.Rooms);
+        ApplyInstructorConflicts(lk.Courses, lk.Instructors);
         return true;
     }
 
@@ -684,6 +686,56 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 ? string.Join("; ", lines)
                 : null;
         }
+    }
+
+    /// <summary>
+    /// Runs instructor-conflict detection per semester and sets
+    /// <see cref="SectionListItemViewModel.InstructorConflictWarning"/> on each card.
+    /// Called at the end of <see cref="LoadCore"/> after the list is rebuilt.
+    /// </summary>
+    /// <param name="courseLookup">Courses keyed by ID, already built in LoadCore.</param>
+    /// <param name="instructorLookup">Instructors keyed by ID, already built in LoadCore.</param>
+    private void ApplyInstructorConflicts(
+        Dictionary<string, Course> courseLookup,
+        Dictionary<string, Instructor> instructorLookup)
+    {
+        if (_semesterContext.IsMultiSemesterMode)
+        {
+            foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+                item.InstructorConflictWarning = null;
+            return;
+        }
+
+        var courseCodeById = courseLookup.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value.CalendarCode ?? kv.Value.Id);
+
+        var instructorLabelById = instructorLookup.ToDictionary(
+            kv => kv.Key,
+            kv => FormatInstructorLabel(kv.Value));
+
+        var allConflicts = new Dictionary<string, List<string>>();
+        foreach (var (semesterId, sections) in _sectionStore.SectionsBySemester)
+        {
+            var semConflicts = InstructorConflictService.DetectConflicts(sections, instructorLabelById, courseCodeById);
+            foreach (var (sectionId, lines) in semConflicts)
+                allConflicts[sectionId] = lines;
+        }
+
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+        {
+            item.InstructorConflictWarning = allConflicts.TryGetValue(item.Section.Id, out var lines)
+                ? string.Join("; ", lines)
+                : null;
+        }
+    }
+
+    /// <summary>Formats an instructor as "F. LastName" for conflict descriptions.</summary>
+    private static string FormatInstructorLabel(Instructor instructor)
+    {
+        if (!string.IsNullOrEmpty(instructor.FirstName))
+            return $"{instructor.FirstName[0]}. {instructor.LastName}";
+        return instructor.LastName;
     }
 
     /// <summary>

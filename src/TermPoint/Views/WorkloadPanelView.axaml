@@ -204,11 +204,22 @@
 											Command="{Binding DataContext.SelectInstructorSectionsCommand, ElementName=Root}"
 											CommandParameter="{Binding}"
 											ToolTip.Tip="Click to select all sections for this instructor">
-											<TextBlock
-												Margin="4,2"
-												Text="{Binding NameWithInitials}"
-												TextTrimming="CharacterEllipsis"
-												TextWrapping="Wrap" />
+											<StackPanel Orientation="Horizontal" Margin="4,2" Spacing="3">
+												<!--  Conflict warning icon — visible only when this instructor has a scheduling conflict  -->
+												<Viewbox
+													Width="12" Height="12"
+													VerticalAlignment="Center"
+													IsVisible="{Binding HasConflict}"
+													ToolTip.Tip="{Binding ConflictTooltip}">
+													<Path
+														Data="{StaticResource ConflictWarningIcon}"
+														Fill="{StaticResource TextError}" />
+												</Viewbox>
+												<TextBlock
+													Text="{Binding NameWithInitials}"
+													TextTrimming="CharacterEllipsis"
+													TextWrapping="Wrap" />
+											</StackPanel>
 										</Button>
 
 										<!--  Note icon (single-semester mode): shown only when a non-empty note exists.

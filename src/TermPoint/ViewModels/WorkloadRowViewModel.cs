@@ -21,6 +21,12 @@ public partial class WorkloadRowViewModel : ObservableObject
     /// <summary>Whether the inline read-only note area is expanded. Toggled by the note icon.</summary>
     [ObservableProperty] private bool _isNoteExpanded;
 
+    /// <summary>True when this instructor has at least one scheduling conflict in the loaded semester(s).</summary>
+    [ObservableProperty] private bool _hasConflict;
+
+    /// <summary>Human-readable description of the instructor's scheduling conflicts, shown as a tooltip.</summary>
+    [ObservableProperty] private string? _conflictTooltip;
+
     /// <summary>Displays the instructor's full name followed by their initials in brackets, e.g. "Jim Bertrand (JB)".</summary>
     public string NameWithInitials => string.IsNullOrWhiteSpace(Initials) ? FullName : $"{FullName} ({Initials})";
 

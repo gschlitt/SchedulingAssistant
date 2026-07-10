@@ -111,7 +111,25 @@ public partial class App : Application
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint"),
             clock);
         var licenseManager = new AppLicenseManager(licenseValidator, trialService);
-        LicenseStatus = licenseManager.EvaluateAccess(shareDir);
+
+        // EvaluateAccess → ValidateLicenseFile reads termpoint.lic from the share
+        // directory with raw File.Exists + File.ReadAllText. Wrap in a deadline so
+        // a dead share doesn't freeze the UI thread for the SMB redirector timeout.
+        // On timeout, treat as NotFound → falls through to trial evaluation.
+        var (completed, result) = NetworkFileOps.RunAsync(
+            () => licenseManager.EvaluateAccess(shareDir), "EvaluateLicense")
+            .GetAwaiter().GetResult();
+
+        if (completed && result is not null)
+        {
+            LicenseStatus = result;
+        }
+        else
+        {
+            Logger.LogInfo("[Licensing] License check timed out — share unreachable; falling back to trial");
+            LicenseStatus = licenseManager.EvaluateAccessWithoutLicense();
+        }
+
         Logger.LogInfo($"[Licensing] {LicenseStatus.Reason}, access={LicenseStatus.AccessLevel}" +
             (LicenseStatus.DepartmentName != null ? $", dept={LicenseStatus.DepartmentName}" : "") +
             (LicenseStatus.DaysRemaining != null ? $", trial={LicenseStatus.DaysRemaining}d" : ""));

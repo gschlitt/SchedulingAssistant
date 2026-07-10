@@ -98,7 +98,7 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
         // Refresh the status line and entry list after every backup.
         _backupService.BackupCompleted += OnBackupCompleted;
 
-        RefreshBackupList();
+        _ = RefreshBackupListAsync();
     }
 
     // ── Change handlers (auto-save on every change) ──────────────────────────
@@ -109,7 +109,7 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
         var s = AppSettings.Current;
         s.BackupFolderPath = string.IsNullOrWhiteSpace(value) ? null : value;
         s.Save();
-        RefreshBackupList();
+        _ = RefreshBackupListAsync();
     }
 
     /// <summary>Persists the backup interval immediately when changed.</summary>
@@ -167,11 +167,15 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
 
     // ── Internal helpers ─────────────────────────────────────────────────────
 
-    /// <summary>Reloads the backup list from <see cref="BackupService.GetBackups"/>.</summary>
-    private void RefreshBackupList()
+    /// <summary>
+    /// Reloads the backup list from <see cref="BackupService.GetBackupsAsync"/>.
+    /// Async so the directory probe is deadline-bounded and does not freeze the UI
+    /// when the backup folder is on an unreachable network share.
+    /// </summary>
+    private async Task RefreshBackupListAsync()
     {
-        BackupEntries = _backupService
-            .GetBackups()
+        var entries = await _backupService.GetBackupsAsync();
+        BackupEntries = entries
             .Select(e => new BackupEntryViewModel(e, RestoreCommand))
             .ToList();
     }
@@ -186,7 +190,7 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
     private void OnBackupCompleted(object? sender, EventArgs e)
     {
         UpdateLastBackupStatus();
-        RefreshBackupList();
+        _ = RefreshBackupListAsync();
     }
 
     /// <summary>Unsubscribes from BackupService.BackupCompleted to prevent memory leaks.</summary>

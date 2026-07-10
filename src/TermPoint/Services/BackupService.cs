@@ -168,7 +168,10 @@ public class BackupService : IDisposable
             return r;
         }
 
-        if (!Directory.Exists(folder))
+        // Deadline-bounded probe — raw Directory.Exists on a dead network share
+        // blocks the calling thread for the full SMB redirector timeout (~60s).
+        var (dirCheckCompleted, dirExists) = await NetworkFileOps.DirectoryExistsAsync(folder);
+        if (!dirCheckCompleted || !dirExists)
         {
             var r = BackupResult.FolderUnavailable(folder);
             _logger.LogError(null, $"Backup folder unavailable: {folder}");
@@ -326,17 +329,36 @@ public class BackupService : IDisposable
     /// <c>{dbName}_*.db</c>. Returns an empty list when no folder is configured
     /// or the folder is unavailable.
     /// </summary>
-    public List<BackupEntry> GetBackups()
+    /// <summary>
+    /// Synchronous overload for backward compatibility. Prefer <see cref="GetBackupsAsync"/>
+    /// when calling from the UI thread — this overload blocks on network paths.
+    /// </summary>
+    public List<BackupEntry> GetBackups() => GetBackupsAsync().GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Async version that deadline-bounds the <see cref="Directory.Exists"/> and
+    /// <see cref="Directory.GetFiles"/> calls so a dead backup share does not
+    /// freeze the UI thread for the full SMB redirector timeout.
+    /// </summary>
+    public async Task<List<BackupEntry>> GetBackupsAsync()
     {
         var folder = AppSettings.Current.BackupFolderPath;
         var prefix = _dbName
             ?? Path.GetFileNameWithoutExtension(AppSettings.Current.DatabasePath ?? string.Empty);
 
-        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+        if (string.IsNullOrWhiteSpace(folder))
             return new List<BackupEntry>();
 
-        return Directory
-            .GetFiles(folder, $"{prefix}_*.db")
+        var (completed, exists) = await NetworkFileOps.DirectoryExistsAsync(folder);
+        if (!completed || !exists)
+            return new List<BackupEntry>();
+
+        var (filesCompleted, files) = await NetworkFileOps.RunAsync(
+            () => Directory.GetFiles(folder, $"{prefix}_*.db"), "GetBackups.GetFiles");
+        if (!filesCompleted || files is null)
+            return new List<BackupEntry>();
+
+        return files
             .Select(f =>
             {
                 return new BackupEntry
