@@ -175,9 +175,17 @@ public partial class DatabaseChooserViewModel : ObservableObject
         if (value is not null)
             SelectedOption = ChooserOption.None;
 
+        RecentError = null;
         OnPropertyChanged(nameof(CanContinue));
         OnPropertyChanged(nameof(ContinueButtonText));
     }
+
+    /// <summary>
+    /// Validation error shown inline when the user tries to open a recent database
+    /// that is unreachable or missing.
+    /// </summary>
+    [ObservableProperty]
+    private string? _recentError;
 
     /// <summary>Populates the recent databases list from AppSettings.</summary>
     private void LoadRecentDatabases()
@@ -185,7 +193,12 @@ public partial class DatabaseChooserViewModel : ObservableObject
         RecentDatabases.Clear();
         foreach (var path in AppSettings.Current.RecentDatabases)
         {
-            // No existence probe here — see the RecentDatabases doc comment.
+            // Skip the path we already know is unreachable — the banner above already
+            // tells the user about it, and listing it again invites a pointless click.
+            if (Reason == RecoveryReason.Unreachable
+                && path.Equals(LastKnownPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             RecentDatabases.Add(new RecentDatabaseItem
             {
                 Path = path,
@@ -195,11 +208,29 @@ public partial class DatabaseChooserViewModel : ObservableObject
         HasRecentDatabases = RecentDatabases.Count > 0;
     }
 
-    /// <summary>Opens a recent database by double-click.</summary>
+    /// <summary>
+    /// Opens a recent database by double-click. Validates the path first so a
+    /// dead network share produces a bounded (~5s) inline error instead of a
+    /// 60-second hang inside the checkout flow.
+    /// </summary>
     [RelayCommand]
-    private void OpenRecentDatabase(RecentDatabaseItem? item)
+    private async Task OpenRecentDatabase(RecentDatabaseItem? item)
     {
         if (item is null) return;
+
+        RecentError = null;
+        var validation = await DatabaseValidator.ValidateAsync(item.Path);
+        if (validation != DatabaseValidationResult.Ok)
+        {
+            RecentError = validation switch
+            {
+                DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
+                DatabaseValidationResult.Corrupt     => "That database failed its integrity check and may be damaged.",
+                _                                    => "That database could not be found — it may have been moved or deleted."
+            };
+            return;
+        }
+
         Outcome      = ChooserOutcome.Resolved;
         ResolvedPath = item.Path;
         CloseRequested?.Invoke();
@@ -465,16 +496,30 @@ public partial class DatabaseChooserViewModel : ObservableObject
 
     /// <summary>
     /// Proceeds with the current selection — either a recent database or an action option.
-    /// For Restore, copies the backup file before signalling completion.
+    /// For recent databases, validates the path first (bounded ~5s) to avoid a 60s hang
+    /// on unreachable shares. For Restore, copies the backup file before signalling completion.
     /// </summary>
     [RelayCommand]
-    private void Continue()
+    private async Task Continue()
     {
         if (!CanContinue) return;
 
-        // Recent database selected — open it directly
+        // Recent database selected — validate before handing to checkout.
         if (SelectedRecentDatabase is not null)
         {
+            RecentError = null;
+            var validation = await DatabaseValidator.ValidateAsync(SelectedRecentDatabase.Path);
+            if (validation != DatabaseValidationResult.Ok)
+            {
+                RecentError = validation switch
+                {
+                    DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
+                    DatabaseValidationResult.Corrupt     => "That database failed its integrity check and may be damaged.",
+                    _                                    => "That database could not be found — it may have been moved or deleted."
+                };
+                return;
+            }
+
             Outcome      = ChooserOutcome.Resolved;
             ResolvedPath = SelectedRecentDatabase.Path;
             CloseRequested?.Invoke();

@@ -106,6 +106,14 @@
                     </Border>
                 </StackPanel>
 
+                <!--  Inline error when a recent entry fails validation  -->
+                <TextBlock Text="{Binding RecentError}"
+                           IsVisible="{Binding RecentError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Foreground="{StaticResource TextError}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           TextWrapping="Wrap"
+                           Margin="0,-6,0,0" />
+
                 <!--  Divider between recent list and action options  -->
                 <StackPanel IsVisible="{Binding HasRecentDatabases}" Spacing="0">
                     <TextBlock Text="Or..."
