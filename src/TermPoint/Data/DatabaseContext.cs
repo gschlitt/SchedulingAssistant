@@ -74,6 +74,7 @@ public class DatabaseContext : IDatabaseContext
             // the try alongside Open()/InitializeSchema() (which create the SQLite journal sidecar).
             Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
             _conn.Open();
+            ConfigureConnection(_conn);
             InitializeSchema();
             Migrate(dbPath);
             SeedData.EnsureSeeded(_conn);
@@ -100,6 +101,34 @@ public class DatabaseContext : IDatabaseContext
                 "The file may be locked by another process, corrupted, or the path may be invalid.",
                 ex);
         }
+    }
+
+    /// <summary>
+    /// Applies per-connection settings to the shared repository connection.
+    ///
+    /// <para><b>WAL journal mode:</b> background services open <i>second</i> connections that
+    /// read this database while the UI thread writes through this one —
+    /// <see cref="Services.BackupService"/> runs VACUUM INTO on a backup timer and
+    /// <see cref="Services.CheckoutService"/> snapshots via the online backup API on the
+    /// autosave timer. In the default rollback-journal mode, a reader's SHARED lock blocks a
+    /// writer's COMMIT, so a UI-thread write during a backup froze the whole window for the
+    /// duration of the busy timeout. In WAL mode readers and the single writer proceed
+    /// concurrently, eliminating that contention class. The working copy is always on a
+    /// local disk, so WAL's no-network-filesystem caveat does not apply; files written back
+    /// to the network are normalized to rollback mode by
+    /// <c>CheckoutService.BackupSqliteDatabase</c>.</para>
+    ///
+    /// <para><b>5-second busy timeout:</b> repository calls run synchronously on the UI
+    /// thread. Should a lock ever be contended despite WAL, fail after 5&#160;s with a clean
+    /// <see cref="SqliteException"/> instead of the driver default of 30&#160;s of frozen UI.</para>
+    /// </summary>
+    /// <param name="conn">The open connection to configure.</param>
+    private static void ConfigureConnection(SqliteConnection conn)
+    {
+        conn.DefaultTimeout = 5;
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA journal_mode=WAL";
+        cmd.ExecuteScalar();
     }
 
     /// <summary>
@@ -573,6 +602,7 @@ public class DatabaseContext : IDatabaseContext
         try
         {
             _conn.Open();
+            ConfigureConnection(_conn);
             // No need to call InitializeSchema or Migrate — the new file already has the schema
             // (it was a copy of the old D'', which was a consistent snapshot).
         }

@@ -106,12 +106,23 @@ public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, ID
     private async Task Delete()
     {
         if (SelectedItem is null) return;
+        LastErrorMessage = null;
+        var id   = SelectedItem.Id;
+        var name = SelectedItem.Name;
 
-        if (!await _dialog.Confirm($"Delete campus \"{SelectedItem.Name}\"?"))
+        if (!await _dialog.Confirm($"Delete campus \"{name}\"?"))
             return;
 
-        _repo.Delete(SelectedItem.Id);
-        Load();
+        try
+        {
+            _repo.Delete(id);
+            Load();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "CampusListViewModel.Delete");
+            LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
+        }
     }
 
     /// <inheritdoc/>

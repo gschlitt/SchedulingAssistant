@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -25,6 +26,9 @@ public interface ICampusRepository
     /// <summary>Updates the campus matched by <see cref="Campus.Id"/>.</summary>
     void Update(Campus campus);
 
-    /// <summary>Deletes the campus with the given <paramref name="id"/>.</summary>
-    void Delete(string id);
+    /// <summary>
+    /// Deletes the campus with the given <paramref name="id"/>.
+    /// Pass <paramref name="tx"/> to enlist the delete in a caller-managed transaction.
+    /// </summary>
+    void Delete(string id, DbTransaction? tx = null);
 }

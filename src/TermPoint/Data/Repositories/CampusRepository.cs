@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -90,10 +91,11 @@ public class CampusRepository : ICampusRepository
     }
 
     /// <inheritdoc/>
-    public void Delete(string id)
+    public void Delete(string id, DbTransaction? tx = null)
     {
         _db.MarkDirty();
         using var cmd = _db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Campuses WHERE id = $id";
         cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Text;
 using Microsoft.Data.Sqlite;
 using TermPoint.Data;
@@ -184,7 +185,7 @@ public class BackupService : IDisposable
         // year's sections. The .db file contains the whole database, so it gets no slug.
         var csvDest   = Path.Combine(folder, $"{prefix}_{timestamp}_{aySlug}_sections.csv");
 
-        // Step 1 — VACUUM INTO
+        // Step 1 — VACUUM INTO a LOCAL temp file, then stream it to the backup folder.
         // Open a FRESH unpooled connection rather than reusing _db.Connection.
         // Backups can fire from a thread-pool thread (periodic timer) or from a
         // CheckoutService.SaveAsync caller. SqliteConnection is not thread-safe;
@@ -192,9 +193,38 @@ public class BackupService : IDisposable
         // SQLITE_MISUSE if a UI write transaction is in flight at the same moment.
         // SQLite serialises across separate connections to the same file, so a
         // fresh handle is the safe path. (F1, data-integrity-agenda 2026-05-04.)
+        //
+        // The vacuum holds a read lock on the live database for its whole duration,
+        // so the destination MUST be local: vacuuming straight to a network backup
+        // folder held that lock for the entire SMB transfer, during which any
+        // UI-thread write sat frozen in SQLite's busy handler. Vacuum locally
+        // (fast, bounded by local disk), verify, then stream the finished file with
+        // the stall-aware NetworkFileOps.CopyAsync — the same pattern the save
+        // pipeline uses (finding #7). Task.Run keeps the vacuum and the integrity
+        // read off the caller's thread: StartSessionAsync awaits this method from
+        // the UI thread at write-lock acquisition.
+        var localTmp = _db.DatabasePath + ".backuptmp";
+        bool integrityOk;
         try
         {
-            VacuumIntoFreshConnection(dbDest);
+            TryDelete(localTmp); // VACUUM INTO requires that the destination not exist
+            await Task.Run(() => VacuumIntoFreshConnection(localTmp));
+
+            // Step 2 — integrity check on the local snapshot (non-fatal if it fails)
+            integrityOk = await Task.Run(() => CheckIntegrityOnFile(localTmp));
+            if (!integrityOk)
+                _logger.LogError(null, $"Integrity check failed on backup snapshot: {localTmp}");
+
+            var copyCompleted = await NetworkFileOps.CopyAsync(localTmp, dbDest);
+            if (!copyCompleted)
+            {
+                _logger.LogError(null, $"Backup copy to {dbDest} stalled — backup folder unreachable.");
+                TryDelete(dbDest); // remove the partial file
+                var stalled = BackupResult.Failed("Database backup failed: the backup folder did not respond.");
+                LastBackupResult = stalled;
+                FireBackupCompleted();
+                return stalled;
+            }
         }
         catch (Exception ex)
         {
@@ -204,11 +234,10 @@ public class BackupService : IDisposable
             FireBackupCompleted();
             return r;
         }
-
-        // Step 2 — integrity check on the backup (non-fatal if it fails)
-        bool integrityOk = CheckIntegrityOnFile(dbDest);
-        if (!integrityOk)
-            _logger.LogError(null, $"Integrity check failed on backup file: {dbDest}");
+        finally
+        {
+            TryDelete(localTmp);
+        }
 
         // Step 3 — CSV export (non-fatal; DB backup already succeeded)
         bool csvOk = false;
@@ -255,8 +284,11 @@ public class BackupService : IDisposable
     /// fully released on <see cref="IDisposable.Dispose"/> rather than being returned
     /// to the pool — important on Windows so subsequent file operations in
     /// <see cref="CheckoutService"/> are not blocked by a lingering handle.</para>
+    /// <para>The vacuum holds a read lock on the source for its entire duration, so
+    /// <paramref name="destPath"/> must be a LOCAL path — the caller streams the
+    /// finished snapshot to the backup folder afterwards.</para>
     /// </summary>
-    /// <param name="destPath">Destination file for the VACUUM INTO output.</param>
+    /// <param name="destPath">Destination file for the VACUUM INTO output (must not exist; must be local).</param>
     private void VacuumIntoFreshConnection(string destPath)
     {
         var sourcePath = _db.DatabasePath;
@@ -264,15 +296,26 @@ public class BackupService : IDisposable
             throw new InvalidOperationException(
                 "BackupService: IDatabaseContext.DatabasePath is empty — cannot run VACUUM INTO.");
 
-        using var conn = new SqliteConnection($"Data Source={sourcePath};Pooling=False");
-        conn.Open();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "VACUUM INTO $path";
-        var p = cmd.CreateParameter();
-        p.ParameterName = "$path";
-        p.Value = destPath;
-        cmd.Parameters.Add(p);
-        cmd.ExecuteNonQuery();
+        using (var conn = new SqliteConnection($"Data Source={sourcePath};Pooling=False"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "VACUUM INTO $path";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "$path";
+            p.Value = destPath;
+            cmd.Parameters.Add(p);
+            cmd.ExecuteNonQuery();
+        }
+
+        // Normalize the snapshot to rollback journal mode. The live source runs in WAL
+        // (see DatabaseContext.ConfigureConnection); backup archives are plain files at
+        // rest and should be self-contained single .db files with no WAL dependency.
+        using var destConn = new SqliteConnection($"Data Source={destPath};Pooling=False");
+        destConn.Open();
+        using var journalMode = destConn.CreateCommand();
+        journalMode.CommandText = "PRAGMA journal_mode=DELETE";
+        journalMode.ExecuteScalar();
     }
 
     // ── Backup list ──────────────────────────────────────────────────────────
@@ -378,21 +421,37 @@ public class BackupService : IDisposable
     /// <param name="destPath">Full path of the CSV file to create (overwrite if exists).</param>
     private async Task WriteSectionsCsvAsync(string destPath)
     {
+        // This method runs on a thread-pool thread (backup timer / save caller), but the
+        // injected repositories all execute on the shared DatabaseContext connection,
+        // which the UI thread may be using at the same moment — and SqliteConnection is
+        // not thread-safe (same reasoning as the fresh VACUUM INTO connection above, F1).
+        // Read through a fresh, isolated connection whenever a real database file backs
+        // the context; fall back to the injected repositories in demo/in-memory contexts,
+        // which have no file (and no cross-thread contention).
+        using var isolated = IsolatedReadContext.TryCreate(_db.DatabasePath);
+        var sectionRepo  = isolated is null ? _sectionRepo    : new SectionRepository(isolated);
+        var courseRepo   = isolated is null ? _courseRepo     : new CourseRepository(isolated);
+        var instrRepo    = isolated is null ? _instructorRepo : new InstructorRepository(isolated);
+        var roomRepo     = isolated is null ? _roomRepo       : new RoomRepository(isolated);
+        var semesterRepo = isolated is null ? _semesterRepo   : new SemesterRepository(isolated);
+        var propertyRepo = isolated is null ? _propertyRepo   : new SchedulingEnvironmentRepository(isolated);
+        var campusRepo   = isolated is null ? _campusRepo     : new CampusRepository(isolated);
+
         // Build lookup dictionaries from the repositories.
-        var courses     = _courseRepo.GetAll().ToDictionary(c => c.Id);
-        var instructors = _instructorRepo.GetAll().ToDictionary(i => i.Id);
-        var rooms       = _roomRepo.GetAll().ToDictionary(r => r.Id);
-        var sectionTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType)
+        var courses     = courseRepo.GetAll().ToDictionary(c => c.Id);
+        var instructors = instrRepo.GetAll().ToDictionary(i => i.Id);
+        var rooms       = roomRepo.GetAll().ToDictionary(r => r.Id);
+        var sectionTypes = propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType)
                                         .ToDictionary(p => p.Id, p => p.Name);
-        var campuses     = _campusRepo.GetAll()
+        var campuses     = campusRepo.GetAll()
                                         .ToDictionary(c => c.Id, c => c.Name);
-        var tags         = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag)
+        var tags         = propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag)
                                         .ToDictionary(p => p.Id, p => p.Name);
-        var meetingTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType)
+        var meetingTypes = propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType)
                                         .ToDictionary(p => p.Id, p => p.Name);
-        var resourceProps = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource)
+        var resourceProps = propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource)
                                          .ToDictionary(p => p.Id, p => p.Name);
-        var reserveProps  = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve)
+        var reserveProps  = propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve)
                                          .ToDictionary(p => p.Id, p => p.Name);
 
         // Resolve the current academic year so we can label each row.
@@ -401,7 +460,7 @@ public class BackupService : IDisposable
 
         // Load all semesters and sections for the current academic year.
         var allSemesters = ay is not null
-            ? _semesterRepo.GetAll().Where(s => s.AcademicYearId == ay.Id).ToList()
+            ? semesterRepo.GetAll().Where(s => s.AcademicYearId == ay.Id).ToList()
             : new List<Semester>();
 
         var sb = new StringBuilder();
@@ -422,7 +481,7 @@ public class BackupService : IDisposable
         // stable during the meeting loop (avoids any deferred-execution surprises).
         foreach (var semester in allSemesters.OrderBy(s => s.SortOrder))
         {
-            var sections = _sectionRepo.GetAll(semester.Id)
+            var sections = sectionRepo.GetAll(semester.Id)
                 .OrderBy(s =>
                 {
                     var code = s.CourseId is not null && courses.TryGetValue(s.CourseId, out var cx)
@@ -727,6 +786,55 @@ public class BackupService : IDisposable
     {
         try { if (File.Exists(path)) File.Delete(path); }
         catch { /* best-effort */ }
+    }
+
+    /// <summary>
+    /// Minimal <see cref="IDatabaseContext"/> over a fresh, unpooled connection to the live
+    /// database file. Lets <see cref="WriteSectionsCsvAsync"/> run repository queries from
+    /// the backup thread without touching the shared (non-thread-safe) DatabaseContext
+    /// connection. Opened read-write (never writes) rather than read-only because a
+    /// read-only connection cannot always attach to a WAL database on its own.
+    /// </summary>
+    private sealed class IsolatedReadContext : IDatabaseContext
+    {
+        private readonly SqliteConnection _conn;
+
+        /// <inheritdoc/>
+        public DbConnection Connection => _conn;
+
+        /// <inheritdoc/>
+        public string DatabasePath { get; }
+
+        /// <inheritdoc/>
+        public bool SupportsTransactions => true;
+
+        /// <inheritdoc/>
+        public void MarkDirty() { }  // read-only usage — no user writes ever flow through here
+
+        /// <inheritdoc/>
+        public void ResetDirty() { }
+
+        private IsolatedReadContext(string dbPath)
+        {
+            DatabasePath = dbPath;
+            _conn = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = dbPath,
+                Mode       = SqliteOpenMode.ReadWrite,
+                Pooling    = false,
+            }.ToString());
+            _conn.Open();
+        }
+
+        /// <summary>
+        /// Opens an isolated connection to <paramref name="dbPath"/>, or returns null when
+        /// the context has no backing file (demo/in-memory contexts).
+        /// </summary>
+        public static IsolatedReadContext? TryCreate(string dbPath)
+            => string.IsNullOrEmpty(dbPath) ? null : new IsolatedReadContext(dbPath);
+
+        /// <inheritdoc/>
+        public void Dispose() => _conn.Dispose();
     }
 
     // ── IDisposable ──────────────────────────────────────────────────────────

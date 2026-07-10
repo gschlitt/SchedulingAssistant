@@ -519,6 +519,10 @@ public sealed class CheckoutService : IDisposable
 
         HashAtCheckout = sourceHash;
 
+        // D' is opened in WAL mode; a stale -wal/-shm sidecar from a prior session
+        // paired with a freshly copied .db is a corruption hazard — remove them first.
+        TryDeleteWalSidecars(WorkingPath);
+
         try
         {
             var copyCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
@@ -629,6 +633,9 @@ public sealed class CheckoutService : IDisposable
         }
 
         HashAtCheckout = sourceHash;
+
+        // Same stale-sidecar guard as CheckoutAsync (see comment there).
+        TryDeleteWalSidecars(WorkingPath);
 
         try
         {
@@ -1196,6 +1203,9 @@ public sealed class CheckoutService : IDisposable
 
                 try
                 {
+                    // Connection is closed at this point (beforeOverwrite); drop any
+                    // WAL sidecars so the fresh copy is not paired with a stale -wal.
+                    TryDeleteWalSidecars(ReadOnlyWorkingPath);
                     File.Move(tmpPath, ReadOnlyWorkingPath, overwrite: true);
                 }
                 catch (Exception ex)
@@ -1290,6 +1300,7 @@ public sealed class CheckoutService : IDisposable
         if (hasWorking && !hasMarker)
         {
             TryDelete(workingPath);
+            TryDeleteWalSidecars(workingPath);
             _logger.LogInfo($"CheckoutService: cleaned up untracked working copy (no dirty marker): {workingPath}");
         }
         else if (!hasWorking && hasMarker)
@@ -1336,6 +1347,7 @@ public sealed class CheckoutService : IDisposable
     {
         var workingPath = ComputeWorkingPath(sourcePath);
         TryDelete(workingPath);
+        TryDeleteWalSidecars(workingPath);
         TryDelete(workingPath + ".dirty");
     }
 
@@ -1382,6 +1394,9 @@ public sealed class CheckoutService : IDisposable
         try
         {
             File.Move(workingPath, archivePath, overwrite: true);
+            // Archive the WAL sidecar too — after a crash it can hold committed data
+            // not yet checkpointed into the .db, which a salvage attempt would need.
+            try { File.Move(workingPath + "-wal", archivePath + "-wal", overwrite: true); } catch { }
             _logger.LogInfo($"CheckoutService: archived damaged working copy to {archivePath}");
         }
         catch (Exception ex)
@@ -1390,6 +1405,7 @@ public sealed class CheckoutService : IDisposable
             TryDelete(workingPath);
             archivePath = null;
         }
+        TryDeleteWalSidecars(workingPath);
         TryDelete(workingPath + ".dirty");
         return archivePath;
     }
@@ -2277,6 +2293,8 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
+        // Drop any WAL sidecars from a previous session before the fresh copy lands.
+        TryDeleteWalSidecars(ReadOnlyWorkingPath);
         try { File.Move(roTmpPath, ReadOnlyWorkingPath, overwrite: true); }
         catch (Exception ex)
         {
@@ -2357,13 +2375,34 @@ public sealed class CheckoutService : IDisposable
         using var dest   = new SqliteConnection($"Data Source={destPath};Pooling=False");
         source.Open();
         dest.Open();
-    source.BackupDatabase(dest);
+        source.BackupDatabase(dest);
+
+        // The page-for-page backup inherits D's journal-mode header from D', which
+        // DatabaseContext opens in WAL mode. This snapshot becomes the new D on the
+        // network, and WAL must never be active on a network file — normalize to
+        // rollback mode so the shipped file is a self-contained single .db.
+        using var journalMode = dest.CreateCommand();
+        journalMode.CommandText = "PRAGMA journal_mode=DELETE";
+        journalMode.ExecuteScalar();
     }
 
     /// <summary>Best-effort file deletion. Non-throwing — failures are silently ignored.</summary>
     private static void TryDelete(string path)
     {
         try { File.Delete(path); } catch { }
+    }
+
+    /// <summary>
+    /// Best-effort deletion of the SQLite WAL sidecar files (<c>-wal</c>/<c>-shm</c>) for a
+    /// database path. Working copies run in WAL mode (see <c>DatabaseContext</c>); whenever a
+    /// working file is deleted or replaced wholesale, its sidecars must go with it — a stale
+    /// <c>-wal</c> next to a different <c>.db</c> is a corruption hazard on the next open.
+    /// </summary>
+    /// <param name="dbPath">Path to the database file whose sidecars to remove.</param>
+    private static void TryDeleteWalSidecars(string dbPath)
+    {
+        TryDelete(dbPath + "-wal");
+        TryDelete(dbPath + "-shm");
     }
 
     /// <summary>Best-effort file write. Non-throwing; reports success so callers that
