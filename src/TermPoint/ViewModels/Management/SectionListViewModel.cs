@@ -725,7 +725,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
         {
             item.InstructorConflictWarning = allConflicts.TryGetValue(item.Section.Id, out var lines)
-                ? string.Join("; ", lines)
+                ? string.Join("\n", lines)
                 : null;
         }
     }
