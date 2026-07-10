@@ -307,14 +307,15 @@ public class AppSettings
 
     /// <summary>
     /// Add a database to the recent list. Moves to front if already present, keeps max 10 entries.
-    /// Only adds if the file exists. Thread-safe: serialises list mutation and the subsequent
-    /// <see cref="Save"/> call via <see cref="_settingsLock"/> so concurrent callers cannot
-    /// interleave list writes. (F15, data-integrity-agenda 2026-05-04.)
+    /// Callers invoke this immediately after a successful open, so existence is already proven —
+    /// there is deliberately no <c>File.Exists</c> guard here (on a network path that just went
+    /// dark it would block the UI thread for the full SMB redirector timeout). Thread-safe:
+    /// serialises list mutation and the subsequent <see cref="Save"/> call via
+    /// <see cref="_settingsLock"/> so concurrent callers cannot interleave list writes.
+    /// (F15, data-integrity-agenda 2026-05-04.)
     /// </summary>
     public void AddRecentDatabase(string databasePath)
     {
-        if (!File.Exists(databasePath)) return;
-
         // Normalize path for comparison
         var normalized = Path.GetFullPath(databasePath);
 

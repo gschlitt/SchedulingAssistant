@@ -541,16 +541,16 @@ public partial class MainWindowViewModel : ViewModelBase
         var settings = AppSettings.Current;
         foreach (var path in settings.RecentDatabases)
         {
-            if (File.Exists(path))
+            // No existence probe — File.Exists on a dead network share blocks the
+            // UI thread for the full SMB redirector timeout per entry. Opening a
+            // stale entry routes through deadline-bounded validation instead.
+            var capturedPath = path;
+            RecentDatabases.Add(new RecentDatabaseItem
             {
-                var capturedPath = path;
-                RecentDatabases.Add(new RecentDatabaseItem
-                {
-                    Path = path,
-                    DisplayName = Path.GetFileName(path),
-                    OpenCommand = new AsyncRelayCommand(() => OpenRecentDatabase(capturedPath))
-                });
-            }
+                Path = path,
+                DisplayName = Path.GetFileName(path),
+                OpenCommand = new AsyncRelayCommand(() => OpenRecentDatabase(capturedPath))
+            });
         }
 #endif
     }

@@ -3,6 +3,28 @@ using System.Security.Cryptography;
 namespace TermPoint.Services;
 
 /// <summary>
+/// Tri-state outcome of <see cref="NetworkFileOps.ProbeFileAsync"/>. Unlike
+/// <see cref="File.Exists(string)"/> — which returns <c>false</c> for both a
+/// genuinely absent file and any network failure — this distinguishes "the
+/// location answered and the file is not there" from "the location could not
+/// be reached at all".
+/// </summary>
+public enum FileProbeResult
+{
+    /// <summary>The file exists.</summary>
+    Exists,
+
+    /// <summary>The location responded and the file is genuinely absent.</summary>
+    Missing,
+
+    /// <summary>
+    /// The location could not be reached (network error, access failure, or the
+    /// probe stalled past the deadline).
+    /// </summary>
+    Unreachable
+}
+
+/// <summary>
 /// Timeout-aware wrappers for file operations against paths that may be on a
 /// network share (D, D.lock, D.tmp). Every method runs the underlying I/O on a
 /// thread-pool thread and races it against a <see cref="TimeoutMs"/> deadline.
@@ -90,6 +112,54 @@ public static class NetworkFileOps
     /// </returns>
     public static Task<(bool Completed, bool Exists)> DirectoryExistsAsync(string path)
         => RunAsync(() => Directory.Exists(path), "Directory.Exists");
+
+    /// <summary>
+    /// Timeout-aware existence probe that distinguishes a genuinely missing file
+    /// from an unreachable location. <see cref="File.Exists(string)"/> cannot make
+    /// that distinction — it swallows every error and returns <c>false</c>, so a
+    /// dead network share that fails <i>fast</i> (cached dead SMB session, RST)
+    /// looks identical to a deleted file. This probe uses
+    /// <see cref="File.GetAttributes(string)"/> instead, which surfaces the
+    /// underlying Win32 error as a typed exception:
+    /// <list type="bullet">
+    /// <item><c>ERROR_FILE_NOT_FOUND</c> → <see cref="FileNotFoundException"/> and
+    /// <c>ERROR_PATH_NOT_FOUND</c> → <see cref="DirectoryNotFoundException"/> — the
+    /// location answered and the file is absent → <see cref="FileProbeResult.Missing"/>.</item>
+    /// <item>Network failures (<c>ERROR_BAD_NETPATH</c>, <c>ERROR_BAD_NETNAME</c>, …)
+    /// map to <see cref="IOException"/>; these and any other error →
+    /// <see cref="FileProbeResult.Unreachable"/>.</item>
+    /// <item>Deadline timeout (black-holed share) → <see cref="FileProbeResult.Unreachable"/>.</item>
+    /// </list>
+    /// Use this wherever "file not found" and "network down" must route to
+    /// different UX; use <see cref="ExistsAsync"/> when the distinction doesn't matter.
+    /// </summary>
+    /// <param name="path">Full path of the file to probe (may be a UNC path).</param>
+    /// <returns>The tri-state probe outcome; never throws.</returns>
+    public static async Task<FileProbeResult> ProbeFileAsync(string path)
+    {
+        var (completed, result) = await RunAsync(() =>
+        {
+            try
+            {
+                File.GetAttributes(path);
+                return FileProbeResult.Exists;
+            }
+            catch (FileNotFoundException)
+            {
+                return FileProbeResult.Missing;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return FileProbeResult.Missing;
+            }
+            catch
+            {
+                return FileProbeResult.Unreachable;
+            }
+        }, "ProbeFile").ConfigureAwait(false);
+
+        return completed ? result : FileProbeResult.Unreachable;
+    }
 
     /// <summary>
     /// Stall-aware SHA-256 hash of a file, opened with <see cref="FileShare.ReadWrite"/>

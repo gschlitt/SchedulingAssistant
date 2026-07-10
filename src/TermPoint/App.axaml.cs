@@ -234,8 +234,31 @@ public partial class App : Application
         foreach (var err in TourCatalog.Validate())
             Logger.LogInfo($"[TourCatalog] {err}");
 
-        if (File.Exists(dbPath) && !BackupService.CheckIntegrity(dbPath))
-            throw new DatabaseCorruptException(dbPath);
+        // Startup integrity gate. dbPath is normally the local working copy D', but the
+        // wizard and direct-open flows pass the network D — where the raw check froze
+        // startup for as long as a dead share kept the redirector waiting (lockup audit
+        // P0-2: PRAGMA integrity_check reads the whole file). Deadline-bound both probes;
+        // on timeout SKIP the check and proceed — the checkout flow that follows has its
+        // own deadlines and surfaces the standard "network unreachable" UX, and a
+        // corruption verdict is only meaningful when the file is readable anyway.
+        // Blocking on these is safe and bounded: NetworkFileOps chains
+        // ConfigureAwait(false) throughout, so nothing re-enters the dispatcher and the
+        // wait caps at the deadline.
+        var (existsCompleted, dbExists) =
+            NetworkFileOps.ExistsAsync(dbPath).GetAwaiter().GetResult();
+        if (existsCompleted && dbExists)
+        {
+            var (checkCompleted, passed) =
+                NetworkFileOps.CheckIntegrityAsync(dbPath).GetAwaiter().GetResult();
+            if (checkCompleted && !passed)
+                throw new DatabaseCorruptException(dbPath);
+            if (!checkCompleted)
+                Logger.LogInfo("App: startup integrity check timed out — skipped (location unreachable); checkout will surface it.");
+        }
+        else if (!existsCompleted)
+        {
+            Logger.LogInfo("App: database existence probe timed out — skipping integrity check (location unreachable).");
+        }
 
         var dbCtx = Services.GetRequiredService<IDatabaseContext>();
         // Subscribe ResetDirty to BeforeDirtyMarkerDeleted (synchronous, fires inside
@@ -310,7 +333,13 @@ public partial class App : Application
         services.AddTransient<SaveAndBackupViewModel>();
         services.AddTransient<NewDatabaseViewModel>();
 
+#if DEBUG
+        // The generator class only exists in Debug builds (#if DEBUG in
+        // DebugTestDataGenerator.cs). DebugTestDataViewModel itself stays registered in
+        // all builds — its debug-only members are compiled out, leaving an empty shell —
+        // so the Dev Tools menu (Ctrl+Shift+D) remains functional in Release.
         services.AddTransient<DebugTestDataGenerator>();
+#endif
         services.AddTransient<DebugTestDataViewModel>();
         services.AddTransient<MigrationViewModel>();
         services.AddTransient<CsvImportViewModel>();

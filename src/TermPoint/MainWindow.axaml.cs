@@ -499,19 +499,22 @@ public partial class MainWindow : Window
         else
         {
             // Even in chooser mode, validate the saved path so we can warn the user
-            // if their most recent database has gone missing or is corrupt.
+            // if their most recent database has gone missing, is corrupt, or its
+            // network location is unreachable.
             var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
             var mode = ChooserMode.Normal;
             RecoveryReason? reason = null;
 
             if (validation != DatabaseValidationResult.Ok
-                && validation != DatabaseValidationResult.Unreachable
                 && !string.IsNullOrEmpty(settings.DatabasePath))
             {
                 mode = ChooserMode.Recovery;
-                reason = validation == DatabaseValidationResult.Corrupt
-                    ? RecoveryReason.Corrupt
-                    : RecoveryReason.NotFound;
+                reason = validation switch
+                {
+                    DatabaseValidationResult.Corrupt     => RecoveryReason.Corrupt,
+                    DatabaseValidationResult.Unreachable => RecoveryReason.Unreachable,
+                    _                                    => RecoveryReason.NotFound
+                };
             }
 
             var result = await ShowDatabaseChooserAsync(mode, reason, settings.DatabasePath);
@@ -982,8 +985,12 @@ public partial class MainWindow : Window
 
             // If D does not exist yet (File → New, or a new wizard DB), create it
             // with the schema so CheckoutAsync takes the normal D → D' path and
-            // all subsequent writes go to the local working copy.
-            if (!File.Exists(newDatabasePath))
+            // all subsequent writes go to the local working copy. Deadline-bounded
+            // tri-state probe: only create when the location answered "missing" —
+            // an unreachable share must NOT trigger creation attempts; checkout
+            // below surfaces the unreachable dialog instead.
+            var probe = await NetworkFileOps.ProbeFileAsync(newDatabasePath);
+            if (probe == FileProbeResult.Missing)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(newDatabasePath)!);
                 using (new Data.DatabaseContext(newDatabasePath)) { }

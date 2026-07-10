@@ -40,21 +40,24 @@ public static class DatabaseValidator
     /// <see cref="DatabaseValidationResult.Ok"/> when the file exists and passes
     /// <c>PRAGMA integrity_check</c>;
     /// <see cref="DatabaseValidationResult.Missing"/> when <paramref name="path"/> is
-    /// null, empty, or the file does not exist;
+    /// null, empty, or the location responded that the file does not exist;
     /// <see cref="DatabaseValidationResult.Corrupt"/> when the file exists but is not
     /// a valid SQLite database or fails the integrity check;
-    /// <see cref="DatabaseValidationResult.Unreachable"/> when a network timeout
-    /// prevented the check from completing.
+    /// <see cref="DatabaseValidationResult.Unreachable"/> when a network failure or
+    /// timeout prevented the check from completing.
     /// </returns>
     public static async Task<DatabaseValidationResult> ValidateAsync(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
             return DatabaseValidationResult.Missing;
 
-        var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(path);
-        if (!existsCompleted)
+        // Tri-state probe: only report Missing when the location actually answered.
+        // A dead share that fails fast must surface as Unreachable, not Missing,
+        // or the user is routed to "database not found" UX during a network outage.
+        var probe = await NetworkFileOps.ProbeFileAsync(path);
+        if (probe == FileProbeResult.Unreachable)
             return DatabaseValidationResult.Unreachable;
-        if (!exists)
+        if (probe == FileProbeResult.Missing)
             return DatabaseValidationResult.Missing;
 
         var (integrityCompleted, passed) = await NetworkFileOps.CheckIntegrityAsync(path);

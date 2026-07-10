@@ -66,6 +66,16 @@ public sealed class WriteLockServiceTests : IDisposable
         Path.Combine(_tempDir, $"{name}.db");
 
     /// <summary>
+    /// Waits for the background lock-file deletion queued by
+    /// <see cref="WriteLockService.Release"/> to finish. Release() flips state
+    /// synchronously but deletes the file on a deadline-bounded background task
+    /// (so a dead share can never freeze the UI thread) — tests that assert on
+    /// the file's existence must settle that task first.
+    /// </summary>
+    private static void SettleRelease(WriteLockService svc) =>
+        svc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+
+    /// <summary>
     /// Returns the expected <c>.lock</c> path for a given <c>.db</c> path.
     /// </summary>
     private static string LockPath(string dbPath) =>
@@ -369,6 +379,7 @@ public sealed class WriteLockServiceTests : IDisposable
         Assert.True(File.Exists(LockPath(db)));
 
         svc.Release();
+        SettleRelease(svc);
 
         Assert.False(File.Exists(LockPath(db)));
     }
@@ -489,6 +500,7 @@ public sealed class WriteLockServiceTests : IDisposable
         using var svc = new WriteLockService();
         svc.TryAcquire(db1); // becomes reader
         other.Release();      // simulate other closing
+        SettleRelease(other);
 
         await svc.PollLockFile();      // sets WriteLockBecameAvailable = true
 
@@ -518,7 +530,8 @@ public sealed class WriteLockServiceTests : IDisposable
         using var reader = new WriteLockService();
         reader.TryAcquire(db);
 
-        writer.Release(); // Deletes the lock file.
+        writer.Release(); // Deletes the lock file (settle the background completion).
+        SettleRelease(writer);
         await reader.PollLockFile();
 
         Assert.True(reader.WriteLockBecameAvailable);
@@ -543,6 +556,7 @@ public sealed class WriteLockServiceTests : IDisposable
         reader.LockStateChanged += () => eventFired = true;
 
         writer.Release();
+        SettleRelease(writer);
         await reader.PollLockFile();
 
         Assert.True(eventFired);
@@ -605,6 +619,7 @@ public sealed class WriteLockServiceTests : IDisposable
         using var reader = new WriteLockService();
         reader.TryAcquire(db);
         writer.Release();
+        SettleRelease(writer);
 
         await reader.PollLockFile(); // First poll — sets available, fires event.
 
@@ -653,6 +668,7 @@ public sealed class WriteLockServiceTests : IDisposable
         Assert.False(reader.IsWriter);
 
         writer.Release();
+        SettleRelease(writer);
         await reader.PollLockFile();
         Assert.True(reader.WriteLockBecameAvailable);
 
@@ -692,14 +708,14 @@ public sealed class WriteLockServiceTests : IDisposable
         // Act — call ForceRenewHeartbeat threshold minus one times; event must NOT fire yet
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
         {
-            svc.ForceRenewHeartbeat();
+            svc.ForceRenewHeartbeat().Wait();
             Assert.False(eventFired,
                 $"HeartbeatFailed fired too early on failure #{i + 1} " +
                 $"(threshold = {WriteLockService.HeartbeatFailureThreshold}).");
         }
 
         // One more — now at the threshold
-        svc.ForceRenewHeartbeat();
+        svc.ForceRenewHeartbeat().Wait();
 
         // Assert — event fires exactly at the threshold
         Assert.True(eventFired, "HeartbeatFailed must be raised after the threshold is reached.");
@@ -727,18 +743,18 @@ public sealed class WriteLockServiceTests : IDisposable
         // Fail threshold - 1 times
         File.Delete(lockPath);
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
-            svc.ForceRenewHeartbeat();
+            svc.ForceRenewHeartbeat().Wait();
         Assert.False(eventFired, "Precondition: event must not fire before threshold.");
 
         // Succeed once — writes a fresh lock file and resets the counter
         svc.TryAcquire(db);   // re-acquires and writes the lock file
         // Now succeed via ForceRenewHeartbeat (file exists again from TryAcquire)
-        svc.ForceRenewHeartbeat();
+        svc.ForceRenewHeartbeat().Wait();
 
         // Fail threshold - 1 more times — counter was reset so event still should not fire
         File.Delete(lockPath);
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
-            svc.ForceRenewHeartbeat();
+            svc.ForceRenewHeartbeat().Wait();
 
         Assert.False(eventFired,
             "HeartbeatFailed must not fire if the counter was reset by a successful renewal.");
@@ -762,12 +778,12 @@ public sealed class WriteLockServiceTests : IDisposable
 
         // First threshold — event fires once
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-            svc.ForceRenewHeartbeat();
+            svc.ForceRenewHeartbeat().Wait();
         Assert.Equal(1, eventCount);
 
         // Second threshold — event fires a second time
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-            svc.ForceRenewHeartbeat();
+            svc.ForceRenewHeartbeat().Wait();
         Assert.Equal(2, eventCount);
     }
 
@@ -937,10 +953,11 @@ public sealed class WriteLockServiceTests : IDisposable
         Assert.True(File.Exists(LockPath(db)));
 
         svc.Release();
+        SettleRelease(svc);
         Assert.False(File.Exists(LockPath(db)));
 
         // Simulate an in-flight heartbeat callback completing after Release deleted the file.
-        svc.ForceRenewHeartbeat();
+        svc.ForceRenewHeartbeat().Wait();
 
         Assert.False(File.Exists(LockPath(db)),
             "A heartbeat renewal after Release must not resurrect the lock file.");
@@ -948,8 +965,10 @@ public sealed class WriteLockServiceTests : IDisposable
 
     /// <summary>
     /// Firing a heartbeat and a release concurrently must always end with the lock file
-    /// gone, regardless of scheduling. Both paths serialize on the same mutex and the
-    /// ownership flag is cleared inside it, so neither interleaving can orphan the lock.
+    /// gone, regardless of scheduling. Both file paths serialize on the same gate and the
+    /// ownership flag is re-checked inside it, so neither interleaving can orphan the lock:
+    /// the heartbeat either bails (IsWriter already false) or finishes its rewrite first,
+    /// after which the release's background completion deletes the file it rewrote.
     /// </summary>
     [Fact]
     public async Task ForceRenewHeartbeat_ConcurrentWithRelease_NeverOrphansLock()
@@ -965,9 +984,35 @@ public sealed class WriteLockServiceTests : IDisposable
             var renew   = Task.Run(() => svc.ForceRenewHeartbeat());
             var release = Task.Run(() => svc.Release());
             await Task.WhenAll(renew, release);
+            SettleRelease(svc);
 
             Assert.False(File.Exists(LockPath(db)),
                 $"Lock file was orphaned by a concurrent heartbeat/release on iteration {iter}.");
+        }
+    }
+
+    /// <summary>
+    /// Re-acquiring the SAME database path immediately after a release must leave a live
+    /// lock file. TryAcquire waits (bounded) for the prior release's background deletion
+    /// to settle before creating the new file — without that wait, the pending delete
+    /// could remove the freshly created lock, since both carry this session's GUID and
+    /// the delete's ownership check alone cannot tell them apart.
+    /// </summary>
+    [Fact]
+    public void TryAcquire_ImmediatelyAfterRelease_SamePath_LockFileSurvives()
+    {
+        var db = DbPath();
+        using var svc = new WriteLockService();
+
+        // Each TryAcquire after the first internally releases the held lock (queuing a
+        // background delete of the same path) and then re-creates it — the tightest
+        // possible release/re-create interleaving.
+        for (int iter = 0; iter < 20; iter++)
+        {
+            svc.TryAcquire(db);
+            Assert.True(svc.IsWriter, $"iteration {iter}: expected to be writer after re-acquire");
+            Assert.True(File.Exists(LockPath(db)),
+                $"iteration {iter}: lock file must survive an immediate same-path re-acquire.");
         }
     }
 }

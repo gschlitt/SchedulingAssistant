@@ -82,12 +82,33 @@ public sealed class WriteLockService : IDisposable
     /// <summary>
     /// Serializes all mutations of the lock file (heartbeat renewal vs. release/delete).
     /// <see cref="Timer.Dispose()"/> does not wait for an in-flight heartbeat callback, so
-    /// without this mutex a <see cref="RenewHeartbeat"/> already running when
+    /// without this gate a <see cref="RenewHeartbeatAsync"/> already running when
     /// <see cref="Release"/> deletes the file could re-create it via <c>File.Move</c>,
-    /// orphaning the lock. The lock also serializes the wake-driven
+    /// orphaning the lock. The gate also serializes the wake-driven
     /// <see cref="ForceRenewHeartbeat"/> against the scheduled heartbeat.
+    /// <para>A <see cref="SemaphoreSlim"/> rather than a monitor so waiters are async and
+    /// never block a thread on the share: the lock file lives on the network, and every
+    /// file operation under this gate is deadline-bounded via <see cref="NetworkFileOps"/>
+    /// (lockup audit P0-1 — a stalled heartbeat holding a monitor across raw SMB I/O
+    /// hard-locked any UI-thread <see cref="Release"/> indefinitely).</para>
     /// </summary>
-    private readonly object _lockFileSync = new();
+    private readonly SemaphoreSlim _lockFileGate = new(1, 1);
+
+    /// <summary>
+    /// The in-flight background lock-file deletion queued by the most recent
+    /// <see cref="Release"/>, or null when none is pending. Non-faulting by construction.
+    /// <see cref="TryAcquire"/> waits on it (bounded) before creating a new lock file so a
+    /// same-path re-acquire cannot have its fresh lock deleted by the earlier release;
+    /// <see cref="Dispose"/> waits on it (bounded) so a clean exit still deletes the file.
+    /// </summary>
+    private Task? _pendingReleaseTask;
+
+    /// <summary>
+    /// Exposes the pending release-deletion task so teardown code (e.g.
+    /// <see cref="CheckoutService"/>) can await it with a cap of its choosing.
+    /// Null when no release is in flight.
+    /// </summary>
+    internal Task? PendingRelease => _pendingReleaseTask;
 
     private string? _lockFilePath;
     private Timer? _heartbeatTimer;
@@ -241,6 +262,17 @@ public sealed class WriteLockService : IDisposable
         // Release any lock we currently hold (handles DB-switching).
         Release();
 
+        // Wait (bounded) for the release's queued file deletion before creating a new
+        // lock file: on a same-path re-acquire, the pending delete would otherwise race
+        // the fresh file into oblivion (both carry this session's GUID, so the delete's
+        // ownership check cannot tell them apart). TryAcquire always runs on a
+        // thread-pool worker under a NetworkFileOps.RunAsync deadline, so this wait
+        // never blocks the UI thread. DeleteLockFileGatedAsync is non-faulting, so
+        // Wait() here cannot throw.
+        var pending = _pendingReleaseTask;
+        bool releaseSettled = pending is null || pending.IsCompleted
+                              || pending.Wait(TimeSpan.FromSeconds(12));
+
         WriteLockBecameAvailable = false;
         IsStaleLock = false;
         ReclaimedDeadSession = false;
@@ -248,6 +280,17 @@ public sealed class WriteLockService : IDisposable
         LockWriteError = null;
         LockWriteItDetail = null;
         _lockFilePath = Path.ChangeExtension(dbPath, ".lock");
+
+        if (!releaseSettled)
+        {
+            // The share is not responding; acquiring now would be unsafe and would fail
+            // anyway. Stay read-only with an explanatory error rather than polling.
+            LockWriteError = "The previous session's lock is still being released — the network location is not responding.";
+            IsWriter = false;
+            App.Logger.LogInfo("[WriteLockService] TryAcquire aborted — pending lock release did not settle in time.");
+            Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+            return;
+        }
 
         if (TryCreateLockFile())
         {
@@ -306,41 +349,26 @@ public sealed class WriteLockService : IDisposable
         _wakeDetectionTimer?.Dispose();
         _wakeDetectionTimer = null;
 
-        bool wasWriter;
+        bool wasWriter = IsWriter;
+        var path = _lockFilePath;
 
-        // Hold the lock-file mutex so we cannot race an in-flight RenewHeartbeat. The
-        // Dispose() above stops *future* ticks but does not wait for a callback already
-        // running; if one is mid-flight it is either blocked entering this mutex (and will
-        // see IsWriter=false below and bail) or it finishes its File.Move first and we then
-        // delete the file it just rewrote. Either ordering ends with the file deleted — the
-        // lock can never be left orphaned by a heartbeat that fired during release.
-        lock (_lockFileSync)
+        // Flip local state immediately. Release() is called on the UI thread from the
+        // CheckoutService flows, so it must never touch the network share itself — the
+        // lock file lives on the share and a raw delete here froze the whole window when
+        // the share was unreachable (lockup audit P0-1). Bool/reference writes are atomic
+        // and the heartbeat re-checks IsWriter *inside* the gate before touching the file.
+        IsWriter = false;
+        CurrentHolder = null;
+        _lockFilePath = null;
+
+        if (wasWriter && path is not null)
         {
-            wasWriter = IsWriter;
-
-            if (IsWriter && _lockFilePath is not null)
-            {
-                if (LockFileStillOurs(_lockFilePath))
-                {
-                    try
-                    {
-                        File.Delete(_lockFilePath);
-                        App.Logger.LogInfo($"[WriteLockService] Released write lock: {_lockFilePath}");
-                    }
-                    catch (Exception ex)
-                    {
-                        App.Logger.LogInfo($"[WriteLockService] Warning — could not delete lock file on release: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    App.Logger.LogInfo($"[WriteLockService] Release: lock file at {_lockFilePath} is no longer ours; skipping delete.");
-                }
-            }
-
-            IsWriter = false;
-            CurrentHolder = null;
-            _lockFilePath = null;
+            // Delete the lock file on a background task, serialized against any in-flight
+            // heartbeat by _lockFileGate and deadline-bounded by NetworkFileOps. Orderings
+            // match the old mutex guarantee: a mid-flight heartbeat either bails (IsWriter
+            // is now false) or finishes its File.Move first and this task then deletes the
+            // file it just rewrote — either way the file ends deleted, never orphaned.
+            _pendingReleaseTask = Task.Run(() => DeleteLockFileGatedAsync(path));
         }
 
         // Notify subscribers (MainWindowViewModel, SubjectListViewModel, etc.) so any
@@ -349,6 +377,60 @@ public sealed class WriteLockService : IDisposable
         // enabled until the next time TryAcquire/ForceAcquire happens to fire the event.
         if (wasWriter)
             Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+    }
+
+    /// <summary>
+    /// Background completion of <see cref="Release"/>: verifies the lock file is still
+    /// ours, then deletes it. All share I/O is deadline-bounded; on any timeout the file
+    /// is abandoned in place — with the heartbeat stopped it goes stale within
+    /// <see cref="StaleLockThresholdSeconds"/> and the standard stale-lock takeover
+    /// reclaims it, so abandonment inconveniences but never blocks another user.
+    /// Non-faulting by construction: callers may Wait() on it without exception handling.
+    /// </summary>
+    /// <param name="path">The lock file path captured before state was cleared.</param>
+    private async Task DeleteLockFileGatedAsync(string path)
+    {
+#if BROWSER
+        // The browser demo never acquires a real lock file — nothing to delete.
+        // (NetworkFileOps is excluded from the browser target.)
+        await Task.CompletedTask;
+#else
+        await _lockFileGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // Ownership re-check (see Release() doc): never trample another session's
+            // claim even though we locally believed we were the writer.
+            var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
+            if (!readCompleted)
+            {
+                App.Logger.LogInfo($"[WriteLockService] Release: lock-file read timed out — abandoning {path} (stale-lock takeover will reclaim it).");
+                return;
+            }
+
+            var data = JsonSerializer.Deserialize<LockFileData>(json!);
+            if (data?.SessionGuid != SessionGuid)
+            {
+                App.Logger.LogInfo($"[WriteLockService] Release: lock file at {path} is no longer ours; skipping delete.");
+                return;
+            }
+
+            if (await NetworkFileOps.DeleteAsync(path).ConfigureAwait(false))
+                App.Logger.LogInfo($"[WriteLockService] Released write lock: {path}");
+            else
+                App.Logger.LogInfo($"[WriteLockService] Release: lock-file delete timed out — abandoning {path} (stale-lock takeover will reclaim it).");
+        }
+        catch (Exception ex)
+        {
+            // Missing file (already released/stolen), JSON garbage, or an I/O error the
+            // deadline wrapper propagated — all leave the file in a state stale-lock
+            // handling covers. Log and move on; this task must never fault.
+            App.Logger.LogInfo($"[WriteLockService] Warning — could not delete lock file on release: {ex.Message}");
+        }
+        finally
+        {
+            _lockFileGate.Release();
+        }
+#endif
     }
 
     /// <summary>
@@ -374,40 +456,14 @@ public sealed class WriteLockService : IDisposable
         _wakeDetectionTimer?.Dispose();
         _wakeDetectionTimer = null;
 
-        // Same mutex discipline as Release(): an in-flight heartbeat either bails on
-        // seeing IsWriter=false or finishes rewriting the file first — both orderings
-        // leave the lock file present, which is exactly what Suspend requires.
-        lock (_lockFileSync)
-        {
-            if (IsWriter)
-                App.Logger.LogInfo($"[WriteLockService] Suspended (lock file left in place): {_lockFilePath}");
-            IsWriter      = false;
-            CurrentHolder = null;
-            _lockFilePath = null;
-        }
-    }
-
-    /// <summary>
-    /// Returns true when the lock file at <paramref name="path"/> exists and contains
-    /// a JSON payload whose <see cref="LockFileData.SessionGuid"/> matches ours.
-    /// Returns false for a missing file, unreadable file, parse error, or a mismatched
-    /// or missing <c>SessionGuid</c> — in all those cases the caller must treat the
-    /// lock as not-ours and avoid touching it.
-    /// </summary>
-    private bool LockFileStillOurs(string path)
-    {
-        if (!File.Exists(path)) return false;
-        try
-        {
-            var json = File.ReadAllText(path);
-            var data = JsonSerializer.Deserialize<LockFileData>(json);
-            return data?.SessionGuid == SessionGuid;
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogInfo($"[WriteLockService] LockFileStillOurs: could not verify lock ownership: {ex.Message}");
-            return false;
-        }
+        // No gate needed: Suspend performs no file I/O, and an in-flight heartbeat either
+        // bails on seeing IsWriter=false or finishes rewriting the file first — both
+        // orderings leave the lock file present, which is exactly what Suspend requires.
+        if (IsWriter)
+            App.Logger.LogInfo($"[WriteLockService] Suspended (lock file left in place): {_lockFilePath}");
+        IsWriter      = false;
+        CurrentHolder = null;
+        _lockFilePath = null;
     }
 
     /// <summary>
@@ -419,6 +475,13 @@ public sealed class WriteLockService : IDisposable
         if (_disposed) return;
         _disposed = true;
         Release();
+
+        // Give the queued lock-file deletion a bounded window to finish so a clean exit
+        // on a healthy share still removes the file (milliseconds in practice). On a dead
+        // share the wait caps out and the file is abandoned — stale-lock takeover covers
+        // it — instead of the old behavior of blocking exit for the SMB redirector timeout.
+        try { _pendingReleaseTask?.Wait(TimeSpan.FromSeconds(6)); }
+        catch { /* non-faulting by construction; belt-and-suspenders */ }
     }
 
     // ── Lock file helpers ──────────────────────────────────────────────────────
@@ -463,9 +526,10 @@ public sealed class WriteLockService : IDisposable
     /// <summary>
     /// Forces an immediate heartbeat renewal. Used by <see cref="CheckoutService"/>
     /// after wake-from-sleep detection to refresh the lock file without waiting for
-    /// the next scheduled heartbeat tick.
+    /// the next scheduled heartbeat tick. Returns the renewal task so callers (and
+    /// tests) can await completion; the renewal is non-throwing by construction.
     /// </summary>
-    internal void ForceRenewHeartbeat() => RenewHeartbeat();
+    internal Task ForceRenewHeartbeat() => RenewHeartbeatAsync();
 
     /// <summary>
     /// Enters reader mode for the given database path WITHOUT attempting to acquire
@@ -829,41 +893,62 @@ public sealed class WriteLockService : IDisposable
     /// Rewrites the lock file with a fresh heartbeat timestamp, preserving the
     /// original <see cref="LockFileData.Acquired"/> value. Uses an atomic
     /// write-to-temp-then-rename pattern so readers never see a partial file.
-    /// Called by the heartbeat timer; non-throwing — logs and returns on any error.
+    /// Fired by the heartbeat timer (fire-and-forget); non-throwing — logs and
+    /// returns on any error. All share I/O is deadline-bounded via
+    /// <see cref="NetworkFileOps"/> so the gate is never held longer than
+    /// ~3 deadlines even against a black-holed share.
     /// </summary>
-    private void RenewHeartbeat()
+    private async Task RenewHeartbeatAsync()
     {
+#if BROWSER
+        // The browser demo never holds a real write lock — no heartbeat to renew.
+        // (NetworkFileOps is excluded from the browser target.)
+        await Task.CompletedTask;
+#else
         bool raiseFailed = false;
 
         // Serialize against Release() (and any concurrent ForceRenewHeartbeat) so we never
-        // re-create the lock file after it has been deleted. The ownership re-check inside
-        // the lock is the guard: if Release() already ran, IsWriter is false / _lockFilePath
-        // is null and we bail without touching the filesystem.
-        lock (_lockFileSync)
+        // re-create the lock file after it has been deleted. Zero-timeout wait: if the gate
+        // is contended a release or another renewal is already in flight — skipping this
+        // tick is harmless (the stale threshold is 3× the heartbeat interval).
+        if (!await _lockFileGate.WaitAsync(0).ConfigureAwait(false)) return;
+        try
         {
             if (_lockFilePath is null || !IsWriter) return;
             var path = _lockFilePath;
+            bool renewed = false;
             try
             {
                 // Read the existing data to preserve the original Acquired timestamp,
                 // then update the heartbeat.
-                var json   = File.ReadAllText(path);
-                var data   = JsonSerializer.Deserialize<LockFileData>(json) ?? new LockFileData();
-                data.Heartbeat = DateTime.UtcNow;
+                var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
+                if (readCompleted)
+                {
+                    var data = JsonSerializer.Deserialize<LockFileData>(json!) ?? new LockFileData();
+                    data.Heartbeat = DateTime.UtcNow;
 
-                // Write to a temp file first, then atomically replace. This ensures
-                // a reader never observes a partially-written JSON file.
-                var tmp = path + ".tmp";
-                File.WriteAllText(tmp, JsonSerializer.Serialize(data));
-                File.Move(tmp, path, overwrite: true);
+                    // Write to a temp file first, then atomically replace. This ensures
+                    // a reader never observes a partially-written JSON file.
+                    var tmp = path + ".tmp";
+                    renewed = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false)
+                           && await NetworkFileOps.MoveAsync(tmp, path).ConfigureAwait(false);
+                }
 
-                // Successful renewal: reset the consecutive-failure counter. (F11.)
-                _heartbeatConsecutiveFailures = 0;
+                if (!renewed)
+                    App.Logger.LogInfo("[WriteLockService] Heartbeat renewal failed: network operation timed out.");
             }
             catch (Exception ex)
             {
                 App.Logger.LogInfo($"[WriteLockService] Heartbeat renewal failed: {ex.Message}");
+            }
 
+            if (renewed)
+            {
+                // Successful renewal: reset the consecutive-failure counter. (F11.)
+                _heartbeatConsecutiveFailures = 0;
+            }
+            else
+            {
                 // Escalate after enough consecutive failures: the lock file is likely stale
                 // from the perspective of readers. (F11, data-integrity-agenda 2026-05-04.)
                 _heartbeatConsecutiveFailures++;
@@ -877,11 +962,16 @@ public sealed class WriteLockService : IDisposable
                 }
             }
         }
+        finally
+        {
+            _lockFileGate.Release();
+        }
 
-        // Raise OUTSIDE the mutex so a handler that calls back into this service (Release,
-        // EnterReaderMode, …) cannot deadlock on _lockFileSync.
+        // Raise OUTSIDE the gate so a handler that calls back into this service (Release,
+        // EnterReaderMode, …) cannot deadlock on _lockFileGate.
         if (raiseFailed)
             HeartbeatFailed?.Invoke();
+#endif
     }
 
     // ── Timer management ───────────────────────────────────────────────────────
@@ -894,7 +984,9 @@ public sealed class WriteLockService : IDisposable
     private void StartHeartbeat()
     {
         var interval = TimeSpan.FromSeconds(HeartbeatIntervalSeconds);
-        _heartbeatTimer = new Timer(_ => RenewHeartbeat(), null, interval, interval);
+        // Fire-and-forget: RenewHeartbeatAsync is non-throwing by construction, and the
+        // gate's zero-timeout wait means overlapping ticks skip rather than queue.
+        _heartbeatTimer = new Timer(_ => _ = RenewHeartbeatAsync(), null, interval, interval);
     }
 
     /// <summary>

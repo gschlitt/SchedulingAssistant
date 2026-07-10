@@ -772,6 +772,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.True(lockSvc.IsWriter); // precondition
 
         await svc.SaveAsync(releaseLockAfter: true);
+        lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10)); // settle the background lock-file deletion
 
         Assert.False(lockSvc.IsWriter);
         Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")));
@@ -798,6 +799,7 @@ public sealed class CheckoutServiceTests : IDisposable
         File.WriteAllText(db, "externally-changed");
 
         await svc.ReleaseAsync(saveFirst: true);
+        lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10)); // settle the background lock-file deletion
 
         Assert.False(lockSvc.IsWriter);
         Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")),
@@ -827,6 +829,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.True(lockSvc.IsWriter); // precondition
 
         await svc.ReleaseAsync(saveFirst: false);
+        lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10)); // settle the background lock-file deletion
 
         Assert.False(lockSvc.IsWriter);
         Assert.False(File.Exists(Path.ChangeExtension(db1, ".lock")));
@@ -2044,9 +2047,11 @@ public sealed class CheckoutServiceTests : IDisposable
 
         try
         {
-            // Trigger threshold consecutive heartbeat failures → HeartbeatFailed event
+            // Trigger threshold consecutive heartbeat failures → HeartbeatFailed event.
+            // Awaited: renewals serialize on the lock-file gate, and an unawaited burst
+            // would be skipped as contended ticks rather than counted as failures.
             for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-                lockSvc.ForceRenewHeartbeat();
+                await lockSvc.ForceRenewHeartbeat();
 
             // Wait for the async verification + demotion
             var completed = await Task.WhenAny(lockLostTcs.Task, Task.Delay(10_000));
@@ -2086,9 +2091,9 @@ public sealed class CheckoutServiceTests : IDisposable
         // VerifyLockIsOursAsync: lock not found → directory probe fails → Unreachable.
         Directory.Delete(_tempDir, recursive: true);
 
-        // Trigger HeartbeatFailed
+        // Trigger HeartbeatFailed (awaited — unawaited bursts skip as contended ticks)
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-            lockSvc.ForceRenewHeartbeat();
+            await lockSvc.ForceRenewHeartbeat();
 
         // Wait for the transient warning
         var completed = await Task.WhenAny(saveFailedTcs.Task, Task.Delay(10_000));
@@ -2127,9 +2132,9 @@ public sealed class CheckoutServiceTests : IDisposable
 
         try
         {
-            // Trigger HeartbeatFailed
+            // Trigger HeartbeatFailed (awaited — unawaited bursts skip as contended ticks)
             for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-                lockSvc.ForceRenewHeartbeat();
+                await lockSvc.ForceRenewHeartbeat();
 
             // The handler runs async via Task.Run; local I/O completes in <100ms.
             await Task.Delay(2000);
@@ -2806,9 +2811,10 @@ public sealed class CheckoutServiceTests : IDisposable
         var lockPath = Path.ChangeExtension(db, ".lock");
         File.Delete(lockPath); // antivirus/cloud-sync deletion
 
-        // Missing file makes renewals throw → threshold → HeartbeatFailed.
+        // Missing file makes renewals fail → threshold → HeartbeatFailed.
+        // (Awaited — unawaited bursts skip as contended ticks.)
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
-            lockSvc.ForceRenewHeartbeat();
+            await lockSvc.ForceRenewHeartbeat();
 
         var completed = await Task.WhenAny(recoveredTcs.Task, Task.Delay(10_000));
         Assert.True(completed == recoveredTcs.Task, "Re-acquisition banner must fire.");

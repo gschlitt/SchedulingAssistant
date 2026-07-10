@@ -382,15 +382,20 @@ public sealed class CheckoutService : IDisposable
         LockLossNewHolder = null;
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
 
-        //determine (respectively) if  the network location is reachable and that the database exists
-        var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(sourcePath);
+        // Tri-state probe: distinguishes "location answered, file absent" (Missing —
+        // safe to take the new-database path) from any network failure (Unreachable —
+        // fast or slow). A plain exists-check would misread a fast-failing dead share
+        // as a brand-new database and try to create a .lock at an unreachable path.
+        var probe = await NetworkFileOps.ProbeFileAsync(sourcePath);
 
-        if (!existsCompleted)
+        if (probe == FileProbeResult.Unreachable)
         {
-            _logger.LogInfo("CheckoutService: File.Exists timed out — network unreachable");
+            _logger.LogInfo("CheckoutService: source probe failed — network unreachable");
             _logger.LogBreadcrumb("Checkout: NetworkUnreachable", new() { ["path"] = sourcePath });
             return CheckoutOutcome.NetworkUnreachable;
         }
+
+        var exists = probe == FileProbeResult.Exists;
 
         // Recovery requested but D itself is gone (deleted or renamed while the
         // unsaved changes were stranded). There is no source to verify against, so
@@ -1625,7 +1630,7 @@ public sealed class CheckoutService : IDisposable
                         break;
                     case LockVerificationResult.Ours:
                         _logger.LogInfo("CheckoutService: wake check — lock confirmed. Renewing heartbeat.");
-                        _lockService.ForceRenewHeartbeat();
+                        await _lockService.ForceRenewHeartbeat();
                         break;
                 }
             }
@@ -1790,7 +1795,7 @@ public sealed class CheckoutService : IDisposable
 
                     case LockVerificationResult.Ours:
                         _logger.LogInfo("CheckoutService: heartbeat verify — lock still ours; renewing.");
-                        _lockService.ForceRenewHeartbeat();
+                        await _lockService.ForceRenewHeartbeat();
                         break;
                 }
             }
@@ -1900,6 +1905,7 @@ public sealed class CheckoutService : IDisposable
                         _logger.LogInfo($"CheckoutService: DemoteToReadOnly — could not delete D': {ex.Message}");
                     }
                 }
+                TryDeleteWalSidecars(WorkingPath);
                 DeleteDirtyMarker();
             }
         }
@@ -1921,7 +1927,10 @@ public sealed class CheckoutService : IDisposable
         // 5b — enter reader mode so the poll timer starts. Without this, a session
         // that lost write access would never notice the current holder releasing
         // cleanly and would stay stuck in read-only until restart.
-        _lockService.EnterReaderMode(SourcePath);
+        // EnterReaderMode reads the lock file on the share to populate CurrentHolder;
+        // deadline-wrap it so a dead share cannot stall this (UI-thread) continuation.
+        await NetworkFileOps.RunAsync(
+            () => _lockService.EnterReaderMode(SourcePath), "enter reader mode");
 
         // 6 — let the caller reopen the DatabaseContext connection. Called even on
         // failure so the caller can decide how to surface the problem, but WorkingPath

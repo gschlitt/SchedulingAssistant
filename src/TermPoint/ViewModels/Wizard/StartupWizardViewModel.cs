@@ -282,7 +282,21 @@ public partial class StartupWizardViewModel : ViewModelBase
         if (!s1a.HasExistingDb) return true;   // fresh-install path — nothing to validate here
 
         var dbPath = s1a.DbPath;
-        if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
+
+        // The chosen path is typically on the network share — probe it with a deadline
+        // so a dead share shows an error instead of freezing the wizard (lockup audit).
+        if (string.IsNullOrWhiteSpace(dbPath))
+        {
+            s1a.ErrorMessage = "Please choose an existing database file.";
+            return false;
+        }
+        var (existsCompleted, dbExists) = await NetworkFileOps.ExistsAsync(dbPath);
+        if (!existsCompleted)
+        {
+            s1a.ErrorMessage = "The chosen location is not responding. Check the network connection and try again.";
+            return false;
+        }
+        if (!dbExists)
         {
             s1a.ErrorMessage = "Please choose an existing database file.";
             return false;
@@ -298,8 +312,18 @@ public partial class StartupWizardViewModel : ViewModelBase
             // after the wizard via SwitchDatabaseAsync → CheckoutAsync.
             // TryAcquire() is atomic; it will fail if another instance holds the lock
             // (collision-detection handled by WriteLockService).
+            // Deadline-wrapped: TryAcquire does lock-file I/O on the share, and this
+            // method runs on the UI thread (same wrapping CheckoutService uses).
             if (!s1a.OpenInReaderMode)
-                App.LockService.TryAcquire(dbPath);
+            {
+                var lockCompleted = await NetworkFileOps.RunAsync(
+                    () => App.LockService.TryAcquire(dbPath), "lock acquire (wizard)");
+                if (!lockCompleted)
+                {
+                    s1a.ErrorMessage = "The chosen location is not responding. Check the network connection and try again.";
+                    return false;
+                }
+            }
 
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
@@ -317,9 +341,6 @@ public partial class StartupWizardViewModel : ViewModelBase
             App.Logger.LogError(ex, "StartupWizard: step 1a existing-DB validation failed");
             return false;
         }
-
-        // Suppress CS1998 — async signature kept for consistency with other Validate methods
-        await Task.CompletedTask;
     }
 
     /// <summary>

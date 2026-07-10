@@ -30,7 +30,10 @@ public enum RecoveryReason
     NotFound,
 
     /// <summary>The database file exists but failed its integrity check.</summary>
-    Corrupt
+    Corrupt,
+
+    /// <summary>The location of the saved database (typically a network share) could not be reached.</summary>
+    Unreachable
 }
 
 /// <summary>
@@ -95,11 +98,18 @@ public partial class DatabaseChooserViewModel : ObservableObject
 
         if (mode == ChooserMode.Recovery && reason.HasValue)
         {
-            ProblemDescription = reason.Value == RecoveryReason.NotFound
-                ? "TermPoint could not find your most recently used database at its previous location. " +
-                  "It may have been moved, renamed, or deleted, or the drive may be inaccessible."
-                : "TermPoint found the database file but it failed an integrity check and may be damaged. " +
-                  "It is not safe to open this file.";
+            ProblemDescription = reason.Value switch
+            {
+                RecoveryReason.NotFound =>
+                    "TermPoint could not find your most recently used database at its previous location. " +
+                    "It may have been moved, renamed, or deleted, or the drive may be inaccessible.",
+                RecoveryReason.Unreachable =>
+                    "The location of your most recently used database is currently unreachable. " +
+                    "Check your network connection, or choose another database.",
+                _ =>
+                    "TermPoint found the database file but it failed an integrity check and may be damaged. " +
+                    "It is not safe to open this file."
+            };
         }
 
         AlwaysOpenRecent = AppSettings.Current.AlwaysOpenMostRecentDatabase;
@@ -142,7 +152,13 @@ public partial class DatabaseChooserViewModel : ObservableObject
 
     // ── Recent databases ─────────────────────────────────────────────────
 
-    /// <summary>Recently opened databases, filtered to those that still exist on disk.</summary>
+    /// <summary>
+    /// Recently opened databases. Deliberately NOT filtered by existence: probing
+    /// each path with <c>File.Exists</c> on the UI thread blocks for the full SMB
+    /// redirector timeout per dead-share entry (~60s stalls before the window can
+    /// render). Opening a stale entry routes through the deadline-bounded
+    /// validation flow, which shows proper missing/unreachable UX.
+    /// </summary>
     public ObservableCollection<RecentDatabaseItem> RecentDatabases { get; } = new();
 
     /// <summary>True when at least one recent database is available.</summary>
@@ -169,14 +185,12 @@ public partial class DatabaseChooserViewModel : ObservableObject
         RecentDatabases.Clear();
         foreach (var path in AppSettings.Current.RecentDatabases)
         {
-            if (File.Exists(path))
+            // No existence probe here — see the RecentDatabases doc comment.
+            RecentDatabases.Add(new RecentDatabaseItem
             {
-                RecentDatabases.Add(new RecentDatabaseItem
-                {
-                    Path = path,
-                    DisplayName = Path.GetFileName(path)
-                });
-            }
+                Path = path,
+                DisplayName = Path.GetFileName(path)
+            });
         }
         HasRecentDatabases = RecentDatabases.Count > 0;
     }
