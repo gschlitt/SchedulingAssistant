@@ -85,24 +85,57 @@ A single pair of sections may produce conflicts under multiple watches — each 
 
 ---
 
-## Phase 3: UX Sketch (early notes)
+## Phase 3: UX Sketch
 
-### Watch list
+### Location: the Access group
 
-The user maintains a **watch list** of program-conflict watches. Each watch can be defined in one of two ways:
+The watch list lives in **Schedule View**, in a new toolbar group called **"Access"** — alongside the existing Filter and Overlay groups. This group is the future home for tools that help the user assess student access to the schedule. For now, its only content is the program-conflict watch list.
 
-1. **Tag-based** — enroll an existing tag; all courses/sections carrying that tag are monitored
-2. **Course-based** — manually specify a set of courses to monitor as a group
+### Watch list control
 
-Each watch has an **on/off toggle** so the user can set up watches for several programs and activate only the ones they're currently working on.
+The watch list is a **pulldown** (collapsed by default) within the Access group. When collapsed, it shows a **summary badge** — a compact text indicator of the current state, e.g. "2 watches, 3 conflicts" or "No active watches." This gives the user at-a-glance awareness without opening the pulldown.
+
+When expanded, the pulldown shows:
+
+- A list of all watches for the current semester
+- Each watch displays:
+  - Its **name** (auto-generated, editable)
+  - Its **definition** (tag list or course list, shown compactly)
+  - An **on/off toggle**
+  - A **conflict count** for that watch (when enabled)
+  - A **delete** action
+- A button/link to **create a new watch**
+
+### Watch creation flow
+
+1. The user clicks "New Watch" in the pulldown
+2. Chooses **mode**: tag-based or course-based
+3. **Tag-based**: a dropdown/combobox to select tags (multi-select; AND logic). As tags are selected, a name is auto-generated (e.g. "upper-level + BSc")
+4. **Course-based**: a multi-select of courses in the current semester. Name auto-generated from the course list (e.g. "BIOL101, CHEM101, PHYS101")
+5. The user can **edit the name** to something more meaningful (e.g. "BSc Year 1 Core")
+6. The watch is created in the **enabled** state
 
 ### Schedule Grid indication
 
-Because the schedule grid is canvas-drawn, the visual indication can be precise and spatial. Two cases arise naturally from the geometry:
+Grid-only — no indication in the Section List view.
 
-- **Same card** (co-scheduled meetings from different courses in the same watch): sort the conflicting entries adjacent within the card and draw a colored box around them.
-- **Adjacent cards** (overlapping but not co-scheduled): draw a colored box around each conflicting meeting and a connecting line between the two boxes.
+Because the schedule grid is canvas-drawn, the visual indication can be precise and spatial. Two cases arise naturally from the geometry of conflicting meetings:
+
+**Same card** (co-scheduled meetings from different courses in the same watch):
+- Sort the conflicting entries adjacent within the card's content list
+- Draw a colored box around the conflicting pair
+
+**Adjacent cards** (overlapping but not co-scheduled):
+- Draw a colored box around each conflicting meeting
+- Draw a connecting line between the two boxes, making the relationship explicit
 
 ### Color differentiation
 
-The program-conflict indicator should use a **distinct hue** from room/instructor conflict indicators. Program conflicts represent a softer concern (student access) vs. a hard physical impossibility (double-booked room), and the color should reflect that difference.
+The program-conflict indicator uses a **distinct hue** from room/instructor conflict indicators. Program conflicts represent a softer concern (student access) vs. a hard physical impossibility (double-booked room), and the color should reflect that — something calm and informational rather than alarming.
+
+### Non-interactions
+
+- No indication in the Section List view
+- No click-through from the summary badge to specific conflicts on the grid (this iteration)
+- No mute/dismiss on individual conflicts
+- No tooltip or detail popup on the grid indication
