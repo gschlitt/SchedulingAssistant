@@ -34,6 +34,57 @@ The indication is mild — a nudge, not a blocker. The user may have good reason
 
 ---
 
+## Phase 2: Domain Model
+
+### Entities
+
+**Watch** (new)
+- The core new entity. Represents a monitored group of courses whose sections should be checked for time overlaps.
+- **Name**: auto-generated from the tag(s) or course list on creation; user-editable.
+- **Scope**: per-semester. A watch belongs to a single semester.
+- **Enabled**: boolean on/off toggle. Disabled watches are retained but produce no conflict indications.
+- **Definition**: one of two modes:
+  - *Tag-based*: one or more tags. A section is included if it carries **all** specified tags (AND logic). Example: tags "upper-level" + "BSc" matches only sections tagged with both.
+  - *Course-based*: an explicit list of courses.
+
+**Tag** (existing)
+- Already in the system. Watches reference tags by identity, not by snapshot — if a section gains or loses a tag, the watch's coverage updates automatically.
+
+**Course** (existing)
+- Already in the system. In course-based watches, courses are referenced directly.
+
+**Section** (existing)
+- Belongs to a course. Has meeting times (day + time span). A section may appear in multiple watches (via multiple tags or explicit inclusion).
+
+**Meeting** (existing)
+- The day/time component of a section. Overlap detection operates at this level.
+
+### Relationships
+
+- A **Watch** → references one or more **Tags** (tag-based mode) or one or more **Courses** (course-based mode)
+- A **Watch** → belongs to one **Semester**
+- A **Section** → belongs to one **Course**, carries zero or more **Tags**, has one or more **Meetings**
+- A **Section** can be covered by multiple watches (no exclusivity)
+
+### Conflict (computed, not stored)
+
+A program conflict is not a persisted entity. It is computed on the fly whenever the grid renders. A conflict exists when:
+
+1. Two sections belong to **different courses**
+2. Both sections are covered by the **same enabled watch**
+3. At least one meeting of each section **overlaps in time** (same day, overlapping time span)
+
+A single pair of sections may produce conflicts under multiple watches — each watch's indication is independent.
+
+### Invariants
+
+- A watch must reference at least one tag or one course (cannot be empty)
+- Tag-based watches use AND logic: a section must carry *all* specified tags to be included
+- Conflicts are only between sections of *different* courses — two sections of the same course sharing a time slot is not a program conflict (that's just multiple offerings)
+- Disabling a watch suppresses all its conflict indications without deleting the watch or its definition
+
+---
+
 ## Phase 3: UX Sketch (early notes)
 
 ### Watch list
