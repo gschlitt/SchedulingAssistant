@@ -205,7 +205,7 @@ No query for conflicts — conflict detection is computed in the view layer from
 Conflict detection is a **read-only computation** performed on the fly. Inputs:
 
 1. All enabled `ProgramWatch` entries for the current semester
-2. All sections in the current semester (already loaded by the grid pipeline)
+2. The **filtered** sections — only sections that pass the current grid filters (not all sections in the semester)
 3. Meeting times on those sections
 
 For each enabled watch:
@@ -215,3 +215,100 @@ For each enabled watch:
 4. Emit a conflict record (not persisted — just a data structure for the grid renderer)
 
 This runs whenever the grid re-renders or a watch is toggled/modified. The section and meeting data is already in memory from the grid pipeline, so the additional cost is the pairwise time-overlap check across watched sections.
+
+---
+
+## Phase 5: Architecture
+
+### Overview
+
+Three new classes, one new grid pipeline step, and a new AXAML group in the toolbar.
+
+### New classes
+
+**`ProgramWatchRepository`** (Data/Repositories)
+- Singleton, registered in DI with interface `IProgramWatchRepository`
+- Pure CRUD against the `ProgramWatches` table
+- Follows the same pattern as `InstructorRepository`, `CourseRepository`
+
+**`ProgramConflictService`** (Services)
+- **Static class** — pure computation, no state, no DI registration
+- Follows the pattern of `RoomConflictService` / `InstructorConflictService`
+- Single method: `DetectConflicts(enabledWatches, sections, tagIdsBySectionId)` → returns conflict data keyed by section meeting identity (for the grid renderer to consume)
+- Algorithm: for each enabled watch, resolve covered sections (by section-level tag match or course list), bucket by `(day)`, pairwise overlap check across different courses
+- Returns a structure the renderer can use to draw boxes and connecting lines — needs to identify which specific meetings conflict, not just which sections
+
+**`AccessPanelViewModel`** (ViewModels/GridView)
+- The VM for the Access group in the toolbar
+- Owns the watch list: loads watches from `ProgramWatchRepository` on semester change, exposes them as an observable collection of `ProgramWatchItemViewModel` wrappers
+- Handles: create watch, delete watch, toggle enabled, edit name
+- Holds computed **conflict summary** (total count across enabled watches) for the collapsed badge text
+- Triggers grid reload (via `GridChangeNotifier`) when a watch is created, deleted, toggled, or modified
+- Registered in DI as a singleton, constructed with `IProgramWatchRepository`, `SemesterContext`, `SectionStore`, `GridChangeNotifier`
+
+**`ProgramWatchItemViewModel`** (ViewModels/GridView)
+- Wraps a single `ProgramWatch` for the watch list UI
+- Exposes: `Name` (editable), `IsEnabled` (toggle), `ModeSummary` (compact display of tags or courses), `ConflictCount`
+- Writes changes back through `AccessPanelViewModel` → repository
+
+### Grid pipeline integration
+
+A new step is inserted into `ScheduleGridViewModel.ReloadCore()` after **BuildFilteredBlocks** (step 6) and before **DeduplicateBlocks** (step 10):
+
+**Step 6.5: ComputeProgramConflicts**
+1. Read enabled watches from `AccessPanelViewModel` (already loaded)
+2. Call `ProgramConflictService.DetectConflicts(...)` with the **filtered** sections (output of step 6, BuildFilteredBlocks) and their tag IDs — conflicts are only detected among sections that pass the current grid filters
+3. Attach conflict data to `GridData` as a separate structure (e.g. `GridData.ProgramConflicts`)
+
+The renderer in `ScheduleGridView.axaml.cs` consumes `GridData.ProgramConflicts` during the paint pass to draw colored boxes around conflicting meetings and connecting lines between adjacent cards.
+
+### Conflict data structure for the renderer
+
+```
+ProgramConflict
+  WatchId       : string
+  WatchName     : string
+  MeetingA      : (SectionId, Day, Start, End)
+  MeetingB      : (SectionId, Day, Start, End)
+```
+
+The renderer receives a `List<ProgramConflict>`. For each conflict, it locates the two meetings on the canvas:
+- **Same tile**: sort the entries adjacent, draw a colored box around the pair
+- **Different tiles, same day column**: draw a box around each, connect with a line
+
+### Toolbar AXAML
+
+In `GridFilterView.axaml`, a new `<GroupBox>` is added after the Overlay GroupBox:
+
+```
+GroupBox "Access"
+  └─ WrapPanel
+      └─ Panel
+          ├─ ToggleButton (collapsed summary: "2 watches, 3 conflicts")
+          └─ Popup (expanded watch list)
+              ├─ List of ProgramWatchItemViewModel rows
+              │   └─ each: name, mode summary, toggle, conflict count, delete
+              └─ "New Watch" button → creation flow
+```
+
+The `DataContext` for this group binds to `AccessPanelViewModel`, which is exposed as a property on `ScheduleGridViewModel` (like `Filter` exposes `GridFilterViewModel`).
+
+### Semester change flow
+
+`AccessPanelViewModel` subscribes to `SemesterContext.PropertyChanged` (Pattern A). On semester change, it reloads watches from the repository for the new semester. This reload fires `GridChangeNotifier`, which triggers the grid pipeline to re-run including the conflict detection step.
+
+### DI registration
+
+In `App.ConfigureServices()`:
+- `IProgramWatchRepository` → `ProgramWatchRepository` (singleton)
+- `AccessPanelViewModel` (singleton, factory lambda with constructor dependencies)
+
+In `App.ConfigureDemoServices()`:
+- Same registrations (watches work identically in the WASM demo)
+
+### What stays unchanged
+
+- `RoomConflictService` and `InstructorConflictService` — untouched, they continue operating in the Section List view only
+- `GridFilterViewModel` — untouched, the Access group is a sibling, not a child
+- `SectionListView` / `SectionListViewModel` — no program conflict indication here
+- The existing `GridBlock` hierarchy — no new subtype needed; conflict data is carried separately in `GridData`
