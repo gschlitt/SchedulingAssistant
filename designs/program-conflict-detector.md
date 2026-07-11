@@ -139,3 +139,79 @@ The program-conflict indicator uses a **distinct hue** from room/instructor conf
 - No click-through from the summary badge to specific conflicts on the grid (this iteration)
 - No mute/dismiss on individual conflicts
 - No tooltip or detail popup on the grid indication
+
+---
+
+## Phase 4: Data Design
+
+### Table: `ProgramWatches`
+
+```sql
+CREATE TABLE IF NOT EXISTS ProgramWatches (
+    id          TEXT PRIMARY KEY,
+    semester_id TEXT NOT NULL,
+    name        TEXT,
+    mode        TEXT,
+    data        TEXT NOT NULL DEFAULT '{}'
+);
+```
+
+Human-readable columns: `name` (watch name), `mode` ("tag" or "course") for quick browsing of the raw SQLite file.
+
+### JSON shape (`data` column)
+
+```json
+{
+  "Name": "BSc Year 1 Core",
+  "Mode": "tag",
+  "IsEnabled": true,
+  "TagIds": ["guid-1", "guid-2"],
+  "CourseIds": []
+}
+```
+
+- **`Mode`**: `"tag"` or `"course"`. Determines which ID list is active.
+- **`TagIds`**: populated in tag-based mode. References `SchedulingEnvironmentValues` rows where `type = 'tag'`. AND logic: a section must carry all listed tags.
+- **`CourseIds`**: populated in course-based mode. References `Courses` rows by ID.
+- Only one of `TagIds`/`CourseIds` is meaningful per watch; the other is empty.
+- **`IsEnabled`**: the on/off toggle state.
+
+### Model class: `ProgramWatch`
+
+```
+ProgramWatch
+  Id          : string
+  Name        : string
+  Mode        : ProgramWatchMode   (enum: Tag, Course)
+  IsEnabled   : bool
+  TagIds      : List<string>
+  CourseIds   : List<string>
+```
+
+### Repository: `ProgramWatchRepository`
+
+Follows the existing repository pattern (see `InstructorRepository`, `CourseRepository`).
+
+| Method | Description |
+|--------|-------------|
+| `GetAllAsync(semesterId)` | All watches for a semester |
+| `SaveAsync(semesterId, watch)` | Upsert a watch (insert or update by ID) |
+| `DeleteAsync(id)` | Remove a watch |
+
+No query for conflicts — conflict detection is computed in the view layer from the watch definitions, sections, and their meeting times. The repository is pure CRUD.
+
+### Conflict computation (not persisted)
+
+Conflict detection is a **read-only computation** performed on the fly. Inputs:
+
+1. All enabled `ProgramWatch` entries for the current semester
+2. All sections in the current semester (already loaded by the grid pipeline)
+3. Meeting times on those sections
+
+For each enabled watch:
+1. Resolve the **covered sections**: all sections that carry all of the watch's tags on the **section itself** (AND logic), or whose course is in the watch's course list
+2. Group covered sections by course
+3. For each pair of sections from **different courses**, check if any of their meetings overlap on the same day
+4. Emit a conflict record (not persisted — just a data structure for the grid renderer)
+
+This runs whenever the grid re-renders or a watch is toggled/modified. The section and meeting data is already in memory from the grid pipeline, so the additional cost is the pairwise time-overlap check across watched sections.
