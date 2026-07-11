@@ -312,3 +312,81 @@ In `App.ConfigureDemoServices()`:
 - `GridFilterViewModel` — untouched, the Access group is a sibling, not a child
 - `SectionListView` / `SectionListViewModel` — no program conflict indication here
 - The existing `GridBlock` hierarchy — no new subtype needed; conflict data is carried separately in `GridData`
+
+---
+
+## Phase 6: Implementation Plan
+
+Six tasks in dependency order. Each is one session's work.
+
+### Task 1: Data layer
+
+**Goal:** Persist watches in SQLite.
+
+- `ProgramWatch` model class + `ProgramWatchMode` enum
+- `ProgramWatches` table creation in `DatabaseContext.InitializeSchema()`
+- `IProgramWatchRepository` interface + `ProgramWatchRepository` implementation (GetAll, Save, Delete)
+- DI registration in both `ConfigureServices()` and `ConfigureDemoServices()`
+- Unit tests for repository CRUD
+
+**Verify:** Tests pass; table created on app startup.
+
+### Task 2: Conflict detection service
+
+**Goal:** Pure computation of program conflicts.
+
+- `ProgramConflict` data structure (WatchId, WatchName, MeetingA, MeetingB)
+- `ProgramConflictService` static class with `DetectConflicts(enabledWatches, sections, tagIdsBySectionId)`
+- Algorithm: resolve covered sections per watch → bucket by day → pairwise overlap check across different courses
+- Unit tests with synthetic sections and watches covering same-card and adjacent-card scenarios
+
+**Verify:** Tests pass for tag-based watches, course-based watches, multi-tag AND logic, no false positives for same-course sections.
+
+### Task 3: AccessPanelViewModel
+
+**Goal:** VM layer for the watch list — CRUD, toggle, conflict summary.
+
+- `AccessPanelViewModel`: loads watches from repository on semester change, exposes `ObservableCollection<ProgramWatchItemViewModel>`, computes conflict summary text
+- `ProgramWatchItemViewModel`: wraps a single watch with bindable Name, IsEnabled, ModeSummary, ConflictCount
+- Wire to `SemesterContext.PropertyChanged` for semester changes
+- Wire to `GridChangeNotifier` to trigger grid reload on watch changes
+- Expose as a property on `ScheduleGridViewModel` (like `Filter`)
+- DI registration
+
+**Verify:** Compile check passes; VM loads/saves watches through the repository.
+
+### Task 4: Access group AXAML — watch list display
+
+**Goal:** The Access toolbar group with the watch list pulldown.
+
+- New `<GroupBox>` in `GridFilterView.axaml` after the Overlay group
+- Collapsed state: `<ToggleButton>` showing summary badge text
+- Expanded state: `<Popup>` with a list of watches — each row shows name, mode summary, on/off toggle, conflict count, delete button
+- Bind to `AccessPanelViewModel` via `ScheduleGridViewModel.Access`
+
+**Verify:** App runs; Access group appears in toolbar; existing watches (if any) display; toggle and delete work.
+
+### Task 5: Watch creation flow
+
+**Goal:** UI for creating new tag-based and course-based watches.
+
+- "New Watch" button in the popup opens an inline creation form
+- Mode selector (tag-based / course-based)
+- Tag-based: multi-select dropdown populated from existing tags
+- Course-based: multi-select of courses in the current semester
+- Auto-generated name from selections; editable name field
+- Save creates the watch in enabled state, closes the form, triggers grid reload
+
+**Verify:** App runs; can create both tag-based and course-based watches; name auto-generates; watch appears in the list after creation.
+
+### Task 6: Grid pipeline + renderer
+
+**Goal:** Conflict indicators on the schedule grid canvas.
+
+- New pipeline step 6.5 in `ScheduleGridViewModel.ReloadCore()`: call `ProgramConflictService.DetectConflicts()` on filtered sections, attach results to `GridData.ProgramConflicts`
+- In `ScheduleGridView.axaml.cs` renderer:
+  - Same-tile conflicts: sort conflicting `TileEntry` items adjacent, draw colored box around the pair
+  - Cross-tile conflicts (same day column): draw colored box around each meeting, draw connecting line between them
+- Choose the program-conflict hue (distinct from room/instructor indicators — calm, informational)
+
+**Verify:** App runs; create a watch with known overlapping sections; colored boxes and connecting lines appear on the grid; toggling the watch off removes the indicators; filtering out a conflicting section removes its indicator.
