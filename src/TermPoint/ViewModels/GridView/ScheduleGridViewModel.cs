@@ -415,7 +415,38 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks).Concat(sharedBlocks);
         var allBlocks = DeduplicateBlocks(combinedBlocks);
-        UpdateDisplayProperties(semesters, allBlocks);
+
+        // ── Program conflict detection ────────────────────────────────────────
+        var enabledWatches = Access.GetEnabledWatches();
+        IReadOnlyList<ProgramConflict> programConflicts = [];
+        if (enabledWatches.Count > 0)
+        {
+            var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
+                .Select(b => b.SectionId).ToHashSet();
+            var visibleSections = lookups.Sections
+                .Where(s => visibleSectionIds.Contains(s.Id)).ToList();
+            var tagIdsBySectionId = visibleSections
+                .ToDictionary(s => s.Id, s => (IReadOnlyList<string>)s.TagIds);
+            programConflicts = ProgramConflictService.DetectConflicts(
+                enabledWatches, visibleSections, tagIdsBySectionId);
+        }
+        // Build section-ID-to-label map so the Access panel can show conflict details.
+        var sectionLabels = new Dictionary<string, string>();
+        if (programConflicts.Count > 0)
+        {
+            var involvedIds = new HashSet<string>();
+            foreach (var pc in programConflicts) { involvedIds.Add(pc.MeetingA.SectionId); involvedIds.Add(pc.MeetingB.SectionId); }
+            foreach (var s in lookups.Sections)
+            {
+                if (!involvedIds.Contains(s.Id)) continue;
+                var code = s.CourseId is not null && lookups.Courses.TryGetValue(s.CourseId, out var c)
+                    ? c.CalendarCode : null;
+                sectionLabels[s.Id] = code is not null ? $"{code} {s.SectionCode}" : s.SectionCode;
+            }
+        }
+        Access.UpdateConflictCounts(programConflicts, sectionLabels);
+
+        UpdateDisplayProperties(semesters, allBlocks, programConflicts);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -1153,7 +1184,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <param name="allBlocks">The fully-processed, deduplicated block list from all three passes.</param>
     private void UpdateDisplayProperties(
         IReadOnlyList<SemesterDisplay> semesters,
-        IReadOnlyList<GridBlock> allBlocks)
+        IReadOnlyList<GridBlock> allBlocks,
+        IReadOnlyList<ProgramConflict>? programConflicts = null)
     {
         // Grid end is always 22:00. Grid start is 07:30 when any block starts before 08:00
         // (to accommodate early meetings), otherwise 08:00 to avoid wasting vertical space.
@@ -1201,7 +1233,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
             }
         }
 
-        GridData = new GridData(firstRow, lastRow, dayColumns, semesters.Count);
+        GridData = new GridData(firstRow, lastRow, dayColumns, semesters.Count)
+        {
+            ProgramConflicts = programConflicts ?? []
+        };
 
         // ── Semester line and colored segment chips ────────────────────────────
         // Single-semester mode: "Year — Semester" (e.g. "2025-2026 — Fall")

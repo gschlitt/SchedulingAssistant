@@ -38,7 +38,11 @@ public partial class EmptySemesterView : UserControl
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ShowInTaskbar = false
+            ShowInTaskbar = false,
+            // Modal dialogs must be Topmost: they block all app input, so if one opens
+            // beneath a Topmost sticky note (or loses an activation race and lands behind
+            // the main window) the app appears frozen with nothing clickable.
+            Topmost = true
         };
 
         var bodyText = $"Remove all {sectionCount} section{(sectionCount == 1 ? "" : "s")} from \"{semesterName}\"?\n\nThis cannot be undone.";
@@ -86,7 +90,8 @@ public partial class EmptySemesterView : UserControl
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ShowInTaskbar = false
+            ShowInTaskbar = false,
+            Topmost = true // see ShowConfirmEmptyAsync — modal dialogs must never be occluded
         };
 
         var body = new TextBlock

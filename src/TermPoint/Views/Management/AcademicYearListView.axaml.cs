@@ -39,7 +39,11 @@ public partial class AcademicYearListView : UserControl
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ShowInTaskbar = false
+            ShowInTaskbar = false,
+            // Modal dialogs must be Topmost: they block all app input, so if one opens
+            // beneath a Topmost sticky note (or loses an activation race and lands behind
+            // the main window) the app appears frozen with nothing clickable.
+            Topmost = true
         };
 
         var body = new TextBlock
@@ -87,7 +91,8 @@ public partial class AcademicYearListView : UserControl
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            ShowInTaskbar = false
+            ShowInTaskbar = false,
+            Topmost = true // see ShowCopyStartTimesConfirmAsync — modal dialogs must never be occluded
         };
 
         var body = new TextBlock

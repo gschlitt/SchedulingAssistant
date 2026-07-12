@@ -1081,7 +1081,11 @@ public partial class MainWindow : Window
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ShowInTaskbar = true
+            ShowInTaskbar = true,
+            // Modal dialogs must be Topmost: they block all app input, so if one opens
+            // beneath a Topmost sticky note (or loses an activation race and lands behind
+            // the main window) the app appears frozen with nothing clickable.
+            Topmost = true
         };
 
         var ok = new Button { Content = "Close", HorizontalAlignment = HorizontalAlignment.Center };
@@ -1150,7 +1154,8 @@ public partial class MainWindow : Window
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ShowInTaskbar = true
+            ShowInTaskbar = true,
+            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
         string? chosen = null;
@@ -1243,7 +1248,8 @@ public partial class MainWindow : Window
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ShowInTaskbar = true
+            ShowInTaskbar = true,
+            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
         var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
@@ -1285,7 +1291,8 @@ public partial class MainWindow : Window
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ShowInTaskbar = true
+            ShowInTaskbar = true,
+            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
         var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
@@ -1610,7 +1617,8 @@ public partial class MainWindow : Window
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ShowInTaskbar = true
+            ShowInTaskbar = true,
+            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
         var yes   = new Button { Content = affirmative, HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };

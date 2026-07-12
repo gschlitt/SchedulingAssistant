@@ -32,6 +32,9 @@ public partial class ProgramWatchItemViewModel : ObservableObject
     /// <summary>Display text for the conflict count, e.g. "3 conflicts". Empty when zero.</summary>
     [ObservableProperty] private string _conflictText = string.Empty;
 
+    /// <summary>Human-readable conflict pair descriptions, e.g. "MATH340 AB1 / STAT350 ON1".</summary>
+    [ObservableProperty] private List<string> _conflictDetails = [];
+
     /// <param name="watch">The underlying watch model.</param>
     /// <param name="modeSummary">Pre-formatted mode summary string.</param>
     /// <param name="onChanged">Callback when Name or IsEnabled changes (triggers save + grid reload).</param>

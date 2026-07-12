@@ -125,6 +125,14 @@ public partial class ScheduleGridView : UserControl
     private static IBrush SharedScheduleBorder  => Res("SharedScheduleBorder");
     private static IBrush SharedScheduleText    => Res("SharedScheduleText");
 
+    // Program conflict overlay (student-access time overlap indicator)
+    private static IBrush ProgramConflictBrush  => Res("ProgramConflictBrush");
+    private static Color ResColor(string key) =>
+        Application.Current!.Resources.TryGetResource(key, null, out var v) && v is Color c
+            ? c : Colors.Transparent;
+    private static Color ProgramConflictGlowCenter => ResColor("ProgramConflictGlowCenter");
+    private static Color ProgramConflictGlowEdge   => ResColor("ProgramConflictGlowEdge");
+
     // Section attention-flag geometry (resolved once; brush is per-flag via FlagVisuals).
     private static Geometry? FlagGeometry =>
         Application.Current!.Resources.TryGetResource("FlagIcon", null, out var v) && v is Geometry g ? g : null;
@@ -715,6 +723,20 @@ public partial class ScheduleGridView : UserControl
         //    }
         //}
 
+        // ── Pre-compute program conflict entry lookup ────────────────────────
+        // Build a set of (sectionId, dayNumber) pairs involved in program conflicts
+        // so the tile loop can apply conflict borders to entry rows and draw connecting lines.
+        IBrush ProgramConflictBrush = ScheduleGridView.ProgramConflictBrush;
+        var conflictSectionDays = new HashSet<(string sectionId, int day)>();
+        foreach (var pc in data.ProgramConflicts)
+        {
+            conflictSectionDays.Add((pc.MeetingA.SectionId, pc.MeetingA.Day));
+            conflictSectionDays.Add((pc.MeetingB.SectionId, pc.MeetingB.Day));
+        }
+        // Entry row Borders involved in conflicts, keyed for the connecting-line pass.
+        // Key: (sectionId, day, startMinutes, endMinutes) → tile position + entry index within the StackPanel.
+        var conflictEntryRows = new Dictionary<(string, int, int, int), (int entryIndex, double tileX, double tileY, double tileW)>();
+
         // ── Section tiles (with adjusted heights and positions) ──────────────
         for (int d = 0; d < dayCount; d++)
         {
@@ -819,9 +841,23 @@ public partial class ScheduleGridView : UserControl
                         entryContent = dock;
                     }
 
+                    bool isConflict = conflictSectionDays.Contains((entry.SectionId, clickDay));
+                    IBrush conflictGlow = isConflict
+                        ? new RadialGradientBrush
+                          {
+                              Center  = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+                              RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
+                              RadiusY = new RelativeScalar(0.9,  RelativeUnit.Relative),
+                              GradientStops =
+                              {
+                                  new GradientStop(ProgramConflictGlowCenter, 0),
+                                  new GradientStop(ProgramConflictGlowEdge, 1),
+                              },
+                          }
+                        : Brushes.Transparent;
                     var entryRow = new Border
                     {
-                        Background      = entryRowBg,
+                        Background      = isConflict ? conflictGlow : entryRowBg,
                         BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
                         BorderThickness = new Thickness(entrySelected ? TileSelectionBorderThickness : 0),
                         CornerRadius    = new CornerRadius(2),
@@ -833,19 +869,23 @@ public partial class ScheduleGridView : UserControl
                         Tag          = clickCtx,
                         Child        = entryContent,
                     };
+                    if (isConflict)
+                        conflictEntryRows[(entry.SectionId, clickDay, tile.StartMinutes, tile.EndMinutes)] =
+                            (ei, tileX, adjustedTileY, tileW - TilePaddingH);
 
                     // Hover tint: darken the individual section row on pointer-over,
                     // matching the card-hover effect in Section List view.
                     // Plain commitment tiles are display-only and don't receive hover feedback.
                     if (!entry.IsCommitment || entry.IsMeeting)
                     {
+                        var baseBg = isConflict ? conflictGlow : entryRowBg;
                         entryRow.PointerEntered += (s, _) => ((Border)s!).Background = TileEntryHoverOverlay;
-                        entryRow.PointerExited  += (s, _) => ((Border)s!).Background = entryRowBg;
+                        entryRow.PointerExited  += (s, _) => ((Border)s!).Background = baseBg;
                     }
 
                     // Register for lightweight selection repainting (avoids full Render() on selection change).
                     if (!entry.IsCommitment)
-                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, entryRowBg));
+                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, isConflict ? conflictGlow : entryRowBg));
 
                     entryRow.PointerPressed += (sender, e) =>
                     {
@@ -958,7 +998,38 @@ public partial class ScheduleGridView : UserControl
                 Canvas.SetLeft(border, tileX);
                 Canvas.SetTop(border, adjustedTileY);
                 _canvas.Children.Add(border);
+
             }
+        }
+
+        // ── Program conflict connecting lines ────────────────────────────────
+        // Conflict borders are applied directly on entry row Borders above. For cross-tile
+        // conflicts, draw a connecting line between the two entry rows. Entry-row canvas
+        // positions are estimated from the tile position + StackPanel offset.
+        foreach (var pc in data.ProgramConflicts)
+        {
+            var keyA = (pc.MeetingA.SectionId, pc.MeetingA.Day, pc.MeetingA.StartMinutes, pc.MeetingA.EndMinutes);
+            var keyB = (pc.MeetingB.SectionId, pc.MeetingB.Day, pc.MeetingB.StartMinutes, pc.MeetingB.EndMinutes);
+            if (!conflictEntryRows.TryGetValue(keyA, out var infoA)) continue;
+            if (!conflictEntryRows.TryGetValue(keyB, out var infoB)) continue;
+
+            bool sameTile = pc.MeetingA.Day == pc.MeetingB.Day
+                         && pc.MeetingA.StartMinutes == pc.MeetingB.StartMinutes
+                         && pc.MeetingA.EndMinutes   == pc.MeetingB.EndMinutes;
+            if (sameTile) continue;
+
+            // Vertical center of an entry row within its tile: tile border (1) + padding (2) +
+            // entryIndex * (entryLineH + separator) + half the entry height.
+            double EntryCenterY((int entryIndex, double tileX, double tileY, double tileW) info) =>
+                info.tileY + 1 + 2 + info.entryIndex * (entryLineH + EntrySeparatorH) + entryLineH / 2;
+
+            double yA = EntryCenterY(infoA);
+            double yB = EntryCenterY(infoB);
+
+            var (left, right) = infoA.tileX < infoB.tileX ? (infoA, infoB) : (infoB, infoA);
+            double leftY  = infoA.tileX < infoB.tileX ? yA : yB;
+            double rightY = infoA.tileX < infoB.tileX ? yB : yA;
+            AddLine(_canvas, left.tileX + left.tileW, leftY, right.tileX, rightY, ProgramConflictBrush, 2);
         }
 
         // Cache layout parameters for the ghost overlay (avoids full re-render when stepping).

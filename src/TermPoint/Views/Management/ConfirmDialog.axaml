@@ -12,6 +12,7 @@
     SizeToContent="Height"
     CanResize="False"
     ShowInTaskbar="False"
+    Topmost="True"
     WindowDecorations="BorderOnly"
     WindowStartupLocation="CenterOwner"
     mc:Ignorable="d">

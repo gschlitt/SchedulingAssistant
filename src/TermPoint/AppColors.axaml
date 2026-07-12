@@ -61,8 +61,15 @@
 		When a section meeting is emphasized via overlay Also colors the border of the entire tile and the text
 		describing the overlay in the filter/overlay bar
 	-->
-	<Color x:Key="OverlayColor">#D63050</Color>
+	<Color x:Key="OverlayColor">#aa30d6</Color>
 	<SolidColorBrush x:Key="OverlayFrameBorder" Color="{StaticResource OverlayColor}" />
+
+	<!-- Program-conflict indicator (student-access overlap) — warm red glow for entry
+	     rows, toned-down red for connecting lines between cross-tile conflicts. -->
+	<Color x:Key="ProgramConflictColor">#C03030</Color>
+	<SolidColorBrush x:Key="ProgramConflictBrush" Color="{StaticResource ProgramConflictColor}" />
+	<Color x:Key="ProgramConflictGlowCenter">#60C03030</Color>
+	<Color x:Key="ProgramConflictGlowEdge">#00C03030</Color>
 
 
 	<!--  User targets for interaction: buttons, selectors  -->

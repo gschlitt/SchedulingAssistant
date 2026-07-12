@@ -242,4 +242,11 @@ public record GridData(
     public bool IsMultiSemester => SemesterCount > 1;
 
     public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0);
+
+    /// <summary>
+    /// Program conflicts detected among the filtered sections by enabled watches.
+    /// Set by the grid pipeline after construction; consumed by the renderer to draw
+    /// colored overlays. Empty when no watches are active or no conflicts exist.
+    /// </summary>
+    public IReadOnlyList<Services.ProgramConflict> ProgramConflicts { get; init; } = [];
 }
