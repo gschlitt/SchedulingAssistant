@@ -345,6 +345,7 @@ public partial class App : Application
         services.AddSingleton<ICampusRepository, CampusRepository>();
         services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
+        services.AddSingleton<IProgramWatchRepository, ProgramWatchRepository>();
 
         RegisterViewModels(services);
 
@@ -456,6 +457,7 @@ public partial class App : Application
         services.AddSingleton<ICampusRepository,              DemoCampusRepository>();
         services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
+        services.AddSingleton<IProgramWatchRepository,       DemoProgramWatchRepository>();
 
         RegisterViewModels(services);
     }
@@ -478,6 +480,10 @@ public partial class App : Application
         services.AddSingleton<SectionStore>();
         services.AddSingleton<MeetingStore>();
         services.AddSingleton<GridChangeNotifier>();
+        services.AddSingleton<AccessPanelViewModel>(sp => new AccessPanelViewModel(
+            sp.GetRequiredService<IProgramWatchRepository>(),
+            sp.GetRequiredService<SemesterContext>(),
+            sp.GetRequiredService<GridChangeNotifier>()));
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<MeetingListViewModel>();
@@ -497,7 +503,8 @@ public partial class App : Application
             sp.GetRequiredService<GridChangeNotifier>(),
             sp.GetRequiredService<IInstructorCommitmentRepository>(),
             sp.GetRequiredService<WriteLockService>(),
-            sp.GetRequiredService<SharedScheduleService>()));
+            sp.GetRequiredService<SharedScheduleService>(),
+            sp.GetRequiredService<AccessPanelViewModel>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

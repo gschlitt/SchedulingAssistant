@@ -284,6 +284,14 @@ public class DatabaseContext : IDatabaseContext
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 data       TEXT NOT NULL DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS ProgramWatches (
+                id          TEXT PRIMARY KEY,
+                semester_id TEXT NOT NULL,
+                name        TEXT,
+                mode        TEXT,
+                data        TEXT NOT NULL DEFAULT '{}'
+            );
             """;
         cmd.ExecuteNonQuery();
     }

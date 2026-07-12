@@ -1,0 +1,227 @@
+<UserControl
+	x:Class="TermPoint.Views.GridView.AccessPanelView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:conv="using:TermPoint.Converters"
+	xmlns:converters="clr-namespace:Avalonia.Controls.Converters;assembly=Avalonia.Controls"
+	xmlns:vm="using:TermPoint.ViewModels.GridView"
+	x:CompileBindings="False"
+	x:DataType="vm:AccessPanelViewModel">
+
+	<UserControl.Resources>
+		<converters:BorderGapMaskConverter x:Key="BorderGapMaskConverter" />
+	</UserControl.Resources>
+
+	<UserControl.Styles>
+		<!-- Reuse the GroupBox template override from GridFilterView for consistent border gap -->
+		<Style Selector="GroupBox">
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Grid x:Name="RootGrid" UseLayoutRounding="true"
+						  ColumnDefinitions="2,Auto,*,2"
+						  RowDefinitions="Auto,Auto,*,2">
+						<Border Grid.Row="1" Grid.RowSpan="3"
+								Grid.Column="0" Grid.ColumnSpan="4"
+								CornerRadius="{TemplateBinding CornerRadius}"
+								BorderThickness="{TemplateBinding BorderThickness}"
+								BorderBrush="{StaticResource AppBackground}"
+								Background="{TemplateBinding Background}" />
+						<Border Grid.Row="1" Grid.RowSpan="3"
+								Grid.ColumnSpan="4"
+								CornerRadius="{TemplateBinding CornerRadius}"
+								BorderThickness="{TemplateBinding BorderThickness}"
+								BorderBrush="{TemplateBinding BorderBrush}">
+							<Border.OpacityMask>
+								<MultiBinding Converter="{StaticResource BorderGapMaskConverter}"
+											  ConverterParameter="2">
+									<Binding ElementName="Header" Path="Bounds.Width" />
+									<Binding RelativeSource="{RelativeSource Self}" Path="Bounds.Width" />
+									<Binding RelativeSource="{RelativeSource Self}" Path="Bounds.Height" />
+								</MultiBinding>
+							</Border.OpacityMask>
+						</Border>
+						<Border x:Name="Header" Padding="2,0,2,0"
+								Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
+							<ContentPresenter Name="PART_HeaderPresenter"
+											  Content="{TemplateBinding Header}"
+											  ContentTemplate="{TemplateBinding HeaderTemplate}"
+											  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+											  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+											  UseLayoutRounding="{TemplateBinding UseLayoutRounding}" />
+						</Border>
+						<ContentPresenter Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+										  Name="PART_ContentPresenter"
+										  ContentTemplate="{TemplateBinding ContentTemplate}"
+										  Content="{TemplateBinding Content}"
+										  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+										  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+										  UseLayoutRounding="{TemplateBinding UseLayoutRounding}"
+										  Margin="{TemplateBinding Padding}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+
+		<!-- Toggle button style matching the filter bar -->
+		<Style Selector="ToggleButton.AccessDim">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="3,1,0,0" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="FontSize" Value="{StaticResource FontSizeNormal}" />
+			<Setter Property="Cursor" Value="Hand" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						Padding="{TemplateBinding Padding}">
+						<StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+							<ContentPresenter
+								VerticalAlignment="Center"
+								Content="{TemplateBinding Content}"
+								ContentTemplate="{TemplateBinding ContentTemplate}"
+								FontSize="{TemplateBinding FontSize}"
+								FontWeight="{TemplateBinding FontWeight}"
+								Foreground="{TemplateBinding Foreground}" />
+							<Viewbox Width="9" Height="5" VerticalAlignment="Center" Margin="0,1,2,0">
+								<Path Data="{StaticResource caretdown}" Fill="{TemplateBinding Foreground}" />
+							</Viewbox>
+						</StackPanel>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+		<Style Selector="ToggleButton.AccessDim:pointerover">
+			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
+		</Style>
+		<Style Selector="ToggleButton.AccessDim:checked">
+			<Setter Property="Background" Value="{StaticResource FilterExpanderBorder}" />
+		</Style>
+
+		<!-- Watch list item styles -->
+		<Style Selector="ToggleSwitch.WatchToggle">
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+	</UserControl.Styles>
+
+	<WrapPanel VerticalAlignment="Top">
+		<GroupBox
+			Margin="5,0,5,0"
+			Background="{StaticResource AppBackground}"
+			BorderBrush="{StaticResource FilterGroupBorder}"
+			Padding="0,-3,0,3"
+			BorderThickness="2">
+			<GroupBox.Header>
+				<StackPanel Orientation="Horizontal">
+					<Viewbox Width="13" Height="14">
+						<Path
+							Fill="{StaticResource UserInteractionBrush}"
+							Stroke="Black"
+							StrokeThickness="0.5"
+							StrokeLineCap="Round"
+							StrokeJoin="Round"
+							Data="{StaticResource EyeIcon}" />
+					</Viewbox>
+					<TextBlock Text="Access" Margin="5,0" />
+				</StackPanel>
+			</GroupBox.Header>
+
+			<Panel>
+				<ToggleButton
+					x:Name="AccessToggle"
+					Classes="AccessDim"
+					Content="{Binding SummaryText}" />
+				<Popup
+					x:Name="AccessPopup"
+					IsLightDismissEnabled="True"
+					IsOpen="{Binding #AccessToggle.IsChecked, Mode=TwoWay}"
+					Placement="Bottom"
+					PlacementTarget="{Binding #AccessToggle}">
+					<Border
+						MinWidth="220"
+						MaxHeight="350"
+						Padding="8"
+						Background="{StaticResource FilterExpanderContent}"
+						BorderBrush="{StaticResource FilterPopupBorder}"
+						BorderThickness="1"
+						CornerRadius="5"
+						BoxShadow="{StaticResource FilterPopupShadow}">
+						<StackPanel Spacing="6">
+							<!-- Watch list -->
+							<ItemsControl ItemsSource="{Binding Watches}">
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<Border
+											Padding="4,3"
+											Margin="0,0,0,2"
+											BorderBrush="{StaticResource FilterGroupBorder}"
+											BorderThickness="1"
+											CornerRadius="3">
+											<Grid ColumnDefinitions="*,Auto,Auto">
+												<StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+													<TextBlock
+														Text="{Binding Name}"
+														FontSize="11"
+														FontWeight="SemiBold"
+														TextTrimming="CharacterEllipsis" />
+													<StackPanel Orientation="Horizontal" Spacing="6">
+														<TextBlock
+															Text="{Binding ModeSummary}"
+															FontSize="10"
+															Foreground="Gray" />
+														<TextBlock
+															Text="{Binding ConflictText}"
+															FontSize="10"
+															Foreground="{StaticResource UserInteractionBrush}"
+															IsVisible="{Binding ConflictText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+													</StackPanel>
+												</StackPanel>
+
+												<!-- On/off toggle -->
+												<CheckBox
+													Grid.Column="1"
+													IsChecked="{Binding IsEnabled}"
+													VerticalAlignment="Center"
+													Margin="4,0"
+													Padding="0"
+													MinHeight="0"
+													ToolTip.Tip="Enable or disable this watch" />
+
+												<!-- Delete button -->
+												<Button
+													Grid.Column="2"
+													Background="Transparent"
+													BorderThickness="0"
+													Padding="2"
+													VerticalAlignment="Center"
+													Command="{Binding RequestDeleteCommand}"
+													ToolTip.Tip="Delete this watch">
+													<Viewbox Width="10" Height="10">
+														<Path Data="{StaticResource RemoveIcon}" Fill="Gray" />
+													</Viewbox>
+												</Button>
+											</Grid>
+										</Border>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+
+							<!-- Empty state -->
+							<TextBlock
+								Text="No watches configured."
+								FontSize="10"
+								Foreground="Gray"
+								IsVisible="{Binding !Watches.Count}"
+								Margin="0,2" />
+						</StackPanel>
+					</Border>
+				</Popup>
+			</Panel>
+		</GroupBox>
+	</WrapPanel>
+</UserControl>

@@ -83,6 +83,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>Filter state. Exposed so the view can bind to it.</summary>
     public GridFilterViewModel Filter { get; } = new();
 
+    /// <summary>Access panel state (program conflict watches). Exposed so the view can bind to it.</summary>
+    public AccessPanelViewModel Access { get; }
+
     /// <summary>Shared schedule strip state (collapsible info panel above the grid).</summary>
     public SharedScheduleStripViewModel SharedScheduleStrip { get; private set; } = null!;
 
@@ -157,7 +160,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         GridChangeNotifier changeNotifier,
         IInstructorCommitmentRepository commitmentRepo,
         WriteLockService lockService,
-        SharedScheduleService sharedScheduleService)
+        SharedScheduleService sharedScheduleService,
+        AccessPanelViewModel accessPanelViewModel)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -176,6 +180,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _tileFontSize = AppSettings.Current.TileFontSize;
         _lockService = lockService;
         _sharedScheduleService = sharedScheduleService;
+        Access = accessPanelViewModel;
         SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
 
         // After a context-menu save, refresh the shared section cache so all views
