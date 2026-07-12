@@ -483,7 +483,9 @@ public partial class App : Application
         services.AddSingleton<AccessPanelViewModel>(sp => new AccessPanelViewModel(
             sp.GetRequiredService<IProgramWatchRepository>(),
             sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<GridChangeNotifier>()));
+            sp.GetRequiredService<GridChangeNotifier>(),
+            sp.GetRequiredService<ISchedulingEnvironmentRepository>(),
+            sp.GetRequiredService<ICourseRepository>()));
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<MeetingListViewModel>();

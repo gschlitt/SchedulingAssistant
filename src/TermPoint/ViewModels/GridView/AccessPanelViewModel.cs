@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
@@ -36,14 +37,21 @@ public partial class AccessPanelViewModel : ObservableObject
     /// </summary>
     private IReadOnlyList<ProgramConflict> _lastConflicts = [];
 
+    /// <summary>The inline creation form VM. Visible when the user clicks "New Watch".</summary>
+    public WatchCreationViewModel Creation { get; }
+
     public AccessPanelViewModel(
         IProgramWatchRepository repo,
         SemesterContext semesterContext,
-        GridChangeNotifier changeNotifier)
+        GridChangeNotifier changeNotifier,
+        ISchedulingEnvironmentRepository envRepo,
+        ICourseRepository courseRepo)
     {
         _repo = repo;
         _semesterContext = semesterContext;
         _changeNotifier = changeNotifier;
+
+        Creation = new WatchCreationViewModel(envRepo, courseRepo, OnCreationSave, OnCreationCancel);
 
         _semesterContext.PropertyChanged += (_, e) =>
         {
@@ -96,6 +104,14 @@ public partial class AccessPanelViewModel : ObservableObject
         LoadWatches();
         _changeNotifier.NotifyGridContentChanged();
     }
+
+    /// <summary>Opens the inline creation form.</summary>
+    [RelayCommand]
+    private void BeginCreateWatch() => Creation.Show();
+
+    private void OnCreationSave(ProgramWatch watch) => CreateWatch(watch);
+
+    private void OnCreationCancel() { }
 
     /// <summary>Reloads watches from the repository for the current semester.</summary>
     public void LoadWatches()
@@ -154,6 +170,7 @@ public partial class AccessPanelViewModel : ObservableObject
         if (semesterId is null) return;
 
         _repo.Save(semesterId, item.Watch);
+        RefreshSummary();
         _changeNotifier.NotifyGridContentChanged();
     }
 

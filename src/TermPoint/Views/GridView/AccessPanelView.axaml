@@ -218,6 +218,121 @@
 								Foreground="Gray"
 								IsVisible="{Binding !Watches.Count}"
 								Margin="0,2" />
+
+							<!-- New Watch button (hidden when creation form is visible) -->
+							<Button
+								Content="+ New Watch"
+								FontSize="10"
+								Padding="6,3"
+								HorizontalAlignment="Left"
+								Command="{Binding BeginCreateWatchCommand}"
+								IsVisible="{Binding !Creation.IsVisible}" />
+
+							<!-- Inline creation form -->
+							<Border
+								IsVisible="{Binding Creation.IsVisible}"
+								Padding="6"
+								Margin="0,4,0,0"
+								BorderBrush="{StaticResource FilterGroupBorder}"
+								BorderThickness="1"
+								CornerRadius="4">
+								<StackPanel Spacing="6" DataContext="{Binding Creation}">
+									<!-- Mode selector -->
+									<StackPanel Orientation="Horizontal" Spacing="8">
+										<RadioButton
+											Content="Tag-based"
+											FontSize="10"
+											IsChecked="{Binding IsTagMode}"
+											GroupName="WatchMode"
+											MinHeight="0"
+											Padding="2,0" />
+										<RadioButton
+											Content="Course-based"
+											FontSize="10"
+											IsChecked="{Binding IsCourseMode}"
+											GroupName="WatchMode"
+											MinHeight="0"
+											Padding="2,0" />
+									</StackPanel>
+
+									<!-- Tag multi-select (visible in tag mode) -->
+									<Border
+										IsVisible="{Binding IsTagMode}"
+										MaxHeight="120"
+										BorderBrush="{StaticResource FilterGroupBorder}"
+										BorderThickness="1"
+										CornerRadius="3"
+										Padding="2">
+										<ScrollViewer VerticalScrollBarVisibility="Auto">
+											<ItemsControl ItemsSource="{Binding Tags}">
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<CheckBox
+															Content="{Binding Name}"
+															IsChecked="{Binding IsSelected}"
+															FontSize="10"
+															MinHeight="0"
+															Padding="4,1" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</ScrollViewer>
+									</Border>
+
+									<!-- Course multi-select (visible in course mode) -->
+									<Border
+										IsVisible="{Binding IsCourseMode}"
+										MaxHeight="120"
+										BorderBrush="{StaticResource FilterGroupBorder}"
+										BorderThickness="1"
+										CornerRadius="3"
+										Padding="2">
+										<ScrollViewer VerticalScrollBarVisibility="Auto">
+											<ItemsControl ItemsSource="{Binding Courses}">
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<CheckBox
+															Content="{Binding Name}"
+															IsChecked="{Binding IsSelected}"
+															FontSize="10"
+															MinHeight="0"
+															Padding="4,1" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</ScrollViewer>
+									</Border>
+
+									<!-- Auto-generated name -->
+									<TextBox
+										Text="{Binding WatchName, Mode=TwoWay}"
+										PlaceholderText="Watch name (auto-generated)"
+										FontSize="10"
+										MinHeight="0"
+										Padding="4,3" />
+
+									<!-- Validation error -->
+									<TextBlock
+										Text="{Binding ValidationError}"
+										FontSize="10"
+										Foreground="Red"
+										IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+									<!-- Save / Cancel buttons -->
+									<StackPanel Orientation="Horizontal" Spacing="6">
+										<Button
+											Content="Create"
+											FontSize="10"
+											Padding="8,3"
+											Command="{Binding SaveCommand}" />
+										<Button
+											Content="Cancel"
+											FontSize="10"
+											Padding="8,3"
+											Command="{Binding CancelCommand}" />
+									</StackPanel>
+								</StackPanel>
+							</Border>
 						</StackPanel>
 					</Border>
 				</Popup>
