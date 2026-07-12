@@ -261,7 +261,7 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         if (_stepIndex == 5 && CurrentStep is Step3TpConfigViewModel s4)
         {
-            if (!s4.ValidateAndImport()) return false;
+            if (!await s4.ValidateAndImportAsync()) return false;
             _isImportPath = s4.HasTpConfig && s4.ImportedConfig is not null;
         }
 

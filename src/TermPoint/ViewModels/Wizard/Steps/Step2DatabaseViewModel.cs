@@ -176,18 +176,26 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
     /// <summary>
     /// Runs folder assessment whenever <see cref="DbFolder"/> changes (user Browse or suggestion click).
     /// Populates <see cref="DbFolderWarnings"/> with any advisories.
+    /// Fire-and-forget: the assessment probes the filesystem, which can block on an
+    /// unreachable network path, so it runs deadline-bounded off the UI thread
+    /// (<see cref="FolderAssessor.AssessAsync"/>) with a latest-value guard.
     /// </summary>
-    partial void OnDbFolderChanged(string value)
+    partial void OnDbFolderChanged(string value) => _ = AssessDbFolderAsync(value);
+
+    private async Task AssessDbFolderAsync(string value)
     {
         DbFolderWarnings.Clear();
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        var assessment = _assessor.Assess(value);
+        var assessment = await _assessor.AssessAsync(value);
+        if (value != DbFolder) return; // superseded by a newer edit while probing
+
+        DbFolderWarnings.Clear();
         foreach (var w in assessment.Warnings)
         {
             // NotWritable is expected for folders that don't exist yet — they'll be
             // created at commit time. Only warn if the folder already exists.
-            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+            if (w.Kind == WarningKind.NotWritable && !assessment.FolderExists)
                 continue;
             DbFolderWarnings.Add(w);
         }
@@ -196,16 +204,22 @@ public partial class Step2DatabaseViewModel : WizardStepViewModel
     /// <summary>
     /// Runs folder assessment whenever <see cref="BackupFolder"/> changes.
     /// Populates <see cref="BackupFolderWarnings"/> with any advisories.
+    /// Fire-and-forget for the same reason as <see cref="OnDbFolderChanged"/>.
     /// </summary>
-    partial void OnBackupFolderChanged(string value)
+    partial void OnBackupFolderChanged(string value) => _ = AssessBackupFolderAsync(value);
+
+    private async Task AssessBackupFolderAsync(string value)
     {
         BackupFolderWarnings.Clear();
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        var assessment = _assessor.Assess(value);
+        var assessment = await _assessor.AssessAsync(value);
+        if (value != BackupFolder) return; // superseded by a newer edit while probing
+
+        BackupFolderWarnings.Clear();
         foreach (var w in assessment.Warnings)
         {
-            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+            if (w.Kind == WarningKind.NotWritable && !assessment.FolderExists)
                 continue;
             BackupFolderWarnings.Add(w);
         }

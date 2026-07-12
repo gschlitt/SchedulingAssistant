@@ -317,29 +317,29 @@ public class WizardStepValidationTests
     }
 
     [Fact]
-    public void Step3TpConfig_ValidateAndImport_ReturnsTrueForManualWithoutFile()
+    public async Task Step3TpConfig_ValidateAndImport_ReturnsTrueForManualWithoutFile()
     {
         var vm = new Step3TpConfigViewModel(null!) { IsManualChoice = true };
-        Assert.True(vm.ValidateAndImport());
+        Assert.True(await vm.ValidateAndImportAsync());
         Assert.Null(vm.ImportedConfig);
     }
 
     [Fact]
-    public void Step3TpConfig_ValidateAndImport_ReturnsTrueForExitNowWithoutFile()
+    public async Task Step3TpConfig_ValidateAndImport_ReturnsTrueForExitNowWithoutFile()
     {
         var vm = new Step3TpConfigViewModel(null!) { IsExitNowChoice = true };
-        Assert.True(vm.ValidateAndImport());
+        Assert.True(await vm.ValidateAndImportAsync());
     }
 
     [Fact]
-    public void Step3TpConfig_ValidateAndImport_ReturnsFalseAndSetsError_WhenFileInvalid()
+    public async Task Step3TpConfig_ValidateAndImport_ReturnsFalseAndSetsError_WhenFileInvalid()
     {
         var vm = new Step3TpConfigViewModel(null!)
         {
             IsImportChoice = true,
             TpConfigPath   = @"C:\does_not_exist.tpconfig"
         };
-        Assert.False(vm.ValidateAndImport());
+        Assert.False(await vm.ValidateAndImportAsync());
         Assert.NotEmpty(vm.ErrorMessage);
     }
 

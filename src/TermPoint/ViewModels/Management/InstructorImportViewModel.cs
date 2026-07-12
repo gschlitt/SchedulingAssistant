@@ -121,7 +121,15 @@ public partial class InstructorImportViewModel : ViewModelBase
         string csvText;
         try
         {
-            csvText = await File.ReadAllTextAsync(path);
+            // Deadline-bounded read — see CourseImportViewModel.ChooseFile for rationale.
+            var (completed, text) = await NetworkFileOps.ReadAllTextAsync(path);
+            if (!completed || text is null)
+            {
+                ErrorBanner = "Could not read file: the location is not responding. " +
+                              "Copy the file to a local folder and try again.";
+                return;
+            }
+            csvText = text;
         }
         catch (Exception ex)
         {

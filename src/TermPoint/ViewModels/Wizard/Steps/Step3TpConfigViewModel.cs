@@ -46,7 +46,7 @@ public partial class Step3TpConfigViewModel : WizardStepViewModel
 
     /// <summary>
     /// The successfully imported config data, or null if the user chose a non-import path.
-    /// Populated by <see cref="ValidateAndImport"/> on a successful import.
+    /// Populated by <see cref="ValidateAndImportAsync"/> on a successful import.
     /// </summary>
     public TpConfigData? ImportedConfig { get; private set; }
 
@@ -110,8 +110,12 @@ public partial class Step3TpConfigViewModel : WizardStepViewModel
     /// Returns true on success (or when the manual/exit path is chosen without a file).
     /// Sets <see cref="ErrorMessage"/> and returns false when the file cannot be parsed.
     /// Called by the wizard orchestrator before advancing.
+    /// <para>Async because a .tpconfig is a shareable bundle that may live on a network
+    /// share: the read runs deadline-bounded via <see cref="Services.NetworkFileOps.RunAsync"/>
+    /// so an unreachable share fails the step with an error message instead of freezing
+    /// the wizard for the SMB redirector timeout.</para>
     /// </summary>
-    public bool ValidateAndImport()
+    public async Task<bool> ValidateAndImportAsync()
     {
         if (Choice != Step3Choice.Import)
         {
@@ -119,7 +123,12 @@ public partial class Step3TpConfigViewModel : WizardStepViewModel
             return true;   // manual or exit-now path — always valid
         }
 
-        if (!TpConfigService.TryRead(TpConfigPath, out var config) || config is null)
+        var path = TpConfigPath;
+        var (completed, config) = await Services.NetworkFileOps.RunAsync(() =>
+            TpConfigService.TryRead(path, out var cfg) ? cfg : null,
+            "TpConfig.TryRead");
+
+        if (!completed || config is null)
         {
             ErrorMessage = "Could not read the .tpconfig file. Check the path and try again, or choose the manual setup path.";
             return false;

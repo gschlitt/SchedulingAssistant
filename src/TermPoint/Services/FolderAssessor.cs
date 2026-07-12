@@ -70,16 +70,60 @@ public class FolderAssessor
         // doesn't need the directory to exist. With the real probe, walk up to the
         // nearest existing ancestor.
         var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
+        var exists = Directory.Exists(resolved);
         string? parentToProbe;
         if (_writabilityProbe != null)
             parentToProbe = resolved;
         else
-            parentToProbe = Directory.Exists(resolved) ? resolved : FindExistingAncestor(resolved);
+            parentToProbe = exists ? resolved : FindExistingAncestor(resolved);
         var isWritable = parentToProbe != null && probe(parentToProbe);
         if (!isWritable)
             warnings.Add(FolderWarning.NotWritable());
 
-        return new FolderAssessment(resolved, isWritable, warnings);
+        return new FolderAssessment(resolved, isWritable, warnings, exists);
+    }
+
+    /// <summary>
+    /// Deadline-bounded version of <see cref="Assess"/> for UI-thread callers (wizard and
+    /// New Database path fields re-assess on every keystroke). The existence/writability
+    /// probes inside <see cref="Assess"/> are raw filesystem calls that can block for the
+    /// full SMB redirector timeout (~60s+) when the path points at an unreachable network
+    /// share — and <see cref="FindExistingAncestor"/> can stack several such timeouts
+    /// walking up a dead UNC path. This overload runs the whole assessment on a
+    /// thread-pool thread bounded by <see cref="DriveProbeTimeoutMs"/>.
+    /// <para>On timeout, the CFA/cloud classification (pure string matching, no I/O) is
+    /// still returned, plus a <see cref="WarningKind.NotWritable"/> warning with
+    /// <see cref="FolderAssessment.FolderExists"/> reported as <c>true</c> — so callers
+    /// that suppress NotWritable for not-yet-created folders still surface the problem
+    /// for an unreachable share rather than silently hiding it.</para>
+    /// </summary>
+    /// <param name="path">Absolute path to assess.</param>
+    /// <returns>Assessment result; never blocks the caller beyond the drive-probe deadline.</returns>
+    public async Task<FolderAssessment> AssessAsync(string path)
+    {
+        var (completed, result) = await RunWithTimeout(() => Assess(path), DriveProbeTimeoutMs);
+        if (completed && result != null)
+            return result;
+
+        // Timed out — the path's filesystem is unreachable. Classify what we can
+        // without I/O and report the location as existing-but-not-writable.
+        if (string.IsNullOrWhiteSpace(path))
+            return new FolderAssessment(path ?? "", false, new[] { FolderWarning.InvalidPath() });
+
+        string resolved;
+        try { resolved = Path.GetFullPath(path); }
+        catch { return new FolderAssessment(path, false, new[] { FolderWarning.InvalidPath() }); }
+
+        var warnings = new List<FolderWarning>();
+        var cfaRoot = FindMatchingRoot(resolved, _cfaRoots);
+        if (cfaRoot != null)
+            warnings.Add(FolderWarning.CfaProtected(cfaRoot));
+        var syncMatch = FindMatchingCloudRoot(resolved);
+        if (syncMatch != null)
+            warnings.Add(FolderWarning.CloudSynced(syncMatch.Provider));
+        warnings.Add(FolderWarning.NotWritable());
+
+        return new FolderAssessment(resolved, false, warnings, FolderExists: true);
     }
 
     /// <summary>
@@ -464,10 +508,18 @@ public class FolderAssessor
 /// <param name="ResolvedPath">The fully resolved absolute path that was assessed.</param>
 /// <param name="IsWritable">Whether the write-probe succeeded (or the folder doesn't exist yet but its parent is writable).</param>
 /// <param name="Warnings">Any suitability warnings found. Empty means the folder is a good candidate.</param>
+/// <param name="FolderExists">
+/// Whether the folder itself existed at assessment time. Lets callers decide whether a
+/// <see cref="WarningKind.NotWritable"/> warning matters (a not-yet-created folder is
+/// expected to fail the probe) without issuing their own raw — potentially blocking —
+/// <c>Directory.Exists</c> call. Reported as <c>true</c> when the probe timed out on an
+/// unreachable share (see <see cref="FolderAssessor.AssessAsync"/>).
+/// </param>
 public record FolderAssessment(
     string ResolvedPath,
     bool IsWritable,
-    IReadOnlyList<FolderWarning> Warnings)
+    IReadOnlyList<FolderWarning> Warnings,
+    bool FolderExists = false)
 {
     /// <summary>True when no warnings were raised — the folder is suitable without caveats.</summary>
     public bool IsSuitable => Warnings.Count == 0;

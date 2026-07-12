@@ -102,9 +102,35 @@ public partial class SharingViewModel : ViewModelBase
         if (files.Count == 0) return;
 
         var file = files[0];
-        await using var stream = await file.OpenReadAsync();
         var fallbackLabel = System.IO.Path.GetFileNameWithoutExtension(file.Name);
-        var result = _parser.Parse(stream, fallbackLabel);
+
+        // Shared-schedule CSVs live on a network folder by design, and the parser
+        // consumes its stream synchronously on the UI thread — a share dying mid-read
+        // would freeze the app for the SMB redirector timeout. Read the raw bytes
+        // deadline-bounded first, then parse from memory (bytes, not text, so the
+        // parser's BOM/encoding detection still applies).
+        var localPath = file.TryGetLocalPath();
+        System.IO.Stream stream;
+        if (!string.IsNullOrEmpty(localPath))
+        {
+            var (completed, bytes) = await Services.NetworkFileOps.RunAsync(
+                () => System.IO.File.ReadAllBytes(localPath), "SharedSchedule.Read");
+            if (!completed || bytes is null)
+            {
+                StatusMessage = "The file's location is not responding. Check your network connection and try again.";
+                return;
+            }
+            stream = new System.IO.MemoryStream(bytes);
+        }
+        else
+        {
+            // Non-filesystem storage provider — no UNC path to stall on.
+            stream = await file.OpenReadAsync();
+        }
+
+        Services.ImportResult result;
+        await using (stream)
+            result = _parser.Parse(stream, fallbackLabel);
 
         if (result.FileError is not null)
         {
@@ -271,10 +297,19 @@ public partial class SharingViewModel : ViewModelBase
     }
 
 #if !BROWSER
+    /// <summary>
+    /// Resolves the configured shared-schedule folder as the picker's start location.
+    /// The folder is typically on a network share, so the existence probe is
+    /// deadline-bounded — an unreachable share degrades to the picker's default
+    /// location instead of freezing the UI for the SMB redirector timeout.
+    /// </summary>
     private async Task<IStorageFolder?> GetStartFolder(IStorageProvider storageProvider)
     {
         var folder = AppSettings.Current.SharedScheduleFolder;
-        if (!string.IsNullOrEmpty(folder) && System.IO.Directory.Exists(folder))
+        if (string.IsNullOrEmpty(folder)) return null;
+
+        var (completed, exists) = await Services.NetworkFileOps.DirectoryExistsAsync(folder);
+        if (completed && exists)
             return await storageProvider.TryGetFolderFromPathAsync(folder);
         return null;
     }

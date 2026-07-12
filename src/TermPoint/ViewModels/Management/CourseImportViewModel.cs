@@ -125,7 +125,18 @@ public partial class CourseImportViewModel : ViewModelBase
         string csvText;
         try
         {
-            csvText = await File.ReadAllTextAsync(path);
+            // Deadline-bounded read: the picked file may live on a network share, and a
+            // raw read against a dead share silently hangs the import for the SMB
+            // redirector timeout. Onboarding CSVs are small, so the standard deadline
+            // is generous.
+            var (completed, text) = await NetworkFileOps.ReadAllTextAsync(path);
+            if (!completed || text is null)
+            {
+                ErrorBanner = "Could not read file: the location is not responding. " +
+                              "Copy the file to a local folder and try again.";
+                return;
+            }
+            csvText = text;
         }
         catch (Exception ex)
         {

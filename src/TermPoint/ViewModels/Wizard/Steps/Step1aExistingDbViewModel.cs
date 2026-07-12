@@ -100,8 +100,13 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
 
     /// <summary>
     /// Assesses the folder of the chosen database file whenever <see cref="DbPath"/> changes.
+    /// Fire-and-forget: the assessment probes the filesystem, which can block on an
+    /// unreachable network path, so it runs deadline-bounded off the UI thread
+    /// (<see cref="FolderAssessor.AssessAsync"/>) with a latest-value guard.
     /// </summary>
-    partial void OnDbPathChanged(string value)
+    partial void OnDbPathChanged(string value) => _ = AssessDbPathAsync(value);
+
+    private async Task AssessDbPathAsync(string value)
     {
         DbFolderWarnings.Clear();
         if (string.IsNullOrWhiteSpace(value)) return;
@@ -109,7 +114,10 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
         var folder = Path.GetDirectoryName(value);
         if (string.IsNullOrEmpty(folder)) return;
 
-        var assessment = _assessor.Assess(folder);
+        var assessment = await _assessor.AssessAsync(folder);
+        if (value != DbPath) return; // superseded by a newer edit while probing
+
+        DbFolderWarnings.Clear();
         foreach (var w in assessment.Warnings)
         {
             // For existing DBs, don't warn about writability — the DB is already there,
@@ -123,16 +131,24 @@ public partial class Step1aExistingDbViewModel : WizardStepViewModel
 
     /// <summary>
     /// Assesses the backup folder whenever <see cref="BackupFolder"/> changes.
+    /// Fire-and-forget for the same reason as <see cref="OnDbPathChanged"/>.
     /// </summary>
-    partial void OnBackupFolderChanged(string value)
+    partial void OnBackupFolderChanged(string value) => _ = AssessBackupFolderAsync(value);
+
+    private async Task AssessBackupFolderAsync(string value)
     {
         BackupFolderWarnings.Clear();
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        var assessment = _assessor.Assess(value);
+        var assessment = await _assessor.AssessAsync(value);
+        if (value != BackupFolder) return; // superseded by a newer edit while probing
+
+        BackupFolderWarnings.Clear();
         foreach (var w in assessment.Warnings)
         {
-            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+            // NotWritable is expected for folders that don't exist yet — they'll be
+            // created later. Only warn if the folder already exists.
+            if (w.Kind == WarningKind.NotWritable && !assessment.FolderExists)
                 continue;
             BackupFolderWarnings.Add(w);
         }

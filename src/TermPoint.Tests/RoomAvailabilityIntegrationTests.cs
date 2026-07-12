@@ -17,7 +17,10 @@ namespace TermPoint.Tests;
 public class RoomAvailabilityIntegrationTests : IDisposable
 {
     // internal so FactRequiresLocalDbAttribute can probe for the file at discovery time.
-    internal const string SourceDbPath = @"C:\Users\gregs\SchedulerTest\BIOL-TT.db";
+    // 2026-07-12: repointed from C:\Users\gregs\SchedulerTest\ — the real-data DB moved to
+    // the app's ProgramData layout and every [FactRequiresLocalDb] test had been silently
+    // skipping since. Tests only read this file (each copies it to temp before opening).
+    internal const string SourceDbPath = @"C:\ProgramData\TermPoint\UFV\BIOL\BIOL-TT.db";
 
     private readonly string _tempDbPath;
     private readonly DatabaseContext _db;

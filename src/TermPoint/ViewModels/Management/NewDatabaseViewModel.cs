@@ -215,13 +215,26 @@ public partial class NewDatabaseViewModel : ViewModelBase
         OnPropertyChanged(nameof(SameFolderWarning));
         OnPropertyChanged(nameof(CanCreate));
 
+        // Fire-and-forget: the assessment probes the filesystem, which can block on an
+        // unreachable network path, so it runs deadline-bounded off the UI thread
+        // (FolderAssessor.AssessAsync) with a latest-value guard.
+        _ = AssessDbFolderAsync(value);
+    }
+
+    private async Task AssessDbFolderAsync(string value)
+    {
         DbFolderWarnings.Clear();
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        var assessment = _assessor.Assess(value);
+        var assessment = await _assessor.AssessAsync(value);
+        if (value != DbFolder) return; // superseded by a newer edit while probing
+
+        DbFolderWarnings.Clear();
         foreach (var w in assessment.Warnings)
         {
-            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+            // NotWritable is expected for folders that don't exist yet — they'll be
+            // created at commit time. Only warn if the folder already exists.
+            if (w.Kind == WarningKind.NotWritable && !assessment.FolderExists)
                 continue;
             DbFolderWarnings.Add(w);
         }
@@ -232,13 +245,21 @@ public partial class NewDatabaseViewModel : ViewModelBase
         OnPropertyChanged(nameof(SameFolderWarning));
         OnPropertyChanged(nameof(CanCreate));
 
+        _ = AssessBackupFolderAsync(value); // see AssessDbFolderAsync — bounded off-thread probe
+    }
+
+    private async Task AssessBackupFolderAsync(string value)
+    {
         BackupFolderWarnings.Clear();
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        var assessment = _assessor.Assess(value);
+        var assessment = await _assessor.AssessAsync(value);
+        if (value != BackupFolder) return; // superseded by a newer edit while probing
+
+        BackupFolderWarnings.Clear();
         foreach (var w in assessment.Warnings)
         {
-            if (w.Kind == WarningKind.NotWritable && !Directory.Exists(value))
+            if (w.Kind == WarningKind.NotWritable && !assessment.FolderExists)
                 continue;
             BackupFolderWarnings.Add(w);
         }
