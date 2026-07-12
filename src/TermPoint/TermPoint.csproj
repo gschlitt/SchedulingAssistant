@@ -67,6 +67,7 @@
     <Compile Remove="Services\BackupService.cs" />
     <Compile Remove="Services\UpdateService.cs" />
     <Compile Remove="Services\NetworkFileOps.cs" />
+    <Compile Remove="Services\StorageProviderExtensions.cs" />
     <Compile Remove="Services\DatabaseValidator.cs" />
     <Compile Remove="ViewModels\Management\SaveAndBackupViewModel.cs" />
     <Compile Remove="ViewModels\Management\NewDatabaseViewModel.cs" />

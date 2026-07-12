@@ -4,6 +4,7 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:conv="using:TermPoint.Converters"
 	xmlns:converters="clr-namespace:Avalonia.Controls.Converters;assembly=Avalonia.Controls"
+	xmlns:b="using:TermPoint.Behaviors"
 	xmlns:vm="using:TermPoint.ViewModels.GridView"
 	x:CompileBindings="False"
 	x:DataType="vm:AccessPanelViewModel">
@@ -118,7 +119,9 @@
 			BorderThickness="2">
 			<GroupBox.Header>
 				<StackPanel Orientation="Horizontal">
-					<Viewbox Width="13" Height="14">
+					<Viewbox Width="13" Height="14"
+							 b:HelpTip.Text="'Watches'can advise you if student access is affected by a scheduling decision."
+							 b:HelpTip.MoreHelpUrl="access.html">
 						<Path
 							Fill="Transparent"
 							Stroke="Black"
@@ -127,7 +130,9 @@
 							StrokeJoin="Round"
 							Data="{StaticResource OpenDoorIcon}" />
 					</Viewbox>
-					<TextBlock Text="Access" Margin="5,0" />
+					<TextBlock Text="Access" Margin="5,0"
+							   b:HelpTip.Text="'Watches' can advise you if student access is affected by a scheduling decision."
+							   b:HelpTip.MoreHelpUrl="access.html" />
 				</StackPanel>
 			</GroupBox.Header>
 

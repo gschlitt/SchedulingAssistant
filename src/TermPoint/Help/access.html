@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Using Access Watches — TermPoint Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+
+    <h1>Using Access Watches</h1>
+
+    <p>
+        The Access panel helps monitor whether students in a particular program or cohort can actually
+        access all the courses they need. It works by detecting <strong>time conflicts</strong> among the
+        sections that belong to a group you define — called a "watch." Any conflicts are indicated on Schedule View; it's
+        up to you what you wish to do about them.
+    </p>
+
+    <p>
+        If two sections from different courses overlap in time, and both fall within the same watch, TermPoint
+        flags it as a conflict. This tells you that a student who needs both courses cannot attend both.
+    </p>
+
+    <p>
+        While filtering to a program or cohort can provide you with quick visual check against conflicts,
+        an access watch is an easy double-check in case you forget or the schedule becomes too visually complex.
+    </p>
+
+    <h2>
+        User examples
+    </h2>
+
+    <p>
+        <ul>
+            <li>
+                A scheduler wants to ensure that the sections which serve their BA program have minimal conflicts.
+                The scheduler tags the courses serving the BA with the tag 'BA' and enrols a watch using that tag.
+                As scheduling proceeds, if two sections serving the BA conflict in time, the user is advised on Schedule View (conflicting meetings are highlighted)
+            </li>
+            <li>
+                Watches can be refined: the scheduler might only be concerned about potential conflicts among upper-level
+                sections serving the BA
+            </li>
+            <li>
+                A scheduler might just want to check access for an ad hoc group of courses (rather than those unified by a tag). The scheduler can easily form such a group and be confident that any conflicts will be flagged.
+            </li>
+        </ul>
+
+    </p>
+
+
+
+    <div class="tip">
+        <p>
+            Access watches examine conflicts across different courses, not within the same course.
+            Two sections of the same course overlapping is normal — a student only takes one.
+        </p>
+    </div>
+    <hr>
+
+    <h2>Where to Find It</h2>
+
+    <p>
+        The Access panel appears in the filter toolbar above the schedule grid. It shows a collapsed badge
+        that summarizes how many watches are active and how many conflicts exist. Click the badge to expand
+        the watch list and manage your watches.
+    </p>
+
+    <hr>
+
+    <h2>Creating a Watch</h2>
+
+    <p>
+        Click <strong>+ New Watch</strong> in the expanded Access panel. A small inline form appears with two
+        mode options:
+    </p>
+
+    <h3>Tag/Level-based mode</h3>
+    <p>
+        Define the watch by selecting one or more <strong>tags</strong> and/or <strong>levels</strong>. This is
+        best when your sections are already tagged by program or cohort (e.g. "Pre-Med", "Honours").
+    </p>
+    <ul>
+        <li>
+            <strong>Tags (AND logic)</strong> — a section must carry <em>all</em> selected tags to be included.
+            For example, selecting both "Pre-Med" and "Year 1" means only Pre-Med sections in first year are watched.
+        </li>
+        <li>
+            <strong>Levels (OR logic)</strong> — a section matches if its level equals <em>any</em> selected level.
+            For example, selecting "100" and "200" watches sections at either level.
+        </li>
+        <li>You can combine tags and levels: a section must pass both the tag filter AND the level filter.</li>
+    </ul>
+
+    <h3>Course-based mode</h3>
+    <p>
+        Directly select the specific courses whose sections should be watched. Use this when you know the exact
+        courses a student cohort must take, regardless of tags.
+    </p>
+
+    <div class="note">
+        <p>
+            A name is auto-generated as you make selections. You can edit it to something more memorable
+            (e.g. "First-year Biology cohort").
+        </p>
+    </div>
+
+    <p>
+        Click <strong>Create</strong> to save the watch. It immediately becomes active and conflicts (if any)
+        appear on the grid.
+    </p>
+
+    <hr>
+
+    <h2>Reading the Results</h2>
+
+    <p>
+        Once a watch is created, TermPoint checks for time overlaps among the sections it covers. Results appear
+        in two places:
+    </p>
+
+    <ul>
+        <li>
+            On Schedule View: conflicting sections are highlighted in red, with a line connecting them if they are in different, but overlapping, blocks.
+        </li>
+        
+        <li><strong>Collapsed badge</strong> — shows "2 watches, 3 conflicts" at a glance.</li>
+        <li>
+            <strong>Expanded watch list</strong> — each watch shows its own conflict count and the specific
+            section pairs that overlap (e.g. "MATH 101 A / CHEM 121 B").
+        </li>
+    </ul>
+
+    <p>
+        Conflicts are recalculated automatically whenever sections are added, edited, or removed.
+    </p>
+
+    <hr>
+
+    <h2>Managing Watches</h2>
+
+    <h3>Enabling and disabling</h3>
+    <p>
+        Each watch has a checkbox toggle. Disabling a watch keeps it in the list but stops it from generating
+        conflict reports. This is useful if you want to focus on one watch at a time without deleting others.
+    </p>
+
+    <h3>Deleting a watch</h3>
+    <p>
+        Click the <strong>×</strong> button beside a watch to remove it permanently. The conflict count
+        updates immediately.
+    </p>
+
+    <hr>
+
+    <h2>Practical Tips</h2>
+
+    <ul>
+        <li>
+            <strong>Start with tags.</strong> If you've already tagged courses by program (under Scheduling
+            Environment), tag-based watches are the fastest to set up and maintain — new sections
+            automatically inherit their course's tags.
+        </li>
+        <li>
+            <strong>Use levels to narrow scope.</strong> A "Pre-Med" tag might span 4 years of courses. Adding
+            a level filter (e.g. "100") lets you check just the first-year experience.
+        </li>
+        <li>
+            <strong>Create multiple watches.</strong> You might have one watch per program or per year-level.
+            Each watch reports its own conflicts independently.
+        </li>
+        <li>
+            <strong>Watches are per-semester.</strong> Switching semesters loads the watches defined for that
+            semester. If you need the same watch in both Fall and Spring, create it in each.
+        </li>
+    </ul>
+
+    <div class="warn">
+        <p>
+            Access watches only detect conflicts among the sections currently visible in the grid. If you have
+            active filters hiding some sections, those hidden sections are not included in conflict detection.
+        </p>
+    </div>
+
+</body>
+</html>

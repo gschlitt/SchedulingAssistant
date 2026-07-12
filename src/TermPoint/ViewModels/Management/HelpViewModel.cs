@@ -197,6 +197,13 @@ public sealed partial class HelpViewModel : ViewModelBase
             HtmlFileName = "multi-user.html"
         },
 
+        new()
+        {
+            Title       = "Using Access Watches",
+            Description = "Detect time conflicts for student cohorts using watches",
+            HtmlFileName = "access.html"
+        },
+
          new()
          {
              Title="Workflows",

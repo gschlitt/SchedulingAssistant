@@ -183,13 +183,10 @@ public partial class CourseHistoryExportViewModel : ViewModelBase
 
             // File picker
             var settings = AppSettings.Current;
-            IStorageFolder? suggestedFolder = null;
-            if (settings.LastCourseHistoryExportPath is not null)
-            {
-                var dir = Path.GetDirectoryName(settings.LastCourseHistoryExportPath);
-                if (dir is not null)
-                    suggestedFolder = await window.StorageProvider.TryGetFolderFromPathAsync(dir);
-            }
+            // Reachability-gated so a last-used folder on a dead share can't stall the
+            // UI thread before the picker opens (TryGetReachableStartFolderAsync).
+            var suggestedFolder = await window.StorageProvider
+                .TryGetReachableStartFolderAsync(Path.GetDirectoryName(settings.LastCourseHistoryExportPath));
 
             var suggestedFileName = $"{SanitizeFilename(course.CalendarCode)}-History.csv";
 

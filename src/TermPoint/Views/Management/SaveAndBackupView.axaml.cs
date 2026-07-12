@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using TermPoint.Services;
 using TermPoint.ViewModels.Management;
 
 namespace TermPoint.Views.Management;
@@ -29,14 +30,14 @@ public partial class SaveAndBackupView : UserControl
             var topLevel = TopLevel.GetTopLevel(this);
             if (topLevel is null) return;
 
-            // Pre-select the current folder if it exists on disk.
+            // Pre-select the current folder if it's reachable. The reachability probe
+            // is deadline-bounded (TryGetReachableStartFolderAsync) so a backup folder on
+            // a dead network share can't freeze the UI thread before the picker opens.
             IStorageFolder? suggestedFolder = null;
-            if (DataContext is SaveAndBackupViewModel vm
-                && !string.IsNullOrWhiteSpace(vm.BackupFolderPath)
-                && Directory.Exists(vm.BackupFolderPath))
+            if (DataContext is SaveAndBackupViewModel vm)
             {
                 suggestedFolder = await topLevel.StorageProvider
-                    .TryGetFolderFromPathAsync(vm.BackupFolderPath);
+                    .TryGetReachableStartFolderAsync(vm.BackupFolderPath);
             }
 
             var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(

@@ -49,13 +49,10 @@ public partial class ExportViewModel : ViewModelBase
         {
             var settings = AppSettings.Current;
 
-            IStorageFolder? suggestedFolder = null;
-            if (settings.LastExportPath is not null)
-            {
-                var dir = Path.GetDirectoryName(settings.LastExportPath);
-                if (dir is not null)
-                    suggestedFolder = await window.StorageProvider.TryGetFolderFromPathAsync(dir);
-            }
+            // Reachability-gated so a last-used folder on a dead share can't stall the
+            // UI thread before the picker opens (TryGetReachableStartFolderAsync).
+            var suggestedFolder = await window.StorageProvider
+                .TryGetReachableStartFolderAsync(Path.GetDirectoryName(settings.LastExportPath));
 
             var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {

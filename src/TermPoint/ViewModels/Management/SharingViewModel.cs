@@ -299,19 +299,12 @@ public partial class SharingViewModel : ViewModelBase
 #if !BROWSER
     /// <summary>
     /// Resolves the configured shared-schedule folder as the picker's start location.
-    /// The folder is typically on a network share, so the existence probe is
-    /// deadline-bounded — an unreachable share degrades to the picker's default
-    /// location instead of freezing the UI for the SMB redirector timeout.
+    /// The folder is typically on a network share, so the reachability probe is
+    /// deadline-bounded (<see cref="Services.StorageProviderExtensions.TryGetReachableStartFolderAsync"/>) —
+    /// an unreachable share degrades to the picker's default location instead of
+    /// freezing the UI for the SMB redirector timeout.
     /// </summary>
-    private async Task<IStorageFolder?> GetStartFolder(IStorageProvider storageProvider)
-    {
-        var folder = AppSettings.Current.SharedScheduleFolder;
-        if (string.IsNullOrEmpty(folder)) return null;
-
-        var (completed, exists) = await Services.NetworkFileOps.DirectoryExistsAsync(folder);
-        if (completed && exists)
-            return await storageProvider.TryGetFolderFromPathAsync(folder);
-        return null;
-    }
+    private Task<IStorageFolder?> GetStartFolder(IStorageProvider storageProvider)
+        => storageProvider.TryGetReachableStartFolderAsync(AppSettings.Current.SharedScheduleFolder);
 #endif
 }
