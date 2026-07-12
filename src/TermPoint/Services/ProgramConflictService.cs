@@ -99,15 +99,32 @@ public static class ProgramConflictService
 
         if (watch.Mode == ProgramWatchMode.Tag)
         {
-            if (watch.TagIds.Count == 0) return covered;
+            var hasTags = watch.TagIds.Count > 0;
+            var hasLevels = watch.LevelIds.Count > 0;
+
+            if (!hasTags && !hasLevels) return covered;
+
+            var levelSet = hasLevels ? new HashSet<string>(watch.LevelIds) : null;
 
             foreach (var sec in sections)
             {
-                if (!tagIdsBySectionId.TryGetValue(sec.Id, out var sectionTags))
-                    continue;
+                // Tag filter (AND): section must carry all listed tags.
+                if (hasTags)
+                {
+                    if (!tagIdsBySectionId.TryGetValue(sec.Id, out var sectionTags))
+                        continue;
+                    if (!watch.TagIds.All(t => sectionTags.Contains(t)))
+                        continue;
+                }
 
-                if (watch.TagIds.All(t => sectionTags.Contains(t)))
-                    covered.Add(sec);
+                // Level filter (OR): section's level must match any listed level.
+                if (levelSet is not null)
+                {
+                    if (string.IsNullOrEmpty(sec.Level) || !levelSet.Contains(sec.Level))
+                        continue;
+                }
+
+                covered.Add(sec);
             }
         }
         else

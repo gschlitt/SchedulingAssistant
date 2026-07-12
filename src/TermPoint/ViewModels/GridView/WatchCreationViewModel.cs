@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
+using TermPoint.Services;
 using TermPoint.ViewModels.Management;
 using System.Collections.ObjectModel;
 
@@ -36,8 +37,11 @@ public partial class WatchCreationViewModel : ObservableObject
     /// <summary>The last value set by auto-generation, used to detect manual edits.</summary>
     private string _lastAutoName = string.Empty;
 
-    /// <summary>Available tags for selection (tag-based mode).</summary>
+    /// <summary>Available tags for selection (tag/level-based mode).</summary>
     public ObservableCollection<SelectableItem> Tags { get; } = [];
+
+    /// <summary>Available levels for selection (tag/level-based mode, OR logic).</summary>
+    public ObservableCollection<SelectableItem> Levels { get; } = [];
 
     /// <summary>Available courses for selection (course-based mode).</summary>
     public ObservableCollection<SelectableItem> Courses { get; } = [];
@@ -70,6 +74,7 @@ public partial class WatchCreationViewModel : ObservableObject
         WatchName = string.Empty;
         IsTagMode = true;
         LoadTags();
+        LoadLevels();
         LoadCourses();
         IsVisible = true;
     }
@@ -81,6 +86,7 @@ public partial class WatchCreationViewModel : ObservableObject
         _nameManuallyEdited = false;
         _lastAutoName = string.Empty;
         Tags.Clear();
+        Levels.Clear();
         Courses.Clear();
         WatchName = string.Empty;
         ValidationError = null;
@@ -123,25 +129,49 @@ public partial class WatchCreationViewModel : ObservableObject
     [RelayCommand]
     private void Save()
     {
-        var selectedIds = GetSelectedIds();
-        if (selectedIds.Count == 0)
+        if (IsTagMode)
         {
-            ValidationError = IsTagMode
-                ? "Select at least one tag."
-                : "Select at least one course.";
-            return;
+            var selectedTagIds = GetSelectedIdsFrom(Tags);
+            var selectedLevelIds = GetSelectedIdsFrom(Levels);
+
+            if (selectedTagIds.Count == 0 && selectedLevelIds.Count == 0)
+            {
+                ValidationError = "Select at least one tag or level.";
+                return;
+            }
+
+            var watch = new ProgramWatch
+            {
+                Name = string.IsNullOrWhiteSpace(WatchName) ? GenerateDefaultName() : WatchName.Trim(),
+                Mode = ProgramWatchMode.Tag,
+                IsEnabled = true,
+                TagIds = selectedTagIds,
+                LevelIds = selectedLevelIds
+            };
+
+            _onSave(watch);
+        }
+        else
+        {
+            var selectedCourseIds = GetSelectedIdsFrom(Courses);
+
+            if (selectedCourseIds.Count == 0)
+            {
+                ValidationError = "Select at least one course.";
+                return;
+            }
+
+            var watch = new ProgramWatch
+            {
+                Name = string.IsNullOrWhiteSpace(WatchName) ? GenerateDefaultName() : WatchName.Trim(),
+                Mode = ProgramWatchMode.Course,
+                IsEnabled = true,
+                CourseIds = selectedCourseIds
+            };
+
+            _onSave(watch);
         }
 
-        var watch = new ProgramWatch
-        {
-            Name = string.IsNullOrWhiteSpace(WatchName) ? GenerateDefaultName(selectedIds) : WatchName.Trim(),
-            Mode = IsTagMode ? ProgramWatchMode.Tag : ProgramWatchMode.Course,
-            IsEnabled = true,
-            TagIds = IsTagMode ? selectedIds : [],
-            CourseIds = IsTagMode ? [] : selectedIds
-        };
-
-        _onSave(watch);
         Hide();
     }
 
@@ -153,34 +183,51 @@ public partial class WatchCreationViewModel : ObservableObject
         _onCancel();
     }
 
-    private List<string> GetSelectedIds()
-    {
-        var source = IsTagMode ? Tags : Courses;
-        return [.. source.Where(i => i.IsSelected).Select(i => i.Id)];
-    }
+    private static List<string> GetSelectedIdsFrom(ObservableCollection<SelectableItem> source) =>
+        [.. source.Where(i => i.IsSelected).Select(i => i.Id)];
 
     private void RegenerateName()
     {
-        var source = IsTagMode ? Tags : Courses;
-        var selected = source.Where(i => i.IsSelected).Select(i => i.Name).ToList();
-
-        var generated = selected.Count switch
+        if (IsTagMode)
         {
-            0 => string.Empty,
-            _ when IsTagMode => string.Join(" + ", selected),
-            _ => string.Join(", ", selected)
-        };
-
-        _lastAutoName = generated;
-        WatchName = generated;
+            var tagNames = Tags.Where(i => i.IsSelected).Select(i => i.Name).ToList();
+            var levelNames = Levels.Where(i => i.IsSelected).Select(i => i.Name).ToList();
+            var generated = FormatTagLevelName(tagNames, levelNames);
+            _lastAutoName = generated;
+            WatchName = generated;
+        }
+        else
+        {
+            var courseNames = Courses.Where(i => i.IsSelected).Select(i => i.Name).ToList();
+            var generated = courseNames.Count > 0 ? string.Join(", ", courseNames) : string.Empty;
+            _lastAutoName = generated;
+            WatchName = generated;
+        }
     }
 
-    private string GenerateDefaultName(List<string> selectedIds)
+    /// <summary>
+    /// Builds a display name from selected tags and levels.
+    /// Tags joined with " + ", levels joined with "/", combined with " @ " separator.
+    /// </summary>
+    private static string FormatTagLevelName(List<string> tagNames, List<string> levelNames)
     {
-        var source = IsTagMode ? Tags : Courses;
-        var names = source.Where(i => selectedIds.Contains(i.Id)).Select(i => i.Name).ToList();
-        return IsTagMode ? string.Join(" + ", names) : string.Join(", ", names);
+        var tagPart = tagNames.Count > 0 ? string.Join(" + ", tagNames) : null;
+        var levelPart = levelNames.Count > 0 ? string.Join("/", levelNames) : null;
+
+        return (tagPart, levelPart) switch
+        {
+            (not null, not null) => $"{tagPart} @ {levelPart}",
+            (not null, null) => tagPart,
+            (null, not null) => levelPart,
+            _ => string.Empty
+        };
     }
+
+    private string GenerateDefaultName() => IsTagMode
+        ? FormatTagLevelName(
+            Tags.Where(i => i.IsSelected).Select(i => i.Name).ToList(),
+            Levels.Where(i => i.IsSelected).Select(i => i.Name).ToList())
+        : string.Join(", ", Courses.Where(i => i.IsSelected).Select(i => i.Name));
 
     private void LoadTags()
     {
@@ -188,6 +235,13 @@ public partial class WatchCreationViewModel : ObservableObject
         var tags = _envRepo.GetAll(SchedulingEnvironmentTypes.Tag);
         foreach (var tag in tags)
             Tags.Add(new SelectableItem(tag.Id, tag.Name, OnItemSelectionChanged));
+    }
+
+    private void LoadLevels()
+    {
+        Levels.Clear();
+        foreach (var level in CourseLevelParser.AllLevels)
+            Levels.Add(new SelectableItem(level, level, OnItemSelectionChanged));
     }
 
     private void LoadCourses()

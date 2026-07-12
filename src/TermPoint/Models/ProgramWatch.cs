@@ -29,4 +29,12 @@ public class ProgramWatch
     /// References <c>Courses</c> rows by ID.
     /// </summary>
     public List<string> CourseIds { get; set; } = [];
+
+    /// <summary>
+    /// Level values for tag/level-based mode (OR logic — a section matches if its level
+    /// equals any listed value). When empty, level filtering is not applied.
+    /// Values are the same strings used by <see cref="Services.CourseLevelParser"/>
+    /// (e.g. "100", "200", "300").
+    /// </summary>
+    public List<string> LevelIds { get; set; } = [];
 }

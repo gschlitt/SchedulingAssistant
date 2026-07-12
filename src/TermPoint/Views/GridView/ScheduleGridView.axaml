@@ -37,13 +37,51 @@
 			<Setter Property="MinHeight" Value="0" />
 			<Setter Property="Cursor" Value="Hand" />
 		</Style>
+		<!--  Events toggle checkbox style (moved from GridFilterView to sit after Access)  -->
+		<Style Selector="CheckBox.EventsToggle">
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="Cursor" Value="Hand" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+						<Border
+							x:Name="Box"
+							Width="13"
+							Height="13"
+							Background="{StaticResource UserInteractionBrush}"
+							BorderBrush="Black"
+							BorderThickness="1"
+							CornerRadius="2">
+							<Path
+								x:Name="Checkmark"
+								HorizontalAlignment="Center"
+								VerticalAlignment="Center"
+								Data="M 1,5 L 4,8 L 9,2"
+								IsVisible="False"
+								Stroke="Black"
+								StrokeThickness="1.5"
+								StrokeLineCap="Round"
+								StrokeJoin="Round" />
+						</Border>
+						<ContentPresenter
+							VerticalAlignment="Center"
+							Content="{TemplateBinding Content}"
+							FontSize="{TemplateBinding FontSize}"
+							Foreground="{TemplateBinding Foreground}" />
+					</StackPanel>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+		<Style Selector="CheckBox.EventsToggle:checked /template/ Path#Checkmark">
+			<Setter Property="IsVisible" Value="True" />
+		</Style>
 	</UserControl.Styles>
 
 	<Grid
 		Background="{StaticResource AppBackground}"
 		RowDefinitions="Auto,Auto,*,Auto">
 
-		<!--  Row 0: Filter bar + Access panel - always visible  -->
+		<!--  Row 0: Filter bar + Access panel + Events toggle - always visible  -->
 		<WrapPanel Grid.Row="0" Margin="0,0,0,4">
 			<local:GridFilterView
 				x:Name="GridFilterBar"
@@ -55,6 +93,24 @@
 				x:Name="AccessPanel"
 				MinHeight="28"
 				DataContext="{Binding Access}" />
+
+			<!--  Events visibility toggle  -->
+			<Border
+				Margin="4,4.5,0,0"
+				Padding="2,2,2,3"
+				VerticalAlignment="Bottom"
+				Background="{StaticResource AppBackground}"
+				BorderThickness="0"
+				CornerRadius="4">
+				<CheckBox
+					Classes="EventsToggle"
+					BorderBrush="Black" BorderThickness="1"
+					VerticalAlignment="Center"
+					Content="Events"
+					FontSize="{StaticResource FontSizeNormal}"
+					IsChecked="{Binding Filter.ShowMeetings, Mode=TwoWay}"
+					ToolTip.Tip="Show or hide events on the schedule grid" />
+			</Border>
 		</WrapPanel>
 
 		<!--  Row 1: Error banner (only visible when LastErrorMessage is set)  -->

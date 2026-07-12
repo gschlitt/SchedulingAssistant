@@ -292,10 +292,121 @@ public sealed class ProgramConflictServiceTests
         Assert.Equal(3, result.Count);
     }
 
+    // ── Level-only: overlap among sections at selected levels ──────────────────
+
+    [Fact]
+    public void LevelOnly_OverlappingSectionsAtSelectedLevel_ProducesConflict()
+    {
+        var watch = MakeTagWatch("w1", "300-level", [], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, []);
+        var secB = MakeSectionWithLevel("s2", "crs-2", "300", day: 1, start: 510, duration: 60, []);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void LevelOnly_SectionAtDifferentLevel_NotCovered()
+    {
+        var watch = MakeTagWatch("w1", "300-level", [], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, []);
+        var secB = MakeSectionWithLevel("s2", "crs-2", "100", day: 1, start: 480, duration: 60, []);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void LevelOnly_MultipleLevels_OrLogic_ProducesConflict()
+    {
+        var watch = MakeTagWatch("w1", "300+400", [], ["300", "400"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, []);
+        var secB = MakeSectionWithLevel("s2", "crs-2", "400", day: 1, start: 480, duration: 60, []);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void LevelOnly_SameCourse_NoConflict()
+    {
+        var watch = MakeTagWatch("w1", "300-level", [], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, []);
+        var secB = MakeSectionWithLevel("s2", "crs-1", "300", day: 1, start: 480, duration: 60, []);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void LevelOnly_SectionWithNoLevel_NotCovered()
+    {
+        var watch = MakeTagWatch("w1", "300-level", [], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, []);
+        var secB = MakeSectionWithLevel("s2", "crs-2", null, day: 1, start: 480, duration: 60, []);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Empty(result);
+    }
+
+    // ── Tags + Levels combined: AND tags, then intersect with OR levels ──────
+
+    [Fact]
+    public void TagsAndLevels_BothMatch_ProducesConflict()
+    {
+        var watch = MakeTagWatch("w1", "BSc + 300", ["tag-bsc"], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, ["tag-bsc"]);
+        var secB = MakeSectionWithLevel("s2", "crs-2", "300", day: 1, start: 480, duration: 60, ["tag-bsc"]);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void TagsAndLevels_TagMatchButLevelMismatch_NotCovered()
+    {
+        var watch = MakeTagWatch("w1", "BSc + 300", ["tag-bsc"], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, ["tag-bsc"]);
+        var secB = MakeSectionWithLevel("s2", "crs-2", "100", day: 1, start: 480, duration: 60, ["tag-bsc"]);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void TagsAndLevels_LevelMatchButTagMissing_NotCovered()
+    {
+        var watch = MakeTagWatch("w1", "BSc + 300", ["tag-bsc"], ["300"]);
+
+        var secA = MakeSectionWithLevel("s1", "crs-1", "300", day: 1, start: 480, duration: 60, ["tag-bsc"]);
+        var secB = MakeSectionWithLevel("s2", "crs-2", "300", day: 1, start: 480, duration: 60, []);
+
+        var result = Detect([watch], [secA, secB], TagMap(secA, secB));
+
+        Assert.Empty(result);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static ProgramWatch MakeTagWatch(string id, string name, List<string> tagIds) =>
         new() { Id = id, Name = name, Mode = ProgramWatchMode.Tag, IsEnabled = true, TagIds = tagIds };
+
+    private static ProgramWatch MakeTagWatch(string id, string name, List<string> tagIds, List<string> levelIds) =>
+        new() { Id = id, Name = name, Mode = ProgramWatchMode.Tag, IsEnabled = true, TagIds = tagIds, LevelIds = levelIds };
 
     private static ProgramWatch MakeCourseWatch(string id, string name, List<string> courseIds) =>
         new() { Id = id, Name = name, Mode = ProgramWatchMode.Course, IsEnabled = true, CourseIds = courseIds };
@@ -310,6 +421,19 @@ public sealed class ProgramConflictServiceTests
             CourseId = courseId,
             TagIds = tags,
             Schedule = [new SectionDaySchedule { Day = day, StartMinutes = start, DurationMinutes = duration, Frequency = frequency }],
+        };
+
+    /// <summary>Creates a section with a level and a single schedule slot.</summary>
+    private static Section MakeSectionWithLevel(
+        string id, string courseId, string? level, int day, int start, int duration,
+        List<string> tags) =>
+        new()
+        {
+            Id = id,
+            CourseId = courseId,
+            Level = level,
+            TagIds = tags,
+            Schedule = [new SectionDaySchedule { Day = day, StartMinutes = start, DurationMinutes = duration }],
         };
 
     /// <summary>Creates a section with multiple schedule slots.</summary>

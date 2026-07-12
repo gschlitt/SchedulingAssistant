@@ -21,11 +21,11 @@ public partial class AccessPanelViewModel : ObservableObject
     /// <summary>The watch list for the current semester.</summary>
     public ObservableCollection<ProgramWatchItemViewModel> Watches { get; } = [];
 
-    /// <summary>
-    /// Summary text for the collapsed badge, e.g. "2 watches, 3 conflicts" or
-    /// "No active watches".
-    /// </summary>
-    [ObservableProperty] private string _summaryText = "No active watches";
+    /// <summary>Non-conflict prefix for the collapsed badge, e.g. "2 watches, " or "0 watches".</summary>
+    [ObservableProperty] private string _summaryPrefix = "0 watches";
+
+    /// <summary>Conflict portion of the badge, e.g. "3 conflicts". Empty when zero.</summary>
+    [ObservableProperty] private string _summaryConflictText = string.Empty;
 
     /// <summary>Total conflict count across all enabled watches.</summary>
     [ObservableProperty] private int _totalConflictCount;
@@ -59,6 +59,9 @@ public partial class AccessPanelViewModel : ObservableObject
                               or nameof(SemesterContext.SelectedSemesters))
                 LoadWatches();
         };
+
+        // Load watches for the semester that may already be selected at construction time.
+        LoadWatches();
     }
 
     /// <summary>
@@ -70,22 +73,36 @@ public partial class AccessPanelViewModel : ObservableObject
 
     /// <summary>
     /// Called by the grid pipeline after conflict detection to update per-watch conflict
-    /// counts and the summary badge.
+    /// counts, section-pair details, and the summary badge.
     /// </summary>
     /// <param name="conflicts">The conflicts computed by <see cref="ProgramConflictService"/>.</param>
-    public void UpdateConflictCounts(IReadOnlyList<ProgramConflict> conflicts)
+    /// <param name="sectionLabels">Section ID → display label (e.g. "MATH340 AB1") for involved sections.</param>
+    public void UpdateConflictCounts(IReadOnlyList<ProgramConflict> conflicts,
+                                     IReadOnlyDictionary<string, string> sectionLabels)
     {
         _lastConflicts = conflicts;
 
         var countByWatch = new Dictionary<string, int>();
+        var detailsByWatch = new Dictionary<string, List<string>>();
         foreach (var c in conflicts)
         {
             countByWatch.TryGetValue(c.WatchId, out var n);
             countByWatch[c.WatchId] = n + 1;
+
+            var labelA = sectionLabels.GetValueOrDefault(c.MeetingA.SectionId, c.MeetingA.SectionId);
+            var labelB = sectionLabels.GetValueOrDefault(c.MeetingB.SectionId, c.MeetingB.SectionId);
+            var pair = $"{labelA} / {labelB}";
+            if (!detailsByWatch.TryGetValue(c.WatchId, out var list))
+                detailsByWatch[c.WatchId] = list = [];
+            if (!list.Contains(pair))
+                list.Add(pair);
         }
 
         foreach (var item in Watches)
+        {
             item.ConflictCount = countByWatch.GetValueOrDefault(item.Watch.Id, 0);
+            item.ConflictDetails = detailsByWatch.GetValueOrDefault(item.Watch.Id, []);
+        }
 
         TotalConflictCount = conflicts.Count;
         RefreshSummary();
@@ -144,13 +161,31 @@ public partial class AccessPanelViewModel : ObservableObject
     {
         if (watch.Mode == ProgramWatchMode.Tag)
         {
-            var count = watch.TagIds.Count;
-            return count switch
+            var tagCount = watch.TagIds.Count;
+            var levelCount = watch.LevelIds.Count;
+
+            var tagPart = tagCount switch
             {
-                0 => "Tags: (none)",
-                1 => "Tags: 1 tag",
-                _ => $"Tags: {count} tags"
+                0 => null,
+                1 => "1 tag",
+                _ => $"{tagCount} tags"
             };
+            var levelPart = levelCount switch
+            {
+                0 => null,
+                1 => "1 level",
+                _ => $"{levelCount} levels"
+            };
+
+            var detail = (tagPart, levelPart) switch
+            {
+                (not null, not null) => $"{tagPart}, {levelPart}",
+                (not null, null) => tagPart,
+                (null, not null) => levelPart,
+                _ => "(none)"
+            };
+
+            return $"Tag/Level: {detail}";
         }
         else
         {
@@ -185,23 +220,17 @@ public partial class AccessPanelViewModel : ObservableObject
     private void RefreshSummary()
     {
         var enabledCount = Watches.Count(w => w.IsEnabled);
-        if (enabledCount == 0)
-        {
-            SummaryText = Watches.Count == 0
-                ? "No active watches"
-                : $"{Watches.Count} watch{(Watches.Count == 1 ? "" : "es")} (all disabled)";
-            return;
-        }
-
         var watchWord = enabledCount == 1 ? "watch" : "watches";
-        if (TotalConflictCount == 0)
+
+        if (TotalConflictCount > 0)
         {
-            SummaryText = $"{enabledCount} {watchWord}, no conflicts";
+            SummaryPrefix = $"{enabledCount} {watchWord}, ";
+            SummaryConflictText = $"{TotalConflictCount} {(TotalConflictCount == 1 ? "conflict" : "conflicts")}";
         }
         else
         {
-            var conflictWord = TotalConflictCount == 1 ? "conflict" : "conflicts";
-            SummaryText = $"{enabledCount} {watchWord}, {TotalConflictCount} {conflictWord}";
+            SummaryPrefix = $"{enabledCount} {watchWord}";
+            SummaryConflictText = string.Empty;
         }
     }
 

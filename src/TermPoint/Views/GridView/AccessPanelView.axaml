@@ -120,12 +120,12 @@
 				<StackPanel Orientation="Horizontal">
 					<Viewbox Width="13" Height="14">
 						<Path
-							Fill="{StaticResource UserInteractionBrush}"
+							Fill="Transparent"
 							Stroke="Black"
-							StrokeThickness="0.5"
+							StrokeThickness="2"
 							StrokeLineCap="Round"
 							StrokeJoin="Round"
-							Data="{StaticResource EyeIcon}" />
+							Data="{StaticResource OpenDoorIcon}" />
 					</Viewbox>
 					<TextBlock Text="Access" Margin="5,0" />
 				</StackPanel>
@@ -134,8 +134,15 @@
 			<Panel>
 				<ToggleButton
 					x:Name="AccessToggle"
-					Classes="AccessDim"
-					Content="{Binding SummaryText}" />
+					Classes="AccessDim">
+					<StackPanel Orientation="Horizontal">
+						<TextBlock Text="{Binding SummaryPrefix}" />
+						<TextBlock
+							Text="{Binding SummaryConflictText}"
+							Foreground="{StaticResource ProgramConflictBrush}"
+							IsVisible="{Binding SummaryConflictText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+					</StackPanel>
+				</ToggleButton>
 				<Popup
 					x:Name="AccessPopup"
 					IsLightDismissEnabled="True"
@@ -144,13 +151,14 @@
 					PlacementTarget="{Binding #AccessToggle}">
 					<Border
 						MinWidth="220"
-						MaxHeight="350"
+						MaxHeight="500"
 						Padding="8"
 						Background="{StaticResource FilterExpanderContent}"
 						BorderBrush="{StaticResource FilterPopupBorder}"
 						BorderThickness="1"
 						CornerRadius="5"
 						BoxShadow="{StaticResource FilterPopupShadow}">
+						<ScrollViewer VerticalScrollBarVisibility="Auto">
 						<StackPanel Spacing="6">
 							<!-- Watch list -->
 							<ItemsControl ItemsSource="{Binding Watches}">
@@ -177,9 +185,24 @@
 														<TextBlock
 															Text="{Binding ConflictText}"
 															FontSize="10"
-															Foreground="{StaticResource UserInteractionBrush}"
+															Foreground="{StaticResource ProgramConflictBrush}"
 															IsVisible="{Binding ConflictText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 													</StackPanel>
+													<!-- Conflict pair details -->
+													<ItemsControl
+														ItemsSource="{Binding ConflictDetails}"
+														IsVisible="{Binding ConflictText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+														Margin="0,2,0,0">
+														<ItemsControl.ItemTemplate>
+															<DataTemplate>
+																<TextBlock
+																	Text="{Binding}"
+																	FontSize="9"
+																	Foreground="{StaticResource ProgramConflictBrush}"
+																	Margin="6,0,0,0" />
+															</DataTemplate>
+														</ItemsControl.ItemTemplate>
+													</ItemsControl>
 												</StackPanel>
 
 												<!-- On/off toggle -->
@@ -240,7 +263,7 @@
 									<!-- Mode selector -->
 									<StackPanel Orientation="Horizontal" Spacing="8">
 										<RadioButton
-											Content="Tag-based"
+											Content="Tag/Level-based"
 											FontSize="10"
 											IsChecked="{Binding IsTagMode}"
 											GroupName="WatchMode"
@@ -255,29 +278,59 @@
 											Padding="2,0" />
 									</StackPanel>
 
-									<!-- Tag multi-select (visible in tag mode) -->
-									<Border
-										IsVisible="{Binding IsTagMode}"
-										MaxHeight="120"
-										BorderBrush="{StaticResource FilterGroupBorder}"
-										BorderThickness="1"
-										CornerRadius="3"
-										Padding="2">
-										<ScrollViewer VerticalScrollBarVisibility="Auto">
-											<ItemsControl ItemsSource="{Binding Tags}">
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<CheckBox
-															Content="{Binding Name}"
-															IsChecked="{Binding IsSelected}"
-															FontSize="10"
-															MinHeight="0"
-															Padding="4,1" />
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-										</ScrollViewer>
-									</Border>
+									<!-- Tag/Level multi-select (visible in tag/level mode) -->
+									<StackPanel IsVisible="{Binding IsTagMode}" Spacing="4">
+										<!-- Tags -->
+										<TextBlock Text="Tags (AND)" FontSize="9" Foreground="Gray" Margin="2,0,0,0" />
+										<Border
+											MaxHeight="100"
+											BorderBrush="{StaticResource FilterGroupBorder}"
+											BorderThickness="1"
+											CornerRadius="3"
+											Padding="2">
+											<ScrollViewer VerticalScrollBarVisibility="Auto">
+												<ItemsControl ItemsSource="{Binding Tags}">
+													<ItemsControl.ItemTemplate>
+														<DataTemplate>
+															<CheckBox
+																Content="{Binding Name}"
+																IsChecked="{Binding IsSelected}"
+																FontSize="10"
+																MinHeight="0"
+																Padding="4,1" />
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+											</ScrollViewer>
+										</Border>
+
+										<!-- Divider -->
+										<Separator Margin="0,2" />
+
+										<!-- Levels -->
+										<TextBlock Text="Levels (OR)" FontSize="9" Foreground="Gray" Margin="2,0,0,0" />
+										<Border
+											MaxHeight="100"
+											BorderBrush="{StaticResource FilterGroupBorder}"
+											BorderThickness="1"
+											CornerRadius="3"
+											Padding="2">
+											<ScrollViewer VerticalScrollBarVisibility="Auto">
+												<ItemsControl ItemsSource="{Binding Levels}">
+													<ItemsControl.ItemTemplate>
+														<DataTemplate>
+															<CheckBox
+																Content="{Binding Name}"
+																IsChecked="{Binding IsSelected}"
+																FontSize="10"
+																MinHeight="0"
+																Padding="4,1" />
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+											</ScrollViewer>
+										</Border>
+									</StackPanel>
 
 									<!-- Course multi-select (visible in course mode) -->
 									<Border
@@ -334,6 +387,7 @@
 								</StackPanel>
 							</Border>
 						</StackPanel>
+						</ScrollViewer>
 					</Border>
 				</Popup>
 			</Panel>
