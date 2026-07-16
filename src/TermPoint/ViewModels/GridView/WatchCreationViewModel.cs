@@ -92,20 +92,30 @@ public partial class WatchCreationViewModel : ObservableObject
         ValidationError = null;
     }
 
+    // IsTagMode is the single source of truth for the watch mode. IsCourseMode is a pure
+    // one-directional mirror that exists only so the "Course-based" RadioButton has a
+    // two-way bindable target; nothing in this VM reads it (Save/RegenerateName/etc. all
+    // branch on IsTagMode). The mirror is deliberately one-directional:
+    //
+    //   • IsTagMode changes  → update IsCourseMode to its inverse (below).
+    //   • IsCourseMode changes → do NOT write back to IsTagMode.
+    //
+    // A back-write is redundant — the RadioButton group already keeps the two radios
+    // mutually exclusive, so when the user picks "Course-based" the group manager unchecks
+    // the "Tag" radio, whose two-way binding sets IsTagMode = false for us. Worse, the
+    // back-write RE-ENTERED the group manager mid-OnCheckedChanged (it fires while the
+    // manager is writing IsCheckedProperty), which wedged the UI thread when the detached
+    // Schedule View was re-attached and its AccessPanelView rebuilt these radios. Dropping
+    // the reverse leg removes that re-entrancy for good.
     partial void OnIsTagModeChanged(bool value)
     {
         if (IsCourseMode == value)
             IsCourseMode = !value;
+
         _nameManuallyEdited = false;
         _lastAutoName = string.Empty;
         RegenerateName();
         ValidationError = null;
-    }
-
-    partial void OnIsCourseModeChanged(bool value)
-    {
-        if (IsTagMode == value)
-            IsTagMode = !value;
     }
 
     partial void OnWatchNameChanged(string value)

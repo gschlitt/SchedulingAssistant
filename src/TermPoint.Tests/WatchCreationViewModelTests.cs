@@ -120,6 +120,26 @@ public sealed class WatchCreationViewModelTests
         Assert.Equal("BIOL101", vm.WatchName);
     }
 
+    [Fact]
+    public void IsCourseMode_MirrorsInverseOfIsTagMode()
+    {
+        var vm = CreateVm();
+
+        // Default: tag mode on, course mode off.
+        Assert.True(vm.IsTagMode);
+        Assert.False(vm.IsCourseMode);
+
+        // IsTagMode is the single source of truth; IsCourseMode follows it one-directionally.
+        // (In the UI the RadioButton group drives IsTagMode from the Course radio; that
+        // reverse leg was removed from the VM because it re-entered the group manager and
+        // hung the Schedule-View reattach.)
+        vm.IsTagMode = false;
+        Assert.True(vm.IsCourseMode);
+
+        vm.IsTagMode = true;
+        Assert.False(vm.IsCourseMode);
+    }
+
     // ── Validation ───────────────────────────────────────────────────────────
 
     [Fact]
