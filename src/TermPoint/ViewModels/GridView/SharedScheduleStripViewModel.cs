@@ -93,18 +93,20 @@ public class SharedScheduleSourceRow
     public string Schedule { get; }
     public string? Notes { get; }
 
-    public SharedScheduleSourceRow(SharedSection section)
+    public SharedScheduleSourceRow(Section section)
     {
-        Label = $"{section.CourseCode} {section.SectionCode}";
+        Label = string.IsNullOrEmpty(section.DisplayCourseCode)
+            ? section.SectionCode
+            : $"{section.DisplayCourseCode} {section.SectionCode}";
         Schedule = FormatSchedule(section);
         Notes = string.IsNullOrWhiteSpace(section.Notes) ? null : section.Notes;
     }
 
-    private static string FormatSchedule(SharedSection section)
+    private static string FormatSchedule(Section section)
     {
-        if (section.Meetings.Count == 0) return "Unscheduled";
+        if (section.Schedule.Count == 0) return "Unscheduled";
 
-        var grouped = section.Meetings
+        var grouped = section.Schedule
             .GroupBy(m => new { m.StartMinutes, m.DurationMinutes, m.Frequency })
             .Select(g =>
             {

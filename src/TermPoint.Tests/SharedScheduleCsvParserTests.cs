@@ -40,16 +40,18 @@ public class SharedScheduleCsvParserTests
         Assert.Equal(new DateTime(2026, 5, 16), result.Set.ExportedAt);
         Assert.Equal(2, result.Set.Sections.Count);
 
-        var chem101 = result.Set.Sections.First(s => s.CourseCode == "CHEM101");
+        var chem101 = result.Set.Sections.First(s => s.DisplayCourseCode == "CHEM101");
         Assert.Equal("A", chem101.SectionCode);
-        Assert.Equal(2, chem101.Meetings.Count);
-        Assert.Equal(1, chem101.Meetings[0].Day); // Monday
-        Assert.Equal(3, chem101.Meetings[1].Day); // Wednesday
+        Assert.True(chem101.IsShared);
+        Assert.Null(chem101.CourseId);
+        Assert.Equal(2, chem101.Schedule.Count);
+        Assert.Equal(1, chem101.Schedule[0].Day); // Monday
+        Assert.Equal(3, chem101.Schedule[1].Day); // Wednesday
 
-        var chem201 = result.Set.Sections.First(s => s.CourseCode == "CHEM201");
+        var chem201 = result.Set.Sections.First(s => s.DisplayCourseCode == "CHEM201");
         Assert.Equal("Lab goggles", chem201.Notes);
-        Assert.Equal(600, chem201.Meetings[0].StartMinutes);
-        Assert.Equal(80, chem201.Meetings[0].DurationMinutes);
+        Assert.Equal(600, chem201.Schedule[0].StartMinutes);
+        Assert.Equal(80, chem201.Schedule[0].DurationMinutes);
     }
 
     [Fact]
@@ -215,7 +217,7 @@ public class SharedScheduleCsvParserTests
 
         Assert.Null(result.FileError);
         Assert.Single(result.Set!.Sections);
-        Assert.Empty(result.Set.Sections[0].Meetings);
+        Assert.Empty(result.Set.Sections[0].Schedule);
     }
 
     [Fact]
@@ -245,12 +247,12 @@ public class SharedScheduleCsvParserTests
         var result = Parse(csv);
 
         Assert.Null(result.FileError);
-        var chem101 = result.Set!.Sections.First(s => s.CourseCode == "CHEM101");
-        Assert.Equal("odd", chem101.Meetings[0].Frequency);
-        Assert.Equal("even", chem101.Meetings[1].Frequency);
+        var chem101 = result.Set!.Sections.First(s => s.DisplayCourseCode == "CHEM101");
+        Assert.Equal("odd", chem101.Schedule[0].Frequency);
+        Assert.Equal("even", chem101.Schedule[1].Frequency);
 
-        var chem201 = result.Set.Sections.First(s => s.CourseCode == "CHEM201");
-        Assert.Equal("1,6,7", chem201.Meetings[0].Frequency);
+        var chem201 = result.Set.Sections.First(s => s.DisplayCourseCode == "CHEM201");
+        Assert.Equal("1,6,7", chem201.Schedule[0].Frequency);
     }
 
     [Fact]
@@ -264,7 +266,7 @@ public class SharedScheduleCsvParserTests
         var result = Parse(csv);
 
         Assert.Null(result.FileError);
-        Assert.Null(result.Set!.Sections[0].Meetings[0].Frequency);
+        Assert.Null(result.Set!.Sections[0].Schedule[0].Frequency);
         Assert.Single(result.Warnings);
         Assert.Contains("badvalue", result.Warnings[0].Reason);
     }
@@ -293,7 +295,7 @@ public class SharedScheduleCsvParserTests
         var result = Parse(csv);
 
         Assert.Null(result.FileError);
-        Assert.Equal(expected, result.Set!.Sections[0].Meetings[0].Day);
+        Assert.Equal(expected, result.Set!.Sections[0].Schedule[0].Day);
     }
 
     [Fact]
@@ -337,6 +339,56 @@ public class SharedScheduleCsvParserTests
 
         Assert.Null(result.FileError);
         Assert.Single(result.Set!.Sections);
-        Assert.Equal(2, result.Set.Sections[0].Meetings.Count);
+        Assert.Equal(2, result.Set.Sections[0].Schedule.Count);
+    }
+
+    [Fact]
+    public void NewHeaderFormat_ParsesSemesterName()
+    {
+        var csv = """
+            #TermPoint Schedule Overlay,Chemistry Dept,Fall 2026,2026-07-15
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Equal("Chemistry Dept", result.Set!.SourceLabel);
+        Assert.Equal("Fall 2026", result.SemesterName);
+        Assert.Equal(new DateTime(2026, 7, 15), result.Set.ExportedAt);
+    }
+
+    [Fact]
+    public void LegacyHeaderFormat_SemesterNameIsNull()
+    {
+        var csv = """
+            #TermPoint Schedule Overlay,Chemistry Dept,2026-05-16
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Null(result.SemesterName);
+        Assert.Equal(new DateTime(2026, 5, 16), result.Set!.ExportedAt);
+    }
+
+    [Fact]
+    public void ParsedSections_AreShared()
+    {
+        var csv = """
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.True(section.IsShared);
+        Assert.Null(section.CourseId);
+        Assert.Equal("CHEM101", section.DisplayCourseCode);
     }
 }

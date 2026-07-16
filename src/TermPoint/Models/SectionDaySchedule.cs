@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TermPoint.Models;
 
 public class SectionDaySchedule
@@ -30,6 +32,18 @@ public class SectionDaySchedule
 
     /// <summary>True when this meeting is remote/online and does not require a physical room.</summary>
     public bool IsRemote => RoomTypeId == RemoteRoomTypeId;
+
+    // ── Transient import-staging properties (never persisted) ───────────────────
+    // Stashed by the parser for ImportResolver to consume during name→ID resolution.
+
+    /// <summary>Raw building name from CSV, consumed by ImportResolver then discarded.</summary>
+    [JsonIgnore] public string? ImportedBuilding { get; init; }
+
+    /// <summary>Raw room number from CSV, consumed by ImportResolver then discarded.</summary>
+    [JsonIgnore] public string? ImportedRoomNumber { get; init; }
+
+    /// <summary>Raw meeting type name from CSV, consumed by ImportResolver then discarded.</summary>
+    [JsonIgnore] public string? ImportedMeetingTypeName { get; init; }
 
     /// <summary>
     /// Optional meeting frequency within the semester. Null or empty means the meeting

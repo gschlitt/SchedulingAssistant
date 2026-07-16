@@ -59,7 +59,8 @@ public record SectionMeetingBlock(
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false,
     bool IsEmphasized = false,
-    SectionFlag Flag = SectionFlag.None
+    SectionFlag Flag = SectionFlag.None,
+    bool IsSharedSchedule = false
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -162,8 +163,10 @@ public record TileEntry(
     bool IsEmphasized = false,
     /// <summary>Full comma-separated attendee names shown in the tile hover tooltip. Empty for sections and commitments.</summary>
     string AttendeeList = "",
-    /// <summary>True when this entry came from a <see cref="SharedScheduleBlock"/>. The renderer applies purple outlined styling.</summary>
+    /// <summary>True when this entry came from a shared schedule import. The renderer applies purple outlined styling.</summary>
     bool IsSharedSchedule = false,
+    /// <summary>Source department label for shared schedule entries (e.g. "Chemistry Department"). Empty for local sections.</summary>
+    string SourceLabel = "",
     /// <summary>The section's advisory attention flag, drawn as a small colored icon after the label. None = no icon.</summary>
     SectionFlag Flag = SectionFlag.None);
 

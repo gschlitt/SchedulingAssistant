@@ -13,13 +13,16 @@ public class SharedScheduleServiceTests
         var set = new SharedScheduleSet { SourceLabel = label };
         for (int i = 0; i < sectionCount; i++)
         {
-            set.Sections.Add(new SharedSection
+            set.Sections.Add(new Section
             {
-                CourseCode = $"COURSE{i}",
+                IsShared = true,
+                CourseId = null,
+                DisplayCourseCode = $"COURSE{i}",
                 SectionCode = "A",
-                Meetings = new()
+                SourceLabel = label,
+                Schedule = new()
                 {
-                    new SharedMeeting { Day = 1, StartMinutes = 480, DurationMinutes = 50 }
+                    new SectionDaySchedule { Day = 1, StartMinutes = 480, DurationMinutes = 50 }
                 }
             });
         }
@@ -92,14 +95,18 @@ public class SharedScheduleServiceTests
             SourceLabel = "Chemistry",
             Sections = new()
             {
-                new SharedSection
+                new Section
                 {
-                    CourseCode = "CHEM101", SectionCode = "A",
+                    IsShared = true,
+                    CourseId = null,
+                    DisplayCourseCode = "CHEM101",
+                    SectionCode = "A",
                     Notes = "Lab goggles",
-                    Meetings = new()
+                    SourceLabel = "Chemistry",
+                    Schedule = new()
                     {
-                        new SharedMeeting { Day = 1, StartMinutes = 480, DurationMinutes = 50 },
-                        new SharedMeeting { Day = 3, StartMinutes = 480, DurationMinutes = 50, Frequency = "odd" }
+                        new SectionDaySchedule { Day = 1, StartMinutes = 480, DurationMinutes = 50 },
+                        new SectionDaySchedule { Day = 3, StartMinutes = 480, DurationMinutes = 50, Frequency = "odd" }
                     }
                 }
             }

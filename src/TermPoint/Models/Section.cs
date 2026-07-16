@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TermPoint.Models;
 
 /// <summary>
@@ -42,4 +44,35 @@ public class Section : SchedulableBase
     /// Stored in the JSON data column; pre-existing sections without the field deserialize to None.
     /// </summary>
     public SectionFlag Flag { get; set; } = SectionFlag.None;
+
+    // ── Transient shared-schedule properties (never persisted) ─────────────────
+    // Populated only for imported shared sections. All default to false/null,
+    // so local sections incur zero cost.
+
+    /// <summary>True for imported shared sections. Prevents edit/save operations.</summary>
+    [JsonIgnore] public bool IsShared { get; init; }
+
+    /// <summary>Display label identifying the source department (e.g. "Chemistry Department").</summary>
+    [JsonIgnore] public string? SourceLabel { get; init; }
+
+    /// <summary>Exported course code string for grid tile rendering. Local sections use CourseId lookup instead.</summary>
+    [JsonIgnore] public string? DisplayCourseCode { get; init; }
+
+    /// <summary>Exported instructor names and initials for display. Both resolved and unresolved instructors.</summary>
+    [JsonIgnore] public List<(string Name, string Initials)>? DisplayInstructors { get; init; }
+
+    /// <summary>Room conflict annotation, populated after conflict detection runs.</summary>
+    [JsonIgnore] public string? RoomConflictNote { get; set; }
+
+    /// <summary>Instructor conflict annotation, populated after conflict detection runs.</summary>
+    [JsonIgnore] public string? InstructorConflictNote { get; set; }
+
+    /// <summary>Raw imported campus name from CSV, consumed by ImportResolver then discarded.</summary>
+    [JsonIgnore] public string? ImportedCampusName { get; init; }
+
+    /// <summary>Raw imported section type name from CSV, consumed by ImportResolver then discarded.</summary>
+    [JsonIgnore] public string? ImportedSectionTypeName { get; init; }
+
+    /// <summary>Raw imported tag names from CSV, consumed by ImportResolver then discarded.</summary>
+    [JsonIgnore] public List<string>? ImportedTagNames { get; init; }
 }

@@ -61,11 +61,12 @@ public class SharedScheduleCsvParser
         // Detect header comment
         string sourceLabel = fallbackSourceLabel;
         DateTime? exportedAt = null;
+        string? semesterName = null;
         string? columnHeaderLine;
 
         if (firstLine.StartsWith('#'))
         {
-            ParseHeaderComment(firstLine, ref sourceLabel, ref exportedAt);
+            ParseHeaderComment(firstLine, ref sourceLabel, ref exportedAt, ref semesterName);
             columnHeaderLine = reader.ReadLine();
         }
         else
@@ -100,7 +101,7 @@ public class SharedScheduleCsvParser
 
         // Parse rows and group into sections
         var warnings = new List<(int LineNumber, string Reason)>();
-        var sectionMap = new Dictionary<string, SharedSection>(StringComparer.OrdinalIgnoreCase);
+        var sectionMap = new Dictionary<string, Section>(StringComparer.OrdinalIgnoreCase);
         int skippedRows = 0;
 
         foreach (var (ln, fields) in rows)
@@ -119,19 +120,22 @@ public class SharedScheduleCsvParser
             var key = $"{result.CourseCode!}\t{result.SectionCode!}";
             if (!sectionMap.TryGetValue(key, out var section))
             {
-                section = new SharedSection
+                section = new Section
                 {
-                    CourseCode = result.CourseCode!,
+                    Id = Guid.NewGuid().ToString(),
+                    IsShared = true,
+                    CourseId = null,
+                    DisplayCourseCode = result.CourseCode!,
                     SectionCode = result.SectionCode!,
-                    Notes = result.Notes
+                    Notes = result.Notes ?? string.Empty,
+                    SourceLabel = sourceLabel
                 };
                 sectionMap[key] = section;
             }
 
             if (result.Meeting is not null)
             {
-                // Ignore unscheduled rows for sections that already have meetings
-                section.Meetings.Add(result.Meeting);
+                section.Schedule.Add(result.Meeting);
             }
         }
 
@@ -145,18 +149,30 @@ public class SharedScheduleCsvParser
             Sections = sectionMap.Values.ToList()
         };
 
-        return new ImportResult(set, rows.Count, skippedRows, warnings, null);
+        return new ImportResult(set, rows.Count, skippedRows, warnings, null, semesterName);
     }
 
-    private static void ParseHeaderComment(string line, ref string sourceLabel, ref DateTime? exportedAt)
+    private static void ParseHeaderComment(string line, ref string sourceLabel,
+        ref DateTime? exportedAt, ref string? semesterName)
     {
-        // Format: #TermPoint Schedule Overlay,<source label>,<ISO date>
+        // Format: #TermPoint Schedule Overlay,<source label>,<semester name>,<ISO date>
+        // Legacy: #TermPoint Schedule Overlay,<source label>,<ISO date>
         var content = line[1..]; // strip '#'
         var parts = content.Split(',');
         if (parts.Length >= 2 && !string.IsNullOrWhiteSpace(parts[1]))
             sourceLabel = parts[1].Trim();
-        if (parts.Length >= 3 && DateTime.TryParse(parts[2].Trim(), out var dt))
-            exportedAt = dt;
+
+        if (parts.Length >= 4 && DateTime.TryParse(parts[3].Trim(), out var dt4))
+        {
+            // New format: field 3 = semester name, field 4 = date
+            semesterName = string.IsNullOrWhiteSpace(parts[2]) ? null : parts[2].Trim();
+            exportedAt = dt4;
+        }
+        else if (parts.Length >= 3 && DateTime.TryParse(parts[2].Trim(), out var dt3))
+        {
+            // Legacy format: field 3 = date (no semester name)
+            exportedAt = dt3;
+        }
     }
 
     private static Dictionary<string, int>? ParseColumnHeaders(string line)
@@ -187,7 +203,7 @@ public class SharedScheduleCsvParser
 
     private record RowParseResult(
         string? CourseCode, string? SectionCode, string? Notes,
-        SharedMeeting? Meeting, string? Error, string? Warning);
+        SectionDaySchedule? Meeting, string? Error, string? Warning);
 
     private static RowParseResult ParseDataRow(string[] fields, Dictionary<string, int> columnIndex, int lineNumber)
     {
@@ -240,7 +256,7 @@ public class SharedScheduleCsvParser
                 warning = $"Invalid frequency '{freqStr}' treated as weekly";
         }
 
-        var meeting = new SharedMeeting
+        var meeting = new SectionDaySchedule
         {
             Day = day,
             StartMinutes = startMinutes,
@@ -372,7 +388,8 @@ public record ImportResult(
     int TotalRows,
     int SkippedRows,
     List<(int LineNumber, string Reason)> Warnings,
-    string? FileError)
+    string? FileError,
+    string? SemesterName = null)
 {
     /// <summary>Creates a file-level rejection result.</summary>
     public static ImportResult Failed(string error) => new(null, 0, 0, new(), error);

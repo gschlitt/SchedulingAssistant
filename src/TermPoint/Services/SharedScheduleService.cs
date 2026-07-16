@@ -47,6 +47,8 @@ public class SharedScheduleService : ObservableObject
     /// <summary>
     /// Builds <see cref="SharedScheduleBlock"/> instances for all loaded sets.
     /// Called by the grid VM during its block assembly pipeline.
+    /// Temporary bridge: reads from <see cref="Section"/> properties until Session 6
+    /// removes this method and integrates shared sections into BuildFilteredBlocks.
     /// </summary>
     /// <param name="semesterId">Active semester ID for block routing in multi-semester mode.</param>
     /// <param name="semesterName">Display name of the active semester.</param>
@@ -58,8 +60,8 @@ public class SharedScheduleService : ObservableObject
         {
             foreach (var section in set.Sections)
             {
-                var label = $"{section.CourseCode} {section.SectionCode}";
-                foreach (var mtg in section.Meetings)
+                var label = $"{section.DisplayCourseCode} {section.SectionCode}";
+                foreach (var mtg in section.Schedule)
                 {
                     blocks.Add(new SharedScheduleBlock(
                         mtg.Day, mtg.StartMinutes, mtg.EndMinutes,
