@@ -61,6 +61,11 @@
             <Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
         </Style>
 
+        <!-- Purple text for shared schedule section cards -->
+        <Style Selector="StackPanel.shared TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource SharedScheduleText}" />
+        </Style>
+
     </UserControl.Styles>
 
     <UserControl.Resources>
@@ -1095,11 +1100,6 @@
 
                         <!--  Section card with multi-semester left border indicator  -->
                         <DataTemplate DataType="{x:Type vm:SectionListItemViewModel}">
-                            <DataTemplate.Styles>
-                                <Style Selector="StackPanel.shared TextBlock">
-                                    <Setter Property="Foreground" Value="{StaticResource SharedScheduleText}" />
-                                </Style>
-                            </DataTemplate.Styles>
                             <!--
                                 Selection feedback:
                                 Outer border (UserSelectedSectionBorderColor): visible when the user

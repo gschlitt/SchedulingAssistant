@@ -34,8 +34,8 @@
 						Command="{Binding ToggleExpandCommand}"
 						FontSize="10">
 						<Panel>
-							<TextBlock Text="▼" IsVisible="{Binding IsExpanded}" />
-							<TextBlock Text="▶" IsVisible="{Binding !IsExpanded}" />
+							<TextBlock Text="&#x25BC;" IsVisible="{Binding IsExpanded}" />
+							<TextBlock Text="&#x25B6;" IsVisible="{Binding !IsExpanded}" />
 						</Panel>
 					</Button>
 					<TextBlock
@@ -94,6 +94,14 @@
 											</StackPanel>
 										</DockPanel>
 
+										<!-- Resolution summary line -->
+										<TextBlock
+											FontSize="9"
+											Foreground="{StaticResource TextFaint}"
+											Text="{Binding ResolutionLine}"
+											IsVisible="{Binding ResolutionLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+											Margin="0,0,0,2" />
+
 										<!-- Section rows -->
 										<ItemsControl ItemsSource="{Binding Rows}">
 											<ItemsControl.ItemTemplate>
@@ -105,7 +113,17 @@
 															Text="{Binding Label}" />
 														<TextBlock
 															FontSize="10"
+															Foreground="{StaticResource SharedScheduleText}"
+															Text="{Binding Initials}"
+															IsVisible="{Binding Initials, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+														<TextBlock
+															FontSize="10"
 															Text="{Binding Schedule}" />
+														<TextBlock
+															FontSize="10"
+															Foreground="{StaticResource TextFaint}"
+															Text="{Binding RoomShorthand}"
+															IsVisible="{Binding RoomShorthand, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 														<TextBlock
 															FontSize="10"
 															FontStyle="Italic"

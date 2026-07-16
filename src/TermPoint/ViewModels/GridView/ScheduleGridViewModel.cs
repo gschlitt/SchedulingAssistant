@@ -181,7 +181,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _lockService = lockService;
         _sharedScheduleService = sharedScheduleService;
         Access = accessPanelViewModel;
-        SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
+        SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService, roomRepo);
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.
