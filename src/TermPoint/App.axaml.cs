@@ -517,7 +517,8 @@ public partial class App : Application
             sp.GetRequiredService<ISchedulingNoteRepository>(),
             sp.GetRequiredService<ISemesterRepository>(),
             sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<SectionStore>()));
+            sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<SharedScheduleService>()));
         services.AddTransient<InstructorListViewModel>(sp =>
             new InstructorListViewModel(
                 sp.GetRequiredService<IInstructorRepository>(),

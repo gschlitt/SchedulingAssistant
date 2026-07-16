@@ -39,6 +39,12 @@
 		<Style Selector="Button.chip.release">
 			<Setter Property="Background" Value="{StaticResource ReleaseTile}" />
 		</Style>
+		<!--  Shared section chip: purple text, non-interactive  -->
+		<Style Selector="Button.chip.shared">
+			<Setter Property="Foreground" Value="{StaticResource SharedScheduleText}" />
+			<Setter Property="Cursor" Value="Arrow" />
+			<Setter Property="Background" Value="Transparent" />
+		</Style>
 		<!--
 			Hover tint on instructor cards. Targets the transparent overlay Border inside the card
 			when the outer WorkloadCard Border is in :pointerover — same pattern as section cards.
@@ -262,6 +268,7 @@
 														Margin="2,1"
 														Classes="chip"
 														Classes.release="{Binding IsRelease}"
+														Classes.shared="{Binding IsShared}"
 														Classes.selected="{Binding IsSelected}"
 														Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
 														CommandParameter="{Binding}"
@@ -330,6 +337,7 @@
 																			Margin="2,1"
 																			Classes="chip"
 																			Classes.release="{Binding IsRelease}"
+																			Classes.shared="{Binding IsShared}"
 																			Classes.selected="{Binding IsSelected}"
 																			Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
 																			CommandParameter="{Binding}"

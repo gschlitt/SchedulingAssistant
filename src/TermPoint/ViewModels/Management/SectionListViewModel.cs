@@ -26,6 +26,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
     private readonly ICampusRepository _campusRepo;
     private readonly IMeetingRepository _meetingRepo;
+    private readonly SharedScheduleService _sharedScheduleService;
     private readonly WriteLockService _lockService;
 
     /// <summary>
@@ -186,6 +187,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         ISchedulingEnvironmentRepository propertyRepo,
         ICampusRepository campusRepo,
         IMeetingRepository meetingRepo,
+        SharedScheduleService sharedScheduleService,
         IDialogService dialog,
         WriteLockService lockService)
     {
@@ -203,9 +205,11 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _propertyRepo = propertyRepo;
         _campusRepo = campusRepo;
         _meetingRepo = meetingRepo;
+        _sharedScheduleService = sharedScheduleService;
         _dialog = dialog;
         _lockService = lockService;
         _lockService.LockStateChanged += OnLockStateChanged;
+        _sharedScheduleService.Changed += Reload;
 
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
 
@@ -403,6 +407,17 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
             // Sort within this semester's group independently
             newItems.AddRange(SortItems(rawItems));
+
+            // Append shared sections after local ones, sorted by heading
+            var sharedSections = _sharedScheduleService.GetSectionsForSemester(semDisplay.Semester.Id);
+            if (sharedSections.Count > 0)
+            {
+                var sharedItems = sharedSections
+                    .Select(s => CreateSharedSectionItem(s, lk, semDisplay.Semester.Name, semDisplay.Semester.Color ?? string.Empty))
+                    .OrderBy(vm => vm.Heading, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                newItems.AddRange(sharedItems);
+            }
         }
 
         SectionItems = new ObservableCollection<ISectionListEntry>(newItems);
@@ -466,6 +481,16 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
             lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
             onFlagChanged: SaveSectionFlag);
+
+    /// <summary>
+    /// Constructs a display item for a shared (cross-department) section.
+    /// Passes null for <c>onFlagChanged</c> since shared sections don't support flags.
+    /// </summary>
+    private static SectionListItemViewModel CreateSharedSectionItem(
+        Section s, ItemLookups lk, string semesterName, string semesterColor) =>
+        new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
+            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
+            onFlagChanged: null);
 
     /// <summary>
     /// Persists a section's attention flag after it was changed via the card's right-click
@@ -671,11 +696,28 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             kv => kv.Key,
             kv => $"{kv.Value.Building} {kv.Value.RoomNumber}".Trim());
 
-        // Detect conflicts per semester independently.
+        // Detect conflicts per semester independently, including shared sections.
         var allConflicts = new Dictionary<string, List<string>>();
         foreach (var (semesterId, sections) in _sectionStore.SectionsBySemester)
         {
-            var semConflicts = RoomConflictService.DetectConflicts(sections, roomNameById, courseCodeById);
+            var sharedSections = _sharedScheduleService.GetSectionsForSemester(semesterId);
+            foreach (var s in sharedSections)
+            {
+                courseCodeById[s.Id] = s.DisplayCourseCode ?? s.SectionCode;
+                foreach (var sched in s.Schedule)
+                {
+                    if (sched.RoomId is not null && !roomNameById.ContainsKey(sched.RoomId))
+                        roomNameById[sched.RoomId] = roomLookup.TryGetValue(sched.RoomId, out var rm)
+                            ? $"{rm.Building} {rm.RoomNumber}".Trim()
+                            : $"{sched.ImportedBuilding} {sched.ImportedRoomNumber}".Trim();
+                }
+            }
+
+            var allSections = sharedSections.Count > 0
+                ? sections.Concat(sharedSections).ToList()
+                : (IReadOnlyList<Section>)sections;
+
+            var semConflicts = RoomConflictService.DetectConflicts(allSections, roomNameById, courseCodeById);
             foreach (var (sectionId, lines) in semConflicts)
                 allConflicts[sectionId] = lines;
         }
@@ -717,7 +759,23 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         var allConflicts = new Dictionary<string, List<string>>();
         foreach (var (semesterId, sections) in _sectionStore.SectionsBySemester)
         {
-            var semConflicts = InstructorConflictService.DetectConflicts(sections, instructorLabelById, courseCodeById);
+            var sharedSections = _sharedScheduleService.GetSectionsForSemester(semesterId);
+            foreach (var s in sharedSections)
+            {
+                courseCodeById[s.Id] = s.DisplayCourseCode ?? s.SectionCode;
+                foreach (var a in s.InstructorAssignments)
+                {
+                    if (!instructorLabelById.ContainsKey(a.InstructorId) &&
+                        instructorLookup.TryGetValue(a.InstructorId, out var instr))
+                        instructorLabelById[a.InstructorId] = FormatInstructorLabel(instr);
+                }
+            }
+
+            var allSections = sharedSections.Count > 0
+                ? sections.Concat(sharedSections).ToList()
+                : (IReadOnlyList<Section>)sections;
+
+            var semConflicts = InstructorConflictService.DetectConflicts(allSections, instructorLabelById, courseCodeById);
             foreach (var (sectionId, lines) in semConflicts)
                 allConflicts[sectionId] = lines;
         }
@@ -1380,6 +1438,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _sectionStore.SectionsChanged -= Reload;
         _sectionStore.SelectionChanged -= OnStoreSelectionChanged;
         _sectionStore.FilteredIdsChanged -= ApplyFilterHighlights;
+        _sharedScheduleService.Changed -= Reload;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────

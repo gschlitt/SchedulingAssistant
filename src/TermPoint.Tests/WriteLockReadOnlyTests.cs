@@ -164,7 +164,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
-            _dialog, _lock);
+            new SharedScheduleService(), _dialog, _lock);
 
     /// <summary>Creates a fully-wired <see cref="MeetingListViewModel"/> in reader mode.</summary>
     private MeetingListViewModel CreateMeetingListVm() =>

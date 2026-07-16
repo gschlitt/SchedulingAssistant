@@ -17,6 +17,12 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     public string Heading { get; }
     public IReadOnlyList<string> ScheduleLines { get; }
 
+    /// <summary>True for cross-department shared sections (non-editable, non-flaggable).</summary>
+    public bool IsShared { get; }
+
+    /// <summary>Source department label for shared sections (e.g. "Chemistry Department").</summary>
+    public string? SourceLabel { get; }
+
     // New: meeting details with meeting type for expanded display
     public IReadOnlyList<MeetingDisplayInfo> MeetingDetails { get; }
 
@@ -120,7 +126,11 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     /// <summary>Opens the right-click flag picker popup (wired to RightClickCommandBehavior).</summary>
     [RelayCommand]
-    private void ShowFlagMenu() => IsFlagMenuOpen = true;
+    private void ShowFlagMenu()
+    {
+        if (IsShared) return;
+        IsFlagMenuOpen = true;
+    }
 
     /// <summary>
     /// Applies <paramref name="flag"/> to this section, updates the card immediately, persists
@@ -163,6 +173,8 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Action<Section>? onFlagChanged = null)
     {
         Section = section;
+        IsShared = section.IsShared;
+        SourceLabel = section.SourceLabel;
 
         SemesterName = semesterName;
         SemesterColor = semesterColor;
@@ -171,28 +183,45 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         _onFlagChanged = onFlagChanged;
 
         // Compute sort keys for instructor and section type
-        var instructorNames = section.InstructorAssignments
-            .Where(a => instructorLookup.TryGetValue(a.InstructorId, out _))
-            .Select(a => instructorLookup[a.InstructorId])
-            .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
-            .Select(i => $"{i.FirstName} {i.LastName}")
-            .ToList();
-        SortKeyInstructor = instructorNames.Count > 0
-            ? string.Join(" ", instructorNames).ToLowerInvariant()
-            : "\uffff";
+        if (section.IsShared && section.DisplayInstructors?.Count > 0)
+        {
+            SortKeyInstructor = string.Join(" ", section.DisplayInstructors
+                .Select(di => di.Name)).ToLowerInvariant();
+        }
+        else
+        {
+            var instructorNames = section.InstructorAssignments
+                .Where(a => instructorLookup.TryGetValue(a.InstructorId, out _))
+                .Select(a => instructorLookup[a.InstructorId])
+                .OrderBy(i => i.FirstName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.LastName, StringComparer.OrdinalIgnoreCase)
+                .Select(i => $"{i.FirstName} {i.LastName}")
+                .ToList();
+            SortKeyInstructor = instructorNames.Count > 0
+                ? string.Join(" ", instructorNames).ToLowerInvariant()
+                : "\uffff";
+        }
 
         SortKeySectionType = section.SectionTypeId is not null && sectionTypeLookup.TryGetValue(section.SectionTypeId, out var st)
             ? st.Name.ToLowerInvariant()
             : "\uffff";
 
-        var calendarCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
-            ? course.CalendarCode
-            : null;
+        if (section.IsShared)
+        {
+            Heading = section.DisplayCourseCode is not null
+                ? $"{section.DisplayCourseCode} {section.SectionCode}".Trim()
+                : section.SectionCode;
+        }
+        else
+        {
+            var calendarCode = section.CourseId is not null && courseLookup.TryGetValue(section.CourseId, out var course)
+                ? course.CalendarCode
+                : null;
 
-        Heading = calendarCode is not null
-            ? $"{calendarCode} {section.SectionCode}".Trim()
-            : section.SectionCode;
+            Heading = calendarCode is not null
+                ? $"{calendarCode} {section.SectionCode}".Trim()
+                : section.SectionCode;
+        }
 
         ScheduleLines = section.Schedule
             .OrderBy(s => s.Day).ThenBy(s => s.StartMinutes)
@@ -203,9 +232,11 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
                 var end   = FormatMinutes(s.EndMinutes);
                 var freq  = SectionDaySchedule.FormatFrequency(s.Frequency);
                 var freqPart = freq.Length > 0 ? $" {freq}" : string.Empty;
-                var room  = s.RoomId is not null && roomLookup.TryGetValue(s.RoomId, out var r)
+                var room = s.RoomId is not null && roomLookup.TryGetValue(s.RoomId, out var r)
                     ? $"  {r.Building} {r.RoomNumber}".TrimEnd()
-                    : string.Empty;
+                    : (section.IsShared && (s.ImportedBuilding is not null || s.ImportedRoomNumber is not null))
+                        ? $"  {s.ImportedBuilding} {s.ImportedRoomNumber}".TrimEnd()
+                        : string.Empty;
                 return $"{day}  {start}–{end}{freqPart}{room}";
             })
             .ToList();
@@ -221,10 +252,12 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
                 var freq = SectionDaySchedule.FormatFrequency(s.Frequency);
                 var room = s.RoomId is not null && roomLookup.TryGetValue(s.RoomId, out var r)
                     ? $"{r.Building} {r.RoomNumber}"
-                    : string.Empty;
+                    : (section.IsShared && (s.ImportedBuilding is not null || s.ImportedRoomNumber is not null))
+                        ? $"{s.ImportedBuilding} {s.ImportedRoomNumber}".Trim()
+                        : string.Empty;
                 var meetingType = s.MeetingTypeId is not null && meetingTypeLookup.TryGetValue(s.MeetingTypeId, out var mt)
                     ? mt.Name
-                    : string.Empty;
+                    : (section.IsShared ? s.ImportedMeetingTypeName ?? string.Empty : string.Empty);
                 return new MeetingDisplayInfo
                 {
                     Day         = day,
@@ -238,29 +271,38 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             .ToList();
 
         // Build individual summary properties for the right-side stack
-        var instructorParts = section.InstructorAssignments
-            .Select(a =>
-            {
-                if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
-                var name = $"{instr.FirstName} {instr.LastName}";
-                return a.Workload.HasValue ? $"{name} [{a.Workload.Value:0.##}]" : name;
-            })
-            .Where(n => n is not null)
-            .ToList();
-        InstructorLine = instructorParts.Count > 0 ? string.Join("; ", instructorParts) : null;
+        if (section.IsShared && section.DisplayInstructors?.Count > 0)
+        {
+            var names = section.DisplayInstructors.Select(di => di.Name).ToList();
+            InstructorLine = string.Join("; ", names);
+            InstructorHeaderLine = string.Join(", ", names);
+        }
+        else
+        {
+            var instructorParts = section.InstructorAssignments
+                .Select(a =>
+                {
+                    if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
+                    var name = $"{instr.FirstName} {instr.LastName}";
+                    return a.Workload.HasValue ? $"{name} [{a.Workload.Value:0.##}]" : name;
+                })
+                .Where(n => n is not null)
+                .ToList();
+            InstructorLine = instructorParts.Count > 0 ? string.Join("; ", instructorParts) : null;
 
-        // Header line format: "Name (workload)" without brackets, stacked vertically
-        var instructorHeaderParts = section.InstructorAssignments
-            .OrderBy(a => instructorLookup.TryGetValue(a.InstructorId, out var i) ? $"{i.FirstName} {i.LastName}" : "")
-            .Select(a =>
-            {
-                if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
-                var name = $"{instr.FirstName} {instr.LastName}";
-                return a.Workload.HasValue ? $"{name} ({a.Workload.Value:0.##})" : name;
-            })
-            .Where(n => n is not null)
-            .ToList();
-        InstructorHeaderLine = instructorHeaderParts.Count > 0 ? string.Join(", ", instructorHeaderParts) : null;
+            // Header line format: "Name (workload)" without brackets, stacked vertically
+            var instructorHeaderParts = section.InstructorAssignments
+                .OrderBy(a => instructorLookup.TryGetValue(a.InstructorId, out var i) ? $"{i.FirstName} {i.LastName}" : "")
+                .Select(a =>
+                {
+                    if (!instructorLookup.TryGetValue(a.InstructorId, out var instr)) return null;
+                    var name = $"{instr.FirstName} {instr.LastName}";
+                    return a.Workload.HasValue ? $"{name} ({a.Workload.Value:0.##})" : name;
+                })
+                .Where(n => n is not null)
+                .ToList();
+            InstructorHeaderLine = instructorHeaderParts.Count > 0 ? string.Join(", ", instructorHeaderParts) : null;
+        }
 
         // Section type name
         SectionTypeName = section.SectionTypeId is not null && sectionTypeLookup.TryGetValue(section.SectionTypeId, out var sectionType)
@@ -292,7 +334,11 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     }
 
     [RelayCommand]
-    private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
+    private void ToggleCollapsed()
+    {
+        if (IsShared) return;
+        IsCollapsed = !IsCollapsed;
+    }
 
     private static string FormatMinutes(int minutes) =>
         $"{minutes / 60:D2}{minutes % 60:D2}";

@@ -17,6 +17,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     private readonly ISemesterRepository _semesterRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
+    private readonly SharedScheduleService _sharedScheduleService;
 
     [ObservableProperty] private ObservableCollection<WorkloadRowViewModel> _rows = new();
     [ObservableProperty] private string? _lastErrorMessage;
@@ -32,7 +33,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         ISchedulingNoteRepository noteRepo,
         ISemesterRepository semesterRepo,
         SemesterContext semesterContext,
-        SectionStore sectionStore)
+        SectionStore sectionStore,
+        SharedScheduleService sharedScheduleService)
     {
         _instructorRepo = instructorRepo;
         _sectionRepo = sectionRepo;
@@ -42,11 +44,13 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         _semesterRepo = semesterRepo;
         _semesterContext = semesterContext;
         _sectionStore = sectionStore;
+        _sharedScheduleService = sharedScheduleService;
 
         // Reload whenever sections change or the semester selection changes.
         // SectionStore.SectionsChanged fires for both cases: SectionListViewModel
         // calls sectionStore.Reload() after saves/deletes and on semester change.
         _sectionStore.SectionsChanged += Load;
+        _sharedScheduleService.Changed += Load;
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
@@ -102,9 +106,12 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                 var notes = _noteRepo.GetBySemester(semesterDisplay.Semester.Id)
                     .ToDictionary(n => n.InstructorId, n => n.Text);
 
+                var sharedSections = _sharedScheduleService.GetSectionsForSemester(semesterDisplay.Semester.Id);
+
                 foreach (var instructor in instructors)
                 {
                     var items = BuildItemsForInstructor(instructor, sections, releases, GetCourseCode);
+                    items.AddRange(BuildSharedItemsForInstructor(instructor, sharedSections));
                     var name = FormatInstructorName(instructor);
 
                     rows.Add(new WorkloadRowViewModel
@@ -141,6 +148,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                             ? (IEnumerable<Section>)s : Array.Empty<Section>();
                         var releases = _releaseRepo.GetBySemester(semesterDisplay.Semester.Id);
                         var items = BuildItemsForInstructor(instructor, sections, releases, GetCourseCode);
+                        var sharedSections = _sharedScheduleService.GetSectionsForSemester(semesterDisplay.Semester.Id);
+                        items.AddRange(BuildSharedItemsForInstructor(instructor, sharedSections));
 
                         groups.Add(new WorkloadSemesterGroupViewModel
                         {
@@ -196,8 +205,16 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                 var allInstrConflicts = new Dictionary<string, List<string>>();
                 foreach (var (semId, semSections) in _sectionStore.SectionsBySemester)
                 {
+                    var sharedForConflict = _sharedScheduleService.GetSectionsForSemester(semId);
+                    foreach (var s in sharedForConflict)
+                        courseCodeById[s.Id] = s.DisplayCourseCode ?? s.SectionCode;
+
+                    var allSemSections = sharedForConflict.Count > 0
+                        ? semSections.Concat(sharedForConflict).ToList()
+                        : (IReadOnlyList<Section>)semSections;
+
                     var semConflicts = Services.InstructorConflictService.DetectConflictsByInstructor(
-                        semSections, courseCodeById);
+                        allSemSections, courseCodeById);
                     foreach (var (instrId, lines) in semConflicts)
                     {
                         if (!allInstrConflicts.TryGetValue(instrId, out var existing))
@@ -268,6 +285,31 @@ public partial class WorkloadPanelViewModel : ViewModelBase
             });
         }
 
+        return items;
+    }
+
+    /// <summary>
+    /// Builds non-clickable workload chips for shared sections assigned to <paramref name="instructor"/>.
+    /// Shared chips show zero workload and use <see cref="WorkloadItemKind.SharedSection"/>.
+    /// </summary>
+    private static List<WorkloadItemViewModel> BuildSharedItemsForInstructor(
+        Instructor instructor,
+        IReadOnlyList<Section> sharedSections)
+    {
+        var items = new List<WorkloadItemViewModel>();
+        foreach (var section in sharedSections)
+        {
+            if (!section.InstructorAssignments.Any(a => a.InstructorId == instructor.Id))
+                continue;
+            var courseCode = section.DisplayCourseCode ?? "?";
+            items.Add(new WorkloadItemViewModel
+            {
+                Kind = WorkloadItemKind.SharedSection,
+                Id = section.Id,
+                Label = $"{courseCode} {section.SectionCode} ({section.SourceLabel})",
+                WorkloadValue = 0m,
+            });
+        }
         return items;
     }
 
