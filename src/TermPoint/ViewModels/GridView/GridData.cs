@@ -60,7 +60,8 @@ public record SectionMeetingBlock(
     bool IsDeemphasized = false,
     bool IsEmphasized = false,
     SectionFlag Flag = SectionFlag.None,
-    bool IsSharedSchedule = false
+    bool IsSharedSchedule = false,
+    string SourceLabel = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -110,22 +111,6 @@ public record CommitmentBlock(
     int Day, int StartMinutes, int EndMinutes,
     string Name, string CommitmentId, string SemesterId = "", string SemesterName = "", string SemesterColor = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: true, SemesterId, SemesterName, SemesterColor);
-
-/// <summary>
-/// A meeting from an imported shared schedule CSV (cross-department visibility).
-/// Rendered with purple outlined styling — distinct from both the red overlay and normal tiles.
-/// Does not participate in selection or context menu interactions.
-/// </summary>
-/// <param name="Label">Pre-formatted display text, e.g. "CHEM101 A".</param>
-/// <param name="FrequencyAnnotation">Parenthesised frequency, e.g. "(odd)". Empty for weekly.</param>
-/// <param name="SourceLabel">Name of the importing source (e.g. "Chemistry Department").</param>
-/// <param name="Notes">Optional freeform notes from the sender.</param>
-public record SharedScheduleBlock(
-    int Day, int StartMinutes, int EndMinutes,
-    string Label, string FrequencyAnnotation = "",
-    string SourceLabel = "", string Notes = "",
-    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
-) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: false, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
 /// One row within a rendered tile. A tile can have multiple entries when two or

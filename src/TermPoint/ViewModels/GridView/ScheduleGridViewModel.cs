@@ -385,9 +385,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
         PopulateFilterOptions(lookups);
         var snap = TakeFilterSnapshot();
 
-        var overlayMatchedIds = ComputeOverlayMatchedSectionIds(lookups.Sections, snap);
-        var filtered    = BuildFilteredBlocks(lookups.Sections, snap, lookups, overlayMatchedIds);
-        var overlayOnly = BuildOverlayBlocks(lookups.Sections, snap, lookups, filtered, overlayMatchedIds);
+        // Merge shared sections (cross-department imports) into the pipeline so they
+        // flow through filtering, conflict detection, and rendering uniformly.
+        var shared = semesters.SelectMany(sd =>
+            _sharedScheduleService.GetSectionsForSemester(sd.Semester.Id)).ToList();
+        var allSections = shared.Count > 0
+            ? lookups.Sections.Concat(shared).ToList()
+            : (IReadOnlyList<Section>)lookups.Sections;
+
+        var overlayMatchedIds = ComputeOverlayMatchedSectionIds(allSections, snap);
+        var filtered    = BuildFilteredBlocks(allSections, snap, lookups, overlayMatchedIds);
+        var overlayOnly = BuildOverlayBlocks(allSections, snap, lookups, filtered, overlayMatchedIds);
 
         // Push filtered section IDs to SectionStore so the section list can highlight matching cards.
         // Only publish when a real (non-overlay) filter is active; null signals "no highlighting".
@@ -409,11 +417,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var commitments   = BuildCommitmentBlocks(semesters, overlayInstructorId);
         var meetingBlocks = Filter.ShowMeetings ? BuildMeetingBlocks(semesters) : [];
 
-        // Pass 4: shared schedule blocks from imported cross-department CSVs.
-        // Blocks are injected per-semester so they route to the correct sub-column in multi-semester mode.
-        var sharedBlocks = BuildSharedScheduleBlocks(semesters);
-
-        var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks).Concat(sharedBlocks);
+        var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks);
         var allBlocks = DeduplicateBlocks(combinedBlocks);
 
         // ── Program conflict detection ────────────────────────────────────────
@@ -423,7 +427,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
                 .Select(b => b.SectionId).ToHashSet();
-            var visibleSections = lookups.Sections
+            var visibleSections = allSections
                 .Where(s => visibleSectionIds.Contains(s.Id)).ToList();
             var tagIdsBySectionId = visibleSections
                 .ToDictionary(s => s.Id, s => (IReadOnlyList<string>)s.TagIds);
@@ -436,12 +440,20 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var involvedIds = new HashSet<string>();
             foreach (var pc in programConflicts) { involvedIds.Add(pc.MeetingA.SectionId); involvedIds.Add(pc.MeetingB.SectionId); }
-            foreach (var s in lookups.Sections)
+            foreach (var s in allSections)
             {
                 if (!involvedIds.Contains(s.Id)) continue;
-                var code = s.CourseId is not null && lookups.Courses.TryGetValue(s.CourseId, out var c)
-                    ? c.CalendarCode : null;
-                sectionLabels[s.Id] = code is not null ? $"{code} {s.SectionCode}" : s.SectionCode;
+                if (s.IsShared)
+                {
+                    sectionLabels[s.Id] = s.DisplayCourseCode is not null
+                        ? $"{s.DisplayCourseCode} {s.SectionCode}" : s.SectionCode;
+                }
+                else
+                {
+                    var code = s.CourseId is not null && lookups.Courses.TryGetValue(s.CourseId, out var c)
+                        ? c.CalendarCode : null;
+                    sectionLabels[s.Id] = code is not null ? $"{code} {s.SectionCode}" : s.SectionCode;
+                }
             }
         }
         Access.UpdateConflictCounts(programConflicts, sectionLabels);
@@ -647,28 +659,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
         return new TileTooltip(lines, attendeeList);
     }
 
-    /// <summary>
-    /// Builds a tooltip for a shared schedule tile, including source label and notes.
-    /// </summary>
-    internal static TileTooltip BuildSharedScheduleTooltip(SharedScheduleBlock block)
-    {
-        static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
-        var lines = new List<string>
-        {
-            block.Label,
-            block.SourceLabel,
-            $"{Fmt(block.StartMinutes)}-{Fmt(block.EndMinutes)}"
-        };
-        if (!string.IsNullOrEmpty(block.Notes))
-            lines.Add(block.Notes);
-        return new TileTooltip(lines);
-    }
-
     internal static (string Label, string Initials) BuildSectionLabel(
         Section section,
         IReadOnlyDictionary<string, Course> courses,
         IReadOnlyDictionary<string, Instructor> instructors)
     {
+        // Shared sections carry pre-formatted display data from the exporting department.
+        if (section.IsShared)
+        {
+            var sharedLabel = section.DisplayCourseCode is not null
+                ? $"{section.DisplayCourseCode} {section.SectionCode}"
+                : section.SectionCode;
+            var sharedInitials = section.DisplayInstructors is not null
+                ? string.Join(" ", section.DisplayInstructors.Select(di => di.Initials))
+                : string.Empty;
+            return (sharedLabel, sharedInitials);
+        }
+
         var calCode = section.CourseId is not null && courses.TryGetValue(section.CourseId, out var course)
             ? course.CalendarCode : null;
 
@@ -791,7 +798,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 if (!passes) continue;
             }
 
-            if (snap.FilterSubject)
+            // C4 exemption: Course and Subject filters are department-specific and never
+            // apply to shared sections — filtering by A's courses would exclude everything
+            // B shared, which is never useful.
+            if (!section.IsShared && snap.FilterSubject)
             {
                 if (section.CourseId is null || !lookups.Courses.TryGetValue(section.CourseId, out var c))
                     continue;
@@ -800,7 +810,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             }
 
             // OR within the course dimension: section must belong to one of the selected courses.
-            if (snap.FilterCourse && !snap.CourseIds.Contains(section.CourseId ?? string.Empty))
+            if (!section.IsShared && snap.FilterCourse && !snap.CourseIds.Contains(section.CourseId ?? string.Empty))
                 continue;
 
             if (snap.FilterLevel)
@@ -860,7 +870,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     SectionDaySchedule.FormatFrequency(slot.Frequency),
                     Flag: section.Flag,
                     IsDeemphasized: isDeemphasized,
-                    IsEmphasized: isEmphasized));
+                    IsEmphasized: isEmphasized,
+                    IsSharedSchedule: section.IsShared,
+                    SourceLabel: section.SourceLabel ?? ""));
             }
         }
 
@@ -1077,24 +1089,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pass 4: builds blocks from all active shared schedules (cross-department CSV imports).
-    /// Each set's meetings are injected once per selected semester so they appear in the correct
-    /// sub-column in multi-semester mode.
-    /// </summary>
-    private List<GridBlock> BuildSharedScheduleBlocks(List<SemesterDisplay> semesters)
-    {
-        if (!_sharedScheduleService.HasAny) return [];
-
-        var blocks = new List<GridBlock>();
-        foreach (var sd in semesters)
-        {
-            blocks.AddRange(_sharedScheduleService.BuildBlocks(
-                sd.Semester.Id, sd.Semester.Name, sd.Semester.Color ?? string.Empty));
-        }
-        return blocks;
-    }
-
-    /// <summary>
     /// Removes duplicate blocks from the combined block list, keeping the first occurrence.
     ///
     /// A block is a duplicate when another block with the same
@@ -1135,7 +1129,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
             SectionMeetingBlock s => s.SectionId,
             CommitmentBlock c     => c.CommitmentId,
             MeetingBlock m        => m.MeetingId,
-            SharedScheduleBlock sh => $"shared:{sh.Label}:{sh.SourceLabel}",
             _ => throw new InvalidOperationException($"Unknown GridBlock subtype: {b.GetType().Name}")
         };
 
@@ -1312,14 +1305,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, IsSharedSchedule: s.IsSharedSchedule, SourceLabel: s.SourceLabel),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is
         // suppressed; IsMeeting=true lets the pointer handler distinguish meetings from
         // plain commitments and allow double-click through.
         MeetingBlock m        => new TileEntry(m.Title, m.Attendees,  m.MeetingId,  false, IsCommitment: true, IsMeeting: true, FrequencyAnnotation: m.FrequencyAnnotation, AttendeeList: m.AttendeeList),
-        SharedScheduleBlock sh => new TileEntry(sh.Label, string.Empty, string.Empty, IsCommitment: true, IsSharedSchedule: true, FrequencyAnnotation: sh.FrequencyAnnotation),
         _ => throw new InvalidOperationException($"Unknown GridBlock type: {block.GetType().Name}")
     };
 

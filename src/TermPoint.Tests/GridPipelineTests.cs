@@ -36,7 +36,11 @@ public class GridPipelineTests
         string? level         = null,
         List<string>? tagIds          = null,
         List<string>? instructorIds   = null,
-        List<SectionDaySchedule>? schedule = null) =>
+        List<SectionDaySchedule>? schedule = null,
+        bool isShared                      = false,
+        string? displayCourseCode          = null,
+        List<(string Name, string Initials)>? displayInstructors = null,
+        string? sourceLabel                = null) =>
         new()
         {
             Id            = id,
@@ -50,7 +54,11 @@ public class GridPipelineTests
             InstructorAssignments = (instructorIds ?? [])
                 .Select(iid => new InstructorAssignment { InstructorId = iid })
                 .ToList(),
-            Schedule = schedule ?? []
+            Schedule = schedule ?? [],
+            IsShared = isShared,
+            DisplayCourseCode = displayCourseCode,
+            DisplayInstructors = displayInstructors,
+            SourceLabel = sourceLabel
         };
 
     /// <summary>Creates a <see cref="SectionDaySchedule"/> with sensible defaults.</summary>
@@ -79,6 +87,7 @@ public class GridPipelineTests
         IEnumerable<string>? tags         = null,
         IEnumerable<string>? meetingTypes = null,
         IEnumerable<string>? levels       = null,
+        IEnumerable<string>? courses      = null,
         bool notStaffed          = false,
         bool emphasizeUnstaffed  = false,
         bool unroomed            = false,
@@ -94,7 +103,7 @@ public class GridPipelineTests
             new HashSet<string>(tags         ?? []),
             new HashSet<string>(meetingTypes ?? []),
             new HashSet<string>(levels       ?? []),
-            new HashSet<string>(),   // CourseIds — not used by these tests
+            new HashSet<string>(courses      ?? []),
             notStaffed, emphasizeUnstaffed, unroomed, hasOverlay, overlayType, overlayId);
 
     /// <summary>
@@ -735,5 +744,121 @@ public class GridPipelineTests
         Assert.Equal(2, result.Count);
         Assert.Contains(result, b => ((SectionMeetingBlock)b).StartMinutes == 510);
         Assert.Contains(result, b => ((SectionMeetingBlock)b).StartMinutes == 570);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Shared section integration (Enhanced Imports — C4 exemption, filtering)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void BuildFilteredBlocks_SharedSection_PassesCourseFilter()
+    {
+        // C4 exemption: Course filter is department-specific and must not exclude shared sections.
+        var local  = Sec("s1", courseId: "c1", schedule: [Slot(1, 540)]);
+        var shared = Sec("s2", courseId: null, sectionCode: "B", schedule: [Slot(1, 600)],
+            isShared: true, displayCourseCode: "CHEM101", sourceLabel: "Chemistry");
+        var snap = Snap(courses: ["c1"]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([local, shared], snap, Lookups(), []);
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).SectionId == "s1");
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).SectionId == "s2");
+    }
+
+    [Fact]
+    public void BuildFilteredBlocks_SharedSection_PassesSubjectFilter()
+    {
+        // C4 exemption: Subject filter must not exclude shared sections.
+        var local  = Sec("s1", courseId: "c1", schedule: [Slot(1, 540)]);
+        var shared = Sec("s2", courseId: null, sectionCode: "B", schedule: [Slot(1, 600)],
+            isShared: true, displayCourseCode: "CHEM101");
+        var courses = new Dictionary<string, Course>
+        {
+            ["c1"] = new() { Id = "c1", CalendarCode = "BIOL101", SubjectId = "subj1" }
+        };
+        var snap = Snap(subjects: ["subj1"]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks(
+            [local, shared], snap, Lookups(courses: courses), []);
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, b => ((SectionMeetingBlock)b).SectionId == "s2");
+    }
+
+    [Fact]
+    public void BuildFilteredBlocks_SharedSection_FilteredByTagNormally()
+    {
+        // Shared sections with resolved tags obey tag filters (AND logic) like local sections.
+        var matching    = Sec("s1", isShared: true, displayCourseCode: "CHEM101",
+            tagIds: ["t1", "t2"], schedule: [Slot(1, 540)]);
+        var nonMatching = Sec("s2", isShared: true, displayCourseCode: "CHEM102",
+            tagIds: ["t1"], schedule: [Slot(1, 600)]);
+        var snap = Snap(tags: ["t1", "t2"]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks(
+            [matching, nonMatching], snap, Lookups(), []);
+
+        Assert.Single(result);
+        Assert.Equal("s1", ((SectionMeetingBlock)result[0]).SectionId);
+    }
+
+    [Fact]
+    public void BuildFilteredBlocks_SharedSection_FilteredByInstructorNormally()
+    {
+        // Shared sections with resolved instructor IDs obey instructor filters.
+        var matching    = Sec("s1", isShared: true, displayCourseCode: "CHEM101",
+            instructorIds: ["i1"], schedule: [Slot(1, 540)]);
+        var nonMatching = Sec("s2", isShared: true, displayCourseCode: "CHEM102",
+            instructorIds: ["i2"], schedule: [Slot(1, 600)]);
+        var snap = Snap(instructors: ["i1"]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks(
+            [matching, nonMatching], snap, Lookups(), []);
+
+        Assert.Single(result);
+        Assert.Equal("s1", ((SectionMeetingBlock)result[0]).SectionId);
+    }
+
+    [Fact]
+    public void BuildFilteredBlocks_SharedSection_FilteredByRoomNormally()
+    {
+        // Shared sections with resolved room IDs obey room filters.
+        var section = Sec("s1", isShared: true, displayCourseCode: "CHEM101",
+            schedule: [Slot(1, 540, roomId: "r1"), Slot(3, 540, roomId: "r2")]);
+        var snap = Snap(rooms: ["r1"]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([section], snap, Lookups(), []);
+
+        Assert.Single(result);
+        Assert.Equal(1, ((SectionMeetingBlock)result[0]).Day);
+    }
+
+    [Fact]
+    public void BuildFilteredBlocks_SharedSection_SetsIsSharedScheduleOnBlock()
+    {
+        var shared = Sec("s1", isShared: true, displayCourseCode: "CHEM101",
+            sourceLabel: "Chemistry", schedule: [Slot(1, 540)]);
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([shared], Snap(), Lookups(), []);
+
+        Assert.Single(result);
+        var block = Assert.IsType<SectionMeetingBlock>(result[0]);
+        Assert.True(block.IsSharedSchedule);
+        Assert.Equal("Chemistry", block.SourceLabel);
+    }
+
+    [Fact]
+    public void BuildSectionLabel_SharedSection_UsesDisplayCourseCodeAndDisplayInstructors()
+    {
+        var section = Sec(isShared: true,
+            displayCourseCode: "CHEM101",
+            displayInstructors: [("Smith, John", "JRS"), ("Doe, Jane", "JD")]);
+
+        var (label, initials) = ScheduleGridViewModel.BuildSectionLabel(
+            section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
+
+        Assert.Equal("CHEM101 A", label);
+        Assert.Equal("JRS JD", initials);
     }
 }

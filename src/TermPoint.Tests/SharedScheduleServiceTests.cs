@@ -88,7 +88,7 @@ public class SharedScheduleServiceTests
     }
 
     [Fact]
-    public void BuildBlocks_ReturnsCorrectBlocks()
+    public void GetSectionsForSemester_ReturnsSectionsMatchingSemester()
     {
         var set = new SharedScheduleSet
         {
@@ -97,35 +97,40 @@ public class SharedScheduleServiceTests
             {
                 new Section
                 {
+                    Id = "shared1",
                     IsShared = true,
+                    SemesterId = "sem1",
                     CourseId = null,
                     DisplayCourseCode = "CHEM101",
                     SectionCode = "A",
-                    Notes = "Lab goggles",
                     SourceLabel = "Chemistry",
                     Schedule = new()
                     {
                         new SectionDaySchedule { Day = 1, StartMinutes = 480, DurationMinutes = 50 },
                         new SectionDaySchedule { Day = 3, StartMinutes = 480, DurationMinutes = 50, Frequency = "odd" }
                     }
+                },
+                new Section
+                {
+                    Id = "shared2",
+                    IsShared = true,
+                    SemesterId = "sem2",
+                    CourseId = null,
+                    DisplayCourseCode = "CHEM102",
+                    SectionCode = "B",
+                    SourceLabel = "Chemistry"
                 }
             }
         };
         _service.Add(set);
 
-        var blocks = _service.BuildBlocks("sem1", "Fall 2025", "#C65D1E");
+        var result = _service.GetSectionsForSemester("sem1");
 
-        Assert.Equal(2, blocks.Count);
-        Assert.Equal("CHEM101 A", blocks[0].Label);
-        Assert.Equal("Chemistry", blocks[0].SourceLabel);
-        Assert.Equal("Lab goggles", blocks[0].Notes);
-        Assert.Equal(1, blocks[0].Day);
-        Assert.Equal(480, blocks[0].StartMinutes);
-        Assert.Equal(530, blocks[0].EndMinutes);
-        Assert.Equal("sem1", blocks[0].SemesterId);
-        Assert.Equal("Fall 2025", blocks[0].SemesterName);
-        Assert.Equal("#C65D1E", blocks[0].SemesterColor);
-        Assert.Equal("(odd)", blocks[1].FrequencyAnnotation);
+        Assert.Single(result);
+        Assert.Equal("shared1", result[0].Id);
+        Assert.True(result[0].IsShared);
+        Assert.Equal("CHEM101", result[0].DisplayCourseCode);
+        Assert.Equal(2, result[0].Schedule.Count);
     }
 
     [Fact]

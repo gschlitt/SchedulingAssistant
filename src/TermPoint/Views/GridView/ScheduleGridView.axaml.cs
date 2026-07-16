@@ -897,8 +897,8 @@ public partial class ScheduleGridView : UserControl
 
                         if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
                         {
-                            // Right-click context menu is section-only; suppress for meetings.
-                            if (!entry.IsMeeting && _vm is not null && _vm.IsWriteEnabled)
+                            // Right-click context menu is section-only; suppress for meetings and shared schedule entries.
+                            if (!entry.IsMeeting && !entry.IsSharedSchedule && _vm is not null && _vm.IsWriteEnabled)
                             {
                                 var ctx = (TileClickContext)((Border)sender!).Tag!;
                                 _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
@@ -907,7 +907,7 @@ public partial class ScheduleGridView : UserControl
                             e.Handled = true;
                             return;
                         }
-                        if (e.ClickCount >= 2 && _vm?.IsWriteEnabled == true)
+                        if (e.ClickCount >= 2 && !entry.IsSharedSchedule && _vm?.IsWriteEnabled == true)
                         {
                             if (entry.IsMeeting)
                                 _vm?.MeetingEditRequested?.Invoke(entryId);
