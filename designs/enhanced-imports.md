@@ -1580,3 +1580,1712 @@ parameters on `SharingViewModel`.
    `InstructorConflictNote`? Does the call site in
    `SectionListViewModel` write them directly, or does a
    post-processing step distribute them?
+
+---
+
+## Phase 5 — Architecture
+**Status: LOCKED** — signed off 2026-07-15
+
+This phase specifies how the data design from Phase 4 maps onto the
+existing ViewModel/Service/View layers. It covers: resolved open
+questions, new classes, modified classes, view changes, model
+retirement, and DI registration.
+
+### Resolved: Open Questions from Phase 4
+
+**Q1 — Shared section list ordering.** The partition lives in
+`SectionListViewModel.LoadCore`, not in the sort comparator.
+`LoadCore` already loops per-semester and builds a list of
+`SectionListItemViewModel` instances per semester. After sorting
+local items via `SortItems()`, it appends shared items (from
+`SharedScheduleService.GetSectionsForSemester`) in a second pass,
+sub-grouped by source label and sorted internally by
+`(CourseCode, SectionCode)`. No change to `SortItems` itself —
+the partition is structural, not a sort key.
+
+**Q2 — Grid pipeline restructuring.** `BuildLookups` is unchanged —
+it still builds `GridLookups` from A's local data only. This is
+critical: `GridLookups.Sections` feeds `PopulateFilterOptions`, and
+shared sections must never pollute filter drop-downs (C2).
+
+Instead, `ReloadCore` merges shared sections into the section list
+*after* `BuildLookups` returns but *before* `BuildFilteredBlocks`
+runs. The merge point is a new local variable `allSections` that
+concatenates `lookups.Sections` with
+`_sharedScheduleService.GetSectionsForSemester(semId)`. This
+combined list is passed to `BuildFilteredBlocks`. The separate
+`BuildSharedScheduleBlocks` pass is removed entirely.
+
+`BuildFilteredBlocks` gains an `IReadOnlyDictionary<string, Course>`
+parameter (already available from `lookups.Courses`) to support
+`BuildSectionLabel` for shared sections that have no `CourseId`.
+For `IsShared` sections, the label comes from `DisplayCourseCode`
+and initials from `DisplayInstructors` — no course/instructor
+dictionary lookup needed.
+
+**Q3 — Workload panel shared chips.** `BuildItemsForInstructor`
+checks `section.IsShared` on the `Section` object directly. When
+true, it creates a `WorkloadItemViewModel` with
+`Kind = WorkloadItemKind.SharedSection` (new enum value) and appends
+the source label to the display string. The view uses `IsShared`
+(new computed property: `Kind == WorkloadItemKind.SharedSection`)
+for purple text and click suppression. No pre-partitioned input —
+the method receives one merged section list and handles both kinds
+inline.
+
+**Q4 — Conflict note routing.** The call sites in
+`SectionListViewModel` (`ApplyRoomConflicts`, `ApplyInstructorConflicts`)
+write directly to the shared `Section` objects' mutable properties.
+After `DetectConflicts` returns, the call site loops the result:
+- For local sections: writes to
+  `SectionListItemViewModel.RoomConflictWarning` /
+  `InstructorConflictWarning` (as today).
+- For shared sections: writes to `Section.RoomConflictNote` /
+  `Section.InstructorConflictNote` (the `[JsonIgnore]` mutable
+  properties). These are then read by the shared section's
+  `SectionListItemViewModel` and by the grid tile tooltip.
+
+No post-processing step — the same loop handles both, branching on
+`section.IsShared`.
+
+### New Classes
+
+#### `ImportResolutionIndex`
+
+**File**: `Services/ImportResolutionIndex.cs`
+
+Immutable lookup structure. Built once per import from A's local
+entity repositories. Specified in Phase 4 — this section covers
+the class shape and API.
+
+```csharp
+public class ImportResolutionIndex
+{
+    // All dictionaries use OrdinalIgnoreCase comparison
+    // (custom IEqualityComparer for tuple keys)
+
+    public static ImportResolutionIndex Build(
+        IReadOnlyList<Instructor> instructors,
+        IReadOnlyList<Room> rooms,
+        IReadOnlyList<Campus> campuses,
+        IReadOnlyList<SchedulingEnvironmentValue> sectionTypes,
+        IReadOnlyList<SchedulingEnvironmentValue> tags,
+        IReadOnlyList<SchedulingEnvironmentValue> meetingTypes)
+
+    // Lookup methods — return null/empty when no match
+    public Instructor? ResolveInstructor(
+        string lastName, string firstName, string initials)
+    public Room? ResolveRoom(
+        string building, string roomNumber)
+    public Campus? ResolveCampus(string name)
+    public SchedulingEnvironmentValue? ResolveSectionType(string name)
+    public SchedulingEnvironmentValue? ResolveTag(string name)
+    public SchedulingEnvironmentValue? ResolveMeetingType(string name)
+}
+```
+
+The `Build` factory constructs all internal dictionaries from plain
+entity lists — no DI dependency. Each `Resolve*` method normalizes
+its input (trim, collapse whitespace) and performs the lookup
+described in Phase 2.
+
+`ResolveInstructor` implements the three-tier match: single match →
+resolve; multiple matches → initials tiebreaker; still ambiguous →
+null + warning (appended to a `List<string>` passed to each resolve
+call, or returned via the summary).
+
+Design note: `Resolve*` methods are intentionally individual lookups
+rather than a batch "resolve all sections" method. This keeps the
+index a pure lookup structure and leaves orchestration to
+`ImportResolver`.
+
+#### `ImportResolver`
+
+**File**: `Services/ImportResolver.cs`
+
+Stateless service that maps parsed (unresolved) `Section` objects
+to resolved `Section` objects using an `ImportResolutionIndex`.
+
+```csharp
+public class ImportResolver
+{
+    public ImportResolutionSummary Resolve(
+        IReadOnlyList<Section> sections,
+        ImportResolutionIndex index)
+}
+```
+
+`Resolve` mutates the `Section` objects in place (they are freshly
+constructed by the parser, not shared with any other consumer).
+For each section:
+
+1. **Instructors**: parse each `DisplayInstructors` entry's
+   `(Name, Initials)`. Split `Name` on `", "` to get
+   `(LastName, FirstName)`. Call `index.ResolveInstructor(...)`.
+   If resolved, create an `InstructorAssignment` with the
+   matched instructor's ID and add it to
+   `section.InstructorAssignments`.
+
+2. **Rooms**: for each `SectionDaySchedule` in `section.Schedule`,
+   use the parsed building/room-number strings (stored temporarily
+   on the schedule entry — see Parser Changes below). Call
+   `index.ResolveRoom(building, roomNumber)`. If resolved, set
+   `sched.RoomId`.
+
+3. **Campus, SectionType, Tags, MeetingType**: straightforward
+   single-value or multi-value lookups, setting the corresponding
+   ID properties on the section or schedule entry.
+
+4. **Level**: no resolution needed — already set by the parser.
+
+Returns an `ImportResolutionSummary` with distinct-name counts and
+any warnings.
+
+`ImportResolver` is registered as a singleton in DI (stateless,
+no instance state). It could also be a static class, but a
+singleton keeps the option open for future dependency injection
+(e.g. logging) without changing call sites.
+
+#### `ExportLookups`
+
+**File**: `Services/ExportLookups.cs` (or nested in the exporter file)
+
+Lightweight record specified in Phase 4:
+
+```csharp
+public record ExportLookups(
+    IReadOnlyDictionary<string, Instructor> InstructorsById,
+    IReadOnlyDictionary<string, Room> RoomsById,
+    IReadOnlyDictionary<string, Campus> CampusesById,
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue> SectionTypesById,
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue> TagsById,
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue> MeetingTypesById);
+```
+
+Constructed by `SharingViewModel` from repository `GetAll()` calls,
+passed to the exporter. No DI registration needed — it's a data
+carrier.
+
+#### `ImportResolutionSummary`
+
+**File**: `Models/ImportResolutionSummary.cs`
+
+Record specified in Phase 4. No behavior — pure data.
+
+### Modified Classes
+
+#### `Section` (model)
+
+**File**: `Models/Section.cs`
+
+Add six `[JsonIgnore]` properties as specified in Phase 4:
+
+```csharp
+[JsonIgnore] public bool IsShared { get; init; }
+[JsonIgnore] public string? SourceLabel { get; init; }
+[JsonIgnore] public string? DisplayCourseCode { get; init; }
+[JsonIgnore] public List<(string Name, string Initials)>?
+             DisplayInstructors { get; init; }
+[JsonIgnore] public string? RoomConflictNote { get; set; }
+[JsonIgnore] public string? InstructorConflictNote { get; set; }
+```
+
+Zero cost for local sections — all default to `false`/`null`,
+never serialized, no allocation.
+
+#### `SectionDaySchedule` (model)
+
+**File**: `Models/SectionDaySchedule.cs` (or wherever schedule
+entries are defined)
+
+Add two `[JsonIgnore]` transient string properties for the parser
+to stash raw building/room-number strings before resolution:
+
+```csharp
+[JsonIgnore] public string? ImportedBuilding { get; init; }
+[JsonIgnore] public string? ImportedRoomNumber { get; init; }
+```
+
+Also add one for meeting type name:
+
+```csharp
+[JsonIgnore] public string? ImportedMeetingTypeName { get; init; }
+```
+
+These are consumed by `ImportResolver.Resolve()` and discarded
+after resolution (the resolved IDs are set on `RoomId` /
+`MeetingTypeId`). Never persisted, never visible outside the
+import pipeline.
+
+#### `SharedScheduleService`
+
+**File**: `Services/SharedScheduleService.cs`
+
+**Changes:**
+- `Sets` property type changes: `SharedScheduleSet.Sections` is now
+  `List<Section>` (per Phase 4), not `List<SharedSection>`.
+- **Remove** `BuildBlocks()` method. The grid no longer needs it —
+  shared sections flow through `BuildFilteredBlocks` as regular
+  `Section` objects, producing `SectionMeetingBlock` entries.
+- **Add** `GetSectionsForSemester(string semesterId)`:
+  ```csharp
+  public IReadOnlyList<Section> GetSectionsForSemester(
+      string semesterId)
+  ```
+  Returns all sections across all loaded sets whose `SemesterId`
+  matches. Flat list — source grouping is handled by callers that
+  need it (strip VM, section list VM).
+
+The `Add`, `Dismiss`, `DismissAll`, `Changed` event, and `HasAny`
+property are unchanged.
+
+#### `SharedScheduleCsvParser`
+
+**File**: `Services/SharedScheduleCsvParser.cs`
+
+**Parse method** — returns `Section` objects instead of
+`SharedSection` objects:
+
+```csharp
+public ImportResult Parse(Stream stream, string fallbackSourceLabel)
+```
+
+`ImportResult` changes:
+```csharp
+public record ImportResult(
+    SharedScheduleSet? Set,    // Set.Sections is now List<Section>
+    int TotalRows,
+    int SkippedRows,
+    List<(int LineNumber, string Reason)> Warnings,
+    string? FileError,
+    string? SemesterName)      // NEW: from CSV header, for mismatch warning
+```
+
+**Parsing changes:**
+- Read the new header comment format:
+  `#TermPoint Schedule Overlay,{source},{semester},{date}`.
+  Extract `SemesterName` (3rd field) and `ExportedAt` (4th field).
+  Old-format headers (2 fields) have `SemesterName = null`.
+- Column dictionary: recognize columns 10–18 by header name.
+  Missing columns (old CSV) → those fields stay null/empty.
+- Group rows by `(CourseCode, SectionCode)` as today, but build
+  `Section` objects:
+  - `Id = Guid.NewGuid().ToString()` (synthetic)
+  - `IsShared = true`
+  - `CourseId = null`
+  - `DisplayCourseCode = courseCode`
+  - `SectionCode = sectionCode`
+  - `Notes = notes`
+  - `Level = level` (column 18, or empty)
+  - `DisplayInstructors` parsed from Instructor + Initials columns
+    (pipe-split, zip by position)
+  - `Schedule` entries: `SectionDaySchedule` with day, start, end,
+    duration, frequency, plus `ImportedBuilding`,
+    `ImportedRoomNumber`, `ImportedMeetingTypeName` from columns
+    12/13/17
+  - `CampusId = null`, `SectionTypeId = null`, `TagIds = []`
+    (resolved later)
+
+  Per-section fields (Instructor, Initials, Campus, SectionType,
+  Tags, Level) are read from the first row of each group and
+  ignored on subsequent rows. Per-meeting fields (Building,
+  RoomNumber, MeetingType) are read per row.
+
+- Stash raw imported strings for campus, section type, and tags on
+  the section for the resolver to consume. Options:
+  - (a) Additional `[JsonIgnore]` properties on `Section`:
+    `ImportedCampusName`, `ImportedSectionTypeName`,
+    `ImportedTagNames`.
+  - (b) Pass them alongside in a separate structure.
+
+  Option (a) is simpler and consistent with the
+  `SectionDaySchedule.ImportedBuilding` pattern. Three more
+  `[JsonIgnore] init` properties on `Section`:
+
+  ```csharp
+  [JsonIgnore] public string? ImportedCampusName { get; init; }
+  [JsonIgnore] public string? ImportedSectionTypeName { get; init; }
+  [JsonIgnore] public List<string>? ImportedTagNames { get; init; }
+  ```
+
+#### `SharedScheduleCsvExporter`
+
+**File**: `Services/SharedScheduleCsvExporter.cs`
+
+**Export method** — gains `ExportLookups` and semester name:
+
+```csharp
+public string? Export(
+    Stream output,
+    string sourceLabel,
+    string semesterName,
+    IReadOnlyList<Section> sections,
+    Func<string, string> courseCodeLookup,
+    ExportLookups lookups)
+```
+
+**Changes:**
+- Header comment: `#TermPoint Schedule Overlay,{source},{semester},{date}`
+  (adds semester name as 3rd field).
+- Header row: 18 columns instead of 9.
+- Per row: resolve IDs to display strings using `lookups`, write
+  all 18 fields. Per-section fields repeat; per-meeting fields vary.
+  Resolution logic specified in Phase 4 §Enriched Exporter.
+- Missing data → empty string (specified in Phase 4 §Missing data
+  handling).
+
+#### `SharingViewModel`
+
+**File**: `ViewModels/Management/SharingViewModel.cs`
+
+**New constructor dependencies** (4 additional):
+```
+IInstructorRepository
+IRoomRepository
+ICampusRepository
+ISchedulingEnvironmentRepository
+```
+
+These are already registered in DI. `SharingViewModel` is transient,
+so no singleton-ordering concerns.
+
+**ImportSharedSchedule changes:**
+After `_parser.Parse(stream, fallbackLabel)` returns:
+
+```
+1. Parse → ImportResult with unresolved List<Section> + SemesterName
+2. Check SemesterName vs active semester → append warning if mismatch
+3. Build ImportResolutionIndex from 6 repo GetAll() calls
+4. Call _resolver.Resolve(sections, index) → ImportResolutionSummary
+5. Stamp SemesterId on all sections (active semester ID)
+6. Create SharedScheduleSet with resolved sections + summary
+7. _sharedScheduleService.Add(set)
+8. Build StatusMessage from parse stats + resolution summary
+```
+
+Step 5 is new vs today: sections get the active semester's ID so
+they participate in semester-scoped operations. Today,
+`SharedScheduleSet` has no semester concept — blocks were stamped
+with the semester in `BuildBlocks()`. Now sections carry it
+directly.
+
+**ExportSharedSchedule changes:**
+Build `ExportLookups` from repo calls (as specified in Phase 4
+§Call site in SharingViewModel). Pass it plus the active semester
+name to the exporter.
+
+**Status message enhancement:**
+After import, build a multi-line status message:
+- Line 1: `"Imported {n} sections from {source}."`
+- Line 2: `"Matched: {x} instructors, {y} rooms, {z} tags."`
+- Line 3 (if warnings): individual warning lines.
+- Semester mismatch warning (if applicable).
+
+The `StatusMessage` property is already a `string` bound in the
+sharing flyout. Multi-line strings render naturally in the
+TextBlock.
+
+#### `ScheduleGridViewModel`
+
+**File**: `ViewModels/GridView/ScheduleGridViewModel.cs`
+
+This is the largest change. The grid pipeline drops Pass 4
+(shared blocks) and integrates shared sections into Pass 1
+(filtered blocks).
+
+**Constructor:** Add `SharedScheduleService` injection (already
+present — it's used for `BuildSharedScheduleBlocks` today). No
+new dependencies.
+
+**ReloadCore changes:**
+
+Today's pipeline:
+```
+Pass 1: BuildFilteredBlocks(lookups, snap)     → filtered
+Pass 2: BuildOverlayBlocks(lookups, snap, ...)  → overlayOnly
+Pass 3: BuildCommitmentBlocks(...)              → commitments
+Pass 4: BuildSharedScheduleBlocks()             → sharedBlocks
+combinedBlocks = filtered ∪ overlay ∪ commitments ∪ meetings ∪ shared
+```
+
+Enhanced pipeline:
+```
+Merge:  allSections = lookups.Sections ++ sharedSections
+Pass 1: BuildFilteredBlocks(allSections, lookups, snap) → filtered
+Pass 2: BuildOverlayBlocks(lookups, snap, ...)          → overlayOnly
+Pass 3: BuildCommitmentBlocks(...)                      → commitments
+combinedBlocks = filtered ∪ overlay ∪ commitments ∪ meetings
+```
+
+Pass 4 is gone. Shared sections produce `SectionMeetingBlock`
+entries in Pass 1, just like local sections.
+
+**Merge point** (new code in `ReloadCore`, before Pass 1):
+
+```csharp
+// Merge shared sections into the section list for filtering.
+// lookups.Sections stays unchanged (local only) to preserve
+// filter option population (C2).
+var sharedSections = _sharedScheduleService
+    .GetSectionsForSemester(semId);
+var allSections = lookups.Sections
+    .Concat(sharedSections).ToList();
+```
+
+`allSections` is passed to `BuildFilteredBlocks`. `lookups` itself
+is not mutated — `PopulateFilterOptions` continues to read
+`lookups.Sections` (local only), preserving C2.
+
+**BuildFilteredBlocks changes:**
+
+Signature gains a section list parameter (decoupled from lookups):
+```csharp
+internal static List<SectionMeetingBlock> BuildFilteredBlocks(
+    IReadOnlyList<Section> sections,    // ← was lookups.Sections
+    GridLookups lookups,
+    FilterSnapshot snap,
+    ...)
+```
+
+Filter predicate changes for shared sections:
+
+- **Course filter** (C4 exemption): skip `IsShared` sections.
+  ```csharp
+  if (snap.FilterCourse
+      && !section.IsShared    // ← NEW: shared sections pass
+      && !snap.CourseIds.Contains(section.CourseId ?? ""))
+      continue;
+  ```
+
+- **Subject filter** (C4 exemption): skip `IsShared` sections.
+  ```csharp
+  if (snap.FilterSubject && !section.IsShared)  // ← NEW
+  {
+      // existing subject lookup logic
+  }
+  ```
+
+- **All other filters** (instructor, room, campus, section type,
+  tags, meeting type, level): apply identically. Shared sections
+  carry resolved IDs, so the existing predicates evaluate them
+  naturally. No code change needed in these predicates.
+
+- **Unstaffed sentinel**: shared sections with no resolved
+  instructors are "unstaffed" in A's world. The existing
+  `NotStaffedSelected` check (`section.InstructorIds.Count == 0`)
+  naturally includes them. This is correct — it lets the user see
+  "all unstaffed sections, including shared ones with no local
+  instructor match."
+
+**BuildSectionLabel changes:**
+
+The method must handle shared sections that have no `CourseId` and
+may have unresolved instructors:
+
+```csharp
+internal static (string Label, string Initials) BuildSectionLabel(
+    Section section,
+    IReadOnlyDictionary<string, Course> courses,
+    IReadOnlyDictionary<string, Instructor> instructors)
+{
+    string label;
+    if (section.IsShared)
+    {
+        // Use DisplayCourseCode directly — no course lookup
+        label = $"{section.DisplayCourseCode} {section.SectionCode}";
+    }
+    else
+    {
+        // Existing logic: look up CourseId → CalendarCode
+        ...
+    }
+
+    string initials;
+    if (section.IsShared && section.DisplayInstructors is { } di)
+    {
+        // For resolved instructors, use A's Initials field.
+        // For unresolved, use the CSV-provided initials.
+        var parts = new List<string>();
+        int assignmentIdx = 0;
+        foreach (var (name, csvInitials) in di)
+        {
+            if (assignmentIdx < section.InstructorAssignments.Count)
+            {
+                var assignment = section.InstructorAssignments[assignmentIdx];
+                if (instructors.TryGetValue(
+                        assignment.InstructorId, out var inst))
+                    parts.Add(inst.Initials);
+                else
+                    parts.Add(csvInitials);
+                assignmentIdx++;
+            }
+            else
+            {
+                parts.Add(csvInitials);
+            }
+        }
+        initials = string.Join(" ", parts);
+    }
+    else
+    {
+        // Existing logic: look up InstructorIds → Initials
+        ...
+    }
+
+    return (label, initials);
+}
+```
+
+Actually, this conflates resolved and unresolved instructor order.
+Simpler approach: `DisplayInstructors` is the authoritative
+ordered list for shared sections. For each entry, check if a
+corresponding resolved `InstructorAssignment` exists (by matching
+the assignment's instructor ID back to the `DisplayInstructors`
+index). But this is fragile.
+
+Better: `DisplayInstructors` carries initials for *all* instructors,
+and those initials are already the right display value (they come
+from the exporting department's data). For resolved instructors,
+A's own initials should be used (they might differ from B's — e.g.,
+a cross-appointed instructor whose initials are set differently in
+each department). However, in practice, departments don't rename
+cross-appointed instructors' initials. The simpler design:
+
+**For shared sections, always use `DisplayInstructors` initials
+for grid tile rendering.** This avoids the resolved-vs-unresolved
+bookkeeping entirely. The resolved instructor IDs are used for
+*filtering* and *conflict detection* (where correctness matters),
+not for display initials (where a cosmetic difference is harmless).
+
+```csharp
+if (section.IsShared)
+{
+    label = string.IsNullOrEmpty(section.DisplayCourseCode)
+        ? section.SectionCode
+        : $"{section.DisplayCourseCode} {section.SectionCode}";
+
+    initials = section.DisplayInstructors is { Count: > 0 } di
+        ? string.Join(" ", di.Select(d => d.Initials))
+        : "";
+}
+```
+
+**SectionMeetingBlock changes:**
+
+Add `IsSharedSchedule` flag to the record:
+
+```csharp
+public record SectionMeetingBlock(
+    ...,
+    bool IsSharedSchedule = false    // ← NEW
+) : GridBlock(...);
+```
+
+Set in `BuildFilteredBlocks` when creating blocks for shared
+sections:
+
+```csharp
+new SectionMeetingBlock(
+    ...,
+    IsSharedSchedule: section.IsShared
+)
+```
+
+**ToEntry changes:**
+
+Remove the `SharedScheduleBlock` case entirely. The
+`SectionMeetingBlock` case now propagates `IsSharedSchedule`:
+
+```csharp
+SectionMeetingBlock s => new TileEntry(
+    s.Label, s.Initials, s.SectionId,
+    s.IsOverlay, IsCommitment: false,
+    s.FrequencyAnnotation, s.IsDeemphasized,
+    IsEmphasized: s.IsEmphasized,
+    IsSharedSchedule: s.IsSharedSchedule,  // ← NEW
+    Flag: s.Flag),
+```
+
+Key change from today: shared schedule entries now have
+`IsCommitment = false` and carry a real `SectionId` (the synthetic
+GUID). This means:
+- They are **selectable** (the renderer's click handler checks
+  `IsCommitment`, and false means clicks are allowed).
+- They have a **cursor** (hand cursor on hover).
+- They are registered for **selection repainting**.
+- The selection sets `SectionId` on `SectionStore`, which
+  highlights the corresponding card in the section list.
+
+The purple text rendering is unchanged — the renderer already
+checks `IsSharedSchedule` for the `SharedScheduleText` brush.
+
+**Context menu suppression**: the grid's right-click handler must
+check `IsSharedSchedule` and suppress the context menu (no edit
+operations on shared sections). Add:
+```csharp
+if (entry.IsSharedSchedule) { e.Handled = true; return; }
+```
+
+**DeduplicateBlocks changes:**
+
+Remove the `SharedScheduleBlock` case from the `EntityId` helper.
+Shared sections are now `SectionMeetingBlock` entries with real
+(synthetic) `SectionId`s, so the existing `SectionMeetingBlock`
+case handles them:
+```csharp
+SectionMeetingBlock s => s.SectionId,
+```
+
+No collision risk — synthetic GUIDs don't collide with A's real
+section IDs.
+
+**ProgramConflictService call site:**
+
+The `visibleSections` list is already built from the filtered
+blocks' `SectionId` values looked up in the section list. After
+the merge, shared sections are in the section list that
+`BuildFilteredBlocks` processes, so they're automatically in the
+filtered blocks, and thus in `visibleSections`. The
+`tagIdsBySectionId` dictionary includes shared sections' resolved
+tag IDs from `section.TagIds`. No explicit change needed — the
+merge upstream handles it.
+
+**Tooltip building:**
+
+Remove `BuildSharedScheduleTooltip`. Shared entries are now
+`SectionMeetingBlock` with real `SectionId`, so they flow through
+the existing `BuildTileTooltip` path. For shared sections,
+`BuildTileTooltip` should include the source label. The tooltip
+can check `IsSharedSchedule` on the `TileEntry` and, if true,
+look up the section's `SourceLabel` from a new
+`sourceLabelsById` dictionary built during the merge step.
+
+Alternatively, since tooltips for section tiles already show
+course code + section code + time, and shared tiles render in
+purple (immediately distinguishing them), a tooltip showing just
+the standard info plus "(Chemistry Department)" is sufficient.
+The `SourceLabel` can be encoded into the `TileEntry` via a new
+optional property or looked up from the shared section's
+`SourceLabel` field.
+
+Simplest approach: add `SourceLabel` to `TileEntry` (default
+`""`). Set it from `section.SourceLabel` for shared entries.
+The tooltip builder appends it when non-empty.
+
+**Remove:**
+- `BuildSharedScheduleBlocks` method
+- `BuildSharedScheduleTooltip` method
+- `SharedScheduleBlock` arm in `ToEntry`
+- `SharedScheduleBlock` arm in `DeduplicateBlocks`
+
+#### `SectionListViewModel`
+
+**File**: `ViewModels/Management/SectionListViewModel.cs`
+
+**New dependency:** `SharedScheduleService` (injected via
+constructor; already a singleton).
+
+**LoadCore changes:**
+
+After building and sorting local section items (existing flow),
+append shared sections:
+
+```csharp
+// After sorting local items for this semester:
+var sharedSections = _sharedScheduleService
+    .GetSectionsForSemester(semId);
+
+// Sub-group by source, sort within each group
+var sharedBySource = sharedSections
+    .GroupBy(s => s.SourceLabel ?? "")
+    .OrderBy(g => g.Key);
+
+foreach (var group in sharedBySource)
+{
+    foreach (var section in group
+        .OrderBy(s => s.DisplayCourseCode)
+        .ThenBy(s => s.SectionCode))
+    {
+        var item = CreateSharedSectionItem(section, lk, semName, semColor);
+        rawItems.Add(item);
+    }
+}
+```
+
+`CreateSharedSectionItem` is a new private method that creates a
+`SectionListItemViewModel` with `IsShared = true`. The lookups
+are the same as for local sections — shared sections carry
+resolved IDs, so the constructor populates instructor names, room
+names, etc. from A's lookup dictionaries. Unresolved properties
+produce empty display strings, which is correct.
+
+**Conflict detection changes (ApplyRoomConflicts,
+ApplyInstructorConflicts):**
+
+Merge shared sections into the input list before calling
+`DetectConflicts`, as specified in Phase 4 §Conflict Detection
+Integration:
+
+```csharp
+var sharedSections = _sharedScheduleService
+    .GetSectionsForSemester(semesterId);
+var allSections = sections.Concat(sharedSections).ToList();
+
+// Extend courseCodeById for shared sections
+foreach (var s in sharedSections)
+    courseCodeById.TryAdd(s.Id,
+        $"{s.DisplayCourseCode} {s.SectionCode}");
+
+var conflicts = RoomConflictService.DetectConflicts(
+    allSections, roomNameById, courseCodeById);
+```
+
+After detection, route conflict descriptions:
+
+```csharp
+foreach (var (sectionId, warning) in conflicts)
+{
+    if (itemsById.TryGetValue(sectionId, out var vm))
+    {
+        // Local section — write to VM property (existing)
+        vm.RoomConflictWarning = warning;
+    }
+    else
+    {
+        // Shared section — write to Section model property
+        var sharedSection = sharedSections
+            .FirstOrDefault(s => s.Id == sectionId);
+        if (sharedSection != null)
+            sharedSection.RoomConflictNote = warning;
+    }
+}
+```
+
+Same pattern for instructor conflicts.
+
+**Changed event wiring:** Subscribe to
+`_sharedScheduleService.Changed` to trigger a reload when shared
+schedules are added/dismissed. (The grid VM already does this;
+the section list VM needs to add it.)
+
+#### `SectionListItemViewModel`
+
+**File**: `ViewModels/Management/SectionListItemViewModel.cs`
+
+**New properties:**
+
+```csharp
+public bool IsShared { get; init; }
+```
+
+Set to `true` when created for a shared section. Controls:
+- **Expansion suppression**: `ToggleCollapsed` early-returns when
+  `IsShared` is true. The card stays in summary-only mode.
+- **Context menu suppression**: the view binds `ContextMenu`
+  visibility to `!IsShared`.
+- **Flag suppression**: flag operations check `IsShared` and
+  refuse (shared sections can't be flagged).
+- **Conflict display**: `RoomConflictWarning` and
+  `InstructorConflictWarning` are populated from
+  `section.RoomConflictNote` / `section.InstructorConflictNote`
+  when `IsShared` is true, giving shared cards the same warning
+  rendering as local cards.
+
+**Source label display:**
+
+Add `SourceLabel` property (from the section's `SourceLabel`).
+The view shows it as a subtle badge or parenthetical on shared
+cards: `"(Chemistry)"`.
+
+**Constructor changes:**
+
+The existing constructor works for shared sections — it takes a
+`Section` and lookup dictionaries. For shared sections:
+- `Heading` uses `DisplayCourseCode + SectionCode` (existing
+  `CalendarCode` lookup returns null for null `CourseId`, and the
+  fallback is `SectionCode` alone — but we want the full
+  `DisplayCourseCode`). Adjust the heading logic:
+  ```csharp
+  if (section.IsShared && section.DisplayCourseCode != null)
+      Heading = $"{section.DisplayCourseCode} {section.SectionCode}";
+  ```
+- `InstructorLine` is built from `InstructorAssignments` → lookup.
+  For unresolved instructors, the lookup returns null, so they're
+  skipped. To show all instructors (resolved + unresolved), use
+  `DisplayInstructors` for shared sections:
+  ```csharp
+  if (section.IsShared && section.DisplayInstructors != null)
+      InstructorLine = string.Join(", ",
+          section.DisplayInstructors.Select(d => d.Name));
+  ```
+
+#### `WorkloadPanelViewModel`
+
+**File**: `ViewModels/WorkloadPanelViewModel.cs`
+
+**New dependency:** `SharedScheduleService` (injected via
+constructor).
+
+**Load changes:**
+
+In `Load()`, after getting local sections from
+`_sectionStore.SectionsBySemester`, merge shared sections:
+
+```csharp
+var sharedSections = _sharedScheduleService
+    .GetSectionsForSemester(semId);
+var allSections = localSections.Concat(sharedSections).ToList();
+```
+
+Pass `allSections` to `BuildItemsForInstructor` instead of
+`localSections`.
+
+**BuildItemsForInstructor changes:**
+
+For shared sections, create `WorkloadItemViewModel` with
+`Kind = WorkloadItemKind.SharedSection`:
+
+```csharp
+if (section.IsShared)
+{
+    var label = $"{section.DisplayCourseCode} {section.SectionCode}"
+        + $" ({section.SourceLabel})";
+    items.Add(new WorkloadItemViewModel
+    {
+        Kind = WorkloadItemKind.SharedSection,
+        Id = section.Id,
+        Label = label,
+        WorkloadValue = 0m,  // doesn't contribute to totals
+    });
+}
+```
+
+Shared section chips don't contribute to `totalWorkload` or
+`totalSections` counts — the summing logic skips
+`Kind == SharedSection` entries.
+
+**Instructor conflict detection:**
+
+Merge shared sections into the input for
+`InstructorConflictService.DetectConflictsByInstructor`, same
+pattern as `SectionListViewModel`.
+
+**Changed event wiring:** Subscribe to
+`_sharedScheduleService.Changed` to trigger a reload.
+
+#### `WorkloadItemViewModel`
+
+**File**: `ViewModels/WorkloadItemViewModel.cs`
+
+**Enum change:**
+```csharp
+public enum WorkloadItemKind { Section, Release, SharedSection }
+```
+
+**New computed property:**
+```csharp
+public bool IsShared => Kind == WorkloadItemKind.SharedSection;
+```
+
+The view uses `IsShared` for:
+- Purple text (bind `Foreground` to a converter or trigger)
+- Click suppression (no selection, no navigation)
+- Source label suffix is already baked into `Label`
+
+#### `SharedScheduleStripViewModel`
+
+**File**: `ViewModels/GridView/SharedScheduleStripViewModel.cs`
+
+**Changes to `Refresh()`:**
+
+`SharedScheduleSet.Sections` is now `List<Section>` instead of
+`List<SharedSection>`. The strip builds its rows from these.
+
+**CollapsedSummary enhancement:**
+
+Add resolution stats per source:
+```csharp
+var summary = set.ResolutionSummary;
+var matchInfo = FormatResolutionBrief(summary);
+// e.g. "3/4 instr" or "all matched"
+```
+
+Format: `"Chemistry Dept (12, 3/4 instr) · Biology (8, all matched)"`
+
+**SharedScheduleSourceRow changes:**
+
+Rows are built from `Section` objects instead of `SharedSection`.
+The row's `Label` comes from `section.DisplayCourseCode + " " +
+section.SectionCode`. The `Schedule` string is built from
+`section.Schedule` (`SectionDaySchedule` entries) instead of
+`SharedMeeting` objects. The formatting logic (group by
+time/frequency, day abbreviation) is the same.
+
+**Enhanced expanded view:**
+
+Each source group header shows resolution stats:
+```
+Chemistry Department — exported 2026-07-15
+Matched: 3/4 instructors · 8/8 rooms · 4/6 tags
+```
+
+Section rows show instructor initials and room shorthand:
+```
+CHEM101 A  JRS JD  MWF 8:00–8:50 AM  Rm 204 Sci
+```
+
+Instructor initials come from `section.DisplayInstructors`.
+Room shorthand comes from the `SectionDaySchedule.RoomId` →
+lookup (or `ImportedRoomNumber` / `ImportedBuilding` if
+unresolved). The strip VM needs a room lookup dictionary —
+it can receive this from the grid reload or build its own
+lightweight one from `IRoomRepository.GetAll()`. Since the
+strip is small and reloads infrequently, building its own
+is simpler (no coupling to the grid pipeline).
+
+New constructor dependency: `IRoomRepository` (for room name
+lookup in expanded rows).
+
+#### `GridFilterViewModel`
+
+**File**: `ViewModels/GridView/GridFilterViewModel.cs`
+
+**No changes.** Filter options are populated from `GridLookups`,
+which is built from local data only. Shared sections never
+contribute to filter option lists. The filter predicates in
+`BuildFilteredBlocks` are where the C4 exemption is implemented
+(see `ScheduleGridViewModel` changes above).
+
+### View Layer Changes
+
+#### `ScheduleGridView.axaml.cs`
+
+**Text color**: No change — the existing
+`entry.IsSharedSchedule ? SharedScheduleText` branch in the
+foreground priority chain already handles shared entries. Now it
+fires for `SectionMeetingBlock`-derived entries instead of
+`SharedScheduleBlock`-derived ones.
+
+**Click behavior**: Shared entries now have
+`IsCommitment = false`, so they ARE clickable (selection).
+The existing click handler sets `SectionId` on `SectionStore`,
+which cross-highlights the section list and workload panel.
+Add a guard in the right-click handler:
+```csharp
+if (entry.IsSharedSchedule)
+{
+    e.Handled = true;
+    return;  // no context menu for shared sections
+}
+```
+
+**Cursor**: Shared entries get the hand cursor (they're
+selectable). This is a change from today (no cursor).
+
+**Tooltip**: Shared entries now flow through the standard
+`BuildTileTooltip` path. The tooltip shows course code, section
+code, time, and — for shared entries — appends the source label
+line. The tooltip builder checks `entry.IsSharedSchedule` (or
+`entry.SourceLabel != ""`) to append it.
+
+**Flag icon**: Shared entries have `Flag = SectionFlag.None`
+(no flag assigned). The renderer's flag-icon path naturally
+skips `None`.
+
+#### `SectionListView.axaml`
+
+**Shared section card styling:**
+
+Shared section cards use the same `DataTemplate` as local cards
+but with conditional styling:
+- **Purple text**: bind `Foreground` to a style trigger on
+  `IsShared`. When true, use `SharedScheduleText` brush for
+  the heading and schedule lines.
+- **Source label badge**: a `TextBlock` bound to `SourceLabel`,
+  visible when `IsShared` is true. Small font, purple text,
+  shown after the heading (e.g., "(Chemistry)").
+- **No expand arrow**: the expand/collapse toggle is hidden
+  when `IsShared` is true.
+- **No context menu**: `ContextMenu` is null when `IsShared`.
+- **Conflict warnings**: rendered identically to local cards
+  (same warning `TextBlock` bound to `RoomConflictWarning` /
+  `InstructorConflictWarning`).
+
+These can be implemented with Avalonia `Style` selectors
+using a `Classes` binding on the card's root panel:
+```xml
+<Border Classes.shared="{Binding IsShared}">
+```
+
+#### `WorkloadPanelView.axaml`
+
+**Shared section chips:**
+- Purple text: style trigger on `IsShared`
+- Source label: already included in `Label` (e.g.,
+  "CHEM101 A (Chemistry)")
+- Non-clickable: `PointerPressed` handler checks `IsShared`
+  and suppresses selection
+
+#### `SharedScheduleStripView.axaml`
+
+**Enhanced collapsed summary**: bind to updated
+`CollapsedSummary` property (includes resolution stats).
+
+**Enhanced expanded rows**: update the row `DataTemplate` to
+show instructor initials and room shorthand. Bind to new
+properties on `SharedScheduleSourceRow`.
+
+**Resolution summary header**: add a `TextBlock` per source
+group header showing the matched counts.
+
+#### `SharingView.axaml` (Sharing Flyout)
+
+**Import status message**: multi-line text already renders in
+the existing `TextBlock`. The `StatusMessage` string gains
+resolution summary lines. No template change needed unless
+styled formatting (e.g., bold counts) is desired — plain
+text is sufficient for now.
+
+**Export button tooltip in multi-semester mode**: "Select a
+single semester to use shared schedules" — the disabled state
+and tooltip are bound to a new `IsSingleSemester` property
+on `SharingViewModel` (derived from
+`_semesterContext.SelectedSemesterIds.Count == 1`).
+
+### Model Retirement
+
+The following types are removed entirely:
+
+| Type | File | Replaced By |
+|------|------|-------------|
+| `SharedSection` | `Models/SharedSection.cs` | `Section` with `IsShared = true` |
+| `SharedMeeting` | `Models/SharedMeeting.cs` | `SectionDaySchedule` |
+| `SharedScheduleBlock` | `GridData.cs` (line 122) | `SectionMeetingBlock` with `IsSharedSchedule = true` |
+
+The `SharedScheduleBlock` record is deleted from `GridData.cs`.
+All code that pattern-matches on it (`ToEntry`, `DeduplicateBlocks`,
+`BuildSharedScheduleTooltip`) is updated or removed.
+
+`SharedScheduleSet` survives but its `Sections` property type
+changes from `List<SharedSection>` to `List<Section>`.
+
+### DI Registration Changes
+
+**New registrations** (in `App.axaml.cs`, both desktop and WASM
+paths):
+```csharp
+services.AddSingleton<ImportResolver>();
+```
+
+`ImportResolutionIndex` is not registered — it's constructed via
+a static factory method in the import flow, not injected.
+
+`ExportLookups` is not registered — it's a data carrier
+constructed inline.
+
+`ImportResolutionSummary` is not registered — it's a return value.
+
+**Modified registrations:** None. `SharedScheduleService`,
+`SharedScheduleCsvParser`, and `SharedScheduleCsvExporter` keep
+their existing registrations. `SharingViewModel` stays transient.
+
+**New constructor parameters on existing registrations:**
+- `SharingViewModel`: +4 repos + `ImportResolver`
+- `SectionListViewModel`: + `SharedScheduleService`
+- `WorkloadPanelViewModel`: + `SharedScheduleService`
+- `SharedScheduleStripViewModel`: + `IRoomRepository`
+
+All injected types are already registered. No circular dependency
+risks — all new dependencies are on repositories (transient) or
+`SharedScheduleService` (singleton, no dependency on VMs).
+
+### Invariants and Safety
+
+1. **Filter option isolation (C2)**: `PopulateFilterOptions` reads
+   from `GridLookups`, which is built from local data only. Shared
+   sections are merged into `allSections` after `BuildLookups` but
+   before `BuildFilteredBlocks`. The merge is a local variable in
+   `ReloadCore`, not a mutation of `GridLookups`.
+
+2. **Data isolation (C1)**: shared sections never enter
+   `SectionStore`, never pass to any repository, never appear in
+   any save/export-of-A's-data operation. The `IsShared` flag
+   provides defense-in-depth.
+
+3. **Single-semester constraint**: `SharingViewModel` checks
+   `_semesterContext.SelectedSemesterIds.Count == 1` before
+   enabling Import/Export. `SharedScheduleService` stores sections
+   with a stamped `SemesterId`; `GetSectionsForSemester` filters
+   by it.
+
+4. **Selection safety**: clicking a shared section in the grid
+   sets selection to the synthetic GUID. The section list highlights
+   the corresponding shared card. The section editor does NOT open
+   (guarded by `IsShared` on the `SectionListItemViewModel`).
+
+5. **Save safety**: any code path that writes a `Section` to the
+   database (repository save, copy, delete) must check `IsShared`
+   and refuse. Today, the collection boundary already prevents
+   this (shared sections are never in `SectionStore`). The
+   `IsShared` flag is defense-in-depth for any future code that
+   might receive a `Section` from an unexpected source.
+
+6. **Conflict detection correctness**: shared sections with
+   `CourseId = null` correctly group separately from all of A's
+   courses in `ProgramConflictService`. Course-mode watches
+   exclude them naturally (`courseIdSet.Contains(null)` is false).
+   Tag-mode watches include them via resolved `TagIds`.
+
+### Open Questions for Phase 6 — RESOLVED
+
+1. **Implementation ordering** — RESOLVED in Phase 6.
+2. **Test strategy** — RESOLVED in Phase 6.
+3. **Migration of existing shared schedule files** — RESOLVED in
+   Phase 6 (Session 8 verification step).
+
+---
+
+## Phase 6 — Implementation Plan
+**Status: LOCKED** — signed off 2026-07-15
+
+This phase breaks the architecture into ordered implementation
+sessions, identifies dependencies, and defines the test strategy.
+Each session is scoped to roughly one working session (~2–3 hours).
+
+### Resolved: Open Questions from Phase 5
+
+**Q1 — Implementation ordering.** The dependency graph has four
+tiers:
+
+```
+Tier 0: Model changes (Section, SectionDaySchedule, records, enums)
+   ↓
+Tier 1: Core services (ImportResolutionIndex, ImportResolver,
+         Parser rewrite, Exporter enrichment, SharedScheduleService)
+   ↓
+Tier 2: ViewModel integration (SharingVM, GridVM, SectionListVM,
+         WorkloadVM, StripVM, SectionListItemVM)
+   ↓
+Tier 3: View layer + cleanup (AXAML styling, model deletion,
+         DI registration)
+```
+
+Within each tier, some work is independent. The exporter
+enrichment (Tier 1) has no dependency on the parser rewrite
+or the resolution index. The grid pipeline restructuring (Tier 2)
+depends on SharedScheduleService changes but not on the section
+list or workload panel changes.
+
+Sessions are ordered to deliver compilable, testable increments
+at each step. No session leaves the codebase in a broken state.
+
+**Q2 — Test strategy.** Three categories:
+
+- **Unit tests** for pure-function services: `ImportResolutionIndex`
+  (normalization, tiebreakers, ambiguity), `ImportResolver`
+  (full resolution flow, summary counts), parser (18-column and
+  9-column backward compat), exporter (18-column output). These
+  follow the existing pattern of instantiating the class directly
+  with no mocking.
+
+- **Extended pipeline tests** for `BuildFilteredBlocks`: add cases
+  for `IsShared` sections with Course/Subject filter exemption
+  (C4), using the existing `Sec()`/`Slot()`/`Snap()` helpers
+  from `GridPipelineTests.cs`. Also extend `BuildSectionLabel`
+  tests for shared sections.
+
+- **Manual integration testing** in Session 8: import/export
+  round-trip with enriched CSV, filter behavior with shared
+  sections, cross-panel selection, conflict detection across
+  local + shared sections, workload panel shared chips, strip
+  resolution stats. No automated integration test — the feature
+  spans too many UI components for a non-UI test harness.
+
+No shared `SectionBuilder` extraction — the existing per-file
+helper pattern is sufficient. The new test files will define
+their own helpers following the same conventions.
+
+**Q3 — Migration of existing shared schedule files.** Session 8
+includes a manual verification step: import a 9-column CSV
+produced by the current exporter, confirm it loads with empty
+enriched properties, confirm shared sections are excluded by
+any active property filter (correct degraded behavior), and
+confirm the status message says "Matched: 0 instructors, 0 rooms,
+0 tags." No code migration needed — backward compatibility is
+built into the parser.
+
+### Session 1: Model Foundation
+
+**Goal**: All model/record/enum changes that downstream sessions
+depend on. Compiles, existing tests pass, no behavioral changes.
+
+**Tasks:**
+
+1. **Section model** — add 9 `[JsonIgnore]` properties:
+   - 6 display: `IsShared`, `SourceLabel`, `DisplayCourseCode`,
+     `DisplayInstructors`, `RoomConflictNote`,
+     `InstructorConflictNote`
+   - 3 import-staging: `ImportedCampusName`,
+     `ImportedSectionTypeName`, `ImportedTagNames`
+
+2. **SectionDaySchedule model** — add 3 `[JsonIgnore]` properties:
+   `ImportedBuilding`, `ImportedRoomNumber`,
+   `ImportedMeetingTypeName`
+
+3. **ImportResolutionSummary** — new record in
+   `Models/ImportResolutionSummary.cs`
+
+4. **ExportLookups** — new record in `Services/ExportLookups.cs`
+
+5. **SharedScheduleSet** — change `Sections` from
+   `List<SharedSection>` to `List<Section>`. This breaks
+   `SharedScheduleService.BuildBlocks()` and
+   `SharedScheduleStripViewModel` — stub them to compile:
+   - `BuildBlocks`: adapt to read from `Section` properties
+     (`DisplayCourseCode`, `SectionCode`, `Schedule`) instead of
+     `SharedSection` properties. This is a temporary bridge that
+     keeps the grid working until Session 6 removes it.
+   - `SharedScheduleStripViewModel.Refresh()`: adapt row
+     construction to read from `Section` instead of
+     `SharedSection`.
+
+6. **SectionMeetingBlock** — add `IsSharedSchedule = false`
+   parameter to the record.
+
+7. **TileEntry** — add `SourceLabel = ""` parameter to the record.
+
+8. **WorkloadItemKind** — add `SharedSection` value.
+   **WorkloadItemViewModel** — add `IsShared` computed property.
+
+9. **SharedScheduleCsvParser** — update `ImportResult` record to
+   add `SemesterName` field (default `null`). Existing parse
+   logic unchanged — still produces `Section` objects (the
+   `SharedScheduleSet.Sections` type change forces the parser
+   to construct `Section` instead of `SharedSection`). The parser
+   constructs `Section` objects with `IsShared = true`,
+   `DisplayCourseCode`, `SectionCode`, etc. from the existing
+   9 columns. Enriched column parsing is deferred to Session 3.
+
+10. **Compile check** + **full test suite** — verify zero
+    regressions. The `SharedScheduleCsvParserTests` and
+    `SharedScheduleCsvExporterTests` will need updates to match
+    the new `Section`-based output.
+
+**Exit criteria**: `dotnet build -f net10.0 -t:Compile` passes.
+`dotnet test` passes (all existing tests, updated as needed for
+the `SharedSection` → `Section` type change).
+
+### Session 2: ImportResolutionIndex + ImportResolver
+
+**Goal**: The two new pure-function services, fully tested.
+
+**Tasks:**
+
+1. **ImportResolutionIndex** — implement
+   `Services/ImportResolutionIndex.cs`:
+   - `Normalize()` static method
+   - `Build()` factory constructing all 7 dictionaries
+   - 6 `Resolve*` methods with the matching rules from Phase 2
+   - Custom `IEqualityComparer` for `(string, string)` tuple keys
+     with `OrdinalIgnoreCase`
+
+2. **ImportResolver** — implement `Services/ImportResolver.cs`:
+   - `Resolve()` method: iterates sections, calls index lookups,
+     populates entity IDs, builds `ImportResolutionSummary`
+   - Instructor: split `"LastName, FirstName"`, resolve, create
+     `InstructorAssignment`
+   - Room: read `ImportedBuilding`/`ImportedRoomNumber` from
+     `SectionDaySchedule`, resolve, set `RoomId`
+   - Campus/SectionType/Tags/MeetingType: read `Imported*` from
+     `Section`/`SectionDaySchedule`, resolve, set IDs
+
+3. **Unit tests** — `ImportResolutionIndexTests.cs`:
+   - Normalize: trim, collapse whitespace, empty/null handling
+   - Instructor: single match, multiple same-name with initials
+     tiebreaker, ambiguous (same name + same initials), no match
+   - Room: composite match, fallback to RoomNumber-only when
+     building empty, ambiguous (same number different buildings)
+   - Campus/SectionType/Tag/MeetingType: simple name match,
+     no match, case-insensitive
+   - Collision handling: duplicate rooms logged, duplicate tags
+     last-write-wins
+
+4. **Unit tests** — `ImportResolverTests.cs`:
+   - Full section resolution with mixed resolved/unresolved
+   - Summary counts (distinct names, not occurrences)
+   - Warnings for ambiguous matches
+   - Multiple instructors per section
+   - Multiple tags, partial match
+   - Room resolution per-meeting (different rooms on different
+     days)
+
+**Exit criteria**: All new tests pass. Compile check passes.
+
+### Session 3: Parser Rewrite
+
+**Goal**: The parser reads all 18 columns, produces fully
+populated (but unresolved) `Section` objects.
+
+**Tasks:**
+
+1. **SharedScheduleCsvParser** — extend parsing:
+   - Read new header format with semester name (3rd field)
+   - Column dictionary recognizes columns 10–18 by header name
+   - Parse Instructor + Initials (pipe-split, zip by position)
+     → `DisplayInstructors`
+   - Parse Building, RoomNumber → `ImportedBuilding`,
+     `ImportedRoomNumber` on each `SectionDaySchedule`
+   - Parse Campus → `ImportedCampusName`
+   - Parse SectionType → `ImportedSectionTypeName`
+   - Parse Tags (pipe-split) → `ImportedTagNames`
+   - Parse MeetingType → `ImportedMeetingTypeName` on each
+     `SectionDaySchedule`
+   - Parse Level → `Section.Level`
+   - Per-section fields from first row only; per-meeting fields
+     per row
+
+2. **Backward compatibility** — missing columns (old 9-column
+   CSV) → all `Imported*` fields stay null/empty,
+   `DisplayInstructors` is null. Existing parser tests must
+   still pass (they use 9-column input).
+
+3. **Update existing parser tests** — `SharedScheduleCsvParserTests`:
+   - Verify existing tests pass with the `Section`-based output
+     (assertions reference `Section` properties instead of
+     `SharedSection` properties)
+   - Add new tests for 18-column parsing: pipe-delimited
+     instructors, building/room per meeting, tags, semester
+     header, mixed old/new format
+
+**Exit criteria**: All parser tests pass (old + new). Compile
+check passes.
+
+### Session 4: Exporter Enrichment
+
+**Goal**: The exporter writes all 18 columns with semester name
+in the header.
+
+**Tasks:**
+
+1. **SharedScheduleCsvExporter** — extend `Export()`:
+   - Add `ExportLookups lookups` and `string semesterName`
+     parameters
+   - Write semester name in header comment (3rd field)
+   - Write 18-column header row
+   - Per-section: resolve Instructor, Initials, Campus,
+     SectionType, Tags, Level from lookups
+   - Per-meeting: resolve Building, RoomNumber, MeetingType
+     from lookups
+   - Missing data → empty string
+
+2. **SharingViewModel** — update `ExportSharedSchedule`:
+   - Add 4 new constructor dependencies
+     (`IInstructorRepository`, `IRoomRepository`,
+     `ICampusRepository`, `ISchedulingEnvironmentRepository`)
+   - Build `ExportLookups` from repo `GetAll()` calls
+   - Get semester name from `_semesterContext`
+   - Pass lookups + semester name to exporter
+
+3. **DI registration** — no new registrations needed (repos
+   already registered). SharingViewModel constructor change is
+   automatic.
+
+4. **Update existing exporter tests** —
+   `SharedScheduleCsvExporterTests`:
+   - Update `Export()` helper to pass `ExportLookups` and
+     semester name
+   - Add new tests for enriched columns: instructor formatting,
+     pipe-delimited multi-value, building/room per meeting,
+     tags, missing data (null IDs → empty), semester in header
+
+5. **Round-trip test** — write a test that exports a section
+   with enriched data, then parses the output and verifies the
+   parsed `Section` has the expected `DisplayInstructors`,
+   `ImportedBuilding`, `ImportedTagNames`, etc.
+
+**Exit criteria**: All exporter tests pass (old + new). Round-trip
+test passes. Compile check passes.
+
+### Session 5: SharedScheduleService + Import Orchestration
+
+**Goal**: The full import pipeline works end-to-end: parse →
+resolve → stamp semester → add to service → status message.
+
+**Tasks:**
+
+1. **SharedScheduleService** — changes:
+   - Remove `BuildBlocks()` (still needed by grid until Session 6
+     — keep it but deprecate, or keep the bridge from Session 1)
+   - Add `GetSectionsForSemester(string semesterId)` method
+   - No internal type changes (already uses `List<Section>` from
+     Session 1)
+
+   Actually, `BuildBlocks()` is still called by
+   `ScheduleGridViewModel` until Session 6 removes that call.
+   So keep it in Session 5; remove it in Session 6.
+
+2. **ImportResolver DI** — register `ImportResolver` as singleton
+   in `App.axaml.cs` (both desktop and WASM paths).
+
+3. **SharingViewModel** — update `ImportSharedSchedule`:
+   - After parse: build `ImportResolutionIndex` from 6 repo calls
+   - Call `_resolver.Resolve(sections, index)`
+   - Stamp `SemesterId` on all sections
+   - Check semester name mismatch → append warning
+   - Build `SharedScheduleSet` with `ResolutionSummary`
+   - Multi-line status message with resolution counts
+
+4. **SharingViewModel** — add `IsSingleSemester` property,
+   bind Import/Export enabled state to it.
+
+5. **Compile check** + test suite — verify the import
+   orchestration compiles and existing tests pass.
+
+**Exit criteria**: Import pipeline compiles and is wired end-to-end.
+The grid still uses `BuildBlocks()` (bridge from Session 1), so
+visual behavior is unchanged. `GetSectionsForSemester` is available
+for Sessions 6–7.
+
+### Session 6: Grid Pipeline Restructuring
+
+**Goal**: Shared sections flow through `BuildFilteredBlocks` as
+regular sections. Pass 4 is eliminated. Grid renders shared tiles
+via `SectionMeetingBlock` with `IsSharedSchedule`.
+
+**Tasks:**
+
+1. **ScheduleGridViewModel.ReloadCore** — merge shared sections:
+   - After `BuildLookups`, get shared sections via
+     `_sharedScheduleService.GetSectionsForSemester(semId)`
+   - Build `allSections = lookups.Sections.Concat(shared).ToList()`
+   - Pass `allSections` to `BuildFilteredBlocks`
+
+2. **BuildFilteredBlocks** — changes:
+   - Accept `IReadOnlyList<Section> sections` parameter (decouple
+     from `lookups.Sections`)
+   - Course filter: add `!section.IsShared` guard (C4)
+   - Subject filter: add `!section.IsShared` guard (C4)
+   - Create `SectionMeetingBlock` with
+     `IsSharedSchedule: section.IsShared`
+
+3. **BuildSectionLabel** — add `IsShared` branch:
+   - Label from `DisplayCourseCode + SectionCode`
+   - Initials from `DisplayInstructors`
+
+4. **ToEntry** — changes:
+   - `SectionMeetingBlock` case: propagate `IsSharedSchedule`,
+     set `SourceLabel` from a lookup dictionary
+   - Remove `SharedScheduleBlock` case
+
+5. **DeduplicateBlocks** — remove `SharedScheduleBlock` case.
+
+6. **Remove** `BuildSharedScheduleBlocks` method.
+   **Remove** `BuildSharedScheduleTooltip` method.
+   **Remove** the `BuildBlocks()` bridge on `SharedScheduleService`.
+
+7. **ReloadCore** — remove Pass 4 (sharedBlocks) from
+   `combinedBlocks` concatenation.
+
+8. **ProgramConflictService call site** — verify shared sections
+   are in `visibleSections` and `tagIdsBySectionId` (they should
+   be, since they flow through `BuildFilteredBlocks`). Extend
+   `courseCodeById` for shared sections.
+
+9. **ScheduleGridView.axaml.cs** — changes:
+   - Right-click handler: suppress context menu for
+     `IsSharedSchedule` entries
+   - Tooltip: append `SourceLabel` for shared entries
+   - Shared entries are now selectable (no `IsCommitment` block)
+
+10. **Extend GridPipelineTests** —
+    `BuildFilteredBlocksTests`:
+    - Shared section passes Course filter (C4 exemption)
+    - Shared section passes Subject filter (C4 exemption)
+    - Shared section filtered by Tag/Instructor/Room normally
+    - `BuildSectionLabel` for shared section (DisplayCourseCode,
+      DisplayInstructors)
+
+11. **Delete SharedScheduleBlock** record from `GridData.cs`.
+
+**Exit criteria**: Grid renders shared tiles via the unified
+pipeline. Purple text, selectable, no context menu. Filters apply
+correctly with C4 exemption. All pipeline tests pass. Compile
+check passes.
+
+### Session 7: Section List + Workload Panel
+
+**Goal**: Shared sections appear in the section list and workload
+panel with the correct rendering and interaction behavior.
+
+**Tasks:**
+
+1. **SectionListItemViewModel** — changes:
+   - Add `IsShared` (`bool`, `init`)
+   - Add `SourceLabel` (`string?`)
+   - `ToggleCollapsed`: early-return when `IsShared`
+   - Heading: use `DisplayCourseCode` for shared sections
+   - InstructorLine: use `DisplayInstructors` for shared sections
+   - Flag operations: refuse when `IsShared`
+
+2. **SectionListViewModel** — changes:
+   - New dependency: `SharedScheduleService`
+   - `LoadCore`: after sorting local items, append shared sections
+     sub-grouped by source, sorted by `(DisplayCourseCode,
+     SectionCode)`
+   - `CreateSharedSectionItem`: new helper method
+   - `ApplyRoomConflicts` / `ApplyInstructorConflicts`: merge
+     shared sections, extend `courseCodeById`, route conflict
+     descriptions to `Section.RoomConflictNote` /
+     `InstructorConflictNote` for shared sections
+   - Subscribe to `_sharedScheduleService.Changed`
+
+3. **SectionListView.axaml** — shared card styling:
+   - Purple text via `Classes.shared` binding
+   - Source label badge
+   - Hide expand arrow when shared
+   - Null context menu when shared
+   - Conflict warnings render normally
+
+4. **WorkloadPanelViewModel** — changes:
+   - New dependency: `SharedScheduleService`
+   - `Load`: merge shared sections
+   - `BuildItemsForInstructor`: create `SharedSection` kind items
+     with source label suffix, zero workload
+   - Instructor conflict detection: merge shared sections
+   - Subscribe to `_sharedScheduleService.Changed`
+
+5. **WorkloadPanelView.axaml** — shared chip styling:
+   - Purple text via `IsShared` trigger
+   - Click suppression
+
+6. **DI registration** — add `SharedScheduleService` to
+   `SectionListViewModel` and `WorkloadPanelViewModel` constructor
+   calls. Add `ImportResolver` registration if not done in
+   Session 5.
+
+**Exit criteria**: Shared sections visible in section list (purple,
+non-expandable, source badge, conflict warnings). Shared chips
+visible in workload panel (purple, non-clickable, source label,
+zero workload). Cross-panel selection works (click shared tile on
+grid → highlights card in list). Compile check + test suite pass.
+
+### Session 8: Strip Enhancement + Cleanup + Verification
+
+**Goal**: Strip shows resolution stats. Old models deleted.
+End-to-end verification.
+
+**Tasks:**
+
+1. **SharedScheduleStripViewModel** — changes:
+   - New dependency: `IRoomRepository`
+   - `CollapsedSummary`: include resolution stats per source
+   - `SharedScheduleSourceRow`: build from `Section` with
+     instructor initials and room shorthand
+   - Source group header: show resolution summary line
+
+2. **SharedScheduleStripView.axaml** — changes:
+   - Enhanced collapsed summary binding
+   - Enhanced expanded rows (initials + room)
+   - Resolution summary header per source group
+
+3. **SharingView.axaml** — changes:
+   - Multi-semester tooltip on Import/Export buttons
+   - Status message already multi-line (no template change)
+
+4. **Delete retired models**:
+   - `Models/SharedSection.cs`
+   - `Models/SharedMeeting.cs`
+   - Remove any remaining references
+
+5. **DI registration audit** — verify both desktop and WASM
+   paths in `App.axaml.cs` have:
+   - `ImportResolver` registered
+   - Updated constructor parameter lists compile
+   - WASM `ConfigureDemoServices` mirrors desktop
+
+6. **Compile check** + **full test suite**
+
+7. **Manual verification checklist**:
+   - [ ] Export enriched CSV: verify 18 columns, semester in
+     header, pipe-delimited instructors/tags
+   - [ ] Import enriched CSV: verify resolution summary in
+     status message, shared sections in list/grid/workload
+   - [ ] Import old 9-column CSV: verify backward compat,
+     "Matched: 0 instructors, 0 rooms, 0 tags" message,
+     shared sections excluded by property filters
+   - [ ] Filter behavior: Course/Subject filters don't exclude
+     shared sections (C4). Tag/Instructor/Room filters do
+     apply. Filter options don't include shared data (C2).
+   - [ ] Conflict detection: room conflict between local and
+     shared section shows warning on both cards. Instructor
+     conflict same. Access watch (tag-mode) includes shared
+     sections.
+   - [ ] Selection: click shared tile on grid → card highlights
+     in section list, chip highlights in workload panel.
+     No editor opens. No context menu.
+   - [ ] Strip: collapsed summary shows resolution stats.
+     Expanded view shows initials + room shorthand.
+   - [ ] Multi-semester: Import/Export disabled with tooltip.
+   - [ ] Dismiss: dismiss one source, dismiss all — grid/list/
+     workload update correctly.
+
+**Exit criteria**: All tests pass. Manual verification checklist
+complete. Feature is shippable.
+
+### Dependency Graph
+
+```
+Session 1: Model Foundation
+    ↓
+Session 2: ImportResolutionIndex + ImportResolver
+    ↓
+Session 3: Parser Rewrite ←──── depends on Session 1 (Section model)
+    ↓                           + Session 2 (for round-trip validation)
+Session 4: Exporter Enrichment ← depends on Session 1 (ExportLookups)
+    ↓
+Session 5: Import Orchestration ← depends on Sessions 2, 3, 4
+    ↓
+Session 6: Grid Pipeline ←────── depends on Session 5
+    ↓                             (GetSectionsForSemester)
+Session 7: Section List + ←───── depends on Session 5
+           Workload Panel         (GetSectionsForSemester)
+    ↓
+Session 8: Strip + Cleanup ←──── depends on Sessions 6, 7
+```
+
+Sessions 3 and 4 are independent of each other (both depend only
+on Session 1). Sessions 6 and 7 are independent of each other
+(both depend on Session 5). This allows parallel work if desired,
+but the recommended order is sequential as listed — each session
+builds confidence incrementally.
+
+### Risk Notes
+
+- **Largest risk**: Session 6 (grid pipeline). The `ReloadCore`
+  method is ~400 lines with multiple interleaved passes.
+  `BuildFilteredBlocks` is a ~100-line static method with 8
+  filter dimensions. The changes are mechanical (add parameters,
+  add guards) but the method is dense. The existing
+  `GridPipelineTests` provide good coverage for regressions.
+
+- **AXAML warning**: Sessions 7 and 8 edit `.axaml` files. Per
+  project convention, ask the user to close the relevant tabs in
+  VS 2022 before editing (VS won't auto-reload AXAML).
+
+- **WASM parity**: Session 8's DI audit must verify that
+  `ConfigureDemoServices` in the WASM path mirrors the desktop
+  `ConfigureServices`. Missing registrations in the WASM path
+  have caused runtime crashes before.
+
+### Test Summary
+
+| Component | Test Type | File | Session |
+|-----------|-----------|------|---------|
+| ImportResolutionIndex | Unit | ImportResolutionIndexTests.cs | 2 |
+| ImportResolver | Unit | ImportResolverTests.cs | 2 |
+| SharedScheduleCsvParser (18-col) | Unit | SharedScheduleCsvParserTests.cs (extended) | 3 |
+| SharedScheduleCsvExporter (18-col) | Unit | SharedScheduleCsvExporterTests.cs (extended) | 4 |
+| Export→Parse round-trip | Unit | SharedScheduleRoundTripTests.cs | 4 |
+| BuildFilteredBlocks (C4 exemption) | Unit | GridPipelineTests.cs (extended) | 6 |
+| BuildSectionLabel (IsShared) | Unit | GridPipelineTests.cs (extended) | 6 |
+| End-to-end feature | Manual | Checklist in Session 8 | 8 |
