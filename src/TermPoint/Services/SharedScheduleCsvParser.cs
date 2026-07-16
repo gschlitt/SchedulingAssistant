@@ -128,7 +128,12 @@ public class SharedScheduleCsvParser
                     DisplayCourseCode = result.CourseCode!,
                     SectionCode = result.SectionCode!,
                     Notes = result.Notes ?? string.Empty,
-                    SourceLabel = sourceLabel
+                    SourceLabel = sourceLabel,
+                    DisplayInstructors = result.Instructors,
+                    ImportedCampusName = result.Campus,
+                    ImportedSectionTypeName = result.SectionType,
+                    ImportedTagNames = result.Tags,
+                    Level = result.Level
                 };
                 sectionMap[key] = section;
             }
@@ -203,7 +208,10 @@ public class SharedScheduleCsvParser
 
     private record RowParseResult(
         string? CourseCode, string? SectionCode, string? Notes,
-        SectionDaySchedule? Meeting, string? Error, string? Warning);
+        SectionDaySchedule? Meeting, string? Error, string? Warning,
+        List<(string Name, string Initials)>? Instructors = null,
+        string? Campus = null, string? SectionType = null,
+        List<string>? Tags = null, string? Level = null);
 
     private static RowParseResult ParseDataRow(string[] fields, Dictionary<string, int> columnIndex, int lineNumber)
     {
@@ -219,13 +227,22 @@ public class SharedScheduleCsvParser
             return new RowParseResult(null, null, null, null, "Missing SectionCode", null);
 
         var notes = GetField("Notes");
+
+        // Parse enriched per-section fields (columns 10–18; absent in legacy 9-column CSV)
+        var instructors = ParseInstructors(GetField("Instructor"), GetField("Initials"));
+        var campus = NullIfEmpty(GetField("Campus"));
+        var sectionType = NullIfEmpty(GetField("SectionType"));
+        var tags = ParsePipeList(GetField("Tags"));
+        var level = NullIfEmpty(GetField("Level"));
+
         var dayStr = GetField("Day");
         var startStr = GetField("StartMinutes");
         var durationStr = GetField("DurationMin");
 
         // All time fields blank = unscheduled section (valid)
         if (string.IsNullOrEmpty(dayStr) && string.IsNullOrEmpty(startStr) && string.IsNullOrEmpty(durationStr))
-            return new RowParseResult(courseCode, sectionCode, NullIfEmpty(notes), null, null, null);
+            return new RowParseResult(courseCode, sectionCode, NullIfEmpty(notes), null, null, null,
+                instructors, campus, sectionType, tags, level);
 
         // Partial time fields = malformed
         if (string.IsNullOrEmpty(dayStr) || string.IsNullOrEmpty(startStr) || string.IsNullOrEmpty(durationStr))
@@ -256,15 +273,24 @@ public class SharedScheduleCsvParser
                 warning = $"Invalid frequency '{freqStr}' treated as weekly";
         }
 
+        // Parse enriched per-meeting fields
+        var building = NullIfEmpty(GetField("Building"));
+        var roomNumber = NullIfEmpty(GetField("RoomNumber"));
+        var meetingType = NullIfEmpty(GetField("MeetingType"));
+
         var meeting = new SectionDaySchedule
         {
             Day = day,
             StartMinutes = startMinutes,
             DurationMinutes = duration,
-            Frequency = frequency
+            Frequency = frequency,
+            ImportedBuilding = building,
+            ImportedRoomNumber = roomNumber,
+            ImportedMeetingTypeName = meetingType
         };
 
-        return new RowParseResult(courseCode, sectionCode, NullIfEmpty(notes), meeting, null, warning);
+        return new RowParseResult(courseCode, sectionCode, NullIfEmpty(notes), meeting, null, warning,
+            instructors, campus, sectionType, tags, level);
     }
 
     private static bool IsValidFrequency(string freq)
@@ -276,6 +302,47 @@ public class SharedScheduleCsvParser
         // Comma-separated integers
         var parts = freq.Split(',');
         return parts.All(p => int.TryParse(p.Trim(), out int n) && n > 0);
+    }
+
+    /// <summary>
+    /// Parses pipe-delimited instructor names and initials, zipping them by position.
+    /// Returns null when the instructor field is empty.
+    /// </summary>
+    private static List<(string Name, string Initials)>? ParseInstructors(string instructorField, string initialsField)
+    {
+        if (string.IsNullOrEmpty(instructorField))
+            return null;
+
+        var names = instructorField.Split('|');
+        var inits = string.IsNullOrEmpty(initialsField) ? Array.Empty<string>() : initialsField.Split('|');
+        var result = new List<(string, string)>();
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            var name = names[i].Trim();
+            if (string.IsNullOrEmpty(name)) continue;
+            var init = i < inits.Length ? inits[i].Trim() : "";
+            result.Add((name, init));
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+
+    /// <summary>
+    /// Splits a pipe-delimited field into a list of trimmed, non-empty strings.
+    /// Returns null when the field is empty or contains no valid entries.
+    /// </summary>
+    private static List<string>? ParsePipeList(string field)
+    {
+        if (string.IsNullOrEmpty(field))
+            return null;
+
+        var items = field.Split('|')
+            .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrEmpty(s))
+            .ToList();
+
+        return items.Count > 0 ? items : null;
     }
 
     private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s;

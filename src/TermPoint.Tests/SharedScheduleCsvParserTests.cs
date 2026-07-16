@@ -391,4 +391,321 @@ public class SharedScheduleCsvParserTests
         Assert.Null(section.CourseId);
         Assert.Equal("CHEM101", section.DisplayCourseCode);
     }
+
+    // ── 18-column enriched format tests ─────────────────────────────────────
+
+    private const string EnrichedHeader =
+        "CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency,Instructor,Initials,Building,RoomNumber,Campus,SectionType,Tags,MeetingType,Level";
+
+    [Fact]
+    public void EnrichedFormat_ParsesInstructorsAndInitials()
+    {
+        var csv = $"""
+            #TermPoint Schedule Overlay,Chemistry Dept,Fall 2026,2026-07-15
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,"Smith, John|Doe, Jane",JRS|JD,Science Building,204,Main Campus,Lecture,Upper Level|Pre-Med Required,In Person,100
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.NotNull(section.DisplayInstructors);
+        Assert.Equal(2, section.DisplayInstructors!.Count);
+        Assert.Equal("Smith, John", section.DisplayInstructors[0].Name);
+        Assert.Equal("JRS", section.DisplayInstructors[0].Initials);
+        Assert.Equal("Doe, Jane", section.DisplayInstructors[1].Name);
+        Assert.Equal("JD", section.DisplayInstructors[1].Initials);
+    }
+
+    [Fact]
+    public void EnrichedFormat_ParsesSingleInstructor()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM201,B,,Tuesday,1:00 PM,2:20 PM,80,780,,"Doe, Jane",JD,Arts Building,301,Main Campus,Lecture,Upper Level,,200
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.NotNull(section.DisplayInstructors);
+        Assert.Single(section.DisplayInstructors!);
+        Assert.Equal("Doe, Jane", section.DisplayInstructors[0].Name);
+        Assert.Equal("JD", section.DisplayInstructors[0].Initials);
+    }
+
+    [Fact]
+    public void EnrichedFormat_ParsesBuildingAndRoomPerMeeting()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,"Smith, John",JRS,Science Building,204,Main Campus,Lecture,,In Person,100
+            CHEM101,A,,Friday,8:00 AM,8:50 AM,50,480,,"Smith, John",JRS,Science Building,110,Main Campus,Lecture,,Lab,100
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.Equal(2, section.Schedule.Count);
+
+        Assert.Equal("Science Building", section.Schedule[0].ImportedBuilding);
+        Assert.Equal("204", section.Schedule[0].ImportedRoomNumber);
+        Assert.Equal("In Person", section.Schedule[0].ImportedMeetingTypeName);
+
+        Assert.Equal("Science Building", section.Schedule[1].ImportedBuilding);
+        Assert.Equal("110", section.Schedule[1].ImportedRoomNumber);
+        Assert.Equal("Lab", section.Schedule[1].ImportedMeetingTypeName);
+    }
+
+    [Fact]
+    public void EnrichedFormat_ParsesCampusAndSectionType()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,,,Science Building,204,Main Campus,Lecture,,,100
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.Equal("Main Campus", section.ImportedCampusName);
+        Assert.Equal("Lecture", section.ImportedSectionTypeName);
+    }
+
+    [Fact]
+    public void EnrichedFormat_ParsesPipeDelimitedTags()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,,,,,,,"Upper Level|Pre-Med Required",,100
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.NotNull(section.ImportedTagNames);
+        Assert.Equal(2, section.ImportedTagNames!.Count);
+        Assert.Equal("Upper Level", section.ImportedTagNames[0]);
+        Assert.Equal("Pre-Med Required", section.ImportedTagNames[1]);
+    }
+
+    [Fact]
+    public void EnrichedFormat_ParsesLevel()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,,,,,,,,,300
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Equal("300", result.Set!.Sections[0].Level);
+    }
+
+    [Fact]
+    public void EnrichedFormat_PerSectionFieldsFromFirstRowOnly()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,"Smith, John",JRS,Science Building,204,Main Campus,Lecture,Upper Level,In Person,100
+            CHEM101,A,,Wednesday,8:00 AM,8:50 AM,50,480,,"Different, Person",DP,Arts Building,301,Downtown,Seminar,Graduate,Online,200
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+
+        // Per-section fields from first row
+        Assert.Equal("Smith, John", section.DisplayInstructors![0].Name);
+        Assert.Equal("Main Campus", section.ImportedCampusName);
+        Assert.Equal("Lecture", section.ImportedSectionTypeName);
+        Assert.Equal("Upper Level", section.ImportedTagNames![0]);
+        Assert.Equal("100", section.Level);
+
+        // Per-meeting fields vary by row
+        Assert.Equal("Science Building", section.Schedule[0].ImportedBuilding);
+        Assert.Equal("204", section.Schedule[0].ImportedRoomNumber);
+        Assert.Equal("In Person", section.Schedule[0].ImportedMeetingTypeName);
+
+        Assert.Equal("Arts Building", section.Schedule[1].ImportedBuilding);
+        Assert.Equal("301", section.Schedule[1].ImportedRoomNumber);
+        Assert.Equal("Online", section.Schedule[1].ImportedMeetingTypeName);
+    }
+
+    [Fact]
+    public void EnrichedFormat_EmptyEnrichedFields_AllNull()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,,,,,,,,,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.Null(section.DisplayInstructors);
+        Assert.Null(section.ImportedCampusName);
+        Assert.Null(section.ImportedSectionTypeName);
+        Assert.Null(section.ImportedTagNames);
+        Assert.Null(section.Level);
+        Assert.Null(section.Schedule[0].ImportedBuilding);
+        Assert.Null(section.Schedule[0].ImportedRoomNumber);
+        Assert.Null(section.Schedule[0].ImportedMeetingTypeName);
+    }
+
+    [Fact]
+    public void EnrichedFormat_InstructorsWithMoreNamesThanInitials()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,"Smith, John|Doe, Jane",JRS,,,,,,,,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var instructors = result.Set!.Sections[0].DisplayInstructors!;
+        Assert.Equal(2, instructors.Count);
+        Assert.Equal("JRS", instructors[0].Initials);
+        Assert.Equal("", instructors[1].Initials);
+    }
+
+    [Fact]
+    public void EnrichedFormat_InstructorsWithNoInitialsColumn()
+    {
+        // Only Instructor column present, no Initials column
+        var csv = """
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency,Instructor
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,"Smith, John|Doe, Jane"
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var instructors = result.Set!.Sections[0].DisplayInstructors!;
+        Assert.Equal(2, instructors.Count);
+        Assert.Equal("Smith, John", instructors[0].Name);
+        Assert.Equal("", instructors[0].Initials);
+        Assert.Equal("Doe, Jane", instructors[1].Name);
+        Assert.Equal("", instructors[1].Initials);
+    }
+
+    [Fact]
+    public void EnrichedFormat_SingleTag()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,,,,,,,"Upper Level",,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var tags = result.Set!.Sections[0].ImportedTagNames!;
+        Assert.Single(tags);
+        Assert.Equal("Upper Level", tags[0]);
+    }
+
+    [Fact]
+    public void EnrichedFormat_UnscheduledSectionStillGetsEnrichedFields()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM101,A,TBD,,,,,,,"Smith, John",JRS,,,Main Campus,Lecture,Upper Level,,100
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.Empty(section.Schedule);
+        Assert.Equal("Smith, John", section.DisplayInstructors![0].Name);
+        Assert.Equal("Main Campus", section.ImportedCampusName);
+        Assert.Equal("Lecture", section.ImportedSectionTypeName);
+        Assert.Equal("Upper Level", section.ImportedTagNames![0]);
+        Assert.Equal("100", section.Level);
+    }
+
+    [Fact]
+    public void EnrichedFormat_FullExampleFromSpec()
+    {
+        var csv = """
+            #TermPoint Schedule Overlay,Chemistry Department,Fall 2026,2026-07-15
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency,Instructor,Initials,Building,RoomNumber,Campus,SectionType,Tags,MeetingType,Level
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,,"Smith, John|Doe, Jane",JRS|JD,Science Building,204,Main Campus,Lecture,"Upper Level|Pre-Med Required",In Person,100
+            CHEM101,A,,Wednesday,8:00 AM,8:50 AM,50,480,,"Smith, John|Doe, Jane",JRS|JD,Science Building,204,Main Campus,Lecture,"Upper Level|Pre-Med Required",In Person,100
+            CHEM101,A,,Friday,8:00 AM,8:50 AM,50,480,,"Smith, John|Doe, Jane",JRS|JD,Science Building,110,Main Campus,Lecture,"Upper Level|Pre-Med Required",Lab,100
+            CHEM201,B,Prereq: CHEM101,Tuesday,1:00 PM,2:20 PM,80,780,,"Doe, Jane",JD,Arts Building,301,Main Campus,Lecture,Upper Level,,200
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Equal("Chemistry Department", result.Set!.SourceLabel);
+        Assert.Equal("Fall 2026", result.SemesterName);
+        Assert.Equal(2, result.Set.Sections.Count);
+
+        var chem101 = result.Set.Sections.First(s => s.DisplayCourseCode == "CHEM101");
+        Assert.Equal(3, chem101.Schedule.Count);
+        Assert.Equal(2, chem101.DisplayInstructors!.Count);
+        Assert.Equal("Main Campus", chem101.ImportedCampusName);
+        Assert.Equal("Lecture", chem101.ImportedSectionTypeName);
+        Assert.Equal(2, chem101.ImportedTagNames!.Count);
+        Assert.Equal("100", chem101.Level);
+
+        // Friday meeting has different room and meeting type
+        var fridayMeeting = chem101.Schedule[2];
+        Assert.Equal("110", fridayMeeting.ImportedRoomNumber);
+        Assert.Equal("Lab", fridayMeeting.ImportedMeetingTypeName);
+
+        var chem201 = result.Set.Sections.First(s => s.DisplayCourseCode == "CHEM201");
+        Assert.Single(chem201.DisplayInstructors!);
+        Assert.Equal("Prereq: CHEM101", chem201.Notes);
+        Assert.Null(chem201.ImportedTagNames![0] == "Upper Level" ? null : "unexpected tag");
+        Assert.Equal("200", chem201.Level);
+    }
+
+    [Fact]
+    public void LegacyNineColumnFormat_EnrichedFieldsAllNull()
+    {
+        var csv = """
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        var section = result.Set!.Sections[0];
+        Assert.Null(section.DisplayInstructors);
+        Assert.Null(section.ImportedCampusName);
+        Assert.Null(section.ImportedSectionTypeName);
+        Assert.Null(section.ImportedTagNames);
+        Assert.Null(section.Level);
+        Assert.Null(section.Schedule[0].ImportedBuilding);
+        Assert.Null(section.Schedule[0].ImportedRoomNumber);
+        Assert.Null(section.Schedule[0].ImportedMeetingTypeName);
+    }
+
+    [Fact]
+    public void EnrichedFormat_MeetingTypeEmptyForOneRow()
+    {
+        var csv = $"""
+            {EnrichedHeader}
+            CHEM201,B,,Tuesday,1:00 PM,2:20 PM,80,780,,"Doe, Jane",JD,Arts Building,301,Main Campus,Lecture,Upper Level,,200
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Null(result.Set!.Sections[0].Schedule[0].ImportedMeetingTypeName);
+    }
 }
