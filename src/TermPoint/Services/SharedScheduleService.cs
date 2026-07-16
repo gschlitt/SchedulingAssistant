@@ -45,6 +45,21 @@ public class SharedScheduleService : ObservableObject
     }
 
     /// <summary>
+    /// Returns all shared sections across all loaded sets whose <see cref="Section.SemesterId"/>
+    /// matches <paramref name="semesterId"/>. Used by the grid pipeline and conflict detection
+    /// to merge shared sections into the local section list.
+    /// </summary>
+    public IReadOnlyList<Section> GetSectionsForSemester(string semesterId)
+    {
+        var result = new List<Section>();
+        foreach (var set in _sets)
+            foreach (var section in set.Sections)
+                if (section.SemesterId == semesterId)
+                    result.Add(section);
+        return result;
+    }
+
+    /// <summary>
     /// Builds <see cref="SharedScheduleBlock"/> instances for all loaded sets.
     /// Called by the grid VM during its block assembly pipeline.
     /// Temporary bridge: reads from <see cref="Section"/> properties until Session 6

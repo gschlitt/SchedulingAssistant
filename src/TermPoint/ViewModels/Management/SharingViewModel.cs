@@ -16,8 +16,13 @@ public partial class SharingViewModel : ViewModelBase
     private readonly SharedScheduleService _sharedScheduleService;
     private readonly SharedScheduleCsvParser _parser;
     private readonly SharedScheduleCsvExporter _exporter;
+    private readonly ImportResolver _resolver;
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
+    private readonly IInstructorRepository _instructorRepo;
+    private readonly IRoomRepository _roomRepo;
+    private readonly ICampusRepository _campusRepo;
+    private readonly ISchedulingEnvironmentRepository _envRepo;
     private readonly SemesterContext _semesterContext;
     private readonly AcademicUnitService _academicUnitService;
     private readonly SectionStore _sectionStore;
@@ -31,8 +36,13 @@ public partial class SharingViewModel : ViewModelBase
         SharedScheduleService sharedScheduleService,
         SharedScheduleCsvParser parser,
         SharedScheduleCsvExporter exporter,
+        ImportResolver resolver,
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,
+        IInstructorRepository instructorRepo,
+        IRoomRepository roomRepo,
+        ICampusRepository campusRepo,
+        ISchedulingEnvironmentRepository envRepo,
         SemesterContext semesterContext,
         AcademicUnitService academicUnitService,
         SectionStore sectionStore,
@@ -41,8 +51,13 @@ public partial class SharingViewModel : ViewModelBase
         _sharedScheduleService = sharedScheduleService;
         _parser = parser;
         _exporter = exporter;
+        _resolver = resolver;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
+        _instructorRepo = instructorRepo;
+        _roomRepo = roomRepo;
+        _campusRepo = campusRepo;
+        _envRepo = envRepo;
         _semesterContext = semesterContext;
         _academicUnitService = academicUnitService;
         _sectionStore = sectionStore;
@@ -51,9 +66,23 @@ public partial class SharingViewModel : ViewModelBase
         UpdateSharedFolderDisplay();
         UpdateExportSourceLabel();
         _sharedScheduleService.Changed += () => OnPropertyChanged(nameof(HasLoadedSchedules));
+        _semesterContext.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SemesterContext.SelectedSemesters))
+            {
+                OnPropertyChanged(nameof(IsSingleSemester));
+                ExportSharedScheduleCommand.NotifyCanExecuteChanged();
+            }
+        };
     }
 
-    private bool CanExportSharedSchedule() => !string.IsNullOrWhiteSpace(ExportSourceLabel);
+    /// <summary>
+    /// True when exactly one semester is selected. Import/export require a single semester
+    /// so shared sections can be stamped with a definite semester ID.
+    /// </summary>
+    public bool IsSingleSemester => _semesterContext.SelectedSemesters.Count == 1;
+
+    private bool CanExportSharedSchedule() => !string.IsNullOrWhiteSpace(ExportSourceLabel) && IsSingleSemester;
 
     partial void OnExportSourceLabelChanged(string value) => ExportSharedScheduleCommand.NotifyCanExecuteChanged();
 
@@ -138,13 +167,62 @@ public partial class SharingViewModel : ViewModelBase
             return;
         }
 
-        _sharedScheduleService.Add(result.Set!);
+        var set = result.Set!;
+        var sections = set.Sections;
+
+        // Resolve imported names against local entities
+        var index = ImportResolutionIndex.Build(
+            _instructorRepo.GetAll(),
+            _roomRepo.GetAll(),
+            _campusRepo.GetAll(),
+            _envRepo.GetAll("sectionType"),
+            _envRepo.GetAll("tag"),
+            _envRepo.GetAll("meetingType"));
+
+        var summary = _resolver.Resolve(sections, index);
+        set.ResolutionSummary = summary;
+
+        // Stamp active semester ID on all imported sections
+        var activeSemester = _semesterContext.SelectedSemesters.FirstOrDefault();
+        if (activeSemester is not null)
+        {
+            var semesterId = activeSemester.Semester.Id;
+            foreach (var s in sections)
+                s.SemesterId = semesterId;
+        }
+
+        _sharedScheduleService.Add(set);
         OnPropertyChanged(nameof(LoadedSummary));
 
+        // Build multi-line status message
+        var lines = new List<string>();
+
         if (result.SkippedRows > 0)
-            StatusMessage = $"Imported {result.TotalRows - result.SkippedRows} of {result.TotalRows} rows ({result.SkippedRows} skipped).";
+            lines.Add($"Imported {result.TotalRows - result.SkippedRows} of {result.TotalRows} rows ({result.SkippedRows} skipped) from {set.SourceLabel}.");
         else
-            StatusMessage = $"Imported {result.Set!.Sections.Count} sections from {result.Set.SourceLabel}.";
+            lines.Add($"Imported {sections.Count} sections from {set.SourceLabel}.");
+
+        var matched = new List<string>();
+        if (summary.ResolvedInstructorCount > 0)
+            matched.Add($"{summary.ResolvedInstructorCount} instructor{(summary.ResolvedInstructorCount == 1 ? "" : "s")}");
+        if (summary.ResolvedRoomCount > 0)
+            matched.Add($"{summary.ResolvedRoomCount} room{(summary.ResolvedRoomCount == 1 ? "" : "s")}");
+        if (summary.ResolvedTagCount > 0)
+            matched.Add($"{summary.ResolvedTagCount} tag{(summary.ResolvedTagCount == 1 ? "" : "s")}");
+        if (matched.Count > 0)
+            lines.Add($"Matched: {string.Join(", ", matched)}.");
+
+        // Semester mismatch warning
+        if (result.SemesterName is not null && activeSemester is not null
+            && !string.Equals(result.SemesterName, activeSemester.Semester.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            lines.Add($"Note: file was exported for \"{result.SemesterName}\" but the active semester is \"{activeSemester.Semester.Name}\".");
+        }
+
+        foreach (var w in summary.Warnings)
+            lines.Add(w);
+
+        StatusMessage = string.Join("\n", lines);
 #endif
     }
 
@@ -212,8 +290,17 @@ public partial class SharingViewModel : ViewModelBase
 
         if (file is null) return;
 
+        var lookups = new ExportLookups(
+            InstructorsById:  _instructorRepo.GetAll().ToDictionary(i => i.Id),
+            RoomsById:        _roomRepo.GetAll().ToDictionary(r => r.Id),
+            CampusesById:     _campusRepo.GetAll().ToDictionary(c => c.Id),
+            SectionTypesById: _envRepo.GetAll("sectionType").ToDictionary(v => v.Id),
+            TagsById:         _envRepo.GetAll("tag").ToDictionary(v => v.Id),
+            MeetingTypesById: _envRepo.GetAll("meetingType").ToDictionary(v => v.Id));
+
         await using var stream = await file.OpenWriteAsync();
-        var error = _exporter.Export(stream, sourceLabel, sections, id => courses.GetValueOrDefault(id, id));
+        var error = _exporter.Export(stream, sourceLabel, semName, sections,
+            id => courses.GetValueOrDefault(id, id), lookups);
 
         if (error is not null)
             StatusMessage = error;

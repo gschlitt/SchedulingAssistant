@@ -15,20 +15,27 @@ public class SharedScheduleCsvExporter
         [4] = "Thursday", [5] = "Friday", [6] = "Saturday", [7] = "Sunday"
     };
 
+    private const string EnrichedHeader =
+        "CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency," +
+        "Instructor,Initials,Building,RoomNumber,Campus,SectionType,Tags,MeetingType,Level";
+
     /// <summary>
-    /// Writes a shared schedule CSV to the given stream.
+    /// Writes an enriched 18-column shared schedule CSV to the given stream.
     /// </summary>
     /// <param name="output">Target stream (caller is responsible for closing).</param>
     /// <param name="sourceLabel">Source label for the header comment (e.g. institution name).</param>
+    /// <param name="semesterName">Semester name for the header comment (e.g. "Fall 2026").</param>
     /// <param name="sections">Sections to export (already filtered by caller).</param>
     /// <param name="courseCodeLookup">Resolves CourseId → display course code.</param>
+    /// <param name="lookups">ID→entity dictionaries for enriched column resolution.</param>
     /// <returns>Null on success, or an error message string on failure.</returns>
-    public string? Export(Stream output, string sourceLabel, IReadOnlyList<Section> sections,
-                          Func<string, string> courseCodeLookup)
+    public string? Export(Stream output, string sourceLabel, string semesterName,
+                          IReadOnlyList<Section> sections,
+                          Func<string, string> courseCodeLookup, ExportLookups lookups)
     {
         try
         {
-            ExportCore(output, sourceLabel, sections, courseCodeLookup);
+            ExportCore(output, sourceLabel, semesterName, sections, courseCodeLookup, lookups);
             return null;
         }
         catch (Exception ex)
@@ -38,28 +45,30 @@ public class SharedScheduleCsvExporter
         }
     }
 
-    private void ExportCore(Stream output, string sourceLabel, IReadOnlyList<Section> sections,
-                            Func<string, string> courseCodeLookup)
+    private void ExportCore(Stream output, string sourceLabel, string semesterName,
+                            IReadOnlyList<Section> sections,
+                            Func<string, string> courseCodeLookup, ExportLookups lookups)
     {
         using var writer = new StreamWriter(output, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), leaveOpen: true);
 
-        // Header comment
-        writer.WriteLine($"#TermPoint Schedule Overlay,{sourceLabel},{DateTime.Today:yyyy-MM-dd}");
+        // Header comment (4-field format with semester name)
+        writer.WriteLine($"#TermPoint Schedule Overlay,{sourceLabel},{semesterName},{DateTime.Today:yyyy-MM-dd}");
 
         // Column header
-        writer.WriteLine("CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency");
+        writer.WriteLine(EnrichedHeader);
 
         // Build sorted export rows
-        var exportRows = BuildExportRows(sections, courseCodeLookup);
+        var exportRows = BuildExportRows(sections, courseCodeLookup, lookups);
         foreach (var row in exportRows)
             writer.WriteLine(row);
     }
 
-    private List<string> BuildExportRows(IReadOnlyList<Section> sections, Func<string, string> courseCodeLookup)
+    private List<string> BuildExportRows(IReadOnlyList<Section> sections,
+                                          Func<string, string> courseCodeLookup,
+                                          ExportLookups lookups)
     {
         var rows = new List<string>();
 
-        // Group by CourseCode + SectionCode, sorted alphabetically
         var ordered = sections
             .Select(s => (Section: s, CourseCode: courseCodeLookup(s.CourseId ?? "")))
             .OrderBy(x => x.CourseCode, StringComparer.OrdinalIgnoreCase)
@@ -67,14 +76,22 @@ public class SharedScheduleCsvExporter
 
         foreach (var (section, courseCode) in ordered)
         {
+            // Resolve per-section enriched fields once
+            var perSection = ResolvePerSectionFields(section, lookups);
+
             if (section.Schedule.Count == 0)
             {
-                // Unscheduled section — one row with blank time fields
-                rows.Add(FormatRow(courseCode, section.SectionCode, section.Notes, "", "", "", "", "", ""));
+                // Unscheduled section — one row with blank time fields, enriched per-section columns populated
+                rows.Add(FormatRow(courseCode, section.SectionCode, section.Notes,
+                    "", "", "", "", "", "",
+                    perSection.Instructor, perSection.Initials,
+                    "", "", // no meeting → no building/room
+                    perSection.Campus, perSection.SectionType, perSection.Tags,
+                    "", // no meeting → no meeting type
+                    perSection.Level));
             }
             else
             {
-                // One row per meeting, sorted by Day then StartMinutes
                 var meetings = section.Schedule
                     .OrderBy(m => m.Day)
                     .ThenBy(m => m.StartMinutes);
@@ -85,11 +102,19 @@ public class SharedScheduleCsvExporter
                     var startTime = FormatTime(mtg.StartMinutes);
                     var endTime = FormatTime(mtg.EndMinutes);
 
+                    // Resolve per-meeting enriched fields
+                    var (building, roomNumber) = ResolveRoom(mtg, lookups);
+                    var meetingType = ResolveMeetingType(mtg, lookups);
+
                     rows.Add(FormatRow(
                         courseCode, section.SectionCode, section.Notes,
                         dayName, startTime, endTime,
                         mtg.DurationMinutes.ToString(), mtg.StartMinutes.ToString(),
-                        mtg.Frequency ?? ""));
+                        mtg.Frequency ?? "",
+                        perSection.Instructor, perSection.Initials,
+                        building, roomNumber,
+                        perSection.Campus, perSection.SectionType, perSection.Tags,
+                        meetingType, perSection.Level));
                 }
             }
         }
@@ -97,13 +122,91 @@ public class SharedScheduleCsvExporter
         return rows;
     }
 
-    private static string FormatRow(string courseCode, string sectionCode, string notes,
-                                     string day, string startTime, string endTime,
-                                     string durationMin, string startMinutes, string frequency)
+    /// <summary>
+    /// Resolves per-section enriched fields from the section's IDs using the export lookups.
+    /// </summary>
+    private static (string Instructor, string Initials, string Campus, string SectionType, string Tags, string Level)
+        ResolvePerSectionFields(Section section, ExportLookups lookups)
+    {
+        // Instructors — pipe-delimited "LastName, FirstName" and initials
+        var instructorNames = new List<string>();
+        var instructorInitials = new List<string>();
+        foreach (var assignment in section.InstructorAssignments)
+        {
+            if (lookups.InstructorsById.TryGetValue(assignment.InstructorId, out var instructor))
+            {
+                instructorNames.Add($"{instructor.LastName}, {instructor.FirstName}");
+                instructorInitials.Add(instructor.Initials ?? "");
+            }
+        }
+        var instructorField = string.Join("|", instructorNames);
+        var initialsField = string.Join("|", instructorInitials);
+
+        // Campus
+        var campus = "";
+        if (!string.IsNullOrEmpty(section.CampusId) &&
+            lookups.CampusesById.TryGetValue(section.CampusId, out var campusEntity))
+            campus = campusEntity.Name ?? "";
+
+        // Section type
+        var sectionType = "";
+        if (!string.IsNullOrEmpty(section.SectionTypeId) &&
+            lookups.SectionTypesById.TryGetValue(section.SectionTypeId, out var sectionTypeEntity))
+            sectionType = sectionTypeEntity.Name ?? "";
+
+        // Tags — pipe-delimited, skip deleted tags
+        var tagNames = new List<string>();
+        foreach (var tagId in section.TagIds)
+        {
+            if (lookups.TagsById.TryGetValue(tagId, out var tag) && !string.IsNullOrEmpty(tag.Name))
+                tagNames.Add(tag.Name);
+        }
+        var tags = string.Join("|", tagNames);
+
+        // Level — direct, no lookup
+        var level = section.Level ?? "";
+
+        return (instructorField, initialsField, campus, sectionType, tags, level);
+    }
+
+    /// <summary>
+    /// Resolves building and room number for a meeting from the room lookup.
+    /// </summary>
+    private static (string Building, string RoomNumber) ResolveRoom(SectionDaySchedule mtg, ExportLookups lookups)
+    {
+        if (string.IsNullOrEmpty(mtg.RoomId) ||
+            !lookups.RoomsById.TryGetValue(mtg.RoomId, out var room))
+            return ("", "");
+        return (room.Building ?? "", room.RoomNumber ?? "");
+    }
+
+    /// <summary>
+    /// Resolves meeting type name for a meeting from the meeting type lookup.
+    /// </summary>
+    private static string ResolveMeetingType(SectionDaySchedule mtg, ExportLookups lookups)
+    {
+        if (string.IsNullOrEmpty(mtg.MeetingTypeId) ||
+            !lookups.MeetingTypesById.TryGetValue(mtg.MeetingTypeId, out var meetingType))
+            return "";
+        return meetingType.Name ?? "";
+    }
+
+    private static string FormatRow(
+        string courseCode, string sectionCode, string notes,
+        string day, string startTime, string endTime,
+        string durationMin, string startMinutes, string frequency,
+        string instructor, string initials,
+        string building, string roomNumber,
+        string campus, string sectionType, string tags,
+        string meetingType, string level)
     {
         return $"{CsvEscape(courseCode)},{CsvEscape(sectionCode)},{CsvEscape(notes)}," +
                $"{CsvEscape(day)},{CsvEscape(startTime)},{CsvEscape(endTime)}," +
-               $"{CsvEscape(durationMin)},{CsvEscape(startMinutes)},{CsvEscape(frequency)}";
+               $"{CsvEscape(durationMin)},{CsvEscape(startMinutes)},{CsvEscape(frequency)}," +
+               $"{CsvEscape(instructor)},{CsvEscape(initials)}," +
+               $"{CsvEscape(building)},{CsvEscape(roomNumber)}," +
+               $"{CsvEscape(campus)},{CsvEscape(sectionType)},{CsvEscape(tags)}," +
+               $"{CsvEscape(meetingType)},{CsvEscape(level)}";
     }
 
     /// <summary>

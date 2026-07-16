@@ -322,6 +322,7 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
+        services.AddSingleton<ImportResolver>();
         services.AddSingleton<CsvImportParser>();
         services.AddSingleton<CsvImportMatcher>();
         services.AddSingleton<TourRunner>();
@@ -434,6 +435,7 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
+        services.AddSingleton<ImportResolver>();
         services.AddSingleton<CsvImportParser>();
         services.AddSingleton<CsvImportMatcher>();
         services.AddSingleton<TourRunner>();

@@ -16,7 +16,8 @@
 			TextWrapping="Wrap" />
 
 		<Separator Margin="0,4" />
-		<GroupBox MinWidth="300" HorizontalAlignment="Left" Header="Import">
+		<GroupBox MinWidth="300" HorizontalAlignment="Left" Header="Import"
+				  IsEnabled="{Binding IsSingleSemester}">
 		<!-- Import / Export buttons -->
 		<StackPanel Orientation="Vertical" Spacing="8" IsVisible="{Binding SupportsFileDialogs}">
 			<Button
@@ -39,6 +40,7 @@
 			</GroupBox>
 	
           <GroupBox Header="Export" MinWidth="300" HorizontalAlignment="Left"
+					IsEnabled="{Binding IsSingleSemester}"
 					ToolTip.Tip="Export your current view">
           <StackPanel>
 		<!-- Export source label -->
