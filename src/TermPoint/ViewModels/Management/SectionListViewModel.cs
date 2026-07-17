@@ -1290,6 +1290,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     private void OpenEdit(Section section, bool isNew, SectionListItemViewModel? listItem)
     {
+        if (listItem?.IsShared == true) return;
         if (ExpandedItem is not null) ExpandedItem.IsExpanded = false;
 
         var ctx = BuildEditorContext();

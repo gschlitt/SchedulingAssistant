@@ -336,7 +336,6 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     [RelayCommand]
     private void ToggleCollapsed()
     {
-        if (IsShared) return;
         IsCollapsed = !IsCollapsed;
     }
 

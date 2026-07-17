@@ -1223,7 +1223,7 @@
                                                     BorderThickness="0"
                                                     Command="{Binding ToggleCollapsedCommand}"
                                                     Cursor="Hand"
-                                                    IsVisible="{Binding !IsShared}">
+                                                    IsVisible="True">
                                                     <Panel>
                                                         <TextBlock
                                                             FontSize="8"
