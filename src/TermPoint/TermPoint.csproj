@@ -3,7 +3,7 @@
   <!-- â”€â”€ Shared settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <PropertyGroup>
     <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <AssemblyName>TermPoint</AssemblyName>
     <Product>TermPoint</Product>
     <Nullable>enable</Nullable>
