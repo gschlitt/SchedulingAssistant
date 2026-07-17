@@ -792,7 +792,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 //   Named instructors      → section must be assigned to at least one.
                 // The two are mutually exclusive in the UI, but the OR handles both for
                 // robustness (e.g. if filter state is restored from a saved preset).
-                bool passes = (snap.NotStaffedSelected && !section.InstructorIds.Any())
+                bool isUnstaffed = !section.InstructorIds.Any()
+                    && !(section.IsShared && section.DisplayInstructors?.Count > 0);
+                bool passes = (snap.NotStaffedSelected && isUnstaffed)
                            || (snap.NamedInstructorIds.Count > 0
                                && section.InstructorIds.Any(snap.NamedInstructorIds.Contains));
                 if (!passes) continue;
@@ -837,8 +839,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
             bool sectionIsOverlay  = overlayMatchedIds.Contains(section.Id);
             // "Emphasize Unstaffed" mode: staffed sections are de-emphasised with a
             // strikethrough in the grid; unstaffed sections are highlighted.
-            bool isDeemphasized    = snap.EmphasizeUnstaffedSelected && section.InstructorIds.Any();
-            bool isEmphasized      = snap.EmphasizeUnstaffedSelected && !section.InstructorIds.Any();
+            bool hasStaff = section.InstructorIds.Any()
+                || (section.IsShared && section.DisplayInstructors?.Count > 0);
+            bool isDeemphasized    = snap.EmphasizeUnstaffedSelected && hasStaff;
+            bool isEmphasized      = snap.EmphasizeUnstaffedSelected && !hasStaff;
 
             // ── Meeting-level filters and block emission ───────────────────────────
             foreach (var slot in section.Schedule)

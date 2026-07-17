@@ -24,7 +24,7 @@ public partial class ScheduleGridView : UserControl
     /// Used by <see cref="UpdateSelectionHighlight"/> to repaint selection state without
     /// triggering a full layout pass.
     /// </summary>
-    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, IBrush BaseBg);
+    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, bool IsSharedSchedule, IBrush BaseBg);
     private readonly List<EntryRowInfo> _entryRowRegistry = new();
     
     // Layout constants
@@ -316,9 +316,10 @@ public partial class ScheduleGridView : UserControl
             info.Row.BorderBrush     = isSelected ? UserSelectedBorder : Brushes.Transparent;
             info.Row.BorderThickness = new Thickness(isSelected ? TileSelectionBorderThickness : 0);
             info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
-            info.Label.Foreground = isSelected         ? SectionMeetingTextSelected
-                                  : info.IsOverlay      ? OverlayFrameBorder
-                                  : info.IsDeemphasized ? TileDeemphasizedText
+            info.Label.Foreground = isSelected              ? SectionMeetingTextSelected
+                                  : info.IsSharedSchedule  ? SharedScheduleText
+                                  : info.IsOverlay         ? OverlayFrameBorder
+                                  : info.IsDeemphasized    ? TileDeemphasizedText
                                   : TileText;
         }
     }
@@ -885,7 +886,7 @@ public partial class ScheduleGridView : UserControl
 
                     // Register for lightweight selection repainting (avoids full Render() on selection change).
                     if (!entry.IsCommitment)
-                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, isConflict ? conflictGlow : entryRowBg));
+                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, entry.IsSharedSchedule, isConflict ? conflictGlow : entryRowBg));
 
                     entryRow.PointerPressed += (sender, e) =>
                     {
