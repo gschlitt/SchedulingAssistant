@@ -1673,8 +1673,22 @@ public partial class MainWindow : Window
     {
         var slot = (DetachablePanel)sender!;
 
-        // Build a toggle button for the detached window header, matching the
-        // inline HeaderContext button in MainWindow.axaml.
+        // Build the detached window header, matching the inline HeaderContext in
+        // MainWindow.axaml: a "Show Events" checkbox followed by the view-switch button.
+        var faintBrush = (IBrush)(this.FindResource("TextFaint") ?? Brushes.Gray);
+
+        var showEventsCheck = new CheckBox
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Content = "Show Events",
+            FontSize = 10,
+            Foreground = faintBrush,
+            [ToolTip.TipProperty] = "Show or hide events on the schedule grid",
+        };
+        showEventsCheck.Classes.Add("EventsToggle");
+        showEventsCheck.Bind(Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty,
+            new Binding("ScheduleGridVm.Filter.ShowMeetings") { Source = Vm, Mode = BindingMode.TwoWay });
+
         var toggleButton = new Button
         {
             MinWidth = 0,
@@ -1684,12 +1698,21 @@ public partial class MainWindow : Window
             Background = (IBrush)(this.FindResource("ButtonBackground") ?? Brushes.LightGray),
             BorderThickness = new Thickness(0),
             FontSize = 10,
-            Foreground = (IBrush)(this.FindResource("TextFaint") ?? Brushes.Gray),
+            Foreground = faintBrush,
         };
         toggleButton.Bind(Button.CommandProperty,
             new Binding("ToggleMeetingViewCommand") { Source = Vm });
         toggleButton.Bind(ContentControl.ContentProperty,
             new Binding("ToggleMeetingViewLabel") { Source = Vm });
+
+        var headerPanel = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        headerPanel.Children.Add(showEventsCheck);
+        headerPanel.Children.Add(toggleButton);
 
         // Null out PanelContent to prevent dual event firing while detached.
         slot.PanelContent = null;
@@ -1705,7 +1728,7 @@ public partial class MainWindow : Window
                 slot.IsVisible = true;
                 _sectionViewWindow = null;
             },
-            toggleButton);
+            headerPanel);
     }
 
     private void OnWorkloadDetach(object? sender, EventArgs e)
