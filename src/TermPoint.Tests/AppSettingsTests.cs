@@ -253,4 +253,82 @@ public sealed class AppSettingsTests : IDisposable
         Assert.True(settings.RecentDatabases.Count <= 10,
             $"RecentDatabases should be capped at 10; found {settings.RecentDatabases.Count}.");
     }
+
+    // ── Group 4 — RecentSharedImports MRU (Sharing flyout) ────────────────
+
+    /// <summary>
+    /// <see cref="AppSettings.AddRecentSharedImport"/> keeps at most 5 entries, most-recent
+    /// first, dropping the oldest when the cap is exceeded.
+    /// </summary>
+    [Fact]
+    public void AddRecentSharedImport_CapsAtFive_MostRecentFirst()
+    {
+        // Arrange
+        var settings = AppSettings.Load();
+        settings.RecentSharedImports.Clear();
+        var dir = Path.Combine(Path.GetTempPath(), $"imp_{Guid.NewGuid():N}");
+
+        // Act — add 7 distinct paths
+        for (var i = 0; i < 7; i++)
+            settings.AddRecentSharedImport(Path.Combine(dir, $"share{i}.csv"));
+
+        // Assert — capped at 5, newest (share6) at the front, oldest two dropped
+        Assert.Equal(5, settings.RecentSharedImports.Count);
+        Assert.Equal(Path.GetFullPath(Path.Combine(dir, "share6.csv")), settings.RecentSharedImports[0]);
+        Assert.DoesNotContain(Path.GetFullPath(Path.Combine(dir, "share0.csv")), settings.RecentSharedImports);
+        Assert.DoesNotContain(Path.GetFullPath(Path.Combine(dir, "share1.csv")), settings.RecentSharedImports);
+    }
+
+    /// <summary>
+    /// Re-adding an existing path moves it to the front (case-insensitively) without
+    /// creating a duplicate — the move-to-front MRU contract.
+    /// </summary>
+    [Fact]
+    public void AddRecentSharedImport_ExistingPath_MovesToFrontWithoutDuplicate()
+    {
+        // Arrange
+        var settings = AppSettings.Load();
+        settings.RecentSharedImports.Clear();
+        var dir = Path.Combine(Path.GetTempPath(), $"imp_{Guid.NewGuid():N}");
+        var a = Path.Combine(dir, "a.csv");
+        var b = Path.Combine(dir, "b.csv");
+        settings.AddRecentSharedImport(a);
+        settings.AddRecentSharedImport(b);   // b now front, a second
+
+        // Act — re-add a (upper-cased to prove case-insensitive de-dup)
+        settings.AddRecentSharedImport(a.ToUpperInvariant());
+
+        // Assert — a is front, only one copy present. The re-added entry keeps the caller's
+        // casing (matching AddRecentDatabase), so compare case-insensitively.
+        Assert.Equal(2, settings.RecentSharedImports.Count);
+        Assert.Equal(Path.GetFullPath(a), settings.RecentSharedImports[0],
+            StringComparer.OrdinalIgnoreCase);
+        Assert.Single(settings.RecentSharedImports,
+            p => string.Equals(p, Path.GetFullPath(a), StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// <see cref="AppSettings.RemoveRecentSharedImport"/> drops the matching entry
+    /// (case-insensitively) and is a no-op for a path that isn't present.
+    /// </summary>
+    [Fact]
+    public void RemoveRecentSharedImport_RemovesMatchingEntry()
+    {
+        // Arrange
+        var settings = AppSettings.Load();
+        settings.RecentSharedImports.Clear();
+        var dir = Path.Combine(Path.GetTempPath(), $"imp_{Guid.NewGuid():N}");
+        var a = Path.Combine(dir, "a.csv");
+        var b = Path.Combine(dir, "b.csv");
+        settings.AddRecentSharedImport(a);
+        settings.AddRecentSharedImport(b);
+
+        // Act — remove a (case-insensitive); removing a non-member is harmless
+        settings.RemoveRecentSharedImport(a.ToUpperInvariant());
+        settings.RemoveRecentSharedImport(Path.Combine(dir, "never.csv"));
+
+        // Assert — only b remains
+        Assert.Single(settings.RecentSharedImports);
+        Assert.Equal(Path.GetFullPath(b), settings.RecentSharedImports[0]);
+    }
 }

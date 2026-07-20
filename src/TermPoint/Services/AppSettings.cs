@@ -168,6 +168,12 @@ public class AppSettings
     public List<string> RecentDatabases { get; set; } = new();
 
     /// <summary>
+    /// Recently imported shared-schedule CSV paths (most recent first). Max 5 entries.
+    /// Surfaced in the Sharing flyout for one-click re-import.
+    /// </summary>
+    public List<string> RecentSharedImports { get; set; } = new();
+
+    /// <summary>
     /// Folder path where automated backups are written.
     /// Null means no backup folder has been configured and backups are skipped.
     /// </summary>
@@ -333,6 +339,54 @@ public class AppSettings
                 RecentDatabases.RemoveRange(10, RecentDatabases.Count - 10);
 
             // Save() acquires _settingsLock — re-entrant on same thread, so no deadlock.
+            Save();
+        }
+    }
+
+    /// <summary>
+    /// Add a shared-schedule import to the recent list. Moves to front if already present,
+    /// keeps max 5 entries. Callers invoke this immediately after a successful import, so
+    /// existence is already proven — there is deliberately no <c>File.Exists</c> guard here
+    /// (on a network path that just went dark it would block the UI thread for the full SMB
+    /// redirector timeout). Thread-safe: serialises list mutation and the subsequent
+    /// <see cref="Save"/> call via <see cref="_settingsLock"/>.
+    /// </summary>
+    public void AddRecentSharedImport(string importPath)
+    {
+        // Normalize path for comparison
+        var normalized = Path.GetFullPath(importPath);
+
+        lock (_settingsLock)
+        {
+            // Remove if already exists
+            RecentSharedImports.RemoveAll(p =>
+                Path.GetFullPath(p).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+
+            // Add to front
+            RecentSharedImports.Insert(0, normalized);
+
+            // Keep only last 5
+            if (RecentSharedImports.Count > 5)
+                RecentSharedImports.RemoveRange(5, RecentSharedImports.Count - 5);
+
+            // Save() acquires _settingsLock — re-entrant on same thread, so no deadlock.
+            Save();
+        }
+    }
+
+    /// <summary>
+    /// Remove a shared-schedule import from the recent list. Invoked when a recent entry is
+    /// clicked but the file no longer exists on disk, so the dead entry can't be clicked
+    /// again. Thread-safe via <see cref="_settingsLock"/>.
+    /// </summary>
+    public void RemoveRecentSharedImport(string importPath)
+    {
+        var normalized = Path.GetFullPath(importPath);
+
+        lock (_settingsLock)
+        {
+            RecentSharedImports.RemoveAll(p =>
+                Path.GetFullPath(p).Equals(normalized, StringComparison.OrdinalIgnoreCase));
             Save();
         }
     }

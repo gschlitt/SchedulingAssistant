@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -65,6 +66,7 @@ public partial class SharingViewModel : ViewModelBase
 
         UpdateSharedFolderDisplay();
         UpdateExportSourceLabel();
+        RefreshRecentImports();
         _sharedScheduleService.Changed += () => OnPropertyChanged(nameof(HasLoadedSchedules));
         _semesterContext.PropertyChanged += (_, e) =>
         {
@@ -103,6 +105,38 @@ public partial class SharingViewModel : ViewModelBase
 
     public bool SupportsFileDialogs => PlatformCapabilities.SupportsFileDialogs;
 
+    /// <summary>
+    /// The last few imported shared-schedule files (most recent first), for one-click
+    /// re-import. Populated from <see cref="AppSettings.RecentSharedImports"/>; no
+    /// existence check is performed here — validation is deferred to click time so an
+    /// unreachable share never stalls the flyout.
+    /// </summary>
+    public ObservableCollection<RecentImportItem> RecentImports { get; } = new();
+
+    /// <summary>True when at least one recent import is available to show.</summary>
+    public bool HasRecentImports => RecentImports.Count > 0;
+
+    /// <summary>
+    /// Rebuilds <see cref="RecentImports"/> from persisted settings, wiring each item's
+    /// load command. Called at construction and after any change to the recent list.
+    /// </summary>
+    private void RefreshRecentImports()
+    {
+        RecentImports.Clear();
+        foreach (var path in AppSettings.Current.RecentSharedImports)
+        {
+            // Capture in a local so the command closes over this iteration's path.
+            var capturedPath = path;
+            RecentImports.Add(new RecentImportItem
+            {
+                Path = capturedPath,
+                DisplayName = System.IO.Path.GetFileName(capturedPath),
+                LoadCommand = new AsyncRelayCommand(() => LoadRecentImport(capturedPath))
+            });
+        }
+        OnPropertyChanged(nameof(HasRecentImports));
+    }
+
     [RelayCommand]
     private async Task ImportSharedSchedule()
     {
@@ -131,40 +165,76 @@ public partial class SharingViewModel : ViewModelBase
         if (files.Count == 0) return;
 
         var file = files[0];
-        var fallbackLabel = System.IO.Path.GetFileNameWithoutExtension(file.Name);
-
-        // Shared-schedule CSVs live on a network folder by design, and the parser
-        // consumes its stream synchronously on the UI thread — a share dying mid-read
-        // would freeze the app for the SMB redirector timeout. Read the raw bytes
-        // deadline-bounded first, then parse from memory (bytes, not text, so the
-        // parser's BOM/encoding detection still applies).
         var localPath = file.TryGetLocalPath();
-        System.IO.Stream stream;
         if (!string.IsNullOrEmpty(localPath))
         {
-            var (completed, bytes) = await Services.NetworkFileOps.RunAsync(
-                () => System.IO.File.ReadAllBytes(localPath), "SharedSchedule.Read");
-            if (!completed || bytes is null)
-            {
-                StatusMessage = "The file's location is not responding. Check your network connection and try again.";
-                return;
-            }
-            stream = new System.IO.MemoryStream(bytes);
+            // Filesystem path — read deadline-bounded and record for one-click re-import.
+            await TryLoadFromLocalPathAsync(localPath);
         }
         else
         {
-            // Non-filesystem storage provider — no UNC path to stall on.
-            stream = await file.OpenReadAsync();
+            // Non-filesystem storage provider — no UNC path to stall on, and nothing
+            // re-loadable to record in the recent list.
+            var fallbackLabel = System.IO.Path.GetFileNameWithoutExtension(file.Name);
+            var stream = await file.OpenReadAsync();
+            await using (stream)
+                ProcessImportStream(stream, fallbackLabel);
+        }
+#endif
+    }
+
+#if !BROWSER
+    /// <summary>
+    /// Loads a shared schedule from a local (possibly network) file path, then records it
+    /// in the recent-imports list on success. Shared-schedule CSVs live on a network folder
+    /// by design, so the raw bytes are read deadline-bounded first (a share dying mid-read
+    /// would otherwise freeze the app for the SMB redirector timeout) and parsed from memory.
+    /// </summary>
+    /// <param name="localPath">Full filesystem path to the CSV to import.</param>
+    /// <returns>True when the file was read and parsed without a file-level error.</returns>
+    private async Task<bool> TryLoadFromLocalPathAsync(string localPath)
+    {
+        var (completed, bytes) = await Services.NetworkFileOps.RunAsync(
+            () => System.IO.File.ReadAllBytes(localPath), "SharedSchedule.Read");
+        if (!completed || bytes is null)
+        {
+            StatusMessage = "The file's location is not responding. Check your network connection and try again.";
+            return false;
         }
 
-        Services.ImportResult result;
-        await using (stream)
-            result = _parser.Parse(stream, fallbackLabel);
+        // Bytes, not text, so the parser's BOM/encoding detection still applies.
+        var fallbackLabel = System.IO.Path.GetFileNameWithoutExtension(localPath);
+        bool success;
+        using (var stream = new System.IO.MemoryStream(bytes))
+            success = ProcessImportStream(stream, fallbackLabel);
+
+        if (success)
+        {
+            // Move-to-front (cap 5) and refresh the visible list.
+            AppSettings.Current.AddRecentSharedImport(localPath);
+            RefreshRecentImports();
+        }
+        return success;
+    }
+#endif
+
+    /// <summary>
+    /// Parses an already-read shared-schedule stream, resolves imported names against local
+    /// entities, stamps the active semester, registers the set, and builds the status
+    /// message. Shared by the file-picker and recent-import paths. The stream is consumed
+    /// synchronously; the caller owns its lifetime.
+    /// </summary>
+    /// <param name="stream">Open stream positioned at the start of the CSV.</param>
+    /// <param name="fallbackSourceLabel">Label used when the CSV omits a source description.</param>
+    /// <returns>True on a successful parse; false when the file had a parse-level error.</returns>
+    private bool ProcessImportStream(System.IO.Stream stream, string fallbackSourceLabel)
+    {
+        var result = _parser.Parse(stream, fallbackSourceLabel);
 
         if (result.FileError is not null)
         {
             StatusMessage = result.FileError;
-            return;
+            return false;
         }
 
         var set = result.Set!;
@@ -223,7 +293,41 @@ public partial class SharingViewModel : ViewModelBase
             lines.Add(w);
 
         StatusMessage = string.Join("\n", lines);
+        return true;
+    }
+
+    /// <summary>
+    /// Re-imports a file from the recent list. Validation is lazy: the file is probed only
+    /// now (not when the list is built), so an unreachable share never stalls the flyout.
+    /// A genuinely missing file is reported and dropped from the list; an unreachable
+    /// location is reported but kept (it may come back).
+    /// </summary>
+    /// <param name="path">Full path recorded in <see cref="AppSettings.RecentSharedImports"/>.</param>
+    [RelayCommand]
+    private async Task LoadRecentImport(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+        StatusMessage = null;
+#if !BROWSER
+        // Deadline-bounded, tri-state probe: distinguishes "genuinely gone" from
+        // "share down" so a dead link can't freeze the flyout and doesn't purge the entry.
+        var probe = await Services.NetworkFileOps.ProbeFileAsync(path);
+        if (probe == Services.FileProbeResult.Unreachable)
+        {
+            StatusMessage = "The file's location is not responding. Check your network connection and try again.";
+            return;
+        }
+        if (probe == Services.FileProbeResult.Missing)
+        {
+            StatusMessage = $"\"{System.IO.Path.GetFileName(path)}\" is no longer available.";
+            AppSettings.Current.RemoveRecentSharedImport(path);
+            RefreshRecentImports();
+            return;
+        }
+
+        await TryLoadFromLocalPathAsync(path);
 #endif
+        await Task.CompletedTask;
     }
 
     [RelayCommand(CanExecute = nameof(CanExportSharedSchedule))]

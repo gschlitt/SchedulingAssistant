@@ -16,7 +16,9 @@
 			TextWrapping="Wrap" />
 
 		<Separator Margin="0,4" />
-		<GroupBox MinWidth="300" HorizontalAlignment="Left" Header="Import"
+		<!-- Import and Export side by side -->
+		<StackPanel Orientation="Horizontal" Spacing="12">
+		<GroupBox MinWidth="300" VerticalAlignment="Top" HorizontalAlignment="Left" Header="Import"
 				  IsEnabled="{Binding IsSingleSemester}"
 				  ToolTip.Tip="Select a single semester to use shared schedules">
 		<!-- Import / Export buttons -->
@@ -26,6 +28,26 @@
 				Command="{Binding ImportSharedScheduleCommand}"
 				Content="Import Shared Schedule..."
 				FontSize="{StaticResource FontSizeNormal}" />
+			<!-- Recent imports: one-click re-import of the last 5 files -->
+			<StackPanel Spacing="2" IsVisible="{Binding HasRecentImports}">
+				<TextBlock FontSize="{StaticResource FontSizeSmall}" Text="Recent:" />
+				<ItemsControl ItemsSource="{Binding RecentImports}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<Button
+								HorizontalAlignment="Left"
+								Margin="0,1,0,0"
+								Padding="2,1"
+								Background="Transparent"
+								BorderThickness="0"
+								Command="{Binding LoadCommand}"
+								Content="{Binding DisplayName}"
+								FontSize="11"
+								ToolTip.Tip="{Binding Path}" />
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
 			<!-- Loaded status -->
 		<TextBlock
 			FontSize="11"			
@@ -40,7 +62,7 @@
 		</StackPanel>
 			</GroupBox>
 	
-          <GroupBox Header="Export" MinWidth="300" HorizontalAlignment="Left"
+          <GroupBox Header="Export" MinWidth="300" VerticalAlignment="Top" HorizontalAlignment="Left"
 					IsEnabled="{Binding IsSingleSemester}"
 					ToolTip.Tip="Select a single semester to use shared schedules">
           <StackPanel>
@@ -67,11 +89,11 @@
 				Content="Export Shared Schedule..."
 				FontSize="{StaticResource FontSizeNormal}"
 				/>		
-	        </StackPanel>	
-				
+	        </StackPanel>
+
 	</GroupBox>
-	
-      
+		</StackPanel>
+
 
 		<Separator Margin="0,4" />
 
