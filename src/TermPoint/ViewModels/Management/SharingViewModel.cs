@@ -240,6 +240,22 @@ public partial class SharingViewModel : ViewModelBase
         var set = result.Set!;
         var sections = set.Sections;
 
+        // Semester guard — runs before anything is added, resolved, or stamped. Sections are
+        // stamped with the ACTIVE semester below regardless of where the file came from, so a
+        // cross-semester import does not merely mislead, it mis-attributes the data. Refuse
+        // outright rather than warn.
+        var activeSemester = _semesterContext.SelectedSemesters.FirstOrDefault();
+        var (refusal, semesterWarning) = CheckSemesterIdentity(
+            result,
+            activeSemester?.Semester.Name,
+            _semesterContext.SelectedAcademicYear?.Name);
+
+        if (refusal is not null)
+        {
+            StatusMessage = refusal;
+            return false;
+        }
+
         // Resolve imported names against local entities
         var index = ImportResolutionIndex.Build(
             _instructorRepo.GetAll(),
@@ -253,7 +269,6 @@ public partial class SharingViewModel : ViewModelBase
         set.ResolutionSummary = summary;
 
         // Stamp active semester ID on all imported sections
-        var activeSemester = _semesterContext.SelectedSemesters.FirstOrDefault();
         if (activeSemester is not null)
         {
             var semesterId = activeSemester.Semester.Id;
@@ -282,18 +297,77 @@ public partial class SharingViewModel : ViewModelBase
         if (matched.Count > 0)
             lines.Add($"Matched: {string.Join(", ", matched)}.");
 
-        // Semester mismatch warning
-        if (result.SemesterName is not null && activeSemester is not null
-            && !string.Equals(result.SemesterName, activeSemester.Semester.Name, StringComparison.OrdinalIgnoreCase))
-        {
-            lines.Add($"Note: file was exported for \"{result.SemesterName}\" but the active semester is \"{activeSemester.Semester.Name}\".");
-        }
+        // A confident mismatch was already refused above; this only fires when the file does
+        // not carry enough identity to verify (files predating the academic-year header).
+        if (semesterWarning is not null)
+            lines.Add(semesterWarning);
 
         foreach (var w in summary.Warnings)
             lines.Add(w);
 
         StatusMessage = string.Join("\n", lines);
         return true;
+    }
+
+    /// <summary>
+    /// Decides whether a parsed file may be imported into the currently open semester.
+    ///
+    /// <para>Semester names are bare ("Fall", "Winter") with the year held separately, so the
+    /// semester name alone cannot distinguish Fall 2026 from Fall 2027 — the academic year is
+    /// the deciding field. The rule is "enforce when we can, warn when we can't": a mismatch we
+    /// can positively establish is refused; a file that simply lacks the identity to check
+    /// (exported before the academic year was recorded) is allowed with a visible warning.</para>
+    ///
+    /// <para>Only human-readable identity is compared. The file's semester ID belongs to the
+    /// sending database and is meaningless here.</para>
+    /// </summary>
+    /// <param name="result">Parsed import result carrying the file's recorded identity.</param>
+    /// <param name="activeSemesterName">Name of the open semester, or null if none is open.</param>
+    /// <param name="activeAcademicYearName">Name of the open academic year, if any.</param>
+    /// <returns>
+    /// <c>Refusal</c> non-null when the import must be rejected (the message explains the way
+    /// out); otherwise <c>Warning</c> non-null when the import may proceed but could not be
+    /// verified. Both null when the file positively matches.
+    /// </returns>
+    internal static (string? Refusal, string? Warning) CheckSemesterIdentity(
+        Services.ImportResult result, string? activeSemesterName, string? activeAcademicYearName)
+    {
+        // No semester open — the UI gates import on a single selected semester, so there is
+        // nothing to compare against and nothing to protect.
+        if (string.IsNullOrWhiteSpace(activeSemesterName))
+            return (null, null);
+
+        if (result.SemesterName is null)
+            return (null, "Could not confirm which semester this file came from — check that it matches the semester you have open.");
+
+        if (!Same(result.SemesterName, activeSemesterName))
+            return (Refuse(), null);
+
+        // Semester names match; the academic year decides whether it is the same year's term.
+        if (result.AcademicYearName is null || string.IsNullOrWhiteSpace(activeAcademicYearName))
+            return (null, $"This file is for \"{result.SemesterName}\" but does not record its academic year, so it could not be confirmed to match the year you have open.");
+
+        if (!Same(result.AcademicYearName, activeAcademicYearName))
+            return (Refuse(), null);
+
+        return (null, null);
+
+        static bool Same(string a, string b)
+            => string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        string Refuse()
+        {
+            var fileTerm = Describe(result.SemesterName, result.AcademicYearName);
+            var openTerm = Describe(activeSemesterName, activeAcademicYearName);
+            return $"This share is for {fileTerm}, but {openTerm} is open. "
+                 + $"Switch to {fileTerm} to import it, or ask the sender to export from {openTerm}.";
+        }
+
+        static string Describe(string? semester, string? academicYear)
+        {
+            var term = (semester ?? "an unknown semester").Trim();
+            return string.IsNullOrWhiteSpace(academicYear) ? term : $"{term} {academicYear.Trim()}";
+        }
     }
 
     /// <summary>
@@ -403,8 +477,11 @@ public partial class SharingViewModel : ViewModelBase
             MeetingTypesById: _envRepo.GetAll("meetingType").ToDictionary(v => v.Id));
 
         await using var stream = await file.OpenWriteAsync();
+        // Academic year and semester ID travel with the file so the importer can tell Fall 2026
+        // from Fall 2027 — the semester name alone cannot.
         var error = _exporter.Export(stream, sourceLabel, semName, sections,
-            id => courses.GetValueOrDefault(id, id), lookups);
+            id => courses.GetValueOrDefault(id, id), lookups,
+            academicYearName: ayName, semesterId: semesters.First().Semester.Id);
 
         if (error is not null)
             StatusMessage = error;

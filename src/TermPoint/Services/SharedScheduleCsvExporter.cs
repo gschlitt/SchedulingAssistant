@@ -24,18 +24,30 @@ public class SharedScheduleCsvExporter
     /// </summary>
     /// <param name="output">Target stream (caller is responsible for closing).</param>
     /// <param name="sourceLabel">Source label for the header comment (e.g. institution name).</param>
-    /// <param name="semesterName">Semester name for the header comment (e.g. "Fall 2026").</param>
+    /// <param name="semesterName">Semester name for the header comment (e.g. "Fall").</param>
     /// <param name="sections">Sections to export (already filtered by caller).</param>
     /// <param name="courseCodeLookup">Resolves CourseId → display course code.</param>
     /// <param name="lookups">ID→entity dictionaries for enriched column resolution.</param>
+    /// <param name="academicYearName">
+    /// Academic year name (e.g. "2026-2027"). Semester names are bare ("Fall", "Winter"), so the
+    /// academic year is what distinguishes Fall 2026 from Fall 2027 — without it the importer
+    /// cannot detect a cross-year mismatch. Optional for callers that have no academic year.
+    /// </param>
+    /// <param name="semesterId">
+    /// Database ID of the exported semester. Meaningless to a foreign database, so the importer
+    /// ignores it; it exists so a future "open my own share" flow can match exactly and survive
+    /// a semester rename.
+    /// </param>
     /// <returns>Null on success, or an error message string on failure.</returns>
     public string? Export(Stream output, string sourceLabel, string semesterName,
                           IReadOnlyList<Section> sections,
-                          Func<string, string> courseCodeLookup, ExportLookups lookups)
+                          Func<string, string> courseCodeLookup, ExportLookups lookups,
+                          string? academicYearName = null, string? semesterId = null)
     {
         try
         {
-            ExportCore(output, sourceLabel, semesterName, sections, courseCodeLookup, lookups);
+            ExportCore(output, sourceLabel, semesterName, sections, courseCodeLookup, lookups,
+                       academicYearName, semesterId);
             return null;
         }
         catch (Exception ex)
@@ -47,12 +59,20 @@ public class SharedScheduleCsvExporter
 
     private void ExportCore(Stream output, string sourceLabel, string semesterName,
                             IReadOnlyList<Section> sections,
-                            Func<string, string> courseCodeLookup, ExportLookups lookups)
+                            Func<string, string> courseCodeLookup, ExportLookups lookups,
+                            string? academicYearName, string? semesterId)
     {
         using var writer = new StreamWriter(output, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), leaveOpen: true);
 
-        // Header comment (4-field format with semester name)
-        writer.WriteLine($"#TermPoint Schedule Overlay,{sourceLabel},{semesterName},{DateTime.Today:yyyy-MM-dd}");
+        // Header comment, 6 fields:
+        //   #TermPoint Schedule Overlay,<label>,<semester>,<date>,<academicYear>,<semesterId>
+        // Every field is CSV-escaped: the source label is free text typed by the user and a
+        // single comma in it used to shift every following field, silently corrupting the
+        // semester name the importer relies on. Fields 5-6 are appended, so older readers that
+        // only look at 1-4 are unaffected, and older 4-field files still parse here.
+        writer.WriteLine(
+            $"#TermPoint Schedule Overlay,{CsvEscape(sourceLabel)},{CsvEscape(semesterName)}," +
+            $"{DateTime.Today:yyyy-MM-dd},{CsvEscape(academicYearName)},{CsvEscape(semesterId)}");
 
         // Column header
         writer.WriteLine(EnrichedHeader);

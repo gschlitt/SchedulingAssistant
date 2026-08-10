@@ -62,11 +62,14 @@ public class SharedScheduleCsvParser
         string sourceLabel = fallbackSourceLabel;
         DateTime? exportedAt = null;
         string? semesterName = null;
+        string? academicYearName = null;
+        string? semesterId = null;
         string? columnHeaderLine;
 
         if (firstLine.StartsWith('#'))
         {
-            ParseHeaderComment(firstLine, ref sourceLabel, ref exportedAt, ref semesterName);
+            ParseHeaderComment(firstLine, ref sourceLabel, ref exportedAt, ref semesterName,
+                               ref academicYearName, ref semesterId);
             columnHeaderLine = reader.ReadLine();
         }
         else
@@ -154,30 +157,44 @@ public class SharedScheduleCsvParser
             Sections = sectionMap.Values.ToList()
         };
 
-        return new ImportResult(set, rows.Count, skippedRows, warnings, null, semesterName);
+        return new ImportResult(set, rows.Count, skippedRows, warnings, null, semesterName,
+                                academicYearName, semesterId);
     }
 
     private static void ParseHeaderComment(string line, ref string sourceLabel,
-        ref DateTime? exportedAt, ref string? semesterName)
+        ref DateTime? exportedAt, ref string? semesterName,
+        ref string? academicYearName, ref string? semesterId)
     {
-        // Format: #TermPoint Schedule Overlay,<source label>,<semester name>,<ISO date>
-        // Legacy: #TermPoint Schedule Overlay,<source label>,<ISO date>
-        var content = line[1..]; // strip '#'
-        var parts = content.Split(',');
+        // Current: #TermPoint Schedule Overlay,<label>,<semester>,<ISO date>,<academic year>,<semester id>
+        // Older:   #TermPoint Schedule Overlay,<label>,<semester>,<ISO date>
+        // Legacy:  #TermPoint Schedule Overlay,<label>,<ISO date>
+        //
+        // Parsed with the RFC-4180 row reader rather than a naive Split(','): the source label
+        // is free text typed by the user, and an unescaped comma in it would shift every later
+        // field — silently handing back a fragment of the label as the semester name.
+        var parts = ParseCsvRow(line[1..]); // strip '#'
+
         if (parts.Length >= 2 && !string.IsNullOrWhiteSpace(parts[1]))
             sourceLabel = parts[1].Trim();
 
         if (parts.Length >= 4 && DateTime.TryParse(parts[3].Trim(), out var dt4))
         {
-            // New format: field 3 = semester name, field 4 = date
-            semesterName = string.IsNullOrWhiteSpace(parts[2]) ? null : parts[2].Trim();
+            // Field 3 = semester name, field 4 = date
+            semesterName = Nullify(parts[2]);
             exportedAt = dt4;
+
+            // Fields 5-6 are appended, so their absence just means an older file.
+            if (parts.Length >= 5) academicYearName = Nullify(parts[4]);
+            if (parts.Length >= 6) semesterId = Nullify(parts[5]);
         }
         else if (parts.Length >= 3 && DateTime.TryParse(parts[2].Trim(), out var dt3))
         {
             // Legacy format: field 3 = date (no semester name)
             exportedAt = dt3;
         }
+
+        static string? Nullify(string value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static Dictionary<string, int>? ParseColumnHeaders(string line)
@@ -456,7 +473,18 @@ public record ImportResult(
     int SkippedRows,
     List<(int LineNumber, string Reason)> Warnings,
     string? FileError,
-    string? SemesterName = null)
+    string? SemesterName = null,
+    /// <summary>
+    /// Academic year the file was exported for, or null for files predating the 6-field header.
+    /// Semester names are bare ("Fall", "Winter"), so this is what separates Fall 2026 from
+    /// Fall 2027 — without it a cross-year mismatch cannot be detected.
+    /// </summary>
+    string? AcademicYearName = null,
+    /// <summary>
+    /// Semester database ID from the exporting database. Meaningless across databases, so the
+    /// importer ignores it; retained so a future "open my own share" flow can match exactly.
+    /// </summary>
+    string? SemesterId = null)
 {
     /// <summary>Creates a file-level rejection result.</summary>
     public static ImportResult Failed(string error) => new(null, 0, 0, new(), error);

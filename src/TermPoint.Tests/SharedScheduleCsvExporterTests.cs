@@ -21,12 +21,15 @@ public class SharedScheduleCsvExporterTests
     private string Export(IReadOnlyList<Section> sections, string sourceLabel = "Test Dept",
                           string semesterName = "Fall 2026",
                           Func<string, string>? courseCodeLookup = null,
-                          ExportLookups? lookups = null)
+                          ExportLookups? lookups = null,
+                          string? academicYearName = null,
+                          string? semesterId = null)
     {
         courseCodeLookup ??= id => id;
         lookups ??= EmptyLookups;
         using var stream = new MemoryStream();
-        var error = _exporter.Export(stream, sourceLabel, semesterName, sections, courseCodeLookup, lookups);
+        var error = _exporter.Export(stream, sourceLabel, semesterName, sections, courseCodeLookup,
+                                     lookups, academicYearName, semesterId);
         Assert.Null(error);
         stream.Position = 0;
         return Encoding.UTF8.GetString(stream.ToArray());
@@ -34,6 +37,49 @@ public class SharedScheduleCsvExporterTests
 
     private static string[] Lines(string csv)
         => csv.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+    // ── Semester identity in the header ───────────────────────────────────────
+
+    /// <summary>
+    /// The academic year and semester ID are appended as fields 5 and 6. Without the academic
+    /// year the importer cannot tell Fall 2026 from Fall 2027, since semester names are bare.
+    /// </summary>
+    [Fact]
+    public void Header_IncludesAcademicYearAndSemesterId()
+    {
+        var sections = new List<Section>
+        {
+            new() { CourseId = "CHEM101", SectionCode = "A" }
+        };
+
+        var output = Export(sections, semesterName: "Fall",
+                            academicYearName: "2026-2027", semesterId: "sem-abc-123");
+        var header = Lines(output)[0];
+
+        Assert.StartsWith("#TermPoint Schedule Overlay,Test Dept,Fall,", header);
+        Assert.EndsWith(",2026-2027,sem-abc-123", header);
+    }
+
+    /// <summary>
+    /// The source label is user-typed free text; an unescaped comma used to shift every later
+    /// header field and corrupt the semester name. Fields are now CSV-escaped on write.
+    /// </summary>
+    [Fact]
+    public void Header_EscapesCommaInSourceLabel()
+    {
+        var sections = new List<Section>
+        {
+            new() { CourseId = "CHEM101", SectionCode = "A" }
+        };
+
+        var output = Export(sections, sourceLabel: "Chemistry, 2nd yr courses",
+                            semesterName: "Fall",
+                            academicYearName: "2026-2027", semesterId: "sem-1");
+        var header = Lines(output)[0];
+
+        Assert.StartsWith("#TermPoint Schedule Overlay,\"Chemistry, 2nd yr courses\",Fall,", header);
+        Assert.EndsWith(",2026-2027,sem-1", header);
+    }
 
     // ── Existing tests (updated for 18-column format) ──────────────────────────
 

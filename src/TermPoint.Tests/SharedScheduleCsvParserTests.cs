@@ -360,6 +360,70 @@ public class SharedScheduleCsvParserTests
     }
 
     [Fact]
+    public void SixFieldHeader_ParsesAcademicYearAndSemesterId()
+    {
+        var csv = """
+            #TermPoint Schedule Overlay,Chemistry Dept,Fall,2026-07-15,2026-2027,sem-abc-123
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Equal("Fall", result.SemesterName);
+        Assert.Equal("2026-2027", result.AcademicYearName);
+        Assert.Equal("sem-abc-123", result.SemesterId);
+        Assert.Equal(new DateTime(2026, 7, 15), result.Set!.ExportedAt);
+    }
+
+    /// <summary>
+    /// Files written before the academic year was recorded must still parse; the new fields
+    /// simply come back null so the importer can warn instead of refusing.
+    /// </summary>
+    [Fact]
+    public void FourFieldHeader_AcademicYearAndSemesterIdAreNull()
+    {
+        var csv = """
+            #TermPoint Schedule Overlay,Chemistry Dept,Fall 2026,2026-07-15
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Equal("Fall 2026", result.SemesterName);
+        Assert.Null(result.AcademicYearName);
+        Assert.Null(result.SemesterId);
+    }
+
+    /// <summary>
+    /// The source label is free text typed by the user. An unescaped comma in it used to shift
+    /// every following field, handing back a fragment of the label as the semester name — which
+    /// silently defeated the semester guard. The label is now CSV-escaped on export and read
+    /// back with the RFC-4180 row parser.
+    /// </summary>
+    [Fact]
+    public void HeaderWithCommaInSourceLabel_DoesNotCorruptLaterFields()
+    {
+        var csv = """
+            #TermPoint Schedule Overlay,"Chemistry, 2nd yr courses",Fall,2026-07-15,2026-2027,sem-1
+            CourseCode,SectionCode,Notes,Day,StartTime,EndTime,DurationMin,StartMinutes,Frequency
+            CHEM101,A,,Monday,8:00 AM,8:50 AM,50,480,
+            """;
+
+        var result = Parse(csv);
+
+        Assert.Null(result.FileError);
+        Assert.Equal("Chemistry, 2nd yr courses", result.Set!.SourceLabel);
+        Assert.Equal("Fall", result.SemesterName);
+        Assert.Equal("2026-2027", result.AcademicYearName);
+        Assert.Equal("sem-1", result.SemesterId);
+        Assert.Equal(new DateTime(2026, 7, 15), result.Set.ExportedAt);
+    }
+
+    [Fact]
     public void LegacyHeaderFormat_SemesterNameIsNull()
     {
         var csv = """
