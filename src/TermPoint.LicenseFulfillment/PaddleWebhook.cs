@@ -27,8 +27,28 @@ public class PaddleWebhook
     {
         _logger.LogInformation("Paddle webhook received.");
 
-        var body = await new StreamReader(req.Body).ReadToEndAsync();
-        var doc = JsonDocument.Parse(body);
+        using var buffer = new MemoryStream();
+        await req.Body.CopyToAsync(buffer);
+        var rawBody = buffer.ToArray();
+
+        // Reject anything Paddle did not sign. Fail closed if the secret is not configured.
+        var webhookSecret = Environment.GetEnvironmentVariable("PADDLE_WEBHOOK_SECRET");
+        if (string.IsNullOrEmpty(webhookSecret))
+        {
+            _logger.LogError("PADDLE_WEBHOOK_SECRET is not configured; rejecting webhook.");
+            return new StatusCodeResult(500);
+        }
+
+        var signatureHeader = req.Headers["Paddle-Signature"].ToString();
+        if (!PaddleSignatureVerifier.Verify(
+                signatureHeader, rawBody, webhookSecret,
+                DateTimeOffset.UtcNow, PaddleSignatureVerifier.DefaultTolerance))
+        {
+            _logger.LogWarning("Paddle webhook rejected: invalid or missing signature.");
+            return new UnauthorizedResult();
+        }
+
+        var doc = JsonDocument.Parse(rawBody);
         var root = doc.RootElement;
 
         var eventType = root.GetProperty("event_type").GetString();

@@ -65,6 +65,10 @@ public static class EmailSender
             "text/plain",
             BinaryData.FromBytes(licenseBytes)));
 
-        await client.SendAsync(WaitUntil.Completed, message);
+        // Return as soon as ACS accepts the message. Waiting for final delivery (WaitUntil.Completed)
+        // takes ~10 s, which exceeds Paddle's webhook timeout: Paddle then marks the delivery failed and
+        // retries, so the customer receives duplicate licenses. Delivery outcomes are visible in the
+        // ACS email logs instead.
+        await client.SendAsync(WaitUntil.Started, message);
     }
 }
