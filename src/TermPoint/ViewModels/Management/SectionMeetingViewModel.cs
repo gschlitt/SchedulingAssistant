@@ -90,20 +90,31 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// all distinct legal start times. When a block length is committed, narrows to only
     /// start times where that block length is legal (bidirectional filtering with
     /// <see cref="AvailableBlockLengthStrings"/>).
+    /// <para>
+    /// Rebuilt only when the Start dropdown is about to open (<see cref="RefreshStartTimesCommand"/>
+    /// via <c>DropDownOpeningCommandBehavior</c>), and once at construction — never as a side
+    /// effect of committing a start time or length. It therefore reflects the state at the
+    /// last dropdown opening, which is exactly what the user was shown.
+    /// </para>
     /// </summary>
     public ObservableCollection<string> AvailableStartTimeStrings { get; } = new();
 
     /// <summary>
     /// All distinct start times across every block-length row, sorted chronologically.
-    /// Immutable reference set used by <see cref="RefreshStartTimes"/> as the unfiltered pool.
+    /// Immutable reference set used by <see cref="ComputeStartTimeSuggestions"/> as the unfiltered pool.
     /// </summary>
     private readonly IReadOnlyList<string> _allStartTimeStrings;
 
     /// <summary>
     /// Block lengths valid for the currently selected start time, formatted in the active unit
     /// (e.g. "1.5", "2" for hours; "90", "120" for minutes).
-    /// Populated by <see cref="RefreshBlockLengths"/> after the start time is committed.
-    /// Empty when no start time is set or none of the legal start-time entries include the current start time.
+    /// <para>
+    /// Rebuilt only when the Length dropdown is about to open (<see cref="RefreshBlockLengthsCommand"/>
+    /// via <c>DropDownOpeningCommandBehavior</c>), and once at construction — never as a side
+    /// effect of committing a start time or length. When no start time is set it lists every
+    /// distinct block length; when the start time matches no legal entry it falls back to the
+    /// same full list, so the dropdown is never empty.
+    /// </para>
     /// </summary>
     public ObservableCollection<string> AvailableBlockLengthStrings { get; } = new();
 
@@ -125,7 +136,12 @@ public partial class SectionMeetingViewModel : ViewModelBase
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly BlockLengthUnit _unit;
 
-    /// <summary>Guards against circular updates between <see cref="RefreshStartTimes"/> and <see cref="RefreshBlockLengths"/>.</summary>
+    /// <summary>
+    /// Re-entrancy guard for <see cref="ReplaceSuggestions"/>. Mutating a suggestion collection
+    /// makes its AutoCompleteBox rebuild its internal list, which could in principle re-raise
+    /// <c>DropDownOpening</c> and re-invoke a refresh command while the first rebuild is still
+    /// half-filled. While this flag is set, nested refreshes are ignored.
+    /// </summary>
     private bool _isRefreshing;
 
     /// <summary>
@@ -415,9 +431,16 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     /// <summary>
     /// When the committed start time changes (via user commit or pattern propagation):
-    /// keeps <see cref="StartTimeText"/> in sync, refreshes the block-length suggestion list,
-    /// clears any previously-set block length that is no longer valid, and auto-fills the
-    /// preferred block length when none is set.
+    /// keeps <see cref="StartTimeText"/> in sync, clears any previously-set block length that is
+    /// no longer legal at the new start time, and auto-fills the preferred block length when none
+    /// is set and it is legal there.
+    /// <para>
+    /// Deliberately does <b>not</b> rebuild <see cref="AvailableBlockLengthStrings"/>: that list
+    /// is rebuilt only when the Length dropdown opens (see <see cref="RefreshBlockLengths"/>),
+    /// because rebuilding a sibling AutoCompleteBox's list mid-commit blanks its text under
+    /// Avalonia 12.1 and can crash it (spec item 22). The legal lengths needed here are computed
+    /// directly with <see cref="ComputeBlockLengthSuggestions"/>, which mutates nothing.
+    /// </para>
     /// </summary>
     partial void OnSelectedStartTimeChanged(int? value)
     {
@@ -434,16 +457,20 @@ public partial class SectionMeetingViewModel : ViewModelBase
         }
 
         StartTimeError = null;
-        RefreshBlockLengths();
+
+        // The block lengths legal at the new start time, computed without touching the
+        // observable AvailableBlockLengthStrings (which only changes when its dropdown opens).
+        // SelectedStartTime already holds the new value when this partial method runs.
+        List<string> legalLengths = ComputeBlockLengthSuggestions();
 
         if (SelectedBlockLength.HasValue)
         {
             // Keep the current block length when it is still valid for the new start time.
             // This preserves a coupling-propagated value without redundantly re-setting it
             // (which would otherwise open the AutoCompleteBox dropdown on follower meetings).
-            // Clear it only when the length is no longer in the valid list, or is a custom value.
+            // Clear it only when the length is no longer legal here, or is a custom value.
             string current = FormatBlockLength(SelectedBlockLength.Value);
-            if (!AvailableBlockLengthStrings.Contains(current))
+            if (!legalLengths.Contains(current))
                 SelectedBlockLength = null;
         }
 
@@ -451,24 +478,21 @@ public partial class SectionMeetingViewModel : ViewModelBase
         if (!SelectedBlockLength.HasValue && value.HasValue && _defaultBlockLength.HasValue)
         {
             string preferred = FormatBlockLength(_defaultBlockLength.Value);
-            if (AvailableBlockLengthStrings.Contains(preferred))
+            if (legalLengths.Contains(preferred))
             {
-                // BACKING FIELDS intentionally used instead of property setters.
+                // BACKING FIELDS deliberately used instead of the property setter.
                 //
-                // Setting SelectedBlockLength via the property setter would trigger the
-                // generated OnSelectedBlockLengthChanged partial method, which calls
-                // RefreshStartTimes(). That clears and repopulates AvailableStartTimeStrings
-                // while the Start AutoCompleteBox is still processing the text change that
-                // initiated this whole chain — Avalonia's internal index into the ItemsSource
-                // becomes invalid and throws ArgumentOutOfRangeException.
-                //
-                // Writing _selectedBlockLength directly bypasses the partial method because
-                // CommunityToolkit [ObservableProperty] only invokes OnXChanged from the
-                // property setter, not from OnPropertyChanged. The OnPropertyChanged calls
-                // below update UI bindings (text field display, CanExecute for Room Browser)
-                // without re-entering the cascade. RefreshStartTimes() is unnecessary here
-                // anyway — we just set the start time, so the suggestion list is already
-                // correct for the current state.
+                // Committing a start time no longer rebuilds either suggestion list, so
+                // OnSelectedBlockLengthChanged is no longer dangerous to re-enter (it used to
+                // call RefreshStartTimes(), which cleared the Start list while the Start
+                // AutoCompleteBox was still processing the text change that started this chain
+                // and threw ArgumentOutOfRangeException — spec item 22). The backing-field
+                // write is retained anyway because it does everything that handler would do
+                // here — sync the text and clear the error — without re-entering a second
+                // property-changed handler in the middle of this one. CommunityToolkit invokes
+                // OnXChanged only from the generated setter, not from OnPropertyChanged, so the
+                // OnPropertyChanged calls below update the bindings (Length text, CanExecute
+                // for the Room Browser) without re-entering the cascade.
                 _selectedBlockLength = _defaultBlockLength.Value;
                 _blockLengthText = preferred;
                 BlockLengthError = null;
@@ -480,7 +504,13 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     /// <summary>
     /// When the committed block length changes (via user commit or pattern propagation):
-    /// keeps <see cref="BlockLengthText"/> in sync.
+    /// keeps <see cref="BlockLengthText"/> in sync and clears any Length validation error.
+    /// <para>
+    /// Deliberately does <b>not</b> rebuild <see cref="AvailableStartTimeStrings"/>: that list is
+    /// rebuilt only when the Start dropdown opens (see <see cref="RefreshStartTimes"/>), because
+    /// rebuilding a sibling AutoCompleteBox's list mid-commit blanks its text under Avalonia 12.1
+    /// and can crash it (spec item 22).
+    /// </para>
     /// </summary>
     partial void OnSelectedBlockLengthChanged(double? value)
     {
@@ -495,13 +525,17 @@ public partial class SectionMeetingViewModel : ViewModelBase
         }
 
         BlockLengthError = null;
-        RefreshStartTimes();
     }
 
     /// <summary>
     /// When the start-time text changes, auto-commits if the text exactly matches a preset.
     /// This provides immediate feedback when the user selects from the suggestion dropdown —
-    /// the block-length list refreshes immediately without requiring the user to tab away first.
+    /// the start time is committed (and the Length field's auto-fill / revalidation runs)
+    /// without requiring the user to tab away first.
+    /// <para>
+    /// The match is made against <see cref="AvailableStartTimeStrings"/> as it stands, which is
+    /// exactly what the Start dropdown last showed; the list is not rebuilt here.
+    /// </para>
     /// </summary>
     partial void OnStartTimeTextChanged(string value)
     {
@@ -513,6 +547,10 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     /// <summary>
     /// When the block-length text changes, auto-commits if the text exactly matches a preset.
+    /// <para>
+    /// The match is made against <see cref="AvailableBlockLengthStrings"/> as it stands, which is
+    /// exactly what the Length dropdown last showed; the list is not rebuilt here.
+    /// </para>
     /// </summary>
     partial void OnBlockLengthTextChanged(string value)
     {
@@ -665,85 +703,129 @@ public partial class SectionMeetingViewModel : ViewModelBase
         BlockLengthText = FormatBlockLength(hours);
     }
 
-    // ── Bidirectional suggestion refresh ─────────────────────────────────────
+    // ── Bidirectional suggestion lists ───────────────────────────────────────
+    //
+    // RULE: a suggestion list is rebuilt only when its own dropdown opens (the Refresh* commands,
+    // wired to DropDownOpeningCommandBehavior in AXAML), plus once at construction. Committing a
+    // start time or a block length never mutates either list. Mutating a list that an
+    // AutoCompleteBox is bound to makes the box rebuild its internal view; under Avalonia 12.1
+    // that raises "lost selection" and the box falls back to its last typed text (empty after a
+    // mouse pick), which the two-way Text binding then writes back — blanking the field. Rebuilding
+    // a list mid-pick also caused the ArgumentOutOfRangeException of spec item 22.
+    //
+    // The Compute* helpers are pure so that the commit handlers (OnSelectedStartTimeChanged) can ask
+    // "what would the list contain?" without touching the observable collections.
 
     /// <summary>
-    /// Rebuilds <see cref="AvailableBlockLengthStrings"/>. When a start time is committed,
-    /// shows only block lengths legal at that time; otherwise shows all distinct block lengths.
-    /// Falls back to all lengths when a custom start time matches nothing.
+    /// Computes the block-length suggestions for the current <see cref="SelectedStartTime"/>
+    /// without mutating any state. With no start time, returns every distinct block length. With a
+    /// start time, returns the block lengths legal at that time, falling back to every distinct
+    /// block length when a custom start time matches nothing (so the list is never empty).
     /// </summary>
-    private void RefreshBlockLengths()
+    /// <returns>Formatted block lengths in ascending order (e.g. "1.5", "3").</returns>
+    private List<string> ComputeBlockLengthSuggestions()
     {
-        if (_isRefreshing) return;
-        _isRefreshing = true;
-        try
+        if (SelectedStartTime is null)
         {
-            AvailableBlockLengthStrings.Clear();
-
-            if (SelectedStartTime is null)
-            {
-                // No start time — show all distinct block lengths as suggestions.
-                var all = _legalStartTimes
-                    .Select(l => l.BlockLength)
-                    .Distinct()
-                    .OrderBy(b => b)
-                    .ToList();
-                foreach (var s in all.Select(FormatBlockLength))
-                    AvailableBlockLengthStrings.Add(s);
-                return;
-            }
-
-            var matched = _legalStartTimes
-                .Where(l => l.StartTimes.Contains(SelectedStartTime.Value))
-                .Select(l => l.BlockLength)
-                .OrderBy(b => b)
-                .ToList();
-
-            // Fall back to all known block lengths when none match the custom start time.
-            var lengths = matched.Count > 0
-                ? matched
-                : _legalStartTimes.Select(l => l.BlockLength).Distinct().OrderBy(b => b).ToList();
-
-            foreach (var s in lengths.Select(FormatBlockLength))
-                AvailableBlockLengthStrings.Add(s);
+            // No start time — show all distinct block lengths as suggestions.
+            return AllBlockLengths().Select(FormatBlockLength).ToList();
         }
-        finally { _isRefreshing = false; }
+
+        var matched = _legalStartTimes
+            .Where(l => l.StartTimes.Contains(SelectedStartTime.Value))
+            .Select(l => l.BlockLength)
+            .OrderBy(b => b)
+            .ToList();
+
+        // Fall back to all known block lengths when none match the custom start time.
+        var lengths = matched.Count > 0 ? matched : AllBlockLengths();
+
+        return lengths.Select(FormatBlockLength).ToList();
     }
 
     /// <summary>
-    /// Rebuilds <see cref="AvailableStartTimeStrings"/>. When a block length is committed,
-    /// shows only start times where that block length is legal; otherwise shows all start times.
-    /// Falls back to all start times when a custom block length matches nothing.
+    /// Computes the start-time suggestions for the current <see cref="SelectedBlockLength"/>
+    /// without mutating any state. With no block length, returns every legal start time. With a
+    /// block length, returns the start times where that length is legal, falling back to every
+    /// legal start time when a custom block length matches nothing (so the list is never empty).
     /// </summary>
-    private void RefreshStartTimes()
+    /// <returns>Start times formatted as "HHMM" in chronological order.</returns>
+    private List<string> ComputeStartTimeSuggestions()
+    {
+        if (SelectedBlockLength is null)
+            return _allStartTimeStrings.ToList();
+
+        // Find legal start-time entries whose block length matches the committed value.
+        var matched = _legalStartTimes
+            .Where(l => Math.Abs(l.BlockLength - SelectedBlockLength.Value) < 0.001)
+            .SelectMany(l => l.StartTimes)
+            .Distinct()
+            .OrderBy(t => t)
+            .Select(FormatTime)
+            .ToList();
+
+        // Fall back to all start times when the block length is custom (no legal entry matches).
+        return matched.Count > 0 ? matched : _allStartTimeStrings.ToList();
+    }
+
+    /// <summary>Every distinct block length (in hours) across all legal start-time rows, ascending.</summary>
+    /// <returns>The distinct block lengths, sorted ascending.</returns>
+    private List<double> AllBlockLengths() =>
+        _legalStartTimes.Select(l => l.BlockLength).Distinct().OrderBy(b => b).ToList();
+
+    /// <summary>
+    /// Rebuilds <see cref="AvailableBlockLengthStrings"/> from <see cref="ComputeBlockLengthSuggestions"/>.
+    /// When a start time is committed, shows only block lengths legal at that time; otherwise shows
+    /// all distinct block lengths. Falls back to all lengths when a custom start time matches nothing.
+    /// <para>
+    /// Runs when the Length dropdown is about to open (bound as <c>RefreshBlockLengthsCommand</c>
+    /// through <c>DropDownOpeningCommandBehavior</c>) and once from the constructor — never as part
+    /// of committing a start time or length (spec item 22). When the computed list already equals
+    /// the collection's contents the collection is left untouched, so no change notification
+    /// reaches the AutoCompleteBox.
+    /// </para>
+    /// Takes no parameters and returns nothing; it does not throw.
+    /// </summary>
+    [RelayCommand]
+    private void RefreshBlockLengths() =>
+        ReplaceSuggestions(AvailableBlockLengthStrings, ComputeBlockLengthSuggestions());
+
+    /// <summary>
+    /// Rebuilds <see cref="AvailableStartTimeStrings"/> from <see cref="ComputeStartTimeSuggestions"/>.
+    /// When a block length is committed, shows only start times where that block length is legal;
+    /// otherwise shows all start times. Falls back to all start times when a custom block length
+    /// matches nothing.
+    /// <para>
+    /// Runs when the Start dropdown is about to open (bound as <c>RefreshStartTimesCommand</c>
+    /// through <c>DropDownOpeningCommandBehavior</c>) and once from the constructor — never as part
+    /// of committing a start time or length (spec item 22). When the computed list already equals
+    /// the collection's contents the collection is left untouched, so no change notification
+    /// reaches the AutoCompleteBox.
+    /// </para>
+    /// Takes no parameters and returns nothing; it does not throw.
+    /// </summary>
+    [RelayCommand]
+    private void RefreshStartTimes() =>
+        ReplaceSuggestions(AvailableStartTimeStrings, ComputeStartTimeSuggestions());
+
+    /// <summary>
+    /// Makes <paramref name="target"/> hold exactly <paramref name="desired"/>, mutating it only
+    /// when its contents actually differ. When they differ the collection is cleared and refilled.
+    /// Ignored while another replacement is already in progress (see <see cref="_isRefreshing"/>).
+    /// </summary>
+    /// <param name="target">The observable suggestion collection bound to an AutoCompleteBox.</param>
+    /// <param name="desired">The suggestions the collection should contain, in order.</param>
+    private void ReplaceSuggestions(ObservableCollection<string> target, List<string> desired)
     {
         if (_isRefreshing) return;
+        if (target.SequenceEqual(desired)) return;
+
         _isRefreshing = true;
         try
         {
-            AvailableStartTimeStrings.Clear();
-
-            if (SelectedBlockLength is null)
-            {
-                foreach (var s in _allStartTimeStrings)
-                    AvailableStartTimeStrings.Add(s);
-                return;
-            }
-
-            // Find legal start-time entries whose block length matches the committed value.
-            var matched = _legalStartTimes
-                .Where(l => Math.Abs(l.BlockLength - SelectedBlockLength.Value) < 0.001)
-                .SelectMany(l => l.StartTimes)
-                .Distinct()
-                .OrderBy(t => t)
-                .Select(FormatTime)
-                .ToList();
-
-            // Fall back to all start times when the block length is custom (no legal entry matches).
-            var times = matched.Count > 0 ? matched : _allStartTimeStrings;
-
-            foreach (var s in times)
-                AvailableStartTimeStrings.Add(s);
+            target.Clear();
+            foreach (var s in desired)
+                target.Add(s);
         }
         finally { _isRefreshing = false; }
     }

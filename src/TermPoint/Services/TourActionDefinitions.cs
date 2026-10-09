@@ -590,6 +590,14 @@ internal static class TourActionDefinitions
                         await meeting.CommitStartTimeCommand.ExecuteAsync(null);
                     }
 
+                    // Committing a start time no longer rebuilds the Length suggestion list (a
+                    // list is rebuilt only when its own dropdown opens — spec item 22), so do
+                    // here what opening the Length dropdown does: refresh the list so it holds
+                    // the lengths legal at the start time just committed. The Start list needs
+                    // no such refresh: it is read above before any block length is set, when
+                    // the constructor-built list already equals what a refresh would produce.
+                    meeting.RefreshBlockLengthsCommand.Execute(null);
+
                     // Pick the 1st available block length via text + commit
                     if (meeting.AvailableBlockLengthStrings.Count > 0)
                     {

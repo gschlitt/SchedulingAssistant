@@ -477,7 +477,11 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="onSave">Async callback invoked when the user saves.</param>
     /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
     /// <param name="roomTypes">Room type scheduling environment values for the room type dropdown.</param>
-    /// <param name="defaultBlockLength">Optional preferred block length pre-filled on new meetings.</param>
+    /// <param name="defaultBlockLength">
+    /// Optional preferred block length (hours). It is not pre-filled when a meeting row is created:
+    /// it is filled in after a start time is committed on a meeting that has no block length yet,
+    /// and only when that length is legal at the committed start time.
+    /// </param>
     public SectionEditViewModel(
         Section section,
         bool isNew,
