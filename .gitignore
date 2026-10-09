@@ -81,4 +81,7 @@ deploy.zip
 # Personal local dev overrides
 src/TermPoint/Properties/launchSettings.json
 
+# Local scratch files (exports, pasted reports) — never committed
+/tmp/
+
 
