@@ -459,6 +459,11 @@ rejects or shows unnamed.
   session's lock was reclaimed. This is the field detector for hangs and force-quits, including
   the Avalonia compositor deadlock (item 1).
 - Give the `LogError(null, …)` call sites a synthetic exception.
+- **Log the real exception in `NetworkFileOps.DeleteAsync`** (added 2026-10-09). It currently
+  swallows every exception (`catch { return false; }`), and callers log the `false` as "delete
+  timed out". A sharing violation therefore looks like a network timeout in the log, as seen in
+  `WriteLockService.Release`'s "lock-file delete timed out — abandoning …". Distinguish a timeout
+  from an I/O error, and log the exception message.
 
 **Depends on:** item 6.
 
@@ -1079,6 +1084,29 @@ length. **User-facing annoyance, repeated:** 11 errors in 2 minutes in the field
 - **Likely fix if confirmed.** Give the slot content only when its own card is the one being
   edited (for example, a per-card property that returns `EditVm` only while `IsExpanded`).
   One binding change.
+
+**P2. Demotion can orphan its own lock file if it still holds the lock (noted 2026-10-09).
+LATENT: unreachable today.**
+- **Mechanism.**
+  1. `DemoteToReadOnlyAsync` calls `WriteLockService.Release()`, which deletes the lock file on
+     a background task.
+  2. Later in the same call, `EnterReaderMode()` reads the lock file with a raw
+     `File.ReadAllText`. That read doesn't allow deletion while the file is open.
+  3. If the read overlaps the delete, the delete fails with a sharing violation. The lock file
+     stays on disk with our own content and a frozen heartbeat.
+  4. Same-machine instances then treat it as live (our PID is alive) until the app exits. Other
+     machines reclaim it through stale-lock takeover.
+- **Why it can't happen today.** The app demotes only after write access is lost (`TakenOver` /
+  `LockFileRemoved`). The background release then finds the file is not ours, or gone, and
+  deletes nothing.
+- **Where it showed up.** It surfaced as a flaky test (`DemoteThenRecover_RestoresPreservedEdits`),
+  the only path that demotes while still holding the lock. The test now waits for the release
+  inside `beforeClose`.
+- **If a future change ever demotes while still holding the lock**, harden one of these:
+  - open the reader-mode read with `FileShare.ReadWrite | FileShare.Delete`;
+  - await the pending release before `EnterReaderMode`.
+
+  This interacts with items 4 and 9, which change the lock and startup code.
 
 ---
 

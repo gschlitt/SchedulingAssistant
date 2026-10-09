@@ -2902,14 +2902,25 @@ public sealed class CheckoutServiceTests : IDisposable
     [Fact]
     public async Task DemoteThenRecover_RestoresPreservedEdits()
     {
-        var (svc1, _) = CreateService();
+        var (svc1, lockSvc1) = CreateService();
         var db = DbPath();
         CreateSqliteDb(db);
 
         await svc1.CheckoutAsync(db);
         InsertTestValue(svc1.WorkingPath, "demoted-edit");
         svc1.MarkDirty();
-        await svc1.DemoteToReadOnlyAsync(); // releases the lock, preserves D' + marker
+        // Demotion releases the lock and preserves D' + marker. Settle the background
+        // lock-file deletion in beforeClose, i.e. BEFORE the demotion's own EnterReaderMode
+        // reads the lock file: that read has no delete-sharing, so an overlap makes the
+        // delete fail and orphans the lock, and svc2 (a different service) would then
+        // see a live lock and land in ReadOnly. Production never hits this ordering: the
+        // app demotes only after the lock is lost (TakenOver / LockFileRemoved), when the
+        // background release finds the file is not ours and deletes nothing.
+        await svc1.DemoteToReadOnlyAsync(beforeClose: () =>
+        {
+            lockSvc1.PendingRelease?.Wait(TimeSpan.FromSeconds(10)); // settle the background lock-file deletion
+            return Task.CompletedTask;
+        });
 
         var (svc2, _) = CreateService();
         Assert.True(svc2.DetectCrashRecovery(db)); // artifacts found
