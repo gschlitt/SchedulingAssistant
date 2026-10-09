@@ -1252,7 +1252,9 @@ public partial class ScheduleGridView : UserControl
             var pixelSize = new PixelSize((int)_canvas.Width, (int)_canvas.Height);
             using var bitmap = new RenderTargetBitmap(pixelSize);
             bitmap.Render(_canvas);
-            bitmap.Save(outputPath);
+            // Explicit PNG options: Avalonia 12.1 obsoleted Save(string, int?), which now just
+            // forwards to this overload with PngBitmapEncoderOptions.Default — same output.
+            bitmap.Save(outputPath, PngBitmapEncoderOptions.Default);
         }
         finally
         {
