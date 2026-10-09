@@ -130,7 +130,13 @@ public partial class StartupWizardViewModel : ViewModelBase
             NavigateTo(next);
     }
 
-    /// <summary>Closes the wizard window (and consequently shuts down the app) without completing setup.</summary>
+    /// <summary>
+    /// Exits the wizard without completing setup, which shuts down the app. The <c>Close()</c>
+    /// request never actually closes the window: <c>StartupWizardWindow</c>'s <c>Closing</c> handler
+    /// cancels it, hides the window and calls <c>Shutdown()</c>. The window is therefore never
+    /// disposed while the compositor may still be busy after a native file picker. This is the same
+    /// hide-not-close rule as the Finish path; see <see cref="SetupCompleted"/>.
+    /// </summary>
     [RelayCommand]
     private void Cancel() => _window?.Close();
 

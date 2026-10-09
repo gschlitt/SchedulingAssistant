@@ -13,8 +13,8 @@ will be verified.
 
 | # | Item | Type | Status |
 |---|------|------|--------|
-| 1 | Avalonia 12.0.2 → 12.1.3 upgrade | Dependency / bug fix | **Accepted** (12.1.3) |
-| 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | Accepted |
+| 1 | Avalonia 12.0.2 → 12.1.3 upgrade | Dependency / bug fix | **Done** (steps 1–5). Manual checks still open: UNC picker, macOS, Win11 VM |
+| 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | **Done** |
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | Accepted |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | Accepted |
 | 5 | Make Restore from backup safe | Data integrity | Accepted |
@@ -30,11 +30,11 @@ will be verified.
 | 15 | Exit-path hardening and the mid-save edit gap | Data loss | Accepted |
 | 16 | Remaining network I/O on the UI thread | Responsiveness | Accepted |
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | Accepted |
-| 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | Accepted (optional) |
+| 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | Accepted |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | Accepted |
-| 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | Accepted |
+| 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -810,6 +810,18 @@ root cause.
 
 **Fix direction.** Apply the same hide-and-signal pattern used for wizard finish. Optional: do it
 only if it's trivial once item 1 has landed.
+
+**Outcome (2026-10-09): already covered by existing code. Doc comment fixed only.**
+- The `Close()` call never closes the window. `StartupWizardWindow`'s `Closing` handler intercepts
+  every close request (Cancel, X, Alt+F4) and:
+  1. sets `e.Cancel = true`;
+  2. calls `Hide()`;
+  3. calls `Shutdown()` once (re-entry guarded) when setup is incomplete.
+- The window is therefore never disposed mid-session. That is the same hide-not-close rule as
+  Finish.
+- The deadlock is also fixed upstream (item 1, #21591).
+- Cancel is enabled only on the welcome step.
+- The field-test row ("wizard Cancel after browsing") remains as the runtime check.
 
 ---
 
