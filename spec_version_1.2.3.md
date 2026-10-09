@@ -34,6 +34,7 @@ will be verified.
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | Proposed |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | Accepted |
+| 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | Accepted |
 
 Item numbers are for reference only. Implementation order has **not** been decided yet.
 
@@ -832,6 +833,90 @@ visual regression.
   - only one editor open at a time;
   - copy places the new card below the source.
 - **WASM demo:** time a semester switch with the same data.
+
+---
+
+## 22 — AutoCompleteBox crash when revising a meeting's start time
+
+**Reported.** BugSnag, 21 Aug 2026, a production user editing a shared departmental DB.
+`System.ArgumentOutOfRangeException: Index was out of range`. The breadcrumbs show 11 occurrences
+in about 2 minutes: the user kept hitting it. Caught by the safety net ("the app will try to
+continue"). **Reproduced locally 2026-10-09** with the identical stack.
+
+**Stack shape (bottom up).**
+1. Mouse click on an AutoCompleteBox dropdown item: `OnSelectorPointerReleased` → `OnCommit` →
+   `OnAdapterSelectionComplete`.
+2. `IsDropDownOpen = false` → `CloseDropDown`.
+3. `SelectedItem = null` on the dropdown list → `SelectionModel.CommitOperation` →
+   `SelectedItems` enumerator → `ItemsSourceView.GetAt(index)` → **index past the end** of the
+   AutoCompleteBox's internal item list.
+
+In short, the dropdown's list was rebuilt while the pick was being committed.
+
+**Root cause (confirmed by a failing view-model test).**
+1. A preferred block length P is set. The user picks start time T1 where P is legal, and P is
+   auto-filled. The May 2026 fix (`c9ec1d3`) writes P via backing fields **without** refreshing
+   the Start list
+   ([SectionMeetingViewModel.cs:456-476](src/TermPoint/ViewModels/Management/SectionMeetingViewModel.cs:456)).
+   The Start dropdown therefore still offers times where P is **not** legal.
+2. The user revises the start time by **clicking** T2 where P isn't legal.
+3. `OnSelectedStartTimeChanged` clears the now-invalid length via the property setter
+   ([line 447](src/TermPoint/ViewModels/Management/SectionMeetingViewModel.cs:447)).
+   That runs `OnSelectedBlockLengthChanged`, which calls `RefreshStartTimes()`
+   ([line 498](src/TermPoint/ViewModels/Management/SectionMeetingViewModel.cs:498)).
+   That **clears and refills `AvailableStartTimeStrings` mid-commit**, and the dropdown crashes as
+   it closes.
+
+All of these are needed together: a preferred block length; a **mouse** pick (typing takes a
+different path); and a new start time where the current length isn't legal. Departments whose
+block lengths have different start-time sets hit it; others never do.
+
+**Fix direction: fix the family, not just this route.**
+- **Rule:** a dropdown's item list (`AvailableStartTimeStrings`, `AvailableBlockLengthStrings`)
+  is **never rebuilt as a side effect of committing a pick from a dropdown**.
+- **Mechanism:** rebuild the suggestion lists **when a dropdown opens**, never during a commit.
+  - The view model keeps the committed values.
+  - A reusable attached behaviour on the AutoCompleteBox raises a view-model refresh command on
+    `DropDownOpening`, before the box builds its view. `OpenDropDownOnFocusBehavior` already owns
+    open-on-click; it could host this, or a sibling behaviour could.
+  - Commit paths (`OnSelectedStartTimeChanged`, `OnSelectedBlockLengthChanged`) stop calling
+    `RefreshStartTimes()` / `RefreshBlockLengths()` directly. Clearing an invalid length keeps
+    happening, but no list is touched.
+  - This also removes the **stale Start list** left by the May fix: after auto-fill, the Start
+    dropdown would offer only times where P is legal.
+- **Scope:** `SectionMeetingViewModel` also backs the Meetings flyout editor (`MeetingListView`),
+  so the fix covers both. Verify both.
+- **Doc fix:** [SectionEditViewModel.cs:480](src/TermPoint/ViewModels/Management/SectionEditViewModel.cs:480)
+  says the preferred length is "pre-filled on new meetings". The actual behaviour is: filled after
+  a start time is committed, when legal there.
+- **Interaction with item 1:** Avalonia 12.1.1 rewrote AutoCompleteBox focus handling (#21749).
+  It doesn't address mutating `ItemsSource` mid-commit, but re-test this item after the upgrade.
+
+**Production / data integrity.** No data risk. The commit has already run when the exception
+fires, and the safety net catches it. The user sees an error banner and may need to re-pick the
+length. **User-facing annoyance, repeated:** 11 errors in 2 minutes in the field.
+
+**Tests.**
+- [PreferredBlockLengthProbeTests.cs](src/TermPoint.Tests/PreferredBlockLengthProbeTests.cs):
+  - `Probe_AutoFill_AfterLegalStartTime_FillsPreferredLength`: **passes**; keep as a regression
+    test.
+  - `Probe_RevisingStartTime_DoesNotRebuildStartListDuringCommit`: **fails today**. Currently
+    `Skip`ped with reason "spec item 22"; **un-skip when fixed**.
+  - Add the symmetric test: committing a block length must not rebuild `AvailableBlockLengthStrings`.
+  - Rename the file and tests from "Probe…" to regression names when the fix lands.
+
+**Verification.**
+- The reproduction no longer throws, in both the section editor and the Meetings flyout:
+  1. Preferred length P set.
+  2. Click a start time where P is legal (auto-fills).
+  3. Click a start time where P is not legal.
+- After auto-fill, the Start dropdown lists only times where P is legal.
+- **The auto-filled length is visible in the Length box.** During investigation it once failed
+  to appear, then later worked with no code change, so the cause is unknown. If it recurs: pick a
+  start time, leave Length blank and click **Apply**. If the saved card shows P, the view model
+  filled it and the Length box failed to display it (UI). If not, the auto-fill didn't run.
+- Typing start times and lengths, and Tab-through, still commit correctly. This overlaps
+  item 1's AutoCompleteBox checks.
 
 ---
 
