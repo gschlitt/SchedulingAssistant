@@ -330,7 +330,30 @@ native SQLite engine shipped inside TermPoint) has a vulnerable SQLite dependenc
 - **Verification:** full test suite (including `[FactRequiresLocalDb]` locally); save, backup, and
   restore round trip; mixed-version checkout and writeback on a shared DB.
 
-_Details to be confirmed when we take this item up._
+**Implemented 2026-10-09.**
+- **Advisory:** CVE-2025-6965. In SQLite before 3.50.2, a query with more aggregate terms than
+  available columns can corrupt memory.
+- **Exposure:** TermPoint's own SQL is fixed, and user input goes in as parameters or JSON. The
+  realistic path is a crafted `.db` file whose views or triggers carry the malicious query. Low
+  likelihood, but cheap to close.
+- **Change:** `Microsoft.Data.Sqlite` 10.0.0 → **10.0.12** in TermPoint, Anonymizer and
+  DemoExporter. This resolves the `SQLitePCLRaw.*` packages to **2.1.12**.
+- **Bundled engine:** 1.2.2 ships **SQLite 3.49.1** (`2025-02-18`); 1.2.3 ships **SQLite 3.53.3**
+  (`2026-06-26`). The WASM build has no SQLite engine and is unaffected.
+- **Guard:** `SqliteEngineVersionTests` asserts that `sqlite_version()` is at least 3.50.2, so a
+  transitive downgrade fails the build's tests.
+- **Results:** the NU1903 warning is gone. Suite: 1057 passed, including the
+  `[FactRequiresLocalDb]` real-data tests.
+- **Engine comparison on real data (2026-10-09).** Copies of all 52 TermPoint databases on the dev
+  machine were checked with both engines. They comprise department DBs, about 40 backups, and
+  working copies including a live `-wal`.
+  - `PRAGMA integrity_check` returned "ok" on all 52 under both 3.49.1 and 3.53.3, so there is no
+    risk of a false "database corrupt, restore?" prompt after upgrading.
+  - The app's JSON-function queries return identical results under both engines: `->>`
+    ordering and matching, the `isActive` cast, `json_each` instructor assignments,
+    `json_extract` course codes and `json_valid`. That covered 19,129 section rows and 18,844
+    assignment rows.
+- **Manual check:** a save → backup → restore round trip on a DB copy passed.
 
 ---
 
