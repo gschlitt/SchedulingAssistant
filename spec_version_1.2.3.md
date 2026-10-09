@@ -236,11 +236,14 @@ and the saved card shows them.
 - **Tests:** 1031 passed, 0 skipped, 24 failed. All 24 failures are pre-existing wizard tests,
   broken since `a293b50` on 2026-07-07, when `StepLicenseViewModel` started reading an Avalonia
   asset during construction. Fixed in a separate commit.
+- **WASM (2026-10-09, local Release publish):** the demo starts and renders on 12.1.3. Section
+  editor ComboBoxes position correctly in a scrolled list, with the step 4 workaround kept.
 - **Still to do for item 1:**
   - remote-share / UNC picker checks;
   - macOS;
-  - WASM;
-  - the Harmony 10-second test after step 3;
+  - WASM pointer-heavy memory check (optional);
+  - ~~the Harmony 10-second test after step 3~~: passed on Windows 10 on 2026-10-09 (commit
+    `20e8aab`);
   - **Windows 11:** repeat the 10-second test in a Windows 11 VM. No Win11 machine was at hand
     on 2026-10-09, so step 3 is committed on the strength of the Windows 10 pass. If the crash
     reproduces on Win11, revert the step 3 commit only. Also listed in the release field tests.
@@ -274,6 +277,21 @@ and the saved card shows them.
    only.
 4. **(Optional) Trial-remove WORKAROUNDS #2** in the WASM build only if step 1 shows the dropdown
    positioning correctly without the behaviour. Otherwise leave it.
+   **Result (2026-10-09): keep the workaround.** Trial run in the local WASM demo (Release
+   publish, localhost).
+   - **With `SuppressPopupScrollBehavior` (baseline):** the Day and Campus ComboBoxes open
+     directly below their boxes in a scrolled list, including when the card heading is scrolled
+     out of view.
+   - **With it removed:**
+     1. Opening the editor scrolled the card heading out of view, breaking the "summary row stays
+        visible" rule.
+     2. Clicking Campus scrolled the list by about 55 px.
+     3. The dropdown opened at the box's pre-scroll position, floating above it with free space
+        below.
+
+     That is the original symptom. Upstream #22001 (12.1.2) does not cover our case, and
+     #18203 is still open.
+   - Reverted, with no commit.
 5. Update `WORKAROUNDS.md` to record what was removed and why.
 
 ### Verification
