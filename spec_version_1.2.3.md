@@ -240,7 +240,10 @@ and the saved card shows them.
   - remote-share / UNC picker checks;
   - macOS;
   - WASM;
-  - the Harmony 10-second test after step 3.
+  - the Harmony 10-second test after step 3;
+  - **Windows 11:** repeat the 10-second test in a Windows 11 VM. No Win11 machine was at hand
+    on 2026-10-09, so step 3 is committed on the strength of the Windows 10 pass. If the crash
+    reproduces on Win11, revert the step 3 commit only. Also listed in the release field tests.
 
 ### Companion packages
 
@@ -1145,6 +1148,7 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 | Cloud-synced folder (OneDrive/SharePoint, Google Drive, Box; macOS CloudStorage) is detected and warned | 13 |
 | **Mixed versions:** a 1.2.2 client and a 1.2.3 client on the same shared DB, in both directions; unknown fields survive; version gate applies | 2, 3 |
 | Remote DB via the wizard with a long UNC picker session; File → Open on a remote share; wizard Cancel after browsing | 1, 18 |
+| **Windows 11 VM:** after the Harmony patch removal, AutoCompleteBox crash test. Click a Start Time and a Length suggestion in the section editor and the Meetings flyout, then wait 10 s each. No crash. Also covers the item 1 meeting-time entry checks on Win11. | 1 |
 | BugSnag: handled failures and the "previous session ended uncleanly" event arrive, with paths and usernames scrubbed | 6, 7 |
 
 **Platforms.** Windows 10 and Windows 11 (the compositor deadlock fix in item 1 is Win10-specific),
