@@ -257,6 +257,14 @@ and the saved card shows them.
    workarounds in place. Compile check, full test suite, then manual regression pass.
 2. **Remove WORKAROUNDS #3** (DataGrid sort): delete `OnDataGridPointerPressed` and its handler
    registration in `InstructorListView.axaml.cs`, then verify header sort.
+   **Correction (2026-10-09):** this also requires setting the Instructors grid back to
+   `CanUserSortColumns="True"` (an AXAML edit).
+   - It was switched to `"False"` on 2026-05-16 (`0fb957a`) to stop the grid's own in-memory
+     sort while `Sorting` was broken.
+   - DataGrid 12.1.2 raises `Sorting` only when `CanUserSortColumns && column.CanUserSort`.
+     Without the flip, removing the workaround silently disables sorting.
+   - So during step 1, header sorting ran through the workaround alone, not "both paths" as
+     assumed earlier.
 3. **Remove WORKAROUNDS #1** (Harmony): delete `AvaloniaPatches.cs`, the `Apply()` call, the
    `Lib.Harmony` package, and the browser `Compile Remove`. Verify with the 10-second
    AutoCompleteBox wait test on **Windows 10 and Windows 11**. If it reproduces, revert this commit

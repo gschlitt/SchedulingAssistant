@@ -1,12 +1,9 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using Avalonia.VisualTree;
 using TermPoint.Models;
 using TermPoint.ViewModels.Management;
 using System;
 using System.ComponentModel;
-using System.Linq;
 
 namespace TermPoint.Views.Management;
 
@@ -19,7 +16,6 @@ public partial class InstructorListView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        AddHandler(InputElement.PointerPressedEvent, OnDataGridPointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -92,14 +88,20 @@ public partial class InstructorListView : UserControl
 
 
     /// <summary>
-    /// Handles column-header clicks on the instructor DataGrid.
+    /// Handles column-header clicks on the instructor DataGrid (the <c>Sorting</c> event).
+    /// This is the sole sort path. It relies on the grid declaring
+    /// <c>CanUserSortColumns="True"</c> in the AXAML: DataGrid 12.1.2 raises <c>Sorting</c>
+    /// only when both the grid and the clicked column allow sorting, so setting it to
+    /// <c>False</c> would silently disable sorting.
     /// Translates the clicked column's <c>Tag</c> to an <see cref="InstructorSortMode"/>,
     /// delegates to <see cref="InstructorListViewModel.SetSortMode"/> (which persists the
-    /// setting and reloads from the database), then sets <c>e.Handled = true</c> to
+    /// setting and reloads from the database), and sets <c>e.Handled = true</c> to
     /// suppress the DataGrid's built-in client-side sort — ordering is applied at the
     /// DB level so it propagates to all other instructor loads in the app.
     /// Columns without a Tag (Email, Active) are ignored.
     /// </summary>
+    /// <param name="sender">The DataGrid raising the event.</param>
+    /// <param name="e">Event data carrying the clicked column; <c>Handled</c> is set to suppress the built-in sort.</param>
     private void DataGrid_Sorting(object? sender, DataGridColumnEventArgs e)
     {
         e.Handled = true;   // suppress DataGrid's built-in in-memory sort
@@ -113,43 +115,6 @@ public partial class InstructorListView : UserControl
             "StaffType" => InstructorSortMode.StaffType,
             "LastName"  => InstructorSortMode.LastName,
             _           => (InstructorSortMode?)null,   // Email / Active — no sort change
-        };
-
-        if (mode.HasValue)
-            vm.SetSortMode(mode.Value);
-    }
-
-    /// <summary>
-    /// Workaround for Avalonia DataGrid 12.0.0 bug where the <c>Sorting</c> event
-    /// never fires on column header click (github.com/AvaloniaUI/Avalonia.Controls.DataGrid/issues/232).
-    /// Walks up the visual tree from the click target to find a <see cref="DataGridColumnHeader"/>,
-    /// resolves its column's <c>Tag</c>, and delegates to <see cref="InstructorListViewModel.SetSortMode"/>.
-    /// Remove when DataGrid is upgraded to a version containing the fix (PR #230).
-    /// </summary>
-    private void OnDataGridPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (DataContext is not InstructorListViewModel vm) return;
-
-        // Walk from the click target up to find a DataGridColumnHeader
-        var source = e.Source as Avalonia.Visual;
-        while (source is not null and not DataGridColumnHeader)
-            source = source.GetVisualParent();
-
-        if (source is not DataGridColumnHeader header) return;
-
-        var dataGrid = this.FindControl<DataGrid>("InstructorDataGrid");
-        if (dataGrid is null) return;
-
-        var column = dataGrid.Columns.FirstOrDefault(
-            c => c.Header?.ToString() == header.Content?.ToString());
-
-        var mode = (column?.Tag as string) switch
-        {
-            "FirstName" => InstructorSortMode.FirstName,
-            "Initials"  => InstructorSortMode.Initials,
-            "StaffType" => InstructorSortMode.StaffType,
-            "LastName"  => InstructorSortMode.LastName,
-            _           => (InstructorSortMode?)null,
         };
 
         if (mode.HasValue)

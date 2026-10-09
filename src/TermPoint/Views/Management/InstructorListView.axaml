@@ -152,6 +152,12 @@
 			Spacing="6">
 				<CheckBox Content="Show only active instructors" IsChecked="{Binding ShowOnlyActive}" />
 
+				<!--
+				  CanUserSortColumns must stay True: DataGrid 12.1.2 raises the Sorting event only
+				  when both the grid and the clicked column allow sorting. DataGrid_Sorting then sets
+				  e.Handled = true to suppress the built-in in-memory sort and applies the order at
+				  DB level via InstructorListViewModel.SetSortMode (see WORKAROUNDS.md entry 3).
+				-->
 				<DataGrid
 				MinWidth="200"
 				x:Name="InstructorDataGrid"
@@ -162,7 +168,7 @@
 				Background="{StaticResource AppBackground}"
 				BorderBrush="{StaticResource InlineListBorder}"
 				BorderThickness="1"
-				CanUserSortColumns="False"
+				CanUserSortColumns="True"
 				IsReadOnly="True"
 				ItemsSource="{Binding Instructors}"
 				SelectedItem="{Binding SelectedInstructor}"
