@@ -14,7 +14,7 @@ will be verified.
 | # | Item | Type | Status |
 |---|------|------|--------|
 | 1 | Avalonia 12.0.2 → 12.1.3 upgrade | Dependency / bug fix | **Accepted** (12.1.3) |
-| 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | Proposed |
+| 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | Accepted |
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | Accepted |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | Accepted |
 | 5 | Make Restore from backup safe | Data integrity | Accepted |
@@ -31,12 +31,57 @@ will be verified.
 | 16 | Remaining network I/O on the UI thread | Responsiveness | Accepted |
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | Accepted |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | Accepted (optional) |
-| 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | Proposed |
+| 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | Accepted |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | Accepted |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | Accepted |
 
-Item numbers are for reference only. Implementation order has **not** been decided yet.
+Item numbers are for reference only. The implementation order is below.
+
+### Implementation order (decided 2026-10-09)
+
+Items 2 and 19 were accepted into scope on 2026-10-09. Avalonia stays at **12.1.3**: 12.1.4 was
+published on 2026-10-09 and has had no field exposure. Review its release notes before release.
+
+| Order | Item | Why here |
+|---|---|---|
+| **Phase 1: Foundation** | | |
+| 1 | 1: Avalonia 12.1.3 (its 5 steps, one commit each), **with item 22 folded into step 1** | Every later manual test then runs on the framework we ship. Unblocks item 18. **Item 22 moved here (2026-10-09):** the bump broke mouse picks in the meeting editor, and item 22's fix is the cure (see item 1, "Regression found in step 1"). |
+| 2 | 2: SQLite security bump | The other dependency change, kept next to item 1. |
+| 3 | 18: Wizard Cancel hides instead of closing | Trivial once item 1 has landed. |
+| **Phase 2: Contained bug fixes** | | |
+| 4 | ~~22: AutoCompleteBox crash~~ | Moved into item 1. |
+| 5 | 17: CSV reader | Pure logic, unit-testable. |
+| 6 | 19: Wheel containment in popups | Input routing only. |
+| **Phase 3: Big UI change, early** | | |
+| 7 | 21: Lightweight section card | Moved early so the big visual change gets used throughout the rest of development. |
+| **Phase 4: Data model** | | |
+| 8 | 3: Unknown-field preservation + version gate | Release-order gate for future releases. Touches every entity, so it should land early. |
+| 9 | 8: Semester / AY empty and delete rules | Repository-level, unit-testable. |
+| **Phase 5: Startup, lock and restore** (shared files, strictly in sequence) | | |
+| 10 | 4: No direct opens; startup ordering; single-instance guard | |
+| 11 | 9: Stale-lock takeover | |
+| 12 | 5: Safe Restore | Builds the off-UI-thread copy helper. |
+| 13 | 16: Remaining UI-thread network I/O | Reuses item 5's helper. |
+| **Phase 6: Save messaging and exit** | | |
+| 14 | 10 + 11 + 12, as one piece | |
+| 15 | 15: Exit hardening + edit generation counter | After item 4, which also edits the end of `SaveAsync`. Sets up the close sequence that item 14 plugs into. |
+| 16 | 14: Unapplied editor changes on exit / DB switch | Adds the Apply / Discard / Cancel step to the start of item 15's close sequence. |
+| **Phase 7: Detection and observability** | | |
+| 17 | 13: Cloud-sync folder detection | |
+| 18 | 6: BugSnag scrubber | Must come before item 7. |
+| 19 | 7: Handled-failure BugSnag events | Last of the reliability items, so it reports from the finished code of items 4, 9 and 15. |
+| **Phase 8** | | |
+| 20 | 20: Load by subject | Parked. Re-measure memory after item 21, then decide. |
+
+**Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
+1. Opus writes a self-contained brief.
+2. Sonnet implements it, then runs the compile check and the tests for that area. It never
+   commits or creates branches.
+3. Opus reviews the diff against this spec and re-runs the compile check and the full test suite
+   independently.
+4. The user runs the manual checks this spec lists. Each step is committed only on the user's
+   request.
 
 Items 3–13 come from the reliability review of 2026-10-07 (session "Repo UX and reliability
 review"). Items 14–18, the single-instance guard and messaging in item 4, and the extra restore
@@ -126,7 +171,7 @@ line stopped at 12.0.5 (June 2026); 12.1.x is the maintained line.
 | Change | Our exposure | Assessment |
 |---|---|---|
 | AutoCompleteBox focus handling rewritten. `GotFocus`/`LostFocus` are now the source of truth (#21749). | `LostFocusCommandBehavior` commits Start Time and Block Length on LostFocus. `OpenDropDownOnFocusBehavior` opens on click and runs manual Tab-through. Used in `SectionListView.axaml` and `MeetingListView.axaml`. | **Medium. This is the one data-entry path at risk.** If LostFocus now fires at a different moment (for example when clicking into the dropdown), a meeting time could be committed early or with a stale value. Must test by hand (see Verification). |
-| `SelectionChanged` is now raised when a collection `Reset` clears the selection (#20942). | `SelectionCommandBehavior` is the only routed `SelectionChanged` handler. | **None.** It returns early when `AddedItems.Count == 0`. |
+| `SelectionChanged` is now raised when a collection `Reset` clears the selection (#20942). | `SelectionCommandBehavior` is the only routed `SelectionChanged` handler **in our code**. **Missed at review:** AutoCompleteBox's internal selection adapter also handles it. | ~~None~~ **Regression found in the step 1 manual pass (2026-10-09). Fixed by pulling item 22 into item 1.** See "Regression found in step 1" below. |
 | `TopLevel.Closed` is now raised from managed `Dispose` paths, with a double-call guard (#22045). | `wizard.Closed` → `tcs.TrySetResult()`; `note.Closed` → `_openNotes.Remove(note)`; `DetachedPanelWindow.OnClosed`. | **Low.** Handlers are idempotent. Hidden-not-closed windows may now raise `Closed` at app exit, after their work is done. Watch the detached-panel shutdown path. |
 | Dispatcher yields on every operation once shutdown starts (#22240). Queued work after shutdown is aborted, not drained. | Exit save runs inside `MainWindow.OnClosing` (`ReleaseAsync` → cleanup) **before** the final `Close()`, so nothing of ours is queued when shutdown starts. | **None for save integrity.** Verified by code read (`MainWindow.axaml.cs:153-215`). |
 | Focus traversal skips non-focusable containers (#21640); Tab-stop search loop fix (#21864). | Manual Tab-through in `OpenDropDownOnFocusBehavior`, which works around focus jumping to a `GridSplitter`. | **Low.** May change Tab order in editors and may make our workaround unnecessary. Test Tab and Shift+Tab through a meeting row. |
@@ -134,6 +179,68 @@ line stopped at 12.0.5 (June 2026); 12.1.x is the maintained line.
 
 **Data integrity:** the upgrade touches no persistence code, schema, or file format. The only
 data-adjacent risk is the AutoCompleteBox commit timing above. No migration is needed.
+
+### Regression found in step 1 (2026-10-09)
+
+**Symptom (manual pass, no preferred block length).** In a new meeting:
+1. Pick a start time with the mouse, then a length: the **start time blanks**.
+2. Pick a start time again: the **length blanks**.
+
+The two fields keep clearing each other. Typed values survive; only mouse picks are lost.
+
+**Root cause (confirmed by stack trace from a temporary probe).**
+1. Committing a length called `RefreshStartTimes()`, which clears and refills the Start list.
+2. The Start AutoCompleteBox rebuilds its internal dropdown list on any change to its items.
+3. After a mouse pick, that internal list still has the picked item selected, even though the
+   dropdown has closed. Under 12.1.3 (#20942), clearing it raises "selection lost".
+4. The box handles that by setting `SelectedItem = null` and falling back to `Text = SearchText`,
+   the last *typed* text. After a mouse pick that is "", and the two-way binding writes "" to
+   `StartTimeText`.
+5. The same happens to the Length box when a start time is committed.
+
+Only the four Start/Length AutoCompleteBoxes are affected: two in the section editor and two in
+the Meetings flyout. No other code of ours consumes Avalonia's `SelectionChanged`.
+
+**Fix: item 22, pulled forward into item 1.** Item 22's rule fixes this too: *a suggestion list is
+rebuilt only when its own dropdown opens; commits never touch either list.* Rebuilding when the
+dropdown opens is safe. Before raising `DropDownOpening`, the box runs `PopulateDropDown`, which
+sets `SearchText = Text`, so any fallback writes the text the box already shows.
+
+**Commit order.** The item 22 fix must not be committed separately after the bump; otherwise
+history would contain a commit with broken meeting-time entry.
+
+**Related 12.1.3 effect: checked, harmless.** The same fallback also writes "" to a meeting's
+`StartTimeText` / `BlockLengthText` when its boxes are torn down:
+- removing a meeting row (`RemoveMeeting`);
+- the editor collapsing after Save (`CollapseEditor`).
+
+These writes land on the discarded meeting view model:
+- Save writes the section to the database before the editor collapses.
+- `RemoveMeeting` unhooks pattern coupling before removing the row.
+- Coupling reacts only to committed values, never to field text.
+
+Manually verified: removing the first of three mouse-picked meetings leaves the others intact,
+and the saved card shows them.
+
+**Step 1 status (2026-10-09, Windows 10, Debug).** Bump plus item 22 fix.
+- **Manual pass done:**
+  - meeting-time entry (mouse, typing, Tab) in the section editor and the Meetings flyout;
+  - item 22 reproduction with a preferred length;
+  - narrowed lists;
+  - meeting removal;
+  - detach/reattach;
+  - Instructors header sort;
+  - grid visuals and image export;
+  - GroupBox screens;
+  - colour picker.
+- **Tests:** 1031 passed, 0 skipped, 24 failed. All 24 failures are pre-existing wizard tests,
+  broken since `a293b50` on 2026-07-07, when `StepLicenseViewModel` started reading an Avalonia
+  asset during construction. Fixed in a separate commit.
+- **Still to do for item 1:**
+  - remote-share / UNC picker checks;
+  - macOS;
+  - WASM;
+  - the Harmony 10-second test after step 3.
 
 ### Companion packages
 
@@ -837,6 +944,15 @@ visual regression.
 ---
 
 ## 22 — AutoCompleteBox crash when revising a meeting's start time
+
+> **Moved into item 1 (2026-10-09).** The Avalonia 12.1.3 bump made the same design flaw (lists
+> rebuilt during a commit) blank mouse-picked values. See item 1, "Regression found in step 1".
+> Implementation details beyond this section:
+> - A new `DropDownOpeningCommandBehavior` runs the view model's `RefreshStartTimesCommand` /
+>   `RefreshBlockLengthsCommand` when a box's dropdown opens.
+> - Legality checks in the commit path compute legality directly instead of reading the lists.
+> - A refresh is skipped when the list's contents are unchanged.
+> - The tour refreshes the Length list before picking from it.
 
 **Reported.** BugSnag, 21 Aug 2026, a production user editing a shared departmental DB.
 `System.ArgumentOutOfRangeException: Index was out of range`. The breadcrumbs show 11 occurrences
