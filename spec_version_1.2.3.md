@@ -1058,6 +1058,52 @@ visual regression.
   - copy places the new card below the source.
 - **WASM demo:** time a semester switch with the same data.
 
+**Decisions (2026-10-09, with the user).** These replace parts of the fix direction above.
+- **The section editor stays untouched**, except for the flag field below. This reduces regression
+  risk. Fix-direction point 5 (create the editor slot only on demand) is **dropped**. The editor
+  template and its slot must stay byte-identical; check this with a diff after every step.
+- **Flagging moves from the card's right-click into the editor.** This replaces fix-direction
+  point 4 (the shared flag menu). Closed cards become view-only, apart from collapse/expand.
+  - **Why:** it fits the metaphor. It also removes the per-card menu (~24 controls) without the
+    stale-card risk a shared menu brings: a shared menu can outlive a list rebuild and save an old
+    copy of the section. It also closes a gap. Card right-click flagging was **not** blocked in
+    read-only mode; every other section-list command checks `IsWriter`, and so does the grid's flag
+    menu. The editor can't open in read-only mode.
+  - **Editor:** a Flag dropdown to the right of the Notes box, styled like the editor's other
+    dropdowns. It shows the coloured flag icon and name, using the same options as the grid's flag
+    panel. The flag becomes part of the edit: Apply saves it, Cancel discards it. Instant flagging
+    from the list goes away.
+  - **Card:** remove the right-click handler and the flag popup. Show the flag icon **only when a
+    flag is set**, with no faint placeholder, and change its tooltip to name the flag (it used to
+    say "right-click the card").
+  - **Unchanged:** the schedule grid's right-click menu (Instructors, Room, Tags, Flag) keeps its
+    flag option.
+- **Revised step order, one commit each:**
+  1. flag into the editor and off the card;
+  2. inline-segments behaviour, row 1 and property lines;
+  3. meeting table as column `TextBlock`s;
+  4. ▶/▼ as one `Path`;
+  5. memory measurement.
+
+**Found during step 1: production data loss on editor Apply (fixed in 1.2.3, no hotfix).**
+- **Bug (1.2.2 and earlier):** the inline editor works on `SectionListViewModel.CloneSection(...)`,
+  and Save writes the **whole** clone back (`SectionRepository.Update` serializes the entire
+  section). `CloneSection` left out two persisted fields, so every Apply on an existing section
+  silently wiped them:
+  - the section's **`Flag`**;
+  - every meeting's **`RoomTypeId`**, including the "Remote" marker. Users would see this as
+    "room type never sticks": it saves, but reopening the editor shows "(none)", and the next Apply
+    erases it.
+- **Fix:** `CloneSection` now copies both. A new `SectionCloneTests` guard fills every persisted
+  property of `Section` and its child types (`InstructorAssignment`, `SectionDaySchedule`,
+  `SectionReserve`) by reflection and compares the JSON of the original and the clone, so a field
+  added in future can't be silently dropped. A second test opens the editor on a clone, applies it,
+  and checks that room type and Remote survive.
+- **Data impact:** flags and room types already lost can't be recovered from the live database,
+  only from older backups. Nothing more is lost once 1.2.3 is installed. The user decided
+  (2026-10-09) to ship the fix with 1.2.3 rather than as a 1.2.2.x hotfix.
+- **Release note:** mention that room types (including Remote) and flags now survive editing.
+
 ---
 
 ## 22 — AutoCompleteBox crash when revising a meeting's start time
@@ -1219,6 +1265,15 @@ LATENT: unreachable today.**
   - await the pending release before `EnterReaderMode`.
 
   This interacts with items 4 and 9, which change the lock and startup code.
+
+**P3. Copy Semester never carries meeting room types (noted 2026-10-09). DESIGN QUESTION, not
+data loss.**
+- `CopySemesterViewModel` (~line 248) copies meetings without `RoomTypeId`, even when "include
+  meeting times" and "include room assignments" are on. A "Remote" meeting therefore lands in the
+  new semester as an ordinary meeting with no room type.
+- The source semester is untouched, so nothing is lost. The question is whether room type (and
+  Remote in particular) should follow the meeting-time or room-assignment option.
+- Decide with the user before changing anything.
 
 ---
 

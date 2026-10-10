@@ -1443,7 +1443,19 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private static Section CloneSection(Section s) => new()
+    /// <summary>
+    /// Makes a deep copy of <paramref name="s"/> for the inline editor to work on, so that Cancel
+    /// leaves the list's own copy untouched. Every persisted field, including the fields of each
+    /// nested meeting, instructor assignment and reserve, must be copied here, because the editor
+    /// is seeded from the clone and Save writes the whole clone back to the database: a field
+    /// that is missed is silently wiped on Apply. (<c>Level</c> is the one exception: Save
+    /// re-derives it from the course.) <c>SectionCloneTests</c> enforces this by reflection, so
+    /// adding a property to <see cref="Section"/> or its child types without copying it here fails
+    /// that test. Internal rather than private so tests can verify it.
+    /// </summary>
+    /// <param name="s">The section to copy.</param>
+    /// <returns>A new <see cref="Section"/> with the same id and field values and fresh child lists.</returns>
+    internal static Section CloneSection(Section s) => new()
     {
         Id              = s.Id,
         SemesterId      = s.SemesterId,
@@ -1454,6 +1466,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         SectionCode     = s.SectionCode,
         Notes           = s.Notes,
         Capacity        = s.Capacity,
+        // The editor works on this clone, so the flag must be carried over: the editor's Flag
+        // dropdown is seeded from it, and Save writes the whole clone back to the database.
+        Flag            = s.Flag,
         Schedule        = s.Schedule.Select(d => new SectionDaySchedule
         {
             Day             = d.Day,
@@ -1461,6 +1476,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             DurationMinutes = d.DurationMinutes,
             MeetingTypeId   = d.MeetingTypeId,
             RoomId          = d.RoomId,
+            // The editor seeds each meeting's Room Type dropdown from this and Save writes it back,
+            // so omitting it silently wipes every meeting's room type (including "Remote") on Apply.
+            RoomTypeId      = d.RoomTypeId,
             Frequency       = d.Frequency,
         }).ToList(),
         SectionTypeId   = s.SectionTypeId,
