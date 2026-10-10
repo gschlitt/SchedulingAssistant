@@ -72,4 +72,12 @@
 	<!-- Open door — stroke-based, 24×24 -->
 	<StreamGeometry x:Key="OpenDoorIcon">M18 18V6h-5v12h5Zm0 0h2M4 18h2.5m3.5-5.5V12M6 6l7-2v16l-7-2V6Z</StreamGeometry>
 
+	<!--
+		Disclosure triangle — filled, pointing right, in a SQUARE 10×10 box so it stays centred
+		when rotated. Used as the collapse/expand toggle on section cards: shown as-is for
+		"collapsed" and rotated 90° (pointing down) for "expanded". A single shape rotated this
+		way keeps the same width in both states, unlike two different Unicode glyphs.
+	-->
+	<StreamGeometry x:Key="DisclosureTriangleIcon">M 0,0 L 10,5 L 0,10 Z</StreamGeometry>
+
 </ResourceDictionary>

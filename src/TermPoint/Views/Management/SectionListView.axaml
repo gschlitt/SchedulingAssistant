@@ -61,6 +61,21 @@
             <Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
         </Style>
 
+        <!--
+            Collapse/expand toggle on each section card. The Path (DisclosureTriangleIcon) points
+            right by default, which is the "collapsed" look. The binding
+            Classes.expanded="{Binding !IsCollapsed}" adds the "expanded" class while the card is
+            open, and this style then rotates the triangle 90 degrees clockwise so it points down.
+            The icon's 10x10 box is square and RenderTransform does not affect layout, so the
+            toggle takes exactly the same space in both states and nothing shifts. The origin is
+            set explicitly (the centre of the shape) even though that is Avalonia's default, so
+            the rotation is guaranteed to pivot on the middle of the triangle.
+        -->
+        <Style Selector="Path.DisclosureTriangle.expanded">
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
+        </Style>
+
     </UserControl.Styles>
 
     <UserControl.Resources>
@@ -995,6 +1010,24 @@
 
             </StackPanel>
         </DataTemplate>
+
+        <!--
+            Row 1 column widths for the section card (heading | instructors | type | capacity).
+            These fix the column positions in row 1 so the instructors and the section type start
+            at the same x position on every card, which lets the eye scan down the list. They are
+            deliberately local to this view and are tuned by eye at the card's 400 px minimum
+            width.
+              - Heading: a MINIMUM width only. A rare long heading widens its own row instead of
+                wrapping the course code, so only that card shifts its other columns.
+              - Instructors: a FIXED width. Names fit on one line where possible and wrap within
+                the column otherwise.
+              - Section type: a MINIMUM width, so capacity (which follows it) also lines up.
+            Whole-list SharedSizeGroup is intentionally not used: with hundreds of cards it would
+            tie every card's layout to every other card's.
+        -->
+        <x:Double x:Key="SectionRow1HeadingMinWidth">100</x:Double>
+        <GridLength x:Key="SectionRow1InstructorWidth">160</GridLength>
+        <x:Double x:Key="SectionRow1TypeMinWidth">64</x:Double>
     </UserControl.Resources>
 
     <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*" ColumnDefinitions="Auto">
@@ -1176,8 +1209,23 @@
                                             <!--  Row 1: Toggle + Heading + Instructor + Section Type + Property indicators  -->
                                             <Grid
                                                 Margin="6,6,8,3"
-                                                VerticalAlignment="Center"
-                                                ColumnDefinitions="Auto,Auto,130,Auto,Auto,*,Auto">
+                                                VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <!--  0: collapse toggle  -->
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <!--  1: heading — sizes to its text but never narrower than the minimum  -->
+                                                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource SectionRow1HeadingMinWidth}" />
+                                                    <!--  2: instructors — fixed width so they start at the same x on every card  -->
+                                                    <ColumnDefinition Width="{StaticResource SectionRow1InstructorWidth}" />
+                                                    <!--  3: section type — minimum width so capacity (col 4) lines up too  -->
+                                                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource SectionRow1TypeMinWidth}" />
+                                                    <!--  4: capacity  -->
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <!--  5: spacer  -->
+                                                    <ColumnDefinition Width="*" />
+                                                    <!--  6: flag icon  -->
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
                                                 <!--  Collapse/expand toggle  -->
                                                 <Button
                                                     Grid.Column="0"
@@ -1189,18 +1237,21 @@
                                                     BorderThickness="0"
                                                     Command="{Binding ToggleCollapsedCommand}"
                                                     Cursor="Hand">
-                                                    <Panel>
-                                                        <TextBlock
-                                                            FontSize="8"
-                                                            Foreground="{StaticResource TextLabel}"
-                                                            IsVisible="{Binding IsCollapsed}"
-                                                            Text="▶" />
-                                                        <TextBlock
-                                                            FontSize="8"
-                                                            Foreground="{StaticResource TextLabel}"
-                                                            IsVisible="{Binding !IsCollapsed}"
-                                                            Text="▼" />
-                                                    </Panel>
+                                                    <!--
+                                                        One triangle for both states: it points right when collapsed and the
+                                                        "expanded" class (bound to !IsCollapsed) rotates it 90 degrees to point
+                                                        down — see the Path.DisclosureTriangle.expanded style. The top margin
+                                                        lines it up with the first line of the 12 pt heading; tune by eye.
+                                                    -->
+                                                    <Path
+                                                        Width="7"
+                                                        Height="7"
+                                                        Margin="0,4,0,0"
+                                                        Classes="DisclosureTriangle"
+                                                        Classes.expanded="{Binding !IsCollapsed}"
+                                                        Data="{StaticResource DisclosureTriangleIcon}"
+                                                        Fill="{StaticResource TextLabel}"
+                                                        Stretch="Uniform" />
                                                 </Button>
                                                 <!--  Heading  -->
                                                 <TextBlock

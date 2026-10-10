@@ -1084,6 +1084,28 @@ visual regression.
   3. meeting table as column `TextBlock`s;
   4. ▶/▼ as one `Path`;
   5. memory measurement.
+- **Row 1 alignment (user, 2026-10-09).** This supersedes fix-direction point 1, which had row 1
+  as one TextBlock of Runs. Runs flow, so nothing could line up across cards.
+  - **Rule:** across cards, instructors start in the same column, and so do section types (and
+    capacity). Instructors should preferably fit on one line but may wrap.
+  - **Chosen layout:** keep the order heading | instructors | type | capacity, with **fixed column
+    positions** from AXAML resources local to SectionListView.axaml:
+    - heading column: a minimum width, so a rare long heading pushes only its own row instead of
+      wrapping the course code;
+    - instructor column: a fixed width (~160, up from 130), wrapping;
+    - type column: a minimum width.
+    - Widths are tuned by eye at the 400 px minimum card width.
+  - **Not used:** whole-list `SharedSizeGroup`. With hundreds of cards it would tie every card's
+    layout to every other card's.
+  - Row 1 keeps separate TextBlocks, so it saves few controls. The savings are in the property
+    lines and the meeting table.
+- **Re-revised step order:**
+  - **2:** row-1 alignment, plus the ▶/▼ glyphs replaced by one fixed-size `Path` (the old step 4).
+    The two glyphs differ in width, which would shift collapsed and expanded rows.
+  - **3:** property lines through the inline-segments behaviour.
+  - **4:** meeting table as column `TextBlock`s. Ask the user then whether meeting columns should
+    also align across cards.
+  - **5:** memory measurement.
 
 **Found during step 1: production data loss on editor Apply (fixed in 1.2.3, no hotfix).**
 - **Bug (1.2.2 and earlier):** the inline editor works on `SectionListViewModel.CloneSection(...)`,
@@ -1119,6 +1141,18 @@ visual regression.
 - **Tests:** 13 in `SectionFlagTests`. Suite: 1129 passed.
 - **Follow-up noted:** a meeting whose `RoomTypeId` refers to a deleted room type opens as "(none)",
   and Apply clears it. This is separate from the clone bug.
+
+**Step 2 outcome (2026-10-09): done, user approved the look.**
+- **Row-1 column positions** come from AXAML resources local to SectionListView.axaml:
+  - `SectionRow1HeadingMinWidth` = 100, used as the heading column's `MinWidth`;
+  - `SectionRow1InstructorWidth` = 160, a fixed `GridLength` for the instructor column, which wraps;
+  - `SectionRow1TypeMinWidth` = 64, used as the type column's `MinWidth`.
+- Instructors, types and capacities now start in the same columns on every card.
+- **Toggle:** the ▶/▼ glyphs became one `Path` (`DisclosureTriangleIcon`, a 10×10 square in
+  Icons.axaml). The `Path.DisclosureTriangle.expanded` style rotates it 90° when the card is
+  expanded. This saves 2 controls per card, and collapsed and expanded rows no longer shift.
+- **Checks:** the editor template and slot are byte-identical. Suite: 1129 passed. Checked in the
+  WASM demo.
 
 ---
 
