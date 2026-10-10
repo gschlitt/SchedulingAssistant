@@ -29,7 +29,7 @@ will be verified.
 | 14 | Unapplied editor changes are lost on exit or database switch | Data loss | Accepted |
 | 15 | Exit-path hardening and the mid-save edit gap | Data loss | Accepted |
 | 16 | Remaining network I/O on the UI thread | Responsiveness | Accepted |
-| 17 | CSV import blow-up on an unmatched quote | Responsiveness | Accepted |
+| 17 | CSV import blow-up on an unmatched quote | Responsiveness | **Done**, plus 2 latent row-loss bugs fixed |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | Accepted |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
@@ -798,6 +798,36 @@ end of file, fail fast with the line number where the quote opened.
 
 **Verification.** Unit tests: an unmatched quote in a 10k-line file fails quickly with the correct
 line number. Existing CSV import and shared-schedule tests still pass.
+
+**Outcome (2026-10-09).** One shared `CsvRecordReader` replaces both copies.
+- **How it works:**
+  - It scans linearly, carrying the in-quotes state across physical lines.
+  - It returns each record with its physical start line, which is now also the line used in
+    warnings and errors.
+  - Its quote rules mirror `ParseCsvRow` exactly. A `"` opens a quoted field only at the start of
+    a field, `""` inside quotes is an escape, and mid-field quotes are literal. This was verified
+    by an exhaustive differential test of the reader against `ParseCsvRow` (97,656 short inputs).
+- **The freeze (this item):** 10k lines with an unmatched quote went from about 11 s to under
+  10 ms. The new error reads "Line N: Unmatched quote. The file may be malformed or truncated."
+  The shared-schedule import previously *accepted* such a file and created a bogus section whose
+  Notes field held the rest of the file.
+- **Two latent data-loss bugs found and fixed.** Both were in production in both importers, and
+  both were proven by tests that failed on the old code.
+  1. **Wrong quote parity.** The old line joiner skipped `""` pairs before testing for an odd quote
+     count. A field with an odd number of escaped quotes (`"12"" ruler"`), or an empty `""` field,
+     made it glue the **next row** into that field, so the row was silently lost.
+  2. **Stray quotes.** Unquoted fields with inch marks on two different lines (`5" ruler` …
+     `3" tube`) merged every row between them into one record, and those rows were lost.
+- **Remaining inherent ambiguity:** a `"` at the very start of a field that was never meant to open
+  one still joins lines until a later quote closes it. `ParseCsvRow` would read it the same way.
+  At EOF it fails fast with the record's start line.
+- **Production / data:**
+  - Files that previously imported with silently merged or swallowed rows now import every row.
+  - Files with a genuinely unmatched quote are now rejected with a clear message instead of
+    importing garbage.
+  - No stored data changes.
+
+  Tests: 52 new, 1109 total passing.
 
 ---
 

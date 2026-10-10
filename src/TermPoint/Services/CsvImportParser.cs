@@ -305,80 +305,63 @@ public class CsvImportParser
 
     /// <summary>
     /// Reads the header row (required) into a case-insensitive column-name → index map,
-    /// then reads the remaining logical lines into raw field arrays. Column matching is
+    /// then reads the remaining logical records into raw field arrays. Column matching is
     /// by name, not position, so files are tolerant of reordered, extra, or missing columns.
+    /// Records are read by the shared <see cref="CsvRecordReader"/>, so a quoted field may
+    /// span physical lines; each data row's line number is the physical line on which its
+    /// record starts, and blank lines are skipped. An unmatched quote anywhere in the file
+    /// (including the header) is reported as a single file-level error and no rows are
+    /// returned — the rest of the file cannot be trusted once quoting is out of step.
     /// </summary>
+    /// <param name="csvText">The full text of the CSV file.</param>
+    /// <returns>
+    /// The column map and data rows, or — when the file is empty or has an unmatched quote —
+    /// a null column map, no rows, and the <see cref="CsvParseError"/> describing why.
+    /// </returns>
     private static (Dictionary<string, int>? ColumnIndex, List<(int LineNumber, string[] Fields)> DataLines, CsvParseError? Error)
         ReadHeaderAndLines(string csvText)
     {
         using var reader = new StringReader(csvText);
-        var headerLine = ReadCsvLine(reader);
-        if (headerLine is null)
-            return (null, new(), new CsvParseError(1, "File is empty."));
+        var records = new CsvRecordReader(reader);
 
-        var headers = SharedScheduleCsvParser.ParseCsvRow(headerLine);
-        var columnIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (int i = 0; i < headers.Length; i++)
+        try
         {
-            var h = headers[i].Trim();
-            if (!string.IsNullOrEmpty(h))
-                columnIndex[h] = i;
-        }
+            var header = records.ReadRecord();
+            if (header is null)
+                return (null, new(), new CsvParseError(1, "File is empty."));
 
-        // Register aliases so common alternative header names resolve to the
-        // canonical names used by GetField. Only adds the alias if the canonical
-        // name isn't already present (original header wins).
-        foreach (var (alias, canonical) in HeaderAliases)
-        {
-            if (!columnIndex.ContainsKey(canonical) && columnIndex.TryGetValue(alias, out var idx))
-                columnIndex[canonical] = idx;
-        }
-
-        var dataLines = new List<(int, string[])>();
-        int lineNumber = 2;
-        string? line;
-        while ((line = ReadCsvLine(reader)) is not null)
-        {
-            if (line.Length > 0)
-                dataLines.Add((lineNumber, SharedScheduleCsvParser.ParseCsvRow(line)));
-            lineNumber++;
-        }
-
-        return (columnIndex, dataLines, null);
-    }
-
-    /// <summary>
-    /// Reads a logical CSV line, joining physical lines when a quoted field contains an
-    /// embedded newline. Returns null at end of input. Field splitting itself is delegated
-    /// to <see cref="SharedScheduleCsvParser.ParseCsvRow"/> to avoid a second RFC 4180 scanner.
-    /// </summary>
-    private static string? ReadCsvLine(TextReader reader)
-    {
-        var line = reader.ReadLine();
-        if (line is null) return null;
-
-        while (CountUnescapedQuotes(line) % 2 != 0)
-        {
-            var next = reader.ReadLine();
-            if (next is null) break;
-            line = line + "\n" + next;
-        }
-
-        return line;
-    }
-
-    private static int CountUnescapedQuotes(string s)
-    {
-        int count = 0;
-        for (int i = 0; i < s.Length; i++)
-        {
-            if (s[i] == '"')
+            var headers = SharedScheduleCsvParser.ParseCsvRow(header.Text);
+            var columnIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < headers.Length; i++)
             {
-                count++;
-                if (i + 1 < s.Length && s[i + 1] == '"')
-                    i++;
+                var h = headers[i].Trim();
+                if (!string.IsNullOrEmpty(h))
+                    columnIndex[h] = i;
             }
+
+            // Register aliases so common alternative header names resolve to the
+            // canonical names used by GetField. Only adds the alias if the canonical
+            // name isn't already present (original header wins).
+            foreach (var (alias, canonical) in HeaderAliases)
+            {
+                if (!columnIndex.ContainsKey(canonical) && columnIndex.TryGetValue(alias, out var idx))
+                    columnIndex[canonical] = idx;
+            }
+
+            var dataLines = new List<(int, string[])>();
+            while (records.ReadRecord() is { } record)
+            {
+                if (record.Text.Length > 0)
+                    dataLines.Add((record.LineNumber, SharedScheduleCsvParser.ParseCsvRow(record.Text)));
+            }
+
+            return (columnIndex, dataLines, null);
         }
-        return count;
+        catch (CsvFormatException ex)
+        {
+            // ex.Message deliberately has no line number: the import dialogs render every
+            // error as "Line {LineNumber}: {Message}", so the line is carried separately.
+            return (null, new(), new CsvParseError(ex.LineNumber, ex.Message));
+        }
     }
 }

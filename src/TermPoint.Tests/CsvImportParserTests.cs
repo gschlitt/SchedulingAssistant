@@ -1,11 +1,24 @@
+using System.Diagnostics;
+using System.Text;
 using TermPoint.Services;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace TermPoint.Tests;
 
 public class CsvImportParserTests
 {
+    /// <summary>
+    /// Generous ceiling for the large-file unterminated-quote test: a tripwire for
+    /// order-of-magnitude (quadratic) regressions, not a micro-benchmark.
+    /// </summary>
+    private const int UnterminatedQuoteCeilingMs = 2000;
+
     private readonly CsvImportParser _parser = new();
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Creates the fixture; <paramref name="output"/> receives timing measurements.</summary>
+    public CsvImportParserTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
     public void ParseInstructors_WellFormedFile_ParsesAllRows()
@@ -88,6 +101,155 @@ public class CsvImportParserTests
         var row = Assert.Single(result.Rows);
         Assert.Equal("O'Brien, Jr.", row.LastName);
         Assert.Equal("John\nQ.", row.FirstName);
+    }
+
+    /// <summary>
+    /// Regression (Bug B): a quoted field containing an odd number of escaped quotes
+    /// (<c>"12"" ruler"</c>) must not be mistaken for an unterminated quote. The reader
+    /// used to glue the next physical line onto this record, swallowing the next row.
+    /// </summary>
+    [Theory]
+    [InlineData("\"12\"\" ruler\"", "12\" ruler")]
+    [InlineData("\"a\"\"b\"", "a\"b")]
+    public void ParseInstructors_FieldWithOddNumberOfEscapedQuotes_DoesNotSwallowNextRow(string quotedField, string expectedValue)
+    {
+        var csv = $"LastName,FirstName,Initials,Email\n{quotedField},John,JS,js@example.edu\nChen,Alice,AC,ac@example.edu\n";
+
+        var result = _parser.ParseInstructors(csv);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(2, result.Rows.Count);
+        Assert.Equal(expectedValue, result.Rows[0].LastName);
+        Assert.Equal("js@example.edu", result.Rows[0].Email);
+        Assert.Equal("Chen", result.Rows[1].LastName);
+        Assert.Equal("Alice", result.Rows[1].FirstName);
+        Assert.Equal("ac@example.edu", result.Rows[1].Email);
+    }
+
+    /// <summary>
+    /// Regression (Bug B): an empty quoted field (<c>""</c>) is a complete, balanced field;
+    /// it must not cause the following row to be joined onto this one.
+    /// </summary>
+    [Fact]
+    public void ParseInstructors_EmptyQuotedField_DoesNotSwallowNextRow()
+    {
+        var csv = "LastName,FirstName,Initials,Email\nSmith,\"\",JS,js@example.edu\nChen,Alice,AC,ac@example.edu\n";
+
+        var result = _parser.ParseInstructors(csv);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(2, result.Rows.Count);
+        Assert.Equal("Smith", result.Rows[0].LastName);
+        Assert.Equal("", result.Rows[0].FirstName);
+        Assert.Equal("JS", result.Rows[0].Initials);
+        Assert.Equal("Chen", result.Rows[1].LastName);
+        Assert.Equal("Alice", result.Rows[1].FirstName);
+    }
+
+    /// <summary>
+    /// Regression (Bug A): a single unmatched quote near the top of a large file used to
+    /// glue every later line onto one record while rescanning the growing text each time
+    /// (quadratic), freezing the UI. It must now fail fast, report the line where the
+    /// unmatched quote opened, and return no rows (never the joined garbage).
+    /// </summary>
+    [Fact]
+    public void ParseInstructors_UnterminatedQuoteInLargeFile_FailsFastWithOpeningLine()
+    {
+        var sb = new StringBuilder();
+        sb.Append("LastName,FirstName,Initials,Email\n");              // line 1
+        sb.Append("Smith,John,JS,js@example.edu\n");                   // line 2 (fine)
+        sb.Append("\"Broken,Alice,AB,ab@example.edu\n");               // line 3: opens a quote that never closes
+        for (int i = 0; i < 10_000; i++)                               // lines 4..10003
+            sb.Append($"Name{i},First{i},N{i},n{i}@example.edu\n");
+
+        var stopwatch = Stopwatch.StartNew();
+        var result = _parser.ParseInstructors(sb.ToString());
+        stopwatch.Stop();
+        _output.WriteLine($"Unterminated quote in 10,003-line file: {stopwatch.ElapsedMilliseconds} ms");
+
+        Assert.Empty(result.Rows);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(3, error.LineNumber);
+        // The import dialogs render "Line {LineNumber}: {Message}", so the message must not repeat the line.
+        Assert.Equal(CsvFormatException.Reason, error.Message);
+        Assert.True(stopwatch.ElapsedMilliseconds < UnterminatedQuoteCeilingMs,
+            $"Parsing took {stopwatch.ElapsedMilliseconds} ms (ceiling {UnterminatedQuoteCeilingMs} ms)");
+    }
+
+    /// <summary>
+    /// Regression: a lone <c>"</c> inside an UNQUOTED field (an inch mark) is a literal, exactly
+    /// as <c>ParseCsvRow</c> treats it. Two such marks on different lines used to "balance" each
+    /// other, merging lines 3-7 into one record and silently losing the rows in between.
+    /// </summary>
+    [Fact]
+    public void ParseCourses_UnquotedInchMarksOnDifferentLines_AllRowsReturnedSeparately()
+    {
+        var csv = "SubjectCode,CalendarCode,Title\n"        // line 1
+                + "CHEM,CHEM 101,Intro\n"                    // line 2
+                + "CHEM,CHEM 102,Measuring with a 5\" ruler\n"   // line 3: stray quote #1
+                + "CHEM,CHEM 103,Titration\n"                // line 4
+                + "CHEM,CHEM 104,Spectroscopy\n"             // line 5
+                + "CHEM,CHEM 105,Lab safety\n"               // line 6
+                + "CHEM,CHEM 106,Handling a 3\" tube\n"      // line 7: stray quote #2
+                + "CHEM,CHEM 107,Capstone\n";                // line 8
+
+        var result = _parser.ParseCourses(csv);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(
+            new[] { "CHEM 101", "CHEM 102", "CHEM 103", "CHEM 104", "CHEM 105", "CHEM 106", "CHEM 107" },
+            result.Rows.Select(r => r.CalendarCode).ToArray());
+        Assert.Equal("Measuring with a 5\" ruler", result.Rows[1].Title);
+        Assert.Equal("Handling a 3\" tube", result.Rows[5].Title);
+        Assert.Equal("Titration", result.Rows[2].Title);
+    }
+
+    /// <summary>
+    /// All three CSV Import formats share <c>ReadHeaderAndLines</c>, so an unmatched quote
+    /// (here in the header row itself) yields the same single-error, no-rows result from
+    /// each public entry point.
+    /// </summary>
+    [Fact]
+    public void ParseAll_UnterminatedQuoteInHeader_ReportsErrorOnLineOneAndNoRows()
+    {
+        const string csv = "\"LastName,FirstName\nSmith,John\n";
+
+        var instructors = _parser.ParseInstructors(csv);
+        var courses = _parser.ParseCourses(csv);
+        var sections = _parser.ParseSections(csv);
+
+        Assert.Empty(instructors.Rows);
+        Assert.Empty(courses.Rows);
+        Assert.Empty(sections.Rows);
+        foreach (var errors in new[] { instructors.Errors, courses.Errors, sections.Errors })
+        {
+            var error = Assert.Single(errors);
+            Assert.Equal(1, error.LineNumber);
+            Assert.Equal(CsvFormatException.Reason, error.Message);
+        }
+    }
+
+    /// <summary>
+    /// A quoted field containing an embedded newline is one record (the field keeps its
+    /// newline), and the row after it is reported at its true physical line number
+    /// (line 4 here, although it is only the third data record).
+    /// </summary>
+    [Fact]
+    public void ParseInstructors_EmbeddedNewlineInQuotedField_NextRowReportsPhysicalLineNumber()
+    {
+        var csv = "LastName,FirstName,Initials,Email\n"      // line 1
+                + "Smith,\"John\n"                            // line 2: record starts here...
+                + "Q.\",JS,js@example.edu\n"                  // line 3: ...and ends here
+                + ",Alice,AC,ac@example.edu\n";               // line 4: missing LastName
+
+        var result = _parser.ParseInstructors(csv);
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal("Smith", row.LastName);
+        Assert.Equal("John\nQ.", row.FirstName);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(4, error.LineNumber);
+        Assert.Contains("LastName", error.Message);
     }
 
     [Fact]

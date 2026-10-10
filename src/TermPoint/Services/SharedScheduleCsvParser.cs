@@ -81,18 +81,29 @@ public class SharedScheduleCsvParser
         if (columnIndex is null)
             return ImportResult.Failed("Column headers do not match the expected shared schedule format.");
 
-        // Read data rows
+        // Read data rows. The shared record reader starts at the first physical line after the
+        // header comment (if any) and column headers consumed above, and tags each record with
+        // the physical line it starts on, so warnings point at the right place in the file even
+        // when a quoted field spans several lines.
         var rows = new List<(int lineNumber, string[] fields)>();
-        int lineNumber = firstLine.StartsWith('#') ? 3 : 2;
-        string? line;
-        while ((line = ReadCsvLine(reader)) is not null)
+        int firstDataLine = firstLine.StartsWith('#') ? 3 : 2;
+        var records = new CsvRecordReader(reader, firstDataLine);
+        try
         {
-            if (rows.Count >= MaxDataRows)
-                return ImportResult.Failed($"File has more than {MaxDataRows} data rows — this may not be a shared schedule file.");
+            while (records.ReadRecord() is { } record)
+            {
+                if (rows.Count >= MaxDataRows)
+                    return ImportResult.Failed($"File has more than {MaxDataRows} data rows — this may not be a shared schedule file.");
 
-            var fields = ParseCsvRow(line);
-            rows.Add((lineNumber, fields));
-            lineNumber++;
+                rows.Add((record.LineNumber, ParseCsvRow(record.Text)));
+            }
+        }
+        catch (CsvFormatException ex)
+        {
+            // Unmatched quote: reject the whole file rather than import a mangled remainder.
+            // The sharing UI shows FileError verbatim (no "Line N:" prefix of its own), so the
+            // line number is included here, in the same "Line N: ..." form the import dialogs use.
+            return ImportResult.Failed($"Line {ex.LineNumber}: {ex.Message}");
         }
 
         if (rows.Count == 0)
@@ -265,43 +276,8 @@ public class SharedScheduleCsvParser
     private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
     /// <summary>
-    /// Reads a logical CSV line, handling quoted fields that span multiple physical lines.
-    /// Returns null at end of stream.
-    /// </summary>
-    private static string? ReadCsvLine(StreamReader reader)
-    {
-        var line = reader.ReadLine();
-        if (line is null) return null;
-
-        // Count unescaped quotes — if odd, the field continues on the next line
-        while (CountUnescapedQuotes(line) % 2 != 0)
-        {
-            var next = reader.ReadLine();
-            if (next is null) break;
-            line = line + "\n" + next;
-        }
-
-        return line;
-    }
-
-    private static int CountUnescapedQuotes(string s)
-    {
-        int count = 0;
-        for (int i = 0; i < s.Length; i++)
-        {
-            if (s[i] == '"')
-            {
-                count++;
-                // Skip escaped quotes ("")
-                if (i + 1 < s.Length && s[i + 1] == '"')
-                    i++;
-            }
-        }
-        return count;
-    }
-
-    /// <summary>
     /// Parses a single CSV row into fields, respecting RFC-4180 quoted field rules.
+    /// Joining of physical lines into logical rows is done by <see cref="CsvRecordReader"/>.
     /// </summary>
     internal static string[] ParseCsvRow(string line)
     {
