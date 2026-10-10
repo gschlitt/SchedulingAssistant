@@ -42,6 +42,11 @@ Item numbers are for reference only. The implementation order is below.
 
 Items 2 and 19 were accepted into scope on 2026-10-09. Avalonia stays at **12.1.3**: 12.1.4 was
 published on 2026-10-09 and has had no field exposure. Review its release notes before release.
+First look (2026-10-09):
+- **No `VirtualizingStackPanel` fixes.**
+- **One relevant entry, #22394**, "Do not measure TextBlock embedded controls during a render pass".
+  The section card's property-line icons are exactly that: `InlineUIContainer`s built by
+  `PropertyLinesBehavior` (item 21, step 3). Weigh it when deciding whether to take 12.1.4.
 
 | Order | Item | Why here |
 |---|---|---|
@@ -1272,6 +1277,30 @@ build, 800-section DB, VS snapshots.
   - **list virtualization**, so only on-screen cards are built (next experiment);
   - item 20's "Hide" focus mode.
 
+**Virtualization re-test (2026-10-09): works for memory, still blocked by the editor jump.
+Reverted.**
+- **Experiment 1:** the ListBox's `ItemsPanel` `StackPanel` → `VirtualizingStackPanel`.
+  - It virtualizes even though the list sits inside SectionPanelContent's outer ScrollViewer,
+    because VSP uses the effective viewport.
+  - **Heap on the 800-section semester: 475 → 160 MB** (Debug, user-measured).
+  - But the list **jumps when the inline editor opens**. The motion differs from the June 2026
+    probe, but the bug is the same.
+- **Experiment 2:** with our `ScrollSelectedItemIntoView` auto-scroll disabled, **still jumps**, so
+  our scroll code is not the cause.
+- **Experiment 3:** the ListBox scrolls itself. The outer ScrollViewer was removed for the section
+  list, `ListContentPanel` became a `Panel`, and `SuppressPopupScrollBehavior` moved onto the VSP.
+  It **still jumps**, so the nesting is not the cause.
+- **Conclusion:** Avalonia's `VirtualizingStackPanel` mishandles an on-screen item that grows by
+  several hundred pixels. This is unchanged in 12.1.3 and 12.1.4 (no VSP fixes in 12.1.4's notes).
+  All experiment edits are reverted, and the list's AXAML comment records the re-test.
+- **Also noted:** with virtualization, `ScrollSelectedItemIntoView` would need rewriting, because
+  `ContainerFromItem` is null for off-screen cards. Use a virtualization-aware `ScrollIntoView`.
+- **Possible routes later:**
+  1. An upstream fix (see parking-lot P4).
+  2. Editing outside the card (e.g. a fixed editor area), so cards never grow. That is a UX change
+     to a core design principle; discuss it with item 20. Collapse and expand also change card
+     heights.
+
 ---
 
 ## 22 — AutoCompleteBox crash when revising a meeting's start time
@@ -1433,6 +1462,20 @@ LATENT: unreachable today.**
   - await the pending release before `EnterReaderMode`.
 
   This interacts with items 4 and 9, which change the lock and startup code.
+
+**P4. File an Avalonia bug report for the VirtualizingStackPanel item-growth jump (noted
+2026-10-09, user request). IDEA, not scheduled.**
+- **Why:** virtualizing the section list cut the 800-section heap from 475 to 160 MB. It is blocked
+  only by the jump when an on-screen item grows (see item 21, "Virtualization re-test"). An
+  upstream fix is the cleanest route to that saving.
+- **Plan:**
+  1. Have an agent build a tiny stand-alone Avalonia 12.1.x repro: a `ListBox` with the default
+     `VirtualizingStackPanel`, a few hundred variable-height items, and one item that grows by
+     ~500 px on click. No TermPoint code.
+  2. Characterise it first, which takes 30 s in the app with the VSP experiment applied: does the
+     jump happen on the **top** card as well as mid-list? Which way does it move?
+  3. The user files the issue on GitHub with the repro, video and versions.
+- **Cost:** about an hour of agent time, with no risk to the app.
 
 **P3. Copy Semester never carries meeting room types (noted 2026-10-09). DESIGN QUESTION, not
 data loss.**
