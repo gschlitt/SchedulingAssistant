@@ -3,8 +3,8 @@ namespace TermPoint.ViewModels.Management;
 /// <summary>
 /// Identifies what kind of information a <see cref="CardPropertyLine"/> carries on a section
 /// card. The view model states only <em>what</em> a line is; the view decides how each kind
-/// looks (icon, weight, colour) through AXAML styles keyed on this kind
-/// (see <c>PropertyLinesBehavior</c>).
+/// looks (icon, weight, colour) from values the AXAML supplies to
+/// <c>PropertyLinesBehavior</c>, which applies them per kind.
 /// </summary>
 public enum CardPropertyKind
 {
@@ -36,7 +36,7 @@ public enum CardPropertyKind
 ///
 /// The view model supplies only the structure (which kind of line, and its text). It deliberately
 /// carries no brush, icon geometry, font weight or other presentation: the view maps each
-/// <see cref="CardPropertyKind"/> to a look through AXAML styles. Because the text travels as
+/// <see cref="CardPropertyKind"/> to a look using values set in AXAML. Because the text travels as
 /// plain data (never parsed as markup), user-entered tag, reserve and resource names are
 /// displayed exactly as typed, whatever characters they contain.
 ///

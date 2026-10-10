@@ -3,6 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:b="using:TermPoint.Behaviors"
+    xmlns:conv="using:TermPoint.Converters"
     xmlns:models="using:TermPoint.Models"
     xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
     xmlns:vm="using:TermPoint.ViewModels.Management"
@@ -62,73 +63,16 @@
         </Style>
 
         <!--
-            Collapse/expand toggle on each section card. The Path (DisclosureTriangleIcon) points
-            right by default, which is the "collapsed" look. The binding
-            Classes.expanded="{Binding !IsCollapsed}" adds the "expanded" class while the card is
-            open, and this style then rotates the triangle 90 degrees clockwise so it points down.
-            The icon's 10x10 box is square and RenderTransform does not affect layout, so the
-            toggle takes exactly the same space in both states and nothing shifts. The origin is
-            set explicitly (the centre of the shape) even though that is Avalonia's default, so
-            the rotation is guaranteed to pivot on the middle of the triangle.
+            No class-conditioned styles for the section card's own elements (spec item 21, step 4b).
+            In Avalonia a style whose selector has a class condition (Path.xxx.expanded,
+            TextBlock.xxx, Run.xxx, ...) attaches a style instance and class activators to EVERY
+            element of the target type in this view, whether it matches or not. The list is not
+            virtualized, so with hundreds of cards that was roughly 60 extra style objects per
+            card. The card's collapse toggle, meeting table and property lines therefore carry
+            their font sizes, colours, weights, icon geometry and rotation directly on the
+            elements (see the card template below, and PropertyLinesBehavior). Keep it that way:
+            do not reintroduce class-conditioned styles that reach into card elements.
         -->
-        <Style Selector="Path.DisclosureTriangle.expanded">
-            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
-            <Setter Property="RenderTransform" Value="rotate(90deg)" />
-        </Style>
-
-        <!--
-            Property lines on each section card (spec item 21, step 3): the single TextBlock
-            Classes="CardPropertyLines" is filled with inlines by PropertyLinesBehavior, which sets
-            only structure and these style classes, never a size, colour or geometry. Everything
-            visual is here. All selectors are scoped under TextBlock.CardPropertyLines so nothing
-            else in the view is affected. They reach the generated Run, Viewbox and Path elements
-            because those are logical children of the TextBlock.
-              Run.warning                    - a room or instructor conflict line
-              Viewbox.cardPropertyIcon       - the icon box (replaces the old StackPanel Spacing of 4)
-              Path.cardPropertyIcon          - the shared stroke look of the icons
-              Path.cardPropertyIcon.<kind>   - the icon geometry for tags, reserves or resources
-        -->
-        <Style Selector="TextBlock.CardPropertyLines Run.warning">
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextError}" />
-        </Style>
-        <Style Selector="TextBlock.CardPropertyLines Viewbox.cardPropertyIcon">
-            <Setter Property="Width" Value="16" />
-            <Setter Property="Height" Value="16" />
-            <Setter Property="Margin" Value="0,0,4,0" />
-        </Style>
-        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon">
-            <Setter Property="Fill" Value="Transparent" />
-            <Setter Property="Stroke" Value="{StaticResource TextMuted}" />
-            <Setter Property="StrokeThickness" Value="2" />
-            <Setter Property="StrokeLineCap" Value="Round" />
-            <Setter Property="StrokeJoin" Value="Round" />
-        </Style>
-        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon.tags">
-            <Setter Property="Data" Value="{StaticResource TagIcon}" />
-        </Style>
-        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon.reserves">
-            <Setter Property="Data" Value="{StaticResource TicketIcon}" />
-        </Style>
-        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon.resources">
-            <Setter Property="Data" Value="{StaticResource ToolsIcon}" />
-        </Style>
-
-        <!--
-            Meeting table on each section card (spec item 21, step 4): each column is one TextBlock
-            Classes="MeetingColumn" holding a header Run (Classes="MeetingHeader") followed by one
-            line per meeting. The TextBlock sets the size of the meeting lines; the header Run
-            overrides it with the smaller, muted header look. Both selectors are scoped under
-            TextBlock.MeetingColumn so nothing else in the view is affected. No LineHeight or
-            LineSpacing on purpose: the tighter natural row spacing is intended.
-        -->
-        <Style Selector="TextBlock.MeetingColumn">
-            <Setter Property="FontSize" Value="11" />
-        </Style>
-        <Style Selector="TextBlock.MeetingColumn Run.MeetingHeader">
-            <Setter Property="FontSize" Value="9" />
-            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-        </Style>
 
     </UserControl.Styles>
 
@@ -1300,20 +1244,31 @@
                                                     Command="{Binding ToggleCollapsedCommand}"
                                                     Cursor="Hand">
                                                     <!--
-                                                        One triangle for both states: it points right when collapsed and the
-                                                        "expanded" class (bound to !IsCollapsed) rotates it 90 degrees to point
-                                                        down — see the Path.DisclosureTriangle.expanded style. The top margin
-                                                        lines it up with the first line of the 12 pt heading; tune by eye.
+                                                        One triangle for both states: it points right when collapsed and is
+                                                        rotated 90 degrees clockwise to point down when expanded. The rotation
+                                                        is a RotateTransform whose Angle is bound to IsCollapsed through
+                                                        CollapsedToDisclosureAngleConverter (0 collapsed, 90 expanded), set
+                                                        directly on this Path rather than through a class-conditioned style,
+                                                        which would cost every Path in the list (spec item 21, step 4b).
+                                                        RenderTransform does not affect layout and the icon's 10x10 box is
+                                                        square, so the toggle takes exactly the same space in both states and
+                                                        nothing shifts. The origin is set explicitly to the centre of the shape
+                                                        (Avalonia's default anyway) so the rotation is guaranteed to pivot on
+                                                        the middle of the triangle. The top margin lines the triangle up with
+                                                        the first line of the 12 pt heading; tune by eye.
                                                     -->
                                                     <Path
                                                         Width="7"
                                                         Height="7"
                                                         Margin="0,4,0,0"
-                                                        Classes="DisclosureTriangle"
-                                                        Classes.expanded="{Binding !IsCollapsed}"
                                                         Data="{StaticResource DisclosureTriangleIcon}"
                                                         Fill="{StaticResource TextLabel}"
-                                                        Stretch="Uniform" />
+                                                        RenderTransformOrigin="50%,50%"
+                                                        Stretch="Uniform">
+                                                        <Path.RenderTransform>
+                                                            <RotateTransform Angle="{Binding IsCollapsed, Converter={x:Static conv:CollapsedToDisclosureAngleConverter.Instance}}" />
+                                                        </Path.RenderTransform>
+                                                    </Path>
                                                 </Button>
                                                 <!--  Heading  -->
                                                 <TextBlock
@@ -1391,8 +1346,13 @@
 
                                                 The two Runs in each TextBlock are written adjacent on one line on
                                                 purpose: whitespace between them could become a stray space.
-                                                Presentation (font sizes, header colour) is in the
-                                                TextBlock.MeetingColumn styles at the top of this file.
+
+                                                Presentation is set directly on the elements, not through styles:
+                                                FontSize="11" on each column TextBlock for the meeting lines, and
+                                                FontSize="9" plus the muted Foreground on each header Run. A
+                                                class-conditioned style (TextBlock.xxx / Run.xxx) would attach style
+                                                machinery to every TextBlock and Run in the list, which is a real
+                                                per-element cost across hundreds of cards (spec item 21, step 4b).
                                             -->
                                             <Grid Margin="6,2,8,6" IsVisible="{Binding !IsCollapsed}">
                                                 <Grid.ColumnDefinitions>
@@ -1403,12 +1363,12 @@
                                                     <ColumnDefinition Width="Auto" MinWidth="{StaticResource SectionMeetingRoomMinWidth}" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Day" /><Run Text="{Binding MeetingDayLines}" /></TextBlock>
-                                                <TextBlock Grid.Column="1" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Start" /><Run Text="{Binding MeetingStartLines}" /></TextBlock>
-                                                <TextBlock Grid.Column="2" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="End" /><Run Text="{Binding MeetingEndLines}" /></TextBlock>
-                                                <TextBlock Grid.Column="3" Margin="2,0,2,0" Classes="MeetingColumn" IsVisible="{Binding HasNonDefaultFrequency}"><Run Classes="MeetingHeader" Text="Freq" /><Run Text="{Binding MeetingFrequencyLines}" /></TextBlock>
-                                                <TextBlock Grid.Column="4" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Room" /><Run Text="{Binding MeetingRoomLines}" /></TextBlock>
-                                                <TextBlock Grid.Column="5" Margin="2,0,0,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Type" /><Run Text="{Binding MeetingTypeLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="0" Margin="2,0,2,0" FontSize="11"><Run FontSize="9" Foreground="{StaticResource TextMuted}" Text="Day" /><Run Text="{Binding MeetingDayLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="1" Margin="2,0,2,0" FontSize="11"><Run FontSize="9" Foreground="{StaticResource TextMuted}" Text="Start" /><Run Text="{Binding MeetingStartLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="2" Margin="2,0,2,0" FontSize="11"><Run FontSize="9" Foreground="{StaticResource TextMuted}" Text="End" /><Run Text="{Binding MeetingEndLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="3" Margin="2,0,2,0" FontSize="11" IsVisible="{Binding HasNonDefaultFrequency}"><Run FontSize="9" Foreground="{StaticResource TextMuted}" Text="Freq" /><Run Text="{Binding MeetingFrequencyLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="4" Margin="2,0,2,0" FontSize="11"><Run FontSize="9" Foreground="{StaticResource TextMuted}" Text="Room" /><Run Text="{Binding MeetingRoomLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="5" Margin="2,0,0,0" FontSize="11"><Run FontSize="9" Foreground="{StaticResource TextMuted}" Text="Type" /><Run Text="{Binding MeetingTypeLines}" /></TextBlock>
                                             </Grid>
 
                                             <!--  Row 3: Properties (tags, reserves, resources) when not collapsed  -->
@@ -1423,15 +1383,26 @@
                                                     lines that are present, so a card with none creates no inlines
                                                     or icons at all (this used to be about 16 always-built
                                                     controls per card). Presentation (warning weight and colour,
-                                                    icon size, stroke and geometry) lives in the
-                                                    TextBlock.CardPropertyLines styles at the top of this file.
+                                                    icon size, spacing, stroke brush and the three geometries)
+                                                    is supplied by the PropertyLinesBehavior attached properties
+                                                    below, and the behavior copies those values straight onto
+                                                    the Runs, Viewboxes and Paths it builds. There are no
+                                                    class-conditioned styles for this, because those would cost
+                                                    every Run and Path in the list (spec item 21, step 4b).
                                                     Note that long lines now wrap as running text, so a
                                                     continuation line starts at the left edge rather than
                                                     under the icon's text.
                                                 -->
                                                 <TextBlock
+                                                    b:PropertyLinesBehavior.IconBrush="{StaticResource TextMuted}"
+                                                    b:PropertyLinesBehavior.IconSize="16"
+                                                    b:PropertyLinesBehavior.IconSpacing="4"
                                                     b:PropertyLinesBehavior.Lines="{Binding PropertyLines}"
-                                                    Classes="CardPropertyLines"
+                                                    b:PropertyLinesBehavior.ReserveIcon="{StaticResource TicketIcon}"
+                                                    b:PropertyLinesBehavior.ResourceIcon="{StaticResource ToolsIcon}"
+                                                    b:PropertyLinesBehavior.TagIcon="{StaticResource TagIcon}"
+                                                    b:PropertyLinesBehavior.WarningFontWeight="SemiBold"
+                                                    b:PropertyLinesBehavior.WarningForeground="{StaticResource TextError}"
                                                     FontSize="11"
                                                     IsVisible="{Binding HasPropertyLines}"
                                                     TextWrapping="Wrap" />

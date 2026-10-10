@@ -135,7 +135,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     ///
     /// The view model states only <em>what</em> each line is (<see cref="CardPropertyKind"/>)
     /// and its text; icons, weights and colours are applied by the view
-    /// (<c>PropertyLinesBehavior</c> plus AXAML styles). Text is passed through untouched and is
+    /// (<c>PropertyLinesBehavior</c>, using values set in AXAML). Text is passed through untouched and is
     /// never parsed as markup, so user-entered names display exactly as typed.
     ///
     /// Computed on each read rather than cached: it is read only when a binding refreshes

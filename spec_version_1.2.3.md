@@ -33,7 +33,7 @@ will be verified.
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | **Done** |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
-| 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | In progress: step 1 done (flag moved into the editor); CloneSection data-loss fixed |
+| 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 
 Item numbers are for reference only. The implementation order is below.
@@ -1233,6 +1233,44 @@ build, 800-section DB, VS snapshots.
   - `TextBlock.MeetingColumn` on every TextBlock.
   - **Step 4b** replaces them with direct values.
 - **Final number:** taken in a **Release** build without scrolling, after 4b.
+
+**Step 4b outcome (2026-10-09): done.**
+- **Change:** the nine class-conditioned styles from steps 2–4 were replaced by direct values:
+  - **Meeting table:** `FontSize` on the column TextBlocks; size and colour on the header Runs.
+  - **Toggle:** a `RotateTransform` whose angle is bound to `IsCollapsed` through
+    `CollapsedToDisclosureAngleConverter` (0° collapsed, 90° expanded).
+  - **Property lines:** `PropertyLinesBehavior` takes its look from attached properties set in
+    AXAML (`WarningForeground`, `WarningFontWeight`, `IconBrush`, `IconSize`, `IconSpacing`,
+    `TagIcon`, `ReserveIcon`, `ResourceIcon`) and sets no style classes.
+- **Rule recorded in the view:** don't reintroduce class-conditioned styles for elements that
+  appear on every card.
+- **Checks:**
+  - an off-screen probe rendered old and new cards **pixel-identical** in four scenarios;
+  - the editor is byte-identical;
+  - suite: 1179 passed.
+
+**Item 21 result: final measurement (2026-10-09, Release build, no scrolling, after 4b).**
+
+| | Baseline (Debug) | After step 4 (Debug) | **After 4b (Release)** |
+|---|---|---|---|
+| Heap, 800-section semester | 575 MB | 475 MB | **392 MB** |
+| Heap, near-empty semester | 82 MB | 51 MB | **39 MB** |
+| Section-dependent (snapshot diff) | 466 MB | 401 MB | **~355 MB** |
+| Per section | ~580 KB | ~500 KB | **~440 KB** |
+| `StyleInstance` / `StyleClassActivator` per section | — | 170 / 314 | **119 / 228** |
+
+- **Scrolling** made no difference: draw-list visuals were ±30.6 K in both runs.
+- **Object counts** are VS samples, so compare them only loosely.
+- **What remains per section (~440 KB)** is Avalonia's per-element bookkeeping:
+  - compositor and render objects, ~60 MB;
+  - strings and text shaping, ~35 MB;
+  - the remaining styles, mostly the Fluent control themes and the view's older hover and
+    TextBlock styles.
+- **Further card trimming** has diminishing returns. A card that is a single TextBlock was
+  estimated at only ~25–35% less, and it would lose column alignment.
+- **The big remaining levers:**
+  - **list virtualization**, so only on-screen cards are built (next experiment);
+  - item 20's "Hide" focus mode.
 
 ---
 
