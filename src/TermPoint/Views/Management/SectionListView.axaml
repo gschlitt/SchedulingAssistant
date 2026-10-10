@@ -76,6 +76,44 @@
             <Setter Property="RenderTransform" Value="rotate(90deg)" />
         </Style>
 
+        <!--
+            Property lines on each section card (spec item 21, step 3): the single TextBlock
+            Classes="CardPropertyLines" is filled with inlines by PropertyLinesBehavior, which sets
+            only structure and these style classes, never a size, colour or geometry. Everything
+            visual is here. All selectors are scoped under TextBlock.CardPropertyLines so nothing
+            else in the view is affected. They reach the generated Run, Viewbox and Path elements
+            because those are logical children of the TextBlock.
+              Run.warning                    - a room or instructor conflict line
+              Viewbox.cardPropertyIcon       - the icon box (replaces the old StackPanel Spacing of 4)
+              Path.cardPropertyIcon          - the shared stroke look of the icons
+              Path.cardPropertyIcon.<kind>   - the icon geometry for tags, reserves or resources
+        -->
+        <Style Selector="TextBlock.CardPropertyLines Run.warning">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextError}" />
+        </Style>
+        <Style Selector="TextBlock.CardPropertyLines Viewbox.cardPropertyIcon">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon">
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Stroke" Value="{StaticResource TextMuted}" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+        </Style>
+        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon.tags">
+            <Setter Property="Data" Value="{StaticResource TagIcon}" />
+        </Style>
+        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon.reserves">
+            <Setter Property="Data" Value="{StaticResource TicketIcon}" />
+        </Style>
+        <Style Selector="TextBlock.CardPropertyLines Path.cardPropertyIcon.resources">
+            <Setter Property="Data" Value="{StaticResource ToolsIcon}" />
+        </Style>
+
     </UserControl.Styles>
 
     <UserControl.Resources>
@@ -1417,79 +1455,25 @@
                                                 Margin="6,0,8,6"
                                                 IsVisible="{Binding !IsCollapsed}"
                                                 Spacing="2">
-                                                <!--  Room conflict warning  -->
+                                                <!--
+                                                    Property lines (room and instructor conflict warnings, tags,
+                                                    reserves, resources) in ONE wrapping TextBlock (spec item 21,
+                                                    step 3). PropertyLinesBehavior builds inlines only for the
+                                                    lines that are present, so a card with none creates no inlines
+                                                    or icons at all (this used to be about 16 always-built
+                                                    controls per card). Presentation (warning weight and colour,
+                                                    icon size, stroke and geometry) lives in the
+                                                    TextBlock.CardPropertyLines styles at the top of this file.
+                                                    Note that long lines now wrap as running text, so a
+                                                    continuation line starts at the left edge rather than
+                                                    under the icon's text.
+                                                -->
                                                 <TextBlock
+                                                    b:PropertyLinesBehavior.Lines="{Binding PropertyLines}"
+                                                    Classes="CardPropertyLines"
                                                     FontSize="11"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource TextError}"
-                                                    IsVisible="{Binding RoomConflictWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding RoomConflictWarning}"
+                                                    IsVisible="{Binding HasPropertyLines}"
                                                     TextWrapping="Wrap" />
-                                                <!--  Instructor conflict warning  -->
-                                                <TextBlock
-                                                    FontSize="11"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource TextError}"
-                                                    IsVisible="{Binding InstructorConflictWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding InstructorConflictWarning}"
-                                                    TextWrapping="Wrap" />
-                                                <!--  Tags  -->
-                                                <StackPanel
-                                                    IsVisible="{Binding TagLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="4">
-                                                    <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                                                        <Path
-                                                            Fill="Transparent"
-                                                            Stroke="{StaticResource TextMuted}"
-                                                            StrokeThickness="2"
-                                                            StrokeLineCap="Round"
-                                                            StrokeJoin="Round"
-                                                            Data="{StaticResource TagIcon}" />
-                                                    </Viewbox>
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Text="{Binding TagLine}" />
-                                                </StackPanel>
-                                                <!--  Reserves  -->
-                                                <StackPanel
-                                                    IsVisible="{Binding ReserveLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="4">
-                                                    <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                                                        <Path
-                                                            Fill="Transparent"
-                                                            Stroke="{StaticResource TextMuted}"
-                                                            StrokeThickness="2"
-                                                            StrokeLineCap="Round"
-                                                            StrokeJoin="Round"
-                                                            Data="{StaticResource TicketIcon}" />
-                                                    </Viewbox>
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Text="{Binding ReserveLine}" />
-                                                </StackPanel>
-                                                <!--  Resources  -->
-                                                <StackPanel
-                                                    IsVisible="{Binding ResourceLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Orientation="Horizontal"
-                                                    Spacing="4">
-                                                    <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                                                        <Path
-                                                            Fill="Transparent"
-                                                            Stroke="{StaticResource TextMuted}"
-                                                            StrokeThickness="2"
-                                                            StrokeLineCap="Round"
-                                                            StrokeJoin="Round"
-                                                            Data="{StaticResource ToolsIcon}" />
-                                                    </Viewbox>
-                                                    <TextBlock
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Text="{Binding ResourceLine}" />
-                                                </StackPanel>
                                                 <!--  Notes  -->
                                                 <TextBlock
                                                     MaxWidth="275"

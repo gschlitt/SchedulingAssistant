@@ -65,7 +65,14 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     /// in the same semester. Null when no conflicts exist.
     /// Set externally by <see cref="SectionListViewModel.ApplyRoomConflicts"/>.
     /// </summary>
+    /// <remarks>
+    /// Feeds <see cref="PropertyLines"/>: because the warnings are applied after construction,
+    /// changing this value re-raises <see cref="PropertyLines"/> and <see cref="HasPropertyLines"/>
+    /// so the card rebuilds its property-line inlines.
+    /// </remarks>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PropertyLines))]
+    [NotifyPropertyChangedFor(nameof(HasPropertyLines))]
     private string? _roomConflictWarning;
 
     /// <summary>
@@ -73,8 +80,61 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     /// in the same semester. Null when no conflicts exist.
     /// Set externally by <see cref="SectionListViewModel.ApplyInstructorConflicts"/>.
     /// </summary>
+    /// <remarks>
+    /// Feeds <see cref="PropertyLines"/>; see <see cref="RoomConflictWarning"/> for why this
+    /// notifies.
+    /// </remarks>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PropertyLines))]
+    [NotifyPropertyChangedFor(nameof(HasPropertyLines))]
     private string? _instructorConflictWarning;
+
+    /// <summary>
+    /// The present "property lines" of the card, in display order: room conflict, instructor
+    /// conflict, tags, reserves, resources. A source whose text is null, empty or whitespace
+    /// contributes no entry, so a card with nothing to show returns an empty list.
+    ///
+    /// The view model states only <em>what</em> each line is (<see cref="CardPropertyKind"/>)
+    /// and its text; icons, weights and colours are applied by the view
+    /// (<c>PropertyLinesBehavior</c> plus AXAML styles). Text is passed through untouched and is
+    /// never parsed as markup, so user-entered names display exactly as typed.
+    ///
+    /// Computed on each read rather than cached: it is read only when a binding refreshes
+    /// (card creation, or a conflict warning changing), and the warnings can change after
+    /// construction, so a cache would need invalidating anyway.
+    /// </summary>
+    public IReadOnlyList<CardPropertyLine> PropertyLines
+    {
+        get
+        {
+            var lines = new List<CardPropertyLine>(5);
+            AddPropertyLine(lines, CardPropertyKind.RoomConflict,       RoomConflictWarning);
+            AddPropertyLine(lines, CardPropertyKind.InstructorConflict, InstructorConflictWarning);
+            AddPropertyLine(lines, CardPropertyKind.Tags,               TagLine);
+            AddPropertyLine(lines, CardPropertyKind.Reserves,           ReserveLine);
+            AddPropertyLine(lines, CardPropertyKind.Resources,          ResourceLine);
+            return lines;
+        }
+    }
+
+    /// <summary>
+    /// True when <see cref="PropertyLines"/> is non-empty. Drives the visibility of the card's
+    /// property-line <c>TextBlock</c>, so a card with no property lines shows (and builds) none.
+    /// </summary>
+    public bool HasPropertyLines => PropertyLines.Count > 0;
+
+    /// <summary>
+    /// Appends a line of the given kind to <paramref name="lines"/> unless
+    /// <paramref name="text"/> is null, empty or whitespace.
+    /// </summary>
+    /// <param name="lines">The list being built; mutated in place.</param>
+    /// <param name="kind">The kind of line to add.</param>
+    /// <param name="text">The line's text; a blank value means "nothing to show" and adds nothing.</param>
+    private static void AddPropertyLine(List<CardPropertyLine> lines, CardPropertyKind kind, string? text)
+    {
+        if (!string.IsNullOrWhiteSpace(text))
+            lines.Add(new CardPropertyLine(kind, text));
+    }
 
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
     [ObservableProperty] private bool _isBeingCreated;

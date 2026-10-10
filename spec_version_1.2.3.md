@@ -1154,6 +1154,25 @@ visual regression.
 - **Checks:** the editor template and slot are byte-identical. Suite: 1129 passed. Checked in the
   WASM demo.
 
+**Step 3 outcome (2026-10-09): done, user accepted.**
+- **Card view model:** `SectionListItemViewModel.PropertyLines` is a list of `CardPropertyLine`
+  (kind + text) in display order: room conflict, instructor conflict, tags, reserves, resources.
+  Blank lines are omitted. It re-raises when a conflict warning changes.
+- **Rendering:** `PropertyLinesBehavior` builds one wrapping TextBlock's inlines from that list:
+  - a conflict line is a `Run.warning`;
+  - an icon line is an `InlineUIContainer` (Viewbox + Path) followed by a Run;
+  - the text is never parsed as markup, so user-entered names display as typed.
+- **Presentation** comes from the `TextBlock.CardPropertyLines` styles in SectionListView.axaml.
+  This works because inlines and the inline container's child are logical children of the
+  TextBlock.
+- **Controls:** the block went from ~15 always-built controls (including Notes) to 2, plus 2 per
+  present icon line.
+- **Visual differences, accepted:**
+  - long tag, reserve and resource lines now wrap, and the wrapped part starts at the left edge;
+  - the first property line sits ~3 px lower;
+  - `LineSpacing` was tried and removed, because Avalonia applies it to every line.
+- **Tests:** 24 in `SectionCardPropertyLinesTests`. Suite: 1153 passed.
+
 ---
 
 ## 22 — AutoCompleteBox crash when revising a meeting's start time
