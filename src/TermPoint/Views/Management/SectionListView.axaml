@@ -114,6 +114,22 @@
             <Setter Property="Data" Value="{StaticResource ToolsIcon}" />
         </Style>
 
+        <!--
+            Meeting table on each section card (spec item 21, step 4): each column is one TextBlock
+            Classes="MeetingColumn" holding a header Run (Classes="MeetingHeader") followed by one
+            line per meeting. The TextBlock sets the size of the meeting lines; the header Run
+            overrides it with the smaller, muted header look. Both selectors are scoped under
+            TextBlock.MeetingColumn so nothing else in the view is affected. No LineHeight or
+            LineSpacing on purpose: the tighter natural row spacing is intended.
+        -->
+        <Style Selector="TextBlock.MeetingColumn">
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style Selector="TextBlock.MeetingColumn Run.MeetingHeader">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+
     </UserControl.Styles>
 
     <UserControl.Resources>
@@ -1066,6 +1082,14 @@
         <x:Double x:Key="SectionRow1HeadingMinWidth">100</x:Double>
         <GridLength x:Key="SectionRow1InstructorWidth">160</GridLength>
         <x:Double x:Key="SectionRow1TypeMinWidth">64</x:Double>
+
+        <!--
+            Minimum width of the Room column in the card's meeting table (spec item 21, step 4).
+            It exists so the Type column, which follows Room, starts at the same x position on
+            every card; a very long room name still widens its own card's Room column. Local to
+            this view and tuned by eye, like the Row 1 widths above.
+        -->
+        <x:Double x:Key="SectionMeetingRoomMinWidth">90</x:Double>
     </UserControl.Resources>
 
     <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*" ColumnDefinitions="Auto">
@@ -1340,115 +1364,52 @@
                                                 </Viewbox>
                                             </Grid>
 
-                                            <!--  Row 2: Meetings (when not collapsed)  -->
-                                            <StackPanel
-                                                Margin="6,2,8,6"
-                                                Grid.IsSharedSizeScope="True"
-                                                IsVisible="{Binding !IsCollapsed}"
-                                                Spacing="0">
-                                                <!--
-                                                    Headers: Day, Start, End, Freq (col 3, hidden when all meetings are weekly), Room, Type.
-                                                    Col 3 uses SharedSizeGroup="FreqCol" so it grows to match the widest frequency
-                                                    value across all data rows; when the header is hidden (all-weekly sections),
-                                                    there is no content in the group and the column collapses to zero.
-                                                -->
-                                                <Grid Margin="0,0,0,2">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="45" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="RoomCol"/>
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock
-                                                        Grid.Column="0"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Day" />
-                                                    <TextBlock
-                                                        Grid.Column="1"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Start" />
-                                                    <TextBlock
-                                                        Grid.Column="2"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="End" />
-                                                    <TextBlock
-                                                        Grid.Column="3"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        IsVisible="{Binding HasNonDefaultFrequency}"
-                                                        Text="Freq" />
-                                                    <TextBlock
-                                                        Grid.Column="4"
-                                                        Margin="2,0,2,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Room" />
-                                                    <TextBlock
-                                                        Grid.Column="5"
-                                                        Margin="2,0,0,0"
-                                                        FontSize="9"
-                                                        Foreground="{StaticResource TextMuted}"
-                                                        Text="Type" />
-                                                </Grid>
+                                            <!--
+                                                Row 2: Meetings (when not collapsed) — spec item 21, step 4.
 
-                                                <!--  Meetings  -->
-                                                <ItemsControl ItemsSource="{Binding MeetingDetails}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="{x:Type vm:MeetingDisplayInfo}">
-                                                            <Grid Margin="0,1,0,0">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <ColumnDefinition Width="45" />
-                                                                    <!--  Col 3: same SharedSizeGroup as the header — auto-sizes to the widest frequency value across all rows  -->
-                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="FreqCol" />
-                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="RoomCol" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock
-                                                                    Grid.Column="0"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding Day}" />
-                                                                <TextBlock
-                                                                    Grid.Column="1"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding StartTime}" />
-                                                                <TextBlock
-                                                                    Grid.Column="2"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding EndTime}" />
-                                                                <TextBlock
-                                                                    Grid.Column="3"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding Frequency}" />
-                                                                <TextBlock
-                                                                    Grid.Column="4"
-                                                                    Margin="2,1,2,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding Room}" />
-                                                                <TextBlock
-                                                                    Grid.Column="5"
-                                                                    Margin="2,1,0,1"
-                                                                    FontSize="11"
-                                                                    Text="{Binding MeetingType}" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
+                                                ONE Grid with ONE TextBlock per column (Day, Start, End, Freq, Room,
+                                                Type), instead of a header Grid plus an ItemsControl that built a Grid
+                                                of six TextBlocks per meeting. Each column's TextBlock holds its header
+                                                Run followed by a second Run bound to the view model's Meeting*Lines
+                                                string, which is a line break plus one meeting's value for each
+                                                meeting, in order. So the header is line 1 and meeting n is line n + 1.
+                                                The block is 7 controls whatever the meeting count (it used to be
+                                                11 plus 8 per meeting).
+
+                                                Rows line up between the columns only because every column has the
+                                                same number of equally tall lines. The view model guarantees that: an
+                                                empty value is a non-breaking space (so the line has a glyph and the
+                                                same height as its neighbours) and newlines inside a value are
+                                                flattened to spaces (so a value can never add a line). Do not add a
+                                                LineHeight or per-line padding here; natural line spacing is intended.
+
+                                                Widths: Day, Start and End are fixed. Room has a minimum width
+                                                (SectionMeetingRoomMinWidth) so that Type starts in the same column on
+                                                every card; a very long room name widens only its own card. Freq is Auto
+                                                and its TextBlock is shown only on cards with a non-weekly meeting
+                                                (HasNonDefaultFrequency), so on other cards the column collapses to 0.
+
+                                                The two Runs in each TextBlock are written adjacent on one line on
+                                                purpose: whitespace between them could become a stray space.
+                                                Presentation (font sizes, header colour) is in the
+                                                TextBlock.MeetingColumn styles at the top of this file.
+                                            -->
+                                            <Grid Margin="6,2,8,6" IsVisible="{Binding !IsCollapsed}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="45" />
+                                                    <ColumnDefinition Width="45" />
+                                                    <ColumnDefinition Width="45" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource SectionMeetingRoomMinWidth}" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Day" /><Run Text="{Binding MeetingDayLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="1" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Start" /><Run Text="{Binding MeetingStartLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="2" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="End" /><Run Text="{Binding MeetingEndLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="3" Margin="2,0,2,0" Classes="MeetingColumn" IsVisible="{Binding HasNonDefaultFrequency}"><Run Classes="MeetingHeader" Text="Freq" /><Run Text="{Binding MeetingFrequencyLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="4" Margin="2,0,2,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Room" /><Run Text="{Binding MeetingRoomLines}" /></TextBlock>
+                                                <TextBlock Grid.Column="5" Margin="2,0,0,0" Classes="MeetingColumn"><Run Classes="MeetingHeader" Text="Type" /><Run Text="{Binding MeetingTypeLines}" /></TextBlock>
+                                            </Grid>
 
                                             <!--  Row 3: Properties (tags, reserves, resources) when not collapsed  -->
                                             <StackPanel

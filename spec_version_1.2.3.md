@@ -1173,6 +1173,67 @@ visual regression.
   - `LineSpacing` was tried and removed, because Avalonia applies it to every line.
 - **Tests:** 24 in `SectionCardPropertyLinesTests`. Suite: 1153 passed.
 
+**Step 4 decisions (user, 2026-10-09): meeting table.**
+- **Structure:** one `Grid` with one `TextBlock` per column (Day, Start, End, Freq, Room, Type).
+  Each holds its header Run, then one line per meeting. That is 7 controls whatever the meeting
+  count; today it is 7 + 3 + 8 per meeting.
+- **Alignment across cards:**
+  - Day, Start and End keep their fixed 45 px columns.
+  - **Room gets a minimum width** from an AXAML resource, so Type starts in the same column on
+    every card. A very long room name pushes only its own card.
+  - **Freq stays where it is.** It appears only on cards with a non-weekly meeting, and on those
+    cards it shifts Room and Type right. Moving it last was considered and declined.
+- **Spacing: tighter rows accepted.** Natural line spacing makes each meeting row ~3 px tighter,
+  and the header gap shrinks slightly. No forced `LineHeight`.
+- **Row alignment between columns** relies on every line having the same height:
+  - an empty value is a non-breaking space, so its line has the same height as the others;
+  - newlines inside values are flattened to spaces.
+
+**Step 4 outcome (2026-10-09): done, user hand-checked.**
+- **View model:** `Meeting{Day,Start,End,Frequency,Room,Type}Lines` on `SectionListItemViewModel`,
+  built once by `BuildColumnLines`:
+  - "\n" + value per meeting, so the string starts on the line below the header;
+  - empty → NBSP;
+  - embedded newlines → spaces.
+- **AXAML:** each column TextBlock holds two Runs written on **one line**. Runs on separate lines
+  make the XAML loader insert a stray " " Run between them.
+- **Room column:** `SectionMeetingRoomMinWidth` = 90.
+- **Controls:** the meetings block went from 11 + 8 per meeting to 7.
+- **Off-screen render probe:** all six columns came out the same height with 0, 1 and 3 meetings.
+- **Tests:** 21 in `SectionCardMeetingColumnsTests`. Suite: 1174 passed.
+
+**Interim memory measurement (2026-10-09, after step 4).** Same method as the baseline: Debug
+build, 800-section DB, VS snapshots.
+
+| | Baseline (2026-10-08) | After step 4 |
+|---|---|---|
+| Heap, 800-section semester | 575 MB | **475 MB** |
+| Heap, near-empty semester | 82 MB | 51 MB |
+| Snapshot diff, large − small | +466 MB, +4.46 M objects | **+401 MB, +3.58 M objects** |
+| Card template, controls declared | ~72, plus 8 per extra meeting (~93 typical) | ~27 for any number of meetings, plus 12 Runs |
+
+- **Caveats:**
+  - Avalonia also went from 12.0.2 to 12.1.3 in between.
+  - The user scrolled the list this time, which the baseline steps don't mention.
+- **What remains per section (~500 KB)** is spread across Avalonia's per-element bookkeeping:
+  - styling, ~60 MB shallow: `StyleInstance` 170 per section and `StyleClassActivator` 314 per
+    section;
+  - compositor and render objects, ~75 MB;
+  - `ValueStore`s, 89 per section, including 13 `ColumnDefinition`s per card;
+  - event subscriptions;
+  - text shaping.
+- **Debug-only overhead, ~25–30 MB:** `AvaloniaXamlCreateSourceInfo` defaults to true only in
+  Debug, so every XAML-created element carries a `XamlSourceInfo` with its own `Uri` (59 per
+  section, ~23 MB). Release builds don't have it.
+- **Our own styles cost too (found here).** A style with a class condition attaches a
+  `StyleInstance` and activators to **every** element of that type in the view, matching or not.
+  The styles added in steps 2–4 put roughly 60 of them on every card:
+  - `Run.warning` and `Run.MeetingHeader` on every Run;
+  - the `Path.cardPropertyIcon*` styles and `Path.DisclosureTriangle.expanded` on every Path;
+  - `TextBlock.MeetingColumn` on every TextBlock.
+  - **Step 4b** replaces them with direct values.
+- **Final number:** taken in a **Release** build without scrolling, after 4b.
+
 ---
 
 ## 22 — AutoCompleteBox crash when revising a meeting's start time

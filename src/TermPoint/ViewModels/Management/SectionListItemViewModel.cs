@@ -20,6 +20,45 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     // New: meeting details with meeting type for expanded display
     public IReadOnlyList<MeetingDisplayInfo> MeetingDetails { get; }
 
+    // ── Meeting table column strings ─────────────────────────────────────────
+    // The card's meeting table is one Grid with one TextBlock per column. Each TextBlock holds its
+    // header Run followed directly by one of the strings below, so every meeting lands on its own
+    // line under the header. All six are computed once in the constructor from MeetingDetails by
+    // BuildColumnLines, which guarantees that all six have the same number of lines — that equal
+    // line count (plus equal line height) is the only thing keeping the columns aligned row by row.
+
+    /// <summary>
+    /// The "Day" column body: one line per meeting (in <see cref="MeetingDetails"/> order), each
+    /// preceded by a line break, e.g. <c>"\nMon\nWed"</c>. Empty (<c>""</c>) when the section has
+    /// no meetings, so the view shows only the header line. See <see cref="BuildColumnLines"/> for
+    /// the empty-value and embedded-newline rules shared by all six column strings.
+    /// </summary>
+    public string MeetingDayLines { get; }
+
+    /// <summary>The "Start" column body; same shape and rules as <see cref="MeetingDayLines"/>.</summary>
+    public string MeetingStartLines { get; }
+
+    /// <summary>The "End" column body; same shape and rules as <see cref="MeetingDayLines"/>.</summary>
+    public string MeetingEndLines { get; }
+
+    /// <summary>
+    /// The "Freq" column body; same shape and rules as <see cref="MeetingDayLines"/>. Weekly
+    /// meetings have an empty frequency, so their lines are a single non-breaking space.
+    /// </summary>
+    public string MeetingFrequencyLines { get; }
+
+    /// <summary>
+    /// The "Room" column body; same shape and rules as <see cref="MeetingDayLines"/>. A meeting
+    /// with no room has an empty value, so its line is a single non-breaking space.
+    /// </summary>
+    public string MeetingRoomLines { get; }
+
+    /// <summary>
+    /// The "Type" column body; same shape and rules as <see cref="MeetingDayLines"/>. A meeting
+    /// with no meeting type has an empty value, so its line is a single non-breaking space.
+    /// </summary>
+    public string MeetingTypeLines { get; }
+
     // Right-side summary properties (displayed in order top-to-bottom)
     public string? InstructorLine { get; }
     public string? InstructorHeaderLine { get; }
@@ -266,6 +305,14 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             })
             .ToList();
 
+        // Build the six column strings of the meeting table from the finished MeetingDetails list.
+        MeetingDayLines       = BuildColumnLines(MeetingDetails.Select(m => m.Day));
+        MeetingStartLines     = BuildColumnLines(MeetingDetails.Select(m => m.StartTime));
+        MeetingEndLines       = BuildColumnLines(MeetingDetails.Select(m => m.EndTime));
+        MeetingFrequencyLines = BuildColumnLines(MeetingDetails.Select(m => m.Frequency));
+        MeetingRoomLines      = BuildColumnLines(MeetingDetails.Select(m => m.Room));
+        MeetingTypeLines      = BuildColumnLines(MeetingDetails.Select(m => m.MeetingType));
+
         // Build individual summary properties for the right-side stack
         var instructorParts = section.InstructorAssignments
             .Select(a =>
@@ -325,6 +372,63 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 
     private static string FormatMinutes(int minutes) =>
         $"{minutes / 60:D2}{minutes % 60:D2}";
+
+    /// <summary>
+    /// A non-breaking space (U+00A0). Stands in for an empty value in a meeting-table column so
+    /// the line still holds a glyph and keeps the same height as its neighbours. Written as a
+    /// numeric cast, not a literal, because the character is invisible in source.
+    /// </summary>
+    private const char NonBreakingSpace = (char)0x00A0;
+
+    /// <summary>
+    /// Builds the body of one column of the meeting table: for each value, in order, a line break
+    /// (<c>"\n"</c>) followed by the value. The view places the result directly after the column's
+    /// header Run in a single <c>TextBlock</c>, so the header is line 1 and each meeting is the
+    /// next line down. With no values the result is <c>""</c>, so a card with no meetings shows
+    /// only the header line (no blank line).
+    ///
+    /// The six columns must stay aligned row by row, which holds only if every column has exactly
+    /// one line per meeting and every line is the same height. Two rules guarantee that:
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     <b>Empty values.</b> A null, empty or whitespace-only value becomes a single
+    ///     non-breaking space (U+00A0), never an empty segment. A line with no glyph can
+    ///     collapse to a different height than a line with text; the non-breaking space gives it a
+    ///     glyph in the same font, so it is as tall as its neighbours.
+    ///   </description></item>
+    ///   <item><description>
+    ///     <b>Embedded newlines.</b> Any <c>\r\n</c>, <c>\r</c> or <c>\n</c> inside a value
+    ///     (e.g. a room name typed with a line break) is replaced by a space, so a value can never
+    ///     add a line to its own column and push the other columns out of step.
+    ///   </description></item>
+    /// </list>
+    /// </summary>
+    /// <param name="values">
+    /// The column's value for each meeting, in meeting order. Null entries are treated as empty.
+    /// </param>
+    /// <returns>
+    /// The concatenated <c>"\n" + value</c> segments, or <c>""</c> when <paramref name="values"/>
+    /// is empty.
+    /// </returns>
+    private static string BuildColumnLines(IEnumerable<string?> values)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var value in values)
+        {
+            sb.Append('\n');
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                // Keep the line the same height as its neighbours (see the remarks above).
+                sb.Append(NonBreakingSpace);
+                continue;
+            }
+
+            // Flatten any line breaks inside the value; "\r\n" first so it becomes one space.
+            sb.Append(value.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '));
+        }
+        return sb.ToString();
+    }
 }
 
 /// <summary>Display info for a single meeting within a section.</summary>
