@@ -80,61 +80,32 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     [ObservableProperty] private bool _isBeingCreated;
 
     // ── Attention flag ───────────────────────────────────────────────────────
-    // Set via right-click on the card. The card shows a colored flag icon on its
-    // top line (collapsed and expanded); the value is persisted to the section's
-    // JSON through the parent VM's save callback.
+    // Read-only on the card. The flag is chosen in the section editor's Flag dropdown (Apply
+    // saves it, Cancel discards it); after a save the card is rebuilt from the saved section,
+    // so this value always mirrors the section. The card shows a colored flag icon on its
+    // top line (collapsed and expanded) only when a flag is set.
 
     /// <summary>This section's advisory attention flag (drives the top-line flag icon).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasFlag))]
     [NotifyPropertyChangedFor(nameof(FlagBrush))]
-    [NotifyPropertyChangedFor(nameof(FlagDisplayBrush))]
-    [NotifyPropertyChangedFor(nameof(FlagOpacity))]
     [NotifyPropertyChangedFor(nameof(FlagTooltip))]
     private SectionFlag _flag;
 
     /// <summary>True when a flag is set (controls flag-icon visibility on the card).</summary>
     public bool HasFlag => Flag != SectionFlag.None;
 
-    /// <summary>Brush used by the flag icon — colored when set, muted grey when unset.</summary>
-    public IBrush FlagDisplayBrush => FlagVisuals.ResolveBrush(Flag)
-        ?? (Avalonia.Application.Current?.Resources.TryGetResource("FlagMuted", null, out var v) == true && v is IBrush b
-            ? b : Brushes.LightGray);
-
-    /// <summary>Opacity for the flag icon — full when set, faint hint when unset.</summary>
-    public double FlagOpacity => HasFlag ? 1.0 : 0.5;
-
-    /// <summary>Tooltip for the flag icon — instructional when unset, descriptive when set.</summary>
+    /// <summary>
+    /// Tooltip for the flag icon, which is only shown while a flag is set. Names the flag
+    /// (e.g. "Red flag (set in the section editor)") and says where it is changed.
+    /// Empty when no flag is set.
+    /// </summary>
     public string FlagTooltip => HasFlag
-        ? "Section flag (right-click the card to change)"
-        : "Right-click the card to set an attention flag";
+        ? $"{Flag} flag (set in the section editor)"
+        : string.Empty;
 
     /// <summary>Brush for the top-line flag icon, or null when no flag is set.</summary>
     public IBrush? FlagBrush => FlagVisuals.ResolveBrush(Flag);
-
-    /// <summary>True while the right-click flag picker popup is open over this card.</summary>
-    [ObservableProperty] private bool _isFlagMenuOpen;
-
-    /// <summary>Invoked after the flag changes so the parent can persist it and refresh the grid.</summary>
-    private readonly Action<Section>? _onFlagChanged;
-
-    /// <summary>Opens the right-click flag picker popup (wired to RightClickCommandBehavior).</summary>
-    [RelayCommand]
-    private void ShowFlagMenu() => IsFlagMenuOpen = true;
-
-    /// <summary>
-    /// Applies <paramref name="flag"/> to this section, updates the card immediately, persists
-    /// it through the parent callback, and closes the picker. Passing None clears the flag.
-    /// </summary>
-    [RelayCommand]
-    private void SetFlag(SectionFlag flag)
-    {
-        IsFlagMenuOpen = false;
-        if (Flag == flag) return;
-        Flag = flag;
-        Section.Flag = flag;
-        _onFlagChanged?.Invoke(Section);
-    }
 
     public string SortKeyInstructor { get; }
     public string SortKeySectionType { get; }
@@ -159,8 +130,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, SchedulingEnvironmentValue> reserveLookup,
         Dictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         string semesterName = "",
-        string semesterColor = "",
-        Action<Section>? onFlagChanged = null)
+        string semesterColor = "")
     {
         Section = section;
 
@@ -168,7 +138,6 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         SemesterColor = semesterColor;
 
         _flag = section.Flag;
-        _onFlagChanged = onFlagChanged;
 
         // Compute sort keys for instructor and section type
         var instructorNames = section.InstructorAssignments

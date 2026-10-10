@@ -33,7 +33,7 @@ will be verified.
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | **Done** |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
-| 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | Accepted |
+| 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | In progress: step 1 done (flag moved into the editor); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 
 Item numbers are for reference only. The implementation order is below.
@@ -1103,6 +1103,22 @@ visual regression.
   only from older backups. Nothing more is lost once 1.2.3 is installed. The user decided
   (2026-10-09) to ship the fix with 1.2.3 rather than as a 1.2.2.x hotfix.
 - **Release note:** mention that room types (including Remote) and flags now survive editing.
+
+**Step 1 outcome (2026-10-09): done, user hand-checked on desktop and WASM.**
+- **Editor:** a Flag dropdown sits right of Notes, offering (None), Red, Blue and Green. It is
+  built from the shared `FlagOptionVm.CreateOptions()`, which the grid's flag panel now uses too.
+  `SectionEditViewModel.SelectedFlag` is seeded from the section and written only by Save.
+- **Card:** no right-click handler and no flag popup. The flag icon shows only when a flag is set.
+  Removed: `IsFlagMenuOpen`, `ShowFlagMenu`, `SetFlag`, `FlagOpacity`, `FlagDisplayBrush`,
+  `SaveSectionFlag`, and the `onFlagChanged` callback.
+- **Kept:** `RightClickCommandBehavior`, which `DetachablePanel.axaml` still uses.
+- **Now unreferenced:** the `FlagMuted` brush in AppColors.axaml. Remove it with the next
+  AppColors edit.
+- **Editor template:** verified identical to HEAD apart from the Notes/Flag block. The editor slot
+  is byte-identical.
+- **Tests:** 13 in `SectionFlagTests`. Suite: 1129 passed.
+- **Follow-up noted:** a meeting whose `RoomTypeId` refers to a deleted room type opens as "(none)",
+  and Apply clears it. This is separate from the clone bug.
 
 ---
 

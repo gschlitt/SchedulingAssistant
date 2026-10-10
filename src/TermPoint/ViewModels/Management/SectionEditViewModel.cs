@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.ViewModels.GridView;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -14,6 +15,21 @@ public partial class SectionEditViewModel : ViewModelBase
     [ObservableProperty] private string? _selectedCourseId;
     [ObservableProperty] private string _sectionCode = string.Empty;
     [ObservableProperty] private string _notes = string.Empty;
+
+    /// <summary>
+    /// The attention flag as chosen in the editor's Flag dropdown (next to Notes). Seeded from the
+    /// section's current flag in the constructor and written back to the section only by
+    /// <see cref="Save"/>, so Cancel discards any change.
+    /// </summary>
+    [ObservableProperty] private SectionFlag _selectedFlag;
+
+    /// <summary>
+    /// The choices offered by the Flag dropdown (None, Red, Blue, Green, in that order). Built by
+    /// the shared <see cref="FlagOptionVm.CreateOptions"/> factory so it matches the schedule
+    /// grid's Flag panel. The dropdown binds <c>SelectedValue</c> to <see cref="SelectedFlag"/>
+    /// through each option's <c>Value</c>.
+    /// </summary>
+    public IReadOnlyList<FlagOptionVm> FlagOptions { get; } = FlagOptionVm.CreateOptions();
 
     /// <summary>Section capacity as edited text; empty = null (unspecified). Parsed in Save().</summary>
     [ObservableProperty] private string _capacityText = string.Empty;
@@ -576,6 +592,7 @@ public partial class SectionEditViewModel : ViewModelBase
         SelectedCourseId = section.CourseId;
         SectionCode      = section.SectionCode;
         Notes            = section.Notes;
+        SelectedFlag     = section.Flag;
         CapacityText     = section.Capacity?.ToString() ?? string.Empty;
 
         // If both fields are already populated (edit or copy-with-code), record them as
@@ -1058,6 +1075,7 @@ public partial class SectionEditViewModel : ViewModelBase
         // without a course lookup (e.g. "100", "300", or empty when not set).
         _section.Level = Courses.FirstOrDefault(c => c.Id == SelectedCourseId)?.Level;
         _section.Notes = Notes.Trim();
+        _section.Flag = SelectedFlag;
         _section.Capacity = ParsedCapacity;
         _section.Schedule = Meetings
             .Select(m => m.ToSchedule())

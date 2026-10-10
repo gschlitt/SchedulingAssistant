@@ -918,21 +918,60 @@
 
                     </Grid>
 
-                    <!--  Notes (at bottom)  -->
-                    <TextBlock
-                        Margin="0,4,0,0"
-                        FontSize="10"
-                        Foreground="{StaticResource TextLabel}"
-                        Text="Notes" />
-                    <TextBox
-                        Height="44"
-                        Width="275"
-                        HorizontalAlignment="Left"
-                        Padding="4,2"
-                        AcceptsReturn="True"
-                        FontSize="11"
-                        TextWrapping="Wrap"
-                        Text="{Binding Notes}" />
+                    <!--
+                        Notes (at bottom), with the Flag dropdown to its right. The flag is part of the
+                        edit: Apply saves it and Cancel discards it. Both sit inside the
+                        AreOtherFieldsEnabled gate, so they unlock together with the rest of the form.
+                        The Flag ComboBox is just wide enough for the flag icon, "(None)" and the arrow,
+                        so Notes (275) + gap (8) + Flag (95) still fits the card's 400 minimum width.
+                    -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <!--  Notes  -->
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                FontSize="10"
+                                Foreground="{StaticResource TextLabel}"
+                                Text="Notes" />
+                            <TextBox
+                                Height="44"
+                                Width="275"
+                                HorizontalAlignment="Left"
+                                Padding="4,2"
+                                AcceptsReturn="True"
+                                FontSize="11"
+                                TextWrapping="Wrap"
+                                Text="{Binding Notes}" />
+                        </StackPanel>
+
+                        <!--  Flag (None / Red / Blue / Green) — same options as the schedule grid's Flag panel  -->
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                FontSize="10"
+                                Foreground="{StaticResource TextLabel}"
+                                Text="Flag" />
+                            <ComboBox
+                                Width="95"
+                                VerticalAlignment="Top"
+                                CornerRadius="4"
+                                FontSize="11"
+                                ItemsSource="{Binding FlagOptions}"
+                                SelectedValue="{Binding SelectedFlag}"
+                                SelectedValueBinding="{Binding Value}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Viewbox Width="12" Height="12" VerticalAlignment="Center" IsVisible="{Binding HasIcon}">
+                                                <Path Data="{StaticResource FlagIcon}" Fill="{Binding Brush}" />
+                                            </Viewbox>
+                                            <TextBlock FontSize="11" Text="{Binding Label}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
 
                 </StackPanel>
                 <!--  End AreOtherFieldsEnabled gate  -->
@@ -1121,8 +1160,7 @@
                                     BorderThickness="{Binding $parent[UserControl].DataContext.IsMultiSemesterMode, Converter={StaticResource MultiSemesterLeftBorderThicknessConverter}}"
                                     BoxShadow="{StaticResource PanelBoxShadow}"
                                     Classes="SectionCard"
-                                    CornerRadius="4"
-                                    b:RightClickCommandBehavior.Command="{Binding ShowFlagMenuCommand}">
+                                    CornerRadius="4">
                                     <Border.BorderBrush>
                                         <MultiBinding Converter="{StaticResource SemesterBorderBrushConverter}">
                                             <Binding Path="SemesterName" />
@@ -1130,79 +1168,6 @@
                                         </MultiBinding>
                                     </Border.BorderBrush>
                                     <Grid>
-
-                                    <!--  Right-click flag picker popup  -->
-                                    <Popup
-                                        IsLightDismissEnabled="True"
-                                        IsOpen="{Binding IsFlagMenuOpen, Mode=TwoWay}"
-                                        Placement="Pointer">
-                                        <Border
-                                            Background="{StaticResource AppBackground}"
-                                            BorderBrush="{StaticResource SubduedBorder}"
-                                            BorderThickness="1"
-                                            BoxShadow="0 2 8 0 #33000000"
-                                            CornerRadius="4"
-                                            Padding="3">
-                                            <StackPanel MinWidth="120" Spacing="1">
-                                                <Button
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Left"
-                                                    Padding="6,4"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Command="{Binding SetFlagCommand}"
-                                                    CommandParameter="{x:Static models:SectionFlag.Red}">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
-                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagRed}" />
-                                                        </Viewbox>
-                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Red" />
-                                                    </StackPanel>
-                                                </Button>
-                                                <Button
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Left"
-                                                    Padding="6,4"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Command="{Binding SetFlagCommand}"
-                                                    CommandParameter="{x:Static models:SectionFlag.Blue}">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
-                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagBlue}" />
-                                                        </Viewbox>
-                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Blue" />
-                                                    </StackPanel>
-                                                </Button>
-                                                <Button
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Left"
-                                                    Padding="6,4"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Command="{Binding SetFlagCommand}"
-                                                    CommandParameter="{x:Static models:SectionFlag.Green}">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <Viewbox Width="13" Height="13" VerticalAlignment="Center">
-                                                            <Path Data="{StaticResource FlagIcon}" Fill="{StaticResource FlagGreen}" />
-                                                        </Viewbox>
-                                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="Green" />
-                                                    </StackPanel>
-                                                </Button>
-                                                <Border Height="1" Margin="2,2" Background="{StaticResource SubduedBorder}" />
-                                                <Button
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Left"
-                                                    Padding="6,4"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Command="{Binding SetFlagCommand}"
-                                                    CommandParameter="{x:Static models:SectionFlag.None}">
-                                                    <TextBlock VerticalAlignment="Center" FontSize="11" Text="Clear flag" />
-                                                </Button>
-                                            </StackPanel>
-                                        </Border>
-                                    </Popup>
 
                                     <StackPanel>
 
@@ -1269,7 +1234,10 @@
                                                     IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Text="{Binding CapacityLabel}"
                                                     ToolTip.Tip="Section capacity" />
-                                                <!--  Attention flag — always visible; faint placeholder when unset  -->
+                                                <!--
+                                                    Attention flag — view-only on the card and shown only when a flag is set
+                                                    (no placeholder). The flag is chosen in the section editor's Flag dropdown.
+                                                -->
                                                 <Viewbox
                                                     Grid.Column="6"
                                                     Width="20"
@@ -1277,9 +1245,9 @@
                                                     Margin="6,-1,0,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Top"
-                                                    Opacity="{Binding FlagOpacity}"
+                                                    IsVisible="{Binding HasFlag}"
                                                     ToolTip.Tip="{Binding FlagTooltip}">
-                                                    <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagDisplayBrush}" />
+                                                    <Path Data="{StaticResource FlagIcon}" Fill="{Binding FlagBrush}" />
                                                 </Viewbox>
                                             </Grid>
 

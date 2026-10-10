@@ -45,13 +45,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
     [ObservableProperty] private ContextMenuItemVm? _selectedRoom;
 
     /// <summary>The fixed list of flag choices (None + the three colors) shown in the Flag sub-panel.</summary>
-    public ObservableCollection<FlagOptionVm> Flags { get; } =
-    [
-        new(SectionFlag.None, "(None)"),
-        new(SectionFlag.Red, "Red"),
-        new(SectionFlag.Blue, "Blue"),
-        new(SectionFlag.Green, "Green"),
-    ];
+    public ObservableCollection<FlagOptionVm> Flags { get; } = new(FlagOptionVm.CreateOptions());
 
     /// <summary>The flag option currently selected in the Flag sub-panel; committed on Confirm.</summary>
     [ObservableProperty] private FlagOptionVm? _selectedFlag;
