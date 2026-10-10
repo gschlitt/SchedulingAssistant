@@ -31,7 +31,7 @@ will be verified.
 | 16 | Remaining network I/O on the UI thread | Responsiveness | Accepted |
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | **Done**, plus 2 latent row-loss bugs fixed |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
-| 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | Accepted |
+| 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | **Done** |
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | Accepted |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
@@ -310,6 +310,8 @@ and the saved card shows them.
 - [ ] Instructors DataGrid: header click sorts.
 - [ ] Schedule grid visual pass: tile text, co-scheduled stacks, overlaps.
 - [ ] macOS: modal dialogs appear above the main window; dropdowns inside dialogs work.
+      Item 19: wheel past the end of a section-editor dropdown; the section list doesn't move
+      (native `PopupRoot` path).
 - [ ] WASM demo: section editor ComboBoxes in a scrolled list; pointer-heavy use without memory
       growth.
 
@@ -911,6 +913,22 @@ leak happens only from inside the popup. No change needed; keep it as a regressi
 - Grid filter popups and meeting-list dropdowns still scroll internally.
 - Repeat in the WASM demo.
 
+**Outcome (2026-10-09): done as recommended (app-wide).**
+- **Code:** a new [PopupWheelContainment](src/TermPoint/Behaviors/PopupWheelContainment.cs) static
+  class, registered once in `App.OnFrameworkInitializationCompleted` outside the `#if`, so the WASM
+  demo gets it too. No AXAML edits.
+- **Routing confirmed against the Avalonia 12.1.3 source:** both `PopupRoot` and `OverlayPopupHost`
+  set `InteractiveParent` to the `Popup`, so one class handler on each host type catches every
+  popup. Windows runs with `OverlayPopups = true`, so it uses `OverlayPopupHost`, as WASM does;
+  macOS uses `PopupRoot`.
+- **One exception, tooltips:** a popup whose host content is a `ToolTip` is left alone. Tooltips
+  are hit-testable and route to their owner, so wheeling over one still scrolls what's underneath,
+  as before.
+- **Checks:** the user hand-checked desktop and the WASM demo. There's no automated test, because
+  the test project has no Avalonia headless setup. Suite: 1109 passed.
+- **macOS still to check:** native popups take the `PopupRoot` path. Include it in the macOS pass
+  (item 1).
+
 ---
 
 ## 20 — Load by subject / focus (new feature)
@@ -1235,7 +1253,7 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 | BugSnag: handled failures and the "previous session ended uncleanly" event arrive, with paths and usernames scrubbed | 6, 7 |
 
 **Platforms.** Windows 10 and Windows 11 (the compositor deadlock fix in item 1 is Win10-specific),
-plus macOS for items 4, 9 and 13 and dialog layering.
+plus macOS for items 4, 9 and 13, dialog layering and popup wheel containment (item 19).
 
 **Test-rig notes carried over from July.**
 - Clumsy `ip.DstAddr` filters are IPv4-only and SMB rides IPv6. Black-hole SMB with

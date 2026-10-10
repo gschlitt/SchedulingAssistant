@@ -165,6 +165,12 @@ public partial class App : Application
             e.Handled = true;
         };
 
+        // ── Popup wheel containment ─────────────────────────────────────────
+        // Stops a mouse-wheel tick inside any popup (dropdowns, pickers, flyouts)
+        // from escaping and scrolling the area behind it (spec item 19). Kept
+        // outside the #if so the WASM demo gets it too.
+        TermPoint.Behaviors.PopupWheelContainment.Register();
+
 #if !BROWSER
         // Start a BugSnag session so errors during this run contribute to the
         // per-release stability score (% crash-free sessions).
