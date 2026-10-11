@@ -112,6 +112,41 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     public bool IsEditing => EditVm is not null;
 
     /// <summary>
+    /// True when the list should virtualize its cards (build only those on screen, with scroll
+    /// anchoring), false for the classic panel that builds every card. The value in force is the
+    /// user's <see cref="AppSettings.VirtualizeSectionList"/> preference AND the platform's
+    /// <see cref="PlatformCapabilities.SupportsSectionListVirtualization"/> (so the browser demo is
+    /// always false). Read directly from the settings; <c>PropertyChanged</c> is raised when the
+    /// preference changes (the view binds this to <c>ListVirtualizationBehavior.IsVirtualized</c>), so
+    /// the switch takes effect immediately.
+    /// </summary>
+    public bool IsListVirtualized =>
+        ResolveIsListVirtualized(
+            AppSettings.Current.VirtualizeSectionList,
+            PlatformCapabilities.SupportsSectionListVirtualization);
+
+    /// <summary>
+    /// The rule behind <see cref="IsListVirtualized"/>, separated so it can be tested without a
+    /// view model: the preference only counts where the platform supports virtualization.
+    /// </summary>
+    /// <param name="setting">The user's preference.</param>
+    /// <param name="platformSupports">Whether the platform supports virtualizing the list.</param>
+    /// <returns>True when both hold.</returns>
+    internal static bool ResolveIsListVirtualized(bool setting, bool platformSupports) =>
+        setting && platformSupports;
+
+    /// <summary>
+    /// Forwards a change of the virtualization preference to the view, which is bound to
+    /// <see cref="IsListVirtualized"/>. Other settings are ignored.
+    /// </summary>
+    /// <param name="settingName">The name of the setting that changed (see <see cref="AppSettings.SettingChanged"/>).</param>
+    private void OnAppSettingChanged(string settingName)
+    {
+        if (settingName == nameof(AppSettings.VirtualizeSectionList))
+            OnPropertyChanged(nameof(IsListVirtualized));
+    }
+
+    /// <summary>
     /// The currently selected section item, or null if nothing is selected or a banner is selected.
     /// Safe to use without type-casting.
     /// </summary>
@@ -218,6 +253,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
         // Highlight section cards that match the active Schedule Grid filter.
         _sectionStore.FilteredIdsChanged += ApplyFilterHighlights;
+
+        // Switch panels live when the user toggles the virtualization preference.
+        AppSettings.SettingChanged += OnAppSettingChanged;
 
         _sortMode = AppSettings.Current.SectionSortMode;
         _selectedSortModeIndex = SortModeToIndex(_sortMode);
@@ -653,10 +691,13 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 allConflicts[sectionId] = lines;
         }
 
+        // One conflict per line, like the instructor conflicts below. Joining them on one line
+        // made a card with many room clashes extremely wide, which pushed the schedule view
+        // aside while the left column sizes to its content (editing).
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
         {
             item.RoomConflictWarning = allConflicts.TryGetValue(item.Section.Id, out var lines)
-                ? string.Join("; ", lines)
+                ? string.Join("\n", lines)
                 : null;
         }
     }
@@ -1353,6 +1394,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _sectionStore.SectionsChanged -= Reload;
         _sectionStore.SelectionChanged -= OnStoreSelectionChanged;
         _sectionStore.FilteredIdsChanged -= ApplyFilterHighlights;
+        AppSettings.SettingChanged -= OnAppSettingChanged;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────

@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Off-screen probe for the Section List's scroll anchoring (spec_version_1.2.3.md, items 21 and 23).
+    NOT part of TermPoint.sln and NOT built by CI: run it by hand (see README.md).
+    It compiles the REAL behaviour sources from src/TermPoint/Behaviors (below), so it checks the
+    shipping code against the Avalonia version named here.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+
+    <!--
+      Keep this equal to the Avalonia version in src/TermPoint/TermPoint.csproj: bump it as part of
+      every Avalonia upgrade (the build warns when they differ). To try a candidate version first,
+      override on the command line with the MSBuild property AvaloniaVersion (see README.md)
+    -->
+    <AvaloniaVersion Condition="'$(AvaloniaVersion)' == ''">12.1.3</AvaloniaVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="$(AvaloniaVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The real behaviours, compiled straight from the app's source tree (never copied). -->
+    <Compile Include="..\..\src\TermPoint\Behaviors\ListScrollAnchorBehavior.cs" Link="Real\ListScrollAnchorBehavior.cs" />
+    <Compile Include="..\..\src\TermPoint\Behaviors\ListVirtualizationBehavior.cs" Link="Real\ListVirtualizationBehavior.cs" />
+    <Compile Include="..\..\src\TermPoint\Behaviors\SuppressPopupScrollBehavior.cs" Link="Real\SuppressPopupScrollBehavior.cs" />
+    <Compile Include="..\..\src\TermPoint\Behaviors\ScopeToken.cs" Link="Real\ScopeToken.cs" />
+  </ItemGroup>
+
+  <!-- Warn when this probe would test a different Avalonia version than the app ships. -->
+  <Target Name="CheckProbeAvaloniaVersion" BeforeTargets="CoreCompile">
+    <XmlPeek XmlInputPath="$(MSBuildThisFileDirectory)..\..\src\TermPoint\TermPoint.csproj"
+             Query="//PackageReference[@Include='Avalonia']/@Version">
+      <Output TaskParameter="Result" PropertyName="AppAvaloniaVersion" />
+    </XmlPeek>
+    <Warning Condition="'$(AppAvaloniaVersion)' != '$(AvaloniaVersion)'"
+             Text="ScrollAnchorProbe runs against Avalonia $(AvaloniaVersion) but TermPoint.csproj references $(AppAvaloniaVersion). Update AvaloniaVersion in ScrollAnchorProbe.csproj." />
+  </Target>
+
+</Project>

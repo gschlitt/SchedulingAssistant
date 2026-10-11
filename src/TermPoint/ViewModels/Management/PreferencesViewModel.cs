@@ -52,6 +52,32 @@ public class PreferencesViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Mirrors <see cref="AppSettings.VirtualizeSectionList"/>: when true the Section List builds
+    /// only the cards on screen (less memory on large semesters). Persists immediately on change and
+    /// takes effect immediately: <see cref="AppSettings.SettingChanged"/> tells the Section List,
+    /// which switches its panel. Only meaningful where
+    /// <see cref="IsSectionListVirtualizationAvailable"/> is true.
+    /// </summary>
+    public bool VirtualizeSectionList
+    {
+        get => AppSettings.Current.VirtualizeSectionList;
+        set
+        {
+            if (AppSettings.Current.VirtualizeSectionList == value) return;
+            AppSettings.Current.VirtualizeSectionList = value;
+            AppSettings.Current.Save();
+            AppSettings.RaiseSettingChanged(nameof(AppSettings.VirtualizeSectionList));
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// True when this platform can virtualize the Section List (false in the browser demo). The
+    /// Preferences view hides the <see cref="VirtualizeSectionList"/> checkbox when this is false.
+    /// </summary>
+    public bool IsSectionListVirtualizationAvailable => PlatformCapabilities.SupportsSectionListVirtualization;
+
+    /// <summary>
     /// True when the filter-pass behavior is <see cref="FilterPassBehavior.Highlight"/>.
     /// Mutually exclusive with <see cref="FilterExpandsSection"/>.
     /// </summary>

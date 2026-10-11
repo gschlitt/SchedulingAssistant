@@ -188,16 +188,28 @@
 			</DockPanel>
 		</Border>
 
-		<!--  Content: swaps between Section View and Events View  -->
-		<ScrollViewer
-			Grid.Row="3"
-			HorizontalScrollBarVisibility="Disabled"
-			VerticalScrollBarVisibility="Auto">
-			<StackPanel b:SuppressPopupScrollBehavior.IsEnabled="True">
-				<views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-				<views:MeetingListView DataContext="{Binding MeetingListVm}" IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-			</StackPanel>
-		</ScrollViewer>
+		<!--
+			Content: swaps between Section View and Events View.
+
+			The Section list is placed directly in the row, with no ScrollViewer around it: its
+			ListBox gets the row's real height and scrolls itself. That is what lets it virtualize
+			(a virtualizing list must not be measured with unlimited height) and lets scroll
+			anchoring work; see SectionListView.axaml and spec_version_1.2.3.md, item 23.
+
+			The Events list keeps its own outer ScrollViewer (vertical Auto, horizontal Disabled),
+			with b:SuppressPopupScrollBehavior on the StackPanel inside it.
+		-->
+		<Panel Grid.Row="3">
+			<views:SectionListView DataContext="{Binding SectionListVm}" IsVisible="{Binding DataContext.IsShowingSections, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+			<ScrollViewer
+				HorizontalScrollBarVisibility="Disabled"
+				IsVisible="{Binding DataContext.IsShowingMeetings, RelativeSource={RelativeSource AncestorType=UserControl}}"
+				VerticalScrollBarVisibility="Auto">
+				<StackPanel b:SuppressPopupScrollBehavior.IsEnabled="True">
+					<views:MeetingListView DataContext="{Binding MeetingListVm}" />
+				</StackPanel>
+			</ScrollViewer>
+		</Panel>
 
 	</Grid>
 

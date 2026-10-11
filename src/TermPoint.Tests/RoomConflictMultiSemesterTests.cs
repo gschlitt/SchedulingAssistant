@@ -184,6 +184,40 @@ public sealed class RoomConflictMultiSemesterTests : IDisposable
     }
 
     /// <summary>
+    /// Several room clashes on one card are shown one per line (joined with "\n", like the
+    /// instructor conflicts), never run together on one line. A single long line made the card,
+    /// and with it the left column while editing, wide enough to push the schedule view aside.
+    /// Three sections in the same room at the same time give each card two clash lines.
+    /// </summary>
+    [Fact]
+    public void SingleSemester_MultipleRoomConflicts_AreOnePerLine()
+    {
+        var (yearId, sem1, _) = SeedYearAndSemesters();
+        SeedConflictingPair(sem1, "S1");                 // S1A and S1B
+        _sectionRepo.Insert(new Section                  // a third section in the same slot
+        {
+            Id = Guid.NewGuid().ToString(),
+            SemesterId = sem1,
+            SectionCode = "S1C",
+            Schedule = [new SectionDaySchedule { Day = 1, StartMinutes = 480, DurationMinutes = 60, RoomId = "r1" }]
+        });
+
+        var vm = CreateVm();
+        SelectSemesters(yearId, sem1);
+
+        var cards = Cards(vm);
+        Assert.Equal(3, cards.Count);
+        Assert.All(cards, c =>
+        {
+            Assert.NotNull(c.RoomConflictWarning);
+            Assert.DoesNotContain("; ", c.RoomConflictWarning);
+            var lines = c.RoomConflictWarning!.Split('\n');
+            Assert.Equal(2, lines.Length);
+            Assert.All(lines, l => Assert.StartsWith("Room conflict:", l));
+        });
+    }
+
+    /// <summary>
     /// In multi-semester mode the warnings are suppressed even though each semester
     /// contains a genuine within-semester conflict.
     /// </summary>

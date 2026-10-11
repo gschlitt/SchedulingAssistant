@@ -35,6 +35,7 @@ will be verified.
 | 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
+| 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -1396,6 +1397,94 @@ length. **User-facing annoyance, repeated:** 11 errors in 2 minutes in the field
 
 ---
 
+## 23 — Section-list virtualization with scroll anchoring (opt-in, new 2026-10-10)
+
+**Why.** Virtualizing the section list builds only the cards on screen.
+- **Memory:** at 800 sections the heap drops from ~390 MB (Release) to ~170 MB (Debug, measured
+  by the user). In multi-semester mode the old cost multiplies (~1 GB+ for three large
+  semesters).
+- **Reloads:** full reloads stay fast at any size; without virtualization every card is rebuilt.
+- **The blocker** was Avalonia's `VirtualizingStackPanel` **scroll drift**. It was characterised on
+  2026-10-10:
+  - cards render correctly, but the content under an unchanged offset slides when any on-screen
+    card changes height;
+  - even selection does it (border 0 → 3 px), so a double-click could land on a different card;
+  - details are in item 21, "Virtualization re-test".
+- **The user's idea: scroll anchoring.** Keep a chosen on-screen card pinned through layout passes.
+
+**Prototype (2026-10-10).**
+- **Layout:** the ListBox scrolls itself. SectionPanelContent's outer ScrollViewer now wraps only
+  the Events list.
+- **Panel:** a `VirtualizingStackPanel` ItemsPanel, carrying the moved `SuppressPopupScrollBehavior`.
+- **`ListScrollAnchorBehavior`:**
+  - anchor priority: the pressed card, then the selected card, then the first visible card;
+  - only the anchor's **top** is pinned;
+  - an offset change counts as a scroll when the content moved rigidly with it, or when
+    user-input hints are active: wheel, scrollbar drag, touch/pen pan, plus a 400 ms grace
+    period;
+  - guards: re-entrancy, and an oscillation limit (more than 20 corrections in 500 ms).
+- **`SuppressPopupScrollBehavior.Bypass()`** lets deliberate `ScrollIntoView` calls through.
+- **Virtualization-aware `ScrollSelectedItemIntoView`.**
+- **Results:**
+  - an off-screen probe with 300 cards held the pressed card within 1 px in 17 of 17 positions
+    (press, and press + 500 px growth);
+  - the user tested desktop with 800 sections: "nimble", heap 170 MB;
+  - WASM: the double-click opens the right card, Cancel is clean, cross-view scroll works.
+
+**Decisions (user, 2026-10-10).**
+- **Opt-in for 1.2.3.** A **Preferences** checkbox replaces the kill switch and is **off by
+  default**.
+  - **Off:** the non-virtualizing `StackPanel` panel, with anchoring disabled.
+  - **On:** `VirtualizingStackPanel` with anchoring.
+  - The self-scrolling list layout applies in **both** modes. With the switch off, this means:
+    - the list has its own scrollbar;
+    - the multi-semester "Add to which semester?" prompt no longer scrolls with the list;
+    - PageDown works (see below).
+  - UI text is a working draft for now.
+- **WASM:** always off, and the checkbox is **hidden** (no large demo data).
+- **Required before release** (Opus's "1 to 5"):
+  1. **One scroll path.** Every code-driven scroll of the section list goes through one public
+     helper on the behaviour, which pauses anchoring and bypasses suppression. The rule is
+     documented on the ListBox and in CLAUDE.md's gotchas: "to show a section, set
+     `SelectedItem` or call the helper; never scroll the list directly — anchoring undoes it."
+  2. **The switch** (above).
+  3. **Keep the probe in the repo** as a re-runnable check. Add "re-run the anchoring probe" to
+     the Avalonia-upgrade checklist.
+  4. **A simplification and review pass** on `ListScrollAnchorBehavior` (979 lines, ~45% comments).
+  5. **Field tests:**
+     - macOS trackpad momentum;
+     - a touchscreen flick;
+     - keyboard PageDown;
+     - the editor-recycling data test: type in the editor, click the grid, scroll the editing
+       card far away and back, Apply, and check that every value was saved;
+     - the Win11 VM;
+     - detached Section View;
+     - multi-semester mode.
+- **Also agreed:**
+  - **Touch inertia:** detect user scrolling from Avalonia's scroll-gesture events, which continue
+    through inertia, not only from raw pointer moves plus a 400 ms grace period.
+  - **Keyboard:** treat PageUp, PageDown, Home, End and the arrow keys in the list as
+    user-scroll hints.
+  - **PageDown finding:** PageDown never worked in the section list. In the old nested layout the
+    ListBox's inner ScrollViewer can't scroll but still marks PageUp/PageDown handled, so the
+    outer one never sees it. The self-scrolling layout fixes this.
+- **Later (1.2.4 candidate):** turn it on automatically above a size threshold (e.g. 300
+  sections), with the checkbox becoming Auto / Always / Never once it has had field time.
+
+**Production / data integrity.** No persistence changes. The only data-entry exposure is the
+editor's card being recycled when scrolled far away while unfocused. The view model holds the
+committed values, and the field test above checks it.
+
+**Tucked in here (user, 2026-10-10): room conflicts one per line.**
+- **Problem:** a card's room-conflict warning joined every clash on one line with `"; "`, while
+  instructor conflicts used `"\n"`. A section with many room clashes made a very wide card, which
+  pushed the schedule view aside (the left column sizes to its content while editing).
+- **Fix:** `SectionListViewModel.ApplyRoomConflicts` now joins with `"\n"`.
+- **Test:** `RoomConflictMultiSemesterTests.SingleSemester_MultipleRoomConflicts_AreOnePerLine`.
+  Three sections in one room and slot give two lines per card. The test fails with the old join.
+
+---
+
 ## Parking lot: unconfirmed, check before finalising the spec
 
 **P1. Possible hidden duplicate section editors (noted 2026-10-09). CHECKED: REFUTED.**
@@ -1463,6 +1552,20 @@ LATENT: unreachable today.**
 
   This interacts with items 4 and 9, which change the lock and startup code.
 
+**P5. Unit tests write the developer's real `settings.json` (noted 2026-10-10). LOW RISK,
+PRE-EXISTING.**
+- `AppSettingsTests` (and, since item 23, `SettingsFileGuard`-based Preferences tests) save
+  `AppSettings` to `%APPDATA%\TermPoint\settings.json` and restore it afterwards.
+- **Risk on a dev machine:** if a Debug TermPoint saves its settings during a test run, that save
+  is overwritten by the restore. If the test process is killed mid-test, the test value stays.
+- **Fix:** an internal test-only override for the settings folder, so tests use a temp dir.
+  Small; not done in item 23 to keep scope.
+
+**P6. A selection made while the Section view is hidden isn't revealed when it is shown again
+(noted 2026-10-10).** Example: choose a section from the grid while the Events list is showing,
+then switch back. It was probably the same before item 23. If wanted, reveal the selected card when
+`IsShowingSections` turns true.
+
 **P4. File an Avalonia bug report for the VirtualizingStackPanel item-growth jump (noted
 2026-10-09, user request). IDEA, not scheduled.**
 - **Why:** virtualizing the section list cut the 800-section heap from 475 to 160 MB. It is blocked
@@ -1517,6 +1620,10 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 | Remote DB via the wizard with a long UNC picker session; File → Open on a remote share; wizard Cancel after browsing | 1, 18 |
 | **Windows 11 VM:** after the Harmony patch removal, AutoCompleteBox crash test. Click a Start Time and a Length suggestion in the section editor and the Meetings flyout, then wait 10 s each. No crash. Also covers the item 1 meeting-time entry checks on Win11. | 1 |
 | BugSnag: handled failures and the "previous session ended uncleanly" event arrive, with paths and usernames scrubbed | 6, 7 |
+| **Section-list virtualization ON** (Preferences), 800-section DB. **Clicks:** click, then double-click a card mid-list: the editor opens on that card and it doesn't jump. **Editor:** open and close it near the top, middle and bottom. **Keyboard:** click a card, then arrow Down several times (no drift); PageDown pages the list. **Scrolling away:** wheel and scrollbar-drag away from a selected card and from an edited card; neither snaps back. **Cross-view:** select a grid tile whose card is off-screen. **Other flows:** Add, Copy, collapse/expand, multi-semester mode, detached Section View. **Live toggle:** toggle the preference while the list is open. | 23 |
+| **Section-list virtualization: editor-recycling data test.** Open the editor and change several fields (including a typed Start Time). Click the schedule grid, scroll the editing card far out of view and back, then Apply. Every value is saved. | 23 |
+| **Section-list virtualization: touch and trackpad.** A touchscreen flick through a large semester doesn't snag after the finger lifts. macOS trackpad momentum scrolling doesn't snap back. | 23 |
+| **Section-list virtualization OFF** (default): the list behaves as before, apart from its own scrollbar and PageDown now working. | 23 |
 
 **Platforms.** Windows 10 and Windows 11 (the compositor deadlock fix in item 1 is Win10-specific),
 plus macOS for items 4, 9 and 13, dialog layering and popup wheel containment (item 19).

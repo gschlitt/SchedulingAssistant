@@ -1082,7 +1082,15 @@
             </StackPanel>
         </Border>
 
-        <StackPanel
+        <!--
+            A Panel, not a StackPanel, so the ListBox below is given the row's real (finite)
+            height and scrolls itself, using its own template ScrollViewer. A StackPanel measures
+            its child with infinite height, which would make the list full height and leave an
+            outer ScrollViewer to do the scrolling; that defeats virtualization and gives the
+            list no scrollbar or PageUp / PageDown of its own. This layout applies whether or not
+            the list virtualizes (see the ListBox below and spec_version_1.2.3.md, item 23).
+        -->
+        <Panel
             x:Name="ListContentPanel"
             Grid.Row="1"
             HorizontalAlignment="Stretch">
@@ -1092,12 +1100,27 @@
                     Double-tapping an item sets it as SelectedItem (Avalonia's single-select model
                     does this on pointer-down) and then invokes EditCommand, which opens the inline
                     editor for the currently selected item.
+
+                    SCROLL RULE: to show a section, set SelectedItem or call
+                    ListScrollAnchorBehavior.ScrollItemIntoView(list, item). NEVER scroll this
+                    list's ScrollViewer directly (Offset, ScrollIntoView, BringIntoView): scroll
+                    anchoring will undo it. (SectionListView.axaml.cs follows the rule.)
+
+                    b:ListVirtualizationBehavior.IsVirtualized picks the panel and the anchoring from
+                    the user's Preferences setting (SectionListViewModel.IsListVirtualized); see the
+                    note where the ItemsPanel would be, below.
+
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled": cards are laid out at the
+                    list's width, and a card wider than that is clipped, never given a horizontal
+                    scrollbar (as when the outer ScrollViewer in SectionPanelContent did the scrolling).
                 -->
                 <ListBox
                     x:Name="SectionListBox"
                     Margin="5,0"
                     b:DoubleTapCommandBehavior.Command="{Binding EditCommand}"
                     b:EnterKeyCommandBehavior.Command="{Binding EditCommand}"
+                    b:ListVirtualizationBehavior.IsVirtualized="{Binding IsListVirtualized}"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     Background="{StaticResource AppBackground}"
                     BorderThickness="0"
                     Classes="SectionList"
@@ -1106,22 +1129,29 @@
                     SelectionMode="Single"
                    >
                     <!--
-                        Disable virtualisation so that when an item expands to show the inline
-                        editor, the panel recalculates all item positions correctly.
-                        VirtualizingStackPanel (the default) does not reflow on dynamic height
-                        changes, which causes subsequent items to render at stale y-offsets and
-                        visually overlap the expanded editor (and scroll the editor out of view).
-                        Re-confirmed still broken on Avalonia 12 (June 2026 probe).
-                        Re-tested on 12.1.3 (2026-10-09): virtualizing cut the 800-section heap
-                        from 475 to 160 MB, but the list still jumps when the editor opens, even
-                        with our auto-scroll disabled and the ListBox scrolling itself. No VSP fix
-                        in 12.1.4 either. See spec_version_1.2.3.md, item 21 "Virtualization re-test".
+                        NO ItemsPanel HERE ON PURPOSE. b:ListVirtualizationBehavior.IsVirtualized
+                        (bound on the ListBox above) builds the panel in code and swaps it at run
+                        time: a VirtualizingStackPanel with scroll anchoring when the switch is on,
+                        a plain StackPanel with anchoring disabled when it is off. Both panels carry
+                        b:SuppressPopupScrollBehavior, so RequestBringIntoView from the cards (focus,
+                        ComboBox clicks) is swallowed before the list's own ScrollContentPresenter
+                        scrolls on it.
+
+                        History. This list used a plain StackPanel (virtualization disabled)
+                        because VirtualizingStackPanel does not cope with an on-screen item that
+                        grows by hundreds of pixels (the inline editor opening): it re-estimates the
+                        heights of the off-screen items, so the content under an unchanged scroll
+                        offset slides (the list "jumps", and a double-click then lands on a different
+                        card). Confirmed on Avalonia 12 (June 2026 probe), still present in 12.1.3 and
+                        12.1.4. Virtualizing cuts the 800-section heap from about 475 MB to about
+                        160 MB, so ListScrollAnchorBehavior now compensates: it pins the pressed or
+                        selected card and corrects the scroll offset after each layout pass.
+
+                        Opt-in: Preferences > "Faster section list for large schedules"
+                        (AppSettings.VirtualizeSectionList, default off, never on in the WASM demo).
+                        Re-run tools/ScrollAnchorProbe after every Avalonia upgrade.
+                        See spec_version_1.2.3.md, item 23 (and item 21, "Virtualization re-test").
                     -->
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel />
-                        </ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
                     <ListBox.ItemContainerTheme>
                         <ControlTheme BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
                             <Setter Property="Padding" Value="0" />
@@ -1457,7 +1487,7 @@
                     </ListBox.DataTemplates>
                 </ListBox>
 
-        </StackPanel>
+        </Panel>
 
     </Grid>
 

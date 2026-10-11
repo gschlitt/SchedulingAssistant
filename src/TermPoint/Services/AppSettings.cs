@@ -48,6 +48,21 @@ public class AppSettings
     }
 
     /// <summary>
+    /// Raised, on the calling (UI) thread, after a setting that live views react to has been changed
+    /// and saved; the argument is the setting's property name (for example
+    /// <c>nameof(VirtualizeSectionList)</c>). Most settings are simply re-read when used and never
+    /// raise it. Static, so it survives <see cref="Load"/> replacing the cached instance; a
+    /// subscriber must unsubscribe when it is disposed.
+    /// </summary>
+    public static event Action<string>? SettingChanged;
+
+    /// <summary>
+    /// Raises <see cref="SettingChanged"/>. Call it after assigning the new value and saving.
+    /// </summary>
+    /// <param name="settingName">The changed property's name.</param>
+    internal static void RaiseSettingChanged(string settingName) => SettingChanged?.Invoke(settingName);
+
+    /// <summary>
     /// Anonymous install identifier, generated once on first launch and persisted.
     /// Sent to BugSnag as the user ID so error reports can be grouped by install
     /// without identifying the person. Never displayed in-app or transmitted anywhere
@@ -113,6 +128,19 @@ public class AppSettings
     /// Default: false.
     /// </summary>
     public bool OpenWithAllSectionsCollapsed { get; set; } = false;
+
+    /// <summary>
+    /// Opt-in (spec_version_1.2.3.md, item 23): when true, the Section List builds only the cards
+    /// that are on screen (a virtualizing panel plus scroll anchoring), which cuts memory sharply on
+    /// large semesters. When false, every card is built (the classic panel, no anchoring).
+    /// The value actually in force is this setting AND
+    /// <see cref="PlatformCapabilities.SupportsSectionListVirtualization"/>; the browser demo is
+    /// always off. Takes effect immediately (the list switches panels) via <see cref="SettingChanged"/>.
+    /// A settings file written before this property existed deserializes to the default, and an
+    /// older TermPoint ignores the unknown key, so no migration is needed either way.
+    /// Default: false.
+    /// </summary>
+    public bool VirtualizeSectionList { get; set; } = false;
 
     /// <summary>
     /// When true, this instance opens as a read-only observer: it never acquires the

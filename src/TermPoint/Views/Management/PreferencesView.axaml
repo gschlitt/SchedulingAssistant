@@ -101,6 +101,29 @@
                     IsChecked="{Binding FilterExpandsSection}" />
             </StackPanel>
 
+            <!--
+                Faster section list for large schedules (spec_version_1.2.3.md, item 23). Opt-in.
+                Takes effect immediately: the Section List swaps its panel when this changes.
+                Hidden where the platform cannot do it (the browser demo).
+            -->
+            <StackPanel IsVisible="{Binding IsSectionListVirtualizationAvailable}" Spacing="12">
+                <CheckBox
+                    Content="Faster section list for large schedules"
+                    IsChecked="{Binding VirtualizeSectionList}">
+                    <CheckBox.Styles>
+                        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+                            <Setter Property="Width" Value="18" />
+                            <Setter Property="Height" Value="18" />
+                        </Style>
+                    </CheckBox.Styles>
+                </CheckBox>
+                <TextBlock
+                    FontSize="{StaticResource FontSizeSmall}"
+                    Foreground="{StaticResource ForegroundMuted}"
+                    Text="For large schedules with hundreds of sections in memory limited devices. Do not use if scrolling misbehaves."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
    <StackPanel Spacing="4">
                 <TextBlock
                     FontSize="{StaticResource FontSizeLarge}"
@@ -161,7 +184,7 @@
             <TextBlock
                 FontSize="{StaticResource FontSizeSmall}"
                 Foreground="{StaticResource ForegroundMuted}"
-                Text="In reader mode you can view and filter the schedule but not edit it. This instance never takes the write lock, so it can never block someone who needs to make changes. Use Refresh to pull the latest saved data. Takes effect the next time you start the app."
+                Text="In reader mode you can view and filter the schedule but not edit it. Your instance of TermPoint never takes the write lock, so it can never block someone who needs to make changes. Use Refresh to pull the latest saved data. Takes effect the next time you start the app."
                 TextWrapping="Wrap" />
 
         </StackPanel>

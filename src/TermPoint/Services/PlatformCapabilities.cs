@@ -41,6 +41,14 @@ public static class PlatformCapabilities
     public static bool SupportsSave => false;
 
     /// <summary>
+    /// True when the Section List may virtualize its cards (build only those on screen, with scroll
+    /// anchoring; see <see cref="AppSettings.VirtualizeSectionList"/>). False in the browser demo:
+    /// the demo data is small, and the anchoring behavior has not been field-tested under WASM.
+    /// The value in force is the user's setting AND this capability.
+    /// </summary>
+    public static bool SupportsSectionListVirtualization => false;
+
+    /// <summary>
     /// Extra pixels added per entry when measuring co-scheduled tile height.
     /// WASM renders on-tree TextBlocks taller than off-tree Measure() predicts.
     /// </summary>
@@ -77,6 +85,9 @@ public static class PlatformCapabilities
 
     /// <inheritdoc cref="SupportsSave"/>
     public static bool SupportsSave => true;
+
+    /// <inheritdoc cref="SupportsSectionListVirtualization"/>
+    public static bool SupportsSectionListVirtualization => true;
 
     /// <inheritdoc cref="TileHeightMarginPerEntry"/>
     public static int TileHeightMarginPerEntry => 0;
