@@ -2,7 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace TermPoint.Models;
 
-public class Course
+/// <summary>
+/// A course in the calendar (e.g. "HIST 101"). Sections are scheduled against courses.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
+/// </summary>
+public class Course : PersistedRecord
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string SubjectId { get; set; } = string.Empty;

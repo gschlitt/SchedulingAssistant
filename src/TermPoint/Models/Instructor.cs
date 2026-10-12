@@ -2,7 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace TermPoint.Models;
 
-public class Instructor
+/// <summary>
+/// A faculty member who can be assigned to sections.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
+/// </summary>
+public class Instructor : PersistedRecord
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string LastName { get; set; } = string.Empty;

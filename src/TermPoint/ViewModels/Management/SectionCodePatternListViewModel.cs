@@ -146,7 +146,7 @@ public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissab
             CampusId      = SelectedItem.CampusId,
             SectionTypeId = SelectedItem.SectionTypeId,
             SortOrder     = SelectedItem.SortOrder,
-        };
+        }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
         EditVm = new SectionCodePatternEditViewModel(
             copy, isNew: false,
             campusOptions:      BuildCampusOptions(),

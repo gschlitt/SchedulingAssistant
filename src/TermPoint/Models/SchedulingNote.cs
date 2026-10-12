@@ -4,8 +4,9 @@ namespace TermPoint.Models;
 /// A free-text scheduling note attached to a specific instructor within a specific semester.
 /// Exactly one note exists per (instructor, semester) pair; it is created lazily the first
 /// time text is saved and updated in place thereafter.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
 /// </summary>
-public class SchedulingNote
+public class SchedulingNote : PersistedRecord
 {
     /// <summary>Stable surrogate key for the note row.</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString();

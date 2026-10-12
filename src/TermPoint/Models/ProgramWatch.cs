@@ -3,8 +3,9 @@ namespace TermPoint.Models;
 /// <summary>
 /// A monitored group of courses whose sections are checked for time overlaps,
 /// helping administrators assess student access to the schedule.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
 /// </summary>
-public class ProgramWatch
+public class ProgramWatch : PersistedRecord
 {
     /// <summary>Stable surrogate key.</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString();

@@ -3,7 +3,8 @@ namespace TermPoint.Models;
 /// <summary>
 /// The core scheduling entity — a course section offered in a specific semester.
 /// Inherits all common scheduling fields (time slots, rooms, campus, tags, resources,
-/// instructor assignments) from <see cref="SchedulableBase"/>.
+/// instructor assignments) from <see cref="SchedulableBase"/>, which in turn derives from
+/// <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
 /// </summary>
 public class Section : SchedulableBase
 {

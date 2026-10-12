@@ -84,10 +84,18 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
     /// Serializes the extra JSON data for a semester (currently just Color).
     /// The key structural fields (id, name, sort_order, academic_year_id) are stored
     /// in dedicated columns; only supplemental fields go into the data column.
+    /// <para>
+    /// Any unknown fields found in the data column when the semester was loaded
+    /// (<see cref="PersistedRecord.ExtensionData"/>) are written back alongside Color, so an older
+    /// app version does not delete fields a newer one added (spec item 3). The payload keeps its
+    /// historical format: default System.Text.Json options, hence <c>"Color"</c> not <c>"color"</c>.
+    /// </para>
     /// </summary>
+    /// <param name="semester">The semester being saved.</param>
+    /// <returns>The JSON for the <c>data</c> column.</returns>
     private static string SerializeData(Semester semester)
     {
-        var payload = new { semester.Color };
+        var payload = new SemesterData { Color = semester.Color }.WithExtensionDataFrom(semester);
         return JsonSerializer.Serialize(payload);
     }
 
@@ -105,16 +113,20 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
                 SortOrder      = reader.GetInt32(3),
             };
 
-            // Deserialize Color from the data column (column 4).
-            // Existing rows that have '{}' will deserialize fine — Color stays empty string.
+            // Deserialize Color (and any unknown fields) from the data column (column 4).
+            // Existing rows that have '{}' will deserialize fine — Color stays empty string and
+            // there is nothing to preserve.
             if (!reader.IsDBNull(4))
             {
                 try
                 {
-                    var json = reader.GetString(4);
-                    using var doc = JsonDocument.Parse(json);
-                    if (doc.RootElement.TryGetProperty("Color", out var colorEl))
-                        sem.Color = colorEl.GetString() ?? string.Empty;
+                    var data = JsonSerializer.Deserialize<SemesterData>(reader.GetString(4));
+                    if (data is not null)
+                    {
+                        sem.Color = data.Color ?? string.Empty;
+                        // Park fields this version does not know so SerializeData writes them back.
+                        sem.CopyExtensionDataFrom(data);
+                    }
                 }
                 catch { /* malformed data — leave Color as default */ }
             }

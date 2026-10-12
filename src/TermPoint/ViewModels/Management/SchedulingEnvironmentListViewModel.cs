@@ -182,7 +182,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             Name = SelectedItem.Name,
             SectionCodeAbbreviation = SelectedItem.SectionCodeAbbreviation,
             SortOrder = SelectedItem.SortOrder,
-        };
+        }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
         EditVm = new SchedulingEnvironmentEditViewModel(copy, isNew: false,
             onSave: v => { _repo.Update(v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null,

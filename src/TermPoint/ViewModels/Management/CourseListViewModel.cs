@@ -166,6 +166,11 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     {
         LastErrorMessage = null;
         if (SelectedCourse is null) return;
+        // Work on a copy so Cancel leaves the list's own course untouched. Save writes the WHOLE
+        // copy back, so every persisted field must be carried over here: Level and Capacity seed
+        // the editor's Level and Capacity controls (a clone that omitted them reset both to
+        // blank/auto on every Apply), and ExtensionData keeps unknown JSON fields written by a
+        // newer app version (spec item 3).
         var clone = new Course
         {
             Id = SelectedCourse.Id,
@@ -173,8 +178,10 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             CalendarCode = SelectedCourse.CalendarCode,
             Title = SelectedCourse.Title,
             TagIds = new List<string>(SelectedCourse.TagIds),
-            IsActive = SelectedCourse.IsActive
-        };
+            IsActive = SelectedCourse.IsActive,
+            Level = SelectedCourse.Level,
+            Capacity = SelectedCourse.Capacity,
+        }.WithExtensionDataFrom(SelectedCourse);
         EditVm = new CourseEditViewModel(clone, isNew: false,
             allTags: LoadAllTags(),
             onSave: async c =>
@@ -240,12 +247,13 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     {
         LastErrorMessage = null;
         if (SelectedSubject is null) return;
+        // Save writes the whole copy back, so unknown JSON fields (spec item 3) are carried over too.
         var clone = new Subject
         {
             Id = SelectedSubject.Id,
             Name = SelectedSubject.Name,
             CalendarAbbreviation = SelectedSubject.CalendarAbbreviation
-        };
+        }.WithExtensionDataFrom(SelectedSubject);
         SubjectEditVm = new SubjectEditViewModel(clone, isNew: false,
             onSave: async s =>
             {

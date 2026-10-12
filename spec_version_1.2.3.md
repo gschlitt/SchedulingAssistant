@@ -392,6 +392,92 @@ size. The gate only works for clients ≥ 1.2.3 (see Sequencing constraints).
 **Verification.** Round-trip tests per entity: deserialize JSON with an unknown field, re-serialize,
 and assert the field survives. Gate test: a DB stamped with a higher version opens read-only.
 
+**Decisions (user, 2026-10-10).**
+- **Catch-all:** `[JsonExtensionData]` on every persisted entity **and nested record type**
+  (meetings, instructor assignments, reserves, and so on).
+  - **Editors that rebuild objects** must carry each original's unknown fields through:
+    - the section editor rebuilds `Schedule`, `InstructorAssignments` and `Reserves` from its
+      rows;
+    - `CloneSection` copies everything;
+    - `SectionCloneTests`' reflection guard forces this.
+  - **Audit every save path** that builds a fresh object to update an existing record. New records
+    (Add, Copy Semester, imports) start with no unknown fields.
+- **Minimum writer version:**
+  - **Where:** stored in the existing, previously unused **`AppConfiguration`** key/value table as
+    `key = 'MinWriterVersion'`, `value = '1.2.5'`. It is human-readable as it is, with no new
+    table and no schema change.
+  - **1.2.3 ships the CHECK only.** No release raises the stamp yet.
+  - **Out-of-date app:** an app older than the stamp opens the database **read-only**, reusing
+    the existing reader mode, with a specific message.
+- **Message, chosen by an `InstallChannel` value** (new, in `PlatformCapabilities`, worked out
+  once at startup):
+  - **Store:** packaged, with the Store package identity (family name
+    `Academic-Solutions.TermPoint_9nmm6ygzk390e`). *"This database needs TermPoint 1.2.5 or
+    later. [Open Microsoft Store], update TermPoint there, then reopen it. Until then you can view
+    the schedule but not change it."* The button launches an `ms-windows-store://` link to
+    TermPoint's page or to Downloads and updates; verify the exact link on a real install.
+  - **DirectDownload (Velopack):** dormant today. When it is reactivated: check for updates
+    immediately, then "Update ready — [Restart now]" (`ApplyUpdatesAndRestart`), and the download
+    page if the download fails. The "restart TermPoint" wording was **dropped**: the updater
+    checks only at launch and applies at the next launch, so one restart isn't always enough.
+  - **Sideload (MSIX with a non-Store identity) or Development:** *"Install TermPoint 1.2.5 or
+    later from your usual source."*
+  - `InstallChannel` will also be useful for BugSnag metadata and support.
+- **Microsoft Store update facts** (2026-10-10):
+  - Store updates are **not** applied at launch. They install in the background when the app
+    isn't running, users can pause them, and IT can control them.
+  - Mixed versions are therefore possible among Store users, and across channels. Store
+    certification also delays a release by hours to days.
+- **Release discipline when a future release raises the stamp:**
+  - mark that Store submission **mandatory** in Partner Center;
+  - allow time for certification and roll-out;
+  - consider raising the stamp lazily, only when the new feature is first used.
+  - Release checklist line: *"Does this release add a value, rule or restructure that an older
+    version could break by editing? If yes, raise MinWriterVersion."*
+- **Parked for later:** in-app Store updates via `StoreContext`, i.e. a periodic check, an
+  "Update now" banner and honouring the mandatory flag. They need a Windows-specific build target
+  for the MSIX build (parking-lot P7).
+
+**Step 3a outcome (2026-10-10): the catch-all is done.**
+- **The base class:** new `Models/PersistedRecord` with
+  `[JsonExtensionData] Dictionary<string, JsonElement>? ExtensionData`, plus
+  `CopyExtensionDataFrom` / `WithExtensionDataFrom`. It is null when there are no unknown fields,
+  so it adds nothing to the JSON.
+- **Coverage:** every persisted type derives from it: 16 tables, including `Section` and `Meeting`
+  via `SchedulableBase`, plus the nested `SectionDaySchedule`, `InstructorAssignment` and
+  `SectionReserve`.
+- **Semester** stored its `data` as `{"Color": …}` built ad hoc. It now goes through an internal
+  `SemesterData : PersistedRecord` payload. The format is unchanged (still PascalCase `Color`).
+- **Save-path audit.** Every path that rebuilds a record now carries the original's unknown fields.
+  - Fixed:
+    - `CloneSection`;
+    - the section editor's meetings (each row keeps its original), assignments and reserves (by
+      id);
+    - the meeting editor's slots and attendees;
+    - grid quick-edit for instructors;
+    - the course, subject (both paths), room, instructor, campus, environment-value, code-pattern
+      and semester-rename edits;
+    - the commitment, release, block-pattern and scheduling-notes editors.
+  - Mutate-in-place paths are safe, with control tests.
+  - New-record paths start empty by design.
+  - **Known edge:** applying a block pattern replaces all meeting rows, so their unknown fields are
+    dropped.
+- **Tests: +93.** `ExtensionDataRoundTripTests` (reflection over all 21 types, with guards that
+  every nested and `Deserialize<T>` type is a `PersistedRecord`), `ExtensionDataRepositoryTests`
+  (real schema, every table) and `ExtensionDataSavePathTests` (real view models). `SectionCloneTests`
+  now populates all four levels. Removing each carry turns its tests red. Suite: 1315 passed.
+- **Existing data is written byte-identically.** Every type's JSON was compared before and after,
+  and a read-only check of the real BIOL database (336 sections) found no stale keys and no change
+  on re-serialise. The file itself was not modified.
+- **Production bug found and fixed alongside (release note):**
+  - **Problem:** `CourseListViewModel.Edit` built its editing copy without `Level` and `Capacity`,
+    so **every course Apply blanked the course's Capacity and reset its Level override** (1.2.2 and
+    earlier).
+  - **Fix:** fixed on the same lines, with a test.
+  - **Data impact:** capacities already lost are recoverable only from backups.
+- **Rule for future code** (recorded in CLAUDE.md, enforced by tests): a new persisted class must
+  derive from `PersistedRecord`, and code that rebuilds a record must call `WithExtensionDataFrom`.
+
 ---
 
 ## 4 — Stop opening the shared DB directly; fix startup ordering; single-instance guard
@@ -1551,6 +1637,34 @@ LATENT: unreachable today.**
   - await the pending release before `EnterReaderMode`.
 
   This interacts with items 4 and 9, which change the lock and startup code.
+
+**P8. Campus queries use the wrong JSON key case (noted 2026-10-10 during item 3a; confirmed).
+PRE-EXISTING BUG.**
+- **The mismatch:** `CampusRepository` and `SeedData.FindOrCreateCampus` query
+  `json_extract(data, '$.Name')` and `'$.SortOrder'`. Campus JSON is written by `JsonHelpers` in
+  **camelCase** (`name`, `sortOrder`), and SQLite JSON paths are case-sensitive, so the
+  expressions return NULL.
+- **Likely effects:**
+  - campuses are listed in arbitrary order instead of `SortOrder`;
+  - the duplicate-campus-name check never matches;
+  - seeding from `.tpconfig` may create a duplicate campus instead of finding the existing one.
+- **Fix:** use `'$.name'` / `'$.sortOrder'`. Then check the real databases for duplicate campuses
+  before deciding on any clean-up. The ordering fix visibly changes campus order to the intended
+  one. Decide with the user.
+
+**P7. In-app updates for the Microsoft Store build (noted 2026-10-10, item 3). FUTURE, 1.2.4
+candidate; do it before the first release that raises MinWriterVersion.**
+- **The API:** `Windows.Services.Store.StoreContext`:
+  - `GetAppAndOptionalStorePackageUpdatesAsync`;
+  - `RequestDownloadAndInstallStorePackageUpdatesAsync`;
+  - the Partner Center **mandatory** flag via `StorePackageUpdate.Mandatory`.
+- **What it would add:** a periodic check while running (not only at launch), and "An update is
+  available — [Update now]".
+- **It needs:**
+  - a Windows-specific target framework for the MSIX build (e.g. `net10.0-windows10.0.19041.0`),
+    which affects `build-msix.ps1` and packaging;
+  - `IInitializeWithWindow` with the main window handle for the Store dialogs.
+- **Payoff:** a much smaller mixed-version window for everyone, so item 3's gate rarely triggers.
 
 **P5. Unit tests write the developer's real `settings.json` (noted 2026-10-10). LOW RISK,
 PRE-EXISTING.**

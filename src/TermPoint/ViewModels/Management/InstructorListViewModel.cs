@@ -361,7 +361,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
             Notes = s.Notes,
             IsActive = s.IsActive,
             StaffTypeId = s.StaffTypeId,
-        };
+        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
         EditVm = new InstructorEditViewModel(copy, isNew: false,
             staffTypes: GetStaffTypes(),
             onSave: i =>

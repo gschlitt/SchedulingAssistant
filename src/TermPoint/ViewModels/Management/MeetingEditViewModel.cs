@@ -435,17 +435,26 @@ public partial class MeetingEditViewModel : ViewModelBase
         _meeting.Title  = Title.Trim();
         _meeting.Notes  = Notes.Trim();
 
-        // Collect schedule slots (only those with both start and length committed)
+        // The schedule and attendee lists below are REBUILT from view-model rows, replacing the
+        // objects the meeting was loaded with. Each rebuilt child must carry its original's unknown
+        // JSON fields (PersistedRecord.ExtensionData, stored by a newer app version) or this Save
+        // would delete them. Snapshot the originals before the lists are replaced.
+        var originalAttendees = _meeting.InstructorAssignments;
+
+        // Collect schedule slots (only those with both start and length committed). Each slot
+        // remembers the entry it was created from and carries its unknown fields in ToSchedule().
         _meeting.Schedule = Slots
             .Select(s => s.ToSchedule())
             .Where(s => s is not null)
             .Cast<SectionDaySchedule>()
             .ToList();
 
-        // Collect selected attendees (meetings have no workload concept).
+        // Collect selected attendees (meetings have no workload concept). Rows map back to their
+        // original assignment by instructor id; a newly ticked attendee has no original.
         _meeting.InstructorAssignments = AttendeeSelections
             .Where(a => a.IsSelected)
-            .Select(a => new InstructorAssignment { InstructorId = a.Value.Id })
+            .Select(a => new InstructorAssignment { InstructorId = a.Value.Id }
+                .WithExtensionDataFrom(originalAttendees.FirstOrDefault(o => o.InstructorId == a.Value.Id)))
             .ToList();
 
         _meeting.CampusId = string.IsNullOrEmpty(SelectedCampusId) ? null : SelectedCampusId;

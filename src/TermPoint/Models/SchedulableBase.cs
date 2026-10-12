@@ -6,8 +6,13 @@ namespace TermPoint.Models;
 /// day/time slots (via <see cref="Schedule"/>), rooms (stored per-slot in each
 /// <see cref="SectionDaySchedule"/>), campus, tags, resources, and attendee/instructor
 /// assignments.
+/// <para>
+/// Derives from <see cref="PersistedRecord"/>, so <see cref="Section"/> and <see cref="Meeting"/>
+/// both carry <see cref="PersistedRecord.ExtensionData"/> (unknown JSON fields from newer app
+/// versions). See <see cref="PersistedRecord"/> for the rule that applies to code that rebuilds one.
+/// </para>
 /// </summary>
-public abstract class SchedulableBase
+public abstract class SchedulableBase : PersistedRecord
 {
     /// <summary>Unique database identifier. Must be set before any repository call.</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString();

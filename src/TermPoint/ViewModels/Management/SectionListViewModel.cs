@@ -1467,16 +1467,25 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// re-derives it from the course.) <c>SectionCloneTests</c> enforces this by reflection, so
     /// adding a property to <see cref="Section"/> or its child types without copying it here fails
     /// that test. Internal rather than private so tests can verify it.
+    /// <para>
+    /// "Every persisted field" includes <see cref="PersistedRecord.ExtensionData"/>: the unknown JSON
+    /// fields a newer app version may have stored. They are copied (into new dictionaries) for the
+    /// section and for each nested meeting, assignment and reserve, via
+    /// <see cref="PersistedRecordExtensions.WithExtensionDataFrom{T}"/>. The values are immutable
+    /// <see cref="System.Text.Json.JsonElement"/> snapshots, so copying the entries is enough.
+    /// Without this, the first Apply by an older client would delete those fields (spec item 3).
+    /// </para>
     /// </summary>
     /// <param name="s">The section to copy.</param>
     /// <returns>A new <see cref="Section"/> with the same id and field values and fresh child lists.</returns>
-    internal static Section CloneSection(Section s) => new()
+    internal static Section CloneSection(Section s) => new Section
     {
         Id              = s.Id,
         SemesterId      = s.SemesterId,
         CourseId        = s.CourseId,
         InstructorAssignments = s.InstructorAssignments
-            .Select(a => new InstructorAssignment { InstructorId = a.InstructorId, Workload = a.Workload })
+            .Select(a => new InstructorAssignment { InstructorId = a.InstructorId, Workload = a.Workload }
+                .WithExtensionDataFrom(a))
             .ToList(),
         SectionCode     = s.SectionCode,
         Notes           = s.Notes,
@@ -1495,12 +1504,12 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             // so omitting it silently wipes every meeting's room type (including "Remote") on Apply.
             RoomTypeId      = d.RoomTypeId,
             Frequency       = d.Frequency,
-        }).ToList(),
+        }.WithExtensionDataFrom(d)).ToList(),
         SectionTypeId   = s.SectionTypeId,
         CampusId        = s.CampusId,
         TagIds          = new List<string>(s.TagIds),
         ResourceIds     = new List<string>(s.ResourceIds),
         Reserves        = s.Reserves.Select(r => new SectionReserve
-            { ReserveId = r.ReserveId, Code = r.Code }).ToList(),
-    };
+            { ReserveId = r.ReserveId, Code = r.Code }.WithExtensionDataFrom(r)).ToList(),
+    }.WithExtensionDataFrom(s);
 }

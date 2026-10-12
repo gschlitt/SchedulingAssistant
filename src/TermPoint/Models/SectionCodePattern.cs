@@ -8,8 +8,9 @@ namespace TermPoint.Models;
 ///
 /// The generated code is: <c>Prefix + IncrementingPart + Suffix</c>.
 /// The incrementing part is either a formatted integer sequence or an alphabetic sequence.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
 /// </summary>
-public class SectionCodePattern
+public class SectionCodePattern : PersistedRecord
 {
     /// <summary>Unique identifier.</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString();

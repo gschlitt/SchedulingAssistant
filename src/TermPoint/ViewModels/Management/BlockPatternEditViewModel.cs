@@ -16,6 +16,15 @@ public partial class BlockPatternEditViewModel : ViewModelBase
     private readonly Action<BlockPattern> _onSave;
     private readonly Action _onCancel;
 
+    /// <summary>
+    /// The stored pattern being edited, or null when this slot is empty and a new pattern is being
+    /// created. <see cref="Save"/> builds a brand-new <see cref="BlockPattern"/> rather than mutating
+    /// this one, so it uses it to carry across the original's unknown JSON fields
+    /// (<see cref="PersistedRecord.ExtensionData"/>, spec item 3); otherwise saving from an older
+    /// app version would delete fields a newer version stored on the pattern.
+    /// </summary>
+    private readonly BlockPattern? _existing;
+
     public BlockPatternEditViewModel(
         int slot,
         BlockPattern? existing,
@@ -25,6 +34,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
         Action onCancel)
     {
         _slot = slot;
+        _existing = existing;
         _onSave = onSave;
         _onCancel = onCancel;
 
@@ -64,7 +74,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
         }
 
         ValidationError = null;
-        _onSave(new BlockPattern { Name = trimmedName, Days = selectedDays });
+        _onSave(new BlockPattern { Name = trimmedName, Days = selectedDays }.WithExtensionDataFrom(_existing));
     }
 
     [RelayCommand]

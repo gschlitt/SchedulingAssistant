@@ -1,6 +1,10 @@
 namespace TermPoint.Models;
 
-public class Room
+/// <summary>
+/// A physical room in which section meetings are held.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
+/// </summary>
+public class Room : PersistedRecord
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Building { get; set; } = string.Empty;

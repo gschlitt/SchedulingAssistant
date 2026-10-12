@@ -1,6 +1,10 @@
 namespace TermPoint.Models;
 
-public class InstructorCommitment
+/// <summary>
+/// A recurring weekly commitment (e.g. an office hour) that blocks an instructor's time in a semester.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
+/// </summary>
+public class InstructorCommitment : PersistedRecord
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string InstructorId { get; set; } = string.Empty;

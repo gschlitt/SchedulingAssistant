@@ -90,7 +90,7 @@ public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, ID
             Name         = SelectedItem.Name,
             Abbreviation = SelectedItem.Abbreviation,
             SortOrder    = SelectedItem.SortOrder,
-        };
+        }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
         EditVm = new CampusEditViewModel(copy, isNew: false,
             onSave: c => { _repo.Update(c); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == c.Id); EditVm = null; },
             onCancel: () => EditVm = null,

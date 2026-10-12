@@ -8,6 +8,8 @@ namespace TermPoint.Models;
 /// Inherits all common scheduling fields from <see cref="SchedulableBase"/>:
 /// day/time slots, rooms, campus, tags, resources, and attendees (drawn from the
 /// instructor pool via <see cref="SchedulableBase.InstructorAssignments"/>).
+/// Like every persisted record it carries <see cref="PersistedRecord.ExtensionData"/> (via
+/// <see cref="SchedulableBase"/>) so unknown JSON fields survive a load/save round trip.
 /// </summary>
 public class Meeting : SchedulableBase
 {

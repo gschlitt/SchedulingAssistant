@@ -1,6 +1,10 @@
 namespace TermPoint.Models;
 
-public class AcademicYear
+/// <summary>
+/// An academic year (e.g. "2025-2026") that groups semesters.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
+/// </summary>
+public class AcademicYear : PersistedRecord
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;

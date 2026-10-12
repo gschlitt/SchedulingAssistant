@@ -157,6 +157,17 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// </summary>
     private readonly Func<string, Task>? _onWarning;
 
+    /// <summary>
+    /// The stored schedule entry this row was created from, or null for a row the user added in this
+    /// editing session. The row exposes only the fields the editor knows about, but
+    /// <see cref="ToSchedule"/> builds a brand-new <see cref="SectionDaySchedule"/> on Save, so it
+    /// uses this original to carry across the original's unknown JSON fields
+    /// (<see cref="PersistedRecord.ExtensionData"/>, written by a newer app version). Without that,
+    /// saving from an older client would delete them. A new row has no original and so no unknown
+    /// fields, and a removed row simply drops its own, both of which are correct.
+    /// </summary>
+    private readonly SectionDaySchedule? _original;
+
     /// <param name="legalStartTimes">Academic-year legal start times — used for both the start-time suggestion list and the reverse block-length lookup.</param>
     /// <param name="includeSaturday">Whether Saturday should appear as a day option.</param>
     /// <param name="includeSunday">Whether Sunday should appear as a day option.</param>
@@ -199,6 +210,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
         _unit               = unit;
         _allRooms           = rooms;
         _sectionCampusId    = sectionCampusId;
+        _original           = existing;
 
         // Build the immutable reference set of all start times for RefreshStartTimes.
         _allStartTimeStrings = legalStartTimes
@@ -894,6 +906,11 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <summary>
     /// Converts the form state back to a <see cref="SectionDaySchedule"/> model.
     /// Returns null if the start time or block length have not been committed yet.
+    /// <para>
+    /// The result carries the unknown JSON fields of the entry this row was created from (see
+    /// <see cref="_original"/>), so a Save by an older app version does not delete fields a newer
+    /// version stored on the meeting.
+    /// </para>
     /// </summary>
     /// <returns>A new <see cref="SectionDaySchedule"/>, or null if incomplete.</returns>
     public SectionDaySchedule? ToSchedule()
@@ -908,7 +925,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
             RoomId          = string.IsNullOrEmpty(SelectedRoomId)        ? null : SelectedRoomId,
             RoomTypeId      = SelectedRoomType?.Id,
             Frequency       = BuildStoredFrequency(),
-        };
+        }.WithExtensionDataFrom(_original);
     }
 }
 

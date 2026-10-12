@@ -3,8 +3,9 @@ namespace TermPoint.Models;
 /// <summary>
 /// A physical or operational campus associated with rooms, section prefixes, and sections.
 /// First-class entity stored in the <c>Campuses</c> table.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
 /// </summary>
-public class Campus
+public class Campus : PersistedRecord
 {
     /// <summary>Unique identifier (GUID string).</summary>
     public string Id { get; set; } = Guid.NewGuid().ToString();

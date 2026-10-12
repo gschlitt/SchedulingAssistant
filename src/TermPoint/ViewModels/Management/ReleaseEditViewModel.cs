@@ -57,7 +57,7 @@ public partial class ReleaseEditViewModel : ViewModelBase
             WorkloadValue = workload,
             InstructorId = _originalRelease.InstructorId,
             SemesterId = _originalRelease.SemesterId
-        };
+        }.WithExtensionDataFrom(_originalRelease); // this replaces the stored record: keep its unknown JSON fields (spec item 3)
 
         await _onSave(release);
     }

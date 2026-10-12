@@ -22,6 +22,15 @@ public partial class SchedulingNotesViewModel : ViewModelBase
     /// <summary>The last text loaded from or written to the database, used to skip no-op saves.</summary>
     private string _persistedText = string.Empty;
 
+    /// <summary>
+    /// The note most recently loaded for the current (instructor, semester), or null when none is
+    /// stored yet. <see cref="Save"/> writes a freshly built <see cref="SchedulingNote"/> over the
+    /// stored row, so it carries this note's unknown JSON fields
+    /// (<see cref="PersistedRecord.ExtensionData"/>, spec item 3) across; otherwise saving the text
+    /// from an older app version would delete fields a newer version stored on the note.
+    /// </summary>
+    private SchedulingNote? _loadedNote;
+
     /// <summary>The editable note body, bound two-way to the TextBox.</summary>
     [ObservableProperty] private string _text = string.Empty;
 
@@ -52,12 +61,14 @@ public partial class SchedulingNotesViewModel : ViewModelBase
             LastErrorMessage = null;
             if (string.IsNullOrEmpty(_instructorId) || string.IsNullOrEmpty(_semesterId))
             {
+                _loadedNote = null;
                 _persistedText = string.Empty;
                 Text = string.Empty;
                 return;
             }
 
             var note = _repo.Get(_semesterId, _instructorId);
+            _loadedNote = note;
             _persistedText = note?.Text ?? string.Empty;
             Text = _persistedText;
         }
@@ -88,7 +99,7 @@ public partial class SchedulingNotesViewModel : ViewModelBase
                 InstructorId = _instructorId,
                 SemesterId = _semesterId,
                 Text = current
-            });
+            }.WithExtensionDataFrom(_loadedNote));
             _persistedText = current;
         }
         catch (Exception ex)

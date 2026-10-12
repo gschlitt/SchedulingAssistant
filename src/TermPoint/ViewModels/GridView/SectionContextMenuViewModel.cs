@@ -128,14 +128,21 @@ public partial class SectionContextMenuViewModel : ObservableObject
         switch (ActiveSubPanel)
         {
             case TileSubPanel.Instructors:
-                var existingWorkloads = _section.InstructorAssignments
-                    .ToDictionary(a => a.InstructorId, a => a.Workload);
+                // The list is rebuilt, so each assignment that already existed must keep both its
+                // workload and its unknown JSON fields (PersistedRecord.ExtensionData); only a
+                // newly ticked instructor starts fresh (workload 1, no unknown fields).
+                var existingAssignments = _section.InstructorAssignments
+                    .ToDictionary(a => a.InstructorId);
                 _section.InstructorAssignments = Instructors
                     .Where(i => i.IsChecked)
-                    .Select(i => new InstructorAssignment
+                    .Select(i =>
                     {
-                        InstructorId = i.Id,
-                        Workload     = existingWorkloads.GetValueOrDefault(i.Id) ?? 1m
+                        existingAssignments.TryGetValue(i.Id, out var original);
+                        return new InstructorAssignment
+                        {
+                            InstructorId = i.Id,
+                            Workload     = original?.Workload ?? 1m
+                        }.WithExtensionDataFrom(original);
                     })
                     .ToList();
                 break;

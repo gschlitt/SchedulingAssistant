@@ -1,6 +1,13 @@
 namespace TermPoint.Models;
 
-public class SectionDaySchedule
+/// <summary>
+/// One scheduled meeting slot (day, start, duration, room, meeting type, frequency) of a section or
+/// meeting. A record nested inside <see cref="SchedulableBase.Schedule"/>; it derives from
+/// <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip. The section
+/// editor rebuilds this list from its meeting rows, so each row remembers its original and
+/// carries that original's unknown fields across (see <see cref="PersistedRecord"/>).
+/// </summary>
+public class SectionDaySchedule : PersistedRecord
 {
     /// <summary>Well-known sentinel value indicating a remote/online meeting that needs no physical room.</summary>
     public const string RemoteRoomTypeId = "__remote__";

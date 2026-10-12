@@ -1077,16 +1077,29 @@ public partial class SectionEditViewModel : ViewModelBase
         _section.Notes = Notes.Trim();
         _section.Flag = SelectedFlag;
         _section.Capacity = ParsedCapacity;
+
+        // The three child lists below are REBUILT from view-model rows, replacing the objects the
+        // section was loaded with. Each rebuilt child must therefore carry its original's unknown
+        // JSON fields (PersistedRecord.ExtensionData, stored by a newer app version), or this Save
+        // would delete them. Snapshot the originals before the lists are replaced.
+        var originalAssignments = _section.InstructorAssignments;
+        var originalReserves    = _section.Reserves;
+
+        // Meetings: each row remembers the schedule entry it was created from and carries its
+        // unknown fields in ToSchedule(). Rows added in this session have no original; rows
+        // removed here simply drop theirs.
         _section.Schedule = Meetings
             .Select(m => m.ToSchedule())
             .Where(s => s is not null)
             .Cast<SectionDaySchedule>()
             .ToList();
 
-        // Multi-select instructors with workload
+        // Multi-select instructors with workload. Rows map back to their original assignment by
+        // instructor id; a newly ticked instructor has no original, so FirstOrDefault gives null.
         _section.InstructorAssignments = InstructorSelections
             .Where(i => i.IsSelected)
-            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload })
+            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload }
+                .WithExtensionDataFrom(originalAssignments.FirstOrDefault(a => a.InstructorId == i.Value.Id)))
             .ToList();
 
         // Single-select properties (treat empty string sentinel as null)
@@ -1104,9 +1117,11 @@ public partial class SectionEditViewModel : ViewModelBase
             .Select(r => r.Value.Id)
             .ToList();
 
+        // Reserves map back to their original by reserve id (a newly added reserve has none).
         _section.Reserves = ReserveSelections
             .Where(r => r.IsSelected && r.ParsedCode.HasValue)
-            .Select(r => new SectionReserve { ReserveId = r.Value.Id, Code = r.ParsedCode!.Value })
+            .Select(r => new SectionReserve { ReserveId = r.Value.Id, Code = r.ParsedCode!.Value }
+                .WithExtensionDataFrom(originalReserves.FirstOrDefault(x => x.ReserveId == r.Value.Id)))
             .ToList();
 
         await _onSave(_section);

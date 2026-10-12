@@ -72,12 +72,13 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
     {
         LastErrorMessage = null;
         if (SelectedSubject is null) return;
+        // Save writes the whole copy back, so unknown JSON fields (spec item 3) are carried over too.
         var clone = new Subject
         {
             Id = SelectedSubject.Id,
             Name = SelectedSubject.Name,
             CalendarAbbreviation = SelectedSubject.CalendarAbbreviation
-        };
+        }.WithExtensionDataFrom(SelectedSubject);
         EditVm = new SubjectEditViewModel(clone, isNew: false,
             onSave: async s =>
             {

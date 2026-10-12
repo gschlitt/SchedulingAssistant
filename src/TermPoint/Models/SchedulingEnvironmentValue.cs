@@ -1,6 +1,11 @@
 namespace TermPoint.Models;
 
-public class SchedulingEnvironmentValue
+/// <summary>
+/// One named value of a configurable scheduling property (tag, resource, section type, meeting
+/// type, room type, staff type, reserve, ...), stored in <c>SchedulingEnvironmentValues</c>.
+/// Derives from <see cref="PersistedRecord"/> so unknown JSON fields survive a load/save round trip.
+/// </summary>
+public class SchedulingEnvironmentValue : PersistedRecord
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;
