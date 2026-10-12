@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 using TermPoint.ViewModels.Management;
 using System;
@@ -24,7 +26,13 @@ public partial class EmptySemesterView : UserControl
         }
     }
 
-    private async Task<bool> ShowConfirmEmptyAsync(string semesterName, int sectionCount)
+    /// <summary>
+    /// Shows the "no undo" confirmation for emptying a semester, listing everything that will be deleted.
+    /// </summary>
+    /// <param name="semesterLabel">Academic year and semester about to be emptied, e.g. "2026-2027 Early Summer"; shown in bold.</param>
+    /// <param name="contentsDescription">What it contains, e.g. "12 sections, 3 meetings" (from <c>SemesterContents.Describe()</c>).</param>
+    /// <returns>True if the user chose Delete Everything; false if they cancelled or the dialog could not be shown.</returns>
+    private async Task<bool> ShowConfirmEmptyAsync(string semesterLabel, string contentsDescription)
     {
         var owner = TopLevel.GetTopLevel(this) as Window;
         if (owner is null) return false;
@@ -45,16 +53,24 @@ public partial class EmptySemesterView : UserControl
             Topmost = true
         };
 
-        var bodyText = $"Remove all {sectionCount} section{(sectionCount == 1 ? "" : "s")} from \"{semesterName}\"?\n\nThis cannot be undone.";
-
+        // "Permanently delete everything in <b>2026-2027 Early Summer</b>: 12 sections, 3 meetings?"
+        // The year + semester is bold so the user can see at a glance exactly what is about to go.
         var body = new TextBlock
         {
-            Text = bodyText,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            FontSize = 13
+            FontSize = 13,
+            Inlines = new InlineCollection
+            {
+                new Run("Permanently delete everything in "),
+                new Run(semesterLabel) { FontWeight = FontWeight.Bold },
+                new Run($": {contentsDescription}?"),
+                new LineBreak(),
+                new LineBreak(),
+                new Run("This cannot be undone.")
+            }
         };
 
-        var deleteBtn = new Button { Content = "Delete All Sections" };
+        var deleteBtn = new Button { Content = "Delete Everything" };
         var cancelBtn = new Button { Content = "Cancel" };
 
         deleteBtn.Click += (_, _) => { result = true; Dispatcher.UIThread.Post(() => msg.Close()); };

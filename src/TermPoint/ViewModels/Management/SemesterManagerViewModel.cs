@@ -63,7 +63,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     private readonly string _academicYearId;
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
-    private readonly ISectionRepository _sectionRepo;
+    private readonly SemesterContentsService _contentsService;
     private readonly SemesterContext _semesterContext;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
@@ -86,7 +86,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     /// <param name="academicYearId">The academic year whose semesters are managed.</param>
     /// <param name="ayRepo">Academic year repository; required by SemesterContext.Reload.</param>
     /// <param name="semRepo">Semester repository for CRUD operations.</param>
-    /// <param name="sectionRepo">Section repository; used to guard deletion when sections exist.</param>
+    /// <param name="contentsService">Owns the rules for deleting a semester (must be empty and not loaded) and does the delete.</param>
     /// <param name="semesterContext">Singleton context; reloaded after every mutation so top-bar dropdowns stay current.</param>
     /// <param name="dialog">Service for confirmation and error dialogs.</param>
     /// <param name="lockService">Write lock; gates all edit operations when another user holds the lock.</param>
@@ -94,7 +94,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         string academicYearId,
         IAcademicYearRepository ayRepo,
         ISemesterRepository semRepo,
-        ISectionRepository sectionRepo,
+        SemesterContentsService contentsService,
         SemesterContext semesterContext,
         IDialogService dialog,
         WriteLockService lockService)
@@ -102,7 +102,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         _academicYearId   = academicYearId;
         _ayRepo           = ayRepo;
         _semRepo          = semRepo;
-        _sectionRepo      = sectionRepo;
+        _contentsService  = contentsService;
         _semesterContext  = semesterContext;
         _dialog           = dialog;
         _lockService      = lockService;
@@ -258,32 +258,34 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Deletes the selected semester after confirming it is empty.
-    /// If the semester still contains sections the user is directed to the Empty Semester tool instead.
+    /// Deletes the selected semester after the user confirms. <see cref="SemesterContentsService"/>
+    /// decides whether it may go: it must not be loaded in the main view and must hold nothing in any
+    /// of the six semester-scoped tables. Otherwise the service's refusal (which says what remains and
+    /// points to Empty Semester) is shown in <see cref="ViewModelBase.LastErrorMessage"/> and nothing is deleted.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedSemester is null) return;
+        var semester = SelectedSemester.Semester;
 
-        LastErrorMessage = null;
-        var count = _sectionRepo.CountBySemesterId(SelectedSemester.Semester.Id);
-        if (count > 0)
-        {
-            LastErrorMessage =
-                $"\"{SelectedSemester.Name}\" contains {count} section{(count == 1 ? "" : "s")}. " +
-                "Use the Empty Semester tool to remove all sections before deleting a semester.";
+        LastErrorMessage = _contentsService.WhyCannotDeleteSemester(semester.Id);
+        if (LastErrorMessage is not null)
             return;
-        }
 
-        if (!await _dialog.Confirm($"Delete semester \"{SelectedSemester.Name}\"?"))
+        if (!await _dialog.Confirm($"Delete semester \"{semester.Name}\"?"))
             return;
 
         try
         {
-            _semRepo.Delete(SelectedSemester.Semester.Id);
+            _contentsService.DeleteSemester(semester.Id);
             _semesterContext.Reload(_ayRepo, _semRepo);
             Load();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // The service re-checks the rules: the semester was loaded or refilled while the dialog was open.
+            LastErrorMessage = ex.Message;
         }
         catch (Exception ex)
         {

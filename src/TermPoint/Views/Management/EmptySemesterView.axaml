@@ -5,7 +5,7 @@
              x:DataType="vm:EmptySemesterViewModel"
              x:CompileBindings="False">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,0">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="10,0">
 
         <TextBlock Grid.Row="0" Text="Empty Semester" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
 
@@ -35,10 +35,10 @@
             </ComboBox>
         </StackPanel>
 
-        <!-- Section count -->
-        <TextBlock Grid.Row="3" Text="{Binding SectionCount, StringFormat='This semester contains {0} section(s).'}"
-                   FontSize="12" Margin="0,0,0,8"
-                   IsVisible="{Binding SelectedSemester, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <!-- Everything the semester holds, e.g. "This semester contains 12 sections, 3 meetings." (spec item 8) -->
+        <TextBlock Grid.Row="3" Text="{Binding ContentsSummary}"
+                   TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"
+                   IsVisible="{Binding ContentsSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
         <!-- Status/advisory message -->
         <TextBlock Grid.Row="4" Text="{Binding StatusMessage}"

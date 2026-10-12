@@ -166,6 +166,11 @@ public sealed class WriteLockReadOnlyTests : IDisposable
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
             _dialog, _lock);
 
+    /// <summary>Creates the service that owns the empty/delete-semester rules, over the fixture's repositories.</summary>
+    private SemesterContentsService CreateContentsService() =>
+        new(_db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo, _noteRepo,
+            new ProgramWatchRepository(_db), _semesterRepo, _ayRepo, _legalStartTimeRepo, _semesterContext);
+
     /// <summary>Creates a fully-wired <see cref="MeetingListViewModel"/> in reader mode.</summary>
     private MeetingListViewModel CreateMeetingListVm() =>
         new(_meetingRepo, _instructorRepo, _roomRepo, _propertyRepo, _campusRepo,
@@ -455,7 +460,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void EmptySemester_EmptyCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new EmptySemesterViewModel(_ayRepo, _semesterRepo, _sectionRepo,
+        var vm = new EmptySemesterViewModel(_ayRepo, _semesterRepo, CreateContentsService(),
             _semesterContext, _lock);
         Assert.False(vm.EmptyCommand.CanExecute(null));
     }
@@ -497,7 +502,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void AcademicYear_AddCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new AcademicYearListViewModel(_ayRepo, _semesterRepo, _sectionRepo,
+        var vm = new AcademicYearListViewModel(_ayRepo, _semesterRepo, CreateContentsService(),
             _semesterContext, _legalStartTimeRepo, _dialog, _lock);
         Assert.False(vm.AddCommand.CanExecute(null));
     }
@@ -505,7 +510,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void AcademicYear_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new AcademicYearListViewModel(_ayRepo, _semesterRepo, _sectionRepo,
+        var vm = new AcademicYearListViewModel(_ayRepo, _semesterRepo, CreateContentsService(),
             _semesterContext, _legalStartTimeRepo, _dialog, _lock);
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }

@@ -13,7 +13,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
 {
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
-    private readonly ISectionRepository _sectionRepo;
+    private readonly SemesterContentsService _contentsService;
     private readonly SemesterContext _semesterContext;
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
     private readonly IDialogService _dialog;
@@ -56,10 +56,17 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
     /// </summary>
     public Func<string, Task<bool>>? ConfirmCopySemesters { get; set; }
 
+    /// <param name="ayRepo">Academic years.</param>
+    /// <param name="semRepo">Semesters.</param>
+    /// <param name="contentsService">Owns the rules for deleting an academic year (every semester empty, none loaded) and does the delete; also passed to each <see cref="SemesterManagerViewModel"/>.</param>
+    /// <param name="semesterContext">Singleton context; reloaded after every mutation so top-bar dropdowns stay current.</param>
+    /// <param name="legalStartTimeRepo">Legal start times, copied from the previous year when a year is added.</param>
+    /// <param name="dialog">Service for confirmation dialogs.</param>
+    /// <param name="lockService">Write lock; gates all edit operations when another user holds the lock.</param>
     public AcademicYearListViewModel(
         IAcademicYearRepository ayRepo,
         ISemesterRepository semRepo,
-        ISectionRepository sectionRepo,
+        SemesterContentsService contentsService,
         SemesterContext semesterContext,
         ILegalStartTimeRepository legalStartTimeRepo,
         IDialogService dialog,
@@ -67,7 +74,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
-        _sectionRepo = sectionRepo;
+        _contentsService = contentsService;
         _semesterContext = semesterContext;
         _legalStartTimeRepo = legalStartTimeRepo;
         _dialog = dialog;
@@ -91,7 +98,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
         SemesterManager?.Dispose();
         SemesterManager = value is null ? null
             : new SemesterManagerViewModel(
-                value.Id, _ayRepo, _semRepo, _sectionRepo,
+                value.Id, _ayRepo, _semRepo, _contentsService,
                 _semesterContext, _dialog, _lockService);
     }
 
@@ -187,25 +194,44 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
             });
     }
 
+    /// <summary>
+    /// Deletes the selected academic year, its semesters and its legal start times after the user
+    /// confirms. <see cref="SemesterContentsService"/> decides whether it may go: none of its
+    /// semesters may be loaded in the main view and every one must be empty (no sections, meetings,
+    /// releases, commitments, notes or watches). Otherwise the service's refusal, which names the
+    /// loaded or non-empty semesters, is shown in <see cref="ViewModelBase.LastErrorMessage"/> and
+    /// nothing is deleted. The confirmation never mentions sections because the semesters are empty.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedAcademicYear is null) return;
+        var year = SelectedAcademicYear;
 
-        LastErrorMessage = null;
-        var sectionCount = _sectionRepo.CountByAcademicYear(SelectedAcademicYear.Id);
-        var bodyText = sectionCount > 0
-            ? $"Delete academic year \"{SelectedAcademicYear.Name}\"?\n\nWarning: this academic year has {sectionCount} section{(sectionCount == 1 ? "" : "s")} across its semesters. They will all be permanently deleted."
-            : $"Delete academic year \"{SelectedAcademicYear.Name}\" and all its semesters?";
+        LastErrorMessage = _contentsService.WhyCannotDeleteAcademicYear(year.Id);
+        if (LastErrorMessage is not null)
+            return;
+
+        var semesterCount = _semRepo.GetByAcademicYear(year.Id).Count;
+        var bodyText = semesterCount switch
+        {
+            0 => $"Delete academic year \"{year.Name}\"?",
+            1 => $"Delete academic year \"{year.Name}\" and its empty semester?",
+            _ => $"Delete academic year \"{year.Name}\" and its {semesterCount} empty semesters?"
+        };
 
         if (!await _dialog.Confirm(bodyText)) return;
 
         try
         {
-            _semRepo.DeleteByAcademicYear(SelectedAcademicYear.Id);
-            _ayRepo.Delete(SelectedAcademicYear.Id);
+            _contentsService.DeleteAcademicYear(year.Id);
             _semesterContext.Reload(_ayRepo, _semRepo);
             Load();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // The service re-checks the rules: a semester was loaded or refilled while the dialog was open.
+            LastErrorMessage = ex.Message;
         }
         catch (Exception ex)
         {

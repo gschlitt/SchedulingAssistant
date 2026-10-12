@@ -793,6 +793,52 @@ semester. They are still dead weight in every copy and backup.
     `EmptySemesterView.axaml`.
   - **8c:** the four orphan-tolerant queries, with tests on seeded orphan rows.
 
+**Step 8a outcome (2026-10-11, e90f834).**
+- Added `SemesterContentsService` and `SemesterContents`, plus repository count and delete methods,
+  and their demo versions.
+- Tests: +49.
+
+**Step 8b outcome (2026-10-12): the three screens use the service.**
+- **Empty Semester:**
+  - The screen lists everything the semester holds: *"This semester contains 17 sections, 2
+    meetings."*
+  - The confirmation names the year and semester in bold: *"Permanently delete everything in
+    **2026-2027 Early Summer**: 17 sections, 2 meetings? This cannot be undone."* The button is
+    "Delete Everything".
+  - After emptying it says *"Done. Everything has been removed from Winter."* The user dropped a
+    second sentence about deleting the semester, because it read as if the semester were an
+    academic year.
+  - The button is disabled when the semester is empty.
+  - The loaded check covers every selected semester (the bug fix).
+- **Delete semester:**
+  - Refused while anything remains, e.g. *"Winter" still contains 2 releases. Use Empty Semester to
+    remove everything before deleting it.*
+  - Refused while the semester is loaded.
+- **Delete year:**
+  - Refused while any semester holds anything; the message names each one.
+  - Refused while the year is loaded. The wording is about the year (user, 2026-10-12): *"2025-2026"
+    is currently loaded in the main view. Switch to a different academic year there before deleting
+    it.*
+  - The confirmation no longer promises to delete sections: *"Delete academic year "X" and its 5
+    empty semesters?"*
+  - After a year is deleted, the main view's year picker falls back to a remaining year (tested).
+- **Academic Years toolbar (user, 2026-10-12):**
+
+  | Button | Hover help |
+  |---|---|
+  | Add academic year | (none) |
+  | Delete year | "Each semester must be empty before deleting an academic year" |
+  | Copy semester | "Copy sections from one semester to another" |
+  | Empty semester | "Remove everything from one semester: sections, meetings, releases, commitments, notes and watches" |
+
+- **Layout:**
+  - The Copy Semester and Empty Semester panels get the standard `10,0` margin.
+  - The Academic Years refusal message lines up with the year list.
+- **Removed:** `SectionRepository.CountByAcademicYear`, which nothing uses any more.
+- **Tests:** +28 (`SemesterContentsScreensTests`). Suite: 1454 passed.
+- **Open wording point:** the contents list says "watches" (the Access panel's label); "program
+  watches" would be clearer. The user hasn't decided.
+
 **Orphan-tolerant queries (silent mitigation).** Queries scoped to one semester are already safe,
 because orphans can't match a semester that exists. The exposure is the queries that span
 **all** semesters. Add `AND semester_id IN (SELECT id FROM Semesters)` (or the equivalent join)

@@ -129,24 +129,20 @@ public sealed class SemesterContentsService(
     /// </summary>
     /// <param name="academicYearId">The academic year the user wants to delete.</param>
     /// <returns>
-    /// <c>null</c> when deleting is allowed; otherwise a user-facing sentence that either names the
-    /// loaded semester(s) in the year (switch first) or lists each non-empty semester with what it
-    /// contains (use Empty Semester on each first).
+    /// <c>null</c> when deleting is allowed; otherwise a user-facing sentence that either says the
+    /// year is loaded in the main view (switch to a different year first) or lists each non-empty
+    /// semester with what it contains (use Empty Semester on each first).
     /// </returns>
     public string? WhyCannotDeleteAcademicYear(string academicYearId)
     {
         var yearName = academicYearRepo.GetById(academicYearId)?.Name ?? academicYearId;
 
-        // A loaded semester takes precedence: the user must switch away before anything else matters.
-        var loaded = semesterContext.SelectedSemesters
-            .Where(s => s.Semester.AcademicYearId == academicYearId)
-            .Select(s => $"\"{s.Semester.Name}\"")
-            .ToList();
-        if (loaded.Count > 0)
+        // A loaded year takes precedence: the user must switch away before anything else matters.
+        // Worded about the YEAR (not the loaded semester), because the year is what's being deleted.
+        if (AcademicYearHasLoadedSemester(academicYearId))
         {
-            return $"\"{yearName}\" contains the currently loaded " +
-                   $"{(loaded.Count == 1 ? "semester" : "semesters")} {string.Join(", ", loaded)}. " +
-                   "Switch to a semester in a different academic year in the main view before deleting it.";
+            return $"\"{yearName}\" is currently loaded in the main view. " +
+                   "Switch to a different academic year there before deleting it.";
         }
 
         // Every semester must be empty. Name each one that is not, with what remains.

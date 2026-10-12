@@ -26,6 +26,9 @@ public sealed class ExtensionDataSavePathTests : IDisposable
 {
     private readonly ExtensionDataDbFixture _fx = new();
 
+    // Saving a semester reloads SemesterContext, which writes the user's settings.json; keep the real one safe.
+    private readonly SettingsFileGuard _settingsGuard = new();
+
     // Repositories over the fixture database.
     private readonly SectionRepository _sectionRepo;
     private readonly CourseRepository _courseRepo;
@@ -72,8 +75,12 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         _meetingRepo = new MeetingRepository(db);
     }
 
-    /// <summary>Releases the temp database and lock.</summary>
-    public void Dispose() => _fx.Dispose();
+    /// <summary>Releases the temp database and lock, and restores the settings file.</summary>
+    public void Dispose()
+    {
+        _fx.Dispose();
+        _settingsGuard.Dispose();
+    }
 
     /// <summary>A dialog service that never shows anything and always answers "no".</summary>
     private sealed class NullDialog : IDialogService
@@ -267,7 +274,10 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         _semesterRepo.Insert(sem);
         _fx.Stamp("Semesters", sem.Id);
 
-        var vm = new SemesterManagerViewModel(ay.Id, _ayRepo, _semesterRepo, _sectionRepo, _semesterContext, _dialog, _fx.Lock);
+        var contentsService = new SemesterContentsService(
+            _fx.Db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo, _noteRepo,
+            new ProgramWatchRepository(_fx.Db), _semesterRepo, _ayRepo, _legalRepo, _semesterContext);
+        var vm = new SemesterManagerViewModel(ay.Id, _ayRepo, _semesterRepo, contentsService, _semesterContext, _dialog, _fx.Lock);
         vm.SelectedSemester = vm.Semesters.Single();
         vm.RenameCommand.Execute(null);
         vm.EditVm!.Name = "Autumn";

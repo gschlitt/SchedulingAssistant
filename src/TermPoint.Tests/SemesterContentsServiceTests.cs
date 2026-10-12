@@ -538,8 +538,8 @@ public sealed class SemesterContentsServiceTests : IDisposable
     public void DeleteAcademicYear_IsRefusedWhileOneOfItsSemestersIsLoaded()
     {
         Load(_ay1, _winter);   // Winter is also non-empty; the loaded message wins
-        var expected = "\"2024-2025\" contains the currently loaded semester \"Winter\". " +
-                       "Switch to a semester in a different academic year in the main view before deleting it.";
+        var expected = "\"2024-2025\" is currently loaded in the main view. " +
+                       "Switch to a different academic year there before deleting it.";
 
         Assert.Equal(expected, _service.WhyCannotDeleteAcademicYear(_ay1));
         var ex = Assert.Throws<InvalidOperationException>(() => _service.DeleteAcademicYear(_ay1));
@@ -547,16 +547,19 @@ public sealed class SemesterContentsServiceTests : IDisposable
         Assert.NotNull(_ayRepo.GetById(_ay1));
     }
 
-    /// <summary>A loaded EMPTY semester still blocks its year, and several loaded ones are all named.</summary>
+    /// <summary>
+    /// Loaded EMPTY semesters still block their year. The message is about the year being loaded,
+    /// not about any one semester, because the year is what the user is trying to delete.
+    /// </summary>
     [Fact]
-    public void WhyCannotDeleteAcademicYear_NamesEveryLoadedSemesterInTheYear()
+    public void WhyCannotDeleteAcademicYear_LoadedEmptySemesters_StillBlockTheYear()
     {
         _service.EmptySemester(_spring);
         Load(_ay2, _spring, _summer);   // both empty, both loaded
 
         Assert.Equal(
-            "\"2025-2026\" contains the currently loaded semesters \"Spring\", \"Summer\". " +
-            "Switch to a semester in a different academic year in the main view before deleting it.",
+            "\"2025-2026\" is currently loaded in the main view. " +
+            "Switch to a different academic year there before deleting it.",
             _service.WhyCannotDeleteAcademicYear(_ay2));
     }
 

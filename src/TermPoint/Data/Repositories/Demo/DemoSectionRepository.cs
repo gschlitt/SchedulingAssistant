@@ -40,16 +40,6 @@ public class DemoSectionRepository : ISectionRepository
             s.Id != excludeId);
 
     /// <inheritdoc/>
-    public int CountByAcademicYear(string academicYearId)
-    {
-        var semesterIds = DemoData.Semesters
-            .Where(s => s.AcademicYearId == academicYearId)
-            .Select(s => s.Id)
-            .ToHashSet();
-        return _sections.Count(s => semesterIds.Contains(s.SemesterId));
-    }
-
-    /// <inheritdoc/>
     public int CountBySemesterId(string semesterId) =>
         _sections.Count(s => s.SemesterId == semesterId);
 

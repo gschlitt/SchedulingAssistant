@@ -96,18 +96,6 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
     }
 
     /// <summary>
-    /// Returns the total number of sections across all semesters of the given academic year.
-    /// </summary>
-    public int CountByAcademicYear(string academicYearId)
-    {
-        using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText =
-            "SELECT COUNT(*) FROM Sections WHERE semester_id IN (SELECT id FROM Semesters WHERE academic_year_id = $ayid)";
-        cmd.AddParam("$ayid", academicYearId);
-        return Convert.ToInt32(cmd.ExecuteScalar());
-    }
-
-    /// <summary>
     /// Returns true if another section for the same course in the same semester already uses
     /// <paramref name="sectionCode"/> (case-insensitive).
     /// Pass <paramref name="excludeId"/> = the current section's id when editing (null for new sections).

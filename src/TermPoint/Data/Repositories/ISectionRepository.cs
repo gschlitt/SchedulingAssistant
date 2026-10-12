@@ -33,9 +33,6 @@ public interface ISectionRepository
     /// </summary>
     void Update(Section section, DbTransaction? tx = null);
 
-    /// <summary>Returns the total number of sections belonging to the given academic year.</summary>
-    int CountByAcademicYear(string academicYearId);
-
     /// <summary>
     /// Returns <c>true</c> if a section with the same course and section code already exists in the semester.
     /// Pass <paramref name="excludeId"/> to allow the current section to match without triggering a duplicate.
