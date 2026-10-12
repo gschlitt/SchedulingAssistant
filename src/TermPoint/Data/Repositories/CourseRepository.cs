@@ -37,11 +37,20 @@ public class CourseRepository(IDatabaseContext db) : ICourseRepository
         return ReadCourses(cmd).FirstOrDefault();
     }
 
-    /// <summary>Returns true if any sections reference this course.</summary>
+    /// <summary>
+    /// Returns true if any section references this course.
+    /// <para>
+    /// Ignores orphans: sections whose semester no longer exists, left behind by older app versions
+    /// when an academic year was deleted (see spec item 8). They are invisible to the user, so
+    /// counting them made "cannot delete course: it has sections" appear with nothing to remove.
+    /// The orphans themselves are left untouched in the database.
+    /// </para>
+    /// </summary>
+    /// <param name="courseId">The course to check.</param>
     public bool HasSections(string courseId)
     {
         using var cmd = db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM Sections WHERE course_id = $id";
+        cmd.CommandText = $"SELECT COUNT(*) FROM Sections WHERE course_id = $id AND {OrphanFilter.SemesterStillExists}";
         cmd.AddParam("$id", courseId);
         return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }

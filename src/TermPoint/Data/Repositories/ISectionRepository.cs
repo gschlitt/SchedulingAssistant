@@ -8,7 +8,14 @@ namespace TermPoint.Data.Repositories;
 /// </summary>
 public interface ISectionRepository
 {
-    /// <summary>Returns all sections across all semesters.</summary>
+    /// <summary>
+    /// Returns all sections across all semesters.
+    /// <para>
+    /// Excludes orphans: sections whose semester no longer exists (left by older app versions when
+    /// an academic year was deleted; see spec item 8). They cannot be shown in any semester, so
+    /// whole-database sweeps must not see them. The orphans are left untouched in the database.
+    /// </para>
+    /// </summary>
     List<Section> GetAll();
 
     /// <summary>Returns all sections belonging to the given semester, ordered by section code.</summary>
@@ -18,7 +25,15 @@ public interface ISectionRepository
     /// <summary>Returns the section with the given <paramref name="id"/>, or <c>null</c> if not found.</summary>
     Section? GetById(string id);
 
-    /// <summary>Returns all sections assigned to the given course.</summary>
+    /// <summary>
+    /// Returns all sections assigned to the given course, across all semesters.
+    /// <para>
+    /// Excludes orphans: sections whose semester no longer exists (left by older app versions when
+    /// an academic year was deleted; see spec item 8), which would otherwise appear as ghost rows in
+    /// Course History. The orphans are left untouched in the database.
+    /// </para>
+    /// </summary>
+    /// <param name="courseId">The course whose sections are returned.</param>
     List<Section> GetByCourseId(string courseId);
 
     /// <summary>

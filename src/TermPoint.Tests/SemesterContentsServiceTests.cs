@@ -267,10 +267,10 @@ public sealed class SemesterContentsServiceTests : IDisposable
     [InlineData(1, 0, 0, 0, 0, 0, "1 section")]
     [InlineData(12, 3, 1, 4, 0, 0, "12 sections, 3 meetings, 1 release, 4 scheduled commitments")]
     [InlineData(0, 1, 2, 0, 0, 0, "1 meeting, 2 releases")]
-    [InlineData(0, 0, 0, 1, 2, 1, "1 scheduled commitment, 2 scheduling notes, 1 watch")]
-    [InlineData(0, 0, 0, 0, 1, 3, "1 scheduling note, 3 watches")]
-    [InlineData(1, 1, 1, 1, 1, 1, "1 section, 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note, 1 watch")]
-    [InlineData(2, 2, 2, 2, 2, 2, "2 sections, 2 meetings, 2 releases, 2 scheduled commitments, 2 scheduling notes, 2 watches")]
+    [InlineData(0, 0, 0, 1, 2, 1, "1 scheduled commitment, 2 scheduling notes, 1 program watch")]
+    [InlineData(0, 0, 0, 0, 1, 3, "1 scheduling note, 3 program watches")]
+    [InlineData(1, 1, 1, 1, 1, 1, "1 section, 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note, 1 program watch")]
+    [InlineData(2, 2, 2, 2, 2, 2, "2 sections, 2 meetings, 2 releases, 2 scheduled commitments, 2 scheduling notes, 2 program watches")]
     public void Describe_NamesOnlyNonZeroKinds_WithSingularAndPlural(
         int sections, int meetings, int releases, int commitments, int notes, int watches, string expected)
     {
@@ -407,7 +407,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
     [InlineData(Kind.Releases, "1 release")]
     [InlineData(Kind.Commitments, "1 scheduled commitment")]
     [InlineData(Kind.SchedulingNotes, "1 scheduling note")]
-    [InlineData(Kind.ProgramWatches, "1 watch")]
+    [InlineData(Kind.ProgramWatches, "1 program watch")]
     public void DeleteSemester_IsRefusedWhileAnySingleTableHasARow(Kind kind, string remaining)
     {
         Seed(_summer, OnlyOne(kind));
@@ -426,7 +426,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
     {
         Assert.Equal(
             "\"Fall\" still contains 3 sections, 2 meetings, 4 releases, 5 scheduled commitments, " +
-            "6 scheduling notes, 7 watches. Use Empty Semester to remove everything before deleting it.",
+            "6 scheduling notes, 7 program watches. Use Empty Semester to remove everything before deleting it.",
             _service.WhyCannotDeleteSemester(_fall));
     }
 
@@ -525,7 +525,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
         Seed(_summer, OnlyOne(Kind.ProgramWatches));
 
         Assert.Equal(
-            "\"2025-2026\" can't be deleted because it still contains: Summer (1 watch). " +
+            "\"2025-2026\" can't be deleted because it still contains: Summer (1 program watch). " +
             "Use Empty Semester to remove everything from each of these semesters before deleting the year.",
             _service.WhyCannotDeleteAcademicYear(_ay2));
     }

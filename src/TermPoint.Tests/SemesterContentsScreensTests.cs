@@ -230,7 +230,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         Assert.Equal(FullContents, vm.Contents);
         Assert.Equal(
             "This semester contains 3 sections, 2 meetings, 4 releases, 5 scheduled commitments, " +
-            "6 scheduling notes, 7 watches.",
+            "6 scheduling notes, 7 program watches.",
             vm.ContentsSummary);
     }
 
@@ -291,7 +291,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         var (askedName, askedDescription) = Assert.Single(asked);
         Assert.Equal("2024-2025 Fall", askedName);   // academic year + semester, shown in bold in the dialog
         Assert.Equal(FullContents.Describe(), askedDescription);
-        foreach (var noun in new[] { "sections", "meetings", "releases", "scheduled commitments", "scheduling notes", "watches" })
+        foreach (var noun in new[] { "sections", "meetings", "releases", "scheduled commitments", "scheduling notes", "program watches" })
             Assert.Contains(noun, askedDescription);
 
         // All six kinds are gone from Fall; other semesters are untouched.
@@ -467,7 +467,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         await vm.DeleteCommand.ExecuteAsync(null);
 
         Assert.Equal(
-            "\"Winter\" still contains 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note, 1 watch. " +
+            "\"Winter\" still contains 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note, 1 program watch. " +
             "Use Empty Semester to remove everything before deleting it.",
             vm.LastErrorMessage);
         Assert.Empty(dialog.Confirmations);
@@ -602,7 +602,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         await vm.DeleteCommand.ExecuteAsync(null);
 
         Assert.Equal(
-            "\"2025-2026\" can't be deleted because it still contains: Summer (1 watch). " +
+            "\"2025-2026\" can't be deleted because it still contains: Summer (1 program watch). " +
             "Use Empty Semester to remove everything from each of these semesters before deleting the year.",
             vm.LastErrorMessage);
         Assert.NotNull(_ayRepo.GetById(_ay2));

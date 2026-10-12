@@ -109,7 +109,7 @@
                 b:HelpTip.Text="Each semester must be empty before deleting an academic year"
                 IsEnabled="{Binding SelectedAcademicYear, Converter={x:Static ObjectConverters.IsNotNull}}" />
             <Button Command="{Binding CopySemesterCommand}" Content="Copy semester" b:HelpTip.Text="Copy sections from one semester to another" />
-            <Button Command="{Binding EmptySemesterCommand}" Content="Empty semester" b:HelpTip.Text="Remove everything from one semester: sections, meetings, releases, commitments, notes and watches"/>
+            <Button Command="{Binding EmptySemesterCommand}" Content="Empty semester" b:HelpTip.Text="Remove everything from one semester: sections, meetings, releases, commitments, notes and program watches"/>
         </StackPanel>
         <!--  Inline error message (e.g. a refused delete). Left margin matches the year list below it.  -->
         <TextBlock

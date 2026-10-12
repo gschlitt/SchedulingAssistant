@@ -21,7 +21,15 @@ public interface ICourseRepository
     /// <summary>Returns the course with the given <paramref name="id"/>, or <c>null</c> if not found.</summary>
     Course? GetById(string id);
 
-    /// <summary>Returns <c>true</c> if any section exists that references the given course.</summary>
+    /// <summary>
+    /// Returns <c>true</c> if any section exists that references the given course.
+    /// <para>
+    /// Ignores orphans: sections whose semester no longer exists (left by older app versions when an
+    /// academic year was deleted; see spec item 8). They are invisible to the user and must not
+    /// block deleting the course. The orphans are left untouched in the database.
+    /// </para>
+    /// </summary>
+    /// <param name="courseId">The course to check.</param>
     bool HasSections(string courseId);
 
     /// <summary>

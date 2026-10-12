@@ -30,7 +30,7 @@ public sealed record SemesterContents(
     /// Describes the contents as a human-readable list for dialogs and refusal messages, naming only
     /// the kinds that are present, with singular or plural wording as appropriate. The words are the
     /// ones users see in the app: sections, meetings, releases, scheduled commitments, scheduling
-    /// notes and watches. Example: <c>"12 sections, 3 meetings, 1 release"</c>.
+    /// notes and program watches. Example: <c>"12 sections, 3 meetings, 1 release"</c>.
     /// </summary>
     /// <returns>The list, or <c>"nothing"</c> when <see cref="IsEmpty"/>.</returns>
     public string Describe()
@@ -41,7 +41,7 @@ public sealed record SemesterContents(
         AddPart(parts, Releases, "release", "releases");
         AddPart(parts, Commitments, "scheduled commitment", "scheduled commitments");
         AddPart(parts, SchedulingNotes, "scheduling note", "scheduling notes");
-        AddPart(parts, ProgramWatches, "watch", "watches");
+        AddPart(parts, ProgramWatches, "program watch", "program watches");
         return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
     }
 

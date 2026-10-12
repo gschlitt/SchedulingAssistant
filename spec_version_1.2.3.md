@@ -836,8 +836,41 @@ semester. They are still dead weight in every copy and backup.
   - The Academic Years refusal message lines up with the year list.
 - **Removed:** `SectionRepository.CountByAcademicYear`, which nothing uses any more.
 - **Tests:** +28 (`SemesterContentsScreensTests`). Suite: 1454 passed.
-- **Open wording point:** the contents list says "watches" (the Access panel's label); "program
-  watches" would be clearer. The user hasn't decided.
+- **Wording (user, 2026-10-12):** "program watches", not "watches", in the contents list and the
+  Empty semester hover help.
+
+**Step 8c outcome (2026-10-12): the orphan-tolerant queries are in.**
+- **The filter.** One shared fragment, `OrphanFilter.SemesterStillExists`
+  (`semester_id IN (SELECT id FROM Semesters)`), is applied to four queries:
+  - `SectionRepository.GetAll()`;
+  - `SectionRepository.GetByCourseId`;
+  - `CourseRepository.HasSections`;
+  - `InstructorRepository.HasSections`.
+
+  Each one's XML doc says it excludes orphans. The change is read-only: no writes, schema change or
+  migration. `Semesters.id` is the primary key, so the extra cost is an index probe per row.
+- **Re-scan:** no other query spans all semesters of the six tables. The demo repositories are
+  unchanged, because the WASM demo can't create orphans.
+- **The spec over-claimed some symptoms.** The real effects:
+  - **Fixed:**
+    - the course and instructor delete guards ("it has sections" / "assigned workload" with nothing
+      visible);
+    - a course's apply-tags-to-all-sections, which rewrote orphan rows.
+  - **The room and scheduling-environment delete sweeps** were never blocked by orphans, but they
+    rewrote orphan rows' JSON and blanked their `semester_name` / `academic_year_name`. That stops
+    now.
+  - **Course History and Workload History** already hid orphans by joining against existing
+    semesters. Unchanged.
+  - **Shared-schedule export** already filtered by the selected semesters. Unchanged.
+- **Known consequence (accepted):** deleting a course or instructor now succeeds while orphan rows
+  still reference it. Nothing reads those rows; a future clean-up or export of orphans would need to
+  allow for the dangling ids.
+- **Tests:** +15 (`OrphanTolerantQueryTests`).
+  - Orphans are made as the old academic-year delete made them.
+  - Every orphan row is byte-identical afterwards.
+  - The real course, instructor, room and tag screens are exercised.
+  - A mutation check failed 10 of the 15, as expected.
+  - Suite: 1469 passed.
 
 **Orphan-tolerant queries (silent mitigation).** Queries scoped to one semester are already safe,
 because orphans can't match a semester that exists. The exposure is the queries that span

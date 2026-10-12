@@ -18,7 +18,15 @@ public interface IInstructorRepository
     /// <summary>Returns the instructor with the given <paramref name="id"/>, or <c>null</c> if not found.</summary>
     Instructor? GetById(string id);
 
-    /// <summary>Returns <c>true</c> if any section exists that is assigned to the given instructor.</summary>
+    /// <summary>
+    /// Returns <c>true</c> if any section exists that is assigned to the given instructor.
+    /// <para>
+    /// Ignores orphans: sections whose semester no longer exists (left by older app versions when an
+    /// academic year was deleted; see spec item 8). They are invisible to the user and must not
+    /// block deleting the instructor. The orphans are left untouched in the database.
+    /// </para>
+    /// </summary>
+    /// <param name="instructorId">The instructor to check.</param>
     bool HasSections(string instructorId);
 
     /// <summary>

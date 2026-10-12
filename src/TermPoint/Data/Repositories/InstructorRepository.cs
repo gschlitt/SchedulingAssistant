@@ -87,14 +87,25 @@ public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
         return instructor;
     }
 
-    /// <summary>Returns true if any sections reference this instructor (searches JSON instructorAssignments array).</summary>
+    /// <summary>
+    /// Returns true if any section references this instructor (searches the JSON
+    /// instructorAssignments array).
+    /// <para>
+    /// Ignores orphans: sections whose semester no longer exists, left behind by older app versions
+    /// when an academic year was deleted (see spec item 8). They are invisible to the user, so
+    /// counting them made "instructor has assigned workload" appear with nothing to remove. The
+    /// orphans themselves are left untouched in the database.
+    /// </para>
+    /// </summary>
+    /// <param name="instructorId">The instructor to check.</param>
     public bool HasSections(string instructorId)
     {
         using var cmd = db.Connection.CreateCommand();
         // instructorAssignments is a JSON array of objects; each object has an instructorId property
-        cmd.CommandText = """
+        cmd.CommandText = $"""
             SELECT COUNT(*) FROM Sections
-            WHERE EXISTS (
+            WHERE {OrphanFilter.SemesterStillExists}
+              AND EXISTS (
                 SELECT 1 FROM json_each(data, '$.instructorAssignments')
                 WHERE json_extract(value, '$.instructorId') = $id
             )
