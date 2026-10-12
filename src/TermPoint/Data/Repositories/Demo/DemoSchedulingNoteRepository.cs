@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories.Demo;
@@ -27,4 +28,12 @@ public class DemoSchedulingNoteRepository : ISchedulingNoteRepository
         else
             existing.Text = note.Text;
     }
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId) =>
+        _notes.Count(n => n.SemesterId == semesterId);
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null) =>
+        _notes.RemoveAll(n => n.SemesterId == semesterId);
 }

@@ -1,5 +1,6 @@
 namespace TermPoint.Data.Repositories;
 
+using System.Data.Common;
 using TermPoint.Models;
 
 public class InstructorCommitmentRepository(IDatabaseContext db) : IInstructorCommitmentRepository
@@ -67,6 +68,26 @@ public class InstructorCommitmentRepository(IDatabaseContext db) : IInstructorCo
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM InstructorCommitments WHERE id = $id";
         cmd.AddParam("$id", id);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM InstructorCommitments WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null)
+    {
+        db.MarkDirty();
+        using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "DELETE FROM InstructorCommitments WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();
     }
 

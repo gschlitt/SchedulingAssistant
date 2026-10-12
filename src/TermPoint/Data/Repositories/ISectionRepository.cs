@@ -53,5 +53,10 @@ public interface ISectionRepository
     int CountBySemesterId(string semesterId);
 
     /// <summary>Deletes all sections belonging to the given semester.</summary>
-    void DeleteBySemesterId(string semesterId);
+    /// <param name="semesterId">The semester whose sections are deleted.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in a larger atomic operation (Empty Semester,
+    /// spec item 8). Pass <c>null</c> (the default) for a standalone delete.
+    /// </param>
+    void DeleteBySemesterId(string semesterId, DbTransaction? tx = null);
 }

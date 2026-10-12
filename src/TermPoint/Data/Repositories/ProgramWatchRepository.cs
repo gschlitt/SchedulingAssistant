@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -54,6 +55,26 @@ public class ProgramWatchRepository(IDatabaseContext db) : IProgramWatchReposito
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM ProgramWatches WHERE id = $id";
         cmd.AddParam("$id", id);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM ProgramWatches WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null)
+    {
+        db.MarkDirty();
+        using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "DELETE FROM ProgramWatches WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();
     }
 }

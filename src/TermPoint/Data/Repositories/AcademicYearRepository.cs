@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -61,10 +62,11 @@ public class AcademicYearRepository(IDatabaseContext db) : IAcademicYearReposito
         cmd.ExecuteNonQuery();
     }
 
-    public void Delete(string id)
+    public void Delete(string id, DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM AcademicYears WHERE id = $id";
         cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();

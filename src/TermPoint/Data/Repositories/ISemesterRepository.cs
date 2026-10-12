@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -23,9 +24,23 @@ public interface ISemesterRepository
     /// <summary>Updates the semester matched by <see cref="Semester.Id"/>.</summary>
     void Update(Semester semester);
 
-    /// <summary>Deletes the semester with the given <paramref name="id"/>.</summary>
-    void Delete(string id);
+    /// <summary>
+    /// Deletes the semester with the given <paramref name="id"/>. This removes only the semester
+    /// row; rows in other tables that reference it are the caller's responsibility
+    /// (see <c>SemesterContentsService</c>).
+    /// </summary>
+    /// <param name="id">The semester to delete.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in a larger atomic operation. Pass <c>null</c>
+    /// (the default) for a standalone delete.
+    /// </param>
+    void Delete(string id, DbTransaction? tx = null);
 
     /// <summary>Deletes all semesters belonging to the given academic year.</summary>
-    void DeleteByAcademicYear(string academicYearId);
+    /// <param name="academicYearId">The academic year whose semesters are deleted.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in a larger atomic operation. Pass <c>null</c>
+    /// (the default) for a standalone delete.
+    /// </param>
+    void DeleteByAcademicYear(string academicYearId, DbTransaction? tx = null);
 }

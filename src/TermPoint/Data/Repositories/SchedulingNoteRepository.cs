@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -68,6 +69,26 @@ public class SchedulingNoteRepository(IDatabaseContext db) : ISchedulingNoteRepo
         cmd.AddParam("$iid", note.InstructorId);
         cmd.AddParam("$sid", note.SemesterId);
         cmd.AddParam("$data", JsonHelpers.Serialize(note));
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM SchedulingNotes WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null)
+    {
+        db.MarkDirty();
+        using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "DELETE FROM SchedulingNotes WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();
     }
 

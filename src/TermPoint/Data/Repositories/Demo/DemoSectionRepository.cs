@@ -69,6 +69,6 @@ public class DemoSectionRepository : ISectionRepository
         _sections.RemoveAll(s => s.Id == id);
 
     /// <inheritdoc/>
-    public void DeleteBySemesterId(string semesterId) =>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null) =>
         _sections.RemoveAll(s => s.SemesterId == semesterId);
 }

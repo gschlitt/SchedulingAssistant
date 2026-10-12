@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Demo;
 using TermPoint.Models;
 
@@ -36,4 +37,12 @@ public class DemoReleaseRepository : IReleaseRepository
 
     /// <inheritdoc/>
     public void Delete(string id) => _releases.RemoveAll(r => r.Id == id);
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId) =>
+        _releases.Count(r => r.SemesterId == semesterId);
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null) =>
+        _releases.RemoveAll(r => r.SemesterId == semesterId);
 }

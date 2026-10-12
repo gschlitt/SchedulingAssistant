@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Demo;
 using TermPoint.Models;
 
@@ -34,7 +35,7 @@ public class DemoMeetingRepository : IMeetingRepository
     public void Delete(string id) => _meetings.RemoveAll(m => m.Id == id);
 
     /// <inheritdoc/>
-    public void DeleteBySemesterId(string semesterId) =>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null) =>
         _meetings.RemoveAll(m => m.SemesterId == semesterId);
 
     /// <inheritdoc/>

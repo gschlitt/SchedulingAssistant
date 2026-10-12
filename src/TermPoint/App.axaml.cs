@@ -359,6 +359,9 @@ public partial class App : Application
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository, ProgramWatchRepository>();
 
+        // Owns the empty / delete semester and academic year rules (spec item 8).
+        services.AddSingleton<SemesterContentsService>();
+
         RegisterViewModels(services);
 
         services.AddTransient<SaveAndBackupViewModel>();
@@ -470,6 +473,9 @@ public partial class App : Application
         services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository,       DemoProgramWatchRepository>();
+
+        // Owns the empty / delete semester and academic year rules (spec item 8).
+        services.AddSingleton<SemesterContentsService>();
 
         RegisterViewModels(services);
     }

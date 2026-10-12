@@ -773,6 +773,26 @@ semester. They are still dead weight in every copy and backup.
 
 **Decided:** program watches are included in "everything attached" (confirmed 2026-10-08).
 
+**Decisions and findings (2026-10-11, before implementation).**
+- **Empty Semester deletes everything, as decided, re-confirmed with the risk in view.** Someone who
+  empties a semester to re-import its sections now also loses its meetings, releases, commitments,
+  notes and watches. A "sections only" option was offered and declined. The confirmation must list
+  every count.
+- **Loaded-semester guard, for both deletes.** Refuse to delete a semester that is currently loaded,
+  or an academic year containing one, and say to switch semesters first. This matches Empty
+  Semester's existing guard.
+- **Bug found:** Empty Semester's loaded-semester guard checks only the *first* selected semester
+  (`SelectedSemesterDisplay`). In multi-semester mode another loaded semester can be emptied while
+  it is on screen. All three guards must check every selected semester.
+- **Re-scan (2026-10-11):** the orphan-tolerant table above is still complete. No other query spans
+  all semesters of the six tables.
+- **Steps (one commit each):**
+  - **8a:** repository methods (and their demo versions), `SemesterContentsService` with counts,
+    emptiness and the two transactional deletes, and tests. No visible change.
+  - **8b:** the three screens use it, with the guards and messages. This needs one binding change in
+    `EmptySemesterView.axaml`.
+  - **8c:** the four orphan-tolerant queries, with tests on seeded orphan rows.
+
 **Orphan-tolerant queries (silent mitigation).** Queries scoped to one semester are already safe,
 because orphans can't match a semester that exists. The exposure is the queries that span
 **all** semesters. Add `AND semester_id IN (SELECT id FROM Semesters)` (or the equivalent join)

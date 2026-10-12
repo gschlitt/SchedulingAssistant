@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Demo;
 using TermPoint.Models;
 
@@ -32,4 +33,12 @@ public class DemoInstructorCommitmentRepository : IInstructorCommitmentRepositor
 
     /// <inheritdoc/>
     public void Delete(string id) => _commitments.RemoveAll(c => c.Id == id);
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId) =>
+        _commitments.Count(c => c.SemesterId == semesterId);
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null) =>
+        _commitments.RemoveAll(c => c.SemesterId == semesterId);
 }

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -61,6 +62,26 @@ public class ReleaseRepository(IDatabaseContext db) : IReleaseRepository
         using var cmd = db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Releases WHERE id = $id";
         cmd.AddParam("$id", id);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM Releases WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null)
+    {
+        db.MarkDirty();
+        using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "DELETE FROM Releases WHERE semester_id = $sid";
+        cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();
     }
 

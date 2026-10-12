@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -37,6 +38,17 @@ public interface ILegalStartTimeRepository
     /// Deletes the entry for the given academic year and block length.
     /// </summary>
     void Delete(string academicYearId, double blockLength);
+
+    /// <summary>
+    /// Deletes every legal start time entry belonging to the given academic year
+    /// (part of deleting an academic year, spec item 8).
+    /// </summary>
+    /// <param name="academicYearId">The academic year whose entries are deleted.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in a larger atomic operation. Pass <c>null</c>
+    /// (the default) for a standalone delete.
+    /// </param>
+    void DeleteByAcademicYear(string academicYearId, DbTransaction? tx = null);
 
     /// <summary>
     /// Copies all legal start time entries from <paramref name="fromAcademicYearId"/> into

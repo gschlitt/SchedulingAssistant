@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -28,4 +29,18 @@ public interface IReleaseRepository
 
     /// <summary>Deletes the release with the given <paramref name="id"/>.</summary>
     void Delete(string id);
+
+    /// <summary>Returns the number of releases in the given semester.</summary>
+    /// <param name="semesterId">The semester to count in.</param>
+    int CountBySemesterId(string semesterId);
+
+    /// <summary>
+    /// Deletes every release belonging to the given semester (part of Empty Semester, spec item 8).
+    /// </summary>
+    /// <param name="semesterId">The semester whose releases are deleted.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in. Pass <c>null</c> (the default) for a
+    /// standalone delete.
+    /// </param>
+    void DeleteBySemesterId(string semesterId, DbTransaction? tx = null);
 }

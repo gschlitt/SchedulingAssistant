@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 using System.Text.Json;
 
@@ -62,19 +63,21 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
         cmd.ExecuteNonQuery();
     }
 
-    public void Delete(string id)
+    public void Delete(string id, DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Semesters WHERE id = $id";
         cmd.AddParam("$id", id);
         cmd.ExecuteNonQuery();
     }
 
-    public void DeleteByAcademicYear(string academicYearId)
+    public void DeleteByAcademicYear(string academicYearId, DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Semesters WHERE academic_year_id = $ayid";
         cmd.AddParam("$ayid", academicYearId);
         cmd.ExecuteNonQuery();

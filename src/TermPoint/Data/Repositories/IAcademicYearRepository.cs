@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -24,6 +25,15 @@ public interface IAcademicYearRepository
     /// <summary>Updates the academic year matched by <see cref="AcademicYear.Id"/>.</summary>
     void Update(AcademicYear academicYear);
 
-    /// <summary>Deletes the academic year with the given <paramref name="id"/>.</summary>
-    void Delete(string id);
+    /// <summary>
+    /// Deletes the academic year with the given <paramref name="id"/>. This removes only the
+    /// academic-year row; its semesters and legal start times are the caller's responsibility
+    /// (see <c>SemesterContentsService</c>).
+    /// </summary>
+    /// <param name="id">The academic year to delete.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in a larger atomic operation. Pass <c>null</c>
+    /// (the default) for a standalone delete.
+    /// </param>
+    void Delete(string id, DbTransaction? tx = null);
 }

@@ -158,10 +158,16 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
     /// <summary>
     /// Deletes all sections from the given semester.
     /// </summary>
-    public void DeleteBySemesterId(string semesterId)
+    /// <param name="semesterId">The semester whose sections are deleted.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in. When provided, the delete participates in
+    /// the caller's atomic operation — pass null (the default) for a standalone delete.
+    /// </param>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Sections WHERE semester_id = $sid";
         cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -78,10 +79,11 @@ public class MeetingRepository(IDatabaseContext db) : IMeetingRepository
     }
 
     /// <inheritdoc/>
-    public void DeleteBySemesterId(string semesterId)
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM Meetings WHERE semester_id = $sid";
         cmd.AddParam("$sid", semesterId);
         cmd.ExecuteNonQuery();

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories.Demo;
@@ -29,4 +30,12 @@ public class DemoProgramWatchRepository : IProgramWatchRepository
     {
         _watches.RemoveAll(w => w.Watch.Id == id);
     }
+
+    /// <inheritdoc/>
+    public int CountBySemesterId(string semesterId) =>
+        _watches.Count(w => w.SemesterId == semesterId);
+
+    /// <inheritdoc/>
+    public void DeleteBySemesterId(string semesterId, DbTransaction? tx = null) =>
+        _watches.RemoveAll(w => w.SemesterId == semesterId);
 }

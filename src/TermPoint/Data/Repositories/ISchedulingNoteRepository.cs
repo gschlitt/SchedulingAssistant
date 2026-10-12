@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -25,4 +26,19 @@ public interface ISchedulingNoteRepository
     /// exists or updating the existing row in place. Saving empty text clears the note.
     /// </summary>
     void Save(SchedulingNote note);
+
+    /// <summary>Returns the number of saved notes (all instructors) in the given semester.</summary>
+    /// <param name="semesterId">The semester to count in.</param>
+    int CountBySemesterId(string semesterId);
+
+    /// <summary>
+    /// Deletes every note (all instructors) belonging to the given semester
+    /// (part of Empty Semester, spec item 8).
+    /// </summary>
+    /// <param name="semesterId">The semester whose notes are deleted.</param>
+    /// <param name="tx">
+    /// Optional transaction to enlist this delete in. Pass <c>null</c> (the default) for a
+    /// standalone delete.
+    /// </param>
+    void DeleteBySemesterId(string semesterId, DbTransaction? tx = null);
 }

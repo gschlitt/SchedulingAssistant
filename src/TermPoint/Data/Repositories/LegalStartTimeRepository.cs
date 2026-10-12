@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Models;
 
 namespace TermPoint.Data.Repositories;
@@ -66,6 +67,17 @@ public class LegalStartTimeRepository(IDatabaseContext db) : ILegalStartTimeRepo
         cmd.CommandText = "DELETE FROM LegalStartTimes WHERE academic_year_id = $ay AND block_length = $bl";
         cmd.AddParam("$ay", academicYearId);
         cmd.AddParam("$bl", blockLength);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <inheritdoc/>
+    public void DeleteByAcademicYear(string academicYearId, DbTransaction? tx = null)
+    {
+        db.MarkDirty();
+        using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "DELETE FROM LegalStartTimes WHERE academic_year_id = $ay";
+        cmd.AddParam("$ay", academicYearId);
         cmd.ExecuteNonQuery();
     }
 

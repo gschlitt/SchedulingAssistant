@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TermPoint.Demo;
 using TermPoint.Models;
 
@@ -40,6 +41,10 @@ public class DemoLegalStartTimeRepository : ILegalStartTimeRepository
     public void Delete(string academicYearId, double blockLength) =>
         _entries.RemoveAll(x =>
             x.AcademicYearId == academicYearId && x.Entry.BlockLength == blockLength);
+
+    /// <inheritdoc/>
+    public void DeleteByAcademicYear(string academicYearId, DbTransaction? tx = null) =>
+        _entries.RemoveAll(x => x.AcademicYearId == academicYearId);
 
     /// <inheritdoc/>
     public void CopyFromPreviousYear(string toAcademicYearId, string? fromAcademicYearId)
