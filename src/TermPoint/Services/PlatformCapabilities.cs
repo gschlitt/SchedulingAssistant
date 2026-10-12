@@ -127,8 +127,113 @@ public static class PlatformCapabilities
 #endif
     }
 
+    /// <summary>
+    /// The package family name (PFN) of TermPoint's Microsoft Store listing. An MSIX install whose
+    /// family name equals this value (case-insensitive) is a <see cref="Services.InstallChannel.Store"/>
+    /// install; any other MSIX is a <see cref="Services.InstallChannel.Sideload"/>.
+    /// </summary>
+    public const string StorePackageFamilyName = "Academic-Solutions.TermPoint_9nmm6ygzk390e";
+
+    /// <summary>
+    /// Backing store for <see cref="InstallChannel"/>. MUST be lazy: <c>Program.Main</c> touches
+    /// <see cref="IsMsixPackage"/> (which initializes this class) before <c>VelopackApp</c> has run,
+    /// and Velopack must not be touched until then. A <see cref="Lazy{T}"/> defers the Velopack probe
+    /// to the first real read of <see cref="InstallChannel"/>, which happens only after startup.
+    /// </summary>
+    private static readonly Lazy<InstallChannel> _installChannel = new(DetectInstallChannel);
+
+    /// <summary>
+    /// How this process was installed — see <see cref="Services.InstallChannel"/>. Resolved once on
+    /// first read and cached for the life of the process. Always
+    /// <see cref="Services.InstallChannel.Development"/> in the browser demo.
+    ///
+    /// <para>In DEBUG builds only, the <c>TERMPOINT_INSTALL_CHANNEL</c> environment variable (a
+    /// member name of <see cref="Services.InstallChannel"/>, case-insensitive) overrides detection so
+    /// the banner wording and stamping rules can be exercised from Visual Studio. Release builds
+    /// ignore the variable entirely.</para>
+    /// </summary>
+    public static InstallChannel InstallChannel => _installChannel.Value;
+
+    /// <summary>
+    /// Works out the <see cref="InstallChannel"/> for this process. Never throws: any failure
+    /// resolves to <see cref="Services.InstallChannel.Development"/>, the one value that can never
+    /// stamp a database.
+    /// </summary>
+    /// <returns>The detected install channel.</returns>
+    private static InstallChannel DetectInstallChannel()
+    {
+#if BROWSER
+        return InstallChannel.Development;
+#else
+        try
+        {
+#if DEBUG
+            // Developer override — compiled out of Release so a stray environment variable on a
+            // customer machine can never change how a shipped build behaves.
+            var forced = Environment.GetEnvironmentVariable("TERMPOINT_INSTALL_CHANNEL");
+            if (!string.IsNullOrWhiteSpace(forced)
+                && Enum.TryParse<InstallChannel>(forced.Trim(), ignoreCase: true, out var forcedChannel)
+                && Enum.IsDefined(forcedChannel))   // reject numeric strings such as "7"
+            {
+                return forcedChannel;
+            }
+#endif
+            if (IsMsixPackage)
+            {
+                // A packaged install is Store only if its family name is the Store listing's;
+                // an unreadable name conservatively counts as Sideload (never stamps).
+                var family = TryGetPackageFamilyName();
+                return string.Equals(family, StorePackageFamilyName, StringComparison.OrdinalIgnoreCase)
+                    ? InstallChannel.Store
+                    : InstallChannel.Sideload;
+            }
+
+            // Not packaged: a Velopack install is a direct download; everything else
+            // (VS run, portable copy) is a development-style run.
+            return UpdateService.IsVelopackInstalled()
+                ? InstallChannel.DirectDownload
+                : InstallChannel.Development;
+        }
+        catch
+        {
+            return InstallChannel.Development;
+        }
+#endif
+    }
+
 #if !BROWSER
+    /// <summary>
+    /// Reads the current process's MSIX package family name via the two-call
+    /// <c>GetCurrentPackageFamilyName</c> pattern: the first call (null buffer) reports
+    /// ERROR_INSUFFICIENT_BUFFER (122) and the required length including the terminator; the
+    /// second fills the buffer.
+    /// </summary>
+    /// <returns>The family name, or null when the process is not packaged or the call fails.</returns>
+    private static string? TryGetPackageFamilyName()
+    {
+        const int errorInsufficientBuffer = 122;
+
+        int length = 0;
+        if (GetCurrentPackageFamilyName(ref length, null) != errorInsufficientBuffer || length <= 0)
+            return null;
+
+        var buffer = new char[length];
+        if (GetCurrentPackageFamilyName(ref length, buffer) != 0)
+            return null;
+
+        return new string(buffer, 0, length).TrimEnd('\0');
+    }
+
     [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, char[]? packageFullName);
+
+    /// <summary>
+    /// Win32 <c>GetCurrentPackageFamilyName</c>: returns 0 on success, 122 (ERROR_INSUFFICIENT_BUFFER)
+    /// when the buffer is too small (updating <paramref name="packageFamilyNameLength"/> with the
+    /// required length including the terminating NUL), or 15700 (APPMODEL_ERROR_NO_PACKAGE) when the
+    /// process has no package identity.
+    /// </summary>
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int GetCurrentPackageFamilyName(ref int packageFamilyNameLength, char[]? packageFamilyName);
 #endif
 }

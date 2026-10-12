@@ -393,6 +393,16 @@
 					FontSize="{StaticResource FontSizeNormal}"
 					IsVisible="{Binding ShowWriteLockAvailablePrompt}"
 					ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+				<!--  Shown when this database needs a newer TermPoint and the app came from the Microsoft Store (spec item 3)  -->
+				<Button
+					Margin="8,0,0,0"
+					Padding="8,2"
+					Command="{Binding OpenMicrosoftStoreCommand}"
+					Content="Open Microsoft Store"
+					DockPanel.Dock="Right"
+					FontSize="{StaticResource FontSizeNormal}"
+					IsVisible="{Binding ShowOpenStoreButton}"
+					ToolTip.Tip="Open the Microsoft Store to update TermPoint." />
 				<Button
 					Margin="8,0,0,0"
 					Padding="8,2"

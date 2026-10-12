@@ -647,7 +647,11 @@ public partial class MainWindow : Window
                 return App.Checkout.WorkingPath;
 
             case CheckoutOutcome.ReadOnly:
-                if (recoverUnsaved)
+                // The "someone else is editing" explanation is wrong when the version gate
+                // tripped (RequiredAppVersion set): nobody holds the lock, this app is simply too
+                // old. The read-only banner explains that case, and the kept recovery data will be
+                // offered again after the user updates.
+                if (recoverUnsaved && App.Checkout.RequiredAppVersion is null)
                     await ShowRecoveryDeferredMessageAsync();
                 return App.Checkout.WorkingPath;
 
@@ -678,6 +682,13 @@ public partial class MainWindow : Window
                         var forceOutcome = await App.Checkout.ForceCheckoutAsync(recoverUnsaved);
                         if (forceOutcome == CheckoutOutcome.WriteAccess)
                             return App.Checkout.WorkingPath;
+                        if (forceOutcome == CheckoutOutcome.ReadOnly)
+                        {
+                            // Version gate tripped during the takeover: D'' is already set up and
+                            // the banner explains why. Do not fall through to the "lost the race"
+                            // path below, whose recovery message would be misleading.
+                            return App.Checkout.WorkingPath;
+                        }
                         if (forceOutcome == CheckoutOutcome.RecoveryConflict)
                         {
                             await HandleRecoveryConflictAsync(sourcePath);

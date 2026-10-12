@@ -413,6 +413,12 @@ public partial class MainWindowViewModel : ViewModelBase
                     _ => "Read-only — no active license."
                 };
             }
+
+            // Version-gated read-only: the database's MinimumVersionToWrite stamp is newer than
+            // this app. Nobody holds the lock — the fix is to update — so say that, with wording
+            // chosen by how TermPoint was installed (Store vs. everything else).
+            if (App.Checkout.RequiredAppVersion is { } required)
+                return MinimumVersionToWrite.BuildMessage(PlatformCapabilities.InstallChannel, required);
 #endif
 
             // Voluntary observer: read-only by the user's own choice, not because someone
@@ -437,6 +443,21 @@ public partial class MainWindowViewModel : ViewModelBase
                 : $"Read-only — held by {h.Username} on {h.Machine} since {h.Acquired.ToLocalTime():h:mm tt}";
         }
     }
+
+    /// <summary>
+    /// True when the read-only banner should offer an "Open Microsoft Store" button: the database
+    /// opened read-only because its <c>MinimumVersionToWrite</c> stamp is newer than this app AND
+    /// this copy of TermPoint was installed from the Microsoft Store, so the Store is where the
+    /// update comes from. Always false in the browser demo. Read once when the banner is bound
+    /// (the checkout that sets <c>RequiredAppVersion</c> precedes view-model creation).
+    /// </summary>
+    public bool ShowOpenStoreButton
+#if !BROWSER
+        => App.Checkout.RequiredAppVersion is not null
+           && PlatformCapabilities.InstallChannel == InstallChannel.Store;
+#else
+        => false;
+#endif
 
     /// <summary>
     /// Tooltip text for the Refresh button in the read-only banner.
@@ -701,6 +722,26 @@ public partial class MainWindowViewModel : ViewModelBase
         if (sourcePath is null) return;
 
         await MainWindowReference.SwitchDatabaseAsync(sourcePath);
+    }
+
+    /// <summary>
+    /// Opens the Microsoft Store's Downloads and updates page (<see cref="MinimumVersionToWrite.StoreUri"/>),
+    /// where the user clicks "Get updates" to install the update the version-gated read-only
+    /// banner asks for. Bound to the banner's "Open Microsoft Store"
+    /// button (visible via <see cref="ShowOpenStoreButton"/>). A failure to launch the Store is
+    /// logged and otherwise ignored — the banner text already tells the user how to update.
+    /// </summary>
+    [RelayCommand]
+    private void OpenMicrosoftStore()
+    {
+        try
+        {
+            PlatformProcess.OpenUri(MinimumVersionToWrite.StoreUri);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"MainWindowViewModel: could not open the Microsoft Store: {ex.Message}");
+        }
     }
 
     /// <summary>

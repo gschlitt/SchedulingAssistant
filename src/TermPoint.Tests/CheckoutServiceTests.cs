@@ -26,6 +26,8 @@ namespace TermPoint.Tests;
 ///   <item><description>Group 5 — Database switch (ReleaseAsync + re-checkout)</description></item>
 ///   <item><description>Group 6 — Crash recovery and utility helpers</description></item>
 ///   <item><description>Group 7 — Coexistence with open database connections (wizard and edit flows)</description></item>
+///   <item><description>Group 13 — MinimumVersionToWrite gate (read-only on a too-old app, dormant stamping); the
+///   file also contains later groups numbered 8–12 below</description></item>
 /// </list>
 /// </para>
 /// </summary>
@@ -115,18 +117,24 @@ public sealed class CheckoutServiceTests : IDisposable
     /// this fixture: isolated <see cref="WriteLockService"/>, null logger, synchronous
     /// dispatcher, and the per-test working directory.
     /// </summary>
+    /// <param name="appVersion">
+    /// Version the service believes it is running as, for the MinimumVersionToWrite gate
+    /// (Group 13). Null (the default) uses the real TermPoint assembly version, which is
+    /// irrelevant to every test whose database carries no stamp.
+    /// </param>
     /// <returns>
     /// A tuple of the service and its lock service so tests can simulate external lock
     /// holders or verify the lock state directly.
     /// </returns>
-    private (CheckoutService svc, WriteLockService lockSvc) CreateService()
+    private (CheckoutService svc, WriteLockService lockSvc) CreateService(Version? appVersion = null)
     {
         var lockSvc = new WriteLockService();
         var svc     = new CheckoutService(
             lockService: lockSvc,
             logger:      new NullLogger(),
             dispatch:    action => action(),    // synchronous — events fire immediately
-            workingDir:  _workingDir);
+            workingDir:  _workingDir,
+            appVersion:  appVersion);
         return (svc, lockSvc);
     }
 
@@ -3155,5 +3163,447 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.Success, outcome);
         Assert.Equal(0, busyCues);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 13 — MinimumVersionToWrite gate (spec item 3, step 3b)
+    //
+    // A database may carry a "MinimumVersionToWrite" stamp in its AppConfiguration
+    // table. If the running app is older than the stamp, every write-access exit of
+    // the checkout (normal, forced stale-lock takeover, crash recovery) must refuse
+    // write access and open a read-only D'' snapshot instead — with the lock
+    // released (never polled), D' gone (except in recovery, where D' and its dirty
+    // marker are kept), D untouched, and RequiredAppVersion set for the banner.
+    //
+    // The raising half is dormant in 1.2.3 (ThisReleaseRequires == null); the tests
+    // drive it through the internal ThisReleaseRequires / ChannelOverride seams.
+    // A database with no readable stamp (including the non-SQLite dummy files used
+    // by the other groups) must never be made read-only.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Wait budget for the lock service's background lock-file deletion to settle.</summary>
+    private static readonly TimeSpan LockSettleTimeout = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Writes (creating the table if needed) one <c>AppConfiguration</c> row into the SQLite
+    /// database at <paramref name="path"/>, using the same schema as <c>DatabaseContext</c>.
+    /// </summary>
+    /// <param name="path">SQLite database to modify.</param>
+    /// <param name="key">Configuration key.</param>
+    /// <param name="value">Configuration value.</param>
+    private static void SetConfigValue(string path, string key, string value)
+    {
+        using var conn = new SqliteConnection($"Data Source={path};Pooling=False");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText =
+            "CREATE TABLE IF NOT EXISTS AppConfiguration (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');" +
+            "INSERT OR REPLACE INTO AppConfiguration (key, value) VALUES ($k, $v)";
+        cmd.Parameters.AddWithValue("$k", key);
+        cmd.Parameters.AddWithValue("$v", value);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Reads one raw <c>AppConfiguration</c> value, or null when the table or row is absent
+    /// (or the file is unreadable).
+    /// </summary>
+    /// <param name="path">SQLite database to read.</param>
+    /// <param name="key">Configuration key.</param>
+    private static string? GetConfigValue(string path, string key)
+    {
+        try
+        {
+            using var conn = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT value FROM AppConfiguration WHERE key = $k";
+            cmd.Parameters.AddWithValue("$k", key);
+            return cmd.ExecuteScalar() as string;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Creates a real SQLite database D stamped with <paramref name="stamp"/> (a valid file with
+    /// an <c>AppConfiguration</c> table), or unstamped when <paramref name="stamp"/> is null.
+    /// </summary>
+    /// <param name="path">Where to create D.</param>
+    /// <param name="stamp">The MinimumVersionToWrite value to store, or null for none.</param>
+    private static void CreateStampedDb(string path, string? stamp)
+    {
+        CreateSqliteDb(path);
+        if (stamp is not null)
+            SetConfigValue(path, MinimumVersionToWrite.ConfigKey, stamp);
+    }
+
+    /// <summary>
+    /// Asserts the on-disk and in-memory signature of a version-gated checkout: ReadOnly mode on
+    /// a D'' snapshot, no write lock held or left behind, no D'/sidecar/marker in the working
+    /// directory, and the banner's <see cref="CheckoutService.RequiredAppVersion"/> populated.
+    /// </summary>
+    /// <param name="svc">The service under test.</param>
+    /// <param name="lockSvc">Its lock service.</param>
+    /// <param name="db">Path to D.</param>
+    /// <param name="expectedStamp">The stamp the gate should report.</param>
+    private void AssertGatedReadOnly(
+        CheckoutService svc, WriteLockService lockSvc, string db, string expectedStamp)
+    {
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout); // settle the background lock-file deletion
+
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.True(svc.IsReadOnlyMode);
+        Assert.Equal(expectedStamp, svc.RequiredAppVersion);
+        Assert.False(svc.SessionDirty);
+        Assert.Null(svc.CurrentHolder);
+        Assert.False(lockSvc.IsWriter);
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")), "Lock must be released, not left behind.");
+        Assert.Equal(ComputeReadOnlyPath(db), svc.WorkingPath);
+        Assert.Equal(svc.ReadOnlyWorkingPath, svc.WorkingPath);
+        Assert.True(File.Exists(svc.WorkingPath), "D'' snapshot must exist.");
+    }
+
+    /// <summary>
+    /// A stamp higher than the app's version → ReadOnly on a D'' snapshot, with the lock
+    /// released, D' gone, D untouched, and the stamp surfaced via RequiredAppVersion.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_StampHigherThanApp_OpensReadOnlySnapshot()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5");
+        var hashOfD = ComputeFileHash(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertGatedReadOnly(svc, lockSvc, db, "1.2.5");
+
+        // The working directory must hold ONLY the D'' snapshot: no D', no -wal/-shm, no .dirty.
+        Assert.Equal(new[] { svc.WorkingPath }, Directory.GetFiles(_workingDir));
+        Assert.Equal(hashOfD, ComputeFileHash(db));   // D is never modified by a gated open
+    }
+
+    /// <summary>
+    /// A gated session can never write: SaveAsync refuses and ReleaseAsync(saveFirst) does not
+    /// push anything back to D.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_GatedSession_CannotSaveAndNeverTouchesD()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5");
+        var hashOfD = ComputeFileHash(db);
+
+        await svc.CheckoutAsync(db);
+
+        Assert.Equal(SaveOutcome.NotInWriteMode, await svc.SaveAsync());
+        Assert.Equal(SaveOutcome.Success, await svc.ReleaseAsync(saveFirst: true));
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout);
+
+        Assert.Equal(hashOfD, ComputeFileHash(db));
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")));
+    }
+
+    /// <summary>A stamp equal to the app's version does not gate (three- vs four-part versions compare equal).</summary>
+    [Fact]
+    public async Task VersionGate_StampEqualsApp_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3, 0));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.3");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+        Assert.NotEqual(db, svc.WorkingPath);
+        Assert.True(File.Exists(svc.WorkingPath));
+    }
+
+    /// <summary>A stamp lower than the app's version does not gate.</summary>
+    [Fact]
+    public async Task VersionGate_StampLowerThanApp_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.2");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>A real SQLite database with no AppConfiguration table is a normal, unstamped database.</summary>
+    [Fact]
+    public async Task VersionGate_NoAppConfigurationTable_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A D that is not readable as SQLite (the dummy files most other tests use) has no stamp —
+    /// the gate must fail open so a corrupt file is handled by the normal open path, not here.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_UnreadableDatabase_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(0, 0, 1));   // older than any plausible stamp
+        var db = DbPath();
+        CreateFile(db, "not-a-sqlite-file");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A stamp this app cannot parse gates (fail safe): it cannot know what the requirement is.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_UnparseableStamp_OpensReadOnly()
+    {
+        var (svc, lockSvc) = CreateService(new Version(9, 9, 9));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5-beta");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertGatedReadOnly(svc, lockSvc, db, "1.2.5-beta");
+    }
+
+    /// <summary>
+    /// RequiredAppVersion describes the MOST RECENT checkout: opening a different, unstamped
+    /// database with the same service clears it.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_RequiredAppVersion_ResetsOnNextCheckout()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var stamped   = DbPath("stamped");
+        var unstamped = DbPath("unstamped");
+        CreateStampedDb(stamped, "1.2.5");
+        CreateStampedDb(unstamped, null);
+
+        await svc.CheckoutAsync(stamped);
+        Assert.Equal("1.2.5", svc.RequiredAppVersion);   // precondition
+        await svc.ReleaseAsync(saveFirst: false);
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout);
+
+        var outcome = await svc.CheckoutAsync(unstamped);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Null(svc.RequiredAppVersion);
+    }
+
+    /// <summary>
+    /// The forced (stale-lock takeover) exit is gated too: after the user confirms the takeover
+    /// the stamp is still honoured, and the lock taken over is released again.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_ForceCheckout_StampHigherThanApp_OpensReadOnly()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5");
+        WriteExternalStaleLock(db);
+        var hashOfD = ComputeFileHash(db);
+
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertGatedReadOnly(svc, lockSvc, db, "1.2.5");
+        Assert.Equal(new[] { svc.WorkingPath }, Directory.GetFiles(_workingDir));
+        Assert.Equal(hashOfD, ComputeFileHash(db));
+    }
+
+    /// <summary>
+    /// The crash-recovery exit is gated on the ADOPTED D'. When it trips, D' and its dirty
+    /// marker are KEPT (they hold the user's only copy of the unsaved edits), the session opens
+    /// read-only, and once the user has a new-enough app recovery succeeds with the edits intact.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_Recovery_StampHigherThanApp_KeepsCrashArtifactsThenRecoversOnUpdate()
+    {
+        var db = DbPath();
+        CreateStampedDb(db, null);
+
+        // Previous session: checkout, edit D' (including a stamp carried in by that session), crash.
+        var (svc1, lockSvc1) = CreateService(new Version(1, 2, 3));
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        SetConfigValue(svc1.WorkingPath, MinimumVersionToWrite.ConfigKey, "1.2.5");
+        svc1.MarkDirty();
+        var crashedWorkingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+
+        // Next launch on an OLD app: recovery is requested but the adopted D' demands 1.2.5.
+        var (svc2, lockSvc2) = CreateService(new Version(1, 2, 3));
+        Assert.True(svc2.DetectCrashRecovery(db)); // precondition
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertGatedReadOnly(svc2, lockSvc2, db, "1.2.5");
+        Assert.True(File.Exists(crashedWorkingPath), "D' holds the unsaved edits — it must be kept.");
+        Assert.True(File.Exists(crashedWorkingPath + ".dirty"), "The dirty marker must be kept so recovery is offered again.");
+        Assert.Equal("unsaved-edit", ReadTestValue(crashedWorkingPath));
+        Assert.True(svc2.DetectCrashRecovery(db), "Recovery must still be detectable on the next launch.");
+
+        // After the user updates (a 1.2.5 app), the very same artifacts recover into write mode.
+        await svc2.ReleaseAsync(saveFirst: false);
+        lockSvc2.PendingRelease?.Wait(LockSettleTimeout);
+        var (svc3, _) = CreateService(new Version(1, 2, 5));
+        var recovered = await svc3.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, recovered);
+        Assert.Null(svc3.RequiredAppVersion);
+        Assert.Equal("unsaved-edit", ReadTestValue(svc3.WorkingPath));
+    }
+
+    // ── Stamping (dormant in 1.2.3: driven through the internal seams) ───────────
+
+    /// <summary>
+    /// A release that sets ThisReleaseRequires, running as a Store build, stamps D' at checkout
+    /// (with the reason), and the stamp reaches D through the next save — in the same file write
+    /// as the data it protects.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_StoreBuild_StampsWorkingCopyAndSaveCarriesItToD()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ThisReleaseReason   = "Section-type colours are now saved.";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var db = DbPath();
+        CreateStampedDb(db, null);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.Equal("1.2.4", MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal("Section-type colours are now saved.",
+            GetConfigValue(svc.WorkingPath, MinimumVersionToWrite.ReasonKey));
+        Assert.Null(MinimumVersionToWrite.ReadStamp(db));   // D has not been saved yet
+
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+
+        Assert.Equal("1.2.4", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal("Section-type colours are now saved.",
+            GetConfigValue(db, MinimumVersionToWrite.ReasonKey));
+    }
+
+    /// <summary>Direct-download builds stamp; Sideload and Development builds never do.</summary>
+    [Theory]
+    [InlineData(InstallChannel.Store,          true)]
+    [InlineData(InstallChannel.DirectDownload, true)]
+    [InlineData(InstallChannel.Sideload,       false)]
+    [InlineData(InstallChannel.Development,    false)]
+    public async Task VersionGate_Stamping_OnlyByStoreAndDirectDownloadBuilds(InstallChannel channel, bool shouldStamp)
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ChannelOverride     = channel;
+        var db = DbPath();
+        CreateStampedDb(db, null);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);   // never blocks editing either way
+        Assert.Equal(shouldStamp ? "1.2.4" : null, MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+    }
+
+    /// <summary>A release that requires nothing (ThisReleaseRequires null — the 1.2.3 state) never stamps, whatever the channel.</summary>
+    [Fact]
+    public async Task VersionGate_ThisReleaseRequiresNull_NeverStamps()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 3));
+        svc.ThisReleaseRequires = null;
+        svc.ChannelOverride     = InstallChannel.Store;
+        var db = DbPath();
+        CreateStampedDb(db, null);
+
+        await svc.CheckoutAsync(db);
+
+        Assert.Null(MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Null(GetConfigValue(svc.WorkingPath, MinimumVersionToWrite.ReasonKey));
+    }
+
+    /// <summary>Stamping never lowers an existing, higher stamp (the app is new enough to open it).</summary>
+    [Fact]
+    public async Task VersionGate_Stamping_DoesNotLowerAHigherExistingStamp()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 9));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.9");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal("1.2.9", MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+    }
+
+    /// <summary>
+    /// A stamping failure (here: a malformed ThisReleaseRequires) is logged and swallowed —
+    /// it must never cost the user write access.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_StampingFailure_DoesNotBlockEditing()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "not-a-version";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var db = DbPath();
+        CreateStampedDb(db, null);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(lockSvc.IsWriter);
+        Assert.Null(MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+    }
+
+    /// <summary>
+    /// The brand-new-database shortcut (D does not exist) is neither gated nor stamped: a new
+    /// file has no stamp, and no working copy exists to stamp.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_NewDatabase_IsNotGatedOrStamped()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var db = DbPath("brand-new");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+        Assert.Equal(db, svc.WorkingPath);
+        Assert.False(File.Exists(db), "Nothing creates the new database file until DatabaseContext does.");
     }
 }

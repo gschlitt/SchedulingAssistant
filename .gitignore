@@ -85,3 +85,6 @@ src/TermPoint/Properties/launchSettings.json
 /tmp/
 
 
+
+# Personal to-do notes — kept local
+/todo/

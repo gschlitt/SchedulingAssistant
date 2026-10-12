@@ -23,6 +23,17 @@ namespace TermPoint.Services;
 /// <see cref="RefreshReadOnlySnapshotAsync"/> to re-copy D → D'' and see the latest data.
 /// D'' is deleted on <see cref="ReleaseAsync"/>; every open is a fresh copy from D.</para>
 ///
+/// <para><b>Version gate:</b> a database can carry a <see cref="MinimumVersionToWrite"/> stamp
+/// naming the oldest TermPoint allowed to edit it. At every write-access exit — after D' is
+/// copied (or adopted, for crash recovery) and verified — the stamp is read from D'. If this app
+/// is older than the stamp, the checkout is abandoned: the lock is released (never held, never
+/// polled, so no "Take over" offer can loop back into the gate), D' is discarded (except during
+/// crash recovery, where D' and its dirty marker are kept so recovery is offered again after the
+/// update), and the session opens read-only on a D'' snapshot with
+/// <see cref="RequiredAppVersion"/> set so the UI can explain why. It follows the same pattern as
+/// the license-gated read-only mode. The brand-new-database shortcut is not gated: a new file has
+/// no stamp. See <see cref="ApplyVersionGateAsync"/>.</para>
+///
 /// <para><b>Always-on:</b> Both modes apply to every database, whether it is on a
 /// network drive or a local drive. The indirection through D' or D'' is what prevents any
 /// instance from ever holding D open, allowing the writer's atomic rename (D.tmp → D)
@@ -103,6 +114,35 @@ public sealed class CheckoutService : IDisposable
     /// overridden in tests to use an isolated temporary directory.
     /// </summary>
     private readonly string _workingDir;
+
+    /// <summary>
+    /// Version of the running app, compared against a database's
+    /// <see cref="MinimumVersionToWrite"/> stamp by the version gate. Set at construction;
+    /// defaults to the TermPoint assembly version, overridden in tests.
+    /// </summary>
+    private readonly Version _appVersion;
+
+    // ── Test seams for the version gate ──────────────────────────────────────
+
+    /// <summary>
+    /// The minimum writer version this release stamps into databases it opens for writing.
+    /// Defaults to <see cref="MinimumVersionToWrite.ThisReleaseRequires"/> (null in 1.2.3 —
+    /// the raising code is dormant). Settable only so tests can exercise the stamping path.
+    /// </summary>
+    internal string? ThisReleaseRequires { get; set; } = MinimumVersionToWrite.ThisReleaseRequires;
+
+    /// <summary>
+    /// One-line reason stored beside the stamp. Defaults to
+    /// <see cref="MinimumVersionToWrite.ThisReleaseReason"/>. Settable for tests only.
+    /// </summary>
+    internal string? ThisReleaseReason { get; set; } = MinimumVersionToWrite.ThisReleaseReason;
+
+    /// <summary>
+    /// When non-null, replaces <see cref="PlatformCapabilities.InstallChannel"/> when deciding
+    /// whether this build may stamp a database. Null (the default) means "use the real channel",
+    /// read at the moment of use rather than at construction. Settable for tests only.
+    /// </summary>
+    internal InstallChannel? ChannelOverride { get; set; }
 
     // ── State ──────────────────────────────────────────────────────────────────
 
@@ -222,6 +262,15 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     public LockFileData? LockLossNewHolder { get; private set; }
 
+    /// <summary>
+    /// The database's <see cref="MinimumVersionToWrite"/> stamp when the version gate tripped
+    /// during the most recent checkout (this app is older than the stamp, so the session opened
+    /// read-only); null when the gate did not trip. Read by the main window to pick the
+    /// read-only banner wording and to skip the "someone else is editing" recovery message,
+    /// which would be wrong here. Reset to null at the start of every checkout.
+    /// </summary>
+    public string? RequiredAppVersion { get; private set; }
+
     // ── Events ─────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -336,12 +385,20 @@ public sealed class CheckoutService : IDisposable
     /// in unit tests to use an isolated temporary directory and avoid polluting the real
     /// working folder.
     /// </param>
+    /// <param name="appVersion">
+    /// Version of the running app, compared against a database's
+    /// <see cref="MinimumVersionToWrite"/> stamp. Defaults to the TermPoint assembly version
+    /// (or 0.0.0 if it cannot be read — which would block any stamped database, the safe
+    /// direction). Override in unit tests to simulate older and newer releases.
+    /// </param>
     public CheckoutService(
         WriteLockService? lockService = null,
         IAppLogger? logger           = null,
         Action<Action>? dispatch     = null,
-        string? workingDir           = null)
+        string? workingDir           = null,
+        Version? appVersion          = null)
     {
+        _appVersion  = appVersion ?? typeof(CheckoutService).Assembly.GetName().Version ?? new Version(0, 0, 0);
         _lockService = lockService ?? App.LockService;
         _logger      = logger      ?? App.Logger;
         _dispatch    = dispatch    ?? (action => Dispatcher.UIThread.Post(action));
@@ -371,7 +428,7 @@ public sealed class CheckoutService : IDisposable
     /// </param>
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath.<br/>
-    /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists; use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
+    /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists, the license/observer mode forced read-only, or the database's <see cref="MinimumVersionToWrite"/> stamp is newer than this app (<see cref="RequiredAppVersion"/> is then non-null); use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
     /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/> to open read-only.
@@ -380,6 +437,7 @@ public sealed class CheckoutService : IDisposable
     {
         SourcePath = sourcePath;
         LockLossNewHolder = null;
+        RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
 
         // Tri-state probe: distinguishes "location answered, file absent" (Missing —
@@ -577,6 +635,11 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
+        // D' is verified. Before granting write access, make sure this app is new enough to
+        // edit this database (and, in a Store/DirectDownload release that requires it, stamp it).
+        if (await ApplyVersionGateAsync(isRecovery: false) is { } gated)
+            return gated;
+
         Mode          = CheckoutMode.WriteAccess;
         SessionDirty  = true;
         CurrentHolder = null;
@@ -600,11 +663,16 @@ public sealed class CheckoutService : IDisposable
     /// </param>
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> on success.
+    /// <see cref="CheckoutOutcome.ReadOnly"/> when the version gate tripped (the database's
+    /// <see cref="MinimumVersionToWrite"/> stamp is newer than this app): the lock is released,
+    /// D'' is already set up, and <see cref="RequiredAppVersion"/> is non-null.
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> when recovery was requested but cannot be applied safely.
     /// <see cref="CheckoutOutcome.Failed"/> if another instance won the race.
     /// </returns>
     public async Task<CheckoutOutcome> ForceCheckoutAsync(bool recoverWorkingCopy = false)
     {
+        RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
+
         var forceCompleted = await NetworkFileOps.RunAsync(
             () => _lockService.ForceAcquire(), "force lock acquire");
 
@@ -673,6 +741,10 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.Failed;
         }
 
+        // Same version gate as CheckoutAsync (see ApplyVersionGateAsync).
+        if (await ApplyVersionGateAsync(isRecovery: false) is { } gated)
+            return gated;
+
         Mode          = CheckoutMode.WriteAccess;
         SessionDirty  = true;
         CurrentHolder = null;
@@ -699,6 +771,12 @@ public sealed class CheckoutService : IDisposable
     /// (mode, events, autosave eligibility), except the dirty marker is deliberately left
     /// in place — D' still differs from D until the next successful save, so the marker
     /// remains an accurate "unsaved changes exist" signal.</para>
+    ///
+    /// <para><b>Version gate:</b> the adopted D' is checked against its
+    /// <see cref="MinimumVersionToWrite"/> stamp before the session resumes
+    /// (<see cref="ApplyVersionGateAsync"/>). If this app is too old the outcome is
+    /// <see cref="CheckoutOutcome.ReadOnly"/> and D' + marker are kept untouched, so recovery is
+    /// offered again after the user updates.</para>
     ///
     /// <para>Precondition: the caller has already acquired the write lock.</para>
     /// </summary>
@@ -747,6 +825,13 @@ public sealed class CheckoutService : IDisposable
 
         // D is byte-identical to what the crashed session checked out — safe to resume.
         HashAtCheckout = sourceHash;
+
+        // Version gate on the ADOPTED D' (its stamp is a superset of D's: stamps only go up).
+        // On a trip, D' and its dirty marker are deliberately kept so recovery is offered
+        // again once the user has updated TermPoint.
+        if (await ApplyVersionGateAsync(isRecovery: true) is { } gated)
+            return gated;
+
         Mode           = CheckoutMode.WriteAccess;
         SessionDirty   = true;
         CurrentHolder  = null;
@@ -755,6 +840,104 @@ public sealed class CheckoutService : IDisposable
         _lockService.HeartbeatFailed += OnHeartbeatFailed;
         _logger.LogBreadcrumb("Recovery: WriteAccess (resumed crashed session)", new() { ["path"] = SourcePath });
         return CheckoutOutcome.WriteAccess;
+    }
+
+    /// <summary>
+    /// The version gate (spec item 3, step 3b). Called at each of the three write-access exits —
+    /// <see cref="CheckoutAsync"/>, <see cref="ForceCheckoutAsync"/>, and
+    /// <see cref="FinishRecoveryCheckoutAsync"/> — once D' is verified and the lock is held, but
+    /// BEFORE <see cref="Mode"/> becomes <see cref="CheckoutMode.WriteAccess"/> and before the
+    /// wake/heartbeat handlers are subscribed.
+    ///
+    /// <para><b>Gate:</b> reads the <see cref="MinimumVersionToWrite"/> stamp from D'. If this app is
+    /// older than it, write access is refused and the session falls back to a read-only D''
+    /// snapshot, exactly like the license-gated read-only mode:</para>
+    /// <list type="bullet">
+    ///   <item>the lock is released and <see cref="WriteLockService.EnterReaderMode"/> is
+    ///         deliberately NOT called — no poll timer, so the UI can never offer a "Take over"
+    ///         that would loop straight back into this gate;</item>
+    ///   <item>normally D' (and its WAL sidecars and dirty marker) are deleted, mirroring the
+    ///         copy-failure branches; during crash recovery (<paramref name="isRecovery"/>) D' and
+    ///         its dirty marker are KEPT, because they hold the user's only copy of unsaved edits
+    ///         and recovery should be offered again after the update;</item>
+    ///   <item><see cref="RequiredAppVersion"/> records the stamp for the banner.</item>
+    /// </list>
+    ///
+    /// <para><b>Stamp (dormant in 1.2.3):</b> when not gated, and this release sets
+    /// <see cref="ThisReleaseRequires"/>, and the install channel is
+    /// <see cref="InstallChannel.Store"/> or <see cref="InstallChannel.DirectDownload"/>, the stamp
+    /// is raised in D'. Writing into D' means it reaches D in the same save as the data it
+    /// protects. A failure to stamp is logged and ignored — it must never block editing.</para>
+    ///
+    /// <para>The brand-new-database shortcut in <see cref="CheckoutAsync"/> (WorkingPath ==
+    /// SourcePath) is neither gated nor stamped: a new file has no stamp to honour, and its
+    /// schema is created by this very version.</para>
+    /// </summary>
+    /// <param name="isRecovery">
+    /// True when called from crash recovery, where D' holds unsaved edits that must survive a trip.
+    /// </param>
+    /// <returns>
+    /// Null when the checkout should continue to write access. Otherwise the outcome to return:
+    /// <see cref="CheckoutOutcome.ReadOnly"/> (D'' created) or <see cref="CheckoutOutcome.Failed"/>
+    /// (D'' could not be created; the caller's usual fallback applies).
+    /// </returns>
+    private async Task<CheckoutOutcome?> ApplyVersionGateAsync(bool isRecovery)
+    {
+        var stamp = MinimumVersionToWrite.ReadStamp(WorkingPath);
+
+        if (stamp is not null && MinimumVersionToWrite.Blocks(stamp, _appVersion))
+        {
+            _logger.LogInfo(
+                $"CheckoutService: database requires TermPoint {stamp} to edit; running {_appVersion} — opening read-only.");
+            _logger.LogBreadcrumb("Checkout: ReadOnly (version gate)", new()
+            {
+                ["path"]     = SourcePath,
+                ["required"] = stamp,
+                ["app"]      = _appVersion.ToString(),
+            });
+
+            // Give the lock back, but do NOT enter reader mode (see method docs).
+            _lockService.Release();
+
+            if (!isRecovery)
+            {
+                TryDeleteWalSidecars(WorkingPath);
+                TryDelete(WorkingPath);
+                DeleteDirtyMarker();
+            }
+
+            CurrentHolder      = null;
+            RequiredAppVersion = stamp;
+            Mode               = CheckoutMode.ReadOnly;
+            SessionDirty       = false;
+
+            return await SetupReadOnlySnapshotAsync() is not null
+                ? CheckoutOutcome.ReadOnly
+                : CheckoutOutcome.Failed;
+        }
+
+        // Not gated. Dormant stamping step: only a release that sets ThisReleaseRequires, running
+        // from a Store or direct-download install, ever writes a stamp — never a dev/sideload build.
+        var requires = ThisReleaseRequires;
+        if (!string.IsNullOrWhiteSpace(requires)
+            && (ChannelOverride ?? PlatformCapabilities.InstallChannel) is InstallChannel.Store or InstallChannel.DirectDownload)
+        {
+            try
+            {
+                if (MinimumVersionToWrite.Raise(WorkingPath, requires, ThisReleaseReason))
+                {
+                    _logger.LogInfo($"CheckoutService: raised MinimumVersionToWrite to {requires}.");
+                    _logger.LogBreadcrumb("Checkout: stamped MinimumVersionToWrite", new() { ["version"] = requires });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Stamping protects data from older versions but is not worth refusing edits over.
+                _logger.LogError(ex, "CheckoutService: could not raise MinimumVersionToWrite — continuing without it.");
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

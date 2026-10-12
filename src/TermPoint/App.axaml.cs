@@ -201,6 +201,12 @@ public partial class App : Application
             // lock. OnMainWindowClose makes a normal close tear the whole app down.
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
 
+            // Record how this copy was installed (Store / Sideload / DirectDownload / Development).
+            // It decides the wording of the "database needs a newer TermPoint" banner and whether
+            // this build may stamp databases. Read here, after Program.Main has already run
+            // Velopack's startup hooks, because detection may touch Velopack.
+            Logger.LogInfo($"[Startup] Install channel: {PlatformCapabilities.InstallChannel}");
+
             if (!PlatformCapabilities.IsMsixPackage)
                 StartBackgroundUpdateCheck();
         }

@@ -15,7 +15,7 @@ will be verified.
 |---|------|------|--------|
 | 1 | Avalonia 12.0.2 → 12.1.3 upgrade | Dependency / bug fix | **Done** (steps 1–5). Manual checks still open: UNC picker, macOS, Win11 VM |
 | 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | **Done** |
-| 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | Accepted |
+| 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | Accepted |
 | 5 | Make Restore from backup safe | Data integrity | Accepted |
 | 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted |
@@ -402,10 +402,10 @@ and assert the field survives. Gate test: a DB stamped with a higher version ope
     - `SectionCloneTests`' reflection guard forces this.
   - **Audit every save path** that builds a fresh object to update an existing record. New records
     (Add, Copy Semester, imports) start with no unknown fields.
-- **Minimum writer version:**
+- **Minimum writer version** (decisions refined on 2026-10-11; see the step 3b outcome below):
   - **Where:** stored in the existing, previously unused **`AppConfiguration`** key/value table as
-    `key = 'MinWriterVersion'`, `value = '1.2.5'`. It is human-readable as it is, with no new
-    table and no schema change.
+    `key = 'MinimumVersionToWrite'` (called `MinWriterVersion` until 2026-10-11),
+    `value = '1.2.5'`. It is human-readable as it is, with no new table and no schema change.
   - **1.2.3 ships the CHECK only.** No release raises the stamp yet.
   - **Out-of-date app:** an app older than the stamp opens the database **read-only**, reusing
     the existing reader mode, with a specific message.
@@ -431,9 +431,9 @@ and assert the field survives. Gate test: a DB stamped with a higher version ope
 - **Release discipline when a future release raises the stamp:**
   - mark that Store submission **mandatory** in Partner Center;
   - allow time for certification and roll-out;
-  - consider raising the stamp lazily, only when the new feature is first used.
-  - Release checklist line: *"Does this release add a value, rule or restructure that an older
-    version could break by editing? If yes, raise MinWriterVersion."*
+  - ~~consider raising the stamp lazily, only when the new feature is first used~~ (dropped
+    2026-10-11: the stamp is raised per release, by a constant; see the step 3b outcome);
+  - Release checklist line: superseded by the deciding question in the step 3b outcome.
 - **Parked for later:** in-app Store updates via `StoreContext`, i.e. a periodic check, an
   "Update now" banner and honouring the mandatory flag. They need a Windows-specific build target
   for the MSIX build (parking-lot P7).
@@ -477,6 +477,94 @@ and assert the field survives. Gate test: a DB stamped with a higher version ope
   - **Data impact:** capacities already lost are recoverable only from backups.
 - **Rule for future code** (recorded in CLAUDE.md, enforced by tests): a new persisted class must
   derive from `PersistedRecord`, and code that rebuilds a record must call `WithExtensionDataFrom`.
+
+**Step 3b outcome (2026-10-11): the `MinimumVersionToWrite` gate is done. 1.2.3 ships the check;
+the raising code ships dormant.**
+
+- **Definition** (word for word in the code, here and in CLAUDE.md): *"MinimumVersionToWrite is
+  not the database's version, and not the version that last wrote it. It is the oldest TermPoint
+  allowed to edit this database; older versions open it read-only. It only ever goes up. It is
+  raised only when a release answers Yes to: 'Could the new version save anything the old version
+  wouldn't have?'"*
+- **Policy (user, 2026-10-11).** The stamp is **not** tied to the app's version numbering.
+  - **Rejected:** raising it every release, or tying it to minor-version bumps. Either would lock
+    out colleagues who haven't updated after releases that didn't need it, and would tie the
+    version number to database rules.
+  - **The deciding question for every release:** ***"Could the new version save anything the old
+    version wouldn't have?"*** Yes if either of these holds:
+    - the same starting database plus the same edits gives a different saved result;
+    - the new version offers an edit the old one can't make.
+  - **Yes:**
+    - section-type colours (a new saved field);
+    - a fix that stops an edit wiping a field (1.2.3's Flag/Capacity fixes: same edit, different
+      record);
+    - a CSV import fix (same file, different records).
+  - **No:** card layout, scrolling, a crash fix in a view, performance work.
+  - **When Yes:**
+    - set `MinimumVersionToWrite.ThisReleaseRequires` to the release's full version, and
+      `ThisReleaseReason` to a one-line reason;
+    - mark the Store submission mandatory;
+    - allow time for certification;
+    - **never reset the constants to null or lower them in a later release.** Later releases still
+      save the newer data, so they must keep stamping at least that version.
+  - **Full procedure:** `UPDATE_NUMBERING_README.md` at the repo root.
+  - **Release checklist line:** *"Could this release save anything the previous release wouldn't
+    have? If yes, set `MinimumVersionToWrite.ThisReleaseRequires` and `ThisReleaseReason`."*
+- **Install channel.** New `InstallChannel` enum: `PlatformCapabilities.InstallChannel`, lazy, and
+  logged at startup.
+  - **Store:** an MSIX whose package family name is the Store listing's.
+  - **Sideload:** any other MSIX.
+  - **DirectDownload:** a Velopack install, including the macOS builds.
+  - **Development:** everything else, including the browser demo.
+  - **Debug override:** Debug builds honour `TERMPOINT_INSTALL_CHANNEL`, for testing; Release
+    builds ignore it.
+- **The gate.** `CheckoutService` reads the stamp from the local, hash-verified D' at all three
+  write-access exits: normal, stale-lock takeover and crash recovery. If the app is older:
+  - the lock is released;
+  - the lock is **not** polled, so no "Take over" offer can loop back into the gate;
+  - D' is discarded. During crash recovery, D' and its marker are kept, so recovery is offered
+    again after the update;
+  - the session opens read-only on D'', and `RequiredAppVersion` drives the banner.
+  - **Model:** the same pattern as the license read-only gate.
+  - **Fail-safe rules:**
+    - an unreadable file, a missing table or a missing key all count as unstamped, so the gate can
+      never lock out a normal database;
+    - a stamp that doesn't parse blocks.
+- **The stamp, dormant in 1.2.3.**
+  - `ThisReleaseRequires` is null, and a test pins it.
+  - When it is set, Store and DirectDownload builds raise the stamp in D' (`max(existing, mine)`;
+    never lower), plus `MinimumVersionToWrite.Reason`. It then reaches D in the same save as the
+    data it protects.
+  - Development and Sideload builds never stamp.
+  - **Caution:** a locally installed test MSIX with the Store identity counts as Store and would
+    stamp. Test such builds on copies only.
+- **Banner** (the existing red read-only banner):
+  - **Store:** *"Read-only — this database needs TermPoint 1.2.5 or later to edit. In the Microsoft
+    Store, click Get updates, then restart TermPoint."*
+    - It has an **[Open Microsoft Store]** button that opens `ms-windows-store://downloadsandupdates`.
+    - The user checked on a Store install: TermPoint's own product page gave no hint what to do,
+      while Downloads and updates has "Get updates".
+  - **Other channels:** *"…Install the update from your usual source, then restart TermPoint."*
+  - **A stamp that doesn't parse:** "a newer version of TermPoint".
+  - **DirectDownload:** the Velopack "[Restart now]" flow stays deferred until Velopack is
+    reactivated.
+- **Also:** in `RunCheckoutAsync`, a version-gated stale-lock takeover now goes straight to
+  read-only, with no misleading "someone else is editing" message and no second copy.
+- **Tests: +62.**
+  - `MinimumVersionToWriteTests`: the `Blocks` boundaries, `ReadStamp`, `Raise` (never lowers;
+    clears a stale reason), the wording, and the null pin.
+  - `CheckoutServiceTests` "Group 13": every exit and both outcomes, recovery keeping D', and
+    stamping by channel.
+  - Suite: 1377 passed.
+- **Hand-tested 2026-10-11** on stamped copies of the BIOL database:
+  - generic wording, editing disabled, Refresh working, no "Take over", no lock file left;
+  - the Store wording and button with the Debug override;
+  - a stamp of 1.2.3 opened normally.
+- **Known costs and limits:**
+  - **A gated open** holds the lock for a few seconds and copies D twice.
+  - **Versions older than 1.2.3** ignore the stamp.
+  - **If D'' can't be created** after a gate trip, the existing last-resort fallback opens D
+    directly. That is item 4's territory.
 
 ---
 
@@ -1638,6 +1726,22 @@ LATENT: unreachable today.**
 
   This interacts with items 4 and 9, which change the lock and startup code.
 
+**P9. Section-type colours (client request, noted 2026-10-11). NEW FEATURE; recommended for
+1.2.4.**
+- **The request:** attach a colour to each section type, so sections are coloured by type in the
+  Section List and the Schedule view (exact presentation to be designed).
+- **Storage:** section types are `SchedulingEnvironmentValue` rows, so the colour is one new field
+  on that record. 1.2.3's unknown-field catch-all keeps it intact when a 1.2.3 user edits a type:
+  that user simply doesn't see colours until they update.
+- **Why 1.2.4, not 1.2.3:** 1.2.2 has no catch-all and ignores the stamp, so a 1.2.2 user who
+  renames or reorders a section type would silently wipe its colour. That is low harm (cosmetic,
+  easy to re-pick, and types are rarely edited), but 1.2.4 avoids it entirely.
+- **`MinimumVersionToWrite`:** this is a **Yes** under the deciding question (a new kind of edit,
+  a new saved field). The release that ships it sets `ThisReleaseRequires`.
+- **Performance (item 21):** colour each card by setting the brush directly. Don't use per-type
+  style classes: class-conditioned styles cost memory on every card.
+- **Decide with the user:** timing (1.2.4 recommended) and the presentation in each view.
+
 **P8. Campus queries use the wrong JSON key case (noted 2026-10-10 during item 3a; confirmed).
 PRE-EXISTING BUG.**
 - **The mismatch:** `CampusRepository` and `SeedData.FindOrCreateCampus` query
@@ -1653,7 +1757,7 @@ PRE-EXISTING BUG.**
   one. Decide with the user.
 
 **P7. In-app updates for the Microsoft Store build (noted 2026-10-10, item 3). FUTURE, 1.2.4
-candidate; do it before the first release that raises MinWriterVersion.**
+candidate; do it before the first release that raises MinimumVersionToWrite.**
 - **The API:** `Windows.Services.Store.StoreContext`:
   - `GetAppAndOptionalStorePackageUpdatesAsync`;
   - `RequestDownloadAndInstallStorePackageUpdatesAsync`;
@@ -1731,6 +1835,7 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 | New-DB folder creation and recovered-copy export with the share down: no UI freeze | 16 |
 | Cloud-synced folder (OneDrive/SharePoint, Google Drive, Box; macOS CloudStorage) is detected and warned | 13 |
 | **Mixed versions:** a 1.2.2 client and a 1.2.3 client on the same shared DB, in both directions; unknown fields survive; version gate applies | 2, 3 |
+| **Store update link:** once 1.2.3 is certified in the Store, on a machine still running 1.2.2 (before it updates), open `ms-windows-store://downloadsandupdates`: "Get updates" finds TermPoint 1.2.3. Also note whether TermPoint's product page (`ms-windows-store://pdp/?PFN=Academic-Solutions.TermPoint_9nmm6ygzk390e`) then shows "Update". | 3 |
 | Remote DB via the wizard with a long UNC picker session; File → Open on a remote share; wizard Cancel after browsing | 1, 18 |
 | **Windows 11 VM:** after the Harmony patch removal, AutoCompleteBox crash test. Click a Start Time and a Length suggestion in the section editor and the Meetings flyout, then wait 10 s each. No crash. Also covers the item 1 meeting-time entry checks on Win11. | 1 |
 | BugSnag: handled failures and the "previous session ended uncleanly" event arrive, with paths and usernames scrubbed | 6, 7 |
