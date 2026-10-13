@@ -492,10 +492,10 @@ public partial class MainWindow : Window
             }
             else
             {
-                // Saved DB is missing or corrupt — fall through to the chooser in recovery mode.
-                var reason = validation == DatabaseValidationResult.Corrupt
-                    ? RecoveryReason.Corrupt
-                    : RecoveryReason.NotFound;
+                // Saved DB is missing, corrupt or unreadable (held open by another program /
+                // access denied) — fall through to the chooser in recovery mode. Unreadable has
+                // its own reason: it is never presented as corrupt or not found.
+                var reason = DatabaseChooserViewModel.RecoveryReasonFor(validation);
 
                 var result = await ShowDatabaseChooserAsync(ChooserMode.Recovery, reason, settings.DatabasePath);
                 if (result is null) return; // user exited or wizard routed
@@ -505,8 +505,8 @@ public partial class MainWindow : Window
         else
         {
             // Even in chooser mode, validate the saved path so we can warn the user
-            // if their most recent database has gone missing, is corrupt, or its
-            // network location is unreachable.
+            // if their most recent database has gone missing, is corrupt, can't be read
+            // right now (held open by another program), or its network location is unreachable.
             var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
             var mode = ChooserMode.Normal;
             RecoveryReason? reason = null;
@@ -514,13 +514,8 @@ public partial class MainWindow : Window
             if (validation != DatabaseValidationResult.Ok
                 && !string.IsNullOrEmpty(settings.DatabasePath))
             {
-                mode = ChooserMode.Recovery;
-                reason = validation switch
-                {
-                    DatabaseValidationResult.Corrupt     => RecoveryReason.Corrupt,
-                    DatabaseValidationResult.Unreachable => RecoveryReason.Unreachable,
-                    _                                    => RecoveryReason.NotFound
-                };
+                mode   = ChooserMode.Recovery;
+                reason = DatabaseChooserViewModel.RecoveryReasonFor(validation);
             }
 
             var result = await ShowDatabaseChooserAsync(mode, reason, settings.DatabasePath);
@@ -719,6 +714,14 @@ public partial class MainWindow : Window
                                 "Cannot reach the database — check your network connection and try again.");
                             return null;
                         }
+                        if (forceOutcome == CheckoutOutcome.SourceUnreadable)
+                        {
+                            // D is held open by another program (or access denied). The lock was
+                            // released again; no read-only fallback is possible (it must read D too).
+                            await ShowMessageAsync(DatabaseSwitchPrecheck.UnreadableTitle,
+                                DatabaseChooserViewModel.UnreadableDatabaseMessage);
+                            return null;
+                        }
                         // Lost the race to another instance — fall through to read-only setup.
                     }
 
@@ -739,9 +742,16 @@ public partial class MainWindow : Window
             case CheckoutOutcome.SourceMissing:
                 // D vanished between the caller's checks (or its creation) and checkout. Nothing
                 // was locked or created, and there is no safe fallback — tell the user and stop.
-                await ShowMessageAsync("Database Not Found",
-                    $"The database file could not be found:\n{sourcePath}\n\n" +
-                    "It may have been moved, renamed or deleted.");
+                await ShowMessageAsync(DatabaseSwitchPrecheck.MissingTitle,
+                    DatabaseSwitchPrecheck.MissingMessage(sourcePath));
+                return null;
+
+            case CheckoutOutcome.SourceUnreadable:
+                // D exists but another program holds it open (or access is denied). The checkout
+                // already released any lock it took and left no working copy behind (crash-recovery
+                // data, if any, is kept). A retry will usually succeed — and this is NOT damage.
+                await ShowMessageAsync(DatabaseSwitchPrecheck.UnreadableTitle,
+                    DatabaseChooserViewModel.UnreadableDatabaseMessage);
                 return null;
 
             default: // Failed
@@ -983,11 +993,19 @@ public partial class MainWindow : Window
     /// release → checkout → re-initialize cycle. Called from the Files menu, from the
     /// startup wizard completion path, and from <c>AcquireWriteLock</c> in the ViewModel
     /// when upgrading from read-only to write mode.
-    /// If the database file does not yet exist (File → New), it is created with the
-    /// schema before checkout — built locally and copied to the share by
-    /// <see cref="NewDatabaseFile.CreateAsync"/>, never opened over the network — so that
-    /// <see cref="CheckoutService.CheckoutAsync"/> takes the normal D → D' path and all writes go
+    /// If the database file does not yet exist AND the caller passed <paramref name="createIfMissing"/>
+    /// (File → New only), it is created with the schema before checkout — built locally and copied
+    /// to the share by <see cref="NewDatabaseFile.CreateAsync"/>, never opened over the network — so
+    /// that <see cref="CheckoutService.CheckoutAsync"/> takes the normal D → D' path and all writes go
     /// to the local working copy.
+    ///
+    /// <para><b>Pre-check before any teardown:</b> the first thing this does is validate the target with
+    /// <see cref="DatabaseSwitchPrecheck"/> (the same validator the database chooser uses). If the
+    /// target is missing (and may not be created), held open by another program, damaged or
+    /// unreachable, the user is told why and this RETURNS with the current database still open and
+    /// <see cref="AppSettings.DatabasePath"/> and the recent list unchanged. Previously every one of
+    /// those cases was discovered only after the current database had been saved and disposed — and a
+    /// missing target silently produced a new, empty database at the old path.</para>
     ///
     /// <para>May be called before any DI container exists (the wizard's existing-database path only
     /// validates D and saves settings), so every <see cref="App.Services"/> access before
@@ -1001,22 +1019,45 @@ public partial class MainWindow : Window
     /// and crash-recovery steps behave as for any other open, and the setting still applies to every
     /// later open of the database.</para>
     /// </summary>
-    /// <param name="newDatabasePath">Full path of the database (D) to switch to; created if missing.</param>
+    /// <param name="newDatabasePath">Full path of the database (D) to switch to.</param>
     /// <param name="isNewDatabase">
     /// True when the caller has already created this database during the current user action (the
     /// startup wizard's new-database path), so the observer setting must not make it read-only.
     /// False for every other caller; a file created by this very call is detected internally.
     /// </param>
-    public async Task SwitchDatabaseAsync(string newDatabasePath, bool isNewDatabase = false)
+    /// <param name="createIfMissing">
+    /// True ONLY from File → New: a missing <paramref name="newDatabasePath"/> is then created. False
+    /// (the default) for every other caller — Recent…, File → Open, "Switch to edit mode", the
+    /// post-wizard open — for which a missing file is an error ("Database Not Found"), never an
+    /// invitation to create an empty database at a path that has moved. With <c>true</c>, a target
+    /// that already EXISTS is refused too (File → New never adopts an existing file).
+    /// </param>
+    /// <returns>
+    /// <c>true</c> ONLY when the new database ended up open: the checkout succeeded (write access or
+    /// the read-only snapshot) and the services and window were set up for it. <c>false</c> on every
+    /// refusal or failure — pre-check refusal (current database untouched), creation failure
+    /// (unreachable / already exists), a checkout that could not proceed (dialog shown), or any
+    /// exception (reported in an error dialog). A <c>false</c> after the pre-check passed means the
+    /// previous database has already been closed. Callers that go on to write into "the open
+    /// database" — File → New's configuration transfer — MUST check it; others may ignore it.
+    /// </returns>
+    public async Task<bool> SwitchDatabaseAsync(
+        string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false)
     {
         App.Logger.LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
         try
         {
-            // Update settings and record in recent list
-            var settings = AppSettings.Current;
-            settings.DatabasePath = newDatabasePath;
-            settings.Save();
-            settings.AddRecentDatabase(newDatabasePath);
+            // Refuse BEFORE touching anything — settings, recents, the current database's save and
+            // teardown — when the target can't be opened. Only a target that passes updates
+            // AppSettings.DatabasePath and the recent list (see DatabaseSwitchPrecheck).
+            var precheck = await DatabaseSwitchPrecheck.CheckAndRecordAsync(
+                newDatabasePath, createIfMissing, AppSettings.Current);
+            if (!precheck.CanProceed)
+            {
+                App.Logger.LogInfo($"SwitchDatabase: refused before teardown — {precheck.Title}");
+                await ShowMessageAsync(precheck.Title, precheck.Message);
+                return false;
+            }
 
             // Release the current checkout (saves if dirty) before opening the new DB.
             var oldDbName    = Path.GetFileNameWithoutExtension(App.Checkout.SourcePath);
@@ -1061,15 +1102,18 @@ public partial class MainWindow : Window
                     "the next time you open that database.");
             }
 
-            // If D does not exist yet (File → New), create it with the schema so
-            // CheckoutAsync takes the normal D → D' path and all subsequent writes go to
-            // the local working copy. Deadline-bounded tri-state probe: only create when
-            // the location answered "missing" — an unreachable share must NOT trigger
+            // If D does not exist yet and the caller asked for creation (File → New ONLY), create
+            // it with the schema so CheckoutAsync takes the normal D → D' path and all subsequent
+            // writes go to the local working copy. Deadline-bounded tri-state probe: only create
+            // when the location answered "missing" — an unreachable share must NOT trigger
             // creation attempts; checkout below surfaces the unreachable dialog instead.
             // The file is built in a LOCAL temp file and copied across by NewDatabaseFile:
             // SQLite never opens the shared path (no WAL header left on D, no handle held).
-            var probe = await NetworkFileOps.ProbeFileAsync(newDatabasePath);
-            if (probe == FileProbeResult.Missing)
+            // When creation is NOT requested, a file that vanished after the pre-check (it passed
+            // a moment ago) is left alone: CheckoutAsync reports SourceMissing ("Database Not
+            // Found") instead of this method inventing an empty database.
+            if (createIfMissing
+                && await NetworkFileOps.ProbeFileAsync(newDatabasePath) == FileProbeResult.Missing)
             {
                 var created = await NewDatabaseFile.CreateAsync(newDatabasePath);
                 switch (created.Outcome)
@@ -1080,15 +1124,15 @@ public partial class MainWindow : Window
 
                     case NewDatabaseOutcome.Unreachable:
                         await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
-                        return;
+                        return false;
 
                     case NewDatabaseOutcome.AlreadyExists:
                         // Someone created a file with this name while we were building ours. It was
                         // not touched; don't silently open somebody else's database as "the new one".
-                        await ShowMessageAsync("Database Already Exists",
-                            $"A database file already exists at:\n{newDatabasePath}\n\n" +
-                            "It was not changed. Choose a different name, or open that database instead.");
-                        return;
+                        // (Same wording as the pre-check's refusal of an existing file for File → New.)
+                        await ShowMessageAsync(DatabaseSwitchPrecheck.AlreadyExistsTitle,
+                            DatabaseSwitchPrecheck.AlreadyExistsMessage(newDatabasePath));
+                        return false;
 
                     default: // Failed — the outer catch logs it and shows "Failed to switch to database: …"
                         throw new InvalidOperationException(
@@ -1111,7 +1155,7 @@ public partial class MainWindow : Window
             var checkoutPath = await RunCheckoutAsync(
                 newDatabasePath, recoverUnsaved, ignoreObserverMode: isNewDatabase);
             if (checkoutPath is null)
-                return; // Checkout cannot proceed — dialog already shown (see RunCheckoutAsync).
+                return false; // Checkout cannot proceed — dialog already shown (see RunCheckoutAsync).
             newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.
@@ -1136,11 +1180,14 @@ public partial class MainWindow : Window
             // the standard save-error banner).
             if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
                 await App.Checkout.SaveAsync();
+
+            return true;   // the new database is open and the window is wired to it
         }
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "Failed to switch database");
             await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
+            return false;
         }
     }
 

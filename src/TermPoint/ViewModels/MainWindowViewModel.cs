@@ -1023,7 +1023,10 @@ public partial class MainWindowViewModel : ViewModelBase
             return result.Count > 0 ? result[0].TryGetLocalPath() : null;
         };
 
-        vm.SwitchDatabaseAsync = path => MainWindowReference.SwitchDatabaseAsync(path);
+        // File → New is the ONLY caller allowed to create a missing database file; every other
+        // SwitchDatabaseAsync caller (Open, Recent…, Switch to edit mode, post-wizard) leaves
+        // createIfMissing at its default of false, so a moved/deleted file is reported, not recreated.
+        vm.SwitchDatabaseAsync = path => MainWindowReference.SwitchDatabaseAsync(path, createIfMissing: true);
 
         FlyoutPage  = vm;
         FlyoutTitle = "New Database";

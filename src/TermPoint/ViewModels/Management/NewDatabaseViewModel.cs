@@ -57,10 +57,21 @@ public partial class NewDatabaseViewModel : ViewModelBase
     public Func<string, Task<string?>>? PickFolderAsync { get; set; }
 
     /// <summary>
-    /// Switches the application to a different (possibly new) database file.
-    /// Must be set before <see cref="CreateDatabaseCommand"/> is executed.
+    /// Creates the database at the given path and switches the application to it. Must be set before
+    /// <see cref="CreateDatabaseCommand"/> is executed.
+    /// <para>The returned flag is load-bearing: <c>true</c> ONLY when the new database ended up open;
+    /// <c>false</c> when the switch was refused or failed (the user has already been told why). The
+    /// configuration transfer writes into whatever database is currently open, so it must run only
+    /// on <c>true</c> — after a refusal the OLD database is still open and live.</para>
     /// </summary>
-    public Func<string, Task>? SwitchDatabaseAsync { get; set; }
+    public Func<string, Task<bool>>? SwitchDatabaseAsync { get; set; }
+
+    /// <summary>
+    /// Applies the snapshotted configuration to the newly opened database. Defaults to
+    /// <see cref="ApplyConfig"/>; a seam so tests can observe whether (and with what) it runs,
+    /// since the real one writes through <see cref="App.Services"/>.
+    /// </summary>
+    internal Action<TpConfigData, string> ApplyConfigAction { get; set; }
 
     // ── User inputs ───────────────────────────────────────────────────────────
 
@@ -288,6 +299,7 @@ public partial class NewDatabaseViewModel : ViewModelBase
         _shareVm         = shareVm;
         _semesterContext = semesterContext;
         _assessor        = assessor;
+        ApplyConfigAction = ApplyConfig;
 
         _ = LoadSuggestionsAsync();
     }
@@ -370,7 +382,13 @@ public partial class NewDatabaseViewModel : ViewModelBase
     ///   1. Snapshot current config (before switch, while current repos are valid).
     ///   2. Update BackupFolderPath in AppSettings (SwitchDatabaseAsync will persist it).
     ///   3. Switch to the new database path (reinitialises DI; current flyout disappears).
-    ///   4. Apply the config snapshot to the new DB using fresh repos from App.Services.
+    ///   4. Apply the config snapshot to the new DB using fresh repos from App.Services —
+    ///      ONLY if step 3 reported that the new database is open (see <see cref="SwitchAndApplyAsync"/>).
+    ///
+    /// <para>If the switch is refused or fails (target held open, damaged, unreachable, already
+    /// exists …) the user has already been shown why, the old database is still open, and nothing
+    /// is written to it: the transfer is skipped, the in-memory backup folder edit from step 2 is
+    /// undone when no settings were recorded, and the Create button becomes available again.</para>
     /// </summary>
     [RelayCommand]
     private async Task CreateDatabase()
@@ -405,17 +423,28 @@ public partial class NewDatabaseViewModel : ViewModelBase
             }
 
             // ── Step 2: persist backup folder (SwitchDatabaseAsync will save) ─
-            AppSettings.Current.BackupFolderPath = BackupFolder.Trim();
+            // Remember what was there: a refused switch records nothing, so this in-memory
+            // edit must not leak into the database that stays open (its backups would otherwise
+            // quietly start going to the new database's folder on the next settings save).
+            var settings             = AppSettings.Current;
+            var previousBackupFolder = settings.BackupFolderPath;
+            var previousDatabasePath = settings.DatabasePath;
+            settings.BackupFolderPath = BackupFolder.Trim();
 
-            // ── Step 3: switch to the new DB ──────────────────────────────────
-            // DatabaseContext creates the file on first connection.
-            // After this call, App.Services points to the new DB, and the main
-            // window DataContext has been replaced — the flyout is gone.
-            await SwitchDatabaseAsync!(newDbPath);
-
-            // ── Step 4: apply config to the new DB ────────────────────────────
-            if (config is not null)
-                ApplyConfig(config, ayName);
+            // ── Steps 3 + 4: switch to the new DB, then apply the config ──────
+            // The switch creates the file (File → New is the only caller allowed to).
+            // On success App.Services points to the new DB, and the main window
+            // DataContext has been replaced — the flyout is gone.
+            var opened = await SwitchAndApplyAsync(newDbPath, config, ayName);
+            if (!opened)
+            {
+                // Refused or failed; a dialog already explained why. The old database (if still
+                // open) was not touched. Undo the backup-folder edit when the switch was refused
+                // before it recorded any settings, and let the user try again or cancel.
+                if (string.Equals(settings.DatabasePath, previousDatabasePath, StringComparison.OrdinalIgnoreCase))
+                    settings.BackupFolderPath = previousBackupFolder;
+                IsCreating = false;
+            }
         }
         catch (Exception ex)
         {
@@ -428,6 +457,28 @@ public partial class NewDatabaseViewModel : ViewModelBase
     }
 
     // ── Config application ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Switches to the new database and, only if it ended up open, applies the configuration
+    /// snapshot to it. The apply step writes campuses, block patterns, an academic year and
+    /// semesters through <see cref="App.Services"/> into WHATEVER database is currently open — so
+    /// after a refused or failed switch (where the previous database is still open and live) it must
+    /// not run, or the "new" configuration would be inserted into the user's current database.
+    /// </summary>
+    /// <param name="newDbPath">Full path of the database to create and open.</param>
+    /// <param name="config">The configuration snapshot, or null when no transfer was requested.</param>
+    /// <param name="ayName">Name for the first academic year (ignored when <paramref name="config"/> is null).</param>
+    /// <returns>True when the new database is open (and the configuration, if any, was applied); false otherwise.</returns>
+    internal async Task<bool> SwitchAndApplyAsync(string newDbPath, TpConfigData? config, string ayName)
+    {
+        var opened = await SwitchDatabaseAsync!(newDbPath);
+        if (!opened)
+            return false;
+
+        if (config is not null)
+            ApplyConfigAction(config, ayName);
+        return true;
+    }
 
     /// <summary>
     /// Inserts the snapshotted configuration into the newly created database.

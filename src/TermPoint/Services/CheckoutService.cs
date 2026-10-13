@@ -442,6 +442,7 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
     /// <see cref="CheckoutOutcome.SourceMissing"/> — D does not exist (and recovery was not requested). Nothing was locked or created; tell the user and stop. Create new databases with <see cref="NewDatabaseFile.CreateAsync"/> BEFORE calling this.<br/>
+    /// <see cref="CheckoutOutcome.SourceUnreadable"/> — D exists but another program holds it open (or access is denied). The write lock taken for the attempt has been released and nothing was left behind; tell the user to try again in a moment.<br/>
     /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/> to open read-only.
     /// </returns>
     public async Task<CheckoutOutcome> CheckoutAsync(
@@ -564,7 +565,17 @@ public sealed class CheckoutService : IDisposable
         // We hold the lock — copy D to D'.
         Directory.CreateDirectory(_workingDir);
 
-        var (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(sourcePath);
+        var (hashCompleted, sourceHash, hashUnreadable) = await HashSourceAsync(sourcePath, "checkout hash");
+
+        if (hashUnreadable)
+        {
+            // D exists but another program holds it exclusively (or access is denied). We have
+            // ALREADY taken the write lock above, so give it back — otherwise the .lock file and
+            // its heartbeat would outlive this failed checkout until the app exits, blocking
+            // colleagues. Nothing was copied yet, so there is no D' to clean up.
+            _lockService.Release();
+            return CheckoutOutcome.SourceUnreadable;
+        }
 
         if (!hashCompleted)
         {
@@ -591,6 +602,15 @@ public sealed class CheckoutService : IDisposable
                 return CheckoutOutcome.NetworkUnreachable;
             }
         }
+        catch (Exception ex) when (DatabaseValidator.IsLockedOrAccessDenied(ex))
+        {
+            // D became held / unreadable between the hash and the copy. Same cleanup as any other
+            // copy failure (lock released, marker removed), but the user is told the real reason.
+            _logger.LogInfo($"CheckoutService: cannot read D to copy it ({ex.GetType().Name}: {ex.Message})");
+            _lockService.Release();
+            DeleteDirtyMarker();
+            return CheckoutOutcome.SourceUnreadable;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "CheckoutService: failed to copy D to D'");
@@ -605,7 +625,23 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: hash mismatch after copy — retrying once.");
 
-            var retryCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
+            bool retryCompleted;
+            try
+            {
+                retryCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
+            }
+            catch (Exception ex)
+            {
+                // An exception here used to escape with the write lock still held. Give the lock
+                // back and clean up like the other retry failures; a locked / access-denied D gets
+                // its own outcome so the user is told the real reason.
+                var unreadable = DatabaseValidator.IsLockedOrAccessDenied(ex);
+                _logger.LogInfo($"CheckoutService: checkout retry copy failed ({ex.GetType().Name}: {ex.Message})");
+                _lockService.Release();
+                DeleteDirtyMarker();
+                TryDelete(WorkingPath);
+                return unreadable ? CheckoutOutcome.SourceUnreadable : CheckoutOutcome.Failed;
+            }
 
             if (!retryCompleted)
             {
@@ -660,6 +696,7 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="MinimumVersionToWrite"/> stamp is newer than this app): the lock is released,
     /// D'' is already set up, and <see cref="RequiredAppVersion"/> is non-null.
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> when recovery was requested but cannot be applied safely.
+    /// <see cref="CheckoutOutcome.SourceUnreadable"/> when D could not be read (held open by another program / access denied); the lock is released again.
     /// <see cref="CheckoutOutcome.Failed"/> if another instance won the race.
     /// </returns>
     public async Task<CheckoutOutcome> ForceCheckoutAsync(bool recoverWorkingCopy = false)
@@ -689,7 +726,15 @@ public sealed class CheckoutService : IDisposable
         // Lock acquired — now copy D to D' (same as CheckoutAsync write path).
         Directory.CreateDirectory(_workingDir);
 
-        var (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+        var (hashCompleted, sourceHash, hashUnreadable) = await HashSourceAsync(SourcePath, "ForceCheckout hash");
+
+        if (hashUnreadable)
+        {
+            // Same as CheckoutAsync: D is held / unreadable, and we already own the (forced) lock —
+            // release it rather than leave a live .lock behind. No D' has been touched yet.
+            _lockService.Release();
+            return CheckoutOutcome.SourceUnreadable;
+        }
 
         if (!hashCompleted)
         {
@@ -714,6 +759,13 @@ public sealed class CheckoutService : IDisposable
                 DeleteDirtyMarker();
                 return CheckoutOutcome.NetworkUnreachable;
             }
+        }
+        catch (Exception ex) when (DatabaseValidator.IsLockedOrAccessDenied(ex))
+        {
+            _logger.LogInfo($"CheckoutService: ForceCheckout — cannot read D to copy it ({ex.GetType().Name}: {ex.Message})");
+            _lockService.Release();
+            DeleteDirtyMarker();
+            return CheckoutOutcome.SourceUnreadable;
         }
         catch (Exception ex)
         {
@@ -787,7 +839,15 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.RecoveryConflict;
         }
 
-        var (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+        var (hashCompleted, sourceHash, hashUnreadable) = await HashSourceAsync(SourcePath, "recovery hash");
+        if (hashUnreadable)
+        {
+            // D is held / unreadable, so the "D unchanged since the crash" proof cannot be made right
+            // now. Release the lock and KEEP D' and its dirty marker untouched: the user's unsaved
+            // edits stay recoverable and recovery is offered again on the next attempt.
+            _lockService.Release();
+            return CheckoutOutcome.SourceUnreadable;
+        }
         if (!hashCompleted)
         {
             _lockService.Release();
@@ -2423,8 +2483,9 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     /// <returns>
     /// The path to D'' on success (same as <see cref="ReadOnlyWorkingPath"/>).
-    /// <c>null</c> if D'' cannot be created (e.g. D is inaccessible or the copy hash never
-    /// matches). The caller must NOT fall back to opening <see cref="SourcePath"/> directly —
+    /// <c>null</c> if D'' cannot be created (e.g. D is inaccessible, held open exclusively by
+    /// another program, or the copy hash never matches) — I/O and permission failures reading D
+    /// are reported this way, never thrown. The caller must NOT fall back to opening <see cref="SourcePath"/> directly —
     /// opening D with SQLite changes its header (so the active editor's next save fails) and
     /// holds it open. Tell the user and offer to try again, or give up; see
     /// <see cref="SetupReadOnlySnapshotWithRetryAsync"/>.
@@ -2447,12 +2508,26 @@ public sealed class CheckoutService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp");
+            // A database another program holds exclusively (or that we may not read) is an
+            // ordinary, retryable condition — log it quietly (LogError raises a Bugsnag report and
+            // a banner). Anything else keeps the loud error.
+            if (DatabaseValidator.IsLockedOrAccessDenied(ex))
+                _logger.LogInfo($"CheckoutService: cannot read D to make D'' ({ex.GetType().Name}: {ex.Message})");
+            else
+                _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp");
             TryDelete(roTmpPath);
             return null;
         }
 
-        var (hashCompleted, roSourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+        // An I/O or permission failure reading D must make this method return null (the caller then
+        // shows the Try again / Close prompt) — never escape as an exception.
+        var (hashCompleted, roSourceHash, hashUnreadable) = await HashSourceAsync(SourcePath, "read-only setup hash");
+
+        if (hashUnreadable)
+        {
+            TryDelete(roTmpPath);
+            return null;
+        }
 
         if (!hashCompleted)
         {
@@ -2466,7 +2541,17 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D'' copy hash mismatch — retrying once.");
 
-            var retryCompleted = await NetworkFileOps.CopyAsync(SourcePath, roTmpPath);
+            bool retryCompleted;
+            try
+            {
+                retryCompleted = await NetworkFileOps.CopyAsync(SourcePath, roTmpPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo($"CheckoutService: read-only setup retry copy failed ({ex.GetType().Name}: {ex.Message})");
+                TryDelete(roTmpPath);
+                return null;
+            }
 
             if (!retryCompleted)
             {
@@ -2566,6 +2651,40 @@ public sealed class CheckoutService : IDisposable
         using var stream = new FileStream(
             filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    /// <summary>
+    /// Hashes the shared source database D with <see cref="NetworkFileOps.ComputeHashAsync"/>, but
+    /// reports an I/O or permission failure as a result instead of letting it escape.
+    ///
+    /// <para><b>Why:</b> <c>ComputeHashAsync</c> deliberately propagates open exceptions. For D that
+    /// means a healthy database that another program holds exclusively (sharing violation) or that
+    /// we may not read throws <see cref="IOException"/> / <see cref="UnauthorizedAccessException"/>.
+    /// Left uncaught in a checkout, that exception skipped every cleanup branch: the write lock
+    /// taken just before stayed held (live <c>.lock</c> file and heartbeat) until the app exited.
+    /// Callers turn <c>Unreadable</c> into <see cref="CheckoutOutcome.SourceUnreadable"/> (or, for
+    /// the read-only snapshot, <c>null</c>) after cleaning up.</para>
+    /// </summary>
+    /// <param name="path">Full path of D.</param>
+    /// <param name="stage">Short label for the log line, e.g. "checkout hash".</param>
+    /// <returns>
+    /// <c>Completed</c>/<c>Hash</c> exactly as <see cref="NetworkFileOps.ComputeHashAsync"/> returns
+    /// them when it ran to a conclusion (<c>Unreadable</c> false); or <c>(false, null, true)</c> when
+    /// it threw <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/>.
+    /// Any other exception type still propagates.
+    /// </returns>
+    private async Task<(bool Completed, string? Hash, bool Unreadable)> HashSourceAsync(string path, string stage)
+    {
+        try
+        {
+            var (completed, hash) = await NetworkFileOps.ComputeHashAsync(path);
+            return (completed, hash, false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogInfo($"CheckoutService: {stage} — cannot read the source database ({ex.GetType().Name}: {ex.Message})");
+            return (false, null, true);
+        }
     }
 
     /// <summary>
@@ -2673,7 +2792,16 @@ public enum CheckoutOutcome
     /// <see cref="NewDatabaseFile.CreateAsync"/>) before checkout; this outcome therefore means D
     /// was moved, renamed or deleted in the meantime. Tell the user — there is no fallback.
     /// </summary>
-    SourceMissing
+    SourceMissing,
+    /// <summary>
+    /// D exists but could not be read: another program holds it open exclusively (a sharing
+    /// violation) or access is denied. Says nothing about the file's health, so it must not be
+    /// described as damaged. Any write lock taken for this attempt has been RELEASED (no
+    /// <c>.lock</c> file or heartbeat is left behind) and no working copy is left; in the
+    /// crash-recovery path D' and its dirty marker are kept so recovery is offered again. There is
+    /// no read-only fallback — it would need to read D too. Tell the user to try again in a moment.
+    /// </summary>
+    SourceUnreadable
 }
 
 /// <summary>

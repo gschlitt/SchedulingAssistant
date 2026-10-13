@@ -22,6 +22,8 @@ namespace TermPoint.Tests;
 ///   <item><description>Zero-byte file → Corrupt</description></item>
 ///   <item><description>Truncated file (first 512 bytes of a real DB) → Corrupt</description></item>
 ///   <item><description>Schema poisoned via <c>PRAGMA writable_schema</c> → Corrupt</description></item>
+///   <item><description>Page trashed past the header → Corrupt</description></item>
+///   <item><description>Healthy file held exclusively by another program → Unreadable, never Corrupt (spec 4e)</description></item>
 /// </list>
 ///
 /// <para>No UI thread or DI container is involved. Tests are entirely self-contained
@@ -308,5 +310,88 @@ public sealed class DatabaseValidatorTests : IDisposable
         using var other = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 
         Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
+    }
+
+    // ── Spec item 4e: a locked file is Unreadable, never "damaged" ────────────
+
+    /// <summary>
+    /// A SQLite file with a trashed page is still reported Corrupt by <see cref="DatabaseValidator.ValidateAsync"/>
+    /// — the tri-state check must not turn real damage into "unreadable".
+    /// </summary>
+    [Fact]
+    public async Task Validate_TrashedPage_ReturnsCorrupt()
+    {
+        var path = DbPath("trashed.db");
+        DbFileTestHelpers.CreateHealthyDatabase(path);
+        DbFileTestHelpers.TrashPage(path, pageNumber: 2);
+
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateAsync(path));
+    }
+
+    /// <summary>
+    /// THE BUG, end to end through <see cref="DatabaseValidator.ValidateAsync"/>: a healthy database
+    /// that another program holds exclusively (sharing violation) is Unreadable — NOT Corrupt, which
+    /// would tell the user their good database is damaged and invite a restore over it. The bytes
+    /// are untouched, and once the other program lets go the same file validates Ok.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task Validate_HealthyFileHeldExclusively_ReturnsUnreadable()
+    {
+        var path = DbPath("locked.db");
+        DbFileTestHelpers.CreateHealthyDatabase(path);
+        var hashBefore = DbFileTestHelpers.HashOf(path);
+
+        using (DbFileTestHelpers.LockExclusively(path))
+        {
+            var result = await DatabaseValidator.ValidateAsync(path);
+
+            Assert.Equal(DatabaseValidationResult.Unreadable, result);
+            Assert.NotEqual(DatabaseValidationResult.Corrupt, result);
+        }
+
+        Assert.Equal(hashBefore, DbFileTestHelpers.HashOf(path));
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateAsync(path));
+    }
+
+    /// <summary>
+    /// The wizard-join validator (<see cref="DatabaseValidator.ValidateWithoutSqliteAsync"/>) has the
+    /// same rule: a sharing violation while reading the 16-byte signature is Unreadable, never
+    /// Corrupt, the bytes are untouched, and it is Ok again after the lock is released.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task ValidateWithoutSqlite_HealthyFileHeldExclusively_ReturnsUnreadable()
+    {
+        var path = DbPath("locked.db");
+        DbFileTestHelpers.CreateHealthyDatabase(path);
+        var hashBefore = DbFileTestHelpers.HashOf(path);
+
+        using (DbFileTestHelpers.LockExclusively(path))
+        {
+            var result = await DatabaseValidator.ValidateWithoutSqliteAsync(path);
+
+            Assert.Equal(DatabaseValidationResult.Unreadable, result);
+            Assert.NotEqual(DatabaseValidationResult.Corrupt, result);
+        }
+
+        Assert.Equal(hashBefore, DbFileTestHelpers.HashOf(path));
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
+    }
+
+    /// <summary>
+    /// <see cref="DatabaseValidator.IsLockedOrAccessDenied"/> recognises access-denied and the two
+    /// Win32 "someone else has it" HRESULTs (sharing violation 0x80070020, lock violation
+    /// 0x80070021), and nothing else — a dropped share (0x80070040, network name deleted), a plain
+    /// IOException and unrelated exceptions are not "locked", so they keep their previous result.
+    /// </summary>
+    [Fact]
+    public void IsLockedOrAccessDenied_RecognisesOnlyLockAndAccessErrors()
+    {
+        Assert.True(DatabaseValidator.IsLockedOrAccessDenied(new UnauthorizedAccessException()));
+        Assert.True(DatabaseValidator.IsLockedOrAccessDenied(new IOException("sharing", unchecked((int)0x80070020))));
+        Assert.True(DatabaseValidator.IsLockedOrAccessDenied(new IOException("lock", unchecked((int)0x80070021))));
+
+        Assert.False(DatabaseValidator.IsLockedOrAccessDenied(new IOException("net name deleted", unchecked((int)0x80070040))));
+        Assert.False(DatabaseValidator.IsLockedOrAccessDenied(new IOException("plain")));
+        Assert.False(DatabaseValidator.IsLockedOrAccessDenied(new InvalidOperationException()));
     }
 }

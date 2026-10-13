@@ -3987,4 +3987,210 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
         Assert.False(lockSvc.IsWriter);
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 15 — D held open by another program (spec item 4e, hand-test finding)
+    //
+    // A healthy database that another program holds with FileShare.None used to make
+    // NetworkFileOps.ComputeHashAsync throw an IOException out of CheckoutAsync AFTER the
+    // write lock had been taken, leaving a live .lock file and heartbeat until the app
+    // exited. Every checkout path must now release the lock, leave no working copy
+    // behind (except the kept crash-recovery data) and return SourceUnreadable — or, for
+    // the read-only snapshot, return null so the Try again / Close prompt appears.
+    //
+    // FileShare.None is only OS-enforced on Windows, hence FactWindowsOnly.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Path of the lock file the write lock creates next to <paramref name="db"/>.</summary>
+    private static string LockFileOf(string db) => Path.ChangeExtension(db, ".lock");
+
+    /// <summary>
+    /// Asserts a failed checkout left no write lock behind: the service is not a writer, the
+    /// <c>.lock</c> file is gone (after the background deletion settles) and no working copy,
+    /// snapshot, temp or marker file exists in the working folder.
+    /// </summary>
+    /// <param name="lockSvc">The lock service the checkout used.</param>
+    /// <param name="db">Path of D.</param>
+    private void AssertLockReleasedAndNothingLeftBehind(WriteLockService lockSvc, string db)
+    {
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout);   // settle the background lock-file deletion
+        Assert.False(lockSvc.IsWriter);
+        Assert.False(File.Exists(LockFileOf(db)), "The .lock file must not outlive a failed checkout.");
+        Assert.Empty(Directory.GetFiles(_workingDir));
+    }
+
+    /// <summary>
+    /// THE HAND-TEST BUG. A write checkout of a healthy D that another program holds exclusively
+    /// returns SourceUnreadable (it used to throw an IOException), gives the write lock back
+    /// (not a writer, no .lock file), leaves no D', and does not alter D. Once the other program lets
+    /// go, the very same service checks the database out normally.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task CheckoutAsync_SourceHeldExclusively_ReturnsSourceUnreadable_AndReleasesTheLock()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var outcome = await svc.CheckoutAsync(db);
+
+            Assert.Equal(CheckoutOutcome.SourceUnreadable, outcome);
+            AssertLockReleasedAndNothingLeftBehind(lockSvc, db);
+        }
+
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));   // D untouched
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A take-over of a stale lock (ForceCheckoutAsync) hits the same wall: the forced lock is released
+    /// again, no .lock file or D' is left, and a fresh checkout after release succeeds.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task ForceCheckoutAsync_SourceHeldExclusively_ReturnsSourceUnreadable_AndReleasesTheLock()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db));   // precondition
+
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var outcome = await svc.ForceCheckoutAsync();
+
+            Assert.Equal(CheckoutOutcome.SourceUnreadable, outcome);
+            AssertLockReleasedAndNothingLeftBehind(lockSvc, db);
+        }
+
+        // A retry is a fresh checkout (the stale lock file was replaced and then removed on release).
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// Crash recovery with D held open: SourceUnreadable, the lock is released, and — unlike the
+    /// normal path — the crashed session's D' and its dirty marker are KEPT with the unsaved edit
+    /// intact, so recovery is offered again and then succeeds.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task RecoveryCheckout_SourceHeldExclusively_ReturnsSourceUnreadable_KeepsRecoveryData()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        svc1.MarkDirty();
+        var crashedWorkingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+
+        var (svc2, lockSvc2) = CreateService();
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+            Assert.Equal(CheckoutOutcome.SourceUnreadable, outcome);
+            lockSvc2.PendingRelease?.Wait(LockSettleTimeout);
+            Assert.False(lockSvc2.IsWriter);
+            Assert.False(File.Exists(LockFileOf(db)));
+            Assert.True(File.Exists(crashedWorkingPath), "D' holds the user's only copy of the unsaved edit.");
+            Assert.True(File.Exists(crashedWorkingPath + ".dirty"), "The dirty marker must survive.");
+            Assert.Equal("unsaved-edit", ReadTestValue(crashedWorkingPath));
+        }
+
+        var (svc3, _) = CreateService();
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc3.CheckoutAsync(db, recoverWorkingCopy: true));
+        Assert.Equal("unsaved-edit", ReadTestValue(svc3.WorkingPath));
+    }
+
+    /// <summary>
+    /// The read-only snapshot (D → D'') must report a held-open D by returning null — never by throwing
+    /// — so the caller's "Try again / Close" prompt appears. No partial D''.tmp is left behind, and the
+    /// next attempt after release succeeds.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SetupReadOnlySnapshotAsync_SourceHeldExclusively_ReturnsNullWithoutThrowing()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(db));   // sets SourcePath, makes D''
+
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var path = await svc.SetupReadOnlySnapshotAsync();
+
+            Assert.Null(path);
+            Assert.False(File.Exists(svc.ReadOnlyWorkingPath + ".tmp"), "No half-made snapshot may be left.");
+        }
+
+        Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());
+    }
+
+    /// <summary>
+    /// Observer mode on + D held open: the snapshot cannot be made, so the checkout reports Failed (the
+    /// caller then shows Try again / Close) instead of throwing, and no .lock file is ever created.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task ObserverMode_SourceHeldExclusively_ReturnsFailedWithoutThrowing()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var outcome = await svc.CheckoutAsync(db);
+
+            Assert.Equal(CheckoutOutcome.Failed, outcome);
+            Assert.False(lockSvc.IsWriter);
+            Assert.False(File.Exists(LockFileOf(db)));
+        }
+    }
+
+    /// <summary>
+    /// The retry loop copes with a held-open D: it asks once, the user waits for the other program to
+    /// let go and chooses "Try again", and the second attempt succeeds. Choosing "Close" instead
+    /// returns null after exactly one question. Neither path throws.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SnapshotWithRetry_SourceHeldExclusively_TryAgainSucceedsAfterRelease_CloseGivesUp()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(db));
+
+        // "Close": the other program never lets go.
+        var closeAsked = 0;
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var gaveUp = await svc.SetupReadOnlySnapshotWithRetryAsync(() => { closeAsked++; return Task.FromResult(false); });
+            Assert.Null(gaveUp);
+            Assert.Equal(1, closeAsked);
+        }
+
+        // "Try again": the lock is released while the prompt is up.
+        var held = DbFileTestHelpers.LockExclusively(db);
+        var tryAgainAsked = 0;
+        var path = await svc.SetupReadOnlySnapshotWithRetryAsync(() =>
+        {
+            tryAgainAsked++;
+            held.Dispose();
+            return Task.FromResult(true);
+        });
+
+        Assert.Equal(1, tryAgainAsked);
+        Assert.NotNull(path);
+        Assert.True(File.Exists(path));
+    }
 }

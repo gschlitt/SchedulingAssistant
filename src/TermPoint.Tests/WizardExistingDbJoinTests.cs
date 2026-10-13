@@ -138,6 +138,77 @@ public sealed class WizardExistingDbJoinTests : IDisposable
         Assert.Equal("this is definitely not a SQLite database", File.ReadAllText(notDb));
     }
 
+    /// <summary>
+    /// A real database that another program holds open exclusively (spec item 4e) gets the dedicated
+    /// "can't read that file right now" message — not "does not appear to be a valid database" — the
+    /// wizard stays on step 1a, and the file is untouched. After the other program lets go, pressing
+    /// Next again joins normally.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task Step1a_LockedFile_ShowsUnreadableMessage_ThenJoinsAfterRelease()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        var db = await CreateSharedDatabaseAsync();
+        var hashBefore = HashOf(db);
+        var (wizard, step, _) = await WizardAtStep1aAsync();
+        step.IsExistingDbChoice = true;
+        step.DbPath             = db;
+        step.BackupFolder       = _tempDir;
+
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            await wizard.NextCommand.ExecuteAsync(null);
+
+            Assert.False(wizard.IsComplete);
+            Assert.Same(step, wizard.CurrentStep);
+            Assert.Equal(
+                "TermPoint can't read that file right now. Another program may have it open, " +
+                "or you may not have permission to read it. Try again in a moment.",
+                step.ErrorMessage);
+            Assert.DoesNotContain("valid database", step.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.Equal(hashBefore, HashOf(db));
+        await wizard.NextCommand.ExecuteAsync(null);
+        Assert.True(wizard.IsComplete, $"Wizard should finish once the lock is released. Error: {step.ErrorMessage}");
+    }
+
+    /// <summary>
+    /// Wizard step 3 (create a new database): when the checkout of the just-created file reports
+    /// <see cref="CheckoutOutcome.SourceUnreadable"/> the step shows the "can't read that file right
+    /// now" message — not the generic "Could not acquire write access" — and stays put.
+    /// </summary>
+    [Fact]
+    public async Task Step3_CheckoutSourceUnreadable_ShowsUnreadableMessage()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        var services = WizardRoutingTests.BuildTestServices() with
+        {
+            CheckoutDatabase = path => Task.FromResult((CheckoutOutcome.SourceUnreadable, path))
+        };
+        var wizard = new StartupWizardViewModel(null!, services);
+
+        await wizard.NextCommand.ExecuteAsync(null);   // welcome → license
+        await wizard.NextCommand.ExecuteAsync(null);   // license → existing-DB check
+        Assert.IsType<Step1aExistingDbViewModel>(wizard.CurrentStep).IsNewSetupChoice = true;
+        await wizard.NextCommand.ExecuteAsync(null);   // → institution
+        var institution = Assert.IsType<Step1InstitutionViewModel>(wizard.CurrentStep);
+        institution.InstitutionName   = "Test U";
+        institution.InstitutionAbbrev = "TU";
+        institution.AcUnitName        = "Engineering";
+        institution.AcUnitAbbrev      = "ENG";
+        await wizard.NextCommand.ExecuteAsync(null);   // → database
+        var database = Assert.IsType<Step2DatabaseViewModel>(wizard.CurrentStep);
+        database.DbFolder     = _tempDir;
+        database.DbFilename   = "wizard-new.db";
+        database.BackupFolder = _tempDir;
+
+        await wizard.NextCommand.ExecuteAsync(null);   // creates the file, then the (faked) checkout fails
+
+        Assert.Same(database, wizard.CurrentStep);
+        Assert.Equal(StartupWizardViewModel.UnreadableFileMessage, database.ErrorMessage);
+    }
+
     /// <summary>A path where no file exists is rejected with the existing wording and nothing is created.</summary>
     [Fact]
     public async Task Step1a_MissingFile_ShowsErrorAndDoesNotFinish()

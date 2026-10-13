@@ -9,6 +9,32 @@ using TermPoint.ViewModels.Management;
 namespace TermPoint.Services;
 
 /// <summary>
+/// Tri-state outcome of <see cref="BackupService.CheckIntegrityDetailed"/>. The old boolean
+/// check returned false for ANY exception, so a healthy file that another program held open
+/// (a sharing violation) was reported as damaged — and a user told their database is damaged
+/// may restore a backup over a good, current file. This keeps "damaged" for positive evidence
+/// only (spec item 4e).
+/// </summary>
+public enum IntegrityCheckResult
+{
+    /// <summary>The file opened and <c>PRAGMA integrity_check</c> reported "ok".</summary>
+    Ok,
+
+    /// <summary>
+    /// Positive evidence of damage: <c>PRAGMA integrity_check</c> reported problems, or SQLite
+    /// said the file is corrupt, not a database, or in an unrecognised format.
+    /// </summary>
+    Damaged,
+
+    /// <summary>
+    /// The file could not be examined right now (another program holds it open, access is
+    /// denied, an I/O error, or any exception that is not clear evidence of damage). Says nothing
+    /// about the file's health — it must never be presented as damage.
+    /// </summary>
+    Unreadable
+}
+
+/// <summary>
 /// Manages automated SQLite backups and companion section CSV exports.
 ///
 /// <para><b>Backup file naming:</b> <c>{dbName}_{yyyy-MM-dd_HH-mm-ss}.db</c> and
@@ -27,9 +53,10 @@ namespace TermPoint.Services;
 /// <para><b>Rotation:</b> After every backup, the oldest backup pairs are deleted until
 /// only <see cref="AppSettings.MaxBackupCount"/> remain.</para>
 ///
-/// <para><b>Integrity check:</b> <see cref="CheckIntegrity"/> is a static method that
-/// opens a raw connection (without touching the app's live connection) and runs
-/// <c>PRAGMA integrity_check</c>. It can be called before <see cref="StartSessionAsync"/>
+/// <para><b>Integrity check:</b> <see cref="CheckIntegrity"/> and
+/// <see cref="CheckIntegrityDetailed"/> are static methods that
+/// open a raw connection (without touching the app's live connection) and run
+/// <c>PRAGMA integrity_check</c>. They can be called before <see cref="StartSessionAsync"/>
 /// to verify the main database before any writes occur.</para>
 /// </summary>
 public class BackupService : IDisposable
@@ -376,9 +403,11 @@ public class BackupService : IDisposable
 
     /// <summary>
     /// Opens a temporary connection (read-only by default) to <paramref name="dbPath"/> and runs
-    /// <c>PRAGMA integrity_check</c>. Returns true when SQLite reports "ok", false on any
-    /// structural problem or if the file cannot be opened. This is a static method so it
-    /// can be called during startup before the BackupService session has started.
+    /// <c>PRAGMA integrity_check</c>. Returns true only when SQLite reports "ok"; false on any
+    /// structural problem AND on any failure to examine the file at all (a locked or
+    /// unreadable file is also false). Callers that must tell "damaged" from "couldn't read it"
+    /// apart should use <see cref="CheckIntegrityDetailed"/> instead. This is a static method so
+    /// it can be called during startup before the BackupService session has started.
     /// </summary>
     /// <param name="dbPath">Full path to the SQLite file to check.</param>
     /// <param name="mode">
@@ -391,6 +420,32 @@ public class BackupService : IDisposable
     /// </param>
     /// <returns>True if the database passes integrity check; false otherwise.</returns>
     public static bool CheckIntegrity(string dbPath, SqliteOpenMode mode = SqliteOpenMode.ReadOnly)
+        => CheckIntegrityDetailed(dbPath, mode) == IntegrityCheckResult.Ok;
+
+    /// <summary>
+    /// Like <see cref="CheckIntegrity"/>, but reports WHY a check did not pass: a file that is
+    /// genuinely damaged (<see cref="IntegrityCheckResult.Damaged"/>) is distinguished from one
+    /// that simply could not be read right now (<see cref="IntegrityCheckResult.Unreadable"/> —
+    /// held open exclusively by another program, access denied, I/O error). Never throws.
+    ///
+    /// <para>Classification is by SQLite's <i>primary</i> result code (the low byte of the
+    /// code, so extended codes such as SQLITE_CORRUPT_VTAB fold into their primary code); see
+    /// <see cref="ClassifyIntegrityException"/>. A <c>PRAGMA integrity_check</c> answer other than
+    /// "ok" is Damaged. Any exception that is not clear evidence of damage is Unreadable and is
+    /// logged, so a file is never called damaged without positive evidence.</para>
+    ///
+    /// <para>Pooled connections are always cleared afterwards (see the <c>finally</c> block), so
+    /// the OS file handle is released before the caller copies or replaces the file.</para>
+    /// </summary>
+    /// <param name="dbPath">Full path to the SQLite file to check.</param>
+    /// <param name="mode">Connection open mode — see <see cref="CheckIntegrity"/>.</param>
+    /// <returns>
+    /// <see cref="IntegrityCheckResult.Ok"/> when SQLite reports "ok";
+    /// <see cref="IntegrityCheckResult.Damaged"/> on positive evidence of damage;
+    /// <see cref="IntegrityCheckResult.Unreadable"/> when the file could not be examined.
+    /// </returns>
+    public static IntegrityCheckResult CheckIntegrityDetailed(
+        string dbPath, SqliteOpenMode mode = SqliteOpenMode.ReadOnly)
     {
         try
         {
@@ -405,11 +460,19 @@ public class BackupService : IDisposable
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "PRAGMA integrity_check;";
             var result = cmd.ExecuteScalar() as string;
-            return string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase)
+                ? IntegrityCheckResult.Ok
+                : IntegrityCheckResult.Damaged;
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            var verdict = ClassifyIntegrityException(ex);
+            // Logged with the exception type and message so an unanticipated failure is still
+            // diagnosable. Deliberately not LogError: that raises a Bugsnag report and a
+            // user-facing banner, and a locked file is an ordinary condition.
+            App.Logger.LogInfo(
+                $"BackupService: integrity check of '{dbPath}' classified as {verdict} ({ex.GetType().Name}: {ex.Message})");
+            return verdict;
         }
         finally
         {
@@ -421,6 +484,52 @@ public class BackupService : IDisposable
             // "Access to the path is denied" because the pooled handle lacks FILE_SHARE_DELETE.
             SqliteConnection.ClearAllPools();
         }
+    }
+
+    /// <summary>SQLite primary result code: the database disk image is malformed.</summary>
+    private const int SqliteCorrupt = 11;
+
+    /// <summary>SQLite primary result code: the file is not a database ("file is not a database").</summary>
+    private const int SqliteNotADb = 26;
+
+    /// <summary>SQLite primary result code: the database format is not recognised.</summary>
+    private const int SqliteFormat = 24;
+
+    /// <summary>
+    /// Maps an exception thrown while opening or checking a database file to a verdict.
+    /// Only a SQLite error that positively says the file's contents are bad is
+    /// <see cref="IntegrityCheckResult.Damaged"/>:
+    /// <list type="bullet">
+    /// <item><description>SQLITE_CORRUPT (11), SQLITE_NOTADB (26), SQLITE_FORMAT (24) → Damaged.</description></item>
+    /// <item><description>SQLITE_PERM (3), SQLITE_BUSY (5), SQLITE_LOCKED (6), SQLITE_IOERR (10),
+    /// SQLITE_CANTOPEN (14), SQLITE_AUTH (23) → Unreadable. (A sharing violation from another
+    /// program holding the file exclusively surfaces as SQLITE_CANTOPEN.)</description></item>
+    /// <item><description><see cref="IOException"/>, <see cref="UnauthorizedAccessException"/> →
+    /// Unreadable.</description></item>
+    /// <item><description>Anything else → Unreadable: with no positive evidence of damage a file
+    /// is never called damaged.</description></item>
+    /// </list>
+    /// The primary code is the low byte of <see cref="SqliteException.SqliteErrorCode"/>, so an
+    /// extended code (for example SQLITE_CORRUPT_VTAB, 267) folds into its primary code (11).
+    /// </summary>
+    /// <param name="ex">The exception caught around the open / <c>PRAGMA integrity_check</c>.</param>
+    /// <returns>
+    /// <see cref="IntegrityCheckResult.Damaged"/> or <see cref="IntegrityCheckResult.Unreadable"/>
+    /// (never <see cref="IntegrityCheckResult.Ok"/>).
+    /// </returns>
+    internal static IntegrityCheckResult ClassifyIntegrityException(Exception ex)
+    {
+        if (ex is SqliteException sqlite)
+        {
+            var primary = sqlite.SqliteErrorCode & 0xFF;
+            return primary is SqliteCorrupt or SqliteNotADb or SqliteFormat
+                ? IntegrityCheckResult.Damaged
+                : IntegrityCheckResult.Unreadable;
+        }
+
+        // IOException / UnauthorizedAccessException — and, deliberately, every other exception
+        // type — mean "could not examine the file", never "the file is bad".
+        return IntegrityCheckResult.Unreadable;
     }
 
     // ── Internal helpers ─────────────────────────────────────────────────────

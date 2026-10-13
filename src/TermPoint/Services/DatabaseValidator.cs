@@ -11,11 +11,22 @@ public enum DatabaseValidationResult
     /// <summary>The path is null, empty, or the file does not exist on disk.</summary>
     Missing,
 
-    /// <summary>The file exists but is not a valid SQLite database or fails integrity check.</summary>
+    /// <summary>
+    /// The file exists but is not a valid SQLite database or fails integrity check. Reserved for
+    /// positive evidence of damage — a file that merely could not be read is
+    /// <see cref="Unreadable"/>, never this.
+    /// </summary>
     Corrupt,
 
     /// <summary>The file could not be checked because the network share is unreachable.</summary>
-    Unreachable
+    Unreachable,
+
+    /// <summary>
+    /// The file exists but can't be read right now — another program has it open exclusively, or
+    /// access is denied. Says nothing about the file's health: it must never be described to the
+    /// user as damaged, and the user may well succeed on a retry.
+    /// </summary>
+    Unreadable
 }
 
 /// <summary>
@@ -42,9 +53,12 @@ public static class DatabaseValidator
     /// <see cref="DatabaseValidationResult.Missing"/> when <paramref name="path"/> is
     /// null, empty, or the location responded that the file does not exist;
     /// <see cref="DatabaseValidationResult.Corrupt"/> when the file exists but is not
-    /// a valid SQLite database or fails the integrity check;
+    /// a valid SQLite database or fails the integrity check (positive evidence of damage);
     /// <see cref="DatabaseValidationResult.Unreachable"/> when a network failure or
-    /// timeout prevented the check from completing.
+    /// timeout prevented the check from completing;
+    /// <see cref="DatabaseValidationResult.Unreadable"/> when the file exists but could not be
+    /// opened for the check (held exclusively by another program, access denied, I/O error) —
+    /// never reported as Corrupt.
     /// </returns>
     public static async Task<DatabaseValidationResult> ValidateAsync(string? path)
     {
@@ -60,13 +74,19 @@ public static class DatabaseValidator
         if (probe == FileProbeResult.Missing)
             return DatabaseValidationResult.Missing;
 
-        var (integrityCompleted, passed) = await NetworkFileOps.CheckIntegrityAsync(path);
+        // Tri-state integrity check: a file another program holds open (sharing violation) or that
+        // we may not read is Unreadable, NOT Corrupt — a user told their database is damaged may
+        // restore a backup over a perfectly good, current file. A timeout stays Unreachable.
+        var (integrityCompleted, integrity) = await NetworkFileOps.CheckIntegrityDetailedAsync(path);
         if (!integrityCompleted)
             return DatabaseValidationResult.Unreachable;
 
-        return passed
-            ? DatabaseValidationResult.Ok
-            : DatabaseValidationResult.Corrupt;
+        return integrity switch
+        {
+            IntegrityCheckResult.Ok         => DatabaseValidationResult.Ok,
+            IntegrityCheckResult.Unreadable => DatabaseValidationResult.Unreadable,
+            _                               => DatabaseValidationResult.Corrupt
+        };
     }
 
     /// <summary>
@@ -104,8 +124,11 @@ public static class DatabaseValidator
     /// the location answered that the file is absent;
     /// <see cref="DatabaseValidationResult.Corrupt"/> when the file exists but is not a SQLite
     /// database (wrong signature, or shorter than the signature);
+    /// <see cref="DatabaseValidationResult.Unreadable"/> when the file exists but the header read
+    /// failed because another program holds it open exclusively (sharing/lock violation) or access
+    /// is denied — never reported as Corrupt;
     /// <see cref="DatabaseValidationResult.Unreachable"/> when the probe or the header read failed
-    /// or stalled past the deadline.
+    /// for any other reason or stalled past the deadline.
     /// </returns>
     public static async Task<DatabaseValidationResult> ValidateWithoutSqliteAsync(string? path)
     {
@@ -132,12 +155,49 @@ public static class DatabaseValidator
         }
         catch (Exception ex)
         {
-            // The probe just succeeded, so a failure here is a read that died mid-flight
-            // (share dropped, access revoked, file locked exclusively). The file could not
-            // be checked — report it as such rather than guessing it is damaged.
+            // The probe just succeeded, so a failure here is a read that died mid-flight.
+            // Either way the file could not be checked — report that rather than guessing it is
+            // damaged. A sharing/lock violation or access denied means the file is there but
+            // another program holds it or we may not read it (Unreadable: retry may work); any
+            // other I/O failure is most likely the share dropping (Unreachable).
             App.Logger.LogInfo($"DatabaseValidator: could not read database header: {ex.Message}");
-            return DatabaseValidationResult.Unreachable;
+            return IsLockedOrAccessDenied(ex)
+                ? DatabaseValidationResult.Unreadable
+                : DatabaseValidationResult.Unreachable;
         }
+    }
+
+    /// <summary>
+    /// True when <paramref name="ex"/>, thrown while opening or reading a file that is known to
+    /// exist, means "another program has it open" or "we may not read it" rather than "the
+    /// location went away": an <see cref="UnauthorizedAccessException"/> (access denied), or an
+    /// <see cref="IOException"/> whose HRESULT wraps Win32 <c>ERROR_SHARING_VIOLATION</c> (32) or
+    /// <c>ERROR_LOCK_VIOLATION</c> (33).
+    ///
+    /// <para>Limitation: on macOS/Linux .NET emulates <see cref="FileShare"/> with advisory locks
+    /// and reports a contended lock as an <see cref="IOException"/> whose HRESULT is a raw errno,
+    /// which this does not recognise; such a failure stays <see cref="DatabaseValidationResult.Unreachable"/>
+    /// (the previous behaviour). It is never reported as damaged either way.</para>
+    /// </summary>
+    /// <param name="ex">The exception to inspect.</param>
+    /// <returns>True for access-denied and sharing/lock-violation failures.</returns>
+    internal static bool IsLockedOrAccessDenied(Exception ex)
+    {
+        if (ex is UnauthorizedAccessException)
+            return true;
+
+        if (ex is IOException io)
+        {
+            const int Win32Facility = unchecked((int)0x80070000);
+            const int ErrorSharingViolation = 32;
+            const int ErrorLockViolation    = 33;
+
+            var hr = io.HResult;
+            return (hr & unchecked((int)0xFFFF0000)) == Win32Facility
+                && (hr & 0xFFFF) is ErrorSharingViolation or ErrorLockViolation;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -147,7 +207,8 @@ public static class DatabaseValidator
     /// </summary>
     /// <param name="path">File to inspect.</param>
     /// <returns>True when the file starts with the SQLite signature.</returns>
-    /// <exception cref="IOException">The file could not be opened or read.</exception>
+    /// <exception cref="IOException">The file could not be opened or read (including a sharing violation).</exception>
+    /// <exception cref="UnauthorizedAccessException">Access to the file is denied.</exception>
     private static bool HasSqliteSignature(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);

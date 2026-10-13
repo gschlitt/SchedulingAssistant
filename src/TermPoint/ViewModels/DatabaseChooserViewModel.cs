@@ -33,7 +33,13 @@ public enum RecoveryReason
     Corrupt,
 
     /// <summary>The location of the saved database (typically a network share) could not be reached.</summary>
-    Unreachable
+    Unreachable,
+
+    /// <summary>
+    /// The saved database exists but couldn't be read just now (another program has it open, or
+    /// access is denied). Not damage — the user is expected to simply retry.
+    /// </summary>
+    Unreadable
 }
 
 /// <summary>
@@ -77,6 +83,63 @@ public enum ChooserOption
 /// </remarks>
 public partial class DatabaseChooserViewModel : ObservableObject
 {
+    // ── Shared user-facing messages / mappings ───────────────────────────
+
+    /// <summary>
+    /// Inline error for a database file that exists but couldn't be read (held open by another
+    /// program, or access denied). Deliberately says nothing about damage: the file is probably
+    /// fine, and a user told otherwise might restore a backup over a good, current database.
+    /// </summary>
+    public const string UnreadableDatabaseMessage =
+        "TermPoint can't read that database right now. Another program may have it open, " +
+        "or you may not have permission to read it. Try again in a moment.";
+
+    /// <summary>
+    /// Message for a database file that fails its integrity check — the one wording that may say
+    /// "damaged". Shared by the chooser and by the database-switch pre-check
+    /// (<see cref="DatabaseSwitchPrecheck"/>) so both report real corruption identically.
+    /// </summary>
+    public const string DamagedDatabaseMessage =
+        "That database failed its integrity check and may be damaged.";
+
+    /// <summary>Inline error for a chosen backup file that exists but couldn't be read right now.</summary>
+    public const string UnreadableBackupMessage =
+        "That backup can't be read right now. Another program may have it open. Try again in a moment.";
+
+    /// <summary>
+    /// Maps a validation outcome to the startup <see cref="RecoveryReason"/> shown in the
+    /// recovery-mode chooser. Shared by both startup branches in <c>MainWindow</c> so an
+    /// outcome can never be mapped differently depending on the "always open most recent"
+    /// setting. <see cref="DatabaseValidationResult.Unreadable"/> maps to its own reason — it is
+    /// never folded into Corrupt or NotFound.
+    /// </summary>
+    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateAsync</c>.</param>
+    /// <returns>
+    /// Corrupt, Unreachable and Unreadable map to the reason of the same name; everything else
+    /// (Missing) maps to <see cref="RecoveryReason.NotFound"/>.
+    /// </returns>
+    public static RecoveryReason RecoveryReasonFor(DatabaseValidationResult validation) => validation switch
+    {
+        DatabaseValidationResult.Corrupt     => RecoveryReason.Corrupt,
+        DatabaseValidationResult.Unreachable => RecoveryReason.Unreachable,
+        DatabaseValidationResult.Unreadable  => RecoveryReason.Unreadable,
+        _                                    => RecoveryReason.NotFound
+    };
+
+    /// <summary>
+    /// The inline message shown when a recent database fails validation (double-click open and
+    /// the Continue button share it, so they cannot drift apart).
+    /// </summary>
+    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateAsync</c>.</param>
+    /// <returns>The user-facing message for that result.</returns>
+    private static string DescribeRecentOpenFailure(DatabaseValidationResult validation) => validation switch
+    {
+        DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
+        DatabaseValidationResult.Unreadable  => UnreadableDatabaseMessage,
+        DatabaseValidationResult.Corrupt     => DamagedDatabaseMessage,
+        _                                    => "That database could not be found — it may have been moved or deleted."
+    };
+
     // ── Constructor ───────────────────────────────────────────────────────
 
     /// <summary>
@@ -106,6 +169,11 @@ public partial class DatabaseChooserViewModel : ObservableObject
                 RecoveryReason.Unreachable =>
                     "The location of your most recently used database is currently unreachable. " +
                     "Check your network connection, or choose another database.",
+                RecoveryReason.Unreadable =>
+                    "TermPoint couldn't read your most recently used database just now. " +
+                    "Another program may have it open (for example a backup or sync tool), " +
+                    "or you may not have permission to read it. " +
+                    "Try again in a moment, or choose another database.",
                 _ =>
                     "TermPoint found the database file but it failed an integrity check and may be damaged. " +
                     "It is not safe to open this file."
@@ -195,6 +263,8 @@ public partial class DatabaseChooserViewModel : ObservableObject
         {
             // Skip the path we already know is unreachable — the banner above already
             // tells the user about it, and listing it again invites a pointless click.
+            // Deliberately NOT done for RecoveryReason.Unreadable: that file is probably fine
+            // and the user is expected to retry it from this list once the other program lets go.
             if (Reason == RecoveryReason.Unreachable
                 && path.Equals(LastKnownPath, StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -222,12 +292,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         var validation = await DatabaseValidator.ValidateAsync(item.Path);
         if (validation != DatabaseValidationResult.Ok)
         {
-            RecentError = validation switch
-            {
-                DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
-                DatabaseValidationResult.Corrupt     => "That database failed its integrity check and may be damaged.",
-                _                                    => "That database could not be found — it may have been moved or deleted."
-            };
+            RecentError = DescribeRecentOpenFailure(validation);
             return;
         }
 
@@ -344,6 +409,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
             {
                 DatabaseValidationResult.Corrupt     => "That file does not appear to be a valid database — please try another.",
                 DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
+                DatabaseValidationResult.Unreadable  => UnreadableDatabaseMessage,
                 _                                    => "The selected file could not be found."
             };
         }
@@ -397,6 +463,13 @@ public partial class DatabaseChooserViewModel : ObservableObject
         if (backupValidation == DatabaseValidationResult.Unreachable)
         {
             RestoreError = NetworkFileOps.UnreachableMessage;
+            return;
+        }
+        // A backup another program has open is not a bad backup — say so, with its own wording,
+        // rather than the "not a valid database backup" message below.
+        if (backupValidation == DatabaseValidationResult.Unreadable)
+        {
+            RestoreError = UnreadableBackupMessage;
             return;
         }
         if (backupValidation != DatabaseValidationResult.Ok)
@@ -511,12 +584,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
             var validation = await DatabaseValidator.ValidateAsync(SelectedRecentDatabase.Path);
             if (validation != DatabaseValidationResult.Ok)
             {
-                RecentError = validation switch
-                {
-                    DatabaseValidationResult.Unreachable => NetworkFileOps.UnreachableMessage,
-                    DatabaseValidationResult.Corrupt     => "That database failed its integrity check and may be damaged.",
-                    _                                    => "That database could not be found — it may have been moved or deleted."
-                };
+                RecentError = DescribeRecentOpenFailure(validation);
                 return;
             }
 

@@ -265,6 +265,15 @@ public partial class StartupWizardViewModel : ViewModelBase
         "Cannot reach the database location — check your network connection and try again.";
 
     /// <summary>
+    /// Inline error shown when a file exists but can't be read right now — another program holds it
+    /// open, or access is denied (step 1a: join; step 3: checkout of the new database). Never
+    /// described as damage or as an invalid file.
+    /// </summary>
+    internal const string UnreadableFileMessage =
+        "TermPoint can't read that file right now. Another program may have it open, " +
+        "or you may not have permission to read it. Try again in a moment.";
+
+    /// <summary>
     /// Runs step-specific validation. Returns true when the user may advance.
     /// </summary>
     private async Task<bool> ValidateCurrentStep()
@@ -326,6 +335,10 @@ public partial class StartupWizardViewModel : ViewModelBase
                 return false;
             case DatabaseValidationResult.Corrupt:
                 s1a.ErrorMessage = "That file does not appear to be a valid database — please try another.";
+                return false;
+            case DatabaseValidationResult.Unreadable:
+                // Held open exclusively by another program, or access denied: not an invalid file.
+                s1a.ErrorMessage = UnreadableFileMessage;
                 return false;
         }
 
@@ -418,6 +431,7 @@ public partial class StartupWizardViewModel : ViewModelBase
                     CheckoutOutcome.NetworkUnreachable => UnreachableLocationMessage,
                     CheckoutOutcome.SourceMissing      => "The new database file could not be found after it was created. " +
                                                           "It may have been moved or deleted. Please try again.",
+                    CheckoutOutcome.SourceUnreadable   => UnreadableFileMessage,
                     _                                  => "Could not acquire write access to the new database. Please try again."
                 };
                 return false;

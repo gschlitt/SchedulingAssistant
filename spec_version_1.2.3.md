@@ -687,7 +687,44 @@ history of freezes. Run the 3-machine clumsy network protocol.
     passed.
 - **Steps (one commit each):**
   - **4a:** never open `D` with SQLite (paths 1–4), plus the observer exception above. **Done.**
-  - **4e (next after 4a):** a locked database is not called damaged.
+  - **4e (next after 4a):** a locked database is not called damaged. **Done, user-tested
+    2026-10-13.**
+    - **The three-way check:** `BackupService.CheckIntegrityDetailed` returns Ok, Damaged or
+      Unreadable. It is Damaged only when SQLite reports code 11/26/24 or `integrity_check` is not
+      "ok"; everything else is Unreadable. A sharing violation gives `SQLITE_CANTOPEN` (14). The bool
+      wrapper is unchanged.
+    - **Wiring:** `DatabaseValidationResult.Unreadable` and `RecoveryReason.Unreadable`, with their
+      own wording at startup, in the chooser (recent, Browse, Continue), in the Restore backup
+      picker and in the wizard join. A locked database stays in the recent list.
+    - **Found in hand testing: the main window's Recent… menu skipped validation.** A locked file
+      leaked the write lock (`.lock` with a live heartbeat until exit), and a technical error was
+      shown. Fixed:
+      - **Pre-check:** `DatabaseSwitchPrecheck` runs before any teardown in `SwitchDatabaseAsync`.
+        A refusal keeps the current database open and leaves settings and recents unchanged.
+      - **Checkout:** returns `CheckoutOutcome.SourceUnreadable` and releases the lock when `D`
+        can't be read after the lock is taken. In crash recovery it keeps D' and its marker.
+      - **Read-only snapshot:** never throws.
+    - **Found in hand testing: any switch to a missing file created a new empty database.** Only
+      File → New may create now (`createIfMissing`). Recent… / Open / Take over get "Database Not
+      Found".
+    - **Found in review: a refused File → New would have written its configuration into the
+      current database.** Fixed:
+      - **Switch result:** `SwitchDatabaseAsync` returns `bool`. `ApplyConfig` runs only on true,
+        and a refused switch restores the backup-folder setting.
+      - **Existing name:** File → New refuses one with "Database Already Exists". Before, it opened
+        the file and added duplicate configuration.
+    - **Tests:** +75. Suite: 1582 passed.
+    - **Still open (user to decide):**
+      - **Header-only check on `D`:** the open-time check could drop from a read-only
+        `integrity_check` on `D` to the 16-byte header check, leaving the full check to the local
+        copy. It never modifies `D`; its only effect is to block an editor's save rename while it
+        reads. Kept as built for now.
+      - **Possible step 4f, the working copy:** the same locked-vs-damaged mistake affects the local
+        working copy. A locked D' gets the "may be corrupt" dialog with a restore offer
+        (`App.InitializeServices` → `DatabaseCorruptException`). In crash recovery, a locked D'
+        gets "Unsaved Changes Lost… damaged" plus an attempt to archive it
+        (`OfferCrashRecoveryAsync` / `InspectCrashRecovery`).
+    - **Left for 4c:** the unguarded hashes and copies in `SaveAsync`.
   - **4d:** failed switch → the database chooser, as above.
   - **4b:** a per-database, per-user named-mutex guard taken before cleanup and crash detection, on
     startup and switching, plus the same-computer banner wording.
