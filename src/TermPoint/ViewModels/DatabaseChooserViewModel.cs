@@ -39,7 +39,14 @@ public enum RecoveryReason
     /// The saved database exists but couldn't be read just now (another program has it open, or
     /// access is denied). Not damage — the user is expected to simply retry.
     /// </summary>
-    Unreadable
+    Unreadable,
+
+    /// <summary>
+    /// A database switch failed after the previously open database had already been closed (spec
+    /// item 4d), so no database is open. Not a statement about the saved path — which stays in the
+    /// recent list, since a retry will often succeed — only that the user must now choose one.
+    /// </summary>
+    SwitchFailed
 }
 
 /// <summary>
@@ -101,6 +108,14 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// </summary>
     public const string DamagedDatabaseMessage =
         "That database failed its integrity check and may be damaged.";
+
+    /// <summary>
+    /// The recovery-banner text when a database switch failed after the previous database was closed
+    /// (<see cref="RecoveryReason.SwitchFailed"/>). The path beneath it is the one that could not be opened.
+    /// </summary>
+    public const string SwitchFailedDescription =
+        "TermPoint couldn't open the database you chose, and the database you had open has been closed. " +
+        "Choose a database to continue.";
 
     /// <summary>Inline error for a chosen backup file that exists but couldn't be read right now.</summary>
     public const string UnreadableBackupMessage =
@@ -174,6 +189,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
                     "Another program may have it open (for example a backup or sync tool), " +
                     "or you may not have permission to read it. " +
                     "Try again in a moment, or choose another database.",
+                RecoveryReason.SwitchFailed => SwitchFailedDescription,
                 _ =>
                     "TermPoint found the database file but it failed an integrity check and may be damaged. " +
                     "It is not safe to open this file."
@@ -265,6 +281,8 @@ public partial class DatabaseChooserViewModel : ObservableObject
             // tells the user about it, and listing it again invites a pointless click.
             // Deliberately NOT done for RecoveryReason.Unreadable: that file is probably fine
             // and the user is expected to retry it from this list once the other program lets go.
+            // Likewise for RecoveryReason.SwitchFailed: the failure may have been momentary (a dropped
+            // connection, a locked file), so the path stays listed and the user can simply retry it.
             if (Reason == RecoveryReason.Unreachable
                 && path.Equals(LastKnownPath, StringComparison.OrdinalIgnoreCase))
                 continue;

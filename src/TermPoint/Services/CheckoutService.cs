@@ -145,6 +145,16 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     internal InstallChannel? ChannelOverride { get; set; }
 
+    /// <summary>
+    /// DEBUG-ONLY fault injection (spec item 4d): when non-null, <see cref="CheckoutAsync"/> and
+    /// <see cref="SetupReadOnlySnapshotAsync"/> fail on purpose as the plan dictates, so the failed-switch
+    /// recovery and the "Couldn't Open the Database" prompt can be exercised by hand. Null (the default)
+    /// means every real code path runs untouched. Only <c>App.Checkout</c> ever gets a plan, from
+    /// <see cref="CheckoutFaultPlan.FromEnvironment"/>, which returns null in Release builds — so shipped
+    /// builds never inject anything. Settable so tests can drive the plan directly.
+    /// </summary>
+    internal CheckoutFaultPlan? FaultPlan { get; set; }
+
     // ── State ──────────────────────────────────────────────────────────────────
 
     private Timer?  _autoSaveTimer;
@@ -452,6 +462,23 @@ public sealed class CheckoutService : IDisposable
         LockLossNewHolder = null;
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
+
+        // DEBUG-ONLY fault injection (TERMPOINT_DEBUG_FAIL_CHECKOUT; null in Release builds and in
+        // every ordinary run). Returns exactly what the real early exits return, BEFORE anything is
+        // locked, copied or created — so, like those exits, it takes nothing it would have to give back
+        // and leaves any crash-recovery data untouched.
+        if (FaultPlan is { } plan && plan.TryConsumeCheckoutFault(out var injected))
+        {
+            _logger.LogInfo(
+                $"[DEBUG fault injection] {CheckoutFaultPlan.EnvironmentVariableName}: " +
+                $"failing the checkout of {sourcePath} as {injected}; {plan.Description}.");
+            return injected switch
+            {
+                InjectedCheckoutFault.Unreachable => CheckoutOutcome.NetworkUnreachable,
+                InjectedCheckoutFault.Missing     => CheckoutOutcome.SourceMissing,
+                _                                 => CheckoutOutcome.SourceUnreadable
+            };
+        }
 
         // Tri-state probe: distinguishes "location answered, file absent" (Missing —
         // reported as SourceMissing) from any network failure (Unreachable — fast or
@@ -1763,6 +1790,64 @@ public sealed class CheckoutService : IDisposable
         }
     }
 
+    /// <summary>
+    /// Returns the service to a clean "no database open" state after an open or switch FAILED once the
+    /// previous database had already been closed (spec item 4d). Call it before showing the database
+    /// chooser, so the next attempt starts from a known state and nothing left over can do harm:
+    ///
+    /// <list type="bullet">
+    /// <item><description><b>Lock and timers:</b> stops autosave and the wake handler, gives back the write
+    /// lock if the failed attempt had got as far as taking it (a checkout that succeeded and a later step
+    /// threw), and parks <see cref="Mode"/> at read-only. A lock deliberately parked by
+    /// <see cref="WriteLockService.Suspend"/> (a failed final save of the PREVIOUS database) is not a held
+    /// lock, so it is left in place.</description></item>
+    /// <item><description><b>Working copy — never deleted if it holds unsaved work:</b> a working copy that
+    /// has a dirty marker is KEPT, exactly as the exit and switch teardowns keep it, so it is offered back
+    /// the next time that database is opened. Only a copy with no marker (nothing was ever edited) is
+    /// deleted. Whatever was or wasn't deleted, <see cref="WorkingPath"/> is then FORGOTTEN.</description></item>
+    /// </list>
+    ///
+    /// <para><b>Why forgetting the path matters:</b> after a failed checkout <see cref="WorkingPath"/>
+    /// still names whatever the previous session (or a half-finished attempt at a stale lock) left in
+    /// it — possibly a kept D' with unsaved edits. <see cref="MainWindow.OnClosing"/> and the next switch
+    /// both call <see cref="CleanupWorkingCopy"/>, which deletes <see cref="WorkingPath"/> whenever the
+    /// final save "succeeds" (and it always does when no save was needed). Choosing Exit in the chooser
+    /// that follows a failed switch would therefore have deleted the previous database's kept working
+    /// copy, leaving only an orphaned marker for the next startup to sweep away.</para>
+    ///
+    /// <para>Nothing is saved: an attempt that never finished opening has no edits of its own, and pushing
+    /// a recovered or damaged D' over D would be exactly the wrong thing to do. Safe to call at any time,
+    /// repeatedly, and on a service that never opened anything.</para>
+    /// </summary>
+    public async Task ResetAfterFailedOpenAsync()
+    {
+        _logger.LogBreadcrumb("ResetAfterFailedOpen", new() { ["workingPath"] = WorkingPath });
+
+        // Lock, autosave, wake handler, Mode. saveFirst:false — see the remarks above.
+        await ReleaseAsync(saveFirst: false);
+        _lockService.HeartbeatFailed -= OnHeartbeatFailed;
+
+        // Same rule as the exit and switch teardowns: a marker means unsaved work, so keep the file.
+        if (!HasDirtyMarker)
+            CleanupWorkingCopy();
+        else
+            _logger.LogInfo("CheckoutService: failed open — keeping the working copy and its dirty marker (unsaved changes kept for recovery).");
+
+        // Forget everything about the failed attempt (and the previous session): from here on there is
+        // no working copy for CleanupWorkingCopy / HasDirtyMarker to find.
+        SourcePath              = string.Empty;
+        WorkingPath             = string.Empty;
+        ReadOnlyWorkingPath     = null;
+        IsReadOnlyMode          = false;
+        HashAtCheckout          = null;
+        SessionDirty            = false;
+        CurrentHolder           = null;
+        ReclaimedDeadSession    = false;
+        HolderIsLiveSameMachine = false;
+        RequiredAppVersion      = null;
+        _pendingSaveHash        = null;
+    }
+
     // ── Autosave ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -2492,6 +2577,16 @@ public sealed class CheckoutService : IDisposable
     /// </returns>
     public async Task<string?> SetupReadOnlySnapshotAsync()
     {
+        // DEBUG-ONLY fault injection (see FaultPlan): report "the local copy could not be made" without
+        // touching any state, exactly as a failed copy does, so the Try again / Close prompt appears.
+        if (FaultPlan is { } plan && plan.TryConsumeSnapshotFault())
+        {
+            _logger.LogInfo(
+                $"[DEBUG fault injection] {CheckoutFaultPlan.EnvironmentVariableName}: " +
+                $"failing the read-only snapshot of {SourcePath}; {plan.Description}.");
+            return null;
+        }
+
         ReadOnlyWorkingPath = ComputeReadOnlyWorkingPath(SourcePath);
         Directory.CreateDirectory(_workingDir);
         var roTmpPath = ReadOnlyWorkingPath + ".tmp";

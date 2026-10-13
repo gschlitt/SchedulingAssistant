@@ -48,6 +48,16 @@ public partial class MainWindow : Window
     /// <summary>Backstop: lift the curtain even if the grid never reports a first layout pass.</summary>
     private static readonly TimeSpan CurtainSafetyTimeout = TimeSpan.FromSeconds(4);
 
+    /// <summary>
+    /// True from the moment <see cref="SetupMainWindowAsync"/> finishes wiring a database to the window
+    /// until the next switch starts taking it apart (or its wiring fails part-way). Tracked explicitly,
+    /// never inferred from <c>App.Services</c> or <c>DataContext</c>: whether a refused or failed switch
+    /// may leave the user on the current database, or must send them to the database chooser because
+    /// nothing is open, hangs on it (see <see cref="DatabaseSwitchRecovery.Decide"/>). False at launch,
+    /// during the startup wizard, and after any failed switch.
+    /// </summary>
+    private bool _isDatabaseOpen;
+
     public ScheduleGridView? ScheduleGridViewInstance => MainViewControl?.ScheduleGridViewInstance;
 
     public MainWindow()
@@ -551,6 +561,12 @@ public partial class MainWindow : Window
             // Checkout cannot proceed (network unreachable, database missing, or no local
             // copy could be made) — dialog already shown. Close the app since this is the
             // initial startup path; there is no previous DB to fall back to.
+            //
+            // Forget the failed attempt's working-copy bookkeeping first: a stale-lock checkout that
+            // was declined leaves WorkingPath naming this database's D', which may hold crash-recovery
+            // data kept for the next launch — and the shutdown that Close() starts deletes whatever
+            // WorkingPath names. (Keeps any copy that has a dirty marker; see ResetAfterFailedOpenAsync.)
+            await App.Checkout.ResetAfterFailedOpenAsync();
             Close();
             return;
         }
@@ -646,8 +662,11 @@ public partial class MainWindow : Window
     /// flips its header (breaking the active editor's next save) and holds it open.</description></item>
     /// <item><description><b><c>null</c>:</b> the checkout cannot proceed and the user has already been told
     /// why (network unreachable, database file missing, or no local copy could be made and the user chose
-    /// Close). Both callers treat <c>null</c> as "dialog shown, give up": startup closes the app and
-    /// <see cref="SwitchDatabaseAsync"/> returns.</description></item>
+    /// Close). Both callers treat <c>null</c> as "dialog shown, give up": startup closes the app, and
+    /// <see cref="SwitchDatabaseAsync"/> — whose previous database is already closed by then — cleans up
+    /// (<see cref="AbandonFailedSwitchAsync"/>) and shows the database chooser. Either way the caller must
+    /// reset the working-copy bookkeeping (<see cref="CheckoutService.ResetAfterFailedOpenAsync"/>), because
+    /// a failed checkout leaves <see cref="CheckoutService.WorkingPath"/> naming whatever was there before.</description></item>
     /// </list>
     /// </returns>
     private async Task<string?> RunCheckoutAsync(
@@ -913,6 +932,11 @@ public partial class MainWindow : Window
                 tourRunner.EvaluateAutoTriggers();
         }, Avalonia.Threading.DispatcherPriority.Background);
 
+        // Everything above succeeded: a database is now open and wired to the window. Set LAST, so
+        // that a throw part-way through leaves it false and the caller's failure handling treats this
+        // as "nothing open" (see DatabaseSwitchRecovery.Decide).
+        _isDatabaseOpen = true;
+
         await Task.CompletedTask;
     }
 
@@ -927,12 +951,7 @@ public partial class MainWindow : Window
     {
         // Re-show the curtain (covers the case where this is a database switch and the
         // curtain was already lifted on a previous load) and reset the timing/guard state.
-        if (LoadingCurtain is not null)
-        {
-            LoadingCurtain.IsVisible = true;
-            LoadingCurtain.IsHitTestVisible = true;
-            LoadingCurtain.Opacity = 1;
-        }
+        ShowCurtain();
         _curtainLifted = false;
         _curtainShownAt = DateTime.UtcNow;
 
@@ -952,6 +971,47 @@ public partial class MainWindow : Window
         _curtainSafetyTimer = new DispatcherTimer { Interval = CurtainSafetyTimeout };
         _curtainSafetyTimer.Tick += (_, _) => _ = LiftCurtainAsync();
         _curtainSafetyTimer.Start();
+    }
+
+    /// <summary>
+    /// Makes the loading curtain fully opaque, visible and hit-testable, so it covers (and blocks input
+    /// to) everything beneath it. Does not touch the lift state — see <see cref="ArmCurtainLift"/> (which
+    /// arms a lift afterwards) and <see cref="CoverWindowForNoDatabase"/> (which disarms every lift).
+    /// </summary>
+    private void ShowCurtain()
+    {
+        if (LoadingCurtain is null) return;
+
+        LoadingCurtain.IsVisible = true;
+        LoadingCurtain.IsHitTestVisible = true;
+        LoadingCurtain.Opacity = 1;
+    }
+
+    /// <summary>
+    /// Covers the window for the "no database open" state that follows a failed database switch (spec
+    /// item 4d), so nothing bound to the database that was just closed can be seen or clicked: clears
+    /// the stale <see cref="Window.DataContext"/> and raises the loading curtain — the same cover the
+    /// window wears at launch.
+    ///
+    /// <para>The curtain's pending lift is DISARMED (the grid's size-changed handler and the safety timer are
+    /// removed and <c>_curtainLifted</c> is set, which turns <see cref="LiftCurtainAsync"/> into a no-op), so
+    /// a late signal from the database that was just closed cannot uncover the window. The next successful
+    /// open re-arms everything through <see cref="ArmCurtainLift"/>. Idempotent.</para>
+    /// </summary>
+    private void CoverWindowForNoDatabase()
+    {
+        DataContext = null;
+
+        _curtainSafetyTimer?.Stop();
+        _curtainSafetyTimer = null;
+
+        var gridView = MainViewControl?.ScheduleGridViewInstance;
+        if (gridView is not null && _curtainGridHandler is not null)
+            gridView.SizeChanged -= _curtainGridHandler;
+        _curtainGridHandler = null;
+
+        _curtainLifted = true;
+        ShowCurtain();
     }
 
     /// <summary>
@@ -1018,6 +1078,15 @@ public partial class MainWindow : Window
     /// Only the observer setting is overridden, for this one checkout; the license gate, the lock
     /// and crash-recovery steps behave as for any other open, and the setting still applies to every
     /// later open of the database.</para>
+    ///
+    /// <para><b>When the switch fails (spec item 4d):</b> a failure BEFORE the previous database is touched
+    /// (the pre-check's refusal) leaves the user on it, exactly as before — provided a database is actually
+    /// open (<see cref="_isDatabaseOpen"/>). Once it has been closed, or when no database is open to begin
+    /// with (retrying from the chooser, the post-wizard open), a failure ends in the same clean "no database
+    /// open" state as startup: the failed attempt is cleaned up (<see cref="AbandonFailedSwitchAsync"/>), the
+    /// window is covered, and the startup database chooser is shown in recovery mode
+    /// (<see cref="RecoveryReason.SwitchFailed"/>) — repeatedly, until a database opens or the user chooses
+    /// Exit (or Create New, which hands over to the setup wizard). See <see cref="DatabaseSwitchRecovery"/>.</para>
     /// </summary>
     /// <param name="newDatabasePath">Full path of the database (D) to switch to.</param>
     /// <param name="isNewDatabase">
@@ -1033,18 +1102,50 @@ public partial class MainWindow : Window
     /// that already EXISTS is refused too (File → New never adopts an existing file).
     /// </param>
     /// <returns>
-    /// <c>true</c> ONLY when the new database ended up open: the checkout succeeded (write access or
-    /// the read-only snapshot) and the services and window were set up for it. <c>false</c> on every
+    /// <c>true</c> ONLY when the REQUESTED database ended up open: the checkout succeeded (write access
+    /// or the read-only snapshot) and the services and window were set up for it. <c>false</c> on every
     /// refusal or failure — pre-check refusal (current database untouched), creation failure
     /// (unreachable / already exists), a checkout that could not proceed (dialog shown), or any
-    /// exception (reported in an error dialog). A <c>false</c> after the pre-check passed means the
-    /// previous database has already been closed. Callers that go on to write into "the open
-    /// database" — File → New's configuration transfer — MUST check it; others may ignore it.
+    /// exception (reported in an error dialog).
+    ///
+    /// <para><b>A <c>false</c> after the failure recovery above does NOT mean nothing is open.</b> The
+    /// chooser may have opened a DIFFERENT database before this returns — the original request still failed,
+    /// so the result is still <c>false</c>. That is what keeps File → New's configuration transfer from ever
+    /// being written into a database the user picked from the chooser afterwards. Callers that go on to
+    /// write into "the open database" — File → New — MUST check it; others may ignore it.</para>
     /// </returns>
     public async Task<bool> SwitchDatabaseAsync(
         string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false)
     {
+        var result = await SwitchCoreAsync(newDatabasePath, isNewDatabase, createIfMissing);
+
+        if (result == SwitchResult.NoDatabaseOpen)
+            await RecoverToDatabaseChooserAsync(newDatabasePath);
+
+        return result == SwitchResult.Opened;
+    }
+
+    /// <summary>
+    /// One attempt to switch databases: the pre-check, the teardown of the current database, the checkout
+    /// and the wiring of the new one — everything <see cref="SwitchDatabaseAsync"/> documents EXCEPT the
+    /// recovery to the chooser. Reports how it ended and, for the one failure that needs it, cleans up
+    /// after itself, so the caller (and the chooser loop, which calls this again for each pick) only has
+    /// to look at the result.
+    /// </summary>
+    /// <param name="newDatabasePath">Full path of the database (D) to switch to.</param>
+    /// <param name="isNewDatabase">See <see cref="SwitchDatabaseAsync"/>.</param>
+    /// <param name="createIfMissing">See <see cref="SwitchDatabaseAsync"/>.</param>
+    /// <returns>
+    /// <see cref="SwitchResult.Opened"/>; <see cref="SwitchResult.StayedOnCurrentDatabase"/> after a refusal
+    /// that left the open database untouched; or <see cref="SwitchResult.NoDatabaseOpen"/> (after a failure
+    /// past the point of no return, <see cref="AbandonFailedSwitchAsync"/> has already run). A failure of the
+    /// switch itself is reported in a dialog and returned, not thrown.
+    /// </returns>
+    private async Task<SwitchResult> SwitchCoreAsync(
+        string newDatabasePath, bool isNewDatabase, bool createIfMissing)
+    {
         App.Logger.LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
+        var phase = SwitchPhase.BeforeTeardown;
         try
         {
             // Refuse BEFORE touching anything — settings, recents, the current database's save and
@@ -1056,8 +1157,18 @@ public partial class MainWindow : Window
             {
                 App.Logger.LogInfo($"SwitchDatabase: refused before teardown — {precheck.Title}");
                 await ShowMessageAsync(precheck.Title, precheck.Message);
-                return false;
+
+                // The open database (if any) is untouched: stay on it. With NO database open (retrying
+                // from the chooser, the post-wizard open) there is nothing to stay on — the chooser follows.
+                return DatabaseSwitchRecovery.Decide(phase, _isDatabaseOpen);
             }
+
+            // ── Point of no return ───────────────────────────────────────────────────────────────
+            // From here the previous database is taken apart. Whatever happens next, nothing is open
+            // any more, so any failure must end in the no-database state (AbandonFailedSwitchAsync +
+            // the chooser) — never in a window still bound to a database that has been closed.
+            phase           = SwitchPhase.AfterTeardown;
+            _isDatabaseOpen = false;
 
             // Release the current checkout (saves if dirty) before opening the new DB.
             var oldDbName    = Path.GetFileNameWithoutExtension(App.Checkout.SourcePath);
@@ -1083,8 +1194,10 @@ public partial class MainWindow : Window
                 oldBackup.StopSession();
 
             // Close the old DatabaseContext (and all other DI singletons) NOW, before
-            // CheckoutAsync copies D to D'.
-            (App.Services as IDisposable)?.Dispose();
+            // CheckoutAsync copies D to D'. Also clears App.Services (the same "nothing open" value
+            // as at startup), so the lines above — which this method runs again when the chooser
+            // retries — never meet a disposed container.
+            App.ReleaseServices();
 
             // Delete the old D' ONLY when its content is safely in the old D (save
             // succeeded) or nothing was edited (no dirty marker). Otherwise leave the
@@ -1124,7 +1237,7 @@ public partial class MainWindow : Window
 
                     case NewDatabaseOutcome.Unreachable:
                         await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
-                        return false;
+                        return await AbandonFailedSwitchAsync();
 
                     case NewDatabaseOutcome.AlreadyExists:
                         // Someone created a file with this name while we were building ours. It was
@@ -1132,7 +1245,7 @@ public partial class MainWindow : Window
                         // (Same wording as the pre-check's refusal of an existing file for File → New.)
                         await ShowMessageAsync(DatabaseSwitchPrecheck.AlreadyExistsTitle,
                             DatabaseSwitchPrecheck.AlreadyExistsMessage(newDatabasePath));
-                        return false;
+                        return await AbandonFailedSwitchAsync();
 
                     default: // Failed — the outer catch logs it and shows "Failed to switch to database: …"
                         throw new InvalidOperationException(
@@ -1155,7 +1268,11 @@ public partial class MainWindow : Window
             var checkoutPath = await RunCheckoutAsync(
                 newDatabasePath, recoverUnsaved, ignoreObserverMode: isNewDatabase);
             if (checkoutPath is null)
-                return false; // Checkout cannot proceed — dialog already shown (see RunCheckoutAsync).
+            {
+                // Checkout cannot proceed — dialog already shown (see RunCheckoutAsync). The previous
+                // database is already closed, so this ends in the no-database state, not a dead window.
+                return await AbandonFailedSwitchAsync();
+            }
             newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.
@@ -1171,24 +1288,127 @@ public partial class MainWindow : Window
             // shared helper used by every startup path.
             await SetupMainWindowAsync(canonicalPath, vm);
 
-            // Re-apply the semester selection after the DataContext swap.
-            if (savedYearId != null && savedSemesterIds != null)
-                vm.SemesterContext.RestoreSelection(savedYearId, savedSemesterIds);
+            // The new database is now open and wired to the window (_isDatabaseOpen). The steps below
+            // are refinements: a failure in one of them must not turn an open database into a failed
+            // switch (which would send the user to the chooser, or make File → New skip its configuration
+            // transfer). Log it — LogError also raises the standard error banner — and carry on.
+            try
+            {
+                // Re-apply the semester selection after the DataContext swap.
+                if (savedYearId != null && savedSemesterIds != null)
+                    vm.SemesterContext.RestoreSelection(savedYearId, savedSemesterIds);
 
-            // Restored unsaved changes are still only in the working copy — make them
-            // durable right away (mirrors the startup path; failure surfaces through
-            // the standard save-error banner).
-            if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
-                await App.Checkout.SaveAsync();
+                // Restored unsaved changes are still only in the working copy — make them
+                // durable right away (mirrors the startup path; failure surfaces through
+                // the standard save-error banner).
+                if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
+                    await App.Checkout.SaveAsync();
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogError(ex, "SwitchDatabase: a step after the database opened failed");
+            }
 
-            return true;   // the new database is open and the window is wired to it
+            return SwitchResult.Opened;   // the new database is open and the window is wired to it
         }
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "Failed to switch database");
             await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
-            return false;
+
+            // Past the point of no return the previous database is gone: clean up and go to the chooser.
+            // Before it, the open database (if any) was never touched and stays.
+            return phase == SwitchPhase.AfterTeardown
+                ? await AbandonFailedSwitchAsync()
+                : DatabaseSwitchRecovery.Decide(phase, _isDatabaseOpen);
         }
+    }
+
+    /// <summary>
+    /// Cleans up after a switch that FAILED once the previous database had been closed (spec item 4d),
+    /// returning the app to the same "no database open" state as startup — the state the database
+    /// chooser then starts from. Never throws; each step is attempted even if an earlier one failed.
+    ///
+    /// <list type="number">
+    /// <item><description><see cref="_isDatabaseOpen"/> is cleared (a failure part-way through wiring the
+    /// window may have left it set).</description></item>
+    /// <item><description><see cref="App.ReleaseServices"/> disposes a container left half-built by a failed
+    /// <see cref="App.InitializeServices"/> (closing its connection to D') — a no-op when it is already
+    /// gone — and leaves <c>App.Services</c> null.</description></item>
+    /// <item><description><see cref="CheckoutService.ResetAfterFailedOpenAsync"/> gives back a lock the failed
+    /// attempt may have taken and forgets the working-copy bookkeeping, so that choosing Exit in the
+    /// chooser can never delete a kept working copy (the previous database's unsaved changes) through a
+    /// stale <c>WorkingPath</c>. A working copy with a dirty marker is never deleted.</description></item>
+    /// </list>
+    /// Covering the window is left to the chooser step (<see cref="ShowSwitchFailedChooserAsync"/>), which
+    /// runs immediately after and for the refusal path as well.
+    /// </summary>
+    /// <returns>Always <see cref="SwitchResult.NoDatabaseOpen"/>, so a failure site can <c>return await</c> it.</returns>
+    private async Task<SwitchResult> AbandonFailedSwitchAsync()
+    {
+        _isDatabaseOpen = false;
+        App.Logger.LogInfo("SwitchDatabase: failed after the previous database was closed — returning to the no-database state.");
+
+        try { App.ReleaseServices(); }
+        catch (Exception ex) { App.Logger.LogError(ex, "SwitchDatabase: could not dispose the services of the failed attempt"); }
+
+        try { await App.Checkout.ResetAfterFailedOpenAsync(); }
+        catch (Exception ex) { App.Logger.LogError(ex, "SwitchDatabase: could not reset the checkout state after the failed attempt"); }
+
+        return DatabaseSwitchRecovery.Decide(SwitchPhase.AfterTeardown, databaseOpen: false);
+    }
+
+    /// <summary>
+    /// The "no database open" recovery that follows a failed switch (spec item 4d): shows the startup
+    /// database chooser in recovery mode and keeps showing it until a database opens or the user leaves
+    /// (<see cref="DatabaseSwitchRecovery.RunChooserLoopAsync"/>). Each pick is opened through
+    /// <see cref="SwitchCoreAsync"/> itself — the same pre-check, checkout and wiring as any switch, which
+    /// tolerates a null <c>App.Services</c> — and a pick that fails comes back to the chooser.
+    ///
+    /// <para>If the chooser itself cannot be shown the app has no way forward, so — like a
+    /// failure during startup — the error is reported and the app shuts down.</para>
+    /// </summary>
+    /// <param name="failedPath">The database whose open failed; named in the chooser's banner.</param>
+    private async Task RecoverToDatabaseChooserAsync(string failedPath)
+    {
+        try
+        {
+            App.Logger.LogInfo("SwitchDatabase: no database is open — showing the database chooser.");
+            var opened = await DatabaseSwitchRecovery.RunChooserLoopAsync(
+                failedPath,
+                ShowSwitchFailedChooserAsync,
+                async chosen => await SwitchCoreAsync(chosen, isNewDatabase: false, createIfMissing: false)
+                                == SwitchResult.Opened);
+            App.Logger.LogInfo(opened
+                ? "SwitchDatabase: a database was opened from the chooser."
+                : "SwitchDatabase: the chooser ended without opening a database (exit, or the setup wizard took over).");
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SwitchDatabase: could not show the database chooser after a failed switch");
+            WindowState = WindowState.Normal;
+            await ShowStartupErrorAsync(ex);
+            (Avalonia.Application.Current?.ApplicationLifetime as
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+                ?.Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// Covers the window and shows the startup database chooser in recovery mode with
+    /// <see cref="RecoveryReason.SwitchFailed"/>. Chooser outcomes behave exactly as at startup, because
+    /// this goes through the very same <see cref="ShowDatabaseChooserAsync"/>: a pick is returned, Create
+    /// New hands over to the setup wizard (null), Exit shows the cancel message and shuts down (null). The
+    /// chooser is shown NON-modally and never closed, as there (Avalonia 12 compositor deadlock).
+    /// </summary>
+    /// <param name="failedPath">The database that could not be opened; shown in the banner and kept in the recent list.</param>
+    /// <returns>The database the user picked, or null when they exited or started the wizard.</returns>
+    private Task<string?> ShowSwitchFailedChooserAsync(string failedPath)
+    {
+        // Nothing bound to the closed database may be visible or clickable behind the chooser or the
+        // error dialogs that follow it. Idempotent, so the repeat visits of the loop cost nothing.
+        CoverWindowForNoDatabase();
+        return ShowDatabaseChooserAsync(ChooserMode.Recovery, RecoveryReason.SwitchFailed, failedPath);
     }
 
 

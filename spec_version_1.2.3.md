@@ -725,7 +725,36 @@ history of freezes. Run the 3-machine clumsy network protocol.
         gets "Unsaved Changes Lost… damaged" plus an attempt to archive it
         (`OfferCrashRecoveryAsync` / `InspectCrashRecovery`).
     - **Left for 4c:** the unguarded hashes and copies in `SaveAsync`.
-  - **4d:** failed switch → the database chooser, as above.
+  - **4d:** failed switch → the database chooser, as above. **Done, user-tested 2026-10-13.**
+    - **The flow.** After a failure once the previous database is closed:
+      1. The existing failure dialog appears.
+      2. `AbandonFailedSwitchAsync` runs. `App.ReleaseServices()` disposes the container and nulls
+         `App.Services`. `CheckoutService.ResetAfterFailedOpenAsync()` releases the lock, keeps a
+         working copy that has a dirty marker, and clears all checkout state.
+      3. The window is covered (`DataContext = null`, curtain raised).
+      4. The startup chooser appears with `RecoveryReason.SwitchFailed`: *"TermPoint couldn't open
+         the database you chose, and the database you had open has been closed. Choose a database
+         to continue."*
+      5. The chooser loops until a database opens, or the user chooses Exit or the wizard.
+    - **"A database is open" is tracked explicitly** (`_isDatabaseOpen`, set by
+      `SetupMainWindowAsync`, cleared at teardown). A pre-check refusal with no database open also
+      goes to the chooser.
+    - **`SwitchDatabaseAsync` returns false** whenever the originally requested switch failed, so
+      File → New never applies its configuration to a database picked from the chooser.
+    - **Older data-loss path fixed.** A failed checkout left `WorkingPath` pointing at a stale file
+      (a previous database's kept copy, or the target's crash-recovery D'). Exit then deleted it via
+      `CleanupWorkingCopy`. `ResetAfterFailedOpenAsync` fixes this. The startup null-checkout path
+      now calls it too.
+    - **DEBUG-only fault injection:** `TERMPOINT_DEBUG_FAIL_CHECKOUT` = `unreachable` / `missing` /
+      `unreadable` / `snapshot`, with `[:count[:skip]]` (`CheckoutFaultPlan`). Release builds ignore
+      it. It made 4d and 4a's "Couldn't Open the Database" hand-testable.
+    - **Tests:** +77. Suite: 1659 passed.
+    - **Notes:**
+      - **Banner wording.** It says "the database you had open has been closed" even when nothing
+        was open (a chooser retry, or the post-wizard open). An alternative wording was offered; the
+        user hasn't asked for it.
+      - **Floating windows.** Detached panels and sticky notes are not closed while the chooser is
+        up, to avoid the compositor deadlock. They keep stale content, as after any switch.
   - **4b:** a per-database, per-user named-mutex guard taken before cleanup and crash detection, on
     startup and switching, plus the same-computer banner wording.
   - **4c:** catch save step 4; open the backup source as `Mode=ReadWrite`.

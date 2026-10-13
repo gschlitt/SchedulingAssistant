@@ -77,7 +77,33 @@ public partial class App : Application
     /// <summary>
     /// Checkout service — manages D to D' copy, write lock, save-back, autosave, and crash recovery.
     /// </summary>
-    public static CheckoutService Checkout { get; } = new CheckoutService(LockService, Logger);
+    public static CheckoutService Checkout { get; } = CreateCheckoutService();
+
+    /// <summary>
+    /// Builds the app-wide <see cref="CheckoutService"/>. Declared after <see cref="Logger"/> and
+    /// <see cref="LockService"/> in this class so both exist by the time it runs (static initializers
+    /// run in textual order).
+    ///
+    /// <para>Also attaches the DEBUG-ONLY fault plan from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c>
+    /// environment variable (see <see cref="CheckoutFaultPlan"/>): <see cref="CheckoutFaultPlan.FromEnvironment"/>
+    /// returns null in Release builds, so a shipped build never injects a fault. A plan that is
+    /// attached is announced in the log, so a forgotten variable in a launch profile can't go unnoticed.</para>
+    /// </summary>
+    /// <returns>The checkout service, with a fault plan only in a DEBUG build that has the variable set.</returns>
+    private static CheckoutService CreateCheckoutService()
+    {
+        var service = new CheckoutService(LockService, Logger)
+        {
+            FaultPlan = CheckoutFaultPlan.FromEnvironment()
+        };
+
+        if (service.FaultPlan is { } plan)
+            Logger.LogInfo(
+                $"[DEBUG fault injection] {CheckoutFaultPlan.EnvironmentVariableName} is set: " +
+                $"checkouts will fail as {plan.Fault}; {plan.Description}.");
+
+        return service;
+    }
 
     /// <summary>
     /// Combined license + trial evaluation result, set once per database open in
@@ -227,6 +253,21 @@ public partial class App : Application
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     private void StartBackgroundUpdateCheck()
         => _ = new UpdateService().CheckForUpdatesAsync(Logger);
+
+    /// <summary>
+    /// Disposes the current DI container (closing its database connection) AND clears
+    /// <see cref="Services"/>, returning the app to the same "no database open" state it is in at
+    /// startup. Used when a database is closed to open another: leaving a disposed container behind
+    /// would make every later <c>App.Services?.GetService(...)</c> throw
+    /// <see cref="ObjectDisposedException"/> instead of reading "nothing open" — which is what the next
+    /// attempt after a failed switch (and the wizard's join path) rely on. Safe to call when no
+    /// container exists or it is already disposed.
+    /// </summary>
+    public static void ReleaseServices()
+    {
+        (Services as IDisposable)?.Dispose();
+        Services = null!;
+    }
 
     /// <summary>
     /// Called by MainWindow once a database path has been resolved.
