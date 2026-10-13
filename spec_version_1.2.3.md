@@ -16,7 +16,7 @@ will be verified.
 | 1 | Avalonia 12.0.2 → 12.1.3 upgrade | Dependency / bug fix | **Done** (steps 1–5). Manual checks still open: UNC picker, macOS, Win11 VM |
 | 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | **Done** |
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
-| 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | Accepted |
+| 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | Accepted |
 | 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
@@ -798,7 +798,34 @@ history of freezes. Run the 3-machine clumsy network protocol.
       killed, the guard is free). Suite: 1711 passed.
     - **macOS:** contention is recognised on Unix by `EWOULDBLOCK`. It is unverified on a real Mac;
       the field-test row covers it. If it's misdetected there, the guard does nothing (fail-open).
-  - **4c:** catch save step 4; open the backup source as `Mode=ReadWrite`.
+  - **4c:** catch save step 4; open the backup source as `Mode=ReadWrite`. **Done, user-tested
+    2026-10-13.**
+    - **File errors in the save pipeline come back as a clean `SaveOutcome.CopyError`**, with the
+      normal transient save banner. Covered: step 2 (hash of D, via `HashSourceAsync`), step 3c
+      (copy to D.tmp), step 4 (D.tmp verify) and step 5 (rename). Locked or access-denied files
+      show "TermPoint couldn't save because the database file is in use by another program or can't
+      be accessed." (logged quietly). D.tmp is deleted after a failed verify.
+    - **A safety net in `SaveAsync`:** any unexpected exception is sent to BugSnag (`LogError`) and
+      shows "The save failed unexpectedly. Your changes are kept." `SaveAsync` no longer throws, so
+      the exit save always takes `ReleaseAsync`'s deliberate CopyError path: lock parked, D' and its
+      marker kept, "Changes Not Saved", recovery offered next start.
+    - **The working copy is never re-created empty.** These now open it with `Mode=ReadWrite` (must
+      exist):
+      - the save snapshot (`BackupSqliteDatabase` source);
+      - the periodic and explicit backup (`BackupService.VacuumIntoFreshConnection`). Before, a
+        missing D' would have been shipped as an empty backup, rotating real backups out;
+      - `DatabaseContext.ReinitializeConnection` (refresh or demotion).
+
+      A missing working copy gives "TermPoint couldn't save because its local working copy of the
+      database is missing." D is never touched.
+    - **A test seam** `CheckoutService.BeforeTmpVerifyAsync` (null in production) reaches the
+      copy-to-verify window. **Tests:** +12. Suite: 1723 passed.
+    - **Not changed (listed):**
+      - `RefreshReadOnlySnapshotAsync`'s local hash of D''.tmp (its caller catches; item 11).
+      - `SetupReadOnlySnapshotAsync`'s local-only directory/hash calls.
+      - Locked-file save failures no longer reach BugSnag (item 7 plans to report handled save
+        failures).
+    - **macOS residual:** see parking-lot P10.
 - **Field test to add:** a named-mutex check on a real Mac (a crashed copy releases it, a frozen
   one holds it).
 
@@ -2010,6 +2037,19 @@ LATENT: unreachable today.**
   - await the pending release before `EnterReaderMode`.
 
   This interacts with items 4 and 9, which change the lock and startup code.
+
+**P10. macOS: unsaved edits after the working copy is deleted mid-session (noted 2026-10-13,
+item 4c). FUTURE.**
+- **The situation:** on macOS an open file can be deleted. If D' is deleted while TermPoint runs, 4c
+  makes every save and backup fail safely, so D is never touched. But the user's edits then live only
+  in the deleted file that the open connection still holds.
+- **The consequences:**
+  - The edits are lost when the app closes.
+  - Autosave keeps showing "will retry automatically", which won't help here.
+- **Possible design:** when D' is missing, snapshot through the live connection (`VACUUM INTO` or
+  `BackupDatabase` from `DatabaseContext.Connection`) into a recovery file in the working folder,
+  write a marker, and tell the user plainly.
+- **The open question:** sharing the connection between the UI thread and the save thread.
 
 **P9. Section-type colours (client request, noted 2026-10-11). NEW FEATURE; recommended for
 1.2.4.**

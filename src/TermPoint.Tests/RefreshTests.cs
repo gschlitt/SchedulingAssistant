@@ -304,4 +304,45 @@ public sealed class RefreshTests : IDisposable
             store.Sections.Single().InstructorAssignments.Single().InstructorId == "instructor-after",
             "Cache is fresh after calling store.Reload().");
     }
+
+    // ── ReinitializeConnection never creates a database (spec item 4c) ────────
+
+    /// <summary>
+    /// Reopening an existing database file after a refresh works as before: the reconnected
+    /// context reads the schema and data of the file at that path.
+    /// </summary>
+    [Fact]
+    public void ReinitializeConnection_ExistingFile_Reopens()
+    {
+        using var db = new DatabaseContext(_dbPath);
+        InsertSemester(db.Connection, "sem-1");
+        var before = CountSemesters(db.Connection);
+
+        db.ReinitializeConnection(_dbPath);
+
+        Assert.Equal(before, CountSemesters(db.Connection));
+        Assert.True(before >= 1, "The reopened file still holds the semester inserted before.");
+
+        static long CountSemesters(DbConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM Semesters";
+            return Convert.ToInt64(cmd.ExecuteScalar());
+        }
+    }
+
+    /// <summary>
+    /// Reopening a path whose file has vanished fails loudly and creates nothing. Before the fix the
+    /// default create mode silently made an EMPTY, schema-less database there, so a reader whose
+    /// snapshot had gone missing would carry on against a blank file.
+    /// </summary>
+    [Fact]
+    public void ReinitializeConnection_MissingFile_ThrowsAndCreatesNothing()
+    {
+        using var db = new DatabaseContext(_dbPath);
+        var missing = Path.Combine(_tempDir, "vanished.db");
+
+        Assert.Throws<InvalidOperationException>(() => db.ReinitializeConnection(missing));
+        Assert.False(File.Exists(missing), "No database may be created at a missing path.");
+    }
 }

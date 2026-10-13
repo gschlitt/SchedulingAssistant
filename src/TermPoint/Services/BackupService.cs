@@ -319,14 +319,24 @@ public class BackupService : IDisposable
     /// finished snapshot to the backup folder afterwards.</para>
     /// </summary>
     /// <param name="destPath">Destination file for the VACUUM INTO output (must not exist; must be local).</param>
-    private void VacuumIntoFreshConnection(string destPath)
+    /// <exception cref="InvalidOperationException">The context has no database path.</exception>
+    /// <exception cref="SqliteException">
+    /// The source cannot be opened — including when it does not exist (it is never created). Internal so
+    /// tests can pin that.
+    /// </exception>
+    internal void VacuumIntoFreshConnection(string destPath)
     {
         var sourcePath = _db.DatabasePath;
         if (string.IsNullOrEmpty(sourcePath))
             throw new InvalidOperationException(
                 "BackupService: IDatabaseContext.DatabasePath is empty — cannot run VACUUM INTO.");
 
-        using (var conn = new SqliteConnection($"Data Source={sourcePath};Pooling=False"))
+        // Mode=ReadWrite — never create. The default (ReadWriteCreate) would re-create an EMPTY
+        // database at D' if the working copy had been deleted while the app ran (on macOS unlinking an
+        // open file succeeds), and this backup would then ship an empty "backup" to the backup folder
+        // and rotate real ones out. With ReadWrite a missing D' is a failed open, reported by the
+        // caller's catch as a failed backup. (Same rule as CheckoutService.BackupSqliteDatabase.)
+        using (var conn = new SqliteConnection($"Data Source={sourcePath};Mode=ReadWrite;Pooling=False"))
         {
             conn.Open();
             using var cmd = conn.CreateCommand();

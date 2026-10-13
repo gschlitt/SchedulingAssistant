@@ -1053,7 +1053,14 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="SaveFailed"/> with an auto-dismissing, "will retry automatically"
     /// message, because the next autosave cycle will retry on its own.
     /// </param>
-    /// <returns>A <see cref="SaveOutcome"/> describing the result.</returns>
+    /// <returns>
+    /// A <see cref="SaveOutcome"/> describing the result. <b>This method does not throw</b> (spec item 4,
+    /// step 4c): a plain file error on D, D.tmp or D' (a sharing violation, access denied, a vanished
+    /// file) and any exception nobody anticipated come back as <see cref="SaveOutcome.CopyError"/> with a
+    /// <see cref="SaveFailed"/> banner, leaving D untouched and D' + the dirty marker in place. Callers
+    /// (the Save button, autosave, the exit save in <see cref="ReleaseAsync"/>) can therefore rely on the
+    /// outcome alone.
+    /// </returns>
     public async Task<SaveOutcome> SaveAsync(bool releaseLockAfter = false, bool isAutoSave = false)
     {
         if (Mode != CheckoutMode.WriteAccess)
@@ -1073,6 +1080,24 @@ public sealed class CheckoutService : IDisposable
         {
             _dispatch(() => SaveStarted?.Invoke());
             return await SaveAsyncCore(releaseLockAfter, isAutoSave);
+        }
+        catch (Exception ex)
+        {
+            // Final safety net. SaveAsyncCore turns every failure it expects into a SaveOutcome; this
+            // catches the ones nobody expected (a thrown event handler, a lock-service fault, a bug)
+            // so they can no longer escape to a caller. Each caller then sees the same thing as for
+            // any other transient failure: CopyError and the normal "couldn't save" banner, with D'
+            // and its dirty marker untouched. In particular ReleaseAsync at exit takes its deliberate
+            // CopyError branch (lock parked via Suspend, D' + marker kept for recovery) instead of
+            // reaching OnClosing / the UI-thread last-resort handler through an exception.
+            //
+            // LogError (not LogInfo): an exception we did not anticipate must still reach Bugsnag.
+            // Nothing is deleted here — we cannot know whether D.tmp or the local snapshot belong to
+            // this save; a leftover D.tmp is overwritten by the next save, and the local snapshot is
+            // swept at startup.
+            _logger.LogError(ex, "CheckoutService: unexpected exception in SaveAsync — treating as a failed save");
+            RaiseTransientSaveError(SaveUnexpectedFailureMessage, isAutoSave);
+            return SaveOutcome.CopyError;
         }
         finally
         {
@@ -1098,6 +1123,77 @@ public sealed class CheckoutService : IDisposable
             : message;
         _dispatch(() => SaveFailed?.Invoke(text, isAutoSave));
     }
+
+    /// <summary>
+    /// Banner text when a save step could not open or read the shared database file (D or D.tmp) because
+    /// another program holds it (antivirus, backup or sync software), access was denied, or the file is
+    /// not there. Transient: the same wording is used for autosave and manual saves (the autosave variant
+    /// gains "The app will retry automatically." from <see cref="RaiseTransientSaveError"/>).
+    /// </summary>
+    internal const string SaveFileInUseMessage =
+        "TermPoint couldn't save because the database file is in use by another program or can't be accessed.";
+
+    /// <summary>
+    /// Banner text when the local working copy D' — not the shared database — is missing at save time
+    /// (deleted or moved while the app was running). Nothing was written to D.
+    /// </summary>
+    internal const string SaveWorkingCopyMissingMessage =
+        "TermPoint couldn't save because its local working copy of the database is missing.";
+
+    /// <summary>
+    /// Banner text for the final safety net in <see cref="SaveAsync"/>: an exception nobody anticipated.
+    /// The user's changes are in D' (and its dirty marker), whatever went wrong.
+    /// </summary>
+    internal const string SaveUnexpectedFailureMessage =
+        "The save failed unexpectedly. Your changes are kept.";
+
+    /// <summary>
+    /// Logs a plain file error from a save step that touches the shared location (the D.tmp copy, the
+    /// D.tmp verify, the rename onto D) and returns the text for the transient save banner.
+    ///
+    /// <para>Three cases:</para>
+    /// <list type="bullet">
+    /// <item><description>A file another program holds open, or one we may not access
+    /// (<see cref="DatabaseValidator.IsLockedOrAccessDenied"/>): an ordinary, retryable condition. Logged
+    /// quietly (LogError would add a Bugsnag report and a second, generic error banner next to the save
+    /// banner); banner <see cref="SaveFileInUseMessage"/>.</description></item>
+    /// <item><description>A file or folder that is not there (<see cref="FileNotFoundException"/> /
+    /// <see cref="DirectoryNotFoundException"/> — e.g. D.tmp deleted between the copy and the verify):
+    /// unexpected, so LogError (it reaches Bugsnag); the same <see cref="SaveFileInUseMessage"/> banner
+    /// ("…or can't be accessed") rather than a raw .NET message quoting a path.</description></item>
+    /// <item><description>Any other I/O error (disk full, network name deleted, …): LogError, and the
+    /// banner is <paramref name="otherErrorPrefix"/> followed by the exception's own message.</description></item>
+    /// </list>
+    /// </summary>
+    /// <param name="ex">The exception the step threw.</param>
+    /// <param name="logContext">Short description of the failing step, for the log line.</param>
+    /// <param name="otherErrorPrefix">
+    /// Banner wording for an error that is neither a lock / access denial nor a missing file, ending in
+    /// ": " — the exception message is appended.
+    /// </param>
+    /// <returns>The message to pass to <see cref="RaiseTransientSaveError"/>.</returns>
+    private string DescribeSaveFileError(Exception ex, string logContext, string otherErrorPrefix)
+    {
+        if (DatabaseValidator.IsLockedOrAccessDenied(ex))
+        {
+            _logger.LogInfo($"CheckoutService: {logContext} — file in use or access denied ({ex.GetType().Name}: {ex.Message})");
+            return SaveFileInUseMessage;
+        }
+
+        _logger.LogError(ex, $"CheckoutService: {logContext}");
+        return ex is FileNotFoundException or DirectoryNotFoundException
+            ? SaveFileInUseMessage
+            : otherErrorPrefix + ex.Message;
+    }
+
+    /// <summary>
+    /// Test seam: awaited inside <see cref="SaveAsync"/> after the snapshot has been streamed to D.tmp and
+    /// before D.tmp is verified (step 4), with the D.tmp path. Lets a test deterministically make D.tmp
+    /// vanish or become unreadable at exactly that moment — a window of microseconds that cannot otherwise
+    /// be hit reliably — or throw an arbitrary exception to exercise the safety net in
+    /// <see cref="SaveAsync"/>. Always null in the shipped app; never set outside tests.
+    /// </summary>
+    internal Func<string, Task>? BeforeTmpVerifyAsync { get; set; }
 
     /// <summary>
     /// One-shot probe after a step-5 rename timeout: re-hashes D and reports whether it
@@ -1193,7 +1289,17 @@ public sealed class CheckoutService : IDisposable
         // ── Step 2: Verify D has not been externally modified ─────────────────
         if (HashAtCheckout is not null)
         {
-            var (hashCompleted, currentSourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+            // HashSourceAsync reports a plain file error on D (another program holds it exclusively,
+            // access denied, file gone) as a result instead of letting the IOException escape.
+            // Nothing has been written yet, so there is nothing to clean up.
+            var (hashCompleted, currentSourceHash, sourceUnreadable) =
+                await HashSourceAsync(SourcePath, "save: source hash");
+
+            if (sourceUnreadable)
+            {
+                RaiseTransientSaveError(SaveFileInUseMessage, isAutoSave);
+                return SaveOutcome.CopyError;
+            }
 
             if (!hashCompleted)
             {
@@ -1251,7 +1357,13 @@ public sealed class CheckoutService : IDisposable
             }
             catch (Exception ex)
             {
-                var msg = $"Failed to snapshot the database: {ex.Message}";
+                // D' itself is the failing party here (the share has not been touched yet). BackupSqliteDatabase
+                // opens D' with Mode=ReadWrite, so a working copy that has vanished (on macOS an open file can
+                // be deleted under a running app) fails the open instead of being re-created EMPTY and pushed
+                // over D. Say so plainly rather than quoting SQLite's "unable to open database file".
+                var msg = File.Exists(WorkingPath)
+                    ? $"Failed to snapshot the database: {ex.Message}"
+                    : SaveWorkingCopyMissingMessage;
                 _logger.LogError(ex, "CheckoutService: local save snapshot failed");
                 RaiseTransientSaveError(msg, isAutoSave);
                 return SaveOutcome.CopyError;
@@ -1291,8 +1403,11 @@ public sealed class CheckoutService : IDisposable
             }
             catch (Exception ex)
             {
-                var msg = $"Failed to write to database location: {ex.Message}";
-                _logger.LogError(ex, "CheckoutService: D.tmp copy failed");
+                // A D.tmp another program holds open (or a read of the local snapshot that is refused)
+                // is a retryable lock/access condition — see DescribeSaveFileError. The delete is
+                // best effort: it fails harmlessly while the other program still holds D.tmp, and a
+                // leftover D.tmp is simply overwritten by the next save.
+                var msg = DescribeSaveFileError(ex, "D.tmp copy failed", "Failed to write to database location: ");
                 await NetworkFileOps.DeleteAsync(tmpPath);
                 RaiseTransientSaveError(msg, isAutoSave);
                 return SaveOutcome.CopyError;
@@ -1309,7 +1424,27 @@ public sealed class CheckoutService : IDisposable
         // ── Step 4: Verify the network copy before it becomes D ─────────────
         // Guards against a torn/corrupted transfer: D.tmp must hash identically to
         // the local snapshot before the rename makes it the authoritative database.
-        var (verifyCompleted, tmpHash) = await NetworkFileOps.ComputeHashAsync(tmpPath);
+        //
+        // ComputeHashAsync propagates open errors: D.tmp may have been deleted between the copy and
+        // here, or an antivirus / backup / sync tool may hold it exclusively. Either way nothing has
+        // been renamed yet, so D is untouched; delete the D.tmp this save wrote (best effort, deadline
+        // bounded) and report a clean CopyError.
+        if (BeforeTmpVerifyAsync is { } beforeVerify)
+            await beforeVerify(tmpPath);   // test seam — null in production
+
+        bool verifyCompleted;
+        string? tmpHash;
+        try
+        {
+            (verifyCompleted, tmpHash) = await NetworkFileOps.ComputeHashAsync(tmpPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            var msg = DescribeSaveFileError(ex, "D.tmp verification could not read the file", "Failed to verify the saved copy: ");
+            await NetworkFileOps.DeleteAsync(tmpPath);
+            RaiseTransientSaveError(msg, isAutoSave);
+            return SaveOutcome.CopyError;
+        }
 
         if (!verifyCompleted)
         {
@@ -1365,8 +1500,7 @@ public sealed class CheckoutService : IDisposable
             // recording the pending hash is harmless when the ghost never lands
             // (it simply never matches anything).
             RecordPendingSaveHash(newSourceHash);
-            var msg = $"Failed to finalize save: {ex.Message}";
-            _logger.LogError(ex, "CheckoutService: D.tmp rename failed");
+            var msg = DescribeSaveFileError(ex, "D.tmp rename failed", "Failed to finalize save: ");
             await NetworkFileOps.DeleteAsync(tmpPath);
             RaiseTransientSaveError(msg, isAutoSave);
             return SaveOutcome.CopyError;
@@ -2862,15 +2996,29 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     /// <param name="sourcePath">Path to the source SQLite database (typically D').</param>
     /// <param name="destPath">Path for the destination file (created or overwritten; should be local).</param>
-    /// <exception cref="Exception">Propagates any SQLite or I/O error to the caller.</exception>
+    /// <exception cref="Exception">
+    /// Propagates any SQLite or I/O error to the caller — including a SQLite "unable to open database
+    /// file" error when <paramref name="sourcePath"/> does not exist (see the remarks on the source
+    /// connection below). In that case <paramref name="destPath"/> is not created either.
+    /// </exception>
     private static void BackupSqliteDatabase(string sourcePath, string destPath)
     {
         // Pooling=False is essential: with the default connection pool, Dispose()
         // returns connections to the pool rather than closing them, leaving the
         // destination file (D.tmp) open. File.Move(D.tmp → D) then fails with
         // "access denied" because the pool still holds the file handle.
-        using var source = new SqliteConnection($"Data Source={sourcePath};Pooling=False");
+        //
+        // The SOURCE is opened Mode=ReadWrite — read-write but NEVER create. The default mode
+        // (ReadWriteCreate) would silently conjure an EMPTY database at D' if the working copy had
+        // been deleted while the app ran (on macOS unlinking an open file succeeds), and the save
+        // would then snapshot that empty file and push it over the shared database D: the whole
+        // department's schedule replaced by nothing. With ReadWrite a missing D' is a failed open, which
+        // SaveAsync reports as a clean CopyError before anything is written to the share. (ReadWrite rather
+        // than ReadOnly changes only the create flag, so WAL handling stays exactly as it was.)
+        // The DESTINATION is a brand-new local snapshot file and must be created.
+        using var source = new SqliteConnection($"Data Source={sourcePath};Mode=ReadWrite;Pooling=False");
         using var dest   = new SqliteConnection($"Data Source={destPath};Pooling=False");
+        // Source first: if it cannot be opened, the destination is never created.
         source.Open();
         dest.Open();
         source.BackupDatabase(dest);
@@ -2992,7 +3140,12 @@ public enum SaveOutcome
     LockLost,
     /// <summary>D was modified externally since checkout — save aborted.</summary>
     SourceModified,
-    /// <summary>The D.tmp copy or rename failed (transient error — retry is appropriate).</summary>
+    /// <summary>
+    /// A transient failure — retry is appropriate. D was not changed and D' + its dirty marker are intact.
+    /// Covers a stalled or failed D.tmp copy, verify or rename, a file error on D or D.tmp (in use by
+    /// another program, access denied, vanished), a missing or unreadable working copy D', an overlapping
+    /// save, and any unexpected exception (the safety net in <see cref="CheckoutService.SaveAsync"/>).
+    /// </summary>
     CopyError,
     /// <summary>Save was called while not in write mode.</summary>
     NotInWriteMode

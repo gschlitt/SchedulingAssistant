@@ -604,9 +604,12 @@ public class DatabaseContext : IDatabaseContext
         _conn.Dispose();
         SqliteConnection.ClearAllPools();
 
-        // Open a new connection to the (possibly replaced) database file.
+        // Open a new connection to the (possibly replaced) database file. Mode=ReadWrite: the file
+        // must already exist. The default (ReadWriteCreate) would silently create an EMPTY, schema-less
+        // database if the working copy had vanished (e.g. deleted while the app runs on macOS) — the
+        // session would then show and save nothing. Missing must fail loudly instead (spec item 4c).
         _dbPath = newDbPath;
-        _conn   = new SqliteConnection($"Data Source={newDbPath}");
+        _conn   = new SqliteConnection($"Data Source={newDbPath};Mode=ReadWrite");
         try
         {
             _conn.Open();

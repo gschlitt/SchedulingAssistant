@@ -4478,4 +4478,319 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal("edited-content", ReadTestValue(db));
         Assert.False(File.Exists(tmp), "The rename consumed D.tmp.");
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 17 — File errors in the save pipeline come back as clean outcomes (spec item 4, step 4c)
+    //
+    // A plain file error on D, D.tmp or the working copy D' used to ESCAPE SaveAsync as an exception:
+    // autosave logged "AutoSave tick failed", the Save button reached the last-resort handler, and the
+    // exit save reached OnClosing by an unplanned path. Now every one returns SaveOutcome.CopyError with
+    // the normal transient banner, D untouched and D' + its dirty marker intact — so ReleaseAsync at exit
+    // takes its deliberate CopyError branch (lock parked via Suspend, D' + marker kept). A final safety
+    // net in SaveAsync does the same for any exception nobody anticipated. And BackupSqliteDatabase
+    // opens D' with Mode=ReadWrite, so a deleted working copy is never re-created EMPTY and pushed over D.
+    //
+    // FileShare.None is only OS-enforced on Windows, hence FactWindowsOnly for those tests.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Records every <see cref="CheckoutService.SaveFailed"/> banner (text and auto-dismiss flag) raised by <paramref name="svc"/>.</summary>
+    /// <param name="svc">The service to observe.</param>
+    /// <returns>A live list, filled as banners are raised.</returns>
+    private static List<(string Message, bool AutoDismiss)> CaptureSaveBanners(CheckoutService svc)
+    {
+        var banners = new List<(string Message, bool AutoDismiss)>();
+        svc.SaveFailed += (message, autoDismiss) => banners.Add((message, autoDismiss));
+        return banners;
+    }
+
+    /// <summary>
+    /// Checks out a fresh SQLite database for writing and leaves one unsaved edit in D' with the dirty
+    /// marker written — the state in which a failed save must keep everything.
+    /// </summary>
+    /// <param name="db">Path of D (created here).</param>
+    /// <returns>The service and its lock service.</returns>
+    private async Task<(CheckoutService svc, WriteLockService lockSvc)> CheckoutWithUnsavedEditAsync(string db)
+    {
+        var (svc, lockSvc) = CreateService();
+        CreateSqliteDb(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        InsertTestValue(svc.WorkingPath, "unsaved-edit");
+        svc.MarkDirty();
+        return (svc, lockSvc);
+    }
+
+    /// <summary>Asserts a failed save kept the user's work: D' and its dirty marker exist and the session still holds write access.</summary>
+    /// <param name="svc">The service whose save failed.</param>
+    /// <param name="lockSvc">Its lock service.</param>
+    private static void AssertSessionKept(CheckoutService svc, WriteLockService lockSvc)
+    {
+        Assert.True(File.Exists(svc.WorkingPath), "D' must survive a failed save.");
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "The dirty marker must survive a failed save.");
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// D held exclusively by another program (antivirus / backup / sync) when a save starts: the step-2
+    /// hash of D used to throw an IOException out of SaveAsync. Now CopyError plus the in-use banner,
+    /// no exception, D unchanged, nothing written to the share, D' + marker kept — and once the other
+    /// program lets go, the very next save succeeds and pushes the edit.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SaveAsync_SourceHeldExclusively_ReturnsCopyError_KeepsEverything_AndALaterSaveSucceeds()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        SaveOutcome outcome;
+        using (DbFileTestHelpers.LockExclusively(db))
+            outcome = await svc.SaveAsync();   // must NOT throw
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.False(File.Exists(db + ".tmp"), "Nothing may be written to the share when D cannot be read.");
+        AssertSessionKept(svc, lockSvc);
+
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// The same failure during an AUTOSAVE: same outcome, but the banner gains the "will retry
+    /// automatically" note and is marked auto-dismissing.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SaveAsync_SourceHeldExclusively_AutoSave_BannerAutoDismissesAndPromisesRetry()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+
+        SaveOutcome outcome;
+        using (DbFileTestHelpers.LockExclusively(db))
+            outcome = await svc.SaveAsync(isAutoSave: true);
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveFileInUseMessage + " The app will retry automatically.", true), Assert.Single(banners));
+    }
+
+    /// <summary>
+    /// D.tmp held exclusively by another program while the snapshot is streamed to it: the copy's open
+    /// fails with a sharing violation. CopyError plus the in-use banner, no exception, D unchanged, the
+    /// other program's file left as it was, D' + marker kept; the next save (after release) succeeds.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SaveAsync_TmpHeldExclusivelyDuringCopy_ReturnsCopyError_AndDIsUnchanged()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);   // checkout's own D.tmp cleanup is already done
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+        var tmp = PlantTmp(db);
+
+        SaveOutcome outcome;
+        using (DbFileTestHelpers.LockExclusively(tmp))
+            outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        AssertTmpUntouched(tmp);
+        AssertSessionKept(svc, lockSvc);
+
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// D.tmp disappears between the copy and the verify (deleted by a cleaner, quarantined by antivirus):
+    /// the step-4 hash used to throw a FileNotFoundException out of SaveAsync. Now CopyError, no rename
+    /// (D unchanged), D.tmp not left behind, D' + marker kept. Uses the BeforeTmpVerifyAsync seam — the
+    /// window is microseconds wide and cannot be hit otherwise.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_TmpVanishesBeforeVerify_ReturnsCopyError_AndDIsUnchanged()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+        svc.BeforeTmpVerifyAsync = path => { File.Delete(path); return Task.CompletedTask; };
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.False(File.Exists(db + ".tmp"));
+        AssertSessionKept(svc, lockSvc);
+
+        svc.BeforeTmpVerifyAsync = null;
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// D.tmp becomes unreadable at the verify (another program grabs it exclusively right after the
+    /// copy): sharing violation on the step-4 hash. CopyError plus the in-use banner, no rename, D
+    /// unchanged. The best-effort delete of D.tmp cannot succeed while the other program holds it, which
+    /// is harmless — the next save overwrites it, and that save succeeds once the hold is released.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SaveAsync_TmpHeldExclusivelyAtVerify_ReturnsCopyError_AndDIsUnchanged()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+        FileStream? holder = null;
+        svc.BeforeTmpVerifyAsync = path => { holder = DbFileTestHelpers.LockExclusively(path); return Task.CompletedTask; };
+
+        SaveOutcome outcome;
+        try
+        {
+            outcome = await svc.SaveAsync();
+        }
+        finally
+        {
+            holder?.Dispose();
+        }
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        AssertSessionKept(svc, lockSvc);
+
+        svc.BeforeTmpVerifyAsync = null;
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+        Assert.False(File.Exists(db + ".tmp"), "The successful save consumed D.tmp.");
+    }
+
+    /// <summary>
+    /// THE macOS SCENARIO (also reproducible on Windows when no connection holds D'): the working copy
+    /// has been deleted when a save runs. The backup used to open D' with the default create mode, which
+    /// would silently re-create an EMPTY database at that path, snapshot it and push it over D. Now the
+    /// open fails: CopyError with the "working copy is missing" banner, NO new file at the working-copy
+    /// path (and no local snapshot), D byte-identical, nothing left on the share.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_WorkingCopyDeleted_ReturnsCopyError_CreatesNothing_AndDIsByteIdentical()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+        var workingCopy = svc.WorkingPath;
+        SqliteConnection.ClearAllPools();
+        File.Delete(workingCopy);
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveWorkingCopyMissingMessage, false), Assert.Single(banners));
+        Assert.False(File.Exists(workingCopy), "A missing working copy must never be re-created (empty) by the save.");
+        Assert.False(File.Exists(workingCopy + ".savetmp"));
+        Assert.False(File.Exists(db + ".tmp"));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+    }
+
+    /// <summary>
+    /// The exit save with D held by another program: ReleaseAsync(saveFirst: true) must not throw and
+    /// must take the deliberate CopyError branch — the lock is parked (file left in place, no longer a
+    /// writer), D' and the dirty marker are kept for recovery, D is unchanged.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task ReleaseAsync_SourceHeldExclusively_TakesTheCopyErrorBranch()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        SaveOutcome outcome;
+        using (DbFileTestHelpers.LockExclusively(db))
+            outcome = await svc.ReleaseAsync(saveFirst: true);   // must NOT throw
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.False(lockSvc.IsWriter, "The lock is suspended, not held.");
+        Assert.True(File.Exists(LockFileOf(db)), "The lock file is deliberately left in place (it goes stale and protects D).");
+        Assert.True(File.Exists(svc.WorkingPath), "D' must survive for recovery.");
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "The dirty marker must survive for recovery.");
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+    }
+
+    /// <summary>
+    /// The safety net: an exception NOBODY anticipated inside the pipeline (here an
+    /// InvalidOperationException thrown from the test seam, after D.tmp is written) no longer escapes
+    /// SaveAsync. CopyError, the "failed unexpectedly. Your changes are kept." banner, SaveFinished still
+    /// raised, in-flight flag reset (the next save runs), D unchanged, D' + marker kept.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_UnexpectedException_IsCaught_ReturnsCopyError_AndTheNextSaveRuns()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var finished = false;
+        svc.SaveFinished += () => finished = true;
+        var before = DbFileTestHelpers.HashOf(db);
+        svc.BeforeTmpVerifyAsync = _ => throw new InvalidOperationException("unexpected, on purpose");
+
+        var outcome = await svc.SaveAsync();   // must NOT throw
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((CheckoutService.SaveUnexpectedFailureMessage, false), Assert.Single(banners));
+        Assert.True(finished, "SaveFinished must still fire so the Saving… indicator clears.");
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        AssertSessionKept(svc, lockSvc);
+
+        svc.BeforeTmpVerifyAsync = null;
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// An unexpected exception during the EXIT save lands in the same deliberate CopyError branch as any
+    /// other transient failure: lock parked via Suspend, D' + marker kept, no exception to OnClosing.
+    /// </summary>
+    [Fact]
+    public async Task ReleaseAsync_UnexpectedExceptionInSave_TakesTheCopyErrorBranch()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        svc.BeforeTmpVerifyAsync = _ => throw new InvalidOperationException("unexpected, on purpose");
+
+        var outcome = await svc.ReleaseAsync(saveFirst: true);   // must NOT throw
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.True(File.Exists(LockFileOf(db)));
+        Assert.True(File.Exists(svc.WorkingPath));
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+    }
+
+    /// <summary>
+    /// The periodic backup (VACUUM INTO of D') has the same flaw as the save snapshot: opened with the
+    /// default create mode it would re-create a deleted working copy EMPTY and ship an empty "backup",
+    /// rotating real ones out. It now opens the source with Mode=ReadWrite — a missing source throws
+    /// (SQLITE_CANTOPEN, code 14) and nothing is created, neither at the source path nor the destination.
+    /// </summary>
+    [Fact]
+    public void BackupService_VacuumInto_MissingWorkingCopy_Throws_AndCreatesNothing()
+    {
+        var missing = Path.Combine(_workingDir, "gone_working_copy.db");
+        var dest    = Path.Combine(_workingDir, "backup.backuptmp");
+        var dbMock  = new Moq.Mock<TermPoint.Data.IDatabaseContext>();
+        dbMock.SetupGet(d => d.DatabasePath).Returns(missing);
+        var backup = new BackupService(dbMock.Object, null!, null!, null!, null!, null!, null!, null!, null!, new NullLogger());
+
+        var ex = Assert.Throws<SqliteException>(() => backup.VacuumIntoFreshConnection(dest));
+
+        Assert.Equal(14, ex.SqliteErrorCode);
+        Assert.False(File.Exists(missing), "The backup must not re-create the working copy.");
+        Assert.False(File.Exists(dest));
+    }
 }
