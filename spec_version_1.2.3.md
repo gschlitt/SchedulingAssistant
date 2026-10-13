@@ -20,7 +20,7 @@ will be verified.
 | 5 | Make Restore from backup safe | Data integrity | Accepted |
 | 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
-| 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | Accepted (rules decided) |
+| 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | Accepted |
 | 10 | "Save aborted" dead end: give a next step | UX | Accepted |
 | 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted |
@@ -615,6 +615,85 @@ the raising code ships dormant.**
 
 **Production / data integrity.** No migration. This changes the startup sequence, which has a
 history of freezes. Run the 3-machine clumsy network protocol.
+
+**Findings and decisions (2026-10-12, before implementation).**
+- **Every place `D` is opened directly with SQLite** (re-scan of today's code):
+
+  | # | Path | How often | What it breaks |
+  |---|---|---|---|
+  | 1 | Wizard join, step 1a (`StartupWizardViewModel` ~313): `InitializeServices(D)` plus `TryAcquire(D)` | Every time someone joins | Header flip, so the editor's saves fail |
+  | 2 | Read-only fallback `SetupReadOnlySnapshotAsync() ?? sourcePath` (`RunCheckoutAsync`: stale-lock declined or lost, and `Failed`; now also a version-gate trip whose D'' failed) | Rare | Header flip, and `D` is held open for the whole session |
+  | 3 | **New, not in the spec:** new-database creation, `using (new DatabaseContext(D)) {}` in wizard step 3 (~380) and `SwitchDatabaseAsync` (~1007) | Every new database | Opens SQLite over the share and leaves a WAL header on `D` until the first save. No colleague is affected. |
+  | 4 | **New, not in the spec:** `CheckoutAsync`'s "D doesn't exist" shortcut runs the whole session on `D` | Only if `D` vanishes between the create/validate step and checkout | A whole editing session over the network |
+
+- **Also confirmed:** `D.tmp` cleanup, the stale-artifact sweep and crash detection run before the
+  lock check on both startup (~538) and switching (~1016). Save step 4 (~1209) still doesn't catch an
+  exception. The backup source still opens as `ReadWriteCreate` (~2566).
+- **Small inconsistency:** switching offers crash recovery even in reader mode; startup skips it.
+- **Decisions (user, 2026-10-12):**
+  - **A second TermPoint on the same database, same computer: refuse that database** with the
+    message above. On a switch, stay on the current database. At startup, show the message and then
+    the database chooser, so the user can pick another database or exit (to confirm in the 4b
+    design). Opening read-only was rejected: two copies would share the same local snapshot file.
+  - **If no local read-only copy can be made,** show *"TermPoint couldn't make a local copy of this
+    database"* with **[Try again] [Close]**, handled like the existing "network unreachable" case.
+    Never fall back to `D`.
+  - **New databases are created locally and then copied to the share,** so "never open `D` with
+    SQLite" holds without exception. Shortcut 4 is removed.
+  - **A failed database switch ends in a clean "no database open" state, like startup** (user,
+    2026-10-12).
+    - **Today (pre-existing):** a switch closes the old database's services before checking out
+      the new one. If checkout then fails (unreachable, or 4a's Try again / Close, or file not found,
+      or a failed checkout), `SwitchDatabaseAsync` just returns. The window keeps showing a database
+      that is no longer connected.
+    - **New behaviour:** after a failed switch, show the startup database chooser (Open / New /
+      Recent) with the reason. Picking a database opens it normally; **Exit** closes TermPoint.
+- **Found during 4a hand testing (2026-10-12): a locked database is reported as damaged.**
+  - **The cause:** choosing a database (chooser, recent, startup auto-open) first runs
+    `DatabaseValidator.ValidateAsync`. That calls a read-only `PRAGMA integrity_check` on `D`, which
+    returns false on **any** exception. A healthy file that another program holds exclusively
+    therefore shows *"That database failed its integrity check and may be damaged."*
+  - **The risk:** the user may then Restore from backup over a good, current `D`.
+  - **Decided (user):** fix it now as step 4e. "Can't read it right now" gets its own result and
+    wording; only a real integrity failure is called damaged.
+  - **Not a problem:** the startup integrity check itself is a brief read-only open, and the handle
+    is released (`ClearAllPools` in a `finally`). It is kept, to catch a damaged `D` early.
+- **"Open as observer" and new databases (user, 2026-10-12).** A database the user has just created
+  (File → New, or wizard step 3) opens for **editing** even with the observer setting on. Observer
+  mode still applies when that database, or any other, is opened later. The licence read-only gate
+  is not bypassed.
+  - Why this came up: 4a removed the "doesn't exist" shortcut, which used to skip both gates for new
+    databases.
+- **The "Couldn't Open the Database" dialog can't be reached by hand**, because every open runs
+  the validator first and a locked file fails there. Its retry logic is unit-tested, and it gets a
+  network field-test row (a copy that fails after validation).
+- **Step 4a outcome (user-tested 2026-10-12/13).** `D` is never opened with SQLite on any open,
+  join, fallback or create path.
+  - **Wizard join (step 1a):** uses the new `DatabaseValidator.ValidateWithoutSqliteAsync` (probe
+    plus a check of the 16-byte SQLite signature). It starts no services and takes no lock. The real
+    open is the post-wizard checkout.
+    - Also fixed: `SwitchDatabaseAsync` read `App.Services` without a null check, so every join
+      would have crashed once step 1a stopped initialising services.
+  - **Read-only fallback:** `CheckoutService.SetupReadOnlySnapshotWithRetryAsync` shows
+    "Couldn't Open the Database" with [Try again] [Close]. It never returns `D`.
+  - **New databases:** `NewDatabaseFile.CreateAsync` builds the file locally (journal mode DELETE,
+    no sidecars), copies it to `D.tmp`, verifies the hash, and moves it to `D` without overwrite.
+    The wizard's step 3 now probes first, so Back then Next still works.
+  - **Missing file:** `CheckoutOutcome.SourceMissing` gives "Database Not Found". The shortcut that
+    ran a session on `D` is gone.
+  - **The observer exception:** a `CheckoutAsync(…, ignoreObserverMode)` parameter, used by
+    File → New, wizard step 3 and the post-wizard reopen.
+  - **Other changes:** `NetworkFileOps.MoveAsync` gained `overwrite`. The tests: +38; suite 1507
+    passed.
+- **Steps (one commit each):**
+  - **4a:** never open `D` with SQLite (paths 1–4), plus the observer exception above. **Done.**
+  - **4e (next after 4a):** a locked database is not called damaged.
+  - **4d:** failed switch → the database chooser, as above.
+  - **4b:** a per-database, per-user named-mutex guard taken before cleanup and crash detection, on
+    startup and switching, plus the same-computer banner wording.
+  - **4c:** catch save step 4; open the backup source as `Mode=ReadWrite`.
+- **Field test to add:** a named-mutex check on a real Mac (a crashed copy releases it, a frozen
+  one holds it).
 
 **Verification.**
 - Editor session active, colleague joins via the wizard: the editor's next save succeeds.
@@ -1926,6 +2005,8 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 | Colleague joins via the wizard while an editor session is active; editor's next save succeeds | 4 |
 | Second instance on the same machine during a live session (and during a frozen one): guard message, no Restore offer, no cleanup | 4 |
 | Restore from backup with the link black-holed mid-copy: `D` intact, pre-restore copy kept; reader cannot restore | 5 |
+| **Local copy fails after validation** (clumsy drops the link during the D → D'' copy while another machine holds the write lock): "Couldn't Open the Database" appears; Try again succeeds once the link is back; Close leaves no session on `D` | 4 |
+| **Named-mutex single-instance guard on a real Mac:** a second copy on the same database is refused; a crashed or killed copy doesn't block a relaunch; a frozen one does | 4 |
 | Writer laptop sleeps more than 3 min; reader's takeover dialog left open while the writer wakes; clock skew between machines | 9 |
 | `D` modified externally: "Save aborted" banner offers a next step | 10 |
 | Reader Refresh with the share down, and with the file locked mid-overwrite: failure shown, session recovers | 11 |

@@ -24,6 +24,12 @@ public partial class StartupWizardWindow : Window
     /// </summary>
     public event EventHandler? SetupCompleted;
 
+    /// <summary>
+    /// True when the finished wizard created a new database (as opposed to joining an existing
+    /// one). Read by the host after <see cref="SetupCompleted"/>; false until the wizard completes.
+    /// </summary>
+    public bool CreatedNewDatabase => _vm?.CreatedNewDatabase ?? false;
+
     public StartupWizardWindow()
     {
         InitializeComponent();

@@ -31,19 +31,20 @@ namespace TermPoint.Services;
 /// crash recovery, where D' and its dirty marker are kept so recovery is offered again after the
 /// update), and the session opens read-only on a D'' snapshot with
 /// <see cref="RequiredAppVersion"/> set so the UI can explain why. It follows the same pattern as
-/// the license-gated read-only mode. The brand-new-database shortcut is not gated: a new file has
-/// no stamp. See <see cref="ApplyVersionGateAsync"/>.</para>
+/// the license-gated read-only mode. A brand-new database carries no stamp, so it passes the gate.
+/// See <see cref="ApplyVersionGateAsync"/>.</para>
 ///
 /// <para><b>Always-on:</b> Both modes apply to every database, whether it is on a
 /// network drive or a local drive. The indirection through D' or D'' is what prevents any
 /// instance from ever holding D open, allowing the writer's atomic rename (D.tmp → D)
 /// to succeed.</para>
 ///
-/// <para><b>New databases:</b> When D does not yet exist, there is nothing to copy.
-/// <c>WorkingPath</c> is set to <c>SourcePath</c> directly — there is no separate D';
-/// the file <c>DatabaseContext</c> creates <i>is</i> the authoritative database.
-/// <see cref="SaveAsync"/> is a no-op in this mode because every write already targets
-/// the final location.</para>
+/// <para><b>New databases:</b> this service never creates D and never runs a session on it.
+/// A new database is created first — built in a local temp file and copied to the share by
+/// <see cref="NewDatabaseFile.CreateAsync"/> — and is then checked out like any other, so every
+/// session works on D' or D''. If D does not exist when <see cref="CheckoutAsync"/> is called,
+/// the result is <see cref="CheckoutOutcome.SourceMissing"/>: no lock is taken and nothing is
+/// created.</para>
 ///
 /// <para><b>Thread safety:</b> <see cref="SaveAsync"/> is designed to be called from
 /// background threads (e.g., the autosave timer). All events are raised on the Avalonia
@@ -192,8 +193,8 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Path to the local working copy: D' in write-access mode, D'' in read-only mode.
-    /// All SQLite operations (reads and writes) target this path — D is never opened directly.
-    /// Equals <see cref="SourcePath"/> for new databases (degenerate write mode only).
+    /// All SQLite operations (reads and writes) target this path — D is never opened directly,
+    /// so this never equals <see cref="SourcePath"/> for a real session.
     /// Empty until <see cref="CheckoutAsync"/> is called.
     /// </summary>
     public string WorkingPath { get; private set; } = string.Empty;
@@ -201,7 +202,7 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// SHA-256 hash of D at the time of the last successful checkout or save.
     /// Used to detect external modifications to D before overwriting it.
-    /// Null for new databases (D did not exist at checkout time).
+    /// Null until the first checkout has copied D.
     /// </summary>
     public string? HashAtCheckout { get; private set; }
 
@@ -426,14 +427,25 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> is returned and the caller
     /// should offer to export the unsaved changes. See <see cref="InspectCrashRecovery"/>.
     /// </param>
+    /// <param name="ignoreObserverMode">
+    /// When true, the voluntary observer setting (<see cref="AppSettings.OpenInReaderMode"/>) is
+    /// ignored for THIS checkout only, so the database opens for editing even though the user has
+    /// "open as observer" turned on. Pass it only for a database the user has just created (File →
+    /// New, wizard step 3): they must be able to write into it straight away. The setting itself is
+    /// untouched and applies to every later open. Nothing else is bypassed: the license gate, the
+    /// write lock (a live holder still makes this read-only), the version gate and crash recovery
+    /// behave exactly as without the flag. Defaults to false.
+    /// </param>
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists, the license/observer mode forced read-only, or the database's <see cref="MinimumVersionToWrite"/> stamp is newer than this app (<see cref="RequiredAppVersion"/> is then non-null); use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
+    /// <see cref="CheckoutOutcome.SourceMissing"/> — D does not exist (and recovery was not requested). Nothing was locked or created; tell the user and stop. Create new databases with <see cref="NewDatabaseFile.CreateAsync"/> BEFORE calling this.<br/>
     /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/> to open read-only.
     /// </returns>
-    public async Task<CheckoutOutcome> CheckoutAsync(string sourcePath, bool recoverWorkingCopy = false)
+    public async Task<CheckoutOutcome> CheckoutAsync(
+        string sourcePath, bool recoverWorkingCopy = false, bool ignoreObserverMode = false)
     {
         SourcePath = sourcePath;
         LockLossNewHolder = null;
@@ -441,9 +453,9 @@ public sealed class CheckoutService : IDisposable
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
 
         // Tri-state probe: distinguishes "location answered, file absent" (Missing —
-        // safe to take the new-database path) from any network failure (Unreachable —
-        // fast or slow). A plain exists-check would misread a fast-failing dead share
-        // as a brand-new database and try to create a .lock at an unreachable path.
+        // reported as SourceMissing) from any network failure (Unreachable — fast or
+        // slow). A plain exists-check would misread a fast-failing dead share as a
+        // missing file and send the user to "database not found" UX during an outage.
         var probe = await NetworkFileOps.ProbeFileAsync(sourcePath);
 
         if (probe == FileProbeResult.Unreachable)
@@ -465,39 +477,18 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.RecoveryConflict;
         }
 
-        // ── New-database shortcut ──────────────────────────────────────────────
-        // D does not exist yet — there is nothing to copy. WorkingPath is set to
-        // SourcePath directly; there is no separate D'. DatabaseContext creates the
-        // schema at this path, so every write targets the final location. SaveAsync
-        // is a no-op in this mode because there is no D' → D copy-back to perform.
+        // ── D does not exist ───────────────────────────────────────────────────
+        // There is nothing to copy, and a session is never run on D itself (the old
+        // "new database" shortcut did exactly that and has been removed). New databases
+        // are created BEFORE checkout by NewDatabaseFile, so this is only reachable if D
+        // was deleted/renamed in between, or the caller passed a wrong path. Report it
+        // WITHOUT taking the lock or creating anything — an early return here also means
+        // no .lock file is ever written next to a file that does not exist.
         if (!exists)
         {
-            WorkingPath     = sourcePath;
-            HashAtCheckout  = null;
-            Mode            = CheckoutMode.WriteAccess;
-            SessionDirty    = true;
-            CurrentHolder   = null;
-
-            var lockCompleted = await NetworkFileOps.RunAsync(
-                () => _lockService.TryAcquire(sourcePath), "lock acquire (new DB)");
-
-            if (!lockCompleted)
-            {
-                _logger.LogInfo("CheckoutService: lock acquire timed out — network unreachable");
-                return CheckoutOutcome.NetworkUnreachable;
-            }
-
-            if (!_lockService.IsWriter)
-            {
-                // Extremely unlikely — someone locked a file that doesn't exist yet.
-                Mode          = CheckoutMode.ReadOnly;
-                CurrentHolder = _lockService.CurrentHolder;
-                return CheckoutOutcome.ReadOnly;
-            }
-
-            _lockService.WakeDetected += OnWake;
-            _logger.LogBreadcrumb("Checkout: WriteAccess (new DB)", new() { ["path"] = sourcePath });
-            return CheckoutOutcome.WriteAccess;
+            _logger.LogInfo("CheckoutService: source database does not exist");
+            _logger.LogBreadcrumb("Checkout: SourceMissing", new() { ["path"] = sourcePath });
+            return CheckoutOutcome.SourceMissing;
         }
 
         // ── License-gated read-only mode ────────────────────────────────────
@@ -516,9 +507,11 @@ public sealed class CheckoutService : IDisposable
         // The user chose to open as an observer. Never call TryAcquire: this instance
         // must not create the .lock file (so it can never block a writer), must not poll,
         // and must not offer to take over write access. Open against a read-only snapshot
-        // (D'') instead. Only meaningful when D already exists — the !exists shortcut above
-        // ignores reader mode and runs the normal write path.
-        if (AppSettings.Current.OpenInReaderMode)
+        // (D'') instead. D is known to exist here (SourceMissing returned above).
+        // Skipped — and only this branch — when the caller says the user has just created this
+        // database (ignoreObserverMode): it must open for editing. The license gate above and the
+        // lock/version-gate logic below still apply.
+        if (AppSettings.Current.OpenInReaderMode && !ignoreObserverMode)
         {
             CurrentHolder = null;   // no specific holder — read-only by the user's own choice
             var d2Reader = await SetupReadOnlySnapshotAsync();
@@ -869,9 +862,8 @@ public sealed class CheckoutService : IDisposable
     /// is raised in D'. Writing into D' means it reaches D in the same save as the data it
     /// protects. A failure to stamp is logged and ignored — it must never block editing.</para>
     ///
-    /// <para>The brand-new-database shortcut in <see cref="CheckoutAsync"/> (WorkingPath ==
-    /// SourcePath) is neither gated nor stamped: a new file has no stamp to honour, and its
-    /// schema is created by this very version.</para>
+    /// <para>A brand-new database (created by <see cref="NewDatabaseFile"/> just before checkout)
+    /// has no stamp to honour, so it passes the gate; its schema is created by this very version.</para>
     /// </summary>
     /// <param name="isRecovery">
     /// True when called from crash recovery, where D' holds unsaved edits that must survive a trip.
@@ -1052,9 +1044,13 @@ public sealed class CheckoutService : IDisposable
             ["releaseLock"] = releaseLockAfter.ToString(),
         });
 
-        // New-database mode — D never existed at checkout time, so there is no
-        // separate D'. WorkingPath points directly at the authoritative database;
-        // every write already went to the final location. No copy-back needed.
+        // Invariant guard — a working copy must never be D itself. CheckoutAsync always
+        // hands out D' or D'' (the old "new database runs directly on D" shortcut was
+        // removed in 1.2.3, spec item 4a), so this is unreachable in normal operation. It
+        // stays as a cheap safety net: if WorkingPath ever equalled SourcePath, the
+        // D' → D pipeline below would snapshot and rename D onto itself, so treat the save
+        // as a no-op instead. (CleanupWorkingCopy, MarkDirty and HasDirtyMarker carry the
+        // same WorkingPath != SourcePath protection for the same reason.)
         if (WorkingPath == SourcePath)
         {
             SessionDirty = false;
@@ -2428,7 +2424,10 @@ public sealed class CheckoutService : IDisposable
     /// <returns>
     /// The path to D'' on success (same as <see cref="ReadOnlyWorkingPath"/>).
     /// <c>null</c> if D'' cannot be created (e.g. D is inaccessible or the copy hash never
-    /// matches); the caller should fall back to opening <see cref="SourcePath"/> directly.
+    /// matches). The caller must NOT fall back to opening <see cref="SourcePath"/> directly —
+    /// opening D with SQLite changes its header (so the active editor's next save fails) and
+    /// holds it open. Tell the user and offer to try again, or give up; see
+    /// <see cref="SetupReadOnlySnapshotWithRetryAsync"/>.
     /// </returns>
     public async Task<string?> SetupReadOnlySnapshotAsync()
     {
@@ -2501,6 +2500,34 @@ public sealed class CheckoutService : IDisposable
         IsReadOnlyMode = true;
         _logger.LogInfo("CheckoutService: read-only setup — D'' created.");
         return ReadOnlyWorkingPath;
+    }
+
+    /// <summary>
+    /// Runs <see cref="SetupReadOnlySnapshotAsync"/> until it succeeds or the user gives up.
+    /// Each time the snapshot cannot be made, <paramref name="askTryAgainAsync"/> is awaited:
+    /// <c>true</c> tries again, <c>false</c> stops. D is never opened as a fallback.
+    ///
+    /// <para>The loop lives here, rather than in the window code that shows the dialog, so it can
+    /// be tested without any UI. There is no attempt limit: every pass is bounded by the network
+    /// deadlines inside <see cref="SetupReadOnlySnapshotAsync"/>, and each retry needs an explicit
+    /// user decision, so it cannot spin.</para>
+    /// </summary>
+    /// <param name="askTryAgainAsync">
+    /// Called after each failed attempt. Shows the "couldn't make a local copy" prompt and returns
+    /// true for "Try again", false for "Close". Not called after a successful attempt.
+    /// </param>
+    /// <returns>The path to D'' on success; <c>null</c> when the user chose not to try again.</returns>
+    public async Task<string?> SetupReadOnlySnapshotWithRetryAsync(Func<Task<bool>> askTryAgainAsync)
+    {
+        while (true)
+        {
+            var snapshotPath = await SetupReadOnlySnapshotAsync();
+            if (snapshotPath is not null)
+                return snapshotPath;
+
+            if (!await askTryAgainAsync())
+                return null;
+        }
     }
 
     /// <summary>
@@ -2624,7 +2651,11 @@ public enum CheckoutOutcome
     ReadOnly,
     /// <summary>A stale lock exists. Prompt the user, then call <see cref="CheckoutService.ForceCheckoutAsync"/> if confirmed.</summary>
     StaleHolder,
-    /// <summary>Fatal error (hash mismatch or copy failure). Caller should attempt <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> as a fallback.</summary>
+    /// <summary>
+    /// Fatal error (hash mismatch or copy failure). Caller should attempt
+    /// <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> as a fallback — and, if even that
+    /// fails, must not fall back to opening D directly.
+    /// </summary>
     Failed,
     /// <summary>Network share is unreachable (operation timed out). Do not attempt read-only fallback — D is inaccessible.</summary>
     NetworkUnreachable,
@@ -2635,7 +2666,14 @@ public enum CheckoutOutcome
     /// the unsaved changes (then <see cref="CheckoutService.DiscardCrash"/>) and re-run
     /// a normal checkout. The write lock is NOT held when this is returned.
     /// </summary>
-    RecoveryConflict
+    RecoveryConflict,
+    /// <summary>
+    /// D does not exist, so there is nothing to check out. Returned without taking the write lock
+    /// and without creating any file. New databases must be created (with
+    /// <see cref="NewDatabaseFile.CreateAsync"/>) before checkout; this outcome therefore means D
+    /// was moved, renamed or deleted in the meantime. Tell the user — there is no fallback.
+    /// </summary>
+    SourceMissing
 }
 
 /// <summary>

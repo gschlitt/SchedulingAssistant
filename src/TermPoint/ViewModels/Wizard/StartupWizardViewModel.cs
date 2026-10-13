@@ -66,6 +66,13 @@ public partial class StartupWizardViewModel : ViewModelBase
     /// <summary>True when the wizard has been completed successfully. The window should close.</summary>
     public bool IsComplete { get; private set; }
 
+    /// <summary>
+    /// True when the wizard finished on the NEW-database path (the user created a database in step 3)
+    /// rather than the join path. The host uses it so the post-wizard checkout opens the
+    /// just-created database for editing even if the "open as observer" setting is on.
+    /// </summary>
+    public bool CreatedNewDatabase => IsComplete && !_isExistingDbPath;
+
     /// <summary>True when there is a previous step to return to.</summary>
     public bool CanGoBack => _stepIndex > 0;
 
@@ -252,6 +259,12 @@ public partial class StartupWizardViewModel : ViewModelBase
     // ── Validation ───────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Inline error shown when the chosen database location cannot be reached (step 3: create).
+    /// </summary>
+    private const string UnreachableLocationMessage =
+        "Cannot reach the database location — check your network connection and try again.";
+
+    /// <summary>
     /// Runs step-specific validation. Returns true when the user may advance.
     /// </summary>
     private async Task<bool> ValidateCurrentStep()
@@ -276,8 +289,16 @@ public partial class StartupWizardViewModel : ViewModelBase
 
     /// <summary>
     /// Step 1a validation: existing-DB path only.
-    /// Opens the chosen database with InitializeServices, saves paths, and acquires the write lock
-    /// so the wizard finishes in write mode.
+    ///
+    /// <para>Only VALIDATES the chosen file and saves the paths — it never opens the shared database
+    /// D with SQLite and never takes the write lock. Opening D with SQLite (the old
+    /// <c>InitializeServices(D)</c>) rewrote D's journal-mode header, which changed D's hash and made
+    /// the active editor's next save fail "modified outside this session"; it also left a handle on D.
+    /// The wizard finishes straight after this step and the host then calls
+    /// <c>SwitchDatabaseAsync(settings.DatabasePath)</c>, which performs the one real checkout
+    /// (lock, D → D' / D'' copy, services on the copy). Honouring "join as observer" therefore needs
+    /// no special casing here: nothing is locked at this point either way.</para>
+    ///
     /// Returns true on both the "Yes, I have a DB" and "No, fresh install" paths.
     /// </summary>
     private async Task<bool> ValidateStep1a()
@@ -289,48 +310,27 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         var dbPath = s1a.DbPath;
 
-        // The chosen path is typically on the network share — probe it with a deadline
-        // so a dead share shows an error instead of freezing the wizard (lockup audit).
-        if (string.IsNullOrWhiteSpace(dbPath))
+        // The chosen path is typically on the network share — validate it with deadline-bounded
+        // I/O so a dead share shows an error instead of freezing the wizard (lockup audit).
+        // ValidateWithoutSqliteAsync (not ValidateAsync): it checks existence and the SQLite file
+        // signature without ever opening D with SQLite. The full integrity check happens later on
+        // the local working copy, in App.InitializeServices.
+        var validation = await DatabaseValidator.ValidateWithoutSqliteAsync(dbPath);
+        switch (validation)
         {
-            s1a.ErrorMessage = "Please choose an existing database file.";
-            return false;
-        }
-        var (existsCompleted, dbExists) = await NetworkFileOps.ExistsAsync(dbPath);
-        if (!existsCompleted)
-        {
-            s1a.ErrorMessage = "The chosen location is not responding. Check the network connection and try again.";
-            return false;
-        }
-        if (!dbExists)
-        {
-            s1a.ErrorMessage = "Please choose an existing database file.";
-            return false;
+            case DatabaseValidationResult.Unreachable:
+                s1a.ErrorMessage = "The chosen location is not responding. Check the network connection and try again.";
+                return false;
+            case DatabaseValidationResult.Missing:
+                s1a.ErrorMessage = "Please choose an existing database file.";
+                return false;
+            case DatabaseValidationResult.Corrupt:
+                s1a.ErrorMessage = "That file does not appear to be a valid database — please try another.";
+                return false;
         }
 
         try
         {
-            _services.InitializeServices(dbPath);
-
-            // Acquire the write lock so the wizard has write access to the database — but
-            // only when NOT joining as an observer. In reader mode we must never touch the
-            // lock (so we can't block a writer); the real read-only checkout runs right
-            // after the wizard via SwitchDatabaseAsync → CheckoutAsync.
-            // TryAcquire() is atomic; it will fail if another instance holds the lock
-            // (collision-detection handled by WriteLockService).
-            // Deadline-wrapped: TryAcquire does lock-file I/O on the share, and this
-            // method runs on the UI thread (same wrapping CheckoutService uses).
-            if (!s1a.OpenInReaderMode)
-            {
-                var lockCompleted = await NetworkFileOps.RunAsync(
-                    () => App.LockService.TryAcquire(dbPath), "lock acquire (wizard)");
-                if (!lockCompleted)
-                {
-                    s1a.ErrorMessage = "The chosen location is not responding. Check the network connection and try again.";
-                    return false;
-                }
-            }
-
             var settings = AppSettings.Current;
             settings.DatabasePath     = dbPath;
             settings.BackupFolderPath = s1a.BackupFolder;
@@ -350,7 +350,7 @@ public partial class StartupWizardViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Step 3 validation: creates the database and calls InitializeServices.
+    /// Step 3 validation: creates the database (if it is not already there) and calls InitializeServices.
     /// Persists the database and backup paths but does NOT yet set IsInitialSetupComplete.
     /// Acquires the write lock so subsequent wizard steps (Campuses, Block Patterns, etc.)
     /// have write access to manage these entities.
@@ -370,24 +370,56 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         try
         {
-            var folder = Path.GetDirectoryName(dbPath)!;
-            Directory.CreateDirectory(folder);
-
-            // Create D at the target path with schema + migrations + seed data.
-            // This is a brief network operation if D is on a share. The standalone
-            // context is disposed immediately so its file handles are released
-            // before CheckoutAsync copies D → D'.
-            using (new Data.DatabaseContext(dbPath)) { }
+            // Create D when it is not there yet. The file is built in a LOCAL temp file and
+            // copied to the target by NewDatabaseFile (which also creates the target folder,
+            // deadline-bounded) — SQLite never opens D over the share. Only create when the
+            // location answered "missing": an unreachable share must not trigger creation, and
+            // a file that is already there (e.g. the user pressed Back and then Next again) is
+            // left alone and simply checked out below, exactly as before.
+            var probe = await NetworkFileOps.ProbeFileAsync(dbPath);
+            if (probe == FileProbeResult.Unreachable)
+            {
+                s3.ErrorMessage = UnreachableLocationMessage;
+                return false;
+            }
+            if (probe == FileProbeResult.Missing)
+            {
+                var created = await NewDatabaseFile.CreateAsync(dbPath);
+                switch (created.Outcome)
+                {
+                    case NewDatabaseOutcome.Created:
+                        break;
+                    case NewDatabaseOutcome.Unreachable:
+                        s3.ErrorMessage = UnreachableLocationMessage;
+                        return false;
+                    case NewDatabaseOutcome.AlreadyExists:
+                        // Appeared while the new database was being built; it was not touched.
+                        s3.ErrorMessage = "A database with this name was just created in that folder. " +
+                                          "Please choose a different file name.";
+                        return false;
+                    default: // Failed — same error mapping the old in-place create used
+                        App.Logger.LogError(created.Error, "StartupWizard: step 3 DB creation failed");
+                        s3.ErrorMessage = DescribeDbFailure(
+                            created.Error ?? new IOException("The database could not be created."), dbPath, "create");
+                        return false;
+                }
+            }
 
             // Checkout: copies D → D' (local working copy), acquires the write lock,
             // and computes the baseline hash. All subsequent wizard writes target D'
             // rather than D, protecting against SQLite's network-file vulnerability.
+            // (The production delegate ignores the "open as observer" setting: this is the
+            // database the wizard itself is building, so it must open for writing.)
             var (outcome, workingPath) = await _services.CheckoutDatabase(dbPath);
             if (outcome != CheckoutOutcome.WriteAccess)
             {
-                s3.ErrorMessage = outcome == CheckoutOutcome.NetworkUnreachable
-                    ? "Cannot reach the database location — check your network connection and try again."
-                    : "Could not acquire write access to the new database. Please try again.";
+                s3.ErrorMessage = outcome switch
+                {
+                    CheckoutOutcome.NetworkUnreachable => UnreachableLocationMessage,
+                    CheckoutOutcome.SourceMissing      => "The new database file could not be found after it was created. " +
+                                                          "It may have been moved or deleted. Please try again.",
+                    _                                  => "Could not acquire write access to the new database. Please try again."
+                };
                 return false;
             }
 
@@ -485,7 +517,8 @@ public partial class StartupWizardViewModel : ViewModelBase
     /// <summary>
     /// Called when the user clicks Finish on the last step.
     ///
-    /// Existing-DB path (step 1a, Yes):  DB already open — just sets the flag and closes.
+    /// Existing-DB path (step 1a, Yes):  DB was only validated (never opened) — just sets the flag
+    ///                                   and hides; the host performs the real checkout afterwards.
     /// ExitNow path     (step 4):        DB created — sets flag and closes without writing records.
     /// Normal paths     (step 11):       writes DB records + .tpconfig, sets flag, closes.
     ///
@@ -493,7 +526,8 @@ public partial class StartupWizardViewModel : ViewModelBase
     /// </summary>
     private async Task FinishAsync()
     {
-        // Existing-DB path — DB is already initialized; no records to write.
+        // Existing-DB path — nothing is opened yet (the host's SwitchDatabaseAsync does the
+        // checkout), and there are no records to write.
         if (_isExistingDbPath)
         {
             App.Logger.LogBreadcrumb("Wizard: finish (existing DB)");

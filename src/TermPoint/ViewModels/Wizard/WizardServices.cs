@@ -18,14 +18,17 @@ namespace TermPoint.ViewModels.Wizard;
 /// factory delegates that return mocks or test doubles.
 /// </summary>
 /// <param name="InitializeServices">
-///   Replacement for <c>App.InitializeServices(dbPath)</c>. Called when the user
-///   confirms the database path. In production this builds the DI container; in tests
-///   it can be a no-op.
+///   Replacement for <c>App.InitializeServices(dbPath)</c>. Called by the new-database
+///   path (step 3) with the local working copy D' — never with the shared database D, and
+///   not at all on the existing-database (join) path. In production this builds the DI
+///   container; in tests it can be a no-op.
 /// </param>
 /// <param name="CheckoutDatabase">
 ///   Runs checkout against D so that wizard steps write to D' (the local working copy).
-///   Returns the checkout outcome and the working-copy path. In production this calls
-///   <c>App.Checkout.CheckoutAsync</c>; in tests it can return <c>WriteAccess</c> with
+///   Returns the checkout outcome and the working-copy path. In production this is
+///   <see cref="CheckoutNewDatabaseAsync"/> (it is only ever used for the new database created
+///   in step 3, so it ignores the "open as observer" setting — the wizard must be able to write
+///   campuses, block patterns etc. into it); in tests it can return <c>WriteAccess</c> with
 ///   the input path unchanged.
 /// </param>
 /// <param name="AcademicUnits">Factory for <see cref="IAcademicUnitRepository"/>.</param>
@@ -70,11 +73,7 @@ public record WizardServices(
     /// </summary>
     public static WizardServices FromApp() => new(
         InitializeServices:     path => App.InitializeServices(path),
-        CheckoutDatabase:       async path =>
-        {
-            var outcome = await App.Checkout.CheckoutAsync(path);
-            return (outcome, App.Checkout.WorkingPath);
-        },
+        CheckoutDatabase:       path => CheckoutNewDatabaseAsync(App.Checkout, path),
         AcademicUnits:          () => App.Services.GetRequiredService<IAcademicUnitRepository>(),
         AcademicYears:          () => App.Services.GetRequiredService<IAcademicYearRepository>(),
         Semesters:              () => App.Services.GetRequiredService<ISemesterRepository>(),
@@ -87,4 +86,22 @@ public record WizardServices(
         BlockPatternListVm:     () => App.Services.GetRequiredService<BlockPatternListViewModel>(),
         SectionCodePatternListVm: () => App.Services.GetRequiredService<SectionCodePatternListViewModel>()
     );
+
+    /// <summary>
+    /// Checks out the database the wizard has just created (or, on a Back/Next re-validation, the
+    /// one it created earlier) for editing. Passes <c>ignoreObserverMode: true</c> to
+    /// <see cref="CheckoutService.CheckoutAsync"/> so a leftover "open as observer" setting cannot make
+    /// the wizard's own database read-only — the following wizard steps must be able to write into it.
+    /// The license gate and the lock still apply. Static and parameterised on the service so a test
+    /// can drive it with an isolated <see cref="CheckoutService"/>.
+    /// </summary>
+    /// <param name="checkout">The checkout service (production: <c>App.Checkout</c>).</param>
+    /// <param name="path">Full path of D, the new database.</param>
+    /// <returns>The checkout outcome and the resulting working-copy path (<see cref="CheckoutService.WorkingPath"/>).</returns>
+    internal static async Task<(CheckoutOutcome Outcome, string WorkingPath)> CheckoutNewDatabaseAsync(
+        CheckoutService checkout, string path)
+    {
+        var outcome = await checkout.CheckoutAsync(path, ignoreObserverMode: true);
+        return (outcome, checkout.WorkingPath);
+    }
 }

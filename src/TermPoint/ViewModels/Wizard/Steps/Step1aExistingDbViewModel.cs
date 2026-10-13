@@ -11,8 +11,10 @@ namespace TermPoint.ViewModels.Wizard.Steps;
 /// Step 1a — asks whether the user already has a TermPoint database set up by a colleague.
 ///
 /// "Yes" path: the user provides the existing DB file and a backup folder.
-///             <see cref="ValidateExistingDb"/> opens the DB, saves paths, marks
-///             <see cref="IsInitialSetupComplete"/> = true, and the wizard closes immediately.
+///             The wizard orchestrator validates the file WITHOUT opening it with SQLite (the shared
+///             database must never be opened directly), saves the paths, marks
+///             IsInitialSetupComplete = true, and the wizard finishes immediately; the host then
+///             does the real checkout.
 /// "No" path:  the wizard continues to the normal institution / configuration flow.
 /// </summary>
 public partial class Step1aExistingDbViewModel : WizardStepViewModel

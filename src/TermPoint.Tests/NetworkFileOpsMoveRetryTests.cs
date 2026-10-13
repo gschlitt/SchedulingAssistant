@@ -82,4 +82,54 @@ public class NetworkFileOpsMoveRetryTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    /// <summary>
+    /// <c>overwrite: false</c> (used when creating a new database) refuses an existing
+    /// destination: the move throws and BOTH files are left exactly as they were.
+    /// </summary>
+    [Fact]
+    public void MoveWithRetry_NoOverwrite_ExistingDestination_ThrowsAndLeavesBothFilesUntouched()
+    {
+        var dir = Directory.CreateTempSubdirectory("nfo_move_nooverwrite").FullName;
+        try
+        {
+            var source = Path.Combine(dir, "source.txt");
+            var dest   = Path.Combine(dir, "dest.txt");
+            WriteFile(source, "new-content");
+            WriteFile(dest, "existing-content");
+
+            var ex = Record.Exception(() => NetworkFileOps.MoveWithRetry(source, dest, overwrite: false));
+
+            Assert.IsAssignableFrom<IOException>(ex);
+            Assert.Equal("new-content", File.ReadAllText(source));
+            Assert.Equal("existing-content", File.ReadAllText(dest));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>With <c>overwrite: false</c> and no destination, the move simply succeeds.</summary>
+    [Fact]
+    public async Task MoveAsync_NoOverwrite_MissingDestination_Moves()
+    {
+        var dir = Directory.CreateTempSubdirectory("nfo_move_nooverwrite_ok").FullName;
+        try
+        {
+            var source = Path.Combine(dir, "source.txt");
+            var dest   = Path.Combine(dir, "dest.txt");
+            WriteFile(source, "payload");
+
+            var completed = await NetworkFileOps.MoveAsync(source, dest, overwrite: false);
+
+            Assert.True(completed);
+            Assert.False(File.Exists(source));
+            Assert.Equal("payload", File.ReadAllText(dest));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

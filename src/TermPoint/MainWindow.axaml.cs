@@ -305,11 +305,17 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Wizard completed. The wizard created D, checked it out to D', and initialized
-            // services against D'. SwitchDatabaseAsync will save D' → D (releasing the
-            // checkout), then re-checkout D → new D' and reinitialize services. This is
-            // a redundant cycle but correct for a one-time operation.
-            await SwitchDatabaseAsync(settings.DatabasePath!);
+            // Wizard completed. New-database path: the wizard created D, checked it out to D',
+            // and initialized services against D'. SwitchDatabaseAsync will save D' → D
+            // (releasing the checkout), then re-checkout D → new D' and reinitialize services.
+            // This is a redundant cycle but correct for a one-time operation.
+            // Existing-database (join) path: the wizard only VALIDATED D (without opening it
+            // with SQLite) and saved the settings — no checkout, lock or services exist yet, so
+            // SwitchDatabaseAsync does the one and only real checkout. It must therefore
+            // tolerate a null App.Services (see its remarks).
+            // On the new-database path the database was just created, so it opens for editing
+            // even if the "open as observer" setting is on (the setting applies to later opens).
+            await SwitchDatabaseAsync(settings.DatabasePath!, isNewDatabase: wizard.CreatedNewDatabase);
             return;
         }
 
@@ -547,8 +553,9 @@ public partial class MainWindow : Window
         var checkoutResult = await RunCheckoutAsync(dbPath, recoverUnsaved);
         if (checkoutResult is null)
         {
-            // Network unreachable — dialog already shown. Close the app since this
-            // is the initial startup path; there is no previous DB to fall back to.
+            // Checkout cannot proceed (network unreachable, database missing, or no local
+            // copy could be made) — dialog already shown. Close the app since this is the
+            // initial startup path; there is no previous DB to fall back to.
             Close();
             return;
         }
@@ -629,17 +636,29 @@ public partial class MainWindow : Window
     /// when the checkout cannot deliver write access, the crash artifacts are kept on
     /// disk so recovery can be offered again at the next opportunity.
     /// </param>
+    /// <param name="ignoreObserverMode">
+    /// True only when the user has just created this database (File → New, or the wizard's new
+    /// database): passed through to <see cref="CheckoutService.CheckoutAsync"/> so the "open as
+    /// observer" setting does not make the brand-new database read-only. Everything else (license
+    /// gate, lock, version gate) is unaffected. False for every ordinary open.
+    /// </param>
     /// <returns>
     /// <list type="bullet">
     /// <item><description><b>Write access:</b> D' (the local working copy).</description></item>
     /// <item><description><b>Read-only:</b> D'' (the local read-only snapshot).</description></item>
     /// <item><description><b>Stale lock — user declined takeover, force-checkout lost the race, or checkout failed:</b>
-    /// D'' via <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/>, or D as a last resort if that also fails.</description></item>
+    /// D'' via <see cref="SetupSnapshotOrAskAsync"/>. D itself is NEVER returned: opening D with SQLite
+    /// flips its header (breaking the active editor's next save) and holds it open.</description></item>
+    /// <item><description><b><c>null</c>:</b> the checkout cannot proceed and the user has already been told
+    /// why (network unreachable, database file missing, or no local copy could be made and the user chose
+    /// Close). Both callers treat <c>null</c> as "dialog shown, give up": startup closes the app and
+    /// <see cref="SwitchDatabaseAsync"/> returns.</description></item>
     /// </list>
     /// </returns>
-    private async Task<string?> RunCheckoutAsync(string sourcePath, bool recoverUnsaved = false)
+    private async Task<string?> RunCheckoutAsync(
+        string sourcePath, bool recoverUnsaved = false, bool ignoreObserverMode = false)
     {
-        var outcome = await App.Checkout.CheckoutAsync(sourcePath, recoverUnsaved);
+        var outcome = await App.Checkout.CheckoutAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
 
         switch (outcome)
         {
@@ -660,7 +679,7 @@ public partial class MainWindow : Window
                 // the crash, or the marker is unverifiable). Offer an exported copy,
                 // then discard the artifacts and re-run a normal checkout.
                 await HandleRecoveryConflictAsync(sourcePath);
-                return await RunCheckoutAsync(sourcePath, recoverUnsaved: false);
+                return await RunCheckoutAsync(sourcePath, recoverUnsaved: false, ignoreObserverMode);
 
             case CheckoutOutcome.StaleHolder:
                 {
@@ -692,7 +711,7 @@ public partial class MainWindow : Window
                         if (forceOutcome == CheckoutOutcome.RecoveryConflict)
                         {
                             await HandleRecoveryConflictAsync(sourcePath);
-                            return await RunCheckoutAsync(sourcePath, recoverUnsaved: false);
+                            return await RunCheckoutAsync(sourcePath, recoverUnsaved: false, ignoreObserverMode);
                         }
                         if (forceOutcome == CheckoutOutcome.NetworkUnreachable)
                         {
@@ -706,9 +725,10 @@ public partial class MainWindow : Window
                     // User declined, or force-checkout lost the race.
                     // Set up D'' so we never hold D open directly. Crash artifacts (if
                     // any) stay on disk so recovery can be offered at the next launch.
+                    // If D'' cannot be made, ask the user — never fall back to D itself.
                     if (recoverUnsaved)
                         await ShowRecoveryDeferredMessageAsync();
-                    return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
+                    return await SetupSnapshotOrAskAsync();
                 }
 
             case CheckoutOutcome.NetworkUnreachable:
@@ -716,15 +736,41 @@ public partial class MainWindow : Window
                     "Cannot reach the database — check your network connection and try again.");
                 return null;
 
+            case CheckoutOutcome.SourceMissing:
+                // D vanished between the caller's checks (or its creation) and checkout. Nothing
+                // was locked or created, and there is no safe fallback — tell the user and stop.
+                await ShowMessageAsync("Database Not Found",
+                    $"The database file could not be found:\n{sourcePath}\n\n" +
+                    "It may have been moved, renamed or deleted.");
+                return null;
+
             default: // Failed
                 await ShowMessageAsync("Checkout Failed",
                     "Could not open the database for editing. " +
                     "The application will open in read-only mode.");
-                // Best-effort: try to set up D'' even after failure so D stays handle-free.
-                // Crash artifacts (if any) stay on disk for the next launch.
-                return await App.Checkout.SetupReadOnlySnapshotAsync() ?? sourcePath;
+                // Open read-only on D''. Crash artifacts (if any) stay on disk for the next
+                // launch. If D'' cannot be made, ask the user — never fall back to D itself.
+                return await SetupSnapshotOrAskAsync();
         }
     }
+
+    /// <summary>
+    /// Sets up the local read-only snapshot D'' and, when that fails, asks the user whether to
+    /// try again — instead of falling back to opening the shared database D itself (which changes
+    /// D's header and holds it open; spec item 4). The retry loop is
+    /// <see cref="CheckoutService.SetupReadOnlySnapshotWithRetryAsync"/>; this method only supplies
+    /// the Topmost "Try again / Close" dialog.
+    /// </summary>
+    /// <returns>
+    /// The path to D'' on success. <c>null</c> when the user chose Close; the dialog has already been
+    /// shown, which is the contract <see cref="RunCheckoutAsync"/> documents for a <c>null</c> return.
+    /// </returns>
+    private Task<string?> SetupSnapshotOrAskAsync()
+        => App.Checkout.SetupReadOnlySnapshotWithRetryAsync(() => ShowChoiceAsync(
+            "Couldn't Open the Database",
+            "TermPoint couldn't make a local copy of this database. " +
+            "Check the network connection, then try again.",
+            "Try again", "Close"));
 
     /// <summary>
     /// Tells the user their unsaved changes are kept but can't be restored right now
@@ -938,10 +984,30 @@ public partial class MainWindow : Window
     /// startup wizard completion path, and from <c>AcquireWriteLock</c> in the ViewModel
     /// when upgrading from read-only to write mode.
     /// If the database file does not yet exist (File → New), it is created with the
-    /// schema before checkout so that <see cref="CheckoutService.CheckoutAsync"/> takes
-    /// the normal D → D' path and all writes go to the local working copy.
+    /// schema before checkout — built locally and copied to the share by
+    /// <see cref="NewDatabaseFile.CreateAsync"/>, never opened over the network — so that
+    /// <see cref="CheckoutService.CheckoutAsync"/> takes the normal D → D' path and all writes go
+    /// to the local working copy.
+    ///
+    /// <para>May be called before any DI container exists (the wizard's existing-database path only
+    /// validates D and saves settings), so every <see cref="App.Services"/> access before
+    /// <see cref="App.InitializeServices"/> is null-tolerant.</para>
+    ///
+    /// <para><b>A database the user has just created opens for editing</b> even when the "open as
+    /// observer" setting is on (they must be able to write into it straight away — File → New
+    /// applies the transferred configuration right after this returns). That covers a file this
+    /// call creates itself and, via <paramref name="isNewDatabase"/>, the wizard's new database.
+    /// Only the observer setting is overridden, for this one checkout; the license gate, the lock
+    /// and crash-recovery steps behave as for any other open, and the setting still applies to every
+    /// later open of the database.</para>
     /// </summary>
-    public async Task SwitchDatabaseAsync(string newDatabasePath)
+    /// <param name="newDatabasePath">Full path of the database (D) to switch to; created if missing.</param>
+    /// <param name="isNewDatabase">
+    /// True when the caller has already created this database during the current user action (the
+    /// startup wizard's new-database path), so the observer setting must not make it read-only.
+    /// False for every other caller; a file created by this very call is detected internally.
+    /// </param>
+    public async Task SwitchDatabaseAsync(string newDatabasePath, bool isNewDatabase = false)
     {
         App.Logger.LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
         try
@@ -963,7 +1029,8 @@ public partial class MainWindow : Window
             // and preserves the live in-memory state, e.g. when upgrading read→write).
             string? savedYearId = null;
             IReadOnlySet<string>? savedSemesterIds = null;
-            if (App.Services.GetService(typeof(SemesterContext)) is SemesterContext priorCtx
+            // App.Services is null when no database has been opened yet (wizard join path).
+            if (App.Services?.GetService(typeof(SemesterContext)) is SemesterContext priorCtx
                 && priorCtx.SelectedAcademicYear is not null)
             {
                 savedYearId      = priorCtx.SelectedAcademicYear.Id;
@@ -994,17 +1061,39 @@ public partial class MainWindow : Window
                     "the next time you open that database.");
             }
 
-            // If D does not exist yet (File → New, or a new wizard DB), create it
-            // with the schema so CheckoutAsync takes the normal D → D' path and
-            // all subsequent writes go to the local working copy. Deadline-bounded
-            // tri-state probe: only create when the location answered "missing" —
-            // an unreachable share must NOT trigger creation attempts; checkout
-            // below surfaces the unreachable dialog instead.
+            // If D does not exist yet (File → New), create it with the schema so
+            // CheckoutAsync takes the normal D → D' path and all subsequent writes go to
+            // the local working copy. Deadline-bounded tri-state probe: only create when
+            // the location answered "missing" — an unreachable share must NOT trigger
+            // creation attempts; checkout below surfaces the unreachable dialog instead.
+            // The file is built in a LOCAL temp file and copied across by NewDatabaseFile:
+            // SQLite never opens the shared path (no WAL header left on D, no handle held).
             var probe = await NetworkFileOps.ProbeFileAsync(newDatabasePath);
             if (probe == FileProbeResult.Missing)
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(newDatabasePath)!);
-                using (new Data.DatabaseContext(newDatabasePath)) { }
+                var created = await NewDatabaseFile.CreateAsync(newDatabasePath);
+                switch (created.Outcome)
+                {
+                    case NewDatabaseOutcome.Created:
+                        isNewDatabase = true;   // just created: the observer setting must not make it read-only
+                        break;
+
+                    case NewDatabaseOutcome.Unreachable:
+                        await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
+                        return;
+
+                    case NewDatabaseOutcome.AlreadyExists:
+                        // Someone created a file with this name while we were building ours. It was
+                        // not touched; don't silently open somebody else's database as "the new one".
+                        await ShowMessageAsync("Database Already Exists",
+                            $"A database file already exists at:\n{newDatabasePath}\n\n" +
+                            "It was not changed. Choose a different name, or open that database instead.");
+                        return;
+
+                    default: // Failed — the outer catch logs it and shows "Failed to switch to database: …"
+                        throw new InvalidOperationException(
+                            $"The new database could not be created: {created.Error?.Message}", created.Error);
+                }
             }
 
             // Re-evaluate license for the new share directory before checkout.
@@ -1019,9 +1108,10 @@ public partial class MainWindow : Window
             if (App.Checkout.DetectCrashRecovery(newDatabasePath))
                 recoverUnsaved = await OfferCrashRecoveryAsync(newDatabasePath);
 
-            var checkoutPath = await RunCheckoutAsync(newDatabasePath, recoverUnsaved);
+            var checkoutPath = await RunCheckoutAsync(
+                newDatabasePath, recoverUnsaved, ignoreObserverMode: isNewDatabase);
             if (checkoutPath is null)
-                return; // Network unreachable — dialog already shown.
+                return; // Checkout cannot proceed — dialog already shown (see RunCheckoutAsync).
             newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context.

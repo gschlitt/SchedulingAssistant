@@ -19,7 +19,7 @@ namespace TermPoint.Tests;
 ///
 /// <para>Tests are organised into seven groups:
 /// <list type="bullet">
-///   <item><description>Group 1 — New database (wizard/first-run flow)</description></item>
+///   <item><description>Group 1 — New database (created first by NewDatabaseFile, then checked out normally) and a missing source (SourceMissing)</description></item>
 ///   <item><description>Group 2 — Checkout of an existing database</description></item>
 ///   <item><description>Group 3 — Stale lock / ForceCheckout</description></item>
 ///   <item><description>Group 4 — Save flow (D' → D)</description></item>
@@ -200,19 +200,36 @@ public sealed class CheckoutServiceTests : IDisposable
     // ═════════════════════════════════════════════════════════════════════════
     // Group 1 — New database (wizard / first-run flow)
     //
-    // When the user completes the wizard and the database file does not yet
-    // exist, CheckoutAsync must give the app write access immediately.
+    // A new database is created BEFORE checkout (NewDatabaseFile builds it in a
+    // local temp file and copies it to D), then checked out like any other:
+    // D' != D and no session ever runs on D itself. CheckoutAsync on a path
+    // where D does not exist is SourceMissing — no lock, nothing created.
+    // (Pre-4a these tests covered a "new-database shortcut" that ran the whole
+    // session on D; that shortcut no longer exists.)
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// A non-existent database path returns WriteAccess — the app gets edit rights
+    /// Creates a real new database at <paramref name="path"/> with <see cref="NewDatabaseFile"/>
+    /// — the same helper the wizard and File → New use — and asserts it succeeded. The temporary
+    /// local build goes into the source temp folder (deleted by the helper itself).
+    /// </summary>
+    /// <param name="path">Where D should be created; must not exist.</param>
+    private async Task CreateNewDatabaseAsync(string path)
+    {
+        var result = await NewDatabaseFile.CreateAsync(path, _tempDir);
+        Assert.Equal(NewDatabaseOutcome.Created, result.Outcome);
+    }
+
+    /// <summary>
+    /// A freshly created new database checks out to write access — the app gets edit rights
     /// on its very first launch after completing the wizard.
     /// </summary>
     [Fact]
     public async Task CheckoutAsync_NewDatabase_ReturnsWriteAccess()
     {
         var (svc, _) = CreateService();
-        var db = DbPath("new");   // file does NOT exist
+        var db = DbPath("new");
+        await CreateNewDatabaseAsync(db);
 
         var outcome = await svc.CheckoutAsync(db);
 
@@ -220,19 +237,22 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// For a new database, WorkingPath must equal SourcePath (degenerate mode).
-    /// The DatabaseContext will create the schema directly at SourcePath.
+    /// A new database is checked out like any other: WorkingPath is a LOCAL copy (D'), never D.
+    /// Replaces the old "WorkingPath equals SourcePath" shortcut test.
     /// </summary>
     [Fact]
-    public async Task CheckoutAsync_NewDatabase_WorkingPathEqualsSourcePath()
+    public async Task CheckoutAsync_NewDatabase_WorkingPathIsALocalCopyNotSource()
     {
         var (svc, _) = CreateService();
         var db = DbPath("new");
+        await CreateNewDatabaseAsync(db);
 
         await svc.CheckoutAsync(db);
 
-        Assert.Equal(db, svc.WorkingPath);
         Assert.Equal(db, svc.SourcePath);
+        Assert.NotEqual(db, svc.WorkingPath);
+        Assert.True(File.Exists(svc.WorkingPath), "D' must exist after checkout.");
+        Assert.Equal(_workingDir, Path.GetDirectoryName(svc.WorkingPath));
     }
 
     /// <summary>Mode must be WriteAccess so the UI shows the Save button as active.</summary>
@@ -240,8 +260,10 @@ public sealed class CheckoutServiceTests : IDisposable
     public async Task CheckoutAsync_NewDatabase_ModeIsWriteAccess()
     {
         var (svc, _) = CreateService();
+        var db = DbPath("new");
+        await CreateNewDatabaseAsync(db);
 
-        await svc.CheckoutAsync(DbPath("new"));
+        await svc.CheckoutAsync(db);
 
         Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
     }
@@ -251,21 +273,80 @@ public sealed class CheckoutServiceTests : IDisposable
     public async Task CheckoutAsync_NewDatabase_LockIsAcquired()
     {
         var (svc, lockSvc) = CreateService();
+        var db = DbPath("new");
+        await CreateNewDatabaseAsync(db);
 
-        await svc.CheckoutAsync(DbPath("new"));
+        await svc.CheckoutAsync(db);
 
         Assert.True(lockSvc.IsWriter);
     }
 
-    /// <summary>HashAtCheckout is null for new databases — no file existed to hash.</summary>
+    /// <summary>
+    /// HashAtCheckout is set for a new database — it now exists on disk when checked out, so
+    /// SaveAsync can verify D has not been modified externally. (Was null under the old shortcut.)
+    /// </summary>
     [Fact]
-    public async Task CheckoutAsync_NewDatabase_HashAtCheckoutIsNull()
+    public async Task CheckoutAsync_NewDatabase_HashAtCheckoutIsSet()
     {
         var (svc, _) = CreateService();
+        var db = DbPath("new");
+        await CreateNewDatabaseAsync(db);
 
-        await svc.CheckoutAsync(DbPath("new"));
+        await svc.CheckoutAsync(db);
 
-        Assert.Null(svc.HashAtCheckout);
+        Assert.False(string.IsNullOrEmpty(svc.HashAtCheckout));
+    }
+
+    /// <summary>
+    /// D does not exist: CheckoutAsync reports SourceMissing instead of running a session on D.
+    /// </summary>
+    [Fact]
+    public async Task CheckoutAsync_MissingDatabase_ReturnsSourceMissing()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath("missing");   // file does NOT exist
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.SourceMissing, outcome);
+    }
+
+    /// <summary>
+    /// SourceMissing takes no lock, writes no .lock file, creates no database and no working
+    /// copy, and leaves the service in read-only mode — it must not create anything next to a
+    /// file that does not exist.
+    /// </summary>
+    [Fact]
+    public async Task CheckoutAsync_MissingDatabase_TakesNoLockAndCreatesNothing()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath("missing");
+
+        await svc.CheckoutAsync(db);
+
+        Assert.False(lockSvc.IsWriter, "No lock may be taken for a missing database.");
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.False(File.Exists(db), "D must not be created.");
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")), "No lock file may be written.");
+        Assert.Empty(Directory.GetFileSystemEntries(_tempDir));
+        Assert.Empty(Directory.GetFileSystemEntries(_workingDir));
+        Assert.True(string.IsNullOrEmpty(svc.WorkingPath), "No working path may be assigned.");
+    }
+
+    /// <summary>
+    /// After SourceMissing the service is not in write mode, so a stray SaveAsync is refused
+    /// rather than pushing anything anywhere. (Replaces the old "SaveAsync is a no-op for a new
+    /// database" test, which depended on the removed shortcut.)
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_AfterSourceMissing_ReturnsNotInWriteMode()
+    {
+        var (svc, _) = CreateService();
+        await svc.CheckoutAsync(DbPath("missing"));
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.NotInWriteMode, outcome);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -472,7 +553,7 @@ public sealed class CheckoutServiceTests : IDisposable
     // ═════════════════════════════════════════════════════════════════════════
     // Group 4 — Save flow  (the core D' → D write-back)
     //
-    // Tests cover: happy path, degenerate new-db path, external modification
+    // Tests cover: happy path, a refused save with nothing checked out, external modification
     // detection, lock-lost detection, and lock release on final save.
     // ═════════════════════════════════════════════════════════════════════════
 
@@ -489,22 +570,6 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.NotInWriteMode, outcome);
-    }
-
-    /// <summary>
-    /// For a new database (WorkingPath == SourcePath), SaveAsync is a no-op that
-    /// returns Success without touching any files.
-    /// </summary>
-    [Fact]
-    public async Task SaveAsync_NewDatabase_ReturnsSuccessWithoutFileCopy()
-    {
-        var (svc, _) = CreateService();
-        var db = DbPath("new");  // does not exist
-        await svc.CheckoutAsync(db);
-
-        var outcome = await svc.SaveAsync();
-
-        Assert.Equal(SaveOutcome.Success, outcome);
     }
 
     /// <summary>
@@ -1480,11 +1545,9 @@ public sealed class CheckoutServiceTests : IDisposable
     ///
     /// <para>The full flow mirrors what happens in production after the wizard completes:</para>
     /// <list type="number">
-    ///   <item>CheckoutAsync in degenerate mode — D does not exist yet, so WorkingPath == SourcePath.</item>
-    ///   <item>A real <c>DatabaseContext</c> is opened against D (simulating
-    ///         App.InitializeServices(D) inside the wizard).</item>
-    ///   <item>ReleaseAsync — no-op save, lock released (degenerate mode).</item>
-    ///   <item>CheckoutAsync again — D now exists, normal mode: D is copied to D'.</item>
+    ///   <item>D is created with <see cref="NewDatabaseFile"/> (built locally, copied across —
+    ///         SQLite never opens D itself), exactly as wizard step 3 does.</item>
+    ///   <item>CheckoutAsync — D exists, normal mode: D is copied to D'.</item>
     ///   <item>DatabaseContext.Dispose() — simulates the old DI container being disposed inside
     ///         App.InitializeServices(D'). Microsoft.Data.Sqlite pools connections by default:
     ///         SqliteConnection.Dispose() returns the connection to the pool rather than closing
@@ -1502,9 +1565,9 @@ public sealed class CheckoutServiceTests : IDisposable
         var (svc, _) = CreateService();
         var db = DbPath("wizard_ctx");
 
-        // ── Step 1: Create D with schema using a standalone DatabaseContext ───────
+        // ── Step 1: Create D with schema via NewDatabaseFile ─────────────────────
         // Mirrors ValidateStep3 creating D before checkout.
-        using (new TermPoint.Data.DatabaseContext(db)) { }
+        await CreateNewDatabaseAsync(db);
 
         // ── Step 2: Checkout — D exists, normal path: copies D → D' ──────────────
         var checkoutOutcome = await svc.CheckoutAsync(db);
@@ -1540,8 +1603,8 @@ public sealed class CheckoutServiceTests : IDisposable
         var (svc, _) = CreateService();
         var db = DbPath("wizard_lifecycle");
 
-        // Phase 1: ValidateStep3 — create D, checkout to D'.
-        using (new TermPoint.Data.DatabaseContext(db)) { }
+        // Phase 1: ValidateStep3 — create D (NewDatabaseFile), checkout to D'.
+        await CreateNewDatabaseAsync(db);
         var outcome1 = await svc.CheckoutAsync(db);
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome1);
         Assert.NotEqual(db, svc.WorkingPath);
@@ -1576,8 +1639,8 @@ public sealed class CheckoutServiceTests : IDisposable
         var (svc, _) = CreateService();
         var db = DbPath("file_new");
 
-        // SwitchDatabaseAsync creates D with schema before calling CheckoutAsync.
-        using (new TermPoint.Data.DatabaseContext(db)) { }
+        // SwitchDatabaseAsync creates D with schema (NewDatabaseFile) before calling CheckoutAsync.
+        await CreateNewDatabaseAsync(db);
 
         var outcome = await svc.CheckoutAsync(db);
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
@@ -3587,23 +3650,341 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// The brand-new-database shortcut (D does not exist) is neither gated nor stamped: a new
-    /// file has no stamp, and no working copy exists to stamp.
+    /// A brand-new database (created by <see cref="NewDatabaseFile"/>, then checked out like any
+    /// other) carries no stamp, so it is not gated; and because it now has a real working copy it is
+    /// stamped like every other database opened by a stamping build. (Under the removed new-database
+    /// shortcut there was no working copy, so nothing was ever stamped.)
     /// </summary>
     [Fact]
-    public async Task VersionGate_NewDatabase_IsNotGatedOrStamped()
+    public async Task VersionGate_NewDatabase_IsNotGated_AndIsStampedLikeAnyOther()
     {
         var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
         svc.ThisReleaseRequires = "1.2.4";
         svc.ChannelOverride     = InstallChannel.Store;
         var db = DbPath("brand-new");
+        await CreateNewDatabaseAsync(db);
+        Assert.Null(MinimumVersionToWrite.ReadStamp(db));   // a new file has no stamp
 
         var outcome = await svc.CheckoutAsync(db);
 
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
         Assert.Null(svc.RequiredAppVersion);
         Assert.True(lockSvc.IsWriter);
-        Assert.Equal(db, svc.WorkingPath);
-        Assert.False(File.Exists(db), "Nothing creates the new database file until DatabaseContext does.");
+        Assert.NotEqual(db, svc.WorkingPath);
+        Assert.Equal("1.2.4", MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 14 — Read-only snapshot with retry (spec item 4a)
+    //
+    // When D'' cannot be made, the caller must ask the user "Try again / Close"
+    // and NEVER fall back to opening D. The loop lives in CheckoutService
+    // (SetupReadOnlySnapshotWithRetryAsync) so it is testable without any UI;
+    // MainWindow only supplies the Topmost dialog (UI-bound, not unit-tested).
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Points the service at a (missing) database so its read-only snapshot setup fails: the
+    /// copy of D cannot start, exactly like an unreachable share. SourceMissing takes no lock.
+    /// </summary>
+    /// <param name="svc">The service to point.</param>
+    /// <param name="db">A path where no file exists.</param>
+    private static async Task PointAtMissingSourceAsync(CheckoutService svc, string db)
+    {
+        Assert.Equal(CheckoutOutcome.SourceMissing, await svc.CheckoutAsync(db));
+    }
+
+    /// <summary>
+    /// When the snapshot succeeds on the first attempt the user is never asked anything and the
+    /// D'' path is returned.
+    /// </summary>
+    [Fact]
+    public async Task SnapshotWithRetry_FirstAttemptSucceeds_NeverAsks()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);                       // another writer → checkout lands on D''
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(db));
+        var asked = 0;
+
+        var path = await svc.SetupReadOnlySnapshotWithRetryAsync(() => { asked++; return Task.FromResult(true); });
+
+        Assert.Equal(svc.ReadOnlyWorkingPath, path);
+        Assert.True(File.Exists(path));
+        Assert.Equal(0, asked);
+    }
+
+    /// <summary>
+    /// A failed snapshot followed by "Close" (false) returns null after asking exactly once —
+    /// the caller then gives up. D is never offered as a fallback.
+    /// </summary>
+    [Fact]
+    public async Task SnapshotWithRetry_FailsAndUserCloses_ReturnsNullAfterOneQuestion()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath("gone");
+        await PointAtMissingSourceAsync(svc, db);
+        var asked = 0;
+
+        var path = await svc.SetupReadOnlySnapshotWithRetryAsync(() => { asked++; return Task.FromResult(false); });
+
+        Assert.Null(path);
+        Assert.Equal(1, asked);
+        Assert.False(File.Exists(db), "D must not be created or opened as a fallback.");
+    }
+
+    /// <summary>"Try again" loops: each failure asks again until the user finally closes.</summary>
+    [Fact]
+    public async Task SnapshotWithRetry_UserTriesAgainThenCloses_AsksOncePerFailure()
+    {
+        var (svc, _) = CreateService();
+        await PointAtMissingSourceAsync(svc, DbPath("gone"));
+        var answers = new Queue<bool>(new[] { true, true, false });
+        var asked = 0;
+
+        var path = await svc.SetupReadOnlySnapshotWithRetryAsync(() => { asked++; return Task.FromResult(answers.Dequeue()); });
+
+        Assert.Null(path);
+        Assert.Equal(3, asked);
+    }
+
+    /// <summary>
+    /// "Try again" really retries: the problem is fixed while the dialog is up (here D appears),
+    /// the second attempt succeeds, the user is asked only once, and D is only ever read — its
+    /// bytes are unchanged and no sidecar appears beside it.
+    /// </summary>
+    [Fact]
+    public async Task SnapshotWithRetry_SecondAttemptSucceedsAfterTryAgain_ReturnsSnapshotAndLeavesDUntouched()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath("appears-later");
+        await PointAtMissingSourceAsync(svc, db);
+        var asked = 0;
+        string? hashOfD = null;
+
+        var path = await svc.SetupReadOnlySnapshotWithRetryAsync(() =>
+        {
+            asked++;
+            CreateSqliteDb(db);                           // the share "comes back" while the dialog is open
+            hashOfD = ComputeFileHash(db);
+            return Task.FromResult(true);
+        });
+
+        Assert.NotNull(path);
+        Assert.Equal(svc.ReadOnlyWorkingPath, path);
+        Assert.True(File.Exists(path));
+        Assert.Equal(1, asked);
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.Equal(hashOfD, ComputeFileHash(db));
+        Assert.Equal(hashOfD, ComputeFileHash(path!));    // D'' is a faithful copy
+        Assert.Equal(new[] { db }, Directory.GetFileSystemEntries(_tempDir));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 15 — "Open as observer" vs a database the user has just created
+    //
+    // User decision (2026-10-12): a just-created database opens for editing even
+    // when AppSettings.OpenInReaderMode is on (CheckoutAsync(ignoreObserverMode:
+    // true)). ONLY the voluntary-observer branch is skipped: the license gate and
+    // the write lock still apply, and the setting keeps applying to every later
+    // open. Anything that changes AppSettings.Current runs under a SettingsFileGuard.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>The (private-setter) <c>App.LicenseStatus</c> property, set by reflection in license tests.</summary>
+    private static readonly System.Reflection.PropertyInfo LicenseStatusProperty =
+        typeof(App).GetProperty(nameof(App.LicenseStatus))!;
+
+    /// <summary>Puts <c>App.LicenseStatus</c> back to its previous value when disposed.</summary>
+    private sealed class LicenseStatusRestorer(TermPoint.Licensing.AppAccessResult original) : IDisposable
+    {
+        /// <summary>Restores the original license status.</summary>
+        public void Dispose() => LicenseStatusProperty.SetValue(null, original);
+    }
+
+    /// <summary>
+    /// Temporarily replaces the process-wide license status with an expired, read-only one. The
+    /// property has a private setter (production only changes it through <c>App.EvaluateLicense</c>,
+    /// which reads real license/trial files), so the test sets it by reflection and restores it on dispose.
+    /// </summary>
+    /// <returns>A handle that restores the previous license status when disposed.</returns>
+    private static IDisposable UseExpiredLicense()
+    {
+        var original = App.LicenseStatus;
+        LicenseStatusProperty.SetValue(null, new TermPoint.Licensing.AppAccessResult
+        {
+            AccessLevel = TermPoint.Licensing.AccessLevel.ReadOnly,
+            Reason      = TermPoint.Licensing.AccessReason.Expired,
+        });
+        return new LicenseStatusRestorer(original);
+    }
+
+    /// <summary>
+    /// Observer mode on + a just-created database + the ignore flag → write access: lock taken,
+    /// D' is the working copy. This is what lets File → New apply its configuration, and what lets
+    /// the wizard write campuses/block patterns into the database it creates.
+    /// </summary>
+    [Fact]
+    public async Task ObserverMode_NewDatabase_WithIgnoreFlag_OpensForWriting()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath("observer-new");
+        await CreateNewDatabaseAsync(db);
+
+        var outcome = await svc.CheckoutAsync(db, ignoreObserverMode: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.False(svc.IsReadOnlyMode);
+        Assert.True(lockSvc.IsWriter);
+        Assert.NotEqual(db, svc.WorkingPath);
+        Assert.True(AppSettings.Current.OpenInReaderMode, "The setting itself must not be changed.");
+    }
+
+    /// <summary>
+    /// Observer mode on + an existing database + no flag → read-only snapshot exactly as before:
+    /// no lock, no .lock file, D'' as the working copy.
+    /// </summary>
+    [Fact]
+    public async Task ObserverMode_ExistingDatabase_WithoutFlag_StillOpensReadOnly()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.True(svc.IsReadOnlyMode);
+        Assert.Equal(svc.ReadOnlyWorkingPath, svc.WorkingPath);
+        Assert.False(lockSvc.IsWriter);
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")), "Observer mode must never create the lock file.");
+    }
+
+    /// <summary>
+    /// The flag covers ONE checkout. After the just-created database is released, opening it again
+    /// without the flag (a later open) honours observer mode — the setting "keeps applying to every
+    /// database opened later, including this new one".
+    /// </summary>
+    [Fact]
+    public async Task ObserverMode_IgnoreFlagCoversOnlyOneCheckout_LaterOpenIsReadOnly()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath("observer-later");
+        await CreateNewDatabaseAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db, ignoreObserverMode: true));
+        Assert.Equal(SaveOutcome.Success, await svc.ReleaseAsync(saveFirst: true));
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout);   // settle the background lock-file deletion
+
+        var later = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, later);
+        Assert.False(lockSvc.IsWriter);
+        Assert.True(AppSettings.Current.OpenInReaderMode);
+    }
+
+    /// <summary>
+    /// The flag skips only the observer branch: a live lock held by another instance still makes the
+    /// checkout read-only (and names the holder).
+    /// </summary>
+    [Fact]
+    public async Task ObserverMode_IgnoreFlag_DoesNotOverrideALiveLock()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);
+
+        var outcome = await svc.CheckoutAsync(db, ignoreObserverMode: true);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal("other_user", svc.CurrentHolder?.Username);
+    }
+
+    /// <summary>With observer mode off the flag changes nothing: an ordinary write checkout.</summary>
+    [Fact]
+    public async Task ObserverModeOff_IgnoreFlag_IsHarmless()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = false;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+
+        var outcome = await svc.CheckoutAsync(db, ignoreObserverMode: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// The license gate is NOT bypassed: an expired license is read-only even for a just-created
+    /// database with the ignore flag, with no lock taken and no lock file written.
+    /// </summary>
+    [Fact]
+    public async Task ExpiredLicense_NewDatabase_WithIgnoreFlag_StillReadOnly()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        using var license = UseExpiredLicense();
+        AppSettings.Current.OpenInReaderMode = true;   // observer on as well: the flag must not unlock anything
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath("expired-new");
+        await CreateNewDatabaseAsync(db);
+
+        var outcome = await svc.CheckoutAsync(db, ignoreObserverMode: true);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.False(lockSvc.IsWriter);
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")));
+    }
+
+    /// <summary>
+    /// The wizard's step-3 checkout (<see cref="TermPoint.ViewModels.Wizard.WizardServices.CheckoutNewDatabaseAsync"/>,
+    /// the production <c>CheckoutDatabase</c> delegate) opens the database it just created for
+    /// writing even with observer mode on, and returns D' as the working path.
+    /// </summary>
+    [Fact]
+    public async Task WizardCheckoutNewDatabase_IgnoresObserverMode()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath("wizard-observer");
+        await CreateNewDatabaseAsync(db);
+
+        var (outcome, workingPath) = await TermPoint.ViewModels.Wizard.WizardServices.CheckoutNewDatabaseAsync(svc, db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(lockSvc.IsWriter);
+        Assert.Equal(svc.WorkingPath, workingPath);
+        Assert.NotEqual(db, workingPath);
+    }
+
+    /// <summary>The wizard helper does not bypass the license gate either.</summary>
+    [Fact]
+    public async Task WizardCheckoutNewDatabase_ExpiredLicense_StillReadOnly()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        using var license = UseExpiredLicense();
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath("wizard-expired");
+        await CreateNewDatabaseAsync(db);
+
+        var (outcome, _) = await TermPoint.ViewModels.Wizard.WizardServices.CheckoutNewDatabaseAsync(svc, db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        Assert.False(lockSvc.IsWriter);
     }
 }

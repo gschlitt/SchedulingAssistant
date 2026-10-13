@@ -394,12 +394,21 @@ public static class NetworkFileOps
     }
 
     /// <summary>
-    /// Timeout-aware <see cref="File.Move(string, string, bool)"/> with <c>overwrite: true</c>,
-    /// hardened against transient destination locks via <see cref="MoveWithRetry"/>.
+    /// Timeout-aware <see cref="File.Move(string, string, bool)"/>, hardened against transient
+    /// destination locks via <see cref="MoveWithRetry"/>.
     /// </summary>
+    /// <param name="source">Path to move from.</param>
+    /// <param name="dest">Path to move to.</param>
+    /// <param name="overwrite">
+    /// <c>true</c> (the default) replaces an existing <paramref name="dest"/> — the save pipeline's
+    /// atomic D.tmp → D swap. <c>false</c> makes the move fail with an <see cref="IOException"/> if
+    /// <paramref name="dest"/> already exists, so a caller creating a file that must not exist yet
+    /// (a new database) can never clobber one that appeared in the meantime.
+    /// </param>
     /// <returns><c>true</c> when the move completed within the deadline; <c>false</c> on timeout.</returns>
-    public static Task<bool> MoveAsync(string source, string dest)
-        => RunAsync(() => MoveWithRetry(source, dest), "File.Move");
+    /// <exception cref="IOException">The move failed (including an existing destination when <paramref name="overwrite"/> is false).</exception>
+    public static Task<bool> MoveAsync(string source, string dest, bool overwrite = true)
+        => RunAsync(() => MoveWithRetry(source, dest, overwrite), "File.Move");
 
     /// <summary>
     /// Timeout-aware <see cref="File.Delete(string)"/>. Non-throwing on timeout — cleanup
@@ -558,16 +567,21 @@ public static class NetworkFileOps
     /// failures propagate to the caller exactly as before.</para>
     /// </summary>
     /// <param name="source">Path to move from.</param>
-    /// <param name="dest">Path to move to; overwritten if it exists.</param>
+    /// <param name="dest">Path to move to; overwritten if it exists and <paramref name="overwrite"/> is true.</param>
+    /// <param name="overwrite">
+    /// Whether an existing <paramref name="dest"/> may be replaced. When false an existing
+    /// destination surfaces as an <see cref="IOException"/> (after the same bounded retries, since
+    /// the move cannot tell "exists" from "briefly locked").
+    /// </param>
     /// <exception cref="IOException">Persistent I/O failure after all attempts.</exception>
     /// <exception cref="UnauthorizedAccessException">Persistent access failure after all attempts.</exception>
-    internal static void MoveWithRetry(string source, string dest)
+    internal static void MoveWithRetry(string source, string dest, bool overwrite = true)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                File.Move(source, dest, overwrite: true);
+                File.Move(source, dest, overwrite);
                 return;
             }
             catch (Exception ex) when (

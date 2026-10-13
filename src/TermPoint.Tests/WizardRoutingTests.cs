@@ -43,7 +43,7 @@ public class WizardRoutingTests
     /// mock repositories whose GetAll() calls return empty lists.
     /// Suitable for routing tests that never reach WriteDbRecordsAsync.
     /// </summary>
-    private static WizardServices BuildTestServices()
+    internal static WizardServices BuildTestServices()
     {
         var mockAy  = new Mock<IAcademicYearRepository>();
         var mockSem = new Mock<ISemesterRepository>();

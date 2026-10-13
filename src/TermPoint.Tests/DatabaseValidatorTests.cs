@@ -203,4 +203,110 @@ public sealed class DatabaseValidatorTests : IDisposable
         var result = await DatabaseValidator.ValidateAsync(path);
         Assert.Equal(DatabaseValidationResult.Corrupt, result);
     }
+
+    // ── ValidateWithoutSqliteAsync (never opens the file with SQLite) ─────────
+
+    /// <summary>
+    /// Returns the SHA-256 of a file, opened with sharing so it works while another handle is open.
+    /// </summary>
+    private static string HashOf(string path)
+    {
+        using var s = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(s));
+    }
+
+    /// <summary>Null, empty and whitespace paths are reported Missing, like <see cref="DatabaseValidator.ValidateAsync"/>.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ValidateWithoutSqlite_BlankPath_ReturnsMissing(string? path)
+    {
+        Assert.Equal(DatabaseValidationResult.Missing, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
+    }
+
+    /// <summary>A path where nothing exists (answered, not unreachable) is Missing.</summary>
+    [Fact]
+    public async Task ValidateWithoutSqlite_FileDoesNotExist_ReturnsMissing()
+    {
+        Assert.Equal(DatabaseValidationResult.Missing,
+            await DatabaseValidator.ValidateWithoutSqliteAsync(DbPath("nonexistent.db")));
+    }
+
+    /// <summary>A real SQLite database carries the signature and is Ok.</summary>
+    [Fact]
+    public async Task ValidateWithoutSqlite_ValidDatabase_ReturnsOk()
+    {
+        var path = DbPath();
+        CreateValidDatabase(path);
+
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
+    }
+
+    /// <summary>A non-SQLite file (plain text, even longer than 16 bytes) is Corrupt.</summary>
+    [Fact]
+    public async Task ValidateWithoutSqlite_GarbageTextFile_ReturnsCorrupt()
+    {
+        var path = DbPath("garbage.db");
+        File.WriteAllText(path, "this is not a sqlite database");
+
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
+    }
+
+    /// <summary>
+    /// A zero-byte file and a file shorter than the 16-byte signature are Corrupt. (Unlike
+    /// <see cref="DatabaseValidator.ValidateAsync"/>, where SQLite treats an empty file as a valid
+    /// empty database: an empty file is not a TermPoint database someone can join.)
+    /// </summary>
+    [Fact]
+    public async Task ValidateWithoutSqlite_EmptyOrShortFile_ReturnsCorrupt()
+    {
+        var empty = DbPath("empty.db");
+        File.WriteAllBytes(empty, []);
+        var shortFile = DbPath("short.db");
+        File.WriteAllBytes(shortFile, "SQLite form"u8.ToArray());
+
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateWithoutSqliteAsync(empty));
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateWithoutSqliteAsync(shortFile));
+    }
+
+    /// <summary>
+    /// The point of the method: validating a database changes nothing about it and leaves no
+    /// handle or sidecar behind — the bytes (hence the hash the active editor compares against)
+    /// are identical, no -wal/-shm appears, and the file can be deleted/renamed immediately.
+    /// </summary>
+    [Fact]
+    public async Task ValidateWithoutSqlite_DoesNotTouchOrHoldTheFile()
+    {
+        var path = DbPath("shared.db");
+        CreateValidDatabase(path);
+        var before = HashOf(path);
+
+        var result = await DatabaseValidator.ValidateWithoutSqliteAsync(path);
+
+        Assert.Equal(DatabaseValidationResult.Ok, result);
+        Assert.Equal(before, HashOf(path));
+        Assert.False(File.Exists(path + "-wal"));
+        Assert.False(File.Exists(path + "-shm"));
+        Assert.False(File.Exists(path + "-journal"));
+
+        // No lingering handle: a rename (what the editor's save does to D) must succeed at once.
+        var renamed = DbPath("renamed.db");
+        File.Move(path, renamed);
+        Assert.True(File.Exists(renamed));
+    }
+
+    /// <summary>
+    /// Validation must work while another process (the active editor) holds D open for
+    /// reading and writing.
+    /// </summary>
+    [Fact]
+    public async Task ValidateWithoutSqlite_FileOpenElsewhereWithSharing_StillOk()
+    {
+        var path = DbPath("busy.db");
+        CreateValidDatabase(path);
+        using var other = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
+    }
 }
