@@ -274,6 +274,16 @@ public sealed class CheckoutService : IDisposable
     public LockFileData? LockLossNewHolder { get; private set; }
 
     /// <summary>
+    /// The lock holder exactly as <see cref="CheckoutAsync"/> saw it when it judged the lock inactive
+    /// and returned <see cref="CheckoutOutcome.StaleHolder"/>; null at any other time. This is the
+    /// "expected" side of the click-time re-check: <see cref="ForceCheckoutAsync"/> hands it to
+    /// <see cref="WriteLockService.ForceAcquire"/>, which deletes the lock file only if it still holds
+    /// this same session and heartbeat (spec item 9a). Cleared at the start of every checkout and once
+    /// <see cref="ForceCheckoutAsync"/> has used it, so a takeover can never run on a stale snapshot.
+    /// </summary>
+    private LockFileData? _staleHolderAtDetection;
+
+    /// <summary>
     /// The database's <see cref="MinimumVersionToWrite"/> stamp when the version gate tripped
     /// during the most recent checkout (this app is older than the stamp, so the session opened
     /// read-only); null when the gate did not trip. Read by the main window to pick the
@@ -298,8 +308,10 @@ public sealed class CheckoutService : IDisposable
     /// <para>The handler (<c>MainWindow.OnWriteLockLost</c>) is expected to
     /// surface a cause-specific banner, then call <see cref="DemoteToReadOnlyAsync"/>
     /// to transition into read-only mode and reload the panels from the fresh
-    /// D'' snapshot. Unsaved changes in D' are lost by design — the alternative
-    /// would be to trample whoever now holds the lock.</para>
+    /// D'' snapshot. Unsaved changes in D' are never written over the new holder's
+    /// work: D' and its dirty marker are kept, and at the next open with write access
+    /// they are offered back (restored if D is unchanged, otherwise offered as a
+    /// separate copy via "Save a Copy…").</para>
     /// </summary>
     public event Action<WriteLockLostReason>? WriteLockLost;
 
@@ -457,7 +469,7 @@ public sealed class CheckoutService : IDisposable
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath. An orphaned <c>D.tmp</c> beside D has been deleted (only ever on this outcome: see <see cref="CleanupOrphanedTmpAsync"/>).<br/>
     /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists, the license/observer mode forced read-only, or the database's <see cref="MinimumVersionToWrite"/> stamp is newer than this app (<see cref="RequiredAppVersion"/> is then non-null); use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
-    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
+    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user (<see cref="StaleLockPrompt"/>), and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/> (followed by <see cref="StartReaderPollingAsync"/>).<br/>
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
     /// <see cref="CheckoutOutcome.SourceMissing"/> — D does not exist (and recovery was not requested). Nothing was locked or created; tell the user and stop. Create new databases with <see cref="NewDatabaseFile.CreateAsync"/> BEFORE calling this.<br/>
     /// <see cref="CheckoutOutcome.SourceUnreadable"/> — D exists but another program holds it open (or access is denied). The write lock taken for the attempt has been released and nothing was left behind; tell the user to try again in a moment.<br/>
@@ -470,6 +482,7 @@ public sealed class CheckoutService : IDisposable
         LockLossNewHolder = null;
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
+        _staleHolderAtDetection = null;   // a takeover may only act on THIS checkout's stale judgement
 
         // DEBUG-ONLY fault injection (TERMPOINT_DEBUG_FAIL_CHECKOUT; null in Release builds and in
         // every ordinary run). Returns exactly what the real early exits return, BEFORE anything is
@@ -571,6 +584,10 @@ public sealed class CheckoutService : IDisposable
             // Pre-compute D' so ForceCheckoutAsync can use WorkingPath immediately.
             WorkingPath   = ComputeWorkingPath(sourcePath);
             CurrentHolder = _lockService.CurrentHolder;
+
+            // Remember exactly what was judged inactive: ForceCheckoutAsync re-reads the lock file
+            // at click time and only breaks it if it is still this session with this heartbeat.
+            _staleHolderAtDetection = CurrentHolder;
             _logger.LogBreadcrumb("Checkout: StaleHolder", new() { ["path"] = sourcePath, ["holder"] = CurrentHolder?.Username ?? "?" });
             return CheckoutOutcome.StaleHolder;
         }
@@ -721,6 +738,15 @@ public sealed class CheckoutService : IDisposable
     /// Breaks a stale lock and completes a checkout. Call after the user has confirmed
     /// they wish to take over the abandoned session (i.e., after
     /// <see cref="CheckoutAsync"/> returned <see cref="CheckoutOutcome.StaleHolder"/>).
+    ///
+    /// <para><b>Click-time re-check (spec item 9a):</b> the prompt may have been open for minutes, so
+    /// before anything is deleted <see cref="WriteLockService.ForceAcquire"/> re-reads the lock file and
+    /// compares it with the holder <see cref="CheckoutAsync"/> judged inactive
+    /// (<see cref="_staleHolderAtDetection"/>). Only the SAME lock (same session, same heartbeat) is
+    /// broken; if the holder has woken up and resumed — or someone else took the lock — nothing is
+    /// deleted or created and the result is <see cref="CheckoutOutcome.HolderActiveAgain"/>. A lock
+    /// that has meanwhile vanished is simply created. There is a residual millisecond-scale race
+    /// between the re-read and the delete, documented on <see cref="WriteLockService.ForceAcquire"/>.</para>
     /// </summary>
     /// <param name="recoverWorkingCopy">
     /// Same semantics as on <see cref="CheckoutAsync"/>: adopt the crashed session's
@@ -730,6 +756,10 @@ public sealed class CheckoutService : IDisposable
     /// </param>
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> on success.
+    /// <see cref="CheckoutOutcome.HolderActiveAgain"/> when the lock changed since it was judged
+    /// inactive: nothing was deleted or created, <see cref="CurrentHolder"/> names who holds it now, and
+    /// D' (and, in recovery mode, its dirty marker) are untouched. The caller should tell the user and
+    /// open read-only.
     /// <see cref="CheckoutOutcome.ReadOnly"/> when the version gate tripped (the database's
     /// <see cref="MinimumVersionToWrite"/> stamp is newer than this app): the lock is released,
     /// D'' is already set up, and <see cref="RequiredAppVersion"/> is non-null.
@@ -741,13 +771,34 @@ public sealed class CheckoutService : IDisposable
     {
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
 
-        var forceCompleted = await NetworkFileOps.RunAsync(
-            () => _lockService.ForceAcquire(), "force lock acquire");
+        // The snapshot the user's yes was given on. Single use: a second takeover needs a new
+        // CheckoutAsync (and a new prompt). Without one there is nothing to compare the lock file
+        // against, so refuse rather than break a lock blindly — the caller falls back to read-only.
+        var expectedHolder = _staleHolderAtDetection;
+        _staleHolderAtDetection = null;
+        if (expectedHolder is null)
+        {
+            _logger.LogInfo("CheckoutService: ForceCheckout called without a preceding StaleHolder checkout — refusing to break the lock.");
+            return CheckoutOutcome.Failed;
+        }
+
+        var (forceCompleted, acquireResult) = await NetworkFileOps.RunAsync(
+            () => _lockService.ForceAcquire(expectedHolder), "force lock acquire");
 
         if (!forceCompleted)
         {
             _logger.LogInfo("CheckoutService: ForceCheckout lock acquire timed out — network unreachable");
             return CheckoutOutcome.NetworkUnreachable;
+        }
+
+        if (acquireResult == ForceAcquireResult.HolderActiveAgain)
+        {
+            // The holder woke up (or someone else took the lock) while the prompt was open.
+            // ForceAcquire deleted and created nothing, and no D' has been touched, so (in recovery
+            // mode) the crashed session's D' and dirty marker are exactly as they were.
+            CurrentHolder = _lockService.CurrentHolder;
+            _logger.LogBreadcrumb("ForceCheckout: HolderActiveAgain", new() { ["holder"] = CurrentHolder?.Username ?? "?" });
+            return CheckoutOutcome.HolderActiveAgain;
         }
 
         if (!_lockService.IsWriter)
@@ -839,6 +890,33 @@ public sealed class CheckoutService : IDisposable
         _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
         _logger.LogBreadcrumb("ForceCheckout: WriteAccess");
         return CheckoutOutcome.WriteAccess;
+    }
+
+    /// <summary>
+    /// Starts watching the lock file for a session that opened read-only on a D'' snapshot after a
+    /// stale-lock prompt — because the user chose "Open read-only", because the holder proved to be
+    /// <see cref="CheckoutOutcome.HolderActiveAgain"/>, or because the takeover lost the create race.
+    /// Without this the session would never learn that the holder has since released (or gone
+    /// stale again): <see cref="WriteLockService.TryAcquire"/> does not start the poll timer in its
+    /// stale branch. With it, a later clean release raises <see cref="WriteLockService.LockStateChanged"/>
+    /// and the banner offers "Take over as writer" — which goes back through the whole checkout
+    /// (and this prompt), so nothing is taken without a fresh decision.
+    ///
+    /// <para>Call it only after <see cref="SetupReadOnlySnapshotAsync"/> succeeded in those cases. It is
+    /// deliberately not part of <see cref="SetupReadOnlySnapshotAsync"/>: the license-gated, observer
+    /// and version-gated read-only sessions must NOT poll (no "Take over" may be offered to them).
+    /// Wraps <see cref="WriteLockService.EnterReaderMode"/> in a network deadline; on timeout the
+    /// session simply stays unpolled, exactly as before. Safe to call when already polling.</para>
+    /// </summary>
+    public async Task StartReaderPollingAsync()
+    {
+        if (string.IsNullOrEmpty(SourcePath)) return;
+
+        var started = await NetworkFileOps.RunAsync(
+            () => _lockService.EnterReaderMode(SourcePath), "start reader polling");
+
+        if (started)
+            CurrentHolder = _lockService.CurrentHolder;
     }
 
     /// <summary>
@@ -2029,6 +2107,7 @@ public sealed class CheckoutService : IDisposable
         HolderIsLiveSameMachine = false;
         RequiredAppVersion      = null;
         _pendingSaveHash        = null;
+        _staleHolderAtDetection = null;
     }
 
     // ── Autosave ──────────────────────────────────────────────────────────────
@@ -3076,7 +3155,11 @@ public enum CheckoutOutcome
     WriteAccess,
     /// <summary>A fresh lock exists; D'' was created. Pass <see cref="CheckoutService.WorkingPath"/> (= D'') to <c>InitializeServices</c>.</summary>
     ReadOnly,
-    /// <summary>A stale lock exists. Prompt the user, then call <see cref="CheckoutService.ForceCheckoutAsync"/> if confirmed.</summary>
+    /// <summary>
+    /// A stale lock exists. Prompt the user (<see cref="StaleLockPrompt"/>), then call
+    /// <see cref="CheckoutService.ForceCheckoutAsync"/> if confirmed; otherwise open read-only with
+    /// <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> and <see cref="CheckoutService.StartReaderPollingAsync"/>.
+    /// </summary>
     StaleHolder,
     /// <summary>
     /// Fatal error (hash mismatch or copy failure). Caller should attempt
@@ -3109,7 +3192,19 @@ public enum CheckoutOutcome
     /// crash-recovery path D' and its dirty marker are kept so recovery is offered again. There is
     /// no read-only fallback — it would need to read D too. Tell the user to try again in a moment.
     /// </summary>
-    SourceUnreadable
+    SourceUnreadable,
+    /// <summary>
+    /// Returned only by <see cref="CheckoutService.ForceCheckoutAsync"/>: the user confirmed taking over a
+    /// lock judged inactive, but when the lock file was re-read at click time it was no longer the same
+    /// lock — the holder woke and resumed its heartbeat, another session took the lock, or the file could
+    /// not be read. Nothing was deleted or created, the write lock is NOT held, and
+    /// <see cref="CheckoutService.CurrentHolder"/> names whoever holds it now (null if unreadable). In
+    /// crash-recovery mode D' and its dirty marker are untouched. The caller should tell the user
+    /// (<see cref="StaleLockPrompt.BuildActiveAgainMessage"/>) and open read-only via
+    /// <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> followed by
+    /// <see cref="CheckoutService.StartReaderPollingAsync"/>.
+    /// </summary>
+    HolderActiveAgain
 }
 
 /// <summary>

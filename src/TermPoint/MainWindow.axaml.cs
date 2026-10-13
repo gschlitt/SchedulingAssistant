@@ -745,8 +745,11 @@ public partial class MainWindow : Window
     /// <list type="bullet">
     /// <item><description><b>Write access:</b> D' (the local working copy).</description></item>
     /// <item><description><b>Read-only:</b> D'' (the local read-only snapshot).</description></item>
-    /// <item><description><b>Stale lock — user declined takeover, force-checkout lost the race, or checkout failed:</b>
-    /// D'' via <see cref="SetupSnapshotOrAskAsync"/>. D itself is NEVER returned: opening D with SQLite
+    /// <item><description><b>Stale lock — user declined takeover, the holder proved to be active again at click
+    /// time (<see cref="CheckoutOutcome.HolderActiveAgain"/>), force-checkout lost the race, or checkout failed:</b>
+    /// D'' via <see cref="SetupSnapshotOrAskAsync"/>, with the lock file then watched
+    /// (<see cref="CheckoutService.StartReaderPollingAsync"/>) so a later release offers "Take over as writer".
+    /// D itself is NEVER returned: opening D with SQLite
     /// flips its header (breaking the active editor's next save) and holds it open.</description></item>
     /// <item><description><b><c>null</c>:</b> the checkout cannot proceed and the user has already been told
     /// why (network unreachable, database file missing, or no local copy could be made and the user chose
@@ -785,21 +788,19 @@ public partial class MainWindow : Window
 
             case CheckoutOutcome.StaleHolder:
                 {
-                    var holder = App.Checkout.CurrentHolder;
-                    var age = holder is not null
-                        ? (int)(DateTime.UtcNow - holder.Heartbeat).TotalMinutes
-                        : 0;
-                    var who = holder is not null
-                        ? $"{holder.Username} on {holder.Machine}"
-                        : "an unknown user";
-
-                    var take = await ShowYesNoAsync(
-                        "Lock Is Inactive",
-                        $"{who}'s lock is {age} minute(s) old and appears to have been abandoned. " +
-                        "Take over write access?");
+                    // The wording (who, how long, and the warning that the holder's unsaved changes
+                    // can't go into the database) lives in StaleLockPrompt so it can be unit-tested.
+                    // Closing the dialog counts as "Open read-only": never take over by accident.
+                    var take = await ShowChoiceAsync(
+                        StaleLockPrompt.TakeOverTitle,
+                        StaleLockPrompt.BuildTakeOverMessage(App.Checkout.CurrentHolder, DateTime.UtcNow),
+                        StaleLockPrompt.TakeOverButton,
+                        StaleLockPrompt.OpenReadOnlyButton);
 
                     if (take)
                     {
+                        // ForceCheckoutAsync re-reads the lock file first and only breaks it if it is
+                        // still the same lock the prompt was about (spec item 9a).
                         var forceOutcome = await App.Checkout.ForceCheckoutAsync(recoverUnsaved);
                         if (forceOutcome == CheckoutOutcome.WriteAccess)
                             return App.Checkout.WorkingPath;
@@ -829,16 +830,30 @@ public partial class MainWindow : Window
                                 DatabaseChooserViewModel.UnreadableDatabaseMessage);
                             return null;
                         }
-                        // Lost the race to another instance — fall through to read-only setup.
+                        if (forceOutcome == CheckoutOutcome.HolderActiveAgain)
+                        {
+                            // The holder woke up (or someone else took the lock) while the prompt was
+                            // open; nothing was deleted. Say so, then open read-only below.
+                            await ShowMessageAsync(StaleLockPrompt.ActiveAgainTitle,
+                                StaleLockPrompt.BuildActiveAgainMessage(App.Checkout.CurrentHolder));
+                        }
+                        // Otherwise lost the race to another instance — fall through to read-only setup.
                     }
 
-                    // User declined, or force-checkout lost the race.
+                    // User declined, the holder is active again, or force-checkout lost the race.
                     // Set up D'' so we never hold D open directly. Crash artifacts (if
                     // any) stay on disk so recovery can be offered at the next launch.
                     // If D'' cannot be made, ask the user — never fall back to D itself.
                     if (recoverUnsaved)
                         await ShowRecoveryDeferredMessageAsync();
-                    return await SetupSnapshotOrAskAsync();
+                    var readOnlyPath = await SetupSnapshotOrAskAsync();
+
+                    // Watch the lock file, so that if the holder later releases cleanly (or goes
+                    // stale again) this read-only session is offered "Take over as writer" instead
+                    // of staying read-only until restart.
+                    if (readOnlyPath is not null)
+                        await App.Checkout.StartReaderPollingAsync();
+                    return readOnlyPath;
                 }
 
             case CheckoutOutcome.NetworkUnreachable:

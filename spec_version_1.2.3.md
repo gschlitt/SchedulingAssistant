@@ -1142,6 +1142,41 @@ Loss is bounded to about one autosave interval (10 min).
 **Trade-off.** Stricter takeover means users wait longer behind a genuinely dead lock. Keep the
 added wait short.
 
+**Clarified with the user (2026-10-13).** Takeover of an abandoned lock stays possible. A laptop that
+sleeps, or someone who leaves on vacation, must never lock everyone else out. Item 9 only makes the
+takeover safer.
+
+**Steps (one commit each):**
+- **9a:** the warning and a re-check at the click. **Done, user-tested on one machine 2026-10-13.**
+- **9b:** staleness judged by an unchanged heartbeat over locally measured time, not by comparing
+  clocks.
+
+**Step 9a outcome.**
+- **The prompt** (`StaleLockPrompt`): title "Database Lock Is Inactive", buttons [Take over] [Open
+  read-only]. The text: "{User} on {Computer} hasn't been active in this database for N minute(s).
+  Their computer may be asleep or disconnected. If you take over, changes they haven't saved yet
+  can't go into the database — they'll only be able to save them as a separate copy." Unknown,
+  corrupted or missing fields fall back sensibly.
+  - **The "separate copy" promise was verified.** The overtaken writer is demoted with D' and its
+    marker kept. At their next write-access open, "Restore Unsaved Changes?" either restores (when
+    D is unchanged) or offers "Save a Copy…".
+- **The re-check at the click:**
+  - `CheckoutAsync` keeps a single-use snapshot of the holder it judged stale.
+  - `ForceAcquire(expected)` re-reads the lock immediately before deleting and deletes only if the
+    `SessionGuid` and `Heartbeat` are unchanged.
+  - A missing lock is just created. Anything else (heartbeat advanced, another session, unreadable,
+    newly garbled) returns `CheckoutOutcome.HolderActiveAgain`: "Database Is In Use Again: {User}
+    is active in this database again, so it will open read-only." The lock is untouched.
+  - **A lock that was already garbled** when judged stale stays takeable.
+  - **Residual race:** milliseconds between the re-read and the delete. There is no atomic
+    compare-and-delete on a share. Before, the window was the whole time the dialog was open.
+- **Polling gap closed:** a read-only session reached from the stale prompt (declined, active again,
+  lost race) now polls via `CheckoutService.StartReaderPollingAsync`, so a later release offers
+  "Take over as writer".
+- **Tests:** +33. Suite: 1756 passed.
+- **Integration test required (user):** the 3-computer row in "Release testing: network field
+  tests".
+
 ---
 
 ## 10 — "Save aborted" dead end: give a next step
@@ -2154,7 +2189,7 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 | Restore from backup with the link black-holed mid-copy: `D` intact, pre-restore copy kept; reader cannot restore | 5 |
 | **Local copy fails after validation** (clumsy drops the link during the D → D'' copy while another machine holds the write lock): "Couldn't Open the Database" appears; Try again succeeds once the link is back; Close leaves no session on `D` | 4 |
 | **Named-mutex single-instance guard on a real Mac:** a second copy on the same database is refused; a crashed or killed copy doesn't block a relaunch; a frozen one does | 4 |
-| Writer laptop sleeps more than 3 min; reader's takeover dialog left open while the writer wakes; clock skew between machines | 9 |
+| **Stale-lock takeover, 3 networked computers (user asked 2026-10-13: must be integration-tested).** A = writer laptop, B and C = colleagues. **(1)** A edits without saving, then sleeps more than 3 min; B opens the database: "Database Lock Is Inactive" names A's user and computer and the idle minutes. **(2)** B leaves the prompt open, A wakes and resumes; B clicks Take over: "Database Is In Use Again", B is read-only, and A's lock is intact and A keeps editing. **(3)** A sleeps again; B takes over and edits and saves; A wakes: the lock-loss banner, A read-only. At A's next write-access open, "Restore Unsaved Changes?" leads to "Save a Copy…" because D changed. **(4)** As (3), but B saves nothing: A's changes restore into D. **(5)** B chooses "Open read-only"; A later exits cleanly: B's "Take over as writer" appears within about 60 s. **(6)** C opens while B's prompt is open: no double takeover. **(7)** Clock skew: set A's clock several minutes behind and confirm whether an active A is ever offered for takeover (the 9b concern). | 9 |
 | `D` modified externally: "Save aborted" banner offers a next step | 10 |
 | Reader Refresh with the share down, and with the file locked mid-overwrite: failure shown, session recovers | 11 |
 | Exit on a slow link: repeated X clicks, edits during the exit save | 15 |

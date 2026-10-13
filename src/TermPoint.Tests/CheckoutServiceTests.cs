@@ -550,6 +550,336 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(File.ReadAllText(db), File.ReadAllText(svc.WorkingPath));
     }
 
+    // ── Click-time re-check (spec item 9a) ───────────────────────────────────
+    //
+    // The takeover prompt can stay open for minutes. ForceCheckoutAsync must only break the SAME lock
+    // CheckoutAsync judged inactive: if the holder woke and resumed (or someone else took the lock) in
+    // the meantime, it leaves the lock file alone and returns HolderActiveAgain.
+
+    /// <summary>
+    /// Rewrites the lock file beside <paramref name="dbPath"/>, applying <paramref name="change"/> to
+    /// the holder it contains. Simulates the original holder (or another machine) acting while the
+    /// takeover prompt is open.
+    /// </summary>
+    /// <param name="dbPath">Path of D; the lock file sits beside it.</param>
+    /// <param name="change">Mutation applied to the deserialized lock data before it is written back.</param>
+    private static void ModifyLock(string dbPath, Action<TermPoint.Models.LockFileData> change)
+    {
+        var path = Path.ChangeExtension(dbPath, ".lock");
+        var data = JsonSerializer.Deserialize<TermPoint.Models.LockFileData>(File.ReadAllText(path))!;
+        change(data);
+        File.WriteAllText(path, JsonSerializer.Serialize(data));
+    }
+
+    /// <summary>
+    /// A takeover of a lock that is exactly as it was judged: it succeeds and the lock file now names
+    /// this session, not the abandoned one.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_LockUnchangedSinceDetection_TakesOverAndWritesOurLock()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(lockSvc.IsWriter);
+        var lockData = JsonSerializer.Deserialize<TermPoint.Models.LockFileData>(File.ReadAllText(LockFileOf(db)))!;
+        Assert.Equal(lockSvc.SessionGuid, lockData.SessionGuid);
+    }
+
+    /// <summary>
+    /// THE 9a BUG. The sleeping holder woke up and renewed its heartbeat while the prompt was open.
+    /// The takeover is refused (HolderActiveAgain): the holder's lock file is left byte-for-byte
+    /// intact, we are not the writer, no D' was made, and CurrentHolder shows the refreshed heartbeat.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_HeartbeatAdvancedSinceDetection_ReturnsHolderActiveAgain_AndLeavesTheLockIntact()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+        var judgedHeartbeat = svc.CurrentHolder!.Heartbeat;
+
+        ModifyLock(db, d => d.Heartbeat = DateTime.UtcNow);   // the holder woke up
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.NotEqual(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+        Assert.Empty(Directory.GetFiles(_workingDir));
+        Assert.Equal("external_user", svc.CurrentHolder!.Username);
+        Assert.True(svc.CurrentHolder.Heartbeat > judgedHeartbeat, "CurrentHolder must be refreshed from the file.");
+    }
+
+    /// <summary>
+    /// Another machine took the lock over while the prompt was open (different session, fresh
+    /// heartbeat): refused, file intact, and CurrentHolder names the NEW holder.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_DifferentSessionHoldsLockSinceDetection_ReturnsHolderActiveAgain()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+
+        ModifyLock(db, d =>
+        {
+            d.Username    = "second_user";
+            d.Machine     = "SECOND-PC";
+            d.SessionGuid = Guid.NewGuid().ToString();
+            d.Acquired    = DateTime.UtcNow;
+            d.Heartbeat   = DateTime.UtcNow;
+        });
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+        Assert.Empty(Directory.GetFiles(_workingDir));
+        Assert.Equal("second_user", svc.CurrentHolder!.Username);
+    }
+
+    /// <summary>
+    /// Only the session ID changed (the heartbeat is identical): that is still a different lock, so the
+    /// takeover is refused. Guards the session half of the comparison; the heartbeat test above guards
+    /// the other half.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_SessionChangedButHeartbeatIdentical_ReturnsHolderActiveAgain()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+
+        ModifyLock(db, d => d.SessionGuid = Guid.NewGuid().ToString());   // heartbeat untouched
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+    }
+
+    /// <summary>
+    /// The holder released cleanly (or someone cleaned up) while the prompt was open: nobody holds the
+    /// lock any more, so the takeover simply creates ours and the checkout completes.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_LockFileDeletedSinceDetection_ReturnsWriteAccess()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+
+        File.Delete(LockFileOf(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(lockSvc.IsWriter);
+        Assert.True(File.Exists(LockFileOf(db)));
+        Assert.True(File.Exists(svc.WorkingPath));
+    }
+
+    /// <summary>
+    /// A lock that read fine when judged inactive and is garbled now cannot be proven unchanged, so it
+    /// is NOT deleted: HolderActiveAgain, garbage left in place byte for byte.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_LockFileGarbledSinceDetection_ReturnsHolderActiveAgain_AndLeavesTheFileIntact()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+
+        File.WriteAllText(LockFileOf(db), "{ this is not json");
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+        Assert.Empty(Directory.GetFiles(_workingDir));
+    }
+
+    /// <summary>
+    /// A lock file that was ALREADY unreadable when it was judged inactive, and is still the same
+    /// garbage at click time, is the one case where "unreadable" must not block: otherwise a corrupt
+    /// lock file could never be taken over from the prompt.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_LockWasGarbledWhenJudgedInactive_StillTakesOver()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        File.WriteAllText(LockFileOf(db), "{ this is not json");
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// Crash-recovery variant: when the holder turns out to be active again, the crashed session's D'
+    /// and its dirty marker are untouched (the unsaved edit is still there) and recovery is still
+    /// detectable, so it is offered again the next time this database is opened with write access.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_Recovery_HolderActiveAgain_KeepsTheWorkingCopyAndMarker()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath("crashed");
+        CreateSqliteDb(db);
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        svc1.MarkDirty();
+        var crashedWorkingCopy = svc1.WorkingPath;
+        lockSvc1.Suspend();
+        WriteExternalStaleLock(db);                  // the abandoned lock the prompt is about
+
+        var (svc2, lockSvc2) = CreateService();
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc2.CheckoutAsync(db, recoverWorkingCopy: true)); // precondition
+        ModifyLock(db, d => d.Heartbeat = DateTime.UtcNow);   // the holder woke up
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var outcome = await svc2.ForceCheckoutAsync(recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, outcome);
+        Assert.False(lockSvc2.IsWriter);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+        Assert.True(File.Exists(crashedWorkingCopy), "D' holds the unsaved edit — it must survive.");
+        Assert.True(File.Exists(crashedWorkingCopy + ".dirty"), "The dirty marker must survive.");
+        Assert.Equal("unsaved-edit", ReadTestValue(crashedWorkingCopy));
+        Assert.True(svc2.DetectCrashRecovery(db), "Recovery must still be offered at the next opportunity.");
+    }
+
+    /// <summary>
+    /// ForceCheckoutAsync with no stale judgement behind it (never preceded by a StaleHolder checkout)
+    /// has nothing to compare the lock file with, so it refuses and touches nothing — it must not
+    /// degrade into the old unconditional delete.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_WithoutAStaleHolderCheckout_RefusesAndLeavesTheLockAlone()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.Failed, outcome);
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+    }
+
+    /// <summary>
+    /// The stale judgement is single-use: after a takeover attempt (here refused as HolderActiveAgain)
+    /// a second ForceCheckoutAsync — which would act on an out-of-date snapshot — is refused until a
+    /// new CheckoutAsync has judged the lock afresh.
+    /// </summary>
+    [Fact]
+    public async Task ForceCheckoutAsync_SecondCallWithoutNewCheckout_IsRefused()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+        ModifyLock(db, d => d.Heartbeat = DateTime.UtcNow);
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, await svc.ForceCheckoutAsync());
+        var lockBytes = File.ReadAllBytes(LockFileOf(db));
+
+        var second = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.Failed, second);
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal(lockBytes, File.ReadAllBytes(LockFileOf(db)));
+    }
+
+    // ── Read-only after a stale-lock prompt keeps watching the lock ──────────
+
+    /// <summary>
+    /// A session that opened read-only after the user declined the takeover (or the holder proved active
+    /// again) starts WATCHING the lock file — TryAcquire's stale branch does not — so that when the
+    /// holder later releases, the lock service reports WriteLockBecameAvailable and the banner can
+    /// offer "Take over as writer". While the holder is still alive (fresh heartbeat) nothing is offered.
+    /// </summary>
+    [Fact]
+    public async Task StartReaderPollingAsync_AfterHolderActiveAgain_OffersTakeOverWhenTheHolderReleases()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+        ModifyLock(db, d => d.Heartbeat = DateTime.UtcNow);
+        Assert.Equal(CheckoutOutcome.HolderActiveAgain, await svc.ForceCheckoutAsync());
+        Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());
+        Assert.False(lockSvc.IsPolling, "precondition: nothing has started the poll yet");
+
+        await svc.StartReaderPollingAsync();
+
+        Assert.True(lockSvc.IsPolling);
+        await lockSvc.PollLockFile();
+        Assert.False(lockSvc.WriteLockBecameAvailable, "The holder is alive — no takeover may be offered.");
+
+        File.Delete(LockFileOf(db));                  // the holder releases cleanly
+        await lockSvc.PollLockFile();
+        Assert.True(lockSvc.WriteLockBecameAvailable);
+        lockSvc.Dispose();
+    }
+
+    /// <summary>
+    /// Same for the user who declined the prompt: after the read-only snapshot the session polls, and a
+    /// clean release by the holder is noticed.
+    /// </summary>
+    [Fact]
+    public async Task StartReaderPollingAsync_AfterDeclinedTakeover_NoticesTheHolderReleasing()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        WriteExternalStaleLock(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
+        Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());                   // the user chose "Open read-only"
+        Assert.False(lockSvc.IsPolling, "precondition: the stale branch does not poll by itself");
+
+        await svc.StartReaderPollingAsync();
+
+        Assert.True(lockSvc.IsPolling);
+        File.Delete(LockFileOf(db));
+        await lockSvc.PollLockFile();
+        Assert.True(lockSvc.WriteLockBecameAvailable);
+        lockSvc.Dispose();
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Group 4 — Save flow  (the core D' → D write-back)
     //

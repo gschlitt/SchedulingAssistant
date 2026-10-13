@@ -242,7 +242,7 @@ public sealed class WriteLockServiceTests : IDisposable
     //
     // The service no longer auto-reclaims a stale lock. Instead it sets
     // IsStaleLock = true so the caller can prompt the user for confirmation
-    // before calling ForceAcquire().
+    // before calling ForceAcquire(holder), which re-checks the lock file first.
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -316,8 +316,9 @@ public sealed class WriteLockServiceTests : IDisposable
         svc.TryAcquire(db);
         Assert.True(svc.IsStaleLock); // precondition
 
-        svc.ForceAcquire();
+        var result = svc.ForceAcquire(svc.CurrentHolder!);
 
+        Assert.Equal(ForceAcquireResult.Acquired, result);
         Assert.True(svc.IsWriter);
         Assert.False(svc.IsStaleLock);
     }
@@ -335,11 +336,116 @@ public sealed class WriteLockServiceTests : IDisposable
 
         using var svc = new WriteLockService();
         svc.TryAcquire(db);
-        svc.ForceAcquire();
+        svc.ForceAcquire(svc.CurrentHolder!);
 
         var data = ReadLockFile(lock_);
         Assert.Equal(Environment.UserName,    data.Username);
         Assert.Equal(Environment.MachineName, data.Machine);
+    }
+
+    // ── Click-time re-check (spec item 9a) ───────────────────────────────────
+    //
+    // ForceAcquire is handed the holder snapshot that was judged stale and must only break THAT lock.
+
+    /// <summary>
+    /// The holder renewed its heartbeat after the stale judgement (the sleeper woke up): ForceAcquire
+    /// reports HolderActiveAgain, deletes and creates nothing, and shows the refreshed holder.
+    /// </summary>
+    [Fact]
+    public void ForceAcquire_HeartbeatAdvancedSinceDetection_ReturnsHolderActiveAgain_AndLeavesTheFileIntact()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        Assert.True(svc.IsStaleLock); // precondition
+        var judged = svc.CurrentHolder!;
+
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: 0);   // the holder woke and renewed
+        var bytesBefore = File.ReadAllBytes(lock_);
+
+        var result = svc.ForceAcquire(judged);
+
+        Assert.Equal(ForceAcquireResult.HolderActiveAgain, result);
+        Assert.False(svc.IsWriter);
+        Assert.False(svc.IsStaleLock);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(lock_));
+        Assert.NotNull(svc.CurrentHolder);
+        Assert.True(svc.CurrentHolder!.Heartbeat > judged.Heartbeat, "CurrentHolder must show the refreshed heartbeat.");
+    }
+
+    /// <summary>The lock vanished between the prompt and the click: there is nothing to delete, so ours is created.</summary>
+    [Fact]
+    public void ForceAcquire_LockFileGoneSinceDetection_AcquiresIt()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        File.Delete(lock_);                                     // released / cleaned up meanwhile
+
+        var result = svc.ForceAcquire(svc.CurrentHolder!);
+
+        Assert.Equal(ForceAcquireResult.Acquired, result);
+        Assert.True(svc.IsWriter);
+        Assert.Equal(Environment.UserName, ReadLockFile(lock_).Username);
+    }
+
+    /// <summary>
+    /// A lock that was readable when judged stale and is garbled now is NOT the lock the user was
+    /// asked about, and an unreadable file proves nothing: it is left alone, byte for byte.
+    /// </summary>
+    [Fact]
+    public void ForceAcquire_LockBecameGarbledSinceDetection_ReturnsHolderActiveAgain_AndLeavesTheFileIntact()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        File.WriteAllText(lock_, "{ not json at all");
+        var bytesBefore = File.ReadAllBytes(lock_);
+
+        var result = svc.ForceAcquire(svc.CurrentHolder!);
+
+        Assert.Equal(ForceAcquireResult.HolderActiveAgain, result);
+        Assert.False(svc.IsWriter);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(lock_));
+    }
+
+    /// <summary>
+    /// A lock file that was ALREADY garbled when judged stale and is still the same garbled file must
+    /// remain takeable — otherwise a corrupt lock could never be cleared from the prompt.
+    /// </summary>
+    [Fact]
+    public void ForceAcquire_LockWasGarbledAndStillIs_Acquires()
+    {
+        var db    = DbPath();
+        var lock_ = LockPath(db);
+        File.WriteAllText(lock_, "{ not json at all");
+
+        using var svc = new WriteLockService();
+        svc.TryAcquire(db);
+        Assert.True(svc.IsStaleLock); // precondition: a garbled lock is judged stale
+
+        var result = svc.ForceAcquire(svc.CurrentHolder!);
+
+        Assert.Equal(ForceAcquireResult.Acquired, result);
+        Assert.True(svc.IsWriter);
+    }
+
+    /// <summary>A takeover without the snapshot it is supposed to compare against is a programming error.</summary>
+    [Fact]
+    public void ForceAcquire_NullSnapshot_Throws()
+    {
+        using var svc = new WriteLockService();
+
+        Assert.Throws<ArgumentNullException>(() => svc.ForceAcquire(null!));
     }
 
     /// <summary>

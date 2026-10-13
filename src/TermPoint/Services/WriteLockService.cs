@@ -9,6 +9,29 @@ using System.Threading;
 namespace TermPoint.Services;
 
 /// <summary>
+/// Result of <see cref="WriteLockService.ForceAcquire"/>: what became of a user-confirmed
+/// stale-lock takeover once the lock file was re-checked at click time (spec item 9a).
+/// </summary>
+public enum ForceAcquireResult
+{
+    /// <summary>The abandoned lock was removed (or already gone) and this instance now holds the write lock.</summary>
+    Acquired,
+
+    /// <summary>
+    /// This instance did not get the lock: another instance created it between the delete and our own
+    /// create (the lost-race case), or there was nothing to act on (no lock path, XAML designer).
+    /// </summary>
+    NotAcquired,
+
+    /// <summary>
+    /// The lock file is no longer the one the user was asked about — its heartbeat advanced (the holder
+    /// woke and resumed), a different session took it, or it could not be read. Nothing was deleted and
+    /// nothing was created; <see cref="WriteLockService.CurrentHolder"/> has been refreshed from the file.
+    /// </summary>
+    HolderActiveAgain
+}
+
+/// <summary>
 /// Manages a file-based write lock that prevents two instances of the app from
 /// writing to the same SQLite database simultaneously.
 ///
@@ -25,7 +48,9 @@ namespace TermPoint.Services;
 ///
 /// <para><b>Reader path:</b> If <see cref="FileMode.CreateNew"/> fails (file exists), the
 /// existing file is read. If its heartbeat is older than <see cref="StaleLockThresholdSeconds"/>
-/// the lock is considered abandoned: the file is deleted and creation is retried once. A
+/// the lock is considered abandoned (<see cref="IsStaleLock"/>): the caller asks the user and, on
+/// a yes, calls <see cref="ForceAcquire"/>, which re-reads the file and deletes it only if it is
+/// still the same abandoned lock (spec item 9a). A
 /// fresh lock means this instance enters read-only mode and starts a polling timer that
 /// fires every <see cref="PollIntervalSeconds"/> seconds. When the poll detects the lock is
 /// gone or stale, it raises <see cref="LockStateChanged"/> on the UI thread so the banner
@@ -110,6 +135,13 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     internal Task? PendingRelease => _pendingReleaseTask;
 
+    /// <summary>
+    /// True while the read-only poll timer is running (this instance is watching the lock file for
+    /// the holder to release or go stale). Exposed so tests can assert which read-only sessions poll;
+    /// not used by production code.
+    /// </summary>
+    internal bool IsPolling => _pollTimer is not null;
+
     private string? _lockFilePath;
     private Timer? _heartbeatTimer;
     /// <summary>
@@ -155,7 +187,8 @@ public sealed class WriteLockService : IDisposable
     /// <summary>
     /// True when <see cref="TryAcquire"/> found an existing lock whose heartbeat was
     /// stale, but did not auto-reclaim it. The caller should prompt the user for
-    /// confirmation, then call <see cref="ForceAcquire"/> if they agree.
+    /// confirmation, then call <see cref="ForceAcquire"/> (passing <see cref="CurrentHolder"/>
+    /// as the snapshot that was judged stale) if they agree.
     /// Reset to false at the start of each <see cref="TryAcquire"/> call.
     /// </summary>
     public bool IsStaleLock { get; private set; }
@@ -487,30 +520,93 @@ public sealed class WriteLockService : IDisposable
     // ── Lock file helpers ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Breaks a stale lock and acquires write access. Call only after the user has
-    /// confirmed they wish to take over a stale session (i.e., <see cref="IsStaleLock"/>
-    /// is true following a <see cref="TryAcquire"/> call).
+    /// Breaks a stale lock and acquires write access — but only if the lock file is still the
+    /// <b>same</b> abandoned lock the user was asked about. Call only after the user has confirmed
+    /// they wish to take over a stale session (i.e., <see cref="IsStaleLock"/> is true following a
+    /// <see cref="TryAcquire"/> call), passing the holder snapshot that <see cref="TryAcquire"/>
+    /// judged stale.
+    ///
+    /// <para><b>Click-time re-check (spec item 9a).</b> The takeover prompt can sit open for minutes.
+    /// A laptop that was asleep may wake and resume its heartbeats in the meantime, or another
+    /// machine may take the lock over. So immediately before deleting anything the lock file is
+    /// re-read (<see cref="RecheckStaleHolder"/>) and compared with <paramref name="expectedHolder"/>:</para>
+    /// <list type="bullet">
+    ///   <item><b>Missing</b> — nobody holds the lock any more; just create ours (the atomic
+    ///         <see cref="FileMode.CreateNew"/> arbitrates against anyone else doing the same).</item>
+    ///   <item><b>Same <see cref="LockFileData.SessionGuid"/> and same <see cref="LockFileData.Heartbeat"/></b> —
+    ///         the lock is exactly as judged abandoned: delete it and create ours.</item>
+    ///   <item><b>Anything else</b> (heartbeat advanced, a different session, unreadable) — NOTHING is
+    ///         deleted and nothing is created. <see cref="CurrentHolder"/> is refreshed from the file and
+    ///         <see cref="ForceAcquireResult.HolderActiveAgain"/> is returned.</item>
+    /// </list>
+    ///
+    /// <para><b>Residual race:</b> the re-read and the delete are two separate share operations (a few
+    /// milliseconds apart; there is no atomic compare-and-delete on a file share). A holder that renews its
+    /// heartbeat, or a machine that takes the lock, inside that gap would still have its lock deleted.
+    /// That gap is milliseconds, where the window before this check was the whole time the prompt was
+    /// open. The holder would then meet the ordinary lock-loss path (wake check, heartbeat verification
+    /// or its next save finds the lock no longer ours and demotes the session, keeping its unsaved
+    /// changes for recovery), exactly as for any takeover.</para>
+    ///
+    /// <para>Runs synchronously and is meant to be called under a <see cref="NetworkFileOps"/> deadline
+    /// (<see cref="CheckoutService.ForceCheckoutAsync"/> does), like <see cref="TryAcquire"/>.</para>
     /// </summary>
-    public void ForceAcquire()
+    /// <param name="expectedHolder">
+    /// The holder snapshot the stale judgement was made on (<see cref="CurrentHolder"/> as
+    /// <see cref="TryAcquire"/> left it). Only its <see cref="LockFileData.SessionGuid"/> and
+    /// <see cref="LockFileData.Heartbeat"/> are compared.
+    /// </param>
+    /// <returns>
+    /// <see cref="ForceAcquireResult.Acquired"/> when this instance now holds the lock;
+    /// <see cref="ForceAcquireResult.HolderActiveAgain"/> when the lock changed since it was judged
+    /// stale (and was left alone); <see cref="ForceAcquireResult.NotAcquired"/> when another instance
+    /// won the create race (polling is started) or there was nothing to act on.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="expectedHolder"/> is null.</exception>
+    public ForceAcquireResult ForceAcquire(LockFileData expectedHolder)
     {
-        // See TryAcquire — never break/create a lock file in the XAML previewer.
-        if (Avalonia.Controls.Design.IsDesignMode) return;
+        ArgumentNullException.ThrowIfNull(expectedHolder);
 
-        if (_lockFilePath is null) return;
-        try { File.Delete(_lockFilePath); } catch (Exception ex)
+        // See TryAcquire — never break/create a lock file in the XAML previewer.
+        if (Avalonia.Controls.Design.IsDesignMode) return ForceAcquireResult.NotAcquired;
+
+        if (_lockFilePath is null) return ForceAcquireResult.NotAcquired;
+
+        // Re-check immediately before the delete — keep nothing else between the two.
+        var recheck = RecheckStaleHolder(expectedHolder, out var currentHolder);
+
+        if (recheck == StaleRecheck.Changed)
         {
-            App.Logger.LogInfo($"[WriteLockService] ForceAcquire: could not delete stale lock: {ex.Message}");
+            // The holder is (or someone else now is) alive. Take nothing; show who it is.
+            IsStaleLock   = false;
+            CurrentHolder = currentHolder;
+            App.Logger.LogInfo(
+                $"[WriteLockService] ForceAcquire: lock changed since it was judged stale — leaving it alone " +
+                $"(now {currentHolder?.Username ?? "unreadable"}@{currentHolder?.Machine ?? "?"}).");
+            Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+            return ForceAcquireResult.HolderActiveAgain;
+        }
+
+        // Unchanged (still the abandoned lock): break it. Missing: nothing to delete.
+        if (recheck == StaleRecheck.Unchanged)
+        {
+            try { File.Delete(_lockFilePath); } catch (Exception ex)
+            {
+                App.Logger.LogInfo($"[WriteLockService] ForceAcquire: could not delete stale lock: {ex.Message}");
+            }
         }
 
         IsStaleLock = false;
         CurrentHolder = null;
 
+        ForceAcquireResult result;
         if (TryCreateOnce())
         {
             IsWriter = true;
             StartHeartbeat();
             StartWakeDetection();
             App.Logger.LogInfo($"[WriteLockService] ForceAcquire: lock acquired after breaking stale lock.");
+            result = ForceAcquireResult.Acquired;
         }
         else
         {
@@ -518,9 +614,11 @@ public sealed class WriteLockService : IDisposable
             IsWriter = false;
             StartPolling();
             App.Logger.LogInfo($"[WriteLockService] ForceAcquire: lost race — another instance acquired the lock.");
+            result = ForceAcquireResult.NotAcquired;
         }
 
         Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
+        return result;
     }
 
     /// <summary>
@@ -798,13 +896,7 @@ public sealed class WriteLockService : IDisposable
             // rather than "no lock." A synthetic holder with an ancient heartbeat ensures
             // DetectStaleLock() and PollLockFile() classify it as stale.
             App.Logger.LogInfo($"[WriteLockService] Lock file corrupted (treating as stale): {ex.Message}");
-            CurrentHolder = new LockFileData
-            {
-                Username  = "(corrupted)",
-                Machine   = "(corrupted)",
-                Acquired  = DateTime.MinValue,
-                Heartbeat = DateTime.MinValue,
-            };
+            CurrentHolder = CreateCorruptedHolder();
         }
         catch (Exception ex)
         {
@@ -813,6 +905,86 @@ public sealed class WriteLockService : IDisposable
             App.Logger.LogInfo($"[WriteLockService] Could not read lock file: {ex.Message}");
             CurrentHolder = null;
         }
+    }
+
+    /// <summary>
+    /// The label written into <see cref="LockFileData.Username"/> and <see cref="LockFileData.Machine"/>
+    /// of the synthetic holder that stands in for an unreadable (garbled) lock file. User-facing
+    /// text (<see cref="StaleLockPrompt"/>) tests for it so it never shows "(corrupted) on (corrupted)".
+    /// </summary>
+    internal const string CorruptedHolderLabel = "(corrupted)";
+
+    /// <summary>
+    /// Builds the synthetic holder used when a lock file exists but cannot be parsed: an ancient
+    /// heartbeat so stale-lock detection and polling classify it as expired (rather than treating
+    /// corruption as "no lock held"), and an empty <see cref="LockFileData.SessionGuid"/> so two
+    /// reads of the same garbled file compare as the same lock.
+    /// </summary>
+    /// <returns>A new synthetic holder.</returns>
+    private static LockFileData CreateCorruptedHolder() => new()
+    {
+        Username  = CorruptedHolderLabel,
+        Machine   = CorruptedHolderLabel,
+        Acquired  = DateTime.MinValue,
+        Heartbeat = DateTime.MinValue,
+    };
+
+    /// <summary>The verdict of <see cref="RecheckStaleHolder"/>.</summary>
+    private enum StaleRecheck
+    {
+        /// <summary>The lock file no longer exists — nobody holds the lock.</summary>
+        Missing,
+        /// <summary>The lock file holds the same session and the same heartbeat as when it was judged stale.</summary>
+        Unchanged,
+        /// <summary>The lock file differs from the snapshot, or could not be read — treat the holder as alive.</summary>
+        Changed
+    }
+
+    /// <summary>
+    /// Re-reads the lock file and compares it with the snapshot that was judged stale. The comparison
+    /// is on <see cref="LockFileData.SessionGuid"/> and <see cref="LockFileData.Heartbeat"/>: a
+    /// renewing holder always advances the heartbeat, and a new holder always has a new session.
+    ///
+    /// <para><b>Unreadable means changed.</b> A read that fails for any reason other than "the file is
+    /// gone" (a sharing violation while the holder renews, access denied, …) cannot prove the lock is
+    /// unchanged, so it reports <see cref="StaleRecheck.Changed"/> and nothing is deleted. A file that
+    /// reads but does not parse is compared as the synthetic corrupted holder
+    /// (<see cref="CreateCorruptedHolder"/>): still garbled the same way as when it was judged stale
+    /// compares as <see cref="StaleRecheck.Unchanged"/> (a permanently garbled lock must stay
+    /// takeable); a lock that was valid and is now garbled compares as changed.</para>
+    ///
+    /// <para>Uses a plain synchronous read: the caller (<see cref="ForceAcquire"/>) already runs under a
+    /// <see cref="NetworkFileOps"/> deadline, like <see cref="ReadCurrentHolder"/>.</para>
+    /// </summary>
+    /// <param name="expected">The holder snapshot the stale judgement was made on.</param>
+    /// <param name="current">The lock file's present contents; null when missing or unreadable.</param>
+    /// <returns>Whether the lock file is gone, unchanged or changed.</returns>
+    private StaleRecheck RecheckStaleHolder(LockFileData expected, out LockFileData? current)
+    {
+        current = null;
+
+        string json;
+        try
+        {
+            json = File.ReadAllText(_lockFilePath!);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return StaleRecheck.Missing;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[WriteLockService] ForceAcquire: could not re-read the lock file — leaving it alone: {ex.Message}");
+            return StaleRecheck.Changed;
+        }
+
+        try { current = JsonSerializer.Deserialize<LockFileData>(json) ?? CreateCorruptedHolder(); }
+        catch (JsonException) { current = CreateCorruptedHolder(); }
+
+        return string.Equals(expected.SessionGuid, current.SessionGuid, StringComparison.Ordinal)
+               && expected.Heartbeat == current.Heartbeat
+            ? StaleRecheck.Unchanged
+            : StaleRecheck.Changed;
     }
 
     /// <summary>
@@ -1139,13 +1311,7 @@ public sealed class WriteLockService : IDisposable
             catch (JsonException)
             {
                 App.Logger.LogInfo("[WriteLockService] Poll: lock file corrupted — treating as stale.");
-                CurrentHolder = new LockFileData
-                {
-                    Username  = "(corrupted)",
-                    Machine   = "(corrupted)",
-                    Acquired  = DateTime.MinValue,
-                    Heartbeat = DateTime.MinValue,
-                };
+                CurrentHolder = CreateCorruptedHolder();
                 age = double.MaxValue;
             }
 
