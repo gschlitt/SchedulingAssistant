@@ -432,10 +432,11 @@ public partial class MainWindowViewModel : ViewModelBase
             if (_lockService.LockWriteError is { } writeError)
                 return writeError;
 
-            // A second live instance on this same machine — be explicit so the user knows
-            // it's their own other window, not a colleague, blocking edit access.
+            // A live TermPoint on this same machine holds the lock. The same user can no longer reach
+            // this (the single-instance guard refuses a second copy of the same database), but another
+            // Windows user on this PC still can — so name them, and say what to do if they are stuck.
             if (_lockService.HolderIsLiveSameMachine)
-                return "Read-only — another TermPoint window is already editing this database on this computer.";
+                return SameComputerReadOnlyMessage(_lockService.CurrentHolder?.Username);
 
             var h = _lockService.CurrentHolder;
             return h is null
@@ -443,6 +444,23 @@ public partial class MainWindowViewModel : ViewModelBase
                 : $"Read-only — held by {h.Username} on {h.Machine} since {h.Acquired.ToLocalTime():h:mm tt}";
         }
     }
+
+    /// <summary>
+    /// The read-only banner text for "a live TermPoint on THIS computer holds the write lock" (spec item
+    /// 4b). Names the person editing and tells the reader what to do if that window has stopped
+    /// responding. Only another operating-system user of the same computer can reach this state now — the
+    /// same user's second copy is refused by the single-instance guard before it gets this far.
+    /// </summary>
+    /// <param name="holderUsername">
+    /// The lock holder's user name; null or blank when unknown (the lock was re-read and is gone), which
+    /// falls back to the older wording that does not name anyone.
+    /// </param>
+    /// <returns>The banner / tooltip text.</returns>
+    public static string SameComputerReadOnlyMessage(string? holderUsername)
+        => string.IsNullOrWhiteSpace(holderUsername)
+            ? "Read-only — another TermPoint window is already editing this database on this computer."
+            : $"Read-only — {holderUsername} is already editing this database in TermPoint on this computer. " +
+              "If that window has stopped responding, it can be ended in Task Manager.";
 
     /// <summary>
     /// True when the read-only banner should offer an "Open Microsoft Store" button: the database
@@ -927,6 +945,12 @@ public partial class MainWindowViewModel : ViewModelBase
             App.Checkout.DiscardCrash(mainDbPath);
 
             File.Copy(backupDbPath, mainDbPath, overwrite: true);
+
+            // The relaunched copy starts while this process is still alive (Shutdown below is not
+            // instant), so give back the single-instance guard first or the new copy would be refused
+            // as "TermPoint is already open". It was held until now so no other TermPoint could start
+            // sorting through this database's files while they were being replaced.
+            App.InstanceGuard.ReleaseAll();
 
             var exePath = Environment.ProcessPath;
             if (exePath is not null)

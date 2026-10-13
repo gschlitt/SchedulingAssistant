@@ -46,7 +46,15 @@ public enum RecoveryReason
     /// item 4d), so no database is open. Not a statement about the saved path — which stays in the
     /// recent list, since a retry will often succeed — only that the user must now choose one.
     /// </summary>
-    SwitchFailed
+    SwitchFailed,
+
+    /// <summary>
+    /// Another live TermPoint process of this user already has the chosen database open on this
+    /// computer (spec item 4b, <see cref="DatabaseInstanceGuard"/>), so this one was refused before it
+    /// touched anything. Not damage, and not a problem with the path — which stays in the recent list.
+    /// The user picks a different database or exits; picking the same one again is refused again.
+    /// </summary>
+    AlreadyOpen
 }
 
 /// <summary>
@@ -116,6 +124,15 @@ public partial class DatabaseChooserViewModel : ObservableObject
     public const string SwitchFailedDescription =
         "TermPoint couldn't open the database you chose, and the database you had open has been closed. " +
         "Choose a database to continue.";
+
+    /// <summary>
+    /// The recovery-banner text when the chosen database is already open in another TermPoint window of
+    /// this user on this computer (<see cref="RecoveryReason.AlreadyOpen"/>). The path beneath it is the
+    /// database that was refused.
+    /// </summary>
+    public const string AlreadyOpenDescription =
+        "That database is already open in another TermPoint window on this computer. " +
+        "Choose a different database, or exit.";
 
     /// <summary>Inline error for a chosen backup file that exists but couldn't be read right now.</summary>
     public const string UnreadableBackupMessage =
@@ -190,6 +207,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
                     "or you may not have permission to read it. " +
                     "Try again in a moment, or choose another database.",
                 RecoveryReason.SwitchFailed => SwitchFailedDescription,
+                RecoveryReason.AlreadyOpen  => AlreadyOpenDescription,
                 _ =>
                     "TermPoint found the database file but it failed an integrity check and may be damaged. " +
                     "It is not safe to open this file."
@@ -283,6 +301,8 @@ public partial class DatabaseChooserViewModel : ObservableObject
             // and the user is expected to retry it from this list once the other program lets go.
             // Likewise for RecoveryReason.SwitchFailed: the failure may have been momentary (a dropped
             // connection, a locked file), so the path stays listed and the user can simply retry it.
+            // And for RecoveryReason.AlreadyOpen: the path is fine; the user may close the other
+            // window and pick it again.
             if (Reason == RecoveryReason.Unreachable
                 && path.Equals(LastKnownPath, StringComparison.OrdinalIgnoreCase))
                 continue;

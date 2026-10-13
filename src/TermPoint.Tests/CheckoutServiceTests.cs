@@ -4193,4 +4193,289 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.NotNull(path);
         Assert.True(File.Exists(path));
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 16 — The orphaned D.tmp is removed ONLY once the write lock is ours (spec item 4)
+    //
+    // D.tmp is the in-flight file of whoever is saving, and only the lock holder saves. Deleting it
+    // before the lock is held could delete a colleague's save in progress. CheckoutService therefore
+    // removes it itself, at the three write-access exits (normal, forced, recovery), after the version
+    // gate and just before Mode becomes WriteAccess. Every other outcome must leave it alone.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Content of the D.tmp these tests plant, so "left alone" can be checked byte for byte.</summary>
+    private const string InFlightTmpContent = "colleague-save-in-flight";
+
+    /// <summary>Plants a D.tmp beside <paramref name="db"/> and returns its path.</summary>
+    /// <param name="db">Path to D.</param>
+    private static string PlantTmp(string db)
+    {
+        var tmp = db + ".tmp";
+        File.WriteAllText(tmp, InFlightTmpContent);
+        return tmp;
+    }
+
+    /// <summary>Asserts the planted D.tmp still exists, untouched.</summary>
+    /// <param name="tmp">Path to the planted D.tmp.</param>
+    private static void AssertTmpUntouched(string tmp)
+    {
+        Assert.True(File.Exists(tmp), "D.tmp must not be deleted by an open that does not hold the write lock.");
+        Assert.Equal(InFlightTmpContent, File.ReadAllText(tmp));
+    }
+
+    /// <summary>A normal write-access checkout deletes the orphaned D.tmp.</summary>
+    [Fact]
+    public async Task OrphanedTmp_NormalWriteCheckout_IsDeleted()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.False(File.Exists(tmp), "A write checkout must remove the orphaned D.tmp.");
+    }
+
+    /// <summary>
+    /// A forced (stale-lock take-over) checkout deletes it too — but NOT at the earlier StaleHolder
+    /// answer, where the lock is not ours yet.
+    /// </summary>
+    [Fact]
+    public async Task OrphanedTmp_ForceCheckout_IsDeletedOnlyAfterTheTakeOver()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalStaleLock(db);
+        var tmp = PlantTmp(db);
+
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db));
+        AssertTmpUntouched(tmp);
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.False(File.Exists(tmp));
+    }
+
+    /// <summary>A crash-recovery checkout that resumes the crashed session deletes it too.</summary>
+    [Fact]
+    public async Task OrphanedTmp_RecoveryCheckout_IsDeleted()
+    {
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var (svc1, lockSvc1) = CreateService();
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+        var tmp = PlantTmp(db);   // the crashed save's leftover
+
+        var (svc2, _) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.False(File.Exists(tmp));
+    }
+
+    /// <summary>A read-only open because ANOTHER session holds the live lock must not touch D.tmp.</summary>
+    [Fact]
+    public async Task OrphanedTmp_ReadOnlyBecauseOfLiveLock_IsLeftAlone()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>An observer (reader mode) open must not touch D.tmp.</summary>
+    [Fact]
+    public async Task OrphanedTmp_ObserverMode_IsLeftAlone()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        AppSettings.Current.OpenInReaderMode = true;
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>A licence-gated read-only open must not touch D.tmp.</summary>
+    [Fact]
+    public async Task OrphanedTmp_LicenseGatedReadOnly_IsLeftAlone()
+    {
+        using var license = UseExpiredLicense();
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>
+    /// A version-gated open (the app is older than the database's stamp) must not touch D.tmp — the
+    /// cleanup sits AFTER the gate, so the lock having been taken for a moment is not enough.
+    /// </summary>
+    [Fact]
+    public async Task OrphanedTmp_VersionGated_NormalCheckout_IsLeftAlone()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5");
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertGatedReadOnly(svc, lockSvc, db, "1.2.5");
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>The forced (stale-lock) exit is gated the same way and leaves D.tmp alone.</summary>
+    [Fact]
+    public async Task OrphanedTmp_VersionGated_ForceCheckout_IsLeftAlone()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5");
+        WriteExternalStaleLock(db);
+        var tmp = PlantTmp(db);
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db));
+
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertGatedReadOnly(svc, lockSvc, db, "1.2.5");
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>The recovery exit is gated on the adopted D' and leaves D.tmp alone when it trips.</summary>
+    [Fact]
+    public async Task OrphanedTmp_VersionGated_RecoveryCheckout_IsLeftAlone()
+    {
+        var db = DbPath();
+        CreateStampedDb(db, null);
+        var (svc1, lockSvc1) = CreateService(new Version(1, 2, 3));
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        SetConfigValue(svc1.WorkingPath, MinimumVersionToWrite.ConfigKey, "1.2.5");
+        svc1.MarkDirty();
+        SimulateCrash(lockSvc1, db);
+        var tmp = PlantTmp(db);
+
+        var (svc2, _) = CreateService(new Version(1, 2, 3));
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>A missing D (nothing to open) must not touch a D.tmp that happens to be there.</summary>
+    [Fact]
+    public async Task OrphanedTmp_SourceMissing_IsLeftAlone()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath("gone");
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.SourceMissing, outcome);
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>An unreachable location must not touch D.tmp (injected, so it runs everywhere).</summary>
+    [Fact]
+    public async Task OrphanedTmp_NetworkUnreachable_IsLeftAlone()
+    {
+        var (svc, _) = CreateService();
+        svc.FaultPlan = CheckoutFaultPlan.Parse("unreachable");
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var tmp = PlantTmp(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.NetworkUnreachable, outcome);
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>A D that another program holds open (SourceUnreadable) must not touch D.tmp.</summary>
+    [FactWindowsOnly]
+    public async Task OrphanedTmp_SourceUnreadable_IsLeftAlone()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var tmp = PlantTmp(db);
+
+        using (DbFileTestHelpers.LockExclusively(db))
+        {
+            var outcome = await svc.CheckoutAsync(db);
+
+            Assert.Equal(CheckoutOutcome.SourceUnreadable, outcome);
+        }
+
+        AssertTmpUntouched(tmp);
+    }
+
+    /// <summary>
+    /// A cleanup that cannot delete (here: a colleague's process has D.tmp open) never fails the checkout:
+    /// it is logged and the session opens for writing.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task OrphanedTmp_CannotBeDeleted_DoesNotFailTheCheckout()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        var tmp = PlantTmp(db);
+
+        CheckoutOutcome outcome;
+        using (new FileStream(tmp, FileMode.Open, FileAccess.Read, FileShare.None))
+            outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(File.Exists(tmp));
+    }
+
+    /// <summary>
+    /// A D.tmp that is still there when a save runs (the cleanup was skipped or failed) is simply
+    /// overwritten: the save streams its snapshot to D.tmp with <c>FileMode.Create</c> and renames it
+    /// over D, so it succeeds, D gets the edit, and no D.tmp remains.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_WithLeftoverTmp_OverwritesItAndSucceeds()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+        InsertTestValue(svc.WorkingPath, "edited-content");
+        var tmp = PlantTmp(db);   // appears after checkout: nothing cleaned it
+
+        var outcome = await svc.SaveAsync();
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Equal("edited-content", ReadTestValue(db));
+        Assert.False(File.Exists(tmp), "The rename consumed D.tmp.");
+    }
 }

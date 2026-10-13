@@ -58,6 +58,16 @@ public partial class MainWindow : Window
     /// </summary>
     private bool _isDatabaseOpen;
 
+    /// <summary>
+    /// Why the database chooser is shown the next time a switch leaves NO database open (see
+    /// <see cref="ShowSwitchFailedChooserAsync"/>): <see cref="RecoveryReason.SwitchFailed"/> for every
+    /// failure except one refused by the single-instance guard, which sets
+    /// <see cref="RecoveryReason.AlreadyOpen"/> so the banner doesn't claim a database was closed or failed.
+    /// Reset at the start of every <see cref="SwitchCoreAsync"/> attempt, so a stale value from an earlier
+    /// attempt (the chooser loop runs the next pick through the same method) can never be shown.
+    /// </summary>
+    private RecoveryReason _noDatabaseReason = RecoveryReason.SwitchFailed;
+
     public ScheduleGridView? ScheduleGridViewInstance => MainViewControl?.ScheduleGridViewInstance;
 
     public MainWindow()
@@ -213,6 +223,13 @@ public partial class MainWindow : Window
             // stuck with an uncloseable window.
             App.Logger.LogError(ex, "Error during shutdown — some changes may not have been saved");
         }
+
+        // Give back the single-instance guard LAST: it protects the working copy that was just saved
+        // or deliberately kept (a failed final save keeps D' and its dirty marker for the next start), so
+        // a second TermPoint must not be able to start sorting through those files until we are done with
+        // them. Not strictly needed (the OS drops the guard when the process ends) but explicit, and it
+        // runs even when the teardown above threw. Never throws.
+        App.InstanceGuard.ReleaseAll();
 
         // ── Shutdown checkpoint #1 ───────────────────────────────────────────
         // Managed teardown (save → release lock → dispose DI container → cleanup
@@ -481,6 +498,14 @@ public partial class MainWindow : Window
     /// directly. Otherwise shows the database chooser so the user can pick from recent
     /// databases, browse, create new, or restore. Falls back to the chooser in recovery
     /// mode if the saved database is missing or corrupt.
+    ///
+    /// <para><b>Order once a database is chosen (spec item 4b):</b> (1) take the single-instance guard
+    /// (<see cref="DatabaseInstanceGuard"/>; if another live TermPoint of this user holds it: message, then
+    /// the chooser again, nothing else runs); (2) record the recent database and evaluate the license;
+    /// (3) <see cref="CleanUpAndOfferRecoveryAsync"/> — stale-artifact sweep, crash-recovery offer;
+    /// (4) <see cref="RunCheckoutAsync"/> (write lock and copy; an orphaned D.tmp is deleted inside it, and
+    /// only once write access is confirmed); (5) services and window. The guard is released when the app
+    /// exits (<see cref="OnClosing"/>).</para>
     /// </summary>
     private async Task RunReturningUserStartupAsync(AppSettings settings)
     {
@@ -533,6 +558,18 @@ public partial class MainWindow : Window
             dbPath = result;
         }
 
+        // ── Single-instance guard (spec item 4b) ──────────────────────────────
+        // Taken BEFORE anything below touches shared or local state (the stale artifact sweep, crash
+        // detection, the checkout). If another LIVE TermPoint of this user already
+        // has this database open on this computer, none of that may run: its dirty marker would look
+        // like a crash, "Discard" would delete the live session's marker, and a later sweep could delete
+        // its working copy. The user is told, then shown the chooser to pick a different database (or
+        // exit); picking the same one again is refused again. Returns the path to open.
+        var guardedPath = await App.InstanceGuard.AcquireOrChooseAgainAsync(
+            dbPath, ShowAlreadyOpenMessageAsync, ShowAlreadyOpenChooserAsync);
+        if (guardedPath is null) return; // user exited or the wizard took over; nothing was acquired
+        dbPath = guardedPath;
+
         settings.AddRecentDatabase(dbPath);
 
         // ── License evaluation (must precede checkout so the license gate can
@@ -542,18 +579,11 @@ public partial class MainWindow : Window
 #endif
 
         // ── Checkout flow ─────────────────────────────────────────────────────
-        // Clean up any orphaned .tmp from a previous crashed save, then check for
-        // an orphaned working copy (crash recovery), then acquire the write lock
-        // and copy D → D' (or D → D'' for read-only mode).
+        // Sweep stale local artifacts and check for an orphaned working copy (crash recovery), then
+        // acquire the write lock and copy D → D' (or D → D'' for read-only mode). An orphaned D.tmp on
+        // the share is deleted by the checkout itself, and only once write access is confirmed.
         // The result determines which path is passed to InitializeServices.
-        await App.Checkout.CleanupOrphanedTmpAsync(dbPath);
-        App.Checkout.CleanupStaleCrashArtifacts(dbPath);
-
-        // Crash recovery implies taking over a prior *write* session — wrong for an
-        // observer, who never holds the lock. Skip it in reader mode.
-        var recoverUnsaved = false;
-        if (!AppSettings.Current.OpenInReaderMode && App.Checkout.DetectCrashRecovery(dbPath))
-            recoverUnsaved = await OfferCrashRecoveryAsync(dbPath);
+        var recoverUnsaved = await CleanUpAndOfferRecoveryAsync(dbPath, ignoreObserverMode: false);
 
         var checkoutResult = await RunCheckoutAsync(dbPath, recoverUnsaved);
         if (checkoutResult is null)
@@ -633,6 +663,64 @@ public partial class MainWindow : Window
         if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
             await App.Checkout.SaveAsync();
     }
+
+    /// <summary>
+    /// The housekeeping that precedes every checkout, in its one fixed order — shared by startup and by
+    /// <see cref="SwitchCoreAsync"/> so the two can never drift apart again:
+    /// <list type="number">
+    /// <item><description>sweep stale working-copy artifacts that hold no user data
+    /// (<see cref="CheckoutService.CleanupStaleCrashArtifacts"/>);</description></item>
+    /// <item><description>if a previous session's unsaved changes remain
+    /// (<see cref="CheckoutService.DetectCrashRecovery"/>), ask whether to restore them
+    /// (<see cref="OfferCrashRecoveryAsync"/>).</description></item>
+    /// </list>
+    /// Both steps touch only this user's LOCAL files. The orphaned <c>D.tmp</c> on the share is NOT
+    /// deleted here: it may be a colleague's in-flight save, so <see cref="CheckoutService"/> removes it
+    /// itself, and only once this process holds the write lock (spec item 4).
+    ///
+    /// <para><b>Call this ONLY while this process holds the single-instance guard for
+    /// <paramref name="dbPath"/></b> (<see cref="DatabaseInstanceGuard"/>): every step assumes no other
+    /// live TermPoint of this user is working on the same local files — which is exactly what the guard
+    /// guarantees, and what a second copy launched beside a hung first one would violate.</para>
+    ///
+    /// <para><b>Observer mode skips step 2.</b> Crash recovery means taking over a prior <i>write</i>
+    /// session, which is wrong for an observer who never holds the lock. The test mirrors
+    /// <see cref="CheckoutService.CheckoutAsync"/>'s own: the "open as observer" setting applies unless
+    /// <paramref name="ignoreObserverMode"/> (a database the user has just created). Startup and switching
+    /// previously disagreed here (switching offered recovery to observers).</para>
+    /// </summary>
+    /// <param name="dbPath">The database (D) about to be checked out.</param>
+    /// <param name="ignoreObserverMode">True only for a database the user has just created, which opens for editing.</param>
+    /// <returns>True when the user chose to restore unsaved changes (the checkout then runs in recovery mode).</returns>
+    private async Task<bool> CleanUpAndOfferRecoveryAsync(string dbPath, bool ignoreObserverMode)
+    {
+        App.Checkout.CleanupStaleCrashArtifacts(dbPath);
+
+        var isObserver = AppSettings.Current.OpenInReaderMode && !ignoreObserverMode;
+        if (!isObserver && App.Checkout.DetectCrashRecovery(dbPath))
+            return await OfferCrashRecoveryAsync(dbPath);
+
+        return false;
+    }
+
+    /// <summary>
+    /// Tells the user another TermPoint of theirs is already open on this database
+    /// (<see cref="DatabaseInstanceGuard.AlreadyOpenTitle"/> / <see cref="DatabaseInstanceGuard.AlreadyOpenMessage"/>).
+    /// A Topmost dialog like every other message here, so it can never open behind the main window.
+    /// </summary>
+    private Task ShowAlreadyOpenMessageAsync()
+        => ShowMessageAsync(DatabaseInstanceGuard.AlreadyOpenTitle, DatabaseInstanceGuard.AlreadyOpenMessage);
+
+    /// <summary>
+    /// Startup only: shows the database chooser in recovery mode with <see cref="RecoveryReason.AlreadyOpen"/>
+    /// after the guard refused a database, so the user can pick a different one or exit. Goes through the
+    /// same <see cref="ShowDatabaseChooserAsync"/> as every other startup chooser (non-modal, hidden and
+    /// never closed — the Avalonia 12 compositor deadlock), so Exit and Create New behave exactly as there.
+    /// </summary>
+    /// <param name="refusedPath">The database that is already open elsewhere; shown beneath the banner.</param>
+    /// <returns>The database the user picked, or null when they exited or started the wizard.</returns>
+    private Task<string?> ShowAlreadyOpenChooserAsync(string refusedPath)
+        => ShowDatabaseChooserAsync(ChooserMode.Recovery, RecoveryReason.AlreadyOpen, refusedPath);
 
     /// <summary>
     /// Runs the full checkout sequence for <paramref name="sourcePath"/> and returns
@@ -1067,6 +1155,16 @@ public partial class MainWindow : Window
     /// those cases was discovered only after the current database had been saved and disposed — and a
     /// missing target silently produced a new, empty database at the old path.</para>
     ///
+    /// <para><b>Single-instance guard (spec item 4b), the very first step:</b> the guard for the TARGET
+    /// database is taken before the pre-check and before anything is closed
+    /// (<see cref="DatabaseInstanceGuard"/>). If another live TermPoint of this user already holds it, the
+    /// user is told ("TermPoint Is Already Open") and the switch is refused exactly like a pre-check
+    /// refusal: they stay on the current database, or — with none open — go to the chooser. Order of the
+    /// guards through a switch from A to B: acquire B (refused → stay on A, nothing touched); pre-check
+    /// refusal → release B, keep A; A torn down → release A, keep B (a no-op for A when B is the same
+    /// database, e.g. "Take over as writer"); any failure after that
+    /// (<see cref="AbandonFailedSwitchAsync"/>) → release B, so the no-database state holds no guard.</para>
+    ///
     /// <para>May be called before any DI container exists (the wizard's existing-database path only
     /// validates D and saves settings), so every <see cref="App.Services"/> access before
     /// <see cref="App.InitializeServices"/> is null-tolerant.</para>
@@ -1146,8 +1244,24 @@ public partial class MainWindow : Window
     {
         App.Logger.LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
         var phase = SwitchPhase.BeforeTeardown;
+        _noDatabaseReason = RecoveryReason.SwitchFailed;
         try
         {
+            // ── Single-instance guard for the TARGET (spec item 4b) ──────────────────────────────
+            // Taken first, before the pre-check and before anything is closed or recorded, and before
+            // any cleanup or crash detection below. If another live TermPoint of this user has the
+            // target open, nothing at all happens to it (no cleanup, no recovery offer, no lock, no
+            // copy) and nothing here changes: the open database stays open, and the settings and the
+            // recent list are untouched. With no database open (the chooser retry, the post-wizard
+            // open) the chooser follows instead, saying why.
+            if (App.InstanceGuard.TryAcquire(newDatabasePath) == InstanceGuardResult.HeldByAnotherProcess)
+            {
+                App.Logger.LogInfo("SwitchDatabase: refused before teardown — the database is already open in another TermPoint process.");
+                _noDatabaseReason = RecoveryReason.AlreadyOpen;
+                await ShowAlreadyOpenMessageAsync();
+                return DatabaseSwitchRecovery.Decide(phase, _isDatabaseOpen);
+            }
+
             // Refuse BEFORE touching anything — settings, recents, the current database's save and
             // teardown — when the target can't be opened. Only a target that passes updates
             // AppSettings.DatabasePath and the recent list (see DatabaseSwitchPrecheck).
@@ -1155,6 +1269,9 @@ public partial class MainWindow : Window
                 newDatabasePath, createIfMissing, AppSettings.Current);
             if (!precheck.CanProceed)
             {
+                // The target will not be opened: give its guard back, keeping the open database's own.
+                ReleaseSwitchTargetGuard();
+
                 App.Logger.LogInfo($"SwitchDatabase: refused before teardown — {precheck.Title}");
                 await ShowMessageAsync(precheck.Title, precheck.Message);
 
@@ -1215,6 +1332,14 @@ public partial class MainWindow : Window
                     "the next time you open that database.");
             }
 
+            // The previous database is completely closed — its final save done, its working copy deleted
+            // or deliberately kept — so give ITS guard back and keep only the target's. (When the target
+            // is the very database that was open, e.g. "Take over as writer", its guard is the one kept.
+            // With nothing open before, there was nothing to release.) From here until a database is
+            // wired to the window, the held guard belongs to the database being opened; if that fails,
+            // AbandonFailedSwitchAsync releases it.
+            App.InstanceGuard.ReleaseAllExcept(newDatabasePath);
+
             // If D does not exist yet and the caller asked for creation (File → New ONLY), create
             // it with the schema so CheckoutAsync takes the normal D → D' path and all subsequent
             // writes go to the local working copy. Deadline-bounded tri-state probe: only create
@@ -1258,12 +1383,10 @@ public partial class MainWindow : Window
             App.EvaluateLicense(newDatabasePath);
 #endif
 
-            // Run crash recovery + checkout for the new path.
-            await App.Checkout.CleanupOrphanedTmpAsync(newDatabasePath);
-            App.Checkout.CleanupStaleCrashArtifacts(newDatabasePath);
-            var recoverUnsaved = false;
-            if (App.Checkout.DetectCrashRecovery(newDatabasePath))
-                recoverUnsaved = await OfferCrashRecoveryAsync(newDatabasePath);
+            // Run crash recovery + checkout for the new path. The guard for it was taken at the top, so
+            // this housekeeping (stale-artifact sweep, recovery offer) cannot disturb a
+            // live copy of TermPoint on the same database. Observers are not offered recovery, as at startup.
+            var recoverUnsaved = await CleanUpAndOfferRecoveryAsync(newDatabasePath, ignoreObserverMode: isNewDatabase);
 
             var checkoutPath = await RunCheckoutAsync(
                 newDatabasePath, recoverUnsaved, ignoreObserverMode: isNewDatabase);
@@ -1317,12 +1440,24 @@ public partial class MainWindow : Window
             await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
 
             // Past the point of no return the previous database is gone: clean up and go to the chooser.
-            // Before it, the open database (if any) was never touched and stays.
-            return phase == SwitchPhase.AfterTeardown
-                ? await AbandonFailedSwitchAsync()
-                : DatabaseSwitchRecovery.Decide(phase, _isDatabaseOpen);
+            // Before it, the open database (if any) was never touched and stays — and so does its guard;
+            // only the target's, taken at the top, is given back.
+            if (phase == SwitchPhase.AfterTeardown)
+                return await AbandonFailedSwitchAsync();
+
+            ReleaseSwitchTargetGuard();
+            return DatabaseSwitchRecovery.Decide(phase, _isDatabaseOpen);
         }
     }
+
+    /// <summary>
+    /// Gives back the single-instance guard that <see cref="SwitchCoreAsync"/> took for a switch target
+    /// that is NOT going to be opened (the pre-check refused it, or something threw before the old
+    /// database was touched), while keeping the guard of the database that is still open. With no
+    /// database open nothing is kept, so the no-database state holds no guard. Never throws.
+    /// </summary>
+    private void ReleaseSwitchTargetGuard()
+        => App.InstanceGuard.ReleaseAllExcept(_isDatabaseOpen ? App.Checkout.SourcePath : null);
 
     /// <summary>
     /// Cleans up after a switch that FAILED once the previous database had been closed (spec item 4d),
@@ -1339,6 +1474,11 @@ public partial class MainWindow : Window
     /// attempt may have taken and forgets the working-copy bookkeeping, so that choosing Exit in the
     /// chooser can never delete a kept working copy (the previous database's unsaved changes) through a
     /// stale <c>WorkingPath</c>. A working copy with a dirty marker is never deleted.</description></item>
+    /// <item><description><see cref="DatabaseInstanceGuard.ReleaseAll"/> gives back the single-instance guard
+    /// that was taken for the database whose open just failed (spec item 4b), so the no-database state holds
+    /// no guard and the user can pick that same database again, or another process may open it. Done LAST,
+    /// after the working-copy bookkeeping above, because the guard is what keeps a second TermPoint out of
+    /// those files while they are being sorted out.</description></item>
     /// </list>
     /// Covering the window is left to the chooser step (<see cref="ShowSwitchFailedChooserAsync"/>), which
     /// runs immediately after and for the refusal path as well.
@@ -1354,6 +1494,8 @@ public partial class MainWindow : Window
 
         try { await App.Checkout.ResetAfterFailedOpenAsync(); }
         catch (Exception ex) { App.Logger.LogError(ex, "SwitchDatabase: could not reset the checkout state after the failed attempt"); }
+
+        App.InstanceGuard.ReleaseAll();
 
         return DatabaseSwitchRecovery.Decide(SwitchPhase.AfterTeardown, databaseOpen: false);
     }
@@ -1396,7 +1538,9 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Covers the window and shows the startup database chooser in recovery mode with
-    /// <see cref="RecoveryReason.SwitchFailed"/>. Chooser outcomes behave exactly as at startup, because
+    /// <see cref="_noDatabaseReason"/> — <see cref="RecoveryReason.SwitchFailed"/>, or
+    /// <see cref="RecoveryReason.AlreadyOpen"/> when the single-instance guard refused the database (spec
+    /// item 4b). Chooser outcomes behave exactly as at startup, because
     /// this goes through the very same <see cref="ShowDatabaseChooserAsync"/>: a pick is returned, Create
     /// New hands over to the setup wizard (null), Exit shows the cancel message and shuts down (null). The
     /// chooser is shown NON-modally and never closed, as there (Avalonia 12 compositor deadlock).
@@ -1408,7 +1552,7 @@ public partial class MainWindow : Window
         // Nothing bound to the closed database may be visible or clickable behind the chooser or the
         // error dialogs that follow it. Idempotent, so the repeat visits of the loop cost nothing.
         CoverWindowForNoDatabase();
-        return ShowDatabaseChooserAsync(ChooserMode.Recovery, RecoveryReason.SwitchFailed, failedPath);
+        return ShowDatabaseChooserAsync(ChooserMode.Recovery, _noDatabaseReason, failedPath);
     }
 
 

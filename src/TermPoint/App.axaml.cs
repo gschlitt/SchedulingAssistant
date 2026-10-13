@@ -80,6 +80,14 @@ public partial class App : Application
     public static CheckoutService Checkout { get; } = CreateCheckoutService();
 
     /// <summary>
+    /// The per-database, per-user single-instance guard (spec item 4b). <c>MainWindow</c> takes it for a
+    /// database BEFORE any cleanup, crash detection or checkout — at startup and on every database switch
+    /// — and releases it when the database is closed and on exit. Declared after <see cref="Logger"/> so
+    /// the logger exists when it is created (static initializers run in textual order).
+    /// </summary>
+    public static DatabaseInstanceGuard InstanceGuard { get; } = new DatabaseInstanceGuard(logger: Logger);
+
+    /// <summary>
     /// Builds the app-wide <see cref="CheckoutService"/>. Declared after <see cref="Logger"/> and
     /// <see cref="LockService"/> in this class so both exist by the time it runs (static initializers
     /// run in textual order).

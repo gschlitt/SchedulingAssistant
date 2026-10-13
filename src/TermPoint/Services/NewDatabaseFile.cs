@@ -51,7 +51,7 @@ public sealed record NewDatabaseResult(NewDatabaseOutcome Outcome, Exception? Er
 /// <para><b>Safety:</b> the copy goes to <c>D.tmp</c> first and is moved into place without
 /// overwrite, so (a) a partly written D is never visible to a colleague and (b) an existing D can
 /// never be replaced, even if one appears while the new database is being built. A stray
-/// <c>D.tmp</c> left by a crash is cleaned up by the normal startup sweep
+/// <c>D.tmp</c> left by a crash is cleaned up by the next open that gets write access
 /// (<see cref="CheckoutService.CleanupOrphanedTmpAsync"/>).</para>
 /// </summary>
 public static class NewDatabaseFile
@@ -146,7 +146,7 @@ public static class NewDatabaseFile
 
             // A failed attempt may leave a partial D.tmp on the share. Remove it, but don't make the
             // caller wait: the delete is deadline-bounded and non-throwing, and anything it misses
-            // is swept by CleanupOrphanedTmpAsync on the next open.
+            // is swept by CleanupOrphanedTmpAsync on the next write-access open.
             if (shareTmpTouched)
                 _ = NetworkFileOps.DeleteAsync(shareTmpPath);
         }

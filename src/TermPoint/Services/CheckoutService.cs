@@ -413,11 +413,19 @@ public sealed class CheckoutService : IDisposable
         _lockService = lockService ?? App.LockService;
         _logger      = logger      ?? App.Logger;
         _dispatch    = dispatch    ?? (action => Dispatcher.UIThread.Post(action));
-        _workingDir  = workingDir  ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "TermPoint",
-            "working");
+        _workingDir  = workingDir  ?? DefaultWorkingDirectory;
     }
+
+    /// <summary>
+    /// The per-user folder that holds the local working copies D' and read-only snapshots D'' —
+    /// <c>%AppData%\TermPoint\working\</c> (the platform equivalent elsewhere). The default for the
+    /// constructor's <c>workingDir</c>, and shared with <see cref="DatabaseInstanceGuard"/>, whose
+    /// guard files must sit in the same per-user location as the working copies they protect.
+    /// </summary>
+    public static string DefaultWorkingDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "TermPoint",
+        "working");
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -447,7 +455,7 @@ public sealed class CheckoutService : IDisposable
     /// behave exactly as without the flag. Defaults to false.
     /// </param>
     /// <returns>
-    /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath.<br/>
+    /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath. An orphaned <c>D.tmp</c> beside D has been deleted (only ever on this outcome: see <see cref="CleanupOrphanedTmpAsync"/>).<br/>
     /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists, the license/observer mode forced read-only, or the database's <see cref="MinimumVersionToWrite"/> stamp is newer than this app (<see cref="RequiredAppVersion"/> is then non-null); use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
     /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user, and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/>.<br/>
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
@@ -696,6 +704,9 @@ public sealed class CheckoutService : IDisposable
         if (await ApplyVersionGateAsync(isRecovery: false) is { } gated)
             return gated;
 
+        // Write access is now certain and the lock is ours: only now may an orphaned D.tmp be removed.
+        await CleanupOrphanedTmpOnceWriterAsync();
+
         Mode          = CheckoutMode.WriteAccess;
         SessionDirty  = true;
         CurrentHolder = null;
@@ -817,6 +828,9 @@ public sealed class CheckoutService : IDisposable
         if (await ApplyVersionGateAsync(isRecovery: false) is { } gated)
             return gated;
 
+        // Write access is now certain and the lock is ours (see CheckoutAsync).
+        await CleanupOrphanedTmpOnceWriterAsync();
+
         Mode          = CheckoutMode.WriteAccess;
         SessionDirty  = true;
         CurrentHolder = null;
@@ -911,6 +925,9 @@ public sealed class CheckoutService : IDisposable
         // again once the user has updated TermPoint.
         if (await ApplyVersionGateAsync(isRecovery: true) is { } gated)
             return gated;
+
+        // Write access is now certain and the lock is ours (see CheckoutAsync).
+        await CleanupOrphanedTmpOnceWriterAsync();
 
         Mode           = CheckoutMode.WriteAccess;
         SessionDirty   = true;
@@ -1682,11 +1699,18 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Deletes any orphaned <c>D.tmp</c> file left alongside D from a previous
-    /// crashed save. Call at startup before <see cref="CheckoutAsync"/>.
+    /// Deletes any orphaned <c>D.tmp</c> file left alongside D from a previous crashed save.
+    ///
+    /// <para><b>Runs ONLY while this process holds the write lock</b>, through
+    /// <see cref="CleanupOrphanedTmpOnceWriterAsync"/>, at the three write-access exits of a checkout
+    /// (spec item 4). D.tmp is the in-flight file of whoever is saving, and only the lock holder saves —
+    /// so before the lock is ours a D.tmp may be a colleague's save in progress, and deleting it makes
+    /// their save fail. No read-only, observer, licence-gated, version-gated, failed or refused open ever
+    /// calls this. It is <c>internal</c> (not public) so nothing outside the checkout can call it at the
+    /// wrong time; tests reach it directly.</para>
     /// </summary>
     /// <param name="sourcePath">The database path to check for an orphaned tmp file.</param>
-    public async Task CleanupOrphanedTmpAsync(string sourcePath)
+    internal async Task CleanupOrphanedTmpAsync(string sourcePath)
     {
         var tmpPath = sourcePath + ".tmp";
         var (completed, exists) = await NetworkFileOps.ExistsAsync(tmpPath);
@@ -1697,6 +1721,31 @@ public sealed class CheckoutService : IDisposable
             _logger.LogInfo($"CheckoutService: cleaned up orphaned tmp file: {tmpPath}");
         else
             _logger.LogInfo($"CheckoutService: could not delete orphaned tmp (timeout or error)");
+    }
+
+    /// <summary>
+    /// Housekeeping at the moment write access is confirmed: removes an orphaned <c>D.tmp</c> beside
+    /// <see cref="SourcePath"/> (<see cref="CleanupOrphanedTmpAsync"/>). Called from the three
+    /// write-access exits — <see cref="CheckoutAsync"/>, <see cref="ForceCheckoutAsync"/> and
+    /// <see cref="FinishRecoveryCheckoutAsync"/> — after the version gate has passed and just before
+    /// <see cref="Mode"/> becomes <see cref="CheckoutMode.WriteAccess"/>, i.e. only when the lock is ours.
+    ///
+    /// <para><b>It can never fail the checkout.</b> The network calls inside are already deadline-bounded
+    /// and report failure as a result; anything that still throws is logged and swallowed. A D.tmp left
+    /// behind is harmless: <see cref="SaveAsync"/> streams its snapshot to D.tmp with
+    /// <c>FileMode.Create</c> (overwriting whatever is there) and then renames it over D, so the next save
+    /// simply replaces it.</para>
+    /// </summary>
+    private async Task CleanupOrphanedTmpOnceWriterAsync()
+    {
+        try
+        {
+            await CleanupOrphanedTmpAsync(SourcePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInfo($"CheckoutService: orphaned-tmp cleanup failed ({ex.GetType().Name}: {ex.Message}) — continuing.");
+        }
     }
 
     /// <summary>
@@ -2540,6 +2589,22 @@ public sealed class CheckoutService : IDisposable
         => TryDelete(WorkingPath + ".dirty");
 
     /// <summary>
+    /// The identity of a database, as far as its local files are concerned: its full path, lower-cased
+    /// (invariant culture), so that every spelling of one path — relative or absolute, any letter case —
+    /// names the same database. The one definition shared by D' / D'' naming
+    /// (<see cref="ComputeWorkingPath"/>, <see cref="ComputeReadOnlyWorkingPath"/>) and by
+    /// <see cref="DatabaseInstanceGuard"/>, so "the same database" can never mean two different things:
+    /// two sessions that would share a working copy are exactly the two sessions the guard keeps apart.
+    /// </summary>
+    /// <param name="sourcePath">Path to D, in any spelling.</param>
+    /// <returns>The normalised (full, lower-case) path; it is a key, not a path to open.</returns>
+    /// <exception cref="ArgumentException">The path is empty or contains invalid characters.</exception>
+    /// <exception cref="NotSupportedException">The path format is not supported.</exception>
+    /// <exception cref="PathTooLongException">The path is too long.</exception>
+    internal static string NormalizeSourcePath(string sourcePath)
+        => Path.GetFullPath(sourcePath).ToLowerInvariant();
+
+    /// <summary>
     /// Derives a stable, user-invisible path for D' from the source path.
     /// Uses the first 8 hex chars of SHA-256(normalizedSourcePath) as a prefix
     /// to avoid collisions between databases with the same filename in different folders.
@@ -2548,7 +2613,7 @@ public sealed class CheckoutService : IDisposable
     /// <returns>Absolute path for D' under <see cref="_workingDir"/>.</returns>
     private string ComputeWorkingPath(string sourcePath)
     {
-        var normalized = Path.GetFullPath(sourcePath).ToLowerInvariant();
+        var normalized = NormalizeSourcePath(sourcePath);
         var hashBytes  = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
         var shortHash  = Convert.ToHexString(hashBytes)[..8];
         var dbFileName = Path.GetFileName(sourcePath);
@@ -2723,7 +2788,7 @@ public sealed class CheckoutService : IDisposable
     /// <returns>Absolute path for D'' (read-only snapshot) under <see cref="_workingDir"/>.</returns>
     private string ComputeReadOnlyWorkingPath(string sourcePath)
     {
-        var normalized = Path.GetFullPath(sourcePath).ToLowerInvariant();
+        var normalized = NormalizeSourcePath(sourcePath);
         var hashBytes  = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
         var shortHash  = Convert.ToHexString(hashBytes)[..8];
         var dbFileName = Path.GetFileNameWithoutExtension(sourcePath);

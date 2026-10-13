@@ -756,7 +756,48 @@ history of freezes. Run the 3-machine clumsy network protocol.
       - **Floating windows.** Detached panels and sticky notes are not closed while the chooser is
         up, to avoid the compositor deadlock. They keep stale content, as after any switch.
   - **4b:** a per-database, per-user named-mutex guard taken before cleanup and crash detection, on
-    startup and switching, plus the same-computer banner wording.
+    startup and switching, plus the same-computer banner wording. **Done, user-tested 2026-10-13**
+    (second copy refused at startup and on a switch; a frozen copy blocks, a killed one doesn't and
+    its unsaved changes are restored; normal use unchanged).
+    - **The mechanism is an exclusive file handle, not a named mutex.**
+      - **What it is:** `DatabaseInstanceGuard` opens
+        `%AppData%\TermPoint\working\guards\<SHA-256 of the normalised path>.guard` with
+        `FileShare.None` and keeps the handle open while the database is in use.
+      - **Why not a mutex:** a mutex is thread-affine, which is fragile with async continuations. A
+        handle is released by the OS when the process dies (crash, End Task, power failure).
+      - **Per user, local:** it lives in `%AppData%`, so it is per user. It is local, so no SMB handle
+        can linger after a crash. The file is never deleted, because its existence means nothing.
+      - **Fail-open:** an unexpected error proceeds as before and never locks a user out.
+      - **Re-entrant:** "Take over as writer" on the database this process already holds is not
+        refused.
+    - **Startup order:**
+      1. Resolve the database path.
+      2. Take the guard. If refused: "TermPoint Is Already Open", then the chooser with
+         `RecoveryReason.AlreadyOpen`, looping.
+      3. Licence.
+      4. The working-folder sweep and the crash check (skipped in observer mode).
+      5. Checkout.
+    - **Switch order:**
+      1. Take the target's guard. If refused: with a database open, stay on it; with none open, go to
+         the chooser.
+      2. Pre-check.
+      3. Tear down the old database.
+      4. Release the old guard.
+      5. The sweep and the crash check (now also skipped in observer mode, matching startup).
+      6. Checkout. A 4d failure releases every guard.
+    - **`D.tmp` cleanup moved under the write lock:** it now runs inside `CheckoutService`, only at
+      the three WriteAccess exits, after the version gate. Read-only, observer, licence- or
+      version-gated, failed and refused opens never touch `D.tmp`, so no open from any computer can
+      delete a colleague's in-flight save. A leftover `D.tmp` is simply overwritten by the next
+      save.
+    - **Restore from backup** releases the guard before relaunching, so the relaunch isn't refused.
+    - **Same-computer read-only banner:** "Read-only — {Username} is already editing this database
+      in TermPoint on this computer. If that window has stopped responding, it can be ended in Task
+      Manager." It is now reachable only by another Windows user on the same PC.
+    - **Tests:** +52, including a real cross-process test (a live PowerShell child blocks; once it is
+      killed, the guard is free). Suite: 1711 passed.
+    - **macOS:** contention is recognised on Unix by `EWOULDBLOCK`. It is unverified on a real Mac;
+      the field-test row covers it. If it's misdetected there, the guard does nothing (fail-open).
   - **4c:** catch save step 4; open the backup source as `Mode=ReadWrite`.
 - **Field test to add:** a named-mutex check on a real Mac (a crashed copy releases it, a frozen
   one holds it).

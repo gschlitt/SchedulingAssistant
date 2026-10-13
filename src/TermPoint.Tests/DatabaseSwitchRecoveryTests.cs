@@ -142,6 +142,53 @@ public sealed class DatabaseSwitchRecoveryTests
         Assert.Equal(2, shown);
     }
 
+    // ── Refusal by the single-instance guard (spec item 4b) ───────────────────
+
+    /// <summary>
+    /// <c>SwitchCoreAsync</c> takes the guard for the target before the pre-check and before anything is
+    /// closed, and a refusal is returned through <see cref="DatabaseSwitchRecovery.Decide"/> with
+    /// <see cref="SwitchPhase.BeforeTeardown"/>. With a database open the user therefore STAYS on it
+    /// (nothing was touched; the dialog has told them why).
+    /// </summary>
+    [Fact]
+    public void GuardRefusal_WithDatabaseOpen_StaysOnTheCurrentDatabase()
+    {
+        Assert.Equal(SwitchResult.StayedOnCurrentDatabase,
+            DatabaseSwitchRecovery.Decide(SwitchPhase.BeforeTeardown, databaseOpen: true));
+    }
+
+    /// <summary>
+    /// With NO database open (the 4d no-database state: post-wizard open, chooser retry) a guard refusal
+    /// goes to the chooser, so the user can pick another database or exit — never a dead end.
+    /// </summary>
+    [Fact]
+    public void GuardRefusal_WithNoDatabaseOpen_GoesToTheChooser()
+    {
+        Assert.Equal(SwitchResult.NoDatabaseOpen,
+            DatabaseSwitchRecovery.Decide(SwitchPhase.BeforeTeardown, databaseOpen: false));
+    }
+
+    /// <summary>
+    /// In the chooser loop a database that is refused by the guard comes straight back to the chooser (the
+    /// pick "failed"), and picking the same one again is refused again — the loop only ends when a
+    /// database opens or the user leaves. (The guard-specific startup loop is covered in
+    /// <see cref="DatabaseInstanceGuardTests"/>.)
+    /// </summary>
+    [Fact]
+    public async Task ChooserLoop_GuardRefusedPick_ComesBackToTheChooser_UntilSomethingOpens()
+    {
+        var picks = new Queue<string?>(["busy.db", "busy.db", "free.db"]);
+        var refused = new List<string>();
+
+        var result = await DatabaseSwitchRecovery.RunChooserLoopAsync(
+            "busy.db",
+            _ => Task.FromResult(picks.Dequeue()),
+            path => { if (path == "busy.db") { refused.Add(path); return Task.FromResult(false); } return Task.FromResult(true); });
+
+        Assert.True(result);
+        Assert.Equal(["busy.db", "busy.db"], refused);
+    }
+
     // ── The recovery banner ───────────────────────────────────────────────────
 
     /// <summary>
@@ -167,6 +214,34 @@ public sealed class DatabaseSwitchRecoveryTests
         Assert.Equal(path, vm.LastKnownPath);
         Assert.DoesNotContain("damaged", vm.ProblemDescription, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("integrity", vm.ProblemDescription, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(vm.RecentDatabases, r => r.Path == path);
+    }
+
+    /// <summary>
+    /// The chooser's banner after the single-instance guard refused a database (spec item 4b) is the exact
+    /// agreed wording — not the "integrity check" fallback that any unmapped reason would show — says
+    /// nothing about damage or a closed database, and keeps the path in the recent list so the user can pick
+    /// it again once the other window is closed.
+    /// </summary>
+    [Fact]
+    public void AlreadyOpenBanner_HasTheAgreedWording_AndKeepsThePathInTheRecentList()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        var path = Path.Combine(Path.GetTempPath(), "already-open-target.db");
+        AppSettings.Current.AlwaysOpenMostRecentDatabase = false;
+        AppSettings.Current.RecentDatabases = [path];
+
+        var vm = new DatabaseChooserViewModel(ChooserMode.Recovery, RecoveryReason.AlreadyOpen, path);
+
+        Assert.True(vm.IsRecoveryMode);
+        Assert.Equal(
+            "That database is already open in another TermPoint window on this computer. " +
+            "Choose a different database, or exit.",
+            vm.ProblemDescription);
+        Assert.Equal(path, vm.LastKnownPath);
+        Assert.DoesNotContain("damaged", vm.ProblemDescription, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("integrity", vm.ProblemDescription, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("closed", vm.ProblemDescription, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(vm.RecentDatabases, r => r.Path == path);
     }
 }
