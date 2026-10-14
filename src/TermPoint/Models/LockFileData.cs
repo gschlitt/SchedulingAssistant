@@ -27,8 +27,12 @@ public class LockFileData
     /// <summary>
     /// UTC timestamp last written by the heartbeat timer.
     /// Updated every <see cref="WriteLockService.HeartbeatIntervalSeconds"/> seconds.
-    /// A value older than <see cref="WriteLockService.StaleLockThresholdSeconds"/> seconds
-    /// indicates the holding process has died and the lock can safely be reclaimed.
+    /// A heartbeat that stops CHANGING (as observed by a reader, on the reader's own clock, for
+    /// <see cref="WriteLockService.StaleLockThresholdSeconds"/> seconds) indicates the holding process
+    /// has died or is asleep, and the lock can be taken over with the user's confirmation. Readers do
+    /// not compare this timestamp with their own clock to decide that (the two computers' clocks can
+    /// disagree by minutes); it is the change, not the value, that matters. See
+    /// <see cref="LockHeartbeatWatch"/>.
     /// </summary>
     public DateTime Heartbeat { get; set; }
 

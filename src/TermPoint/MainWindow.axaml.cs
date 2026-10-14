@@ -745,7 +745,8 @@ public partial class MainWindow : Window
     /// <list type="bullet">
     /// <item><description><b>Write access:</b> D' (the local working copy).</description></item>
     /// <item><description><b>Read-only:</b> D'' (the local read-only snapshot).</description></item>
-    /// <item><description><b>Stale lock — user declined takeover, the holder proved to be active again at click
+    /// <item><description><b>Stale lock — user declined takeover (or cancelled the short confirmation wait,
+    /// <see cref="ShowStaleLockWaitAsync"/>), the holder proved to be active again at click
     /// time (<see cref="CheckoutOutcome.HolderActiveAgain"/>), force-checkout lost the race, or checkout failed:</b>
     /// D'' via <see cref="SetupSnapshotOrAskAsync"/>, with the lock file then watched
     /// (<see cref="CheckoutService.StartReaderPollingAsync"/>) so a later release offers "Take over as writer".
@@ -796,6 +797,14 @@ public partial class MainWindow : Window
                         StaleLockPrompt.BuildTakeOverMessage(App.Checkout.CurrentHolder, DateTime.UtcNow),
                         StaleLockPrompt.TakeOverButton,
                         StaleLockPrompt.OpenReadOnlyButton);
+
+                    // Spec item 9b: the takeover also needs the holder's heartbeat to have stood still for
+                    // a full confirmation window on THIS computer's clock. Usually reading the prompt took
+                    // long enough and there is nothing to wait for; otherwise show a short cancellable
+                    // wait. Cancelling (or closing it) is exactly "Open read-only".
+                    var wait = take ? App.Checkout.GetTakeOverWait() : TimeSpan.Zero;
+                    if (wait > TimeSpan.Zero)
+                        take = await ShowStaleLockWaitAsync(wait);
 
                     if (take)
                     {
@@ -2163,6 +2172,79 @@ public partial class MainWindow : Window
         no.Click  += (_, _) => { result = false; Dispatcher.UIThread.Post(() => dlg.Close()); };
         await dlg.ShowDialog(this);
         return result;
+    }
+
+    /// <summary>
+    /// Shows the short "Checking the Lock" wait that follows a confirmed stale-lock takeover when the
+    /// holder's heartbeat has not yet stood still long enough (spec item 9b). The dialog is only the
+    /// view: the waiting itself is <see cref="CheckoutService.WaitForTakeOverConfirmationAsync"/>, which
+    /// never blocks the UI thread. The dialog closes by itself when the wait ends; its Cancel button (or
+    /// closing it) cancels the wait. Built in code and Topmost like every other modal dialog here (see
+    /// <see cref="ShowFatalAsync"/>), so it can never open behind the main window or a sticky note.
+    /// </summary>
+    /// <param name="remaining">How long the wait will take at most; shown to the user in seconds.</param>
+    /// <returns>
+    /// True when the wait ran to the end and the takeover may proceed; false when the user cancelled
+    /// (treat exactly like "Open read-only").
+    /// </returns>
+    private async Task<bool> ShowStaleLockWaitAsync(TimeSpan remaining)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var completed = false;
+
+        var dlg = new Window
+        {
+            Title = StaleLockPrompt.WaitTitle,
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true,
+            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
+        };
+
+        var cancel = new Button
+        {
+            Content = StaleLockPrompt.WaitCancelButton,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Padding = new Thickness(16, 4)
+        };
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = StaleLockPrompt.BuildWaitMessage(App.Checkout.CurrentHolder, remaining),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13
+        });
+        panel.Children.Add(cancel);
+        dlg.Content = panel;
+
+        // Cancel button or the title-bar X: give up waiting. (The wait finishing closes the dialog too,
+        // which also raises Closed; by then `completed` is already settled, so cancelling is harmless.)
+        var closed = false;
+        cancel.Click += (_, _) => cancellation.Cancel();
+        dlg.Closed   += (_, _) => { closed = true; cancellation.Cancel(); };
+
+        // Run the wait alongside the dialog; when it ends, one way or the other, close the dialog
+        // (unless the user already closed it with the title-bar X).
+        async Task CloseWhenWaitEndsAsync()
+        {
+            try
+            {
+                completed = await App.Checkout.WaitForTakeOverConfirmationAsync(cancellation.Token);
+            }
+            catch (Exception ex)
+            {
+                // Never leave the dialog up with nothing driving it; failing safe means "don't take over".
+                App.Logger.LogError(ex, "ShowStaleLockWaitAsync: waiting for the takeover confirmation failed");
+                completed = false;
+            }
+            Dispatcher.UIThread.Post(() => { if (!closed) dlg.Close(); });
+        }
+        _ = CloseWhenWaitEndsAsync();
+
+        await dlg.ShowDialog(this);
+        return completed;
     }
 
     private MainWindowViewModel Vm => (MainWindowViewModel)DataContext!;

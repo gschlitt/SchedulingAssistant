@@ -21,7 +21,7 @@ will be verified.
 | 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
-| 9 | Make stale-lock takeover safe | Data integrity | Accepted |
+| 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
 | 10 | "Save aborted" dead end: give a next step | UX | Accepted |
 | 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted |
 | 12 | Save-specific error banner for exceptions during save | UX | Accepted |
@@ -1149,7 +1149,25 @@ takeover safer.
 **Steps (one commit each):**
 - **9a:** the warning and a re-check at the click. **Done, user-tested on one machine 2026-10-13.**
 - **9b:** staleness judged by an unchanged heartbeat over locally measured time, not by comparing
-  clocks.
+  clocks. **Done, user-tested on one machine 2026-10-13** (dead lock, a live writer with its clock 1 h
+  behind is never taken over, a dead writer with its clock 1 h ahead is found by polling).
+  - **Polling (read-only sessions) is clock-free.** A lock is stale only when the same
+    (SessionGuid, Heartbeat) pair has been seen unchanged for at least 180 s of local monotonic time
+    (`LockHeartbeatWatch`, `TimeProvider`). A missing lock is available immediately.
+  - **Open path:** the clock comparison is only a hint for showing the prompt at once. The takeover
+    also needs the snapshot to have been unchanged for at least `StaleConfirmationSeconds` = 70 s
+    (heartbeat interval + 10). Otherwise "Checking the Lock" waits out the remainder and can be
+    cancelled; cancelling equals Open read-only. Then 9a's re-check runs.
+  - **Observations carry over** between the prompt, read-only polling and a later "Take over as
+    writer". "N minutes" falls back to "for a while" when the clocks give nonsense.
+  - **Decided:**
+    - A garbled lock is offered after 180 s unchanged, not instantly, so one bad read can't create
+      an offer.
+    - The 70 s wait is enforced by the UI (its only caller). 9a's re-check stays the hard guard.
+  - **Residual risk:** a live writer with a flaky network *and* a clock running behind can be taken
+    over after about 70 s of missed heartbeats. That is still stricter than before. The overtaken
+    writer keeps its unsaved work (9a).
+  - **Tests:** +48. Suite: 1804 passed.
 
 **Step 9a outcome.**
 - **The prompt** (`StaleLockPrompt`): title "Database Lock Is Inactive", buttons [Take over] [Open

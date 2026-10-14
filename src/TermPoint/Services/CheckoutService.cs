@@ -280,6 +280,9 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="WriteLockService.ForceAcquire"/>, which deletes the lock file only if it still holds
     /// this same session and heartbeat (spec item 9a). Cleared at the start of every checkout and once
     /// <see cref="ForceCheckoutAsync"/> has used it, so a takeover can never run on a stale snapshot.
+    /// <para>Its local observation time (when this process first saw exactly this session and heartbeat)
+    /// is kept by the lock service's <see cref="LockHeartbeatWatch"/> and read back through
+    /// <see cref="GetTakeOverWait"/> (spec item 9b).</para>
     /// </summary>
     private LockFileData? _staleHolderAtDetection;
 
@@ -469,7 +472,7 @@ public sealed class CheckoutService : IDisposable
     /// <returns>
     /// <see cref="CheckoutOutcome.WriteAccess"/> — lock acquired; use <see cref="WorkingPath"/> (= D') as dbPath. An orphaned <c>D.tmp</c> beside D has been deleted (only ever on this outcome: see <see cref="CleanupOrphanedTmpAsync"/>).<br/>
     /// <see cref="CheckoutOutcome.ReadOnly"/>    — a live lock exists, the license/observer mode forced read-only, or the database's <see cref="MinimumVersionToWrite"/> stamp is newer than this app (<see cref="RequiredAppVersion"/> is then non-null); use <see cref="WorkingPath"/> (= D'') as dbPath.<br/>
-    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user (<see cref="StaleLockPrompt"/>), and on the basis of user's decision  call <see cref="ForceCheckoutAsync"/> or <see cref="SetupReadOnlySnapshotAsync"/> (followed by <see cref="StartReaderPollingAsync"/>).<br/>
+    /// <see cref="CheckoutOutcome.StaleHolder"/> — a stale lock exists; prompt the user (<see cref="StaleLockPrompt"/>), and on the basis of user's decision call <see cref="WaitForTakeOverConfirmationAsync"/> then <see cref="ForceCheckoutAsync"/>, or <see cref="SetupReadOnlySnapshotAsync"/> (followed by <see cref="StartReaderPollingAsync"/>).<br/>
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
     /// <see cref="CheckoutOutcome.SourceMissing"/> — D does not exist (and recovery was not requested). Nothing was locked or created; tell the user and stop. Create new databases with <see cref="NewDatabaseFile.CreateAsync"/> BEFORE calling this.<br/>
     /// <see cref="CheckoutOutcome.SourceUnreadable"/> — D exists but another program holds it open (or access is denied). The write lock taken for the attempt has been released and nothing was left behind; tell the user to try again in a moment.<br/>
@@ -735,9 +738,66 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// How much longer the user must wait before a confirmed takeover of the lock that
+    /// <see cref="CheckoutAsync"/> judged inactive may go ahead (spec item 9b). The takeover requires that
+    /// holder's heartbeat to have been seen UNCHANGED for <see cref="WriteLockService.StaleConfirmationSeconds"/>
+    /// of this computer's own time, counted from the first time this process saw it — usually when the
+    /// checkout read it. That is typically already satisfied by the time the user has read the prompt;
+    /// otherwise the UI shows a short cancellable wait (<see cref="WaitForTakeOverConfirmationAsync"/>)
+    /// before calling <see cref="ForceCheckoutAsync"/>. A live holder renews its heartbeat once a minute,
+    /// so a heartbeat that stood still that long is not being renewed, whatever either computer's clock says;
+    /// and if it did move during the wait, <see cref="ForceCheckoutAsync"/>'s click-time re-check returns
+    /// <see cref="CheckoutOutcome.HolderActiveAgain"/>. Does no I/O.
+    /// </summary>
+    /// <returns>
+    /// The time still to wait; <see cref="TimeSpan.Zero"/> when the takeover may proceed immediately, and
+    /// also when there is no pending stale judgement (<see cref="ForceCheckoutAsync"/> refuses that case itself).
+    /// </returns>
+    public TimeSpan GetTakeOverWait()
+        => _staleHolderAtDetection is { } expected
+            ? _lockService.StaleConfirmationRemaining(expected)
+            : TimeSpan.Zero;
+
+    /// <summary>
+    /// Waits out <see cref="GetTakeOverWait"/> without blocking the calling thread, so the UI stays alive
+    /// and can offer a Cancel button. Sleeps on the lock service's own time source, then asks again, so a
+    /// timer that fires fractionally early cannot cut the wait short. Nothing is read, deleted or created
+    /// here: the lock file is only looked at afterwards, by <see cref="ForceCheckoutAsync"/>.
+    /// </summary>
+    /// <param name="cancellationToken">Cancelled when the user gives up waiting.</param>
+    /// <returns>
+    /// True when the full wait has elapsed and <see cref="ForceCheckoutAsync"/> may be called; false when
+    /// <paramref name="cancellationToken"/> was cancelled first, or when the wait cannot be satisfied
+    /// (the snapshot is no longer the one being timed). The caller should treat false exactly like
+    /// "Open read-only".
+    /// </returns>
+    public async Task<bool> WaitForTakeOverConfirmationAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // One full wait, plus a couple of tiny top-ups in case a timer fired fractionally early. A
+            // wait that is still unsatisfied after that means the snapshot is not the one being timed
+            // (it was replaced); refuse rather than wait forever.
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var remaining = GetTakeOverWait();
+                if (remaining <= TimeSpan.Zero) return true;
+                await Task.Delay(remaining, _lockService.Time, cancellationToken);
+            }
+            return GetTakeOverWait() <= TimeSpan.Zero;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Breaks a stale lock and completes a checkout. Call after the user has confirmed
     /// they wish to take over the abandoned session (i.e., after
-    /// <see cref="CheckoutAsync"/> returned <see cref="CheckoutOutcome.StaleHolder"/>).
+    /// <see cref="CheckoutAsync"/> returned <see cref="CheckoutOutcome.StaleHolder"/>)
+    /// and after any wait that <see cref="GetTakeOverWait"/> asked for has run out
+    /// (<see cref="WaitForTakeOverConfirmationAsync"/>; spec item 9b).
     ///
     /// <para><b>Click-time re-check (spec item 9a):</b> the prompt may have been open for minutes, so
     /// before anything is deleted <see cref="WriteLockService.ForceAcquire"/> re-reads the lock file and
@@ -3156,8 +3216,10 @@ public enum CheckoutOutcome
     /// <summary>A fresh lock exists; D'' was created. Pass <see cref="CheckoutService.WorkingPath"/> (= D'') to <c>InitializeServices</c>.</summary>
     ReadOnly,
     /// <summary>
-    /// A stale lock exists. Prompt the user (<see cref="StaleLockPrompt"/>), then call
-    /// <see cref="CheckoutService.ForceCheckoutAsync"/> if confirmed; otherwise open read-only with
+    /// A stale lock exists. Prompt the user (<see cref="StaleLockPrompt"/>), then, if confirmed, wait out
+    /// <see cref="CheckoutService.GetTakeOverWait"/> (<see cref="CheckoutService.WaitForTakeOverConfirmationAsync"/>)
+    /// and call <see cref="CheckoutService.ForceCheckoutAsync"/>; otherwise (declined, or the wait was
+    /// cancelled) open read-only with
     /// <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> and <see cref="CheckoutService.StartReaderPollingAsync"/>.
     /// </summary>
     StaleHolder,

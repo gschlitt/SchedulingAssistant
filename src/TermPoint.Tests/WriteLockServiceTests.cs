@@ -669,23 +669,32 @@ public sealed class WriteLockServiceTests : IDisposable
     }
 
     /// <summary>
-    /// When the lock file's heartbeat is stale (writer crashed), the poll
-    /// sets <see cref="WriteLockService.WriteLockBecameAvailable"/> to true.
+    /// When the lock file's heartbeat stops changing (writer crashed), the poll sets
+    /// <see cref="WriteLockService.WriteLockBecameAvailable"/> to true once it has stood still for
+    /// <see cref="WriteLockService.StaleLockThresholdSeconds"/> of the reader's own (here fake) time —
+    /// spec item 9b. Seeing a lock for the first time proves nothing, however old its timestamp looks.
     /// </summary>
     [Fact]
     public async Task PollLockFile_StaleLock_SetsWriteLockBecameAvailable()
     {
         var db   = DbPath();
         var lock_ = LockPath(db);
+        var clock = new FakeTimeProvider();
 
         // Simulate a live writer so the reader enters read-only mode.
         WriteExternalLockFile(lock_, heartbeatAgeSeconds: 0);
-        using var reader = new WriteLockService();
+        using var reader = new WriteLockService(clock);
         reader.TryAcquire(db);
         Assert.False(reader.IsWriter);
 
-        // Overwrite the lock file with a stale heartbeat (simulate crash).
+        // The writer's last heartbeat (an old-looking one, as if it crashed): the poll sees a new
+        // heartbeat and starts timing it.
         WriteExternalLockFile(lock_, heartbeatAgeSeconds: WriteLockService.StaleLockThresholdSeconds + 1);
+        await reader.PollLockFile();
+        Assert.False(reader.WriteLockBecameAvailable);
+
+        // It never changes again.
+        clock.Advance(TimeSpan.FromSeconds(WriteLockService.StaleLockThresholdSeconds));
         await reader.PollLockFile();
 
         Assert.True(reader.WriteLockBecameAvailable);

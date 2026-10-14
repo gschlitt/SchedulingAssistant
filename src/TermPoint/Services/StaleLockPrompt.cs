@@ -32,6 +32,21 @@ public static class StaleLockPrompt
     /// <summary>Title of the message shown when, at click time, the holder proved to be active again.</summary>
     public const string ActiveAgainTitle = "Database Is In Use Again";
 
+    /// <summary>
+    /// Title of the short wait dialog shown after "Take over" when the holder's heartbeat has not yet been
+    /// seen standing still long enough (spec item 9b).
+    /// </summary>
+    public const string WaitTitle = "Checking the Lock";
+
+    /// <summary>Label of the wait dialog's button; cancelling is the same as choosing "Open read-only".</summary>
+    public const string WaitCancelButton = "Cancel";
+
+    /// <summary>
+    /// The longest quiet time, in minutes, the takeover prompt will state. Beyond this (a year) the figure
+    /// can only come from a wrong clock, so the prompt says "for a while" instead.
+    /// </summary>
+    private const double MaxPlausibleQuietMinutes = 365d * 24 * 60;
+
     // ── Builders ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -39,6 +54,12 @@ public static class StaleLockPrompt
     /// quiet, and the warning that their unsaved changes cannot go into the database if the user takes over.
     /// Missing fields fall back sensibly: no name and no machine reads "An unknown user"; a missing or
     /// unreadable lock (no real heartbeat) reads "for a while" instead of a number of minutes.
+    ///
+    /// <para>The quiet time is only descriptive: it compares the heartbeat timestamp in the lock file with
+    /// this computer's clock (<paramref name="nowUtc"/>), and the two computers' clocks can disagree. It
+    /// is never what decides whether the lock may be taken over (spec item 9b). When the difference is
+    /// negative (the holder's clock is ahead), under a minute (the holder's clock is slightly ahead, so
+    /// "0 minutes" would be nonsense for a lock judged inactive), or beyond a year, it reads "for a while".</para>
     /// </summary>
     /// <param name="holder">
     /// The lock holder as read from the lock file when it was judged inactive; null when unknown.
@@ -49,11 +70,7 @@ public static class StaleLockPrompt
     {
         var who = DescribeHolder(holder);
 
-        // A holder with no heartbeat on record (null, an unreadable file's stand-in, or a file with the
-        // field missing) has no age to report.
-        var quiet = holder is null || holder.Heartbeat == DateTime.MinValue
-            ? "for a while"
-            : "for " + FormatMinutes((long)Math.Max(0, (nowUtc - holder.Heartbeat).TotalMinutes));
+        var quiet = DescribeQuietTime(holder, nowUtc);
 
         return $"{who} hasn't been active in this database {quiet}. " +
                "Their computer may be asleep or disconnected.\n\n" +
@@ -73,7 +90,42 @@ public static class StaleLockPrompt
     public static string BuildActiveAgainMessage(LockFileData? holder)
         => $"{NameOrNull(holder) ?? "Someone"} is active in this database again, so it will open read-only.";
 
+    /// <summary>
+    /// Builds the body of the wait dialog shown when the user chose "Take over" before the holder's
+    /// heartbeat had stood still long enough to be sure (spec item 9b): "Checking that jsmith isn't still
+    /// active in this database… (up to 45 seconds)". Without a usable name it says "the other user".
+    /// </summary>
+    /// <param name="holder">The lock holder the prompt was about; null when unknown.</param>
+    /// <param name="remaining">The longest the check can still take; shown rounded UP to whole seconds.</param>
+    /// <returns>The dialog body.</returns>
+    public static string BuildWaitMessage(LockFileData? holder, TimeSpan remaining)
+    {
+        var seconds = Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds));
+        return $"Checking that {NameOrNull(holder) ?? "the other user"} isn't still active in this database… " +
+               $"(up to {seconds} {(seconds == 1 ? "second" : "seconds")})";
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The phrase for how long the holder has been quiet: "for N minute(s)" from the heartbeat timestamp,
+    /// or "for a while" when there is no usable timestamp or the difference cannot be trusted (see
+    /// <see cref="BuildTakeOverMessage"/>).
+    /// </summary>
+    /// <param name="holder">The holder, or null.</param>
+    /// <param name="nowUtc">The current UTC time.</param>
+    private static string DescribeQuietTime(LockFileData? holder, DateTime nowUtc)
+    {
+        // A holder with no heartbeat on record (null, an unreadable file's stand-in, or a file with the
+        // field missing) has no age to report.
+        if (holder is null || holder.Heartbeat == DateTime.MinValue)
+            return "for a while";
+
+        var minutes = (nowUtc - holder.Heartbeat).TotalMinutes;
+        return minutes < 1 || minutes > MaxPlausibleQuietMinutes
+            ? "for a while"
+            : "for " + FormatMinutes((long)minutes);
+    }
 
     /// <summary>
     /// Names the holder for the takeover prompt: "name on machine", just the name, "Someone on machine",

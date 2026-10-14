@@ -47,14 +47,25 @@ public enum ForceAcquireResult
 /// timer.</para>
 ///
 /// <para><b>Reader path:</b> If <see cref="FileMode.CreateNew"/> fails (file exists), the
-/// existing file is read. If its heartbeat is older than <see cref="StaleLockThresholdSeconds"/>
-/// the lock is considered abandoned (<see cref="IsStaleLock"/>): the caller asks the user and, on
-/// a yes, calls <see cref="ForceAcquire"/>, which re-reads the file and deletes it only if it is
-/// still the same abandoned lock (spec item 9a). A
-/// fresh lock means this instance enters read-only mode and starts a polling timer that
+/// existing file is read. If it looks abandoned (<see cref="IsStaleLock"/>; see below) the caller
+/// asks the user and, on a yes, waits out <see cref="StaleConfirmationRemaining"/> and calls
+/// <see cref="ForceAcquire"/>, which re-reads the file and deletes it only if it is still the same
+/// abandoned lock (spec item 9a). A
+/// live-looking lock means this instance enters read-only mode and starts a polling timer that
 /// fires every <see cref="PollIntervalSeconds"/> seconds. When the poll detects the lock is
 /// gone or stale, it raises <see cref="LockStateChanged"/> on the UI thread so the banner
 /// can offer the user a prompt to switch to edit mode.</para>
+///
+/// <para><b>What "abandoned" means (spec item 9b).</b> The reader never trusts the writer's clock.
+/// A lock is abandoned when its heartbeat (its <see cref="LockFileData.SessionGuid"/> and
+/// <see cref="LockFileData.Heartbeat"/>) has been seen <b>unchanged for
+/// <see cref="StaleLockThresholdSeconds"/> of this computer's own time</b> (<see cref="LockHeartbeatWatch"/>).
+/// The polling path judges by that alone. The open path also accepts the timestamp inside the file
+/// being older than the threshold by this computer's clock, but only as a <i>hint</i> so an obviously
+/// dead lock is offered at once; the takeover itself still needs the heartbeat to have stood still
+/// for <see cref="StaleConfirmationSeconds"/> of local time. So a writer whose clock is minutes behind
+/// but which keeps heart-beating is never taken from, and a dead writer whose clock is ahead is still
+/// found out by the polling path.</para>
 ///
 /// <para><b>Thread safety:</b> The heartbeat timer callback runs on a thread-pool thread
 /// and accesses the lock file without synchronization (it is the only writer while it
@@ -87,11 +98,25 @@ public sealed class WriteLockService : IDisposable
     public const int PollIntervalSeconds = 60;
 
     /// <summary>
-    /// A lock whose heartbeat timestamp is older than this many seconds is
-    /// considered stale (writer crashed or was killed). Set to 3× the heartbeat
-    /// interval so a single missed beat does not trigger a false reclaim.
+    /// A lock whose heartbeat has not CHANGED for this many seconds, measured on this computer's own
+    /// clock (<see cref="LockHeartbeatWatch"/>), is considered stale (writer crashed, was killed, or is
+    /// asleep). Set to 3× the heartbeat interval so a single missed beat does not trigger a false
+    /// reclaim. The reader polling path judges by this alone. The open path additionally uses it as a
+    /// hint against the timestamp inside the file (see <see cref="DetectStaleLock"/>), because a lock
+    /// that already looks long dead by the clock is worth offering at once rather than after a wait.
     /// </summary>
     public const int StaleLockThresholdSeconds = 180;
+
+    /// <summary>
+    /// How long, in seconds of this computer's own time, a lock's heartbeat must be seen UNCHANGED
+    /// before a user-confirmed takeover may go ahead (spec item 9b). A live writer rewrites its
+    /// heartbeat every <see cref="HeartbeatIntervalSeconds"/> seconds, so seeing it stand still for one
+    /// full interval plus a margin of 10 s proves the writer is not renewing, independent of either
+    /// computer's clock. Shorter than <see cref="StaleLockThresholdSeconds"/> on purpose: on the open
+    /// path the clock comparison has already said "long dead", and this is only the confirmation that the
+    /// clock was not misleading, so the extra wait stays short.
+    /// </summary>
+    public const int StaleConfirmationSeconds = HeartbeatIntervalSeconds + 10;
 
     /// <summary>
     /// Number of consecutive heartbeat renewal failures before
@@ -155,6 +180,43 @@ public sealed class WriteLockService : IDisposable
     private Timer? _wakeDetectionTimer;
     private DateTime _lastWakeTick = DateTime.UtcNow;
     private bool _disposed;
+
+    /// <summary>
+    /// The time source for everything this service MEASURES on the reader side: how long a lock's
+    /// heartbeat has been unchanged (<see cref="_heartbeatWatch"/>), and "now" for the open path's
+    /// clock hint. <see cref="TimeProvider.System"/> in production; a controllable fake in tests. The
+    /// writer side (heartbeat stamps, wake detection) deliberately keeps using the system clock.
+    /// </summary>
+    private readonly TimeProvider _time;
+
+    /// <summary>
+    /// Times how long the lock holder's snapshot (session + heartbeat) has stood unchanged, on this
+    /// computer's own monotonic clock. Shared by the open path (<see cref="DetectStaleLock"/>), the
+    /// polling path (<see cref="PollLockFile"/>) and the takeover confirmation
+    /// (<see cref="StaleConfirmationRemaining"/>), and deliberately not cleared by
+    /// <see cref="Release"/> or <see cref="TryAcquire"/>, so a measurement made by one carries to the next.
+    /// </summary>
+    private readonly LockHeartbeatWatch _heartbeatWatch;
+
+    /// <summary>
+    /// Creates a lock service.
+    /// </summary>
+    /// <param name="timeProvider">
+    /// Time source for measuring how long a lock's heartbeat has been unchanged. Defaults to
+    /// <see cref="TimeProvider.System"/>; tests pass a fake so minutes of waiting take no real time.
+    /// </param>
+    public WriteLockService(TimeProvider? timeProvider = null)
+    {
+        _time           = timeProvider ?? TimeProvider.System;
+        _heartbeatWatch = new LockHeartbeatWatch(_time);
+    }
+
+    /// <summary>
+    /// The time source this service measures with. Exposed so the takeover wait
+    /// (<see cref="CheckoutService.WaitForTakeOverConfirmationAsync"/>) sleeps on the same clock the
+    /// confirmation is measured on.
+    /// </summary>
+    internal TimeProvider Time => _time;
 
     /// <summary>
     /// A stable GUID generated once per app session. Written to the lock file so that
@@ -580,6 +642,13 @@ public sealed class WriteLockService : IDisposable
             // The holder is (or someone else now is) alive. Take nothing; show who it is.
             IsStaleLock   = false;
             CurrentHolder = currentHolder;
+
+            // We have just seen this snapshot, so start timing it from now (a no-op if the polling
+            // path was already timing exactly this one). The read-only polling that follows then
+            // judges it by how long it stands still, not by the writer's clock.
+            if (currentHolder is not null)
+                _heartbeatWatch.Observe(_lockFilePath, currentHolder);
+
             App.Logger.LogInfo(
                 $"[WriteLockService] ForceAcquire: lock changed since it was judged stale — leaving it alone " +
                 $"(now {currentHolder?.Username ?? "unreadable"}@{currentHolder?.Machine ?? "?"}).");
@@ -595,6 +664,10 @@ public sealed class WriteLockService : IDisposable
                 App.Logger.LogInfo($"[WriteLockService] ForceAcquire: could not delete stale lock: {ex.Message}");
             }
         }
+
+        // The abandoned lock is gone (deleted now, or already missing): forget it, so whatever appears
+        // at this path next is timed from scratch.
+        _heartbeatWatch.Clear();
 
         IsStaleLock = false;
         CurrentHolder = null;
@@ -619,6 +692,35 @@ public sealed class WriteLockService : IDisposable
 
         Dispatcher.UIThread.Post(() => LockStateChanged?.Invoke());
         return result;
+    }
+
+    /// <summary>
+    /// How much longer a user-confirmed takeover of <paramref name="staleHolder"/> must wait before
+    /// <see cref="ForceAcquire"/> may be called (spec item 9b). The takeover needs the holder's heartbeat
+    /// to have been seen unchanged for <see cref="StaleConfirmationSeconds"/> of this computer's own time
+    /// (<see cref="LockHeartbeatWatch"/>), counted from the first time this process saw that very
+    /// snapshot, which is when <see cref="TryAcquire"/> read it (or earlier, if the polling path had
+    /// already been watching it). It is usually already satisfied by the time the user has read the
+    /// prompt; when it is not, the caller waits this long (cancellably), then calls
+    /// <see cref="ForceAcquire"/>, whose click-time re-check returns
+    /// <see cref="ForceAcquireResult.HolderActiveAgain"/> if the heartbeat moved in the meantime.
+    /// Reads no file and does no I/O.
+    /// </summary>
+    /// <param name="staleHolder">
+    /// The snapshot the stale judgement was made on (<see cref="CurrentHolder"/> as
+    /// <see cref="TryAcquire"/> left it). A snapshot this service is not timing (never observed, or
+    /// since replaced by a different one) has the full wait ahead of it.
+    /// </param>
+    /// <returns>The time still to wait; <see cref="TimeSpan.Zero"/> when the takeover may proceed now.</returns>
+    public TimeSpan StaleConfirmationRemaining(LockFileData staleHolder)
+    {
+        ArgumentNullException.ThrowIfNull(staleHolder);
+
+        var unchanged = _lockFilePath is null
+            ? TimeSpan.Zero
+            : _heartbeatWatch.UnchangedFor(_lockFilePath, staleHolder);
+        var remaining = TimeSpan.FromSeconds(StaleConfirmationSeconds) - unchanged;
+        return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
     }
 
     /// <summary>
@@ -662,9 +764,19 @@ public sealed class WriteLockService : IDisposable
         // file is absent, CurrentHolder ends up null and the very first poll tick
         // will classify the lock as available and raise LockStateChanged again.
         if (File.Exists(_lockFilePath))
+        {
             ReadCurrentHolder();
+
+            // Start (or, when this is the very snapshot the stale prompt was about, continue) timing how
+            // long it stands still: the polling that starts below counts from the first time THIS
+            // process saw it, not from its own first tick.
+            if (CurrentHolder is not null)
+                _heartbeatWatch.Observe(_lockFilePath, CurrentHolder);
+        }
         else
+        {
             CurrentHolder = null;
+        }
 
         StartPolling();
         App.Logger.LogInfo($"[WriteLockService] Entered reader mode for {_lockFilePath}; polling started.");
@@ -855,19 +967,41 @@ public sealed class WriteLockService : IDisposable
     }
 
     /// <summary>
-    /// Checks whether the existing lock is stale (heartbeat older than
-    /// <see cref="StaleLockThresholdSeconds"/>). If so, sets <see cref="IsStaleLock"/>
-    /// to true so the caller can prompt the user before calling <see cref="ForceAcquire"/>.
-    /// Does NOT auto-reclaim the lock.
+    /// Checks whether the existing lock looks abandoned and, if so, sets <see cref="IsStaleLock"/> to
+    /// true so the caller can prompt the user before calling <see cref="ForceAcquire"/>. Does NOT
+    /// auto-reclaim the lock.
+    ///
+    /// <para><b>Two signals (spec item 9b).</b> The lock is offered for takeover when EITHER
+    /// <list type="bullet">
+    ///   <item>the timestamp inside the file is older than <see cref="StaleLockThresholdSeconds"/> by this
+    ///         computer's clock. This is only a <b>hint</b>: it compares two computers' clocks, which can
+    ///         disagree by minutes, so it can neither prove a lock dead nor keep a dead one alive. Its
+    ///         job is to let an obviously dead lock be offered immediately; or</item>
+    ///   <item>this process has seen the same heartbeat unchanged for <see cref="StaleLockThresholdSeconds"/>
+    ///         of its own time (<see cref="LockHeartbeatWatch"/>). This is clock-free and catches a dead
+    ///         writer whose clock runs ahead, which the hint would call alive. The polling path reaches
+    ///         it, then the user's "Take over as writer" click re-enters here.</item>
+    /// </list>
+    /// Either way the actual takeover waits for <see cref="StaleConfirmationRemaining"/>, so the hint
+    /// alone can never take a lock from a writer that is still renewing its heartbeat.</para>
+    ///
+    /// <para>Every call also records the sighting, so the confirmation clock starts the first time
+    /// this process reads the holder.</para>
     /// </summary>
     /// <returns>Always false — stale detection is not the same as acquisition.</returns>
     private bool DetectStaleLock()
     {
         if (CurrentHolder is null) return false;
-        var age = (DateTime.UtcNow - CurrentHolder.Heartbeat).TotalSeconds;
-        if (age <= StaleLockThresholdSeconds) return false;
 
-        App.Logger.LogInfo($"[WriteLockService] Stale lock detected (age {age:F0}s) — setting IsStaleLock for caller to handle.");
+        var unchanged  = _heartbeatWatch.Observe(_lockFilePath!, CurrentHolder);
+        var clockAge   = (_time.GetUtcNow().UtcDateTime - CurrentHolder.Heartbeat).TotalSeconds;
+        var clockHint  = clockAge > StaleLockThresholdSeconds;
+        var stoodStill = unchanged.TotalSeconds >= StaleLockThresholdSeconds;
+        if (!clockHint && !stoodStill) return false;
+
+        App.Logger.LogInfo(
+            $"[WriteLockService] Stale lock detected (clock says {clockAge:F0}s old, heartbeat unchanged " +
+            $"for {unchanged.TotalSeconds:F0}s here) — setting IsStaleLock for caller to handle.");
         IsStaleLock = true;
         return false;
     }
@@ -916,9 +1050,10 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// Builds the synthetic holder used when a lock file exists but cannot be parsed: an ancient
-    /// heartbeat so stale-lock detection and polling classify it as expired (rather than treating
+    /// heartbeat so the open path's clock hint classifies it as expired (rather than treating
     /// corruption as "no lock held"), and an empty <see cref="LockFileData.SessionGuid"/> so two
-    /// reads of the same garbled file compare as the same lock.
+    /// reads of the same garbled file compare as the same lock (which is also how polling times it:
+    /// a file that stays garbled stands unchanged).
     /// </summary>
     /// <returns>A new synthetic holder.</returns>
     private static LockFileData CreateCorruptedHolder() => new()
@@ -1211,8 +1346,10 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// Checks whether the write lock is still held by another process. Called on
-    /// the UI thread by the polling timer. If the lock file is absent or its
-    /// heartbeat is stale, sets <see cref="WriteLockBecameAvailable"/> to true,
+    /// the UI thread by the polling timer. If the lock file is absent, or its heartbeat
+    /// has stood unchanged for <see cref="StaleLockThresholdSeconds"/> of this computer's
+    /// own time (spec item 9b; the timestamp inside the file is never compared with this
+    /// computer's clock), sets <see cref="WriteLockBecameAvailable"/> to true,
     /// stops the polling timer, and raises <see cref="LockStateChanged"/> so the
     /// UI can offer the "Switch to edit mode" prompt.
     ///
@@ -1261,6 +1398,7 @@ public sealed class WriteLockService : IDisposable
             }
 
             available = true;
+            _heartbeatWatch.Clear();   // whatever is created here next is a new lock — time it afresh
             App.Logger.LogInfo("[WriteLockService] Poll: lock file gone — write access available.");
         }
         else
@@ -1296,28 +1434,34 @@ public sealed class WriteLockService : IDisposable
                 return;
             }
 
-            double age;
+            // Judge the lock by whether its heartbeat CHANGES, timed on this computer's own clock —
+            // never by comparing the timestamp inside the file with this computer's clock, which can
+            // be minutes off the writer's (spec item 9b). A live writer rewrites the heartbeat every
+            // minute, so every poll that sees a new heartbeat restarts the measurement; only a lock
+            // that stands still for the whole stale threshold is offered for takeover.
+            //
+            // A successfully-read but unparseable lock file is observed as the synthetic corrupted
+            // holder (matching ReadCurrentHolder): it never changes, so it is offered for takeover
+            // once it has stood the same for the threshold — an unusable lock is not respected
+            // forever, yet one garbled read (a half-synced file, say) cannot flip a permanent offer.
+            LockFileData? data;
             try
             {
-                // A successfully-read but corrupt lock file is deliberately classified as
-                // stale (matching ReadCurrentHolder's synthetic ancient-heartbeat holder):
-                // an unusable lock should be offered for takeover, not respected forever.
-                var data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
+                data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
                 CurrentHolder = data;
-                age = data is null
-                    ? double.MaxValue
-                    : (DateTime.UtcNow - data.Heartbeat).TotalSeconds;
             }
             catch (JsonException)
             {
-                App.Logger.LogInfo("[WriteLockService] Poll: lock file corrupted — treating as stale.");
+                App.Logger.LogInfo("[WriteLockService] Poll: lock file corrupted — timing it as an unreadable lock.");
+                data = null;
                 CurrentHolder = CreateCorruptedHolder();
-                age = double.MaxValue;
             }
 
-            available = age > StaleLockThresholdSeconds;
+            var unchanged = _heartbeatWatch.Observe(_lockFilePath, data ?? CreateCorruptedHolder());
+            available = unchanged.TotalSeconds >= StaleLockThresholdSeconds;
             if (available)
-                App.Logger.LogInfo($"[WriteLockService] Poll: lock is stale (age {age:F0}s) — write access available.");
+                App.Logger.LogInfo(
+                    $"[WriteLockService] Poll: lock heartbeat unchanged for {unchanged.TotalSeconds:F0}s — write access available.");
         }
 
         if (available)
