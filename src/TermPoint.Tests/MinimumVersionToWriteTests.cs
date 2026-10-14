@@ -153,67 +153,287 @@ public sealed class MinimumVersionToWriteTests : IDisposable
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // ReadStamp — read-only, tolerant of everything
+    // ReadStamp — read-only, never throws, and says HOW the read ended (spec item 3, step 3c):
+    // Found / None (genuinely unstamped) / Unreadable (could not look — never "no stamp")
     // ═════════════════════════════════════════════════════════════════════════
 
-    /// <summary>A database without an AppConfiguration table has no stamp.</summary>
+    /// <summary>A database without an AppConfiguration table has no stamp (None, not Unreadable).</summary>
     [Fact]
-    public void ReadStamp_TableMissing_ReturnsNull()
+    public void ReadStamp_TableMissing_ReturnsNone()
     {
         var db = DbPath();
-        using (Open(db)) { }   // valid empty SQLite file
+        using (var conn = Open(db))
+        {
+            // Give the file a real SQLite header (a bare open leaves a zero-byte file) but no AppConfiguration table.
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE Other (x TEXT)";
+            cmd.ExecuteNonQuery();
+        }
 
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));
+        var read = MinimumVersionToWrite.ReadStamp(db);
+
+        Assert.Equal(StampRead.None, read);
+        Assert.Equal(StampReadKind.None, read.Kind);
     }
 
     /// <summary>An AppConfiguration table without the stamp row has no stamp (other rows are ignored).</summary>
     [Fact]
-    public void ReadStamp_KeyMissing_ReturnsNull()
+    public void ReadStamp_KeyMissing_ReturnsNone()
     {
         var db = DbPath();
         CreateConfigDb(db, ("SomethingElse", "1.9.9"));
 
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(db));
     }
 
-    /// <summary>A stamped database returns its (trimmed) stamp.</summary>
+    /// <summary>A stamped database returns its (trimmed) stamp as a Found read.</summary>
     [Fact]
-    public void ReadStamp_ValuePresent_ReturnsTrimmedValue()
+    public void ReadStamp_ValuePresent_ReturnsFoundWithTrimmedValue()
     {
         var db = DbPath();
         CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, " 1.2.5 "));
 
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        var read = MinimumVersionToWrite.ReadStamp(db);
+
+        Assert.Equal(StampReadKind.Found, read.Kind);
+        Assert.Equal("1.2.5", read.Value);
+        Assert.Equal(StampRead.Found("1.2.5"), read);
+        Assert.False(read.IsUnreadable);
     }
 
     /// <summary>A blank stored value counts as no stamp.</summary>
     [Fact]
-    public void ReadStamp_BlankValue_ReturnsNull()
+    public void ReadStamp_BlankValue_ReturnsNone()
     {
         var db = DbPath();
         CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, "  "));
 
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(db));
     }
 
-    /// <summary>A file that is not SQLite (the dummy files other tests use as D) reads as unstamped, never throws.</summary>
+    /// <summary>
+    /// A file with no SQLite header (the dummy files other tests use as D) cannot carry a stamp: None, never
+    /// Unreadable and never an exception — the integrity check of the local copy deals with such a file.
+    /// </summary>
     [Fact]
-    public void ReadStamp_NotASqliteFile_ReturnsNull()
+    public void ReadStamp_NotASqliteFile_ReturnsNone()
     {
         var db = DbPath();
         File.WriteAllText(db, "dummy-database-content");
 
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(db));
     }
 
-    /// <summary>A missing file reads as unstamped and is NOT created by the probe.</summary>
+    /// <summary>An empty (zero-byte) file has no SQLite header either, so it reads as unstamped.</summary>
     [Fact]
-    public void ReadStamp_FileMissing_ReturnsNullAndCreatesNothing()
+    public void ReadStamp_EmptyFile_ReturnsNone()
+    {
+        var db = DbPath();
+        File.WriteAllBytes(db, Array.Empty<byte>());
+
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(db));
+    }
+
+    /// <summary>
+    /// A missing file could not be examined: Unreadable (NOT None — the old null-for-everything read let a file
+    /// that was not there pass the gate as unstamped), and the probe must not create the file.
+    /// </summary>
+    [Fact]
+    public void ReadStamp_FileMissing_ReturnsUnreadableAndCreatesNothing()
     {
         var db = DbPath("absent");
 
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));
+        var read = MinimumVersionToWrite.ReadStamp(db);
+
+        Assert.Equal(StampReadKind.Unreadable, read.Kind);
+        Assert.True(read.IsUnreadable);
+        Assert.Null(read.Value);
         Assert.False(File.Exists(db), "Reading a stamp must never create the database file.");
+    }
+
+    /// <summary>
+    /// A file another program holds exclusively (FileShare.None — antivirus scanning a freshly copied working
+    /// copy) cannot be examined: Unreadable, with a log-only reason, and the file is left exactly as it was.
+    /// </summary>
+    [Fact]
+    public void ReadStamp_FileHeldExclusively_ReturnsUnreadable_AndLeavesTheFileUntouched()
+    {
+        var db = DbPath();
+        CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        var before = Hash(db);
+
+        StampRead read;
+        using (new FileStream(db, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            read = MinimumVersionToWrite.ReadStamp(db);
+
+        Assert.Equal(StampReadKind.Unreadable, read.Kind);
+        Assert.True(read.IsUnreadable);
+        Assert.Null(read.Value);
+        Assert.False(string.IsNullOrWhiteSpace(read.Detail), "An unreadable result must say why, for the local log.");
+        Assert.Equal(before, Hash(db));
+        Assert.False(File.Exists(db + "-journal"), "No journal may be left behind by a failed read.");
+
+        // Once the other program lets go, the very same file reads normally: nothing was damaged by the attempt.
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
+    }
+
+    /// <summary>
+    /// Only a failed read (Unreadable or Damaged) carries a Detail (the reason, for the log): Found and None never
+    /// do, so a caller can treat a non-null Detail as "the read failed".
+    /// </summary>
+    [Fact]
+    public void ReadStamp_DetailIsNonNullOnlyForFailedReads()
+    {
+        var found = DbPath("found");
+        CreateConfigDb(found, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        var none = DbPath("none");
+        CreateConfigDb(none, ("SomethingElse", "x"));
+        var dummy = DbPath("dummy");
+        File.WriteAllText(dummy, "dummy-database-content");
+        var missing = DbPath("missing");
+        var damaged = DbPath("damaged");
+        CreateConfigDb(damaged, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        DbFileTestHelpers.TrashSchemaBelowHeader(damaged);
+
+        Assert.Null(MinimumVersionToWrite.ReadStamp(found).Detail);
+        Assert.Null(MinimumVersionToWrite.ReadStamp(none).Detail);
+        Assert.Null(MinimumVersionToWrite.ReadStamp(dummy).Detail);
+        Assert.NotNull(MinimumVersionToWrite.ReadStamp(missing).Detail);
+        Assert.NotNull(MinimumVersionToWrite.ReadStamp(damaged).Detail);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ReadStamp — damaged files are Damaged, not Unreadable (spec item 3, step 3c)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Page 1 damaged below a valid header (the schema b-tree is gone): SQLite reports the file as malformed the
+    /// moment the read asks whether an AppConfiguration table exists. That is damage, not "could not look" — the
+    /// version gate must hand it to the open-time integrity check instead of showing the "in use" prompt.
+    /// </summary>
+    [Fact]
+    public void ReadStamp_SchemaPageDamagedBehindAValidHeader_ReturnsDamaged()
+    {
+        var db = DbPath();
+        CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        DbFileTestHelpers.TrashSchemaBelowHeader(db);
+        Assert.True(DatabaseValidator.HasSqliteSignature(db), "precondition: the header must still be valid");
+        var before = Hash(db);
+
+        var read = MinimumVersionToWrite.ReadStamp(db);
+
+        Assert.Equal(StampReadKind.Damaged, read.Kind);
+        Assert.True(read.IsDamaged);
+        Assert.False(read.IsUnreadable);
+        Assert.Null(read.Value);
+        Assert.Equal(before, Hash(db));
+    }
+
+    /// <summary>
+    /// The AppConfiguration table's own page damaged (it is the first table created, so page 2): the schema says
+    /// the table exists, and reading it fails as malformed — Damaged.
+    /// </summary>
+    [Fact]
+    public void ReadStamp_AppConfigurationPageDamaged_ReturnsDamaged()
+    {
+        var db = DbPath();
+        CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        DbFileTestHelpers.TrashPage(db, 2);
+
+        var read = MinimumVersionToWrite.ReadStamp(db);
+
+        Assert.Equal(StampReadKind.Damaged, read.Kind);
+        Assert.Null(read.Value);
+    }
+
+    /// <summary>
+    /// The stamp read and the open-time integrity check must agree on what is damaged — that is what makes it safe
+    /// for the gate to hand a Damaged file on: the check that runs next refuses every file the read called damaged.
+    /// </summary>
+    [Fact]
+    public void ReadStamp_Damaged_IsAlsoDamagedToTheOpenTimeIntegrityCheck()
+    {
+        var schema = DbPath("schema");
+        CreateConfigDb(schema, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        DbFileTestHelpers.TrashSchemaBelowHeader(schema);
+        var configPage = DbPath("config");
+        CreateConfigDb(configPage, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
+        DbFileTestHelpers.TrashPage(configPage, 2);
+
+        foreach (var db in new[] { schema, configPage })
+        {
+            Assert.True(MinimumVersionToWrite.ReadStamp(db).IsDamaged);
+            Assert.Equal(IntegrityCheckResult.Damaged, BackupService.CheckIntegrityDetailed(db));
+        }
+    }
+
+    /// <summary>
+    /// FromFailure uses the integrity check's own rule: only a SQLite error that positively says the contents are
+    /// bad (corrupt, including an extended corrupt code; not a database; format) is Damaged. Busy, locked, can't
+    /// open, I/O and anything else stay Unreadable — they can clear by themselves.
+    /// </summary>
+    [Theory]
+    [InlineData(11,  StampReadKind.Damaged)]     // SQLITE_CORRUPT
+    [InlineData(267, StampReadKind.Damaged)]     // SQLITE_CORRUPT_VTAB folds into 11
+    [InlineData(26,  StampReadKind.Damaged)]     // SQLITE_NOTADB
+    [InlineData(24,  StampReadKind.Damaged)]     // SQLITE_FORMAT
+    [InlineData(5,   StampReadKind.Unreadable)]  // SQLITE_BUSY
+    [InlineData(6,   StampReadKind.Unreadable)]  // SQLITE_LOCKED
+    [InlineData(10,  StampReadKind.Unreadable)]  // SQLITE_IOERR
+    [InlineData(14,  StampReadKind.Unreadable)]  // SQLITE_CANTOPEN (a sharing violation surfaces as this)
+    public void StampRead_FromFailure_ClassifiesSqliteErrorsLikeTheIntegrityCheck(int code, StampReadKind expected)
+    {
+        var read = StampRead.FromFailure(new SqliteException("simulated", code));
+
+        Assert.Equal(expected, read.Kind);
+        Assert.Null(read.Value);
+        Assert.Equal("SqliteException: simulated", read.Detail);
+    }
+
+    /// <summary>Exceptions that are not SQLite errors never count as damage.</summary>
+    [Fact]
+    public void StampRead_FromFailure_NonSqliteExceptions_AreUnreadable()
+    {
+        Assert.True(StampRead.FromFailure(new IOException("held")).IsUnreadable);
+        Assert.True(StampRead.FromFailure(new UnauthorizedAccessException("denied")).IsUnreadable);
+        Assert.True(StampRead.FromFailure(new InvalidOperationException("odd")).IsUnreadable);
+    }
+
+    /// <summary>
+    /// The StampRead factories build the four kinds; only Unreadable reports IsUnreadable and only Damaged reports
+    /// IsDamaged.
+    /// </summary>
+    [Fact]
+    public void StampRead_Factories_BuildTheFourKinds()
+    {
+        var damaged = StampRead.DamagedFile(new SqliteException("database disk image is malformed", 11));
+        Assert.Equal(StampReadKind.Damaged, damaged.Kind);
+        Assert.True(damaged.IsDamaged);
+        Assert.False(damaged.IsUnreadable);
+        Assert.Null(damaged.Value);
+        Assert.Equal("SqliteException: database disk image is malformed", damaged.Detail);
+        Assert.False(StampRead.None.IsDamaged);
+        Assert.False(StampRead.Found("1.2.4").IsDamaged);
+        Assert.False(StampRead.Couldnt("because").IsDamaged);
+
+        Assert.Equal(StampReadKind.None, StampRead.None.Kind);
+        Assert.False(StampRead.None.IsUnreadable);
+        Assert.Null(StampRead.None.Value);
+
+        var found = StampRead.Found("1.2.4");
+        Assert.Equal(StampReadKind.Found, found.Kind);
+        Assert.Equal("1.2.4", found.Value);
+        Assert.False(found.IsUnreadable);
+
+        var textual = StampRead.Couldnt("because");
+        Assert.Equal(StampReadKind.Unreadable, textual.Kind);
+        Assert.Equal("because", textual.Detail);
+        Assert.True(textual.IsUnreadable);
+
+        // From an exception, only its type and message reach the detail.
+        var fromException = StampRead.Couldnt(new IOException("held by another process"));
+        Assert.True(fromException.IsUnreadable);
+        Assert.Equal("IOException: held by another process", fromException.Detail);
     }
 
     /// <summary>Reading the stamp must not change a single byte of the file.</summary>
@@ -224,7 +444,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
         CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, "1.2.5"));
         var before = Hash(db);
 
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
 
         Assert.Equal(before, Hash(db));
         Assert.False(File.Exists(db + "-journal"), "No journal may be left behind by a read.");
@@ -244,7 +464,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
         var raised = MinimumVersionToWrite.Raise(db, "1.2.5", "Section-type colours are now saved.");
 
         Assert.True(raised);
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
         Assert.Equal("Section-type colours are now saved.", RawValue(db, MinimumVersionToWrite.ReasonKey));
     }
 
@@ -258,7 +478,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
         var raised = MinimumVersionToWrite.Raise(db, "1.2.5", "new reason");
 
         Assert.True(raised);
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
         Assert.Equal("new reason", RawValue(db, MinimumVersionToWrite.ReasonKey));
     }
 
@@ -272,7 +492,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
         var raised = MinimumVersionToWrite.Raise(db, "1.2.3", "would-be reason");
 
         Assert.False(raised);
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
         Assert.Equal("keep me", RawValue(db, MinimumVersionToWrite.ReasonKey));
     }
 
@@ -299,7 +519,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
 
         Assert.True(MinimumVersionToWrite.Raise(db, "1.2.5", reason: null));
 
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
         Assert.Null(RawValue(db, MinimumVersionToWrite.ReasonKey));
     }
 
@@ -315,7 +535,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
 
         Assert.True(MinimumVersionToWrite.Raise(db, "1.2.5", reason: null));
 
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
         Assert.Null(RawValue(db, MinimumVersionToWrite.ReasonKey));
     }
 
@@ -344,7 +564,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
         CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, ""));
 
         Assert.True(MinimumVersionToWrite.Raise(db, "1.2.5", null));
-        Assert.Equal("1.2.5", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.5"), MinimumVersionToWrite.ReadStamp(db));
     }
 
     /// <summary>Raise compares numerically: 1.10.0 replaces 1.9.0.</summary>
@@ -355,7 +575,7 @@ public sealed class MinimumVersionToWriteTests : IDisposable
         CreateConfigDb(db, (MinimumVersionToWrite.ConfigKey, "1.9.0"));
 
         Assert.True(MinimumVersionToWrite.Raise(db, "1.10.0", null));
-        Assert.Equal("1.10.0", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.10.0"), MinimumVersionToWrite.ReadStamp(db));
     }
 
     /// <summary>A malformed version argument is rejected up front and leaves the file untouched.</summary>

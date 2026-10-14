@@ -28,6 +28,8 @@ namespace TermPoint.Tests;
 ///   <item><description>Group 7 — Coexistence with open database connections (wizard and edit flows)</description></item>
 ///   <item><description>Group 13 — MinimumVersionToWrite gate (read-only on a too-old app, dormant stamping); the
 ///   file also contains later groups numbered 8–12 below</description></item>
+///   <item><description>Group 19 — the version gate fails safe: an unreadable stamp, or a stamp that cannot be raised,
+///   refuses write access after quiet retries (spec item 3, step 3c)</description></item>
 /// </list>
 /// </para>
 /// </summary>
@@ -3570,8 +3572,9 @@ public sealed class CheckoutServiceTests : IDisposable
     //
     // The raising half is dormant in 1.2.3 (ThisReleaseRequires == null); the tests
     // drive it through the internal ThisReleaseRequires / ChannelOverride seams.
-    // A database with no readable stamp (including the non-SQLite dummy files used
-    // by the other groups) must never be made read-only.
+    // A database with no stamp (including the non-SQLite dummy files used
+    // by the other groups) must never be made read-only. A stamp that cannot be
+    // READ at all is a different matter, handled by Group 19 (step 3c).
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>Wait budget for the lock service's background lock-file deletion to settle.</summary>
@@ -3752,8 +3755,10 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// A D that is not readable as SQLite (the dummy files most other tests use) has no stamp —
-    /// the gate must fail open so a corrupt file is handled by the normal open path, not here.
+    /// A D that is not SQLite at all (the dummy files most other tests use) has no SQLite header, so it cannot
+    /// carry a stamp: <see cref="StampReadKind.None"/>, not "could not look" — the gate lets it through and the
+    /// integrity check of the local copy deals with such a file. (A file that could not be examined at all is a
+    /// different answer, <see cref="StampReadKind.Unreadable"/>, covered by Group 19.)
     /// </summary>
     [Fact]
     public async Task VersionGate_UnreadableDatabase_WriteAccess()
@@ -3895,14 +3900,14 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
         Assert.Null(svc.RequiredAppVersion);
-        Assert.Equal("1.2.4", MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal(StampRead.Found("1.2.4"), MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
         Assert.Equal("Section-type colours are now saved.",
             GetConfigValue(svc.WorkingPath, MinimumVersionToWrite.ReasonKey));
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));   // D has not been saved yet
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(db));   // D has not been saved yet
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
 
-        Assert.Equal("1.2.4", MinimumVersionToWrite.ReadStamp(db));
+        Assert.Equal(StampRead.Found("1.2.4"), MinimumVersionToWrite.ReadStamp(db));
         Assert.Equal("Section-type colours are now saved.",
             GetConfigValue(db, MinimumVersionToWrite.ReasonKey));
     }
@@ -3924,7 +3929,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.CheckoutAsync(db);
 
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);   // never blocks editing either way
-        Assert.Equal(shouldStamp ? "1.2.4" : null, MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal(shouldStamp ? StampRead.Found("1.2.4") : StampRead.None, MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
     }
 
     /// <summary>A release that requires nothing (ThisReleaseRequires null — the 1.2.3 state) never stamps, whatever the channel.</summary>
@@ -3939,7 +3944,7 @@ public sealed class CheckoutServiceTests : IDisposable
 
         await svc.CheckoutAsync(db);
 
-        Assert.Null(MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
         Assert.Null(GetConfigValue(svc.WorkingPath, MinimumVersionToWrite.ReasonKey));
     }
 
@@ -3956,27 +3961,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.CheckoutAsync(db);
 
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
-        Assert.Equal("1.2.9", MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
-    }
-
-    /// <summary>
-    /// A stamping failure (here: a malformed ThisReleaseRequires) is logged and swallowed —
-    /// it must never cost the user write access.
-    /// </summary>
-    [Fact]
-    public async Task VersionGate_StampingFailure_DoesNotBlockEditing()
-    {
-        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
-        svc.ThisReleaseRequires = "not-a-version";
-        svc.ChannelOverride     = InstallChannel.Store;
-        var db = DbPath();
-        CreateStampedDb(db, null);
-
-        var outcome = await svc.CheckoutAsync(db);
-
-        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
-        Assert.True(lockSvc.IsWriter);
-        Assert.Null(MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal(StampRead.Found("1.2.9"), MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
     }
 
     /// <summary>
@@ -3993,7 +3978,7 @@ public sealed class CheckoutServiceTests : IDisposable
         svc.ChannelOverride     = InstallChannel.Store;
         var db = DbPath("brand-new");
         await CreateNewDatabaseAsync(db);
-        Assert.Null(MinimumVersionToWrite.ReadStamp(db));   // a new file has no stamp
+        Assert.Equal(StampRead.None, MinimumVersionToWrite.ReadStamp(db));   // a new file has no stamp
 
         var outcome = await svc.CheckoutAsync(db);
 
@@ -4001,7 +3986,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Null(svc.RequiredAppVersion);
         Assert.True(lockSvc.IsWriter);
         Assert.NotEqual(db, svc.WorkingPath);
-        Assert.Equal("1.2.4", MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal(StampRead.Found("1.2.4"), MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -5396,5 +5381,707 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.False(result.TargetUnchanged);
         Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
         Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(db + ".tmp"));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 19 — Version gate fails safe (spec item 3, step 3c)
+    //
+    // Before 3c the gate read the stamp as "string or null": a working copy that antivirus was still holding, or a
+    // damaged one, read as null — "unstamped" — and sailed through to write access. Now the read is three-way
+    // (found / none / could not be read). A read that cannot be made is retried quietly (LocalCopyIntegrity.MaxAttempts
+    // attempts, RetryDelay apart) and, if it still cannot, the checkout REFUSES write access:
+    // CheckoutOutcome.VersionCheckUnavailable — lock released (no reader mode), D' with its sidecars and marker
+    // removed (kept in crash recovery, where they hold the user's only copy of unsaved edits), no D'', RequiredAppVersion
+    // null, D untouched. The same applies to a stamp this release must raise and cannot (user decision 2026-10-14),
+    // whereas a malformed ThisReleaseRequires is a bug in the release and is refused at once, without waiting.
+    //
+    // The tests drive the gate through the internal seams StampReader, StampRaiser, GateRetryDelay and
+    // IntegrityFaultPlan, so no test waits for a real retry delay.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A stamp reader (<see cref="CheckoutService.StampReader"/>) that reports the file as unreadable for its first
+    /// <c>failures</c> calls and then does the real read, counting every call — "antivirus lets go after a moment".
+    /// </summary>
+    private sealed class FlakyStampReader
+    {
+        private readonly int _failures;
+
+        /// <summary>Creates a reader that fails <paramref name="failures"/> times (<see cref="int.MaxValue"/> for "always").</summary>
+        /// <param name="failures">How many leading calls report <see cref="StampReadKind.Unreadable"/>.</param>
+        public FlakyStampReader(int failures) => _failures = failures;
+
+        /// <summary>How many times the gate has called the reader.</summary>
+        public int Calls { get; private set; }
+
+        /// <summary>The delegate for <see cref="CheckoutService.StampReader"/>.</summary>
+        /// <param name="path">File to read the stamp of.</param>
+        /// <returns>Unreadable while failures remain, otherwise the real classified read.</returns>
+        public StampRead Read(string path)
+        {
+            Calls++;
+            return Calls <= _failures
+                ? StampRead.Couldnt("simulated: the file is held by another program")
+                : MinimumVersionToWrite.ReadStamp(path);
+        }
+    }
+
+    /// <summary>
+    /// A stamp raiser (<see cref="CheckoutService.StampRaiser"/>) that throws for its first <c>failures</c> calls
+    /// and then does the real raise, counting every call.
+    /// </summary>
+    private sealed class FlakyStampRaiser
+    {
+        private readonly int _failures;
+
+        /// <summary>Creates a raiser that fails <paramref name="failures"/> times (<see cref="int.MaxValue"/> for "always").</summary>
+        /// <param name="failures">How many leading calls throw.</param>
+        public FlakyStampRaiser(int failures) => _failures = failures;
+
+        /// <summary>How many times the gate has called the raiser.</summary>
+        public int Calls { get; private set; }
+
+        /// <summary>The delegate for <see cref="CheckoutService.StampRaiser"/>.</summary>
+        /// <param name="path">File to stamp.</param>
+        /// <param name="version">Version to require.</param>
+        /// <param name="reason">Plain-English reason, or null.</param>
+        /// <returns>The real <see cref="MinimumVersionToWrite.Raise"/> result once the failures are spent.</returns>
+        /// <exception cref="IOException">While failures remain.</exception>
+        public bool Raise(string path, string version, string? reason)
+        {
+            Calls++;
+            if (Calls <= _failures)
+                throw new IOException("simulated: the file is held by another program");
+            return MinimumVersionToWrite.Raise(path, version, reason);
+        }
+    }
+
+    /// <summary>
+    /// Stands in for the gate's retry wait (<see cref="CheckoutService.GateRetryDelay"/>): records every wait that
+    /// is asked for and returns at once.
+    /// </summary>
+    private sealed class DelayRecorder
+    {
+        /// <summary>The delay of each wait the gate asked for, in order.</summary>
+        public List<TimeSpan> Waits { get; } = new();
+
+        /// <summary>The delegate for <see cref="CheckoutService.GateRetryDelay"/>.</summary>
+        /// <param name="delay">The requested wait.</param>
+        /// <returns>A completed task.</returns>
+        public Task WaitAsync(TimeSpan delay)
+        {
+            Waits.Add(delay);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Creates a REAL SQLite database D (with a genuine file header and some content, unlike
+    /// <see cref="CreateSqliteDb"/>, which leaves a zero-byte file) that carries no stamp — the kind of file the
+    /// version gate actually has to read.
+    /// </summary>
+    /// <param name="path">Where to create D.</param>
+    private static void CreateRealUnstampedDb(string path)
+    {
+        CreateSqliteDb(path);
+        InsertTestValue(path, "d-content");
+        Assert.True(DatabaseValidator.HasSqliteSignature(path), "precondition: D must carry a real SQLite header");
+    }
+
+    /// <summary>
+    /// Asserts the signature of a version check that could not be completed: ReadOnly mode but NO snapshot, no
+    /// RequiredAppVersion (nobody knows what the database requires), no write lock held or left behind, the
+    /// session unable to save, and in the working directory either nothing (D' and its marker removed) or — for
+    /// crash recovery — exactly the kept D' and its dirty marker.
+    /// </summary>
+    /// <param name="svc">The service under test.</param>
+    /// <param name="lockSvc">Its lock service.</param>
+    /// <param name="db">Path to D.</param>
+    /// <param name="keptWorkingCopy">
+    /// The crashed session's D' that must still be there with its marker, or null when D' must be gone.
+    /// </param>
+    private async Task AssertVersionCheckRefusedAsync(
+        CheckoutService svc, WriteLockService lockSvc, string db, string? keptWorkingCopy = null)
+    {
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout); // settle the background lock-file deletion
+
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.False(svc.SessionDirty);
+        Assert.Null(svc.CurrentHolder);
+        Assert.False(lockSvc.IsWriter);
+        Assert.False(File.Exists(Path.ChangeExtension(db, ".lock")), "Lock must be released, not left behind.");
+        Assert.False(File.Exists(ComputeReadOnlyPath(db)), "No D'' is made: the gate could not look, it did not trip.");
+        Assert.Equal(SaveOutcome.NotInWriteMode, await svc.SaveAsync());
+
+        if (keptWorkingCopy is null)
+        {
+            Assert.Empty(Directory.GetFiles(_workingDir));   // no D', no -wal/-shm, no .dirty, no D''
+        }
+        else
+        {
+            Assert.True(File.Exists(keptWorkingCopy), "Crash recovery: D' holds the unsaved edits — it must be kept.");
+            Assert.True(File.Exists(keptWorkingCopy + ".dirty"), "Crash recovery: the dirty marker must be kept.");
+        }
+    }
+
+    /// <summary>
+    /// The stamp cannot be read on any of the gate's attempts: VersionCheckUnavailable after exactly
+    /// <see cref="LocalCopyIntegrity.MaxAttempts"/> reads with two quiet waits of <see cref="LocalCopyIntegrity.RetryDelay"/>
+    /// between them; the session is not a writer, the lock file is gone, D' and its marker are gone, no D'' was made,
+    /// RequiredAppVersion is null, and D is byte-identical.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_StampUnreadableOnEveryAttempt_RefusesWriteAccess_AfterQuietRetries()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var hashOfD = ComputeFileHash(db);
+        var reader = new FlakyStampReader(failures: int.MaxValue);
+        var delays = new DelayRecorder();
+        svc.StampReader     = reader.Read;
+        svc.GateRetryDelay  = delays.WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, outcome);
+        Assert.Equal(LocalCopyIntegrity.MaxAttempts, reader.Calls);
+        Assert.Equal(2, delays.Waits.Count);
+        Assert.All(delays.Waits, w => Assert.Equal(LocalCopyIntegrity.RetryDelay, w));
+        await AssertVersionCheckRefusedAsync(svc, lockSvc, db);
+        Assert.Equal(hashOfD, ComputeFileHash(db));   // D is never modified
+    }
+
+    /// <summary>
+    /// A transient failure is absorbed: the stamp is unreadable twice and readable on the third attempt → the
+    /// checkout goes through to write access, with nothing reported and nothing left over.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_StampUnreadableTwiceThenReadable_RetriesAbsorbIt_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var reader = new FlakyStampReader(failures: 2);
+        var delays = new DelayRecorder();
+        svc.StampReader    = reader.Read;
+        svc.GateRetryDelay = delays.WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(3, reader.Calls);
+        Assert.Equal(2, delays.Waits.Count);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+        Assert.True(File.Exists(svc.WorkingPath));
+        Assert.Equal("d-content", ReadTestValue(svc.WorkingPath));
+    }
+
+    /// <summary>
+    /// A readable stamp that blocks still blocks after a retried read: two failures, then a stamp higher than the
+    /// app → ReadOnly on a D'' snapshot (the retries change nothing about the gate's verdict).
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_StampUnreadableTwiceThenHigherThanApp_StillOpensReadOnlySnapshot()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateStampedDb(db, "1.2.5");
+        var reader = new FlakyStampReader(failures: 2);
+        svc.StampReader    = reader.Read;
+        svc.GateRetryDelay = new DelayRecorder().WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.ReadOnly, outcome);
+        Assert.Equal(3, reader.Calls);
+        AssertGatedReadOnly(svc, lockSvc, db, "1.2.5");
+    }
+
+    /// <summary>
+    /// The forced (stale-lock takeover) exit fails safe too: the takeover is confirmed, the stamp cannot be read →
+    /// VersionCheckUnavailable, and the lock that was taken over is released again.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_ForceCheckout_StampUnreadable_RefusesWriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        WriteExternalStaleLock(db);
+        var hashOfD = ComputeFileHash(db);
+        var reader = new FlakyStampReader(failures: int.MaxValue);
+        var delays = new DelayRecorder();
+        svc.StampReader    = reader.Read;
+        svc.GateRetryDelay = delays.WaitAsync;
+
+        Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition: the gate has not run yet
+        Assert.Equal(0, reader.Calls);
+        var outcome = await svc.ForceCheckoutAsync();
+
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, outcome);
+        Assert.Equal(LocalCopyIntegrity.MaxAttempts, reader.Calls);
+        Assert.Equal(2, delays.Waits.Count);
+        await AssertVersionCheckRefusedAsync(svc, lockSvc, db);
+        Assert.Equal(hashOfD, ComputeFileHash(db));
+    }
+
+    /// <summary>
+    /// The crash-recovery exit fails safe WITHOUT destroying the user's work: the adopted D' cannot be examined →
+    /// VersionCheckUnavailable with D' and its dirty marker KEPT (and the unsaved edit intact), the lock released,
+    /// recovery still detectable; "Try again" (the same checkout, now able to read) then recovers into write mode.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_Recovery_StampUnreadable_KeepsCrashArtifacts_ThenTryAgainRecovers()
+    {
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        // Previous session: checkout, edit D', mark dirty, crash.
+        var (svc1, lockSvc1) = CreateService(new Version(1, 2, 3));
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "unsaved-edit");
+        svc1.MarkDirty();
+        var crashedWorkingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+        var hashOfD = ComputeFileHash(db);
+
+        // Next launch: recovery is requested but the gate cannot look at the adopted D'.
+        var (svc2, lockSvc2) = CreateService(new Version(1, 2, 3));
+        var reader = new FlakyStampReader(failures: int.MaxValue);
+        var delays = new DelayRecorder();
+        svc2.StampReader    = reader.Read;
+        svc2.GateRetryDelay = delays.WaitAsync;
+        Assert.True(svc2.DetectCrashRecovery(db)); // precondition
+
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, outcome);
+        Assert.Equal(LocalCopyIntegrity.MaxAttempts, reader.Calls);
+        Assert.Equal(2, delays.Waits.Count);
+        await AssertVersionCheckRefusedAsync(svc2, lockSvc2, db, keptWorkingCopy: crashedWorkingPath);
+        Assert.Equal("unsaved-edit", ReadTestValue(crashedWorkingPath));
+        Assert.True(svc2.DetectCrashRecovery(db), "Recovery must still be detectable on the next attempt.");
+        Assert.Equal(hashOfD, ComputeFileHash(db));
+
+        // Try again: the very same checkout, now readable, recovers the unsaved edit into write mode.
+        svc2.StampReader = MinimumVersionToWrite.ReadStamp;
+        var again = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, again);
+        Assert.True(lockSvc2.IsWriter);
+        Assert.Equal(crashedWorkingPath, svc2.WorkingPath);
+        Assert.Equal("unsaved-edit", ReadTestValue(svc2.WorkingPath));
+        Assert.True(File.Exists(svc2.WorkingPath + ".dirty"));
+    }
+
+    /// <summary>
+    /// "Try again" after a refusal works: nothing a VersionCheckUnavailable leaves behind (lock, D', marker)
+    /// blocks the next checkout, which — with a reader that works — is a normal write checkout.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_AfterVersionCheckUnavailable_TryAgainWithAWorkingReader_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        svc.StampReader    = new FlakyStampReader(failures: int.MaxValue).Read;
+        svc.GateRetryDelay = new DelayRecorder().WaitAsync;
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, await svc.CheckoutAsync(db)); // precondition
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout);
+
+        svc.StampReader = MinimumVersionToWrite.ReadStamp;
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+        Assert.True(File.Exists(Path.ChangeExtension(db, ".lock")));
+        Assert.Equal("d-content", ReadTestValue(svc.WorkingPath));
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());   // and it is a fully working session
+    }
+
+    /// <summary>
+    /// A DIFFERENT instance can take the lock the moment a refusal returns it: the refusal leaves no lock file,
+    /// so a colleague is not shut out by a session that never became a writer.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_AfterVersionCheckUnavailable_AnotherInstanceCanCheckOutAtOnce()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        svc.StampReader    = new FlakyStampReader(failures: int.MaxValue).Read;
+        svc.GateRetryDelay = new DelayRecorder().WaitAsync;
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, await svc.CheckoutAsync(db)); // precondition
+        lockSvc.PendingRelease?.Wait(LockSettleTimeout);
+
+        var (other, otherLock) = CreateService(new Version(1, 2, 3));
+        var outcome = await other.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.True(otherLock.IsWriter);
+    }
+
+    /// <summary>
+    /// The DEBUG <c>stamp:3</c> fault plan spends all three of one checkout's gate reads: the first checkout is
+    /// VersionCheckUnavailable, the plan is then exhausted, and the second ("Try again") is WriteAccess.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_InjectedStampFault_ThreeFailures_FailsOneCheckout_ThenTryAgainSucceeds()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var delays = new DelayRecorder();
+        svc.GateRetryDelay     = delays.WaitAsync;
+        svc.IntegrityFaultPlan = IntegrityFaultPlan.Parse("stamp:3");
+
+        var first = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, first);
+        Assert.Equal(0, svc.IntegrityFaultPlan!.Remaining);
+        Assert.Equal(2, delays.Waits.Count);
+        await AssertVersionCheckRefusedAsync(svc, lockSvc, db);
+
+        var second = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, second);
+        Assert.True(lockSvc.IsWriter);
+        Assert.Equal(2, delays.Waits.Count);   // the second checkout needed no retries
+    }
+
+    /// <summary>
+    /// <c>stamp:2</c> is absorbed by the gate's retries: the checkout goes straight through to write access.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_InjectedStampFault_TwoFailures_AreAbsorbedByTheRetries()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var delays = new DelayRecorder();
+        svc.GateRetryDelay     = delays.WaitAsync;
+        svc.IntegrityFaultPlan = IntegrityFaultPlan.Parse("stamp:2");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(0, svc.IntegrityFaultPlan!.Remaining);
+        Assert.Equal(2, delays.Waits.Count);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A plan for another stage (<c>locked</c>) never touches the stamp read: the gate does its normal single read
+    /// and the checkout goes through without a wait.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_InjectedFaultForAnotherStage_DoesNotAffectTheStampRead()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var delays = new DelayRecorder();
+        svc.GateRetryDelay     = delays.WaitAsync;
+        svc.IntegrityFaultPlan = IntegrityFaultPlan.Parse("locked");
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Empty(delays.Waits);
+    }
+
+    // ── Raising the stamp fails safe too ─────────────────────────────────────────
+
+    /// <summary>
+    /// A release that must stamp (ThisReleaseRequires set, Store build) but cannot write the stamp on any attempt:
+    /// VersionCheckUnavailable after three raise attempts with two quiet waits — editing without the stamp would
+    /// save new-format data where older versions can still edit it. D' is removed; the real stamp was never written.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_RaiseFailsOnEveryAttempt_RefusesWriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var raiser = new FlakyStampRaiser(failures: int.MaxValue);
+        var delays = new DelayRecorder();
+        svc.StampRaiser    = raiser.Raise;
+        svc.GateRetryDelay = delays.WaitAsync;
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var hashOfD = ComputeFileHash(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, outcome);
+        Assert.Equal(LocalCopyIntegrity.MaxAttempts, raiser.Calls);
+        Assert.Equal(2, delays.Waits.Count);
+        Assert.All(delays.Waits, w => Assert.Equal(LocalCopyIntegrity.RetryDelay, w));
+        await AssertVersionCheckRefusedAsync(svc, lockSvc, db);
+        Assert.Equal(hashOfD, ComputeFileHash(db));
+    }
+
+    /// <summary>
+    /// A raise that fails twice and then works is absorbed: WriteAccess, and the stamp (with its reason) is in D'.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_RaiseFailsTwiceThenWorks_RetriesAbsorbIt_StampPresentInWorkingCopy()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ThisReleaseReason   = "Section-type colours are now saved.";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var raiser = new FlakyStampRaiser(failures: 2);
+        var delays = new DelayRecorder();
+        svc.StampRaiser    = raiser.Raise;
+        svc.GateRetryDelay = delays.WaitAsync;
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(3, raiser.Calls);
+        Assert.Equal(2, delays.Waits.Count);
+        Assert.True(lockSvc.IsWriter);
+        Assert.Equal(StampRead.Found("1.2.4"), MinimumVersionToWrite.ReadStamp(svc.WorkingPath));
+        Assert.Equal("Section-type colours are now saved.", GetConfigValue(svc.WorkingPath, MinimumVersionToWrite.ReasonKey));
+    }
+
+    /// <summary>
+    /// On a channel that never stamps (Development, Sideload) the raiser is never called, so a raiser that would
+    /// always fail cannot cost the user write access.
+    /// </summary>
+    [Theory]
+    [InlineData(InstallChannel.Development)]
+    [InlineData(InstallChannel.Sideload)]
+    public async Task VersionGate_NonStampingChannel_NeverCallsTheRaiser(InstallChannel channel)
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ChannelOverride     = channel;
+        var raiser = new FlakyStampRaiser(failures: int.MaxValue);
+        var delays = new DelayRecorder();
+        svc.StampRaiser    = raiser.Raise;
+        svc.GateRetryDelay = delays.WaitAsync;
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(0, raiser.Calls);
+        Assert.Empty(delays.Waits);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A release that requires nothing (ThisReleaseRequires null — the 1.2.3 state) never calls the raiser, whatever
+    /// the channel.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_ThisReleaseRequiresNull_NeverCallsTheRaiser()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 3));
+        svc.ThisReleaseRequires = null;
+        svc.ChannelOverride     = InstallChannel.Store;
+        var raiser = new FlakyStampRaiser(failures: int.MaxValue);
+        svc.StampRaiser = raiser.Raise;
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        Assert.Equal(0, raiser.Calls);
+    }
+
+    /// <summary>
+    /// A malformed ThisReleaseRequires is a bug in the release, and waiting cannot fix it: on a stamping channel the
+    /// checkout is refused at once — ZERO retry waits, the raiser never called, and the stamp read made only once.
+    /// </summary>
+    [Theory]
+    [InlineData("abc",        InstallChannel.Store)]
+    [InlineData("not-a-version", InstallChannel.Store)]
+    [InlineData("1",          InstallChannel.Store)]
+    [InlineData("1.2.4-beta", InstallChannel.DirectDownload)]
+    public async Task VersionGate_MalformedThisReleaseRequires_RefusesAtOnce_WithoutRetries(string requires, InstallChannel channel)
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = requires;
+        svc.ChannelOverride     = channel;
+        var reader = new FlakyStampReader(failures: 0);
+        var raiser = new FlakyStampRaiser(failures: 0);
+        var delays = new DelayRecorder();
+        svc.StampReader    = reader.Read;
+        svc.StampRaiser    = raiser.Raise;
+        svc.GateRetryDelay = delays.WaitAsync;
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.VersionCheckUnavailable, outcome);
+        Assert.Empty(delays.Waits);
+        Assert.Equal(1, reader.Calls);
+        Assert.Equal(0, raiser.Calls);
+        await AssertVersionCheckRefusedAsync(svc, lockSvc, db);
+    }
+
+    /// <summary>
+    /// The same malformed requirement on a channel that never stamps is irrelevant (the raise step is not even
+    /// reached), so editing is not blocked.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_MalformedThisReleaseRequires_OnANonStampingChannel_IsIgnored()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "not-a-version";
+        svc.ChannelOverride     = InstallChannel.Development;
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    // ── What is NOT a failure to look ────────────────────────────────────────────
+
+    /// <summary>
+    /// A genuinely unstamped real SQLite D (a valid file with content but no stamp) passes the gate on the first
+    /// read: WriteAccess, one read, no wait — "no stamp" is still the normal case and costs nothing.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_GenuinelyUnstampedRealDatabase_WriteAccess_OnTheFirstRead()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var reader = new FlakyStampReader(failures: 0);
+        var delays = new DelayRecorder();
+        svc.StampReader    = reader.Read;
+        svc.GateRetryDelay = delays.WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(1, reader.Calls);
+        Assert.Empty(delays.Waits);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// The non-SQLite dummy D that most other tests use reads as "no stamp" (None), not "could not look": it passes
+    /// the gate on the first read with the real reader, so those tests keep working untouched.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_NonSqliteDummyDatabase_IsNone_NotUnreadable_WriteAccess()
+    {
+        var (svc, lockSvc) = CreateService(new Version(0, 0, 1));
+        var db = DbPath();
+        CreateFile(db, "not-a-sqlite-file");
+        var delays = new DelayRecorder();
+        svc.GateRetryDelay = delays.WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Empty(delays.Waits);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A hand-made "no stamp" answer from the reader (StampRead.None) is taken at face value, exactly like the
+    /// real thing: WriteAccess after a single read.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_ReaderSaysNone_WriteAccess_AfterOneRead()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var calls = 0;
+        svc.StampReader = _ => { calls++; return StampRead.None; };
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        Assert.Equal(1, calls);
+    }
+
+    /// <summary>
+    /// A local copy SQLite reports as damaged is not the gate's to refuse: no retries (waiting cannot heal damage),
+    /// no "in use" refusal (Try again would copy the same damage and loop), and the checkout continues so the
+    /// open-time integrity check — which runs next on every path into editing — refuses the file and takes the
+    /// damage path (fresh copy, recovery chooser, report).
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_DamagedLocalCopy_NoRetriesNoRefusal_LeftToTheIntegrityCheck()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        var calls = 0;
+        var delays = new DelayRecorder();
+        svc.StampReader    = _ => { calls++; return StampRead.DamagedFile(new SqliteException("database disk image is malformed", 11)); };
+        svc.GateRetryDelay = delays.WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal(1, calls);
+        Assert.Empty(delays.Waits);
+        Assert.Null(svc.RequiredAppVersion);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// In a stamping build, a damaged local copy is not raised into either: a raise could only fail on a damaged
+    /// file, and its refusal would turn damage back into the misleading "in use" loop.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_DamagedLocalCopy_InAStampingBuild_NeverCallsTheRaiser()
+    {
+        var (svc, _) = CreateService(new Version(1, 2, 4));
+        svc.ThisReleaseRequires = "1.2.4";
+        svc.ChannelOverride     = InstallChannel.Store;
+        var raiser = new FlakyStampRaiser(failures: int.MaxValue);
+        svc.StampRaiser = raiser.Raise;
+        svc.StampReader = _ => StampRead.DamagedFile(new SqliteException("file is not a database", 26));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        Assert.Equal(0, raiser.Calls);
+    }
+
+    /// <summary>
+    /// The real thing, end to end at the checkout: D damaged on page 1 below a valid header (the "Monday morning"
+    /// case). D' is a verified byte copy, so it is damaged too. The gate's real read calls it Damaged and lets the
+    /// checkout through — and the very integrity check that runs next calls the same file Damaged, so it is refused
+    /// there and never edited. D is only read.
+    /// </summary>
+    [Fact]
+    public async Task VersionGate_RealDamageBehindAValidHeader_IsHandedToTheOpenTimeIntegrityCheck()
+    {
+        var (svc, lockSvc) = CreateService(new Version(1, 2, 3));
+        var db = DbPath();
+        CreateRealUnstampedDb(db);
+        DbFileTestHelpers.TrashSchemaBelowHeader(db);
+        var hashOfD = ComputeFileHash(db);
+        var delays = new DelayRecorder();
+        svc.GateRetryDelay = delays.WaitAsync;
+
+        var outcome = await svc.CheckoutAsync(db);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Empty(delays.Waits);   // no quiet retries: damage is not "in use"
+        Assert.True(lockSvc.IsWriter);
+        Assert.True(MinimumVersionToWrite.ReadStamp(svc.WorkingPath).IsDamaged);
+        Assert.Equal(IntegrityCheckResult.Damaged, BackupService.CheckIntegrityDetailed(svc.WorkingPath));
+        Assert.Equal(hashOfD, ComputeFileHash(db));
     }
 }

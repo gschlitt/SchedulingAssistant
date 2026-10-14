@@ -216,13 +216,18 @@ public static class LocalCopyIntegrity
     /// <param name="shared">The shared database's verdict so far (normally <see cref="SharedDatabaseVerdict.Ok"/>).</param>
     /// <returns>
     /// The verdict and fresh-copy state to ask <see cref="LocalCopyCheckDecision.Decide"/> with next:
-    /// Ok → (unchanged, Made) so the open is retried; Unreachable / Unreadable → (that verdict, NotTried) so the
-    /// table shows the matching front-door message; anything else → (unchanged, Failed) so it shows "keeps failing".
+    /// Ok → (unchanged, Made) so the open is retried; NowReadOnly → likewise (unchanged, Made): the fresh copy was
+    /// made and then, when the version gate ran again on it, the session became a read-only one on a fresh snapshot,
+    /// which is opened the same way (from <see cref="CheckoutService.WorkingPath"/>), so it is "open again" too;
+    /// Unreachable / Unreadable → (that verdict, NotTried) so the table shows the matching front-door message
+    /// (this includes a re-run gate that could not read or raise the stamp); anything else → (unchanged, Failed) so
+    /// it shows "keeps failing".
     /// </returns>
     public static (SharedDatabaseVerdict Shared, FreshCopyState Fresh) AfterFreshCopy(
         LocalCopyRefreshResult result, SharedDatabaseVerdict shared) => result switch
     {
         LocalCopyRefreshResult.Ok          => (shared, FreshCopyState.Made),
+        LocalCopyRefreshResult.NowReadOnly => (shared, FreshCopyState.Made),
         LocalCopyRefreshResult.Unreachable => (SharedDatabaseVerdict.Unreachable, FreshCopyState.NotTried),
         LocalCopyRefreshResult.Unreadable  => (SharedDatabaseVerdict.Unreadable, FreshCopyState.NotTried),
         _                                  => (shared, FreshCopyState.Failed)

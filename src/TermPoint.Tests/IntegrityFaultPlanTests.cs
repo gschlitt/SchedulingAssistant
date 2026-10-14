@@ -25,8 +25,11 @@ public sealed class IntegrityFaultPlanTests
     [InlineData("locked",     InjectedIntegrityFault.Locked)]
     [InlineData("damaged",    InjectedIntegrityFault.Damaged)]
     [InlineData("shared",     InjectedIntegrityFault.Shared)]
+    [InlineData("stamp",      InjectedIntegrityFault.Stamp)]
     [InlineData("LOCKED",     InjectedIntegrityFault.Locked)]
     [InlineData("  Shared  ", InjectedIntegrityFault.Shared)]
+    [InlineData("STAMP",      InjectedIntegrityFault.Stamp)]
+    [InlineData("  Stamp  ",  InjectedIntegrityFault.Stamp)]
     public void Parse_KnownValue_ReturnsUnlimitedPlan(string spec, InjectedIntegrityFault expected)
     {
         var plan = IntegrityFaultPlan.Parse(spec);
@@ -43,6 +46,9 @@ public sealed class IntegrityFaultPlanTests
     [InlineData("damaged:1",  InjectedIntegrityFault.Damaged, 1)]
     [InlineData("damaged:2",  InjectedIntegrityFault.Damaged, 2)]
     [InlineData(" Shared : 1 ", InjectedIntegrityFault.Shared, 1)]
+    [InlineData("stamp:3",    InjectedIntegrityFault.Stamp,   3)]
+    [InlineData("stamp:2",    InjectedIntegrityFault.Stamp,   2)]
+    [InlineData(" STAMP : 3 ", InjectedIntegrityFault.Stamp,  3)]
     public void Parse_ValueWithCount_ReturnsCountedPlan(string spec, InjectedIntegrityFault expected, int count)
     {
         var plan = IntegrityFaultPlan.Parse(spec);
@@ -57,6 +63,8 @@ public sealed class IntegrityFaultPlanTests
     [InlineData("locked:3:1",  InjectedIntegrityFault.Locked,  3,    1)]
     [InlineData("damaged:*:1", InjectedIntegrityFault.Damaged, null, 1)]
     [InlineData("shared:1:0",  InjectedIntegrityFault.Shared,  1,    0)]
+    [InlineData("stamp:3:1",   InjectedIntegrityFault.Stamp,   3,    1)]
+    [InlineData("stamp:*:2",   InjectedIntegrityFault.Stamp,   null, 2)]
     public void Parse_ValueWithCountAndSkip_ReturnsPlanThatSkipsFirst(string spec, InjectedIntegrityFault expected, int? count, int skip)
     {
         var plan = IntegrityFaultPlan.Parse(spec);
@@ -90,6 +98,10 @@ public sealed class IntegrityFaultPlanTests
     [InlineData("locked:1:-1")]
     [InlineData("damaged:")]
     [InlineData("damaged,locked")]
+    [InlineData("stamp:0")]
+    [InlineData("stamp:-1")]
+    [InlineData("stamp:abc")]
+    [InlineData("stamped")]
     public void Parse_Garbage_ReturnsNull(string? spec)
     {
         Assert.Null(IntegrityFaultPlan.Parse(spec));
@@ -162,6 +174,54 @@ public sealed class IntegrityFaultPlanTests
         Assert.True(plan.TryConsume(InjectedIntegrityFault.Damaged));
         Assert.True(plan.TryConsume(InjectedIntegrityFault.Damaged));
         Assert.False(plan.TryConsume(InjectedIntegrityFault.Damaged));
+    }
+
+    /// <summary>
+    /// <c>stamp:3</c> (spec item 3, step 3c): exactly three stamp reads fail — one whole checkout's worth of the
+    /// version gate's quiet attempts — and every later one is let through, so "Try again" then succeeds.
+    /// </summary>
+    [Fact]
+    public void TryConsume_StampThree_FailsExactlyThreeReads()
+    {
+        var plan = IntegrityFaultPlan.Parse("stamp:3")!;
+
+        Assert.True(plan.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.True(plan.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.True(plan.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.False(plan.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.Equal(0, plan.Remaining);
+    }
+
+    /// <summary><c>stamp:2</c> fails two reads, which the gate's third attempt absorbs.</summary>
+    [Fact]
+    public void TryConsume_StampTwo_FailsTwoReadsThenPasses()
+    {
+        var plan = IntegrityFaultPlan.Parse("stamp:2")!;
+
+        Assert.True(plan.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.True(plan.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.False(plan.TryConsume(InjectedIntegrityFault.Stamp));
+    }
+
+    /// <summary>
+    /// The stamp fault answers only the version gate's read: the open-time check stages do not spend its budget,
+    /// and a stamp read does not spend theirs.
+    /// </summary>
+    [Fact]
+    public void TryConsume_StampFault_IsIndependentOfTheOtherStages()
+    {
+        var plan = IntegrityFaultPlan.Parse("stamp:1")!;
+
+        Assert.False(plan.TryConsume(InjectedIntegrityFault.Locked));
+        Assert.False(plan.TryConsume(InjectedIntegrityFault.Damaged));
+        Assert.False(plan.TryConsume(InjectedIntegrityFault.Shared));
+        Assert.Equal(1, plan.Remaining);
+
+        Assert.True(plan.TryConsume(InjectedIntegrityFault.Stamp));
+
+        var locked = IntegrityFaultPlan.Parse("locked:1")!;
+        Assert.False(locked.TryConsume(InjectedIntegrityFault.Stamp));
+        Assert.Equal(1, locked.Remaining);
     }
 
     /// <summary>A skip lets the first matching calls through: <c>locked:1:1</c> lets one check pass, fails the next, then passes.</summary>

@@ -95,6 +95,31 @@ internal static class DbFileTestHelpers
     }
 
     /// <summary>
+    /// Damages page 1 BELOW the 100-byte file header: the header (with its "SQLite format 3" signature and page size)
+    /// stays valid, but the schema b-tree that page 1 holds (<c>sqlite_master</c>) is overwritten with 0xFF bytes. Any
+    /// query that touches the schema — even "is there an AppConfiguration table?" — then fails with SQLITE_CORRUPT
+    /// ("database disk image is malformed"). This is the shape of damage a partial write to the start of the file
+    /// leaves (spec item 3, step 3c).
+    /// </summary>
+    /// <param name="path">The SQLite file to damage (must not be open elsewhere).</param>
+    public static void TrashSchemaBelowHeader(string path)
+    {
+        const int fileHeaderLength = 100;
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        // Page size lives at header offset 16 (big-endian); the value 1 means 65536.
+        var header = new byte[18];
+        stream.ReadExactly(header);
+        var pageSize = (header[16] << 8) | header[17];
+        if (pageSize == 1) pageSize = 65536;
+
+        var garbage = new byte[pageSize - fileHeaderLength];
+        Array.Fill(garbage, (byte)0xFF);
+        stream.Position = fileHeaderLength;
+        stream.Write(garbage);
+    }
+
+    /// <summary>
     /// Holds <paramref name="path"/> open the way an exclusive backup or sync tool would
     /// (<c>FileShare.None</c>, the same as PowerShell's <c>[IO.File]::Open(path,'Open','Read','None')</c>).
     /// On Windows every other open of the file fails with a sharing violation until the returned

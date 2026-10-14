@@ -566,6 +566,60 @@ the raising code ships dormant.**
   - **If D'' can't be created** after a gate trip, the existing last-resort fallback opens D
     directly. That is item 4's territory.
 
+**Step 3c plan (found during 5d; user-approved 2026-10-14): close the gate's holes.**
+
+**Holes:**
+1. **A failed read counts as "no stamp".** `ReadStamp` returns null both for "couldn't read `D′`" (antivirus
+   holding the just-copied file, or damage) and for "no stamp", so the gate is silently skipped.
+2. **A failed raise is ignored.** In a raising release, a failed `Raise` is logged and editing continues, so that
+   session saves new-format data unstamped.
+3. **5d's fresh copy discards a raise.** It replaces `D′` after the gate ran, so a value just raised into the old
+   `D′` is lost.
+
+**Why in 1.2.3.** Hole 1 is fixed in the **older** client. When 1.2.4 raises the value, it is the 1.2.3 installs
+that must refuse to edit.
+
+**Fix:**
+1. **`ReadStamp` becomes three-way:** found / no stamp / couldn't read (locked or damaged). A file with no SQLite
+   header counts as no stamp, because the integrity check refuses it moments later.
+2. **Couldn't read** → quiet retries, 3 × 1 s, as in 5d. After that, write access is **refused** with 5d's in-use
+   dialog ("Couldn't Open the Database — … another program on this computer is using its files…") and
+   **[Try again] [Close]** (decision). Try again re-runs the whole open. A recovery open keeps `D′` and its marker.
+3. **Raise fails (raising releases only)** → the same retries. After that, write access is **refused** the same way
+   (decision; it was "continue without the stamp").
+4. **After 5d's fresh copy, the gate re-runs** (read and raise) on the new `D′`. If it now blocks, the session becomes
+   read-only with the "needs TermPoint X" banner. 5d's handler initializes whichever local file the checkout now
+   holds.
+5. **`TERMPOINT_DEBUG_FAIL_INTEGRITY`** gains `stamp[:n]` (the stamp read reports a lock).
+6. **Tests:**
+   - the read classification and the retry count;
+   - after the retries: the lock released, and `D′` handled correctly for normal and recovery opens;
+   - a raise failure is refused in a raising release (injected constant);
+   - after a fresh copy, the gate re-runs: it blocks to read-only, and a raise lands in the new `D′`.
+
+**Step 3c outcome (2026-10-14; code and tests done, hand test pending).**
+- **Built as planned,** with one change found in review (decision, 2026-10-14):
+  - **`ReadStamp` is four-way:** found / no stamp / couldn't read / **damaged**.
+  - **Damaged** means SQLite says the file is corrupt or not a database. It is classified by the same rule as 5d's
+    integrity check (`BackupService.ClassifyIntegrityException`).
+  - **The gate does not retry or refuse on damage.** It hands the file on to 5d's check, which runs next on every
+    path into editing (startup, plus `SwitchDatabaseAsync` for Open/Recent, take-over and the wizard) and refuses it.
+  - **Why:** `D′` is a verified byte copy of `D`, so refusing with the "in use" prompt would make every Try again copy
+    the same damage. The user would loop and never reach the restore chooser or the damage report.
+  - **Locked or unreadable copies keep the retries and the "in use" prompt.**
+- **New pieces:**
+  - outcome `CheckoutOutcome.VersionCheckUnavailable`;
+  - `LocalCopyRefreshResult.NowReadOnly`;
+  - fault value `stamp[:n]`;
+  - test seams `StampReader`, `StampRaiser`, `GateRetryDelay`.
+- **Tests:** 66 new. The full suite passes (2,559).
+- **Hand tests** (to do on database copies):
+  - `stamp:3` → the "in use" prompt; Try again opens; Close leaves no lock;
+  - `stamp:2` → opens normally;
+  - `damaged:1` → the gate runs twice, then the database opens;
+  - a copy with page 1 damaged below a valid header → "may be damaged" and the recovery chooser, not "in use";
+  - a copy stamped `1.2.5` → the "needs TermPoint 1.2.5" banner.
+
 ---
 
 ## 4 — Stop opening the shared DB directly; fix startup ordering; single-instance guard

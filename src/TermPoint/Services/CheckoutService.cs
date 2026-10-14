@@ -32,6 +32,12 @@ namespace TermPoint.Services;
 /// update), and the session opens read-only on a D'' snapshot with
 /// <see cref="RequiredAppVersion"/> set so the UI can explain why. It follows the same pattern as
 /// the license-gated read-only mode. A brand-new database carries no stamp, so it passes the gate.
+/// The gate fails SAFE (spec item 3, step 3c): if the stamp cannot be read at all (a copy another program is
+/// holding), or a stamp this release must write cannot be written, it retries quietly and then
+/// REFUSES write access (<see cref="CheckoutOutcome.VersionCheckUnavailable"/>) rather than letting a session edit
+/// without having checked or without having stamped. A D' that SQLite reports as damaged is left to the open-time
+/// integrity check, which runs next and refuses it. It also runs again whenever the open-time integrity handler
+/// replaces D' with a fresh copy of D (<see cref="RefreshLocalCopyAfterFailedCheckAsync"/>).
 /// See <see cref="ApplyVersionGateAsync"/>.</para>
 ///
 /// <para><b>Always-on:</b> Both modes apply to every database, whether it is on a
@@ -144,6 +150,38 @@ public sealed class CheckoutService : IDisposable
     /// read at the moment of use rather than at construction. Settable for tests only.
     /// </summary>
     internal InstallChannel? ChannelOverride { get; set; }
+
+    /// <summary>
+    /// Reads the <see cref="MinimumVersionToWrite"/> stamp of the file at the given path, once. Defaults to
+    /// <see cref="MinimumVersionToWrite.ReadStamp"/>. Settable only so tests can make the read fail a chosen
+    /// number of times (the gate's quiet retries) and then fall through to the real read.
+    /// </summary>
+    internal Func<string, StampRead> StampReader { get; set; } = MinimumVersionToWrite.ReadStamp;
+
+    /// <summary>
+    /// Raises the stamp in the file at the first argument to the version in the second, with the reason in the
+    /// third; returns true when it wrote, false when the existing stamp already covered it, and throws when it
+    /// could not. Defaults to <see cref="MinimumVersionToWrite.Raise"/>. Settable only so tests can make a raise
+    /// fail a chosen number of times (for instance by write-protecting D' for the first attempt).
+    /// </summary>
+    internal Func<string, string, string?, bool> StampRaiser { get; set; } = MinimumVersionToWrite.Raise;
+
+    /// <summary>
+    /// How the version gate waits between its quiet retries (<see cref="LocalCopyIntegrity.RetryDelay"/> in
+    /// production: a real asynchronous delay, so the window stays alive). Settable only so tests can skip the
+    /// wait and record that it was asked for.
+    /// </summary>
+    internal Func<TimeSpan, Task> GateRetryDelay { get; set; } = delay => Task.Delay(delay);
+
+    /// <summary>
+    /// DEBUG-ONLY fault injection for the version gate (spec item 3, step 3c): when non-null and its fault is
+    /// <see cref="InjectedIntegrityFault.Stamp"/>, each of the gate's stamp-read attempts that the plan's budget
+    /// covers reports the file as unreadable. Null (the default) means every real code path runs untouched. Only
+    /// <c>App.Checkout</c> ever gets a plan, the very one <c>App.IntegrityFaults</c> holds, which is null in
+    /// Release builds, so shipped builds never inject anything. An injected failure is only ever logged: it is
+    /// never reported to the developers. Settable so tests can drive the plan directly.
+    /// </summary>
+    internal IntegrityFaultPlan? IntegrityFaultPlan { get; set; }
 
     /// <summary>
     /// DEBUG-ONLY fault injection (spec item 4d): when non-null, <see cref="CheckoutAsync"/> and
@@ -486,6 +524,7 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> — recovery was requested but cannot be applied safely; D' and its marker are left intact for export.<br/>
     /// <see cref="CheckoutOutcome.SourceMissing"/> — D does not exist (and recovery was not requested). Nothing was locked or created; tell the user and stop. Create new databases with <see cref="NewDatabaseFile.CreateAsync"/> BEFORE calling this.<br/>
     /// <see cref="CheckoutOutcome.SourceUnreadable"/> — D exists but another program holds it open (or access is denied). The write lock taken for the attempt has been released and nothing was left behind; tell the user to try again in a moment.<br/>
+    /// <see cref="CheckoutOutcome.VersionCheckUnavailable"/> — D' was copied but the version gate could not do its job (the stamp could not be read, or a stamp this release must write could not be written) even after quiet retries. Write access is refused, the lock has been released and D' removed (kept, with its marker, for a recovery open); offer "Try again" / "Close".<br/>
     /// <see cref="CheckoutOutcome.Failed"/>      — fatal error (e.g., copy hash mismatch); caller should fall back via <see cref="SetupReadOnlySnapshotAsync"/> to open read-only.
     /// </returns>
     public async Task<CheckoutOutcome> CheckoutAsync(
@@ -775,6 +814,8 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="CheckoutOutcome.ReadOnly"/> when the version gate tripped (the database's
     /// <see cref="MinimumVersionToWrite"/> stamp is newer than this app): the lock is released,
     /// D'' is already set up, and <see cref="RequiredAppVersion"/> is non-null.
+    /// <see cref="CheckoutOutcome.VersionCheckUnavailable"/> when the version gate could not read (or raise) the stamp even after
+    /// quiet retries: write access is refused, the lock is released again, and (outside recovery) D' is removed.
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> when recovery was requested but cannot be applied safely.
     /// <see cref="CheckoutOutcome.SourceUnreadable"/> when D could not be read (held open by another program / access denied); the lock is released again.
     /// <see cref="CheckoutOutcome.Failed"/> if another instance won the race.
@@ -952,7 +993,8 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="MinimumVersionToWrite"/> stamp before the session resumes
     /// (<see cref="ApplyVersionGateAsync"/>). If this app is too old the outcome is
     /// <see cref="CheckoutOutcome.ReadOnly"/> and D' + marker are kept untouched, so recovery is
-    /// offered again after the user updates.</para>
+    /// offered again after the user updates. If the stamp cannot be read or raised the outcome is
+    /// <see cref="CheckoutOutcome.VersionCheckUnavailable"/>, and D' + marker are likewise kept.</para>
     ///
     /// <para>Precondition: the caller has already acquired the write lock.</para>
     /// </summary>
@@ -1030,15 +1072,34 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// The version gate (spec item 3, step 3b). Called at each of the three write-access exits —
+    /// The version gate (spec item 3, steps 3b and 3c). Called at each of the three write-access exits —
     /// <see cref="CheckoutAsync"/>, <see cref="ForceCheckoutAsync"/>, and
     /// <see cref="FinishRecoveryCheckoutAsync"/> — once D' is verified and the lock is held, but
     /// BEFORE <see cref="Mode"/> becomes <see cref="CheckoutMode.WriteAccess"/> and before the
-    /// wake/heartbeat handlers are subscribed.
+    /// wake/heartbeat handlers are subscribed; and again by <see cref="RefreshWriterCopyAsync"/>, on the
+    /// NEW D', whenever the open-time integrity handler replaces D' with a fresh copy of D (the first run
+    /// judged a file that no longer exists, and a stamp raised into it is gone with it).
     ///
-    /// <para><b>Gate:</b> reads the <see cref="MinimumVersionToWrite"/> stamp from D'. If this app is
-    /// older than it, write access is refused and the session falls back to a read-only D''
-    /// snapshot, exactly like the license-gated read-only mode:</para>
+    /// <para><b>1. Read.</b> The <see cref="MinimumVersionToWrite"/> stamp is read from D' as a classified
+    /// answer (<see cref="StampRead"/>): found, genuinely absent, <i>could not be read</i> (a copy that
+    /// antivirus is still holding), or <i>damaged</i>. A read that could not be made is retried quietly —
+    /// <see cref="LocalCopyIntegrity.MaxAttempts"/> attempts in all, <see cref="LocalCopyIntegrity.RetryDelay"/>
+    /// apart, the same as the open-time integrity check — and if it still cannot be made, write access is
+    /// REFUSED (see below). It is never treated as "no stamp": a gate that waved a locked file through would
+    /// let an old app edit a database it is not allowed to.</para>
+    ///
+    /// <para><b>A damaged D'</b> (<see cref="StampReadKind.Damaged"/>) is neither retried nor refused here: the
+    /// gate stops (no block, no raise) and the checkout continues, so the open-time integrity check — which
+    /// runs next on every path into editing (startup and <c>SwitchDatabaseAsync</c>, which serves Open/Recent,
+    /// take-over and the wizard) — refuses the file and handles the damage as spec item 5, step 5d designed
+    /// (fresh copy, after which this gate runs again; the recovery chooser and one report if D itself is
+    /// damaged). Refusing here instead would show the "in use" prompt for damage, and since D' is a verified
+    /// byte copy of D, every Try again would copy the same damage and loop, never reaching the restore. A
+    /// damaged file cannot pass that check, so it is never edited with its stamp unknown (user decision,
+    /// 2026-10-14).</para>
+    ///
+    /// <para><b>2. Block.</b> If this app is older than the stamp, write access is refused and the session
+    /// falls back to a read-only D'' snapshot, exactly like the license-gated read-only mode:</para>
     /// <list type="bullet">
     ///   <item>the lock is released and <see cref="WriteLockService.EnterReaderMode"/> is
     ///         deliberately NOT called — no poll timer, so the UI can never offer a "Take over"
@@ -1050,27 +1111,61 @@ public sealed class CheckoutService : IDisposable
     ///   <item><see cref="RequiredAppVersion"/> records the stamp for the banner.</item>
     /// </list>
     ///
-    /// <para><b>Stamp (dormant in 1.2.3):</b> when not gated, and this release sets
-    /// <see cref="ThisReleaseRequires"/>, and the install channel is
-    /// <see cref="InstallChannel.Store"/> or <see cref="InstallChannel.DirectDownload"/>, the stamp
-    /// is raised in D'. Writing into D' means it reaches D in the same save as the data it
-    /// protects. A failure to stamp is logged and ignored — it must never block editing.</para>
+    /// <para><b>3. Raise (dormant in 1.2.3).</b> When not blocked, and this release sets
+    /// <see cref="ThisReleaseRequires"/>, and the install channel is <see cref="InstallChannel.Store"/> or
+    /// <see cref="InstallChannel.DirectDownload"/>, the stamp is raised in D'. Writing into D' means it
+    /// reaches D in the same save as the data it protects. A raise that fails is retried quietly like the
+    /// read, and if it still fails write access is REFUSED: editing without the stamp would save new-format
+    /// data where older versions can still edit it (user decision, 2026-10-14; before step 3c a failed raise
+    /// was logged and ignored). A malformed <see cref="ThisReleaseRequires"/> is a bug in the release, not
+    /// something waiting helps, so it is refused at once (and reported).</para>
+    ///
+    /// <para><b>Refusing write access</b> (<see cref="CheckoutOutcome.VersionCheckUnavailable"/>): the lock is
+    /// released (no reader mode), D' with its sidecars and marker is deleted exactly as in the blocking path
+    /// — except during crash recovery, where D' and its marker are kept so the unsaved changes are offered
+    /// again — and <see cref="Mode"/> is read-only. No D'' is made: the caller tells the user and offers
+    /// Try again / Close.</para>
     ///
     /// <para>A brand-new database (created by <see cref="NewDatabaseFile"/> just before checkout)
     /// has no stamp to honour, so it passes the gate; its schema is created by this very version.</para>
     /// </summary>
     /// <param name="isRecovery">
-    /// True when called from crash recovery, where D' holds unsaved edits that must survive a trip.
+    /// True when called from crash recovery, where D' holds unsaved edits that must survive a trip or a refusal.
     /// </param>
     /// <returns>
     /// Null when the checkout should continue to write access. Otherwise the outcome to return:
-    /// <see cref="CheckoutOutcome.ReadOnly"/> (D'' created) or <see cref="CheckoutOutcome.Failed"/>
-    /// (D'' could not be created; the caller's usual fallback applies).
+    /// <see cref="CheckoutOutcome.ReadOnly"/> (D'' created), <see cref="CheckoutOutcome.Failed"/>
+    /// (blocked, but D'' could not be created; the caller's usual fallback applies) or
+    /// <see cref="CheckoutOutcome.VersionCheckUnavailable"/> (the stamp could not be read or raised).
     /// </returns>
     private async Task<CheckoutOutcome?> ApplyVersionGateAsync(bool isRecovery)
     {
-        var stamp = MinimumVersionToWrite.ReadStamp(WorkingPath);
+        // ── 1. Read the stamp ─────────────────────────────────────────────────────────────
+        var read = StampRead.None;
+        var readFailure = await RunWithQuietRetriesAsync("reading the stamp", () =>
+        {
+            read = ReadStampOnce();
+            return read.IsUnreadable ? read.Detail ?? "could not be read" : null;
+        });
+        if (readFailure is not null)
+            return RefuseWriteAccessForUncheckedVersion(isRecovery, $"the stamp could not be read ({readFailure})");
 
+        if (read.IsDamaged)
+        {
+            // Not this gate's to handle (see the method docs): the open-time integrity check runs next, refuses
+            // the file and takes the damage path. No raise either — it could only fail on a damaged file, and a
+            // refusal would turn damage back into the misleading "in use" loop.
+            _logger.LogInfo(
+                $"CheckoutService: version gate — the local copy is damaged ({read.Detail}); " +
+                "leaving it to the open-time integrity check.");
+            _logger.LogBreadcrumb("Checkout: version gate found the local copy damaged", new() { ["recovery"] = isRecovery.ToString() });
+            return null;
+        }
+
+        var stamp = read.Value;   // null: the database is genuinely unstamped
+        _logger.LogInfo($"CheckoutService: version gate — stamp {stamp ?? "none"}, running {_appVersion}.");
+
+        // ── 2. Block ──────────────────────────────────────────────────────────────────────
         if (stamp is not null && MinimumVersionToWrite.Blocks(stamp, _appVersion))
         {
             _logger.LogInfo(
@@ -1082,48 +1177,143 @@ public sealed class CheckoutService : IDisposable
                 ["app"]      = _appVersion.ToString(),
             });
 
-            // Give the lock back, but do NOT enter reader mode (see method docs).
-            _lockService.Release();
-
-            if (!isRecovery)
-            {
-                TryDeleteWalSidecars(WorkingPath);
-                TryDelete(WorkingPath);
-                DeleteDirtyMarker();
-            }
-
-            CurrentHolder      = null;
+            StandDownFromWriteAccess(isRecovery);
             RequiredAppVersion = stamp;
-            Mode               = CheckoutMode.ReadOnly;
-            SessionDirty       = false;
 
             return await SetupReadOnlySnapshotAsync() is not null
                 ? CheckoutOutcome.ReadOnly
                 : CheckoutOutcome.Failed;
         }
 
-        // Not gated. Dormant stamping step: only a release that sets ThisReleaseRequires, running
-        // from a Store or direct-download install, ever writes a stamp — never a dev/sideload build.
+        // ── 3. Raise (dormant) ────────────────────────────────────────────────────────────
+        // Only a release that sets ThisReleaseRequires, running from a Store or direct-download install,
+        // ever writes a stamp — never a dev/sideload build.
         var requires = ThisReleaseRequires;
         if (!string.IsNullOrWhiteSpace(requires)
             && (ChannelOverride ?? PlatformCapabilities.InstallChannel) is InstallChannel.Store or InstallChannel.DirectDownload)
         {
-            try
+            // Waiting cannot fix a requirement that is not a version: refuse at once, and tell the developers.
+            if (!Version.TryParse(requires.Trim(), out _))
             {
-                if (MinimumVersionToWrite.Raise(WorkingPath, requires, ThisReleaseReason))
+                _logger.LogError(
+                    new InvalidOperationException($"ThisReleaseRequires '{requires}' is not a valid version."),
+                    "CheckoutService: this release's MinimumVersionToWrite requirement is malformed — refusing write access.");
+                return RefuseWriteAccessForUncheckedVersion(isRecovery, "this release's required version is malformed");
+            }
+
+            var raiseFailure = await RunWithQuietRetriesAsync("raising the stamp", () =>
+            {
+                try
                 {
-                    _logger.LogInfo($"CheckoutService: raised MinimumVersionToWrite to {requires}.");
-                    _logger.LogBreadcrumb("Checkout: stamped MinimumVersionToWrite", new() { ["version"] = requires });
+                    if (StampRaiser(WorkingPath, requires, ThisReleaseReason))
+                    {
+                        _logger.LogInfo($"CheckoutService: raised MinimumVersionToWrite to {requires}.");
+                        _logger.LogBreadcrumb("Checkout: stamped MinimumVersionToWrite", new() { ["version"] = requires });
+                    }
+                    return null;
                 }
-            }
-            catch (Exception ex)
-            {
-                // Stamping protects data from older versions but is not worth refusing edits over.
-                _logger.LogError(ex, "CheckoutService: could not raise MinimumVersionToWrite — continuing without it.");
-            }
+                catch (Exception ex)
+                {
+                    return $"{ex.GetType().Name}: {ex.Message}";
+                }
+            });
+            if (raiseFailure is not null)
+                return RefuseWriteAccessForUncheckedVersion(isRecovery, $"the stamp could not be raised ({raiseFailure})");
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// One attempt to read the stamp of D' for the version gate: the DEBUG-ONLY <c>stamp</c> fault first (each
+    /// call counts as one attempt against the plan's budget and, while it fires, reports the file as
+    /// unreadable — logged, never reported to the developers), then the real <see cref="StampReader"/>.
+    /// </summary>
+    /// <returns>The classified read; never throws (<see cref="MinimumVersionToWrite.ReadStamp"/> does not).</returns>
+    private StampRead ReadStampOnce()
+    {
+        if (IntegrityFaultPlan is { } plan && plan.TryConsume(InjectedIntegrityFault.Stamp))
+        {
+            _logger.LogInfo(
+                $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName}: the version gate's stamp read " +
+                $"reports the file as unreadable; {plan.Description}.");
+            return StampRead.Couldnt("DEBUG fault injection: stamp read");
+        }
+
+        return StampReader(WorkingPath);
+    }
+
+    /// <summary>
+    /// Runs one step of the version gate until it succeeds or the attempts run out — the same quiet retries
+    /// as the open-time integrity check of the local copy: <see cref="LocalCopyIntegrity.MaxAttempts"/> attempts
+    /// in all, <see cref="LocalCopyIntegrity.RetryDelay"/> apart (waited with <see cref="GateRetryDelay"/>, so
+    /// the window stays alive and tests need not wait). No dialog, banner or report on the way: each failed
+    /// attempt is one local log line.
+    /// </summary>
+    /// <param name="what">Short label for the log lines, e.g. "reading the stamp".</param>
+    /// <param name="attempt">Runs the step once and returns null when it succeeded, otherwise a short description of why it did not. Must not throw.</param>
+    /// <returns>Null when an attempt succeeded; otherwise the last attempt's description of the failure.</returns>
+    private async Task<string?> RunWithQuietRetriesAsync(string what, Func<string?> attempt)
+    {
+        string? failure = null;
+        for (var n = 1; n <= LocalCopyIntegrity.MaxAttempts; n++)
+        {
+            failure = attempt();
+            if (failure is null)
+                return null;
+
+            _logger.LogInfo($"CheckoutService: version gate — {what} failed, attempt {n} of {LocalCopyIntegrity.MaxAttempts} ({failure}).");
+            if (n < LocalCopyIntegrity.MaxAttempts)
+                await GateRetryDelay(LocalCopyIntegrity.RetryDelay);
+        }
+        return failure;
+    }
+
+    /// <summary>
+    /// The common first half of leaving write access at the version gate, whether the gate blocked or refused:
+    /// gives the lock back WITHOUT entering reader mode (no poll timer, so no "Take over" can loop back into
+    /// the gate), unhooks the wake and heartbeat handlers (a no-op at the three checkout exits, where they are
+    /// not yet subscribed; needed when the gate runs again in a live write session after a fresh local copy),
+    /// removes D' with its WAL sidecars and dirty marker — unless this is crash recovery, where D' and its marker
+    /// hold the user's only copy of unsaved edits and are kept — and parks the session at read-only.
+    /// </summary>
+    /// <param name="isRecovery">True for a crash-recovery checkout (keep D' and its marker).</param>
+    private void StandDownFromWriteAccess(bool isRecovery)
+    {
+        // Give the lock back, but do NOT enter reader mode (see ApplyVersionGateAsync).
+        _lockService.Release();
+        _lockService.WakeDetected    -= OnWake;
+        _lockService.HeartbeatFailed -= OnHeartbeatFailed;
+
+        if (!isRecovery)
+        {
+            TryDeleteWalSidecars(WorkingPath);
+            TryDelete(WorkingPath);
+            DeleteDirtyMarker();
+        }
+
+        CurrentHolder = null;
+        Mode          = CheckoutMode.ReadOnly;
+        SessionDirty  = false;
+    }
+
+    /// <summary>
+    /// Refuses write access because the version gate could not do its job (spec item 3, step 3c): the stamp
+    /// could not be read, or a stamp this release must write could not be written, even after the quiet
+    /// retries. Gives up the write session (<see cref="StandDownFromWriteAccess"/>) and logs it. Nothing is
+    /// reported to the developers: a file another program is holding is an ordinary local condition.
+    /// </summary>
+    /// <param name="isRecovery">True for a crash-recovery checkout (D' and its marker are kept).</param>
+    /// <param name="why">Technical account for the local log only; never shown to the user.</param>
+    /// <returns><see cref="CheckoutOutcome.VersionCheckUnavailable"/>.</returns>
+    private CheckoutOutcome RefuseWriteAccessForUncheckedVersion(bool isRecovery, string why)
+    {
+        _logger.LogInfo($"CheckoutService: write access refused — the version check could not be completed: {why}.");
+        _logger.LogBreadcrumb("Checkout: VersionCheckUnavailable", new() { ["recovery"] = isRecovery.ToString() });
+
+        StandDownFromWriteAccess(isRecovery);
+        RequiredAppVersion = null;   // the gate did not trip: nobody knows what the database requires
+        return CheckoutOutcome.VersionCheckUnavailable;
     }
 
     /// <summary>
@@ -2348,18 +2538,29 @@ public sealed class CheckoutService : IDisposable
     /// retry).</description></item>
     /// <item><description>Replaces D' with the verified file (its WAL sidecars are removed first) and updates
     /// <see cref="HashAtCheckout"/> to D's hash, so a later save sees D as unchanged.</description></item>
+    /// <item><description><b>Runs the version gate again</b> on the new D' (<see cref="ApplyVersionGateAsync"/>; spec
+    /// item 3, step 3c), because the gate that ran at checkout judged the file just replaced: it reads the
+    /// stamp and, in a release that raises it, raises it into the new D'. If the new D' must be read-only
+    /// (this app is older than its stamp) the writer is stood down — see <see cref="LocalCopyRefreshResult.NowReadOnly"/>.</description></item>
     /// </list>
-    /// <para>The write lock is never released or re-acquired — there is no window in which a colleague could take
-    /// it — and any failure leaves the lock held and whatever D' was as it was.</para>
+    /// <para>Until that last step the write lock is never released or re-acquired — there is no window in which a
+    /// colleague could take it — and any failure leaves the lock held and whatever D' was as it was. (When the gate
+    /// stands the writer down, the lock is released on purpose: the session is no longer a writer.)</para>
     ///
     /// <para><b>Reader:</b> re-makes the read-only snapshot D'' (<see cref="SetupReadOnlySnapshotAsync"/>). A reader
     /// holds no lock and has no unsaved work, so there is nothing to protect.</para>
     /// </summary>
     /// <returns>
     /// <see cref="LocalCopyRefreshResult.Ok"/> when the local copy has been replaced by a verified copy of D;
+    /// <see cref="LocalCopyRefreshResult.NowReadOnly"/> when it was, but the version gate then found the database
+    /// requires a newer TermPoint (the session is now a read-only one on D'', <see cref="RequiredAppVersion"/> is
+    /// set, the lock is released) — open again from <see cref="WorkingPath"/>;
     /// <see cref="LocalCopyRefreshResult.Unreachable"/>, <see cref="LocalCopyRefreshResult.Unreadable"/> or
     /// <see cref="LocalCopyRefreshResult.Failed"/> when it could not be made (the previous local copy is left in
-    /// place, or, for a reader whose snapshot failed, as <see cref="SetupReadOnlySnapshotAsync"/> leaves it);
+    /// place, or, for a reader whose snapshot failed, as <see cref="SetupReadOnlySnapshotAsync"/> leaves it).
+    /// <see cref="LocalCopyRefreshResult.Unreadable"/> is also what the re-run gate reports when it cannot read
+    /// or raise the stamp even after its quiet retries: write access is then refused and the lock released, and
+    /// the handler shows its front-door "can't read" message and gives up (rare on rare, accepted);
     /// <see cref="LocalCopyRefreshResult.HoldsUnsavedChanges"/> for a writer's copy with a dirty marker.
     /// </returns>
     public async Task<LocalCopyRefreshResult> RefreshLocalCopyAfterFailedCheckAsync()
@@ -2467,8 +2668,22 @@ public sealed class CheckoutService : IDisposable
             HashAtCheckout   = sourceHash;
             _pendingSaveHash = null;
             _logger.LogInfo("CheckoutService: RefreshLocalCopy — D' replaced by a fresh, verified copy of D.");
-            _logger.LogBreadcrumb("RefreshLocalCopy: Ok");
-            return LocalCopyRefreshResult.Ok;
+
+            // The version gate ran at checkout on the D' that has just been thrown away (spec item 3, step 3c):
+            // the new D' was never checked, and a stamp this release raised into the old one is gone. Run the
+            // gate again. It stands the writer down itself if it must: the lock is released, RequiredAppVersion
+            // is set and a read-only D'' is made (NowReadOnly), or write access is refused (Unreadable).
+            // A fresh copy holds no unsaved work (a dirty marker was refused above), so D' is never kept.
+            var gated = await ApplyVersionGateAsync(isRecovery: false);
+            var result = gated switch
+            {
+                null                                    => LocalCopyRefreshResult.Ok,
+                CheckoutOutcome.ReadOnly                => LocalCopyRefreshResult.NowReadOnly,
+                CheckoutOutcome.VersionCheckUnavailable => LocalCopyRefreshResult.Unreadable,
+                _                                       => LocalCopyRefreshResult.Failed
+            };
+            _logger.LogBreadcrumb($"RefreshLocalCopy: {result}");
+            return result;
         }
         finally
         {
@@ -3843,7 +4058,12 @@ public enum LocalCopyRefreshResult
     /// <summary>The shared database could not be reached in time. Nothing was changed.</summary>
     Unreachable,
 
-    /// <summary>The shared database (or, for a writer, the local file to be replaced) is held by another program, or access is denied. Nothing was changed.</summary>
+    /// <summary>
+    /// The shared database (or, for a writer, the local file to be replaced) is held by another program, or access is
+    /// denied. Nothing was changed. ALSO returned (step 3c) when the copy was made but the re-run version gate could
+    /// not read the new copy's stamp, or raise one, even after its quiet retries: the writer has then been stood
+    /// down (lock released, new local copy removed) and the caller gives up.
+    /// </summary>
     Unreadable,
 
     /// <summary>Any other failure, including a copy that would not verify. The previous local copy is left as it was.</summary>
@@ -3853,7 +4073,16 @@ public enum LocalCopyRefreshResult
     /// A writer's local copy holds unsaved changes (it has a dirty marker) and was NOT replaced. The caller must set
     /// it aside first; unsaved work is never overwritten.
     /// </summary>
-    HoldsUnsavedChanges
+    HoldsUnsavedChanges,
+
+    /// <summary>
+    /// The fresh copy was made, but the version gate, run again on it (spec item 3, step 3c), found that the database
+    /// requires a newer TermPoint than this one. The writer has been stood down: the lock is released, the new local
+    /// copy removed, <see cref="CheckoutService.RequiredAppVersion"/> is set and the session is now a read-only one on
+    /// a fresh snapshot D'' (<see cref="CheckoutService.WorkingPath"/>). The caller opens again from
+    /// <see cref="CheckoutService.WorkingPath"/>; the read-only banner explains why. Writers only.
+    /// </summary>
+    NowReadOnly
 }
 
 /// <summary>Indicates whether this app instance holds the write lock.</summary>
@@ -3923,7 +4152,20 @@ public enum CheckoutOutcome
     /// <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> followed by
     /// <see cref="CheckoutService.StartReaderPollingAsync"/>.
     /// </summary>
-    HolderActiveAgain
+    HolderActiveAgain,
+    /// <summary>
+    /// The write lock was taken and D' made, but the version gate (spec item 3, step 3c) could not do its job: the
+    /// database's <see cref="MinimumVersionToWrite"/> stamp could not be read, or a stamp this release must write
+    /// could not be written, even after quiet retries (3 attempts, 1 s apart) — typically antivirus or backup
+    /// software still holding the file that was just copied. Write access is REFUSED rather than guessed at.
+    /// The write lock has been released (no reader mode, no polling), <see cref="CheckoutService.Mode"/> is read-only,
+    /// no D'' was made, and D' with its sidecars and marker has been removed — except in a crash-recovery open, where
+    /// D' and its dirty marker are kept so the unsaved changes are offered again. D is untouched. Says nothing about
+    /// the health of D, so it must not be described as damage. The caller shows the "in use" prompt
+    /// (<see cref="LocalCopyCheckPrompt.InUseMessage"/>, Try again / Close): Try again runs the checkout again with
+    /// the same arguments; Close gives up like any other failed checkout.
+    /// </summary>
+    VersionCheckUnavailable
 }
 
 /// <summary>

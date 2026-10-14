@@ -531,10 +531,13 @@ public sealed class LocalCopyIntegrityTests : IDisposable
     /// <summary>
     /// The fresh-copy result maps onto the table's inputs: made → open again; the shared location not responding or a
     /// held file → the matching front-door message (never "this computer has a problem"); anything else → "keeps
-    /// failing".
+    /// failing". A fresh copy that was made but then turned the session read-only (the re-run version gate found a
+    /// stamp newer than this app, spec item 3, step 3c) counts as "made" too: it is opened again, from the read-only
+    /// snapshot, exactly like a normal fresh copy.
     /// </summary>
     [Theory]
     [InlineData(LocalCopyRefreshResult.Ok,                  SharedDatabaseVerdict.Ok,          FreshCopyState.Made)]
+    [InlineData(LocalCopyRefreshResult.NowReadOnly,         SharedDatabaseVerdict.Ok,          FreshCopyState.Made)]
     [InlineData(LocalCopyRefreshResult.Unreachable,         SharedDatabaseVerdict.Unreachable, FreshCopyState.NotTried)]
     [InlineData(LocalCopyRefreshResult.Unreadable,          SharedDatabaseVerdict.Unreadable,  FreshCopyState.NotTried)]
     [InlineData(LocalCopyRefreshResult.Failed,              SharedDatabaseVerdict.Ok,          FreshCopyState.Failed)]
@@ -546,6 +549,48 @@ public sealed class LocalCopyIntegrityTests : IDisposable
 
         Assert.Equal(expectedShared, shared);
         Assert.Equal(expectedFresh, fresh);
+    }
+
+    /// <summary>
+    /// Exhaustiveness guard: EVERY <see cref="LocalCopyRefreshResult"/> value has a deliberate row in the mapping
+    /// below, so a new value added to the enum cannot silently fall into <see cref="LocalCopyIntegrity.AfterFreshCopy"/>'s
+    /// catch-all ("keeps failing") without this test failing and forcing a decision.
+    /// </summary>
+    [Fact]
+    public void AfterFreshCopy_HasADeliberateMappingForEveryRefreshResult()
+    {
+        var expected = new Dictionary<LocalCopyRefreshResult, (SharedDatabaseVerdict Shared, FreshCopyState Fresh)>
+        {
+            [LocalCopyRefreshResult.Ok]                  = (SharedDatabaseVerdict.Ok,          FreshCopyState.Made),
+            [LocalCopyRefreshResult.NowReadOnly]         = (SharedDatabaseVerdict.Ok,          FreshCopyState.Made),
+            [LocalCopyRefreshResult.Unreachable]         = (SharedDatabaseVerdict.Unreachable, FreshCopyState.NotTried),
+            [LocalCopyRefreshResult.Unreadable]          = (SharedDatabaseVerdict.Unreadable,  FreshCopyState.NotTried),
+            [LocalCopyRefreshResult.Failed]              = (SharedDatabaseVerdict.Ok,          FreshCopyState.Failed),
+            [LocalCopyRefreshResult.HoldsUnsavedChanges] = (SharedDatabaseVerdict.Ok,          FreshCopyState.Failed),
+        };
+
+        Assert.Equal(
+            Enum.GetValues<LocalCopyRefreshResult>().OrderBy(r => r),
+            expected.Keys.OrderBy(r => r));
+
+        foreach (var (result, want) in expected)
+            Assert.Equal(want, LocalCopyIntegrity.AfterFreshCopy(result, SharedDatabaseVerdict.Ok));
+    }
+
+    /// <summary>
+    /// A fresh copy that turned read-only (NowReadOnly) leads the decision table to the same place as an ordinary
+    /// made copy whose check then passes: open normally. (Were the new copy's check to fail it would be "keeps
+    /// failing", as for any made copy.)
+    /// </summary>
+    [Fact]
+    public void AfterFreshCopy_NowReadOnly_ThenDecide_OpensNormallyWhenTheCopyPasses_AndKeepsFailingWhenItDoesNot()
+    {
+        var (shared, fresh) = LocalCopyIntegrity.AfterFreshCopy(LocalCopyRefreshResult.NowReadOnly, SharedDatabaseVerdict.Ok);
+
+        Assert.Equal(LocalCopyAction.OpenNormally,
+            LocalCopyCheckDecision.Decide(LocalCopyVerdict.Ok, holdsRecoveredChanges: false, shared, fresh));
+        Assert.Equal(LocalCopyAction.ShowKeepsFailing,
+            LocalCopyCheckDecision.Decide(LocalCopyVerdict.Damaged, holdsRecoveredChanges: false, shared, fresh));
     }
 
     /// <summary>

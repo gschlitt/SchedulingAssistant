@@ -683,7 +683,6 @@ public partial class MainWindow : Window
             Close();
             return null;
         }
-        dbPath = checkoutResult;
         // ─────────────────────────────────────────────────────────────────────
 
         // Resolve the canonical source path D for the title bar and backup service.
@@ -695,10 +694,15 @@ public partial class MainWindow : Window
         // the local copy (spec item 5, step 5d) can stop it: a copy another program is using, or a damaged one.
         // OpenWithLocalCopyCheckAsync handles both — Try again, one fresh copy, or the recovery chooser — and
         // returns no view model only after it has ended the half-opened session WITHOUT saving.
+        //
+        // The local file to open is read from the checkout at the moment of each call, NOT captured above
+        // (spec item 3, step 3c): after a fresh copy the checkout may now hold a different file — a new D', or,
+        // when the version gate ran again on it and found the database needs a newer TermPoint, a read-only D''
+        // (RequiredAppVersion set, so the usual "needs TermPoint X" banner appears).
         MainWindowViewModel vm;
         try
         {
-            var opened = await OpenWithLocalCopyCheckAsync(() => App.InitializeServices(dbPath));
+            var opened = await OpenWithLocalCopyCheckAsync(() => App.InitializeServices(App.Checkout.WorkingPath));
             if (opened.ViewModel is null)
             {
                 // Nothing is open and nothing may be saved: the session has been ended and the user told why.
@@ -844,8 +848,10 @@ public partial class MainWindow : Window
     /// D itself is NEVER returned: opening D with SQLite
     /// flips its header (breaking the active editor's next save) and holds it open.</description></item>
     /// <item><description><b><c>null</c>:</b> the checkout cannot proceed and the user has already been told
-    /// why (network unreachable, database file missing, or no local copy could be made and the user chose
-    /// Close). Both callers treat <c>null</c> as "dialog shown, give up": startup closes the app, and
+    /// why (network unreachable, database file missing, no local copy could be made and the user chose
+    /// Close, or the version gate could not check the database and the user chose Close in the "in use"
+    /// prompt — <see cref="AskTryAgainAfterVersionCheckAsync"/>; Try again repeats the whole checkout).
+    /// Both callers treat <c>null</c> as "dialog shown, give up": startup closes the app, and
     /// <see cref="SwitchDatabaseAsync"/> — whose previous database is already closed by then — cleans up
     /// (<see cref="AbandonFailedSwitchAsync"/>) and shows the database chooser. Either way the caller must
     /// reset the working-copy bookkeeping (<see cref="CheckoutService.ResetAfterFailedOpenAsync"/>), because
@@ -930,6 +936,12 @@ public partial class MainWindow : Window
                                 DatabaseChooserViewModel.UnreadableDatabaseMessage);
                             return null;
                         }
+                        if (forceOutcome == CheckoutOutcome.VersionCheckUnavailable)
+                        {
+                            // The version gate could not read (or raise) the stamp on the takeover's local copy.
+                            // The forced lock was released again, so Try again is a whole new checkout.
+                            return await AskTryAgainAfterVersionCheckAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
+                        }
                         if (forceOutcome == CheckoutOutcome.HolderActiveAgain)
                         {
                             // The holder woke up (or someone else took the lock) while the prompt was
@@ -976,6 +988,13 @@ public partial class MainWindow : Window
                     DatabaseChooserViewModel.UnreadableDatabaseMessage);
                 return null;
 
+            case CheckoutOutcome.VersionCheckUnavailable:
+                // The local copy was made, but the version gate could not read its MinimumVersionToWrite stamp
+                // (or raise one) even after its quiet retries — typically antivirus still holding the file that
+                // was just copied. Write access was refused, the lock released and (outside recovery) the copy
+                // removed; recovery data, if any, is kept. Same prompt as the open-time integrity check.
+                return await AskTryAgainAfterVersionCheckAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
+
             default: // Failed
                 await ShowMessageAsync("Checkout Failed",
                     "Could not open the database for editing. " +
@@ -984,6 +1003,37 @@ public partial class MainWindow : Window
                 // launch. If D'' cannot be made, ask the user — never fall back to D itself.
                 return await SetupSnapshotOrAskAsync();
         }
+    }
+
+    /// <summary>
+    /// Handles <see cref="CheckoutOutcome.VersionCheckUnavailable"/> (spec item 3, step 3c): the version gate could
+    /// not read, or raise, the database's stamp even after its quiet retries, so write access was refused. Shows the
+    /// same "Couldn't Open the Database" prompt the open-time integrity check uses for a local copy that another
+    /// program is holding (<see cref="LocalCopyCheckPrompt"/>; the cause is the same kind of thing and the wording
+    /// is the user-approved one) with <b>Try again</b> / <b>Close</b>. Try again runs the whole checkout again with
+    /// the same arguments (the previous attempt released its lock and, outside recovery, removed its copy, so it
+    /// starts from scratch; a recovery open still finds its kept copy and marker). Close gives up exactly like
+    /// the other failed checkouts: nothing is saved and no lock is left.
+    /// </summary>
+    /// <param name="sourcePath">The database path D chosen by the user.</param>
+    /// <param name="recoverUnsaved">As for <see cref="RunCheckoutAsync"/>.</param>
+    /// <param name="ignoreObserverMode">As for <see cref="RunCheckoutAsync"/>.</param>
+    /// <returns>
+    /// The result of the repeated <see cref="RunCheckoutAsync"/> when the user chose Try again; <c>null</c>
+    /// (the prompt has been shown — the contract <see cref="RunCheckoutAsync"/> documents) when they chose Close.
+    /// </returns>
+    private async Task<string?> AskTryAgainAfterVersionCheckAsync(
+        string sourcePath, bool recoverUnsaved, bool ignoreObserverMode)
+    {
+        var tryAgain = await ShowChoiceAsync(
+            LocalCopyCheckPrompt.CouldntOpenTitle,
+            LocalCopyCheckPrompt.InUseMessage,
+            LocalCopyCheckPrompt.TryAgainButton,
+            LocalCopyCheckPrompt.CloseButton);
+
+        return tryAgain
+            ? await RunCheckoutAsync(sourcePath, recoverUnsaved, ignoreObserverMode)
+            : null;
     }
 
     /// <summary>
@@ -1060,7 +1110,14 @@ public partial class MainWindow : Window
     /// <para>Any other exception from <paramref name="initialize"/> (for example
     /// <see cref="DatabaseFolderNotWritableException"/>) propagates to the caller, unchanged.</para>
     /// </summary>
-    /// <param name="initialize">Builds the services over the local copy and returns the root view model; may throw the two exceptions above.</param>
+    /// <param name="initialize">
+    /// Builds the services over the local copy and returns the root view model; may throw the two exceptions above.
+    /// It is called again after a fresh copy and must therefore read the local file from
+    /// <see cref="CheckoutService.WorkingPath"/> at the moment it is called, not from a path captured earlier: a
+    /// fresh copy can change which file the checkout holds (spec item 3, step 3c) — a new D', or, if the version
+    /// gate then found the database needs a newer TermPoint, a read-only D'' (<see cref="CheckoutService.RequiredAppVersion"/>
+    /// set, so the read-only banner explains why).
+    /// </param>
     /// <returns>The opened database's view model, or a give-up (see <see cref="LocalCopyOpenResult"/>).</returns>
     private async Task<LocalCopyOpenResult> OpenWithLocalCopyCheckAsync(Func<MainWindowViewModel> initialize)
     {
@@ -1080,7 +1137,9 @@ public partial class MainWindow : Window
             {
                 var vm = initialize();
                 if (fresh == FreshCopyState.Made)
-                    App.Logger.LogInfo("LocalCopyCheck: the database opened normally with a fresh copy.");
+                    App.Logger.LogInfo(App.Checkout.RequiredAppVersion is null
+                        ? "LocalCopyCheck: the database opened normally with a fresh copy."
+                        : "LocalCopyCheck: the database opened read-only with a fresh copy (the version gate found it needs a newer TermPoint).");
                 return new LocalCopyOpenResult(vm, SharedDatabaseDamaged: false);
             }
             catch (DatabaseInUseException ex)
@@ -1694,7 +1753,6 @@ public partial class MainWindow : Window
                 // database is already closed, so this ends in the no-database state, not a dead window.
                 return await AbandonFailedSwitchAsync();
             }
-            newDatabasePath = checkoutPath;
 
             // Reinitialize DI and set new data context. The open-time integrity check of the local copy
             // (spec item 5, step 5d) is handled here exactly as at startup: a copy another program is using
@@ -1703,8 +1761,13 @@ public partial class MainWindow : Window
             // already closed, so that ends in the no-database state — with the damaged reason when it is the
             // shared database that is damaged. The raw "Failed to switch to database: ..." text below can
             // therefore never name the local copy's path for these two failures.
+            //
+            // As at startup, the local file is read from the checkout at the moment of each call (spec item 3,
+            // step 3c), because a fresh copy can leave the checkout holding a different file: a new D', or a
+            // read-only D'' when the version gate ran again on the fresh copy and found it needs a newer
+            // TermPoint. (checkoutPath above is that file for the first call; it is only used for the null test.)
             var opened = await OpenWithLocalCopyCheckAsync(
-                () => App.InitializeServices(newDatabasePath, savedYearId, savedSemesterIds));
+                () => App.InitializeServices(App.Checkout.WorkingPath, savedYearId, savedSemesterIds));
             if (opened.ViewModel is null)
             {
                 if (opened.SharedDatabaseDamaged)

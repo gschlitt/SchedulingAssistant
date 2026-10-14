@@ -75,25 +75,15 @@ public partial class App : Application
     public static WriteLockService LockService { get; } = new WriteLockService();
 
     /// <summary>
-    /// Checkout service — manages D to D' copy, write lock, save-back, autosave, and crash recovery.
-    /// </summary>
-    public static CheckoutService Checkout { get; } = CreateCheckoutService();
-
-    /// <summary>
-    /// The per-database, per-user single-instance guard (spec item 4b). <c>MainWindow</c> takes it for a
-    /// database BEFORE any cleanup, crash detection or checkout — at startup and on every database switch
-    /// — and releases it when the database is closed and on exit. Declared after <see cref="Logger"/> so
-    /// the logger exists when it is created (static initializers run in textual order).
-    /// </summary>
-    public static DatabaseInstanceGuard InstanceGuard { get; } = new DatabaseInstanceGuard(logger: Logger);
-
-    /// <summary>
-    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy (spec item 5, step 5d),
-    /// from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variable (see <see cref="IntegrityFaultPlan"/>).
-    /// Consulted by <see cref="InitializeServices"/> (the <c>locked</c> and <c>damaged</c> faults) and by the main
-    /// window's re-check of the shared database (the <c>shared</c> fault). Null in a Release build and in every
-    /// ordinary run, so shipped builds never inject anything. Declared after <see cref="Logger"/> because a plan
-    /// that is set is announced in the log, so a forgotten variable in a launch profile can't go unnoticed.
+    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy (spec item 5, step 5d) and
+    /// for the version gate's stamp read (spec item 3, step 3c), from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
+    /// environment variable (see <see cref="IntegrityFaultPlan"/>). Consulted by <see cref="InitializeServices"/>
+    /// (the <c>locked</c> and <c>damaged</c> faults), by the main window's re-check of the shared database (the
+    /// <c>shared</c> fault) and by <see cref="Checkout"/> (the <c>stamp</c> fault). Null in a Release build and in
+    /// every ordinary run, so shipped builds never inject anything. Declared after <see cref="Logger"/> because a
+    /// plan that is set is announced in the log, so a forgotten variable in a launch profile can't go unnoticed,
+    /// and BEFORE <see cref="Checkout"/>, which is handed the same plan when it is built (static initializers run
+    /// in textual order).
     /// </summary>
     internal static IntegrityFaultPlan? IntegrityFaults { get; } = CreateIntegrityFaultPlan();
 
@@ -107,28 +97,44 @@ public partial class App : Application
         if (plan is not null)
             Logger.LogInfo(
                 $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName} is set: " +
-                $"the open-time integrity check will fail as {plan.Fault}; {plan.Description}.");
+                $"the injected failure is {plan.Fault}; {plan.Description}.");
         return plan;
     }
 
     /// <summary>
-    /// Builds the app-wide <see cref="CheckoutService"/>. Declared after <see cref="Logger"/> and
-    /// <see cref="LockService"/> in this class so both exist by the time it runs (static initializers
-    /// run in textual order).
+    /// Checkout service — manages D to D' copy, write lock, save-back, autosave, and crash recovery.
+    /// </summary>
+    public static CheckoutService Checkout { get; } = CreateCheckoutService();
+
+    /// <summary>
+    /// The per-database, per-user single-instance guard (spec item 4b). <c>MainWindow</c> takes it for a
+    /// database BEFORE any cleanup, crash detection or checkout — at startup and on every database switch
+    /// — and releases it when the database is closed and on exit. Declared after <see cref="Logger"/> so
+    /// the logger exists when it is created (static initializers run in textual order).
+    /// </summary>
+    public static DatabaseInstanceGuard InstanceGuard { get; } = new DatabaseInstanceGuard(logger: Logger);
+
+    /// <summary>
+    /// Builds the app-wide <see cref="CheckoutService"/>. Declared after <see cref="Logger"/>,
+    /// <see cref="LockService"/> and <see cref="IntegrityFaults"/> in this class so all three exist by the
+    /// time it runs (static initializers run in textual order).
     ///
-    /// <para>Also attaches the DEBUG-ONLY fault plans from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c> and
-    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c> environment variables (see <see cref="CheckoutFaultPlan"/> and
-    /// <see cref="RestoreFaultPlan"/>): their <c>FromEnvironment</c> methods return null in Release builds, so a
-    /// shipped build never injects a fault. A plan that is attached is announced in the log, so a forgotten
-    /// variable in a launch profile can't go unnoticed.</para>
+    /// <para>Also attaches the DEBUG-ONLY fault plans from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c>,
+    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c> and <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variables (see
+    /// <see cref="CheckoutFaultPlan"/>, <see cref="RestoreFaultPlan"/> and <see cref="IntegrityFaultPlan"/>): their
+    /// <c>FromEnvironment</c> methods return null in Release builds, so a shipped build never injects a fault. A
+    /// plan that is attached is announced in the log, so a forgotten variable in a launch profile can't go
+    /// unnoticed. The integrity plan is the SAME object as <see cref="IntegrityFaults"/> (one shared budget); the
+    /// checkout service consults it only for the version gate's <c>stamp</c> fault.</para>
     /// </summary>
     /// <returns>The checkout service, with fault plans only in a DEBUG build that has the variables set.</returns>
     private static CheckoutService CreateCheckoutService()
     {
         var service = new CheckoutService(LockService, Logger)
         {
-            FaultPlan        = CheckoutFaultPlan.FromEnvironment(),
-            RestoreFaultPlan = RestoreFaultPlan.FromEnvironment()
+            FaultPlan          = CheckoutFaultPlan.FromEnvironment(),
+            RestoreFaultPlan   = RestoreFaultPlan.FromEnvironment(),
+            IntegrityFaultPlan = IntegrityFaults
         };
 
         if (service.FaultPlan is { } plan)

@@ -33,7 +33,16 @@ public enum InjectedIntegrityFault
     /// first open fails that way and the re-check spends the budget, so the open the user picks from the recovery
     /// chooser passes.
     /// </summary>
-    Shared
+    Shared,
+
+    /// <summary>
+    /// <c>stamp</c> — the version gate's read of the database's <c>MinimumVersionToWrite</c> stamp reports the file as
+    /// unreadable (<see cref="StampReadKind.Unreadable"/>), as if antivirus held it (spec item 3, step 3c). Every quiet
+    /// retry of the gate is a separate call, so <c>stamp:3</c> makes one whole checkout fail (all three attempts: the
+    /// "Couldn't Open the Database" prompt appears) and Try again succeed; <c>stamp:2</c> is absorbed by the retries
+    /// and the open goes through.
+    /// </summary>
+    Stamp
 }
 
 /// <summary>
@@ -41,12 +50,14 @@ public enum InjectedIntegrityFault
 /// <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variable. It exists so the handling of a locked or damaged
 /// local copy (spec item 5, step 5d) can be exercised by hand: a copy that antivirus holds, a copy that is
 /// damaged while the shared database is fine, a copy that keeps failing, and a shared database that is damaged.
+/// It also covers the version gate's stamp read (spec item 3, step 3c): a copy that cannot be examined for its
+/// <c>MinimumVersionToWrite</c> stamp.
 ///
 /// <para><b>Syntax:</b> <c>value[:count[:skip]]</c>, case-insensitive, exactly as for
 /// <see cref="CheckoutFaultPlan"/> and <see cref="RestoreFaultPlan"/> (the parsing and the budget are the shared
 /// <see cref="DebugFaultBudget"/>).</para>
 /// <list type="bullet">
-/// <item><description><c>value</c> — one of <c>locked</c>, <c>damaged</c>, <c>shared</c> (see
+/// <item><description><c>value</c> — one of <c>locked</c>, <c>damaged</c>, <c>shared</c>, <c>stamp</c> (see
 /// <see cref="InjectedIntegrityFault"/>). Alone, the fault fires on EVERY call that reaches its stage, until
 /// TermPoint is restarted with the variable cleared.</description></item>
 /// <item><description><c>count</c> — a whole number &gt;= 1, or <c>*</c> for "every call": only the next
@@ -57,7 +68,8 @@ public enum InjectedIntegrityFault
 /// real work. One plan holds one fault, and a fault counts only calls at its own stage: <c>locked</c> and
 /// <c>damaged</c> count open-time checks of the local copy; <c>shared</c> counts re-checks of the shared
 /// database (and, so that the re-check is ever reached, also makes the local copy's check report damage while the
-/// plan has failures left — see <see cref="InjectedIntegrityFault.Shared"/>).</para>
+/// plan has failures left — see <see cref="InjectedIntegrityFault.Shared"/>); <c>stamp</c> counts the version
+/// gate's stamp reads (one per attempt).</para>
 ///
 /// <para><b>Release builds ignore it entirely:</b> <see cref="FromEnvironment"/> is the only place the variable
 /// is read and its body is compiled out of Release (the same pattern as <see cref="RestoreFaultPlan"/>), so a
@@ -117,6 +129,7 @@ public sealed class IntegrityFaultPlan
             "locked"  => InjectedIntegrityFault.Locked,
             "damaged" => InjectedIntegrityFault.Damaged,
             "shared"  => InjectedIntegrityFault.Shared,
+            "stamp"   => InjectedIntegrityFault.Stamp,
             _         => InjectedIntegrityFault.None
         };
 

@@ -9,18 +9,25 @@ namespace TermPoint.Services;
 /// <c>AppConfiguration</c> key/value table (<see cref="ConfigKey"/>), with an optional one-line
 /// plain-English explanation under <see cref="ReasonKey"/>. A database with no such row is
 /// "unstamped" and opens normally in every version — the gate can never make a normal database
-/// read-only.</para>
+/// read-only. A file that could not be READ at all (locked, held by another program) is a different
+/// answer from "unstamped" (<see cref="StampReadKind.Unreadable"/>, spec item 3, step 3c) and is never
+/// waved through: the gate retries quietly and, if it still cannot look, refuses write access. A file
+/// SQLite reports as damaged is a third answer (<see cref="StampReadKind.Damaged"/>): the gate leaves
+/// it to the open-time integrity check, which refuses it and handles the damage.</para>
 ///
 /// <para><b>How it is enforced:</b> <see cref="CheckoutService"/> reads the stamp from the freshly
 /// copied working copy D' at each write-access exit and, if <see cref="Blocks"/> says the running
 /// app is older than the stamp, abandons the write checkout and opens a read-only snapshot instead
-/// (see <c>CheckoutService.ApplyVersionGateAsync</c>). Versions older than 1.2.3 do not know the
-/// value exists and ignore it.</para>
+/// (see <c>CheckoutService.ApplyVersionGateAsync</c>). It runs again on the new D' whenever the
+/// open-time integrity handler replaces D' with a fresh copy of D. Versions older than 1.2.3 do not
+/// know the value exists and ignore it.</para>
 ///
 /// <para><b>How it is raised:</b> only through <see cref="Raise"/>, called from the checkout once a
 /// release has set <see cref="ThisReleaseRequires"/>, and only by <see cref="InstallChannel.Store"/>
 /// and <see cref="InstallChannel.DirectDownload"/> builds. The stamp is written into D', so it
-/// reaches D in the same save as the data it protects.</para>
+/// reaches D in the same save as the data it protects. A raise that keeps failing refuses write
+/// access (a session that cannot stamp must not save new-format data where older versions can edit
+/// it).</para>
 ///
 /// <para>Desktop-only: it uses <c>Microsoft.Data.Sqlite</c>, which the browser build does not
 /// reference (the file is excluded from the browser build in the project file).</para>
@@ -107,25 +114,73 @@ public static class MinimumVersionToWrite
 
     /// <summary>
     /// Reads the <see cref="ConfigKey"/> value from the SQLite file at <paramref name="dbPath"/>
-    /// without modifying it (read-only connection, no pooling, so no handle is left open).
+    /// without modifying it (read-only connection, no pooling, so no handle is left open), and says
+    /// HOW the read ended — <see cref="StampReadKind"/> — instead of collapsing "there is no stamp"
+    /// and "I could not look" into one null (spec item 3, step 3c). The old null-on-any-error read
+    /// let a locked or damaged working copy (antivirus holding a file that was just copied) pass
+    /// the version gate as if it were unstamped.
     ///
-    /// <para>Returns null on ANY failure — missing table, missing file, not a SQLite database, I/O
-    /// error — because "can't read a stamp" must never make a database read-only: a corrupt or
-    /// unreadable file is the normal open path's problem and is handled there.</para>
+    /// <para><b>Classification:</b></para>
+    /// <list type="bullet">
+    ///   <item><description><see cref="StampReadKind.Found"/> — the file opened, the table and key
+    ///         exist and the value is not blank.</description></item>
+    ///   <item><description><see cref="StampReadKind.None"/> — the file is genuinely unstamped: it
+    ///         opened and has no <c>AppConfiguration</c> table, no such key, or a blank value; OR it
+    ///         has no SQLite header at all (it cannot carry a stamp, and the integrity check of the
+    ///         local copy refuses such a file moments later), which also keeps the dummy
+    ///         non-SQLite files that tests use for D working.</description></item>
+    ///   <item><description><see cref="StampReadKind.Unreadable"/> — the file could not be examined:
+    ///         it is missing, held by another program (sharing violation), access is denied, an I/O
+    ///         error occurred, or SQLite could not get at it (locked, busy, can't open). The caller
+    ///         must NOT treat this as "no stamp".</description></item>
+    ///   <item><description><see cref="StampReadKind.Damaged"/> — SQLite opened the file and said its
+    ///         contents are bad (corrupt, or "not a database" behind a valid header), classified exactly
+    ///         as the open-time integrity check classifies it
+    ///         (<see cref="BackupService.ClassifyIntegrityException"/>), so the two can never disagree.
+    ///         Typical when the first page or the <c>AppConfiguration</c> page is damaged. Waiting cannot
+    ///         fix it; the caller hands the file on to the integrity check, which refuses it.</description></item>
+    /// </list>
+    ///
+    /// <para>Never throws and never creates the file (the connection is read-only).</para>
     /// </summary>
     /// <param name="dbPath">Path to a local SQLite file, normally the working copy D'.</param>
-    /// <returns>The trimmed stamp, or null when absent, empty, or unreadable.</returns>
-    public static string? ReadStamp(string dbPath)
+    /// <returns>The classified read; <see cref="StampRead.Value"/> is the trimmed stamp for Found.</returns>
+    public static StampRead ReadStamp(string dbPath)
     {
+        // Step 1 — the 16-byte header, read with sharing so it coexists with any other reader. A
+        // failure here (missing file, sharing violation, access denied, I/O error) is "could not
+        // look". A file without the SQLite signature has no stamp to find and is not SQLite's to open.
+        try
+        {
+            if (!DatabaseValidator.HasSqliteSignature(dbPath))
+                return StampRead.None;
+        }
+        catch (Exception ex)
+        {
+            return StampRead.Couldnt(ex);
+        }
+
+        // Step 2 — the table and the key. Probing sqlite_master first (rather than catching "no such
+        // table") keeps "no table" a plain answer and leaves every exception meaning either "could not
+        // look" or "the file is damaged" (StampRead.FromFailure tells them apart).
         try
         {
             using var conn = new SqliteConnection(BuildConnectionString(dbPath, SqliteOpenMode.ReadOnly));
             conn.Open();
-            return ReadValue(conn, transaction: null, ConfigKey);
+
+            using (var probe = conn.CreateCommand())
+            {
+                probe.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'AppConfiguration'";
+                if (probe.ExecuteScalar() is null)
+                    return StampRead.None;
+            }
+
+            var value = ReadValue(conn, transaction: null, ConfigKey);
+            return value is null ? StampRead.None : StampRead.Found(value);
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return StampRead.FromFailure(ex);
         }
     }
 
@@ -138,7 +193,7 @@ public static class MinimumVersionToWrite
     /// components (an undefined build/revision counts as 0) so <c>"1.2.3"</c> equals
     /// <c>1.2.3.0</c> in both directions.</para>
     /// </summary>
-    /// <param name="stamp">The stored value (see <see cref="ReadStamp"/>); may be null.</param>
+    /// <param name="stamp">The stored value (<see cref="StampRead.Value"/> of a <see cref="ReadStamp"/> result); null when there is none.</param>
     /// <param name="appVersion">The running app's version.</param>
     /// <returns>True when the database must open read-only.</returns>
     public static bool Blocks(string? stamp, Version appVersion)
@@ -310,4 +365,107 @@ public static class MinimumVersionToWrite
         cmd.Parameters.AddWithValue("$k", key);
         cmd.ExecuteNonQuery();
     }
+}
+
+/// <summary>
+/// How a read of a database's <see cref="MinimumVersionToWrite"/> stamp ended (spec item 3, step 3c).
+/// </summary>
+public enum StampReadKind
+{
+    /// <summary>The stamp was read; <see cref="StampRead.Value"/> holds it.</summary>
+    Found,
+
+    /// <summary>
+    /// The file was examined (or has no SQLite header, so it cannot carry a stamp) and there is no stamp:
+    /// no <c>AppConfiguration</c> table, no such key, or a blank value. The database is genuinely
+    /// unstamped and opens normally in every version.
+    /// </summary>
+    None,
+
+    /// <summary>
+    /// The file could NOT be examined — missing, held by another program, access denied, an I/O error, or
+    /// SQLite could not get at it (locked, busy, can't open). Says nothing about whether a stamp exists, so
+    /// the version gate must not let write access through on the strength of it. Often clears by itself.
+    /// </summary>
+    Unreadable,
+
+    /// <summary>
+    /// SQLite opened the file and reported its contents as bad — SQLITE_CORRUPT ("database disk image is
+    /// malformed"), SQLITE_NOTADB or SQLITE_FORMAT — exactly the errors the open-time integrity check calls
+    /// damage (<see cref="BackupService.ClassifyIntegrityException"/>). Waiting cannot fix it. The version
+    /// gate does not refuse on it: it lets the open-time integrity check, which runs next on every path into
+    /// editing, refuse the file and handle the damage (fresh copy, recovery chooser, report). A damaged file
+    /// can never be edited, so its stamp never needs to be known.
+    /// </summary>
+    Damaged
+}
+
+/// <summary>
+/// The result of <see cref="MinimumVersionToWrite.ReadStamp"/>: a classified answer instead of a nullable
+/// string, so "there is no stamp", "I could not look" and "the file is damaged" can never be mistaken for
+/// each other.
+/// </summary>
+/// <param name="Kind">How the read ended.</param>
+/// <param name="Value">The trimmed stamp when <paramref name="Kind"/> is <see cref="StampReadKind.Found"/>; otherwise null.</param>
+/// <param name="Detail">
+/// For <see cref="StampReadKind.Unreadable"/> and <see cref="StampReadKind.Damaged"/>: a short technical account
+/// of why (exception type and message), written to the local log only. Never shown to the user and never
+/// reported. Null otherwise.
+/// </param>
+public readonly record struct StampRead(StampReadKind Kind, string? Value = null, string? Detail = null)
+{
+    /// <summary>The answer for a genuinely unstamped file.</summary>
+    public static StampRead None => new(StampReadKind.None);
+
+    /// <summary>
+    /// The answer for a stamp that was read.
+    /// </summary>
+    /// <param name="value">The stamp (already trimmed and non-blank).</param>
+    /// <returns>A <see cref="StampReadKind.Found"/> result carrying <paramref name="value"/>.</returns>
+    public static StampRead Found(string value) => new(StampReadKind.Found, value);
+
+    /// <summary>
+    /// The answer for a file that could not be examined, with the reason for the log.
+    /// </summary>
+    /// <param name="detail">Short, log-only description of why.</param>
+    /// <returns>An <see cref="StampReadKind.Unreadable"/> result.</returns>
+    public static StampRead Couldnt(string detail) => new(StampReadKind.Unreadable, null, detail);
+
+    /// <summary>
+    /// The answer for a file that could not be examined because of <paramref name="ex"/>.
+    /// </summary>
+    /// <param name="ex">The failure; only its type and message go into <see cref="Detail"/>.</param>
+    /// <returns>An <see cref="StampReadKind.Unreadable"/> result.</returns>
+    public static StampRead Couldnt(Exception ex) => Couldnt(Describe(ex));
+
+    /// <summary>
+    /// The answer for a file SQLite reported as damaged, with the reason for the log.
+    /// </summary>
+    /// <param name="ex">The SQLite error; only its type and message go into <see cref="Detail"/>.</param>
+    /// <returns>A <see cref="StampReadKind.Damaged"/> result.</returns>
+    public static StampRead DamagedFile(Exception ex) => new(StampReadKind.Damaged, null, Describe(ex));
+
+    /// <summary>
+    /// Classifies a failure of the SQLite part of the read with the open-time integrity check's own rule
+    /// (<see cref="BackupService.ClassifyIntegrityException"/>): only a SQLite error that positively says the
+    /// contents are bad (corrupt, not a database) is <see cref="StampReadKind.Damaged"/>; everything else —
+    /// locked, busy, can't open, I/O errors, any other exception — is <see cref="StampReadKind.Unreadable"/>.
+    /// </summary>
+    /// <param name="ex">The exception caught while opening the file or reading the stamp.</param>
+    /// <returns>A <see cref="StampReadKind.Damaged"/> or <see cref="StampReadKind.Unreadable"/> result.</returns>
+    public static StampRead FromFailure(Exception ex) =>
+        BackupService.ClassifyIntegrityException(ex) == IntegrityCheckResult.Damaged
+            ? DamagedFile(ex)
+            : Couldnt(ex);
+
+    /// <summary>True when the file could not be examined (<see cref="StampReadKind.Unreadable"/>).</summary>
+    public bool IsUnreadable => Kind == StampReadKind.Unreadable;
+
+    /// <summary>True when SQLite reported the file as damaged (<see cref="StampReadKind.Damaged"/>).</summary>
+    public bool IsDamaged => Kind == StampReadKind.Damaged;
+
+    /// <summary>Short, log-only description of an exception: its type name and message.</summary>
+    /// <param name="ex">The exception.</param>
+    /// <returns>"TypeName: message".</returns>
+    private static string Describe(Exception ex) => $"{ex.GetType().Name}: {ex.Message}";
 }
