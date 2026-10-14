@@ -74,6 +74,8 @@
     <Compile Remove="Services\DatabaseValidator.cs" />
     <Compile Remove="Services\DatabaseSwitchPrecheck.cs" />
     <Compile Remove="Services\DatabaseInstanceGuard.cs" />
+    <Compile Remove="Services\LocalCopyIntegrity.cs" />
+    <Compile Remove="Services\LocalCopyCheckPrompt.cs" />
     <Compile Remove="ViewModels\Management\SaveAndBackupViewModel.cs" />
     <Compile Remove="ViewModels\Management\NewDatabaseViewModel.cs" />
     <Compile Remove="MainWindow.axaml.cs" />

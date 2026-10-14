@@ -88,6 +88,30 @@ public partial class App : Application
     public static DatabaseInstanceGuard InstanceGuard { get; } = new DatabaseInstanceGuard(logger: Logger);
 
     /// <summary>
+    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy (spec item 5, step 5d),
+    /// from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variable (see <see cref="IntegrityFaultPlan"/>).
+    /// Consulted by <see cref="InitializeServices"/> (the <c>locked</c> and <c>damaged</c> faults) and by the main
+    /// window's re-check of the shared database (the <c>shared</c> fault). Null in a Release build and in every
+    /// ordinary run, so shipped builds never inject anything. Declared after <see cref="Logger"/> because a plan
+    /// that is set is announced in the log, so a forgotten variable in a launch profile can't go unnoticed.
+    /// </summary>
+    internal static IntegrityFaultPlan? IntegrityFaults { get; } = CreateIntegrityFaultPlan();
+
+    /// <summary>
+    /// Reads the DEBUG-ONLY integrity fault plan from the environment and announces it in the log when one is set.
+    /// </summary>
+    /// <returns>The plan, or null (no variable, not understood, or a Release build).</returns>
+    private static IntegrityFaultPlan? CreateIntegrityFaultPlan()
+    {
+        var plan = IntegrityFaultPlan.FromEnvironment();
+        if (plan is not null)
+            Logger.LogInfo(
+                $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName} is set: " +
+                $"the open-time integrity check will fail as {plan.Fault}; {plan.Description}.");
+        return plan;
+    }
+
+    /// <summary>
     /// Builds the app-wide <see cref="CheckoutService"/>. Declared after <see cref="Logger"/> and
     /// <see cref="LockService"/> in this class so both exist by the time it runs (static initializers
     /// run in textual order).
@@ -294,9 +318,16 @@ public partial class App : Application
     /// viewing is preserved across the DI teardown/rebuild cycle.
     /// </para>
     /// </summary>
-    /// <param name="dbPath">Path to the working-copy database file (D').</param>
+    /// <param name="dbPath">Path to the local database file: D' (writer) or D'' (reader).</param>
     /// <param name="restoreAcademicYearId">Academic year ID to restore. Defaults to the AppSettings value.</param>
     /// <param name="restoreSemesterIds">Semester IDs to restore. Defaults to the AppSettings value.</param>
+    /// <returns>The root view model, with the services built over <paramref name="dbPath"/>.</returns>
+    /// <exception cref="DatabaseInUseException">
+    /// The local copy could not be examined on any of <see cref="LocalCopyIntegrity.MaxAttempts"/> attempts (another
+    /// program on this computer has it open). The services have been built but nothing was read; the caller must
+    /// release them if it gives up (<see cref="ReleaseServices"/>).
+    /// </exception>
+    /// <exception cref="DatabaseCorruptException">The local copy shows positive evidence of damage (see above for the services).</exception>
     public static MainWindowViewModel InitializeServices(string dbPath,
         string? restoreAcademicYearId = null,
         IReadOnlySet<string>? restoreSemesterIds = null)
@@ -320,26 +351,23 @@ public partial class App : Application
         foreach (var err in TourCatalog.Validate())
             Logger.LogInfo($"[TourCatalog] {err}");
 
-        // Startup integrity gate. dbPath is normally the local working copy D', but the
-        // wizard and direct-open flows pass the network D — where the raw check froze
-        // startup for as long as a dead share kept the redirector waiting (lockup audit
-        // P0-2: PRAGMA integrity_check reads the whole file). Deadline-bound both probes;
-        // on timeout SKIP the check and proceed — the checkout flow that follows has its
-        // own deadlines and surfaces the standard "network unreachable" UX, and a
-        // corruption verdict is only meaningful when the file is readable anyway.
-        // Blocking on these is safe and bounded: NetworkFileOps chains
-        // ConfigureAwait(false) throughout, so nothing re-enters the dispatcher and the
-        // wait caps at the deadline.
+        // Integrity gate on the LOCAL copy. dbPath is always the local copy — D' (writer) or D'' (reader): since
+        // spec item 4a nothing opens the shared D, and every caller (startup, switch, the wizard) passes the
+        // copy that the checkout made. The gate is three-way (spec item 5, step 5d): Ok opens; a copy that
+        // another program holds open (antivirus checking a file that was just copied) is retried quietly,
+        // 3 attempts a second apart, and then reported as DatabaseInUseException; only positive evidence of
+        // damage is DatabaseCorruptException. Both are handled by MainWindow, which decides what to do next.
+        // Both probes are deadline-bound: on timeout the check is SKIPPED and the open proceeds — the checkout
+        // flow has its own deadlines and surfaces the standard "network unreachable" UX, and a verdict is only
+        // meaningful when the file is readable anyway. Blocking on them is safe and bounded: NetworkFileOps
+        // chains ConfigureAwait(false) throughout, so nothing re-enters the dispatcher and each wait caps at
+        // the deadline (plus at most two one-second pauses between the quiet retries).
         var (existsCompleted, dbExists) =
             NetworkFileOps.ExistsAsync(dbPath).GetAwaiter().GetResult();
         if (existsCompleted && dbExists)
         {
-            var (checkCompleted, passed) =
-                NetworkFileOps.CheckIntegrityAsync(dbPath).GetAwaiter().GetResult();
-            if (checkCompleted && !passed)
-                throw new DatabaseCorruptException(dbPath);
-            if (!checkCompleted)
-                Logger.LogInfo("App: startup integrity check timed out — skipped (location unreachable); checkout will surface it.");
+            LocalCopyIntegrity.VerifyAtOpen(
+                dbPath, path => LocalCopyIntegrity.CheckOnce(path, IntegrityFaults, Logger), Logger);
         }
         else if (!existsCompleted)
         {

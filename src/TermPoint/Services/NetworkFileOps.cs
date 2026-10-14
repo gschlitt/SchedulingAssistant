@@ -468,6 +468,20 @@ public static class NetworkFileOps
     public static Task<(bool Completed, IntegrityCheckResult Result)> CheckIntegrityDetailedAsync(string path)
         => RunAsync(() => BackupService.CheckIntegrityDetailed(path), "CheckIntegrity");
 
+    /// <summary>
+    /// Timeout-aware <see cref="BackupService.CheckIntegrityWithSummary"/>: like
+    /// <see cref="CheckIntegrityDetailedAsync"/>, but also returns SQLite's short summary of why the file did
+    /// not pass (spec item 5, step 5d). A timeout is still reported as not completed — callers map that to
+    /// "unreachable", never to damaged.
+    /// </summary>
+    /// <param name="path">Full path of the SQLite file to check.</param>
+    /// <returns>
+    /// <c>(true, (result, summary))</c> when the operation completed within the deadline; the summary is null
+    /// for an Ok result. <c>(false, default)</c> on timeout; the check is meaningless then.
+    /// </returns>
+    public static Task<(bool Completed, (IntegrityCheckResult Result, string? Summary) Check)> CheckIntegrityWithSummaryAsync(string path)
+        => RunAsync(() => BackupService.CheckIntegrityWithSummary(path), "CheckIntegrity");
+
     // ── Generic fallbacks ─────────────────────────────────────────────────────
 
     /// <summary>

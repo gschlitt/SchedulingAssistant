@@ -562,6 +562,10 @@ public partial class MainWindow : Window
     /// (4) <see cref="RunCheckoutAsync"/> (write lock and copy; an orphaned D.tmp is deleted inside it, and
     /// only once write access is confirmed); (5) services and window. The guard is released when the app
     /// exits (<see cref="OnClosing"/>).</para>
+    ///
+    /// <para><b>Steps (1)–(5) are <see cref="OpenStartupDatabaseAsync"/>, run in a loop (spec item 5, step 5d):</b>
+    /// when the shared database turns out to be damaged, the recovery chooser is shown and whatever the user picks
+    /// there is opened by running steps (1)–(5) again for it, rather than by a second copy of them.</para>
     /// </summary>
     private async Task RunReturningUserStartupAsync(AppSettings settings)
     {
@@ -614,6 +618,29 @@ public partial class MainWindow : Window
             dbPath = result;
         }
 
+        // Open it. An open can hand back ANOTHER database to open (the pick from the recovery chooser that follows
+        // a damaged shared database), which goes through exactly the same steps; null means finished — opened, or
+        // the app is closing.
+        string? next = dbPath;
+        while (next is not null)
+            next = await OpenStartupDatabaseAsync(next, settings);
+    }
+
+    /// <summary>
+    /// Steps (1)–(5) of the returning-user startup, for one database (see <see cref="RunReturningUserStartupAsync"/>
+    /// for their order): the single-instance guard, the recent list and the licence, crash recovery and checkout,
+    /// then the services and the window. Extracted so the recovery chooser that follows a damaged shared database
+    /// (spec item 5, step 5d) can open its pick through the same steps.
+    /// </summary>
+    /// <param name="dbPath">The shared database (D) to open.</param>
+    /// <param name="settings">The application settings (the recent list is updated).</param>
+    /// <returns>
+    /// Null when the startup is finished: the database is open, or the app is closing (the user declined,
+    /// something could not be opened and the user has been told why, or the user left the chooser). Otherwise
+    /// the database the user picked in the recovery chooser, to be opened next.
+    /// </returns>
+    private async Task<string?> OpenStartupDatabaseAsync(string dbPath, AppSettings settings)
+    {
         // ── Single-instance guard (spec item 4b) ──────────────────────────────
         // Taken BEFORE anything below touches shared or local state (the stale artifact sweep, crash
         // detection, the checkout). If another LIVE TermPoint of this user already
@@ -623,7 +650,7 @@ public partial class MainWindow : Window
         // exit); picking the same one again is refused again. Returns the path to open.
         var guardedPath = await App.InstanceGuard.AcquireOrChooseAgainAsync(
             dbPath, ShowAlreadyOpenMessageAsync, ShowAlreadyOpenChooserAsync);
-        if (guardedPath is null) return; // user exited or the wizard took over; nothing was acquired
+        if (guardedPath is null) return null; // user exited or the wizard took over; nothing was acquired
         dbPath = guardedPath;
 
         settings.AddRecentDatabase(dbPath);
@@ -654,7 +681,7 @@ public partial class MainWindow : Window
             // WorkingPath names. (Keeps any copy that has a dirty marker; see ResetAfterFailedOpenAsync.)
             await App.Checkout.ResetAfterFailedOpenAsync();
             Close();
-            return;
+            return null;
         }
         dbPath = checkoutResult;
         // ─────────────────────────────────────────────────────────────────────
@@ -664,27 +691,33 @@ public partial class MainWindow : Window
         // which should be shown to the user. CheckoutService.SourcePath is always D.
         var canonicalPath = App.Checkout.SourcePath;
 
-        // Initialize DI and DB, wire up the view model, then reveal the window.
-        // DatabaseCorruptException is thrown when integrity_check fails; we handle
-        // it by offering a restore dialog before the app opens normally.
+        // Initialize DI and DB, wire up the view model, then reveal the window. The open-time integrity check of
+        // the local copy (spec item 5, step 5d) can stop it: a copy another program is using, or a damaged one.
+        // OpenWithLocalCopyCheckAsync handles both — Try again, one fresh copy, or the recovery chooser — and
+        // returns no view model only after it has ended the half-opened session WITHOUT saving.
         MainWindowViewModel vm;
         try
         {
-            vm = App.InitializeServices(dbPath);
-        }
-        catch (DatabaseCorruptException corruptEx)
-        {
-            var restored = await ShowCorruptDatabaseDialogAsync(corruptEx.DatabasePath);
-            if (!restored)
+            var opened = await OpenWithLocalCopyCheckAsync(() => App.InitializeServices(dbPath));
+            if (opened.ViewModel is null)
             {
-                await ShowCancelMessageAsync();
-                (Avalonia.Application.Current?.ApplicationLifetime as
-                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
-                    ?.Shutdown();
-                return;
+                // Nothing is open and nothing may be saved: the session has been ended and the user told why.
+                // Close() runs OnClosing, which saves nothing (Mode is no longer WriteAccess and WorkingPath
+                // is forgotten — see ResetAfterFailedOpenAsync).
+                if (!opened.SharedDatabaseDamaged)
+                {
+                    Close();
+                    return null;
+                }
+
+                // The shared database itself is damaged: offer the recovery chooser (Restore from a backup is
+                // there). The guard taken for this database is given back first, so the pick may be this same
+                // database after a restore, or another one. The caller opens the pick through the same steps.
+                App.InstanceGuard.ReleaseAll();
+                return await ShowDatabaseChooserAsync(ChooserMode.Recovery, RecoveryReason.Corrupt, canonicalPath);
             }
-            // The restore copied a backup over dbPath — re-initialize with the restored file.
-            vm = App.InitializeServices(dbPath);
+
+            vm = opened.ViewModel;
         }
         catch (DatabaseFolderNotWritableException blockedEx)
         {
@@ -706,7 +739,7 @@ public partial class MainWindow : Window
             (Avalonia.Application.Current?.ApplicationLifetime as
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
                 ?.Shutdown();
-            return;
+            return null;
         }
 
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
@@ -718,6 +751,8 @@ public partial class MainWindow : Window
         // SetupMainWindowAsync) surfaces it and autosave/manual save will retry.
         if (recoverUnsaved && App.Checkout.Mode == CheckoutMode.WriteAccess)
             await App.Checkout.SaveAsync();
+
+        return null;
     }
 
     /// <summary>
@@ -964,10 +999,10 @@ public partial class MainWindow : Window
     /// </returns>
     private Task<string?> SetupSnapshotOrAskAsync()
         => App.Checkout.SetupReadOnlySnapshotWithRetryAsync(() => ShowChoiceAsync(
-            "Couldn't Open the Database",
+            LocalCopyCheckPrompt.CouldntOpenTitle,
             "TermPoint couldn't make a local copy of this database. " +
             "Check the network connection, then try again.",
-            "Try again", "Close"));
+            LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton));
 
     /// <summary>
     /// Tells the user their unsaved changes are kept but can't be restored right now
@@ -980,6 +1015,189 @@ public partial class MainWindow : Window
             "Someone else is currently editing this database, so your unsaved changes " +
             "can't be restored right now. They have been kept, and TermPoint will offer " +
             "to restore them the next time you open this database with write access.");
+
+    // ── Open-time integrity check of the local copy (spec item 5, step 5d) ─────
+
+    /// <summary>
+    /// How <see cref="OpenWithLocalCopyCheckAsync"/> ended: the view model of the opened database, or null when the
+    /// open was given up (the half-opened session has then been ended WITHOUT saving).
+    /// </summary>
+    /// <param name="ViewModel">The root view model, or null when the open was given up.</param>
+    /// <param name="SharedDatabaseDamaged">
+    /// True when the open was given up because the SHARED database itself is damaged (the user has been told); the
+    /// caller then offers the recovery chooser with the damaged reason. False for every other give-up.
+    /// </param>
+    private sealed record LocalCopyOpenResult(MainWindowViewModel? ViewModel, bool SharedDatabaseDamaged);
+
+    /// <summary>
+    /// Runs <paramref name="initialize"/> (a call of <see cref="App.InitializeServices"/>) and handles what its
+    /// open-time integrity check of the local copy can say (spec item 5, step 5d) — the ONE handler shared by
+    /// startup and by database switching. The decisions are the pure table in
+    /// <see cref="LocalCopyCheckDecision"/>; this method gathers the inputs, performs the action and asks again.
+    ///
+    /// <list type="bullet">
+    /// <item><description><b>In use</b> (<see cref="DatabaseInUseException"/>: another program has the files, even
+    /// after the quiet retries): "Couldn't Open the Database" with <b>Try again</b> / <b>Close</b>. Try again runs
+    /// <paramref name="initialize"/> again (with its quiet retries); Close gives up.</description></item>
+    /// <item><description><b>Damaged</b> (<see cref="DatabaseCorruptException"/>):
+    /// <list type="number">
+    /// <item><description>A copy holding recovered unsaved changes is set aside, never deleted
+    /// (<see cref="CheckoutService.ArchiveCorruptWorkingCopy"/>), with the "Unsaved Changes Lost" message.</description></item>
+    /// <item><description>The shared database is re-checked read-only (the front-door check). Damaged: say so, give
+    /// up, and let the caller show the recovery chooser. Unreadable, unreachable or gone: say what the front door
+    /// says for that case and give up. Fine: make ONE fresh copy
+    /// (<see cref="CheckoutService.RefreshLocalCopyAfterFailedCheckAsync"/>) and run <paramref name="initialize"/>
+    /// again — passing opens normally; failing again, or no fresh copy possible, sets the bad copy aside (kept) and
+    /// shows the "keeps failing" message with a single Close.</description></item>
+    /// </list></description></item>
+    /// </list>
+    ///
+    /// <para><b>Giving up always ends the session WITHOUT saving</b> (<see cref="GiveUpLocalCopyOpenAsync"/>): the
+    /// services are released and <see cref="CheckoutService.ResetAfterFailedOpenAsync"/> gives the lock back and
+    /// forgets the working copy, so neither the caller's <c>Close()</c> nor the next switch can save or delete
+    /// anything. A copy with a dirty marker is kept for the next start.</para>
+    ///
+    /// <para>Any other exception from <paramref name="initialize"/> (for example
+    /// <see cref="DatabaseFolderNotWritableException"/>) propagates to the caller, unchanged.</para>
+    /// </summary>
+    /// <param name="initialize">Builds the services over the local copy and returns the root view model; may throw the two exceptions above.</param>
+    /// <returns>The opened database's view model, or a give-up (see <see cref="LocalCopyOpenResult"/>).</returns>
+    private async Task<LocalCopyOpenResult> OpenWithLocalCopyCheckAsync(Func<MainWindowViewModel> initialize)
+    {
+        // Captured now: giving up forgets the session's paths (ResetAfterFailedOpenAsync).
+        var sharedPath = App.Checkout.SourcePath;
+        var shared     = SharedDatabaseVerdict.NotChecked;
+        var fresh      = FreshCopyState.NotTried;
+
+        // Set once the recovered-changes archive has been attempted, so a marker that somehow cannot be removed
+        // can never make the table ask for the archive (and show its message) over and over.
+        var recoveredChangesHandled = false;
+
+        while (true)
+        {
+            LocalCopyVerdict copy;
+            try
+            {
+                var vm = initialize();
+                if (fresh == FreshCopyState.Made)
+                    App.Logger.LogInfo("LocalCopyCheck: the database opened normally with a fresh copy.");
+                return new LocalCopyOpenResult(vm, SharedDatabaseDamaged: false);
+            }
+            catch (DatabaseInUseException ex)
+            {
+                copy = LocalCopyVerdict.Locked;
+                App.Logger.LogInfo($"LocalCopyCheck: the local copy is in use by another program ({ex.Summary}).");
+            }
+            catch (DatabaseCorruptException ex)
+            {
+                copy = LocalCopyVerdict.Damaged;
+                App.Logger.LogInfo($"LocalCopyCheck: the local copy is damaged ({ex.Summary}).");
+            }
+
+            // Ask the table what to do until it says to open again, or to give up.
+            var openAgain = false;
+            while (!openAgain)
+            {
+                var holdsRecoveredChanges = !recoveredChangesHandled && App.Checkout.HasDirtyMarker;
+                var action = LocalCopyCheckDecision.Decide(copy, holdsRecoveredChanges, shared, fresh);
+                App.Logger.LogInfo($"LocalCopyCheck: {copy} copy, shared database {shared}, fresh copy {fresh} -> {action}.");
+
+                switch (action)
+                {
+                    case LocalCopyAction.ShowInUseDialog:
+                        if (!await ShowChoiceAsync(
+                                LocalCopyCheckPrompt.CouldntOpenTitle,
+                                LocalCopyCheckPrompt.InUseMessage,
+                                LocalCopyCheckPrompt.TryAgainButton,
+                                LocalCopyCheckPrompt.CloseButton))
+                            return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: false);
+                        openAgain = true;
+                        break;
+
+                    case LocalCopyAction.ArchiveRecoveredChangesThenContinue:
+                        // The recovered unsaved changes are in a damaged file: set it aside (kept, not deleted)
+                        // and say so honestly. Asking again then finds no marker.
+                        recoveredChangesHandled = true;
+                        App.Checkout.ArchiveCorruptWorkingCopy(sharedPath);
+                        await ShowMessageAsync(
+                            LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
+                        break;
+
+                    case LocalCopyAction.CheckSharedDatabase:
+                        shared = LocalCopyIntegrity.ToVerdict(
+                            await LocalCopyIntegrity.RecheckSharedDatabaseAsync(sharedPath, App.IntegrityFaults, App.Logger));
+                        break;
+
+                    case LocalCopyAction.MakeFreshCopy:
+                        // Nothing has the local copy open (the gate throws before any connection is made), but
+                        // release the half-built services anyway so nothing can.
+                        App.ReleaseServices();
+                        // Made → open again. Otherwise ask the table again: a copy that couldn't be made because the
+                        // shared location stopped responding or a file was held gets the front-door message for that;
+                        // any other failure gets "keeps failing".
+                        (shared, fresh) = LocalCopyIntegrity.AfterFreshCopy(
+                            await App.Checkout.RefreshLocalCopyAfterFailedCheckAsync(), shared);
+                        openAgain = fresh == FreshCopyState.Made;
+                        break;
+
+                    case LocalCopyAction.ShowKeepsFailing:
+                        // Kept, not deleted: the bad file is evidence for IT. Then the session ends.
+                        App.Checkout.SetAsideFailedLocalCopy();
+                        await ShowMessageAsync(
+                            LocalCopyCheckPrompt.CouldntOpenTitle, LocalCopyCheckPrompt.KeepsFailingMessage,
+                            LocalCopyCheckPrompt.CloseButton);
+                        return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: false);
+
+                    case LocalCopyAction.ShowDamagedThenRecoveryChooser:
+                        await ShowMessageAsync(
+                            LocalCopyCheckPrompt.DamagedSharedTitle, LocalCopyCheckPrompt.DamagedSharedMessage);
+                        return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: true);
+
+                    case LocalCopyAction.ShowUnreadableMessage:
+                    case LocalCopyAction.ShowUnreachableMessage:
+                    case LocalCopyAction.ShowMissingMessage:
+                        var (title, message) = LocalCopyCheckPrompt.FrontDoorMessage(shared, sharedPath);
+                        await ShowMessageAsync(title, message);
+                        return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: false);
+
+                    default:
+                        // OpenNormally cannot happen here (the copy failed); treat any surprise as "open again".
+                        openAgain = true;
+                        break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ends a half-opened session WITHOUT saving, so a give-up in <see cref="OpenWithLocalCopyCheckAsync"/> can
+    /// never push a damaged or recovered local copy over the shared database, and nothing later can delete one:
+    /// <list type="number">
+    /// <item><description><see cref="App.ReleaseServices"/> disposes the container that
+    /// <see cref="App.InitializeServices"/> built before its check threw.</description></item>
+    /// <item><description><see cref="CheckoutService.ResetAfterFailedOpenAsync"/> stops autosave, gives back the write
+    /// lock WITHOUT saving, parks <see cref="CheckoutService.Mode"/> at read-only (so the exit path of
+    /// <see cref="OnClosing"/> sees no write session and saves nothing), keeps a working copy that has a dirty marker
+    /// (unsaved work is never deleted) and forgets the session's paths (so <c>CleanupWorkingCopy</c> has nothing to
+    /// delete).</description></item>
+    /// </list>
+    /// Each step is attempted even if the other failed; neither throws. The single-instance guard is left to the
+    /// caller, as each path already handles it.
+    /// </summary>
+    /// <param name="sharedDatabaseDamaged">Whether the shared database itself was found damaged (passed through to the result).</param>
+    /// <returns>A give-up result (no view model).</returns>
+    private async Task<LocalCopyOpenResult> GiveUpLocalCopyOpenAsync(bool sharedDatabaseDamaged)
+    {
+        App.Logger.LogInfo("LocalCopyCheck: giving up on this open — ending the session without saving.");
+
+        try { App.ReleaseServices(); }
+        catch (Exception ex) { App.Logger.LogError(ex, "LocalCopyCheck: could not dispose the services of the failed open"); }
+
+        try { await App.Checkout.ResetAfterFailedOpenAsync(); }
+        catch (Exception ex) { App.Logger.LogError(ex, "LocalCopyCheck: could not reset the checkout state after the failed open"); }
+
+        return new LocalCopyOpenResult(null, sharedDatabaseDamaged);
+    }
 
     /// <summary>
     /// Final step of every startup path: wires the main window VM and makes the window visible.
@@ -1478,8 +1696,22 @@ public partial class MainWindow : Window
             }
             newDatabasePath = checkoutPath;
 
-            // Reinitialize DI and set new data context.
-            var vm = App.InitializeServices(newDatabasePath, savedYearId, savedSemesterIds);
+            // Reinitialize DI and set new data context. The open-time integrity check of the local copy
+            // (spec item 5, step 5d) is handled here exactly as at startup: a copy another program is using
+            // (Try again / Close) or a damaged one (one fresh copy, or the recovery chooser). It returns no
+            // view model only after ending the half-opened session WITHOUT saving; the previous database is
+            // already closed, so that ends in the no-database state — with the damaged reason when it is the
+            // shared database that is damaged. The raw "Failed to switch to database: ..." text below can
+            // therefore never name the local copy's path for these two failures.
+            var opened = await OpenWithLocalCopyCheckAsync(
+                () => App.InitializeServices(newDatabasePath, savedYearId, savedSemesterIds));
+            if (opened.ViewModel is null)
+            {
+                if (opened.SharedDatabaseDamaged)
+                    _noDatabaseReason = RecoveryReason.Corrupt;
+                return await AbandonFailedSwitchAsync();
+            }
+            var vm = opened.ViewModel;
 
             // Resolve the canonical source path D for the title bar and backup service.
             var canonicalPath = App.Checkout.SourcePath;
@@ -1713,124 +1945,6 @@ public partial class MainWindow : Window
         await msg.ShowDialog(owner);
     }
 
-    /// <summary>
-    /// Shown when the startup integrity check fails. Lists backups from the configured
-    /// backup folder and lets the user pick one to restore before the app opens.
-    /// Returns true when a backup was successfully restored over <paramref name="dbPath"/>.
-    /// Returns false when the user dismisses without restoring (app will shut down).
-    /// </summary>
-    private async Task<bool> ShowCorruptDatabaseDialogAsync(string dbPath)
-    {
-        // Enumerate backups for this database from the configured folder.
-        // Deadline-bounded probe — the backup folder may be on a network share.
-        var folder = AppSettings.Current.BackupFolderPath;
-        var dbName = Path.GetFileNameWithoutExtension(dbPath);
-        var backups = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(folder))
-        {
-            var (dirOk, dirExists) = await NetworkFileOps.DirectoryExistsAsync(folder);
-            if (dirOk && dirExists)
-            {
-                var (filesOk, files) = await NetworkFileOps.RunAsync(
-                    () => Directory.GetFiles(folder, $"{dbName}_*.db"), "CorruptDialog.GetFiles");
-                if (filesOk && files is not null)
-                    backups = files.OrderByDescending(f => f).ToList();
-            }
-        }
-
-        var dlg = new Window
-        {
-            Title  = "Database Integrity Check Failed",
-            Width  = 520,
-            SizeToContent = SizeToContent.Height,
-            CanResize = false,
-            WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ShowInTaskbar = true,
-            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
-        };
-
-        string? chosen = null;
-        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 12 };
-
-        panel.Children.Add(new TextBlock
-        {
-            Text = "The database failed its integrity check and may be corrupt.",
-            FontSize = 13, FontWeight = FontWeight.SemiBold,
-            TextWrapping = TextWrapping.Wrap
-        });
-        panel.Children.Add(new TextBlock
-        {
-            Text = $"Database: {dbPath}",
-            FontSize = 11, Foreground = Brushes.DarkRed,
-            TextWrapping = TextWrapping.Wrap
-        });
-
-        if (backups.Count == 0)
-        {
-            panel.Children.Add(new TextBlock
-            {
-                Text = "No backups were found. You can exit and manually replace the database file with a backup, or continue at your own risk.",
-                TextWrapping = TextWrapping.Wrap, FontSize = 12
-            });
-        }
-        else
-        {
-            panel.Children.Add(new TextBlock
-            {
-                Text = "Select a backup to restore, or exit and handle it manually:",
-                TextWrapping = TextWrapping.Wrap, FontSize = 12
-            });
-
-            foreach (var backupPath in backups)
-            {
-                var label = Path.GetFileNameWithoutExtension(backupPath);
-                var btn   = new Button
-                {
-                    Content = $"Restore: {label}",
-                    FontSize = 11,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    HorizontalContentAlignment = HorizontalAlignment.Left,
-                    Padding = new Thickness(8, 4)
-                };
-                btn.Click += (_, _) => { chosen = backupPath; Dispatcher.UIThread.Post(() => dlg.Close()); };
-                panel.Children.Add(btn);
-            }
-        }
-
-        var buttonRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 8
-        };
-        var continueBtn = new Button { Content = "Continue anyway (risky)", FontSize = 11, Padding = new Thickness(8, 4) };
-        var exitBtn     = new Button { Content = "Exit", FontSize = 11, Padding = new Thickness(8, 4) };
-        continueBtn.Click += (_, _) => { chosen = "continue"; Dispatcher.UIThread.Post(() => dlg.Close()); };
-        exitBtn.Click     += (_, _) => { chosen = null; Dispatcher.UIThread.Post(() => dlg.Close()); };
-        buttonRow.Children.Add(continueBtn);
-        buttonRow.Children.Add(exitBtn);
-        panel.Children.Add(buttonRow);
-
-        dlg.Content = panel;
-        await dlg.ShowDialog(this);
-
-        if (chosen is null) return false;       // Exit
-        if (chosen == "continue") return true;  // Proceed with corrupt DB
-
-        // User chose a backup — copy it over the main database file.
-        try
-        {
-            File.Copy(chosen, dbPath, overwrite: true);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            await ShowMessageAsync("Restore Failed", $"Could not restore backup:\n\n{ex.Message}");
-            return false;
-        }
-    }
-
     private async Task ShowCancelMessageAsync()
     {
         var msg = new Window
@@ -1874,8 +1988,14 @@ public partial class MainWindow : Window
     public Task ShowItDetailAsync(string title, string message)
         => ShowMessageAsync(title, message);
 
-    private Task ShowMessageAsync(string title, string message)
-        => ShowMessageDialogAsync(this, title, message);
+    /// <summary>
+    /// Shows a modal one-button message dialog owned by this window (see <see cref="ShowMessageDialogAsync"/>).
+    /// </summary>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="buttonLabel">Label of the single button; "OK" unless a message calls for another word (for example "Close").</param>
+    private Task ShowMessageAsync(string title, string message, string buttonLabel = "OK")
+        => ShowMessageDialogAsync(this, title, message, buttonLabel);
 
     /// <summary>
     /// Shows a modal one-button message dialog built in code and Topmost (see <see cref="ShowFatalAsync"/>). Static
@@ -1885,7 +2005,8 @@ public partial class MainWindow : Window
     /// <param name="owner">Window to parent the dialog to.</param>
     /// <param name="title">Dialog window title.</param>
     /// <param name="message">Body text; wraps automatically.</param>
-    internal static async Task ShowMessageDialogAsync(Window owner, string title, string message)
+    /// <param name="buttonLabel">Label of the single button; "OK" unless a message calls for another word (for example "Close").</param>
+    internal static async Task ShowMessageDialogAsync(Window owner, string title, string message, string buttonLabel = "OK")
     {
         var msg = new Window
         {
@@ -1898,7 +2019,7 @@ public partial class MainWindow : Window
             Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
-        var ok = new Button { Content = "OK", HorizontalAlignment = HorizontalAlignment.Center };
+        var ok = new Button { Content = buttonLabel, HorizontalAlignment = HorizontalAlignment.Center };
         var panel = new StackPanel
         {
             Margin = new Avalonia.Thickness(28),
@@ -2226,9 +2347,8 @@ public partial class MainWindow : Window
             // The crash damaged the unsaved data beyond SQLite's own journal recovery.
             // Archive it (support-level salvage stays possible) and tell the user honestly.
             App.Checkout.ArchiveCorruptWorkingCopy(sourcePath);
-            await ShowMessageAsync("Unsaved Changes Lost",
-                "Unsaved changes from a previous session with this database were " +
-                "found, but they were damaged and could not be restored.");
+            await ShowMessageAsync(
+                LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
             return false;
         }
 

@@ -915,7 +915,115 @@ thread**, so a downed share freezes the app ("Not Responding") for 30–60 s.
     - abandoned lock → refused, with a hint to open normally (which offers take-over) and restore from Save & Backup;
   - then the lock is released and the database opens normally;
   - the default destination is as decided above.
-- **5d — Startup integrity dialog:** as decided above.
+- **5d — Startup integrity dialog:** as decided above. Full plan: "5d/5e plan" below.
+
+**5d/5e plan (user-approved 2026-10-14).** The check on the local copy that runs at open (D′ for a writer, D″ for a
+reader), on startup and on switch.
+
+**What happens today (findings).**
+- **Locked counts as damaged.** `App.InitializeServices` runs a yes/no check, so a copy that another program
+  (antivirus) holds open counts as damaged.
+- **The dialog's backup list is dead code** (see Findings above).
+- **"Continue anyway (risky)"** opens the failed copy for editing, and every save then goes back to `D`.
+- **"Exit" runs the normal exit save on the failed copy.** That save can push a damaged copy over `D`, or, for a locked
+  copy, fail and leave the lock file parked (`Suspend`).
+- **The switch path shows a raw error with the internal working-copy path:** "Failed to switch to database: Database
+  integrity check failed: C:\…\working\…".
+- **A damaged `D` is never reported anywhere.**
+  - `CheckIntegrityDetailed` logs nothing when `integrity_check` returns problems, and only a `LogInfo` line on
+    SQLite codes 11 and 26.
+  - The only integrity failure that reaches BugSnag is the backup snapshot, via `LogError(null, <path>)`: a report
+    with no exception, which also contains a path.
+
+**5d (behaviour).**
+1. **Three-way check at open:** Ok / Locked / Damaged.
+   - **Locked:** 3 quiet attempts, 1 s apart (decision), then a new "in use" error.
+   - **Damaged:** `DatabaseCorruptException`, carrying SQLite's summary.
+   - Also fix the outdated comment in `App` that says the check can run on the shared `D`.
+2. **One shared handler** for startup and switch.
+   - **Locked:** "Couldn't Open the Database — TermPoint couldn't finish opening the database because another program on
+     this computer is using its files, often antivirus or backup software checking a file that was just copied. This
+     usually clears in a few seconds." **[Try again] [Close]**.
+   - **Damaged:**
+     1. A copy holding recovered unsaved changes is set aside (`ArchiveCorruptWorkingCopy`) with the existing "Unsaved
+        Changes Lost" message, then step 2.
+     2. Re-check `D` (read-only, the front-door check):
+        - **`D` damaged:** end the session without saving, show "The database failed its integrity check and may be
+          damaged.", then the recovery chooser (Corrupt) with **Restore from a backup**.
+        - **`D` locked or unreachable:** end the session, then the front-door messages for those cases.
+        - **`D` passes:** make **one** fresh copy (the writer keeps its lock; a reader re-snapshots) and check it
+          again:
+          - it passes → open normally;
+          - it fails → set the copy aside (not deleted), end the session without saving, and show:
+            "The shared database is fine, but TermPoint can't open it on this computer: the files it prepares here keep
+            failing their safety check. Nothing has been changed, and your colleagues aren't affected. This usually
+            points to a problem with this computer, such as a failing disk or security software interfering with
+            TermPoint's files. Try restarting the computer. If it keeps happening, contact your IT support and mention
+            this message. Meanwhile, you can open the database from another computer." **[Close]**.
+   - **Close or giving up always ends the session without saving** (`ResetAfterFailedOpenAsync` semantics).
+     - Startup: the app closes, or opens what is picked in the recovery chooser.
+     - Switch: the 4d "no database open" chooser, with the damaged reason where it applies.
+   - **Removed:** the dead backup list and its `File.Copy`, **"Continue anyway (risky)" (decision)**, and the raw switch
+     error.
+   - **Unchanged:** the wizard, and crash recovery's own "Unsaved Changes Lost" check.
+3. **DEBUG switch `TERMPOINT_DEBUG_FAIL_INTEGRITY`** (`DebugFaultBudget` syntax):
+   - `locked[:n]`;
+   - `damaged:1` (the fresh copy heals it);
+   - `damaged:2` (keeps failing);
+   - `shared` (`D`'s re-check reads as damaged).
+4. **Tests:**
+   - the three-way check, including the retry count;
+   - a pure decision table: copy result × recovered changes × `D` result × fresh-copy result → action;
+   - the fresh-copy method: the writer keeps its lock, the hash is verified, a copy holding unsaved work is refused;
+     the reader snapshot refresh.
+
+**5e (damage reporting).**
+- **SQLite summary.** The integrity check also returns the first 5 lines of `integrity_check` output, or SQLite's
+  code and message. These name pages and tables, never data.
+- **One reporter:**
+  - a local log line with the summary;
+  - **one BugSnag error per run per kind**, with a named exception and no paths, file names or usernames;
+  - kinds: shared database, local copy, backup snapshot, backup being restored.
+- **Wired into:**
+  - the front-door check on `D`;
+  - the 5d local-copy check;
+  - the backup-snapshot check, replacing `LogError(null, path)`;
+  - the 5a restore routine's backup check.
+- **Locked or unreadable stays a local log line only.**
+- **Tests:**
+  - once per run per kind;
+  - no path in the report;
+  - a named exception;
+  - the backup snapshot goes through the reporter.
+
+**Decisions (user, 2026-10-14):** remove "Continue anyway (risky)"; quiet retry, 3 × 1 s, before the locked dialog.
+
+**Outcome 5d (2026-10-14, user hand-tested the locked, damaged, shared and switch cases).**
+- **`LocalCopyIntegrity.VerifyAtOpen`** (called from `App.InitializeServices`) gives the three-way verdict: 3 quiet
+  attempts before `DatabaseInUseException`; `DatabaseCorruptException` now carries `Summary`.
+  - `BackupService.CheckIntegrityWithSummary` returns the first 5 `integrity_check` lines, or SQLite's code and
+    message. `CheckIntegrityDetailed` delegates to it.
+- **`LocalCopyCheckDecision.Decide`** is the pure table.
+- **`LocalCopyIntegrity.AfterFreshCopy`** maps a fresh copy that stalled or was refused to the front-door messages,
+  not "keeps failing".
+- **`MainWindow.OpenWithLocalCopyCheckAsync`** is shared by startup and switch. Giving up goes through
+  `GiveUpLocalCopyOpenAsync` (`ReleaseServices` + `ResetAfterFailedOpenAsync`) and never saves.
+- **Startup** runs its tail as `OpenStartupDatabaseAsync` in a loop (same steps, same order), so a database picked in
+  the recovery chooser opens normally.
+- **`CheckoutService`:**
+  - **`CopyAndVerifyAsync`** is extracted from `CheckoutAsync`. A copy failure of an unexpected kind now releases
+    the lock too.
+  - **`RefreshLocalCopyAfterFailedCheckAsync`:** the writer keeps its lock, takes the save gate and verifies the
+    hash, and refuses if a dirty marker exists. A reader re-snapshots.
+  - **`SetAsideFailedLocalCopy`** sets the file aside and never deletes it. Archive names no longer overwrite each
+    other.
+- **`LocalCopyCheckPrompt`** holds all the texts.
+- **`TERMPOINT_DEBUG_FAIL_INTEGRITY`** (`locked`, `damaged`, `shared`).
+- **Removed:** `ShowCorruptDatabaseDialogAsync` (the dead backup list, its `File.Copy`, "Continue anyway").
+- **Suite:** 2393.
+- **Found, to fix after 5e:** `MinimumVersionToWrite.ReadStamp` returns null for a locked or damaged `D′`, so the
+  version gate is skipped, and the retry and fresh-copy paths never re-run it. This only matters once a release
+  raises the stamp.
 
 **5c layout decisions (user, 2026-10-13).**
 - **Confirm before replacing.** When the destination already exists, "Restore and Open" first shows a confirmation in

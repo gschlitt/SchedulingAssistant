@@ -655,78 +655,20 @@ public sealed class CheckoutService : IDisposable
         // paired with a freshly copied .db is a corruption hazard — remove them first.
         TryDeleteWalSidecars(WorkingPath);
 
-        try
+        // Copy D → D' and prove the copy is byte-identical to the D that was just hashed (one retry on a
+        // mismatch). Whatever goes wrong, the lock is given back and the marker removed — the retry stage
+        // also removes the bad copy — and the user is told the real reason.
+        var copyOutcome = await CopyAndVerifyAsync(sourcePath, WorkingPath, sourceHash!, "checkout");
+        if (copyOutcome != CopyVerifyOutcome.Ok)
         {
-            var copyCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
-
-            if (!copyCompleted)
-            {
-                _logger.LogInfo("CheckoutService: checkout copy timed out — network unreachable");
-                _lockService.Release();
-                DeleteDirtyMarker();
-                return CheckoutOutcome.NetworkUnreachable;
-            }
-        }
-        catch (Exception ex) when (DatabaseValidator.IsLockedOrAccessDenied(ex))
-        {
-            // D became held / unreadable between the hash and the copy. Same cleanup as any other
-            // copy failure (lock released, marker removed), but the user is told the real reason.
-            _logger.LogInfo($"CheckoutService: cannot read D to copy it ({ex.GetType().Name}: {ex.Message})");
             _lockService.Release();
             DeleteDirtyMarker();
-            return CheckoutOutcome.SourceUnreadable;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "CheckoutService: failed to copy D to D'");
-            _lockService.Release();
-            DeleteDirtyMarker();
-            return CheckoutOutcome.Failed;
-        }
-
-        // Verify the copy. WorkingPath is local — no timeout needed.
-        var copyHash = ComputeHash(WorkingPath);
-        if (copyHash != HashAtCheckout)
-        {
-            _logger.LogInfo("CheckoutService: hash mismatch after copy — retrying once.");
-
-            bool retryCompleted;
-            try
+            return copyOutcome switch
             {
-                retryCompleted = await NetworkFileOps.CopyAsync(sourcePath, WorkingPath);
-            }
-            catch (Exception ex)
-            {
-                // An exception here used to escape with the write lock still held. Give the lock
-                // back and clean up like the other retry failures; a locked / access-denied D gets
-                // its own outcome so the user is told the real reason.
-                var unreadable = DatabaseValidator.IsLockedOrAccessDenied(ex);
-                _logger.LogInfo($"CheckoutService: checkout retry copy failed ({ex.GetType().Name}: {ex.Message})");
-                _lockService.Release();
-                DeleteDirtyMarker();
-                TryDelete(WorkingPath);
-                return unreadable ? CheckoutOutcome.SourceUnreadable : CheckoutOutcome.Failed;
-            }
-
-            if (!retryCompleted)
-            {
-                _logger.LogInfo("CheckoutService: checkout retry copy timed out — network unreachable");
-                _lockService.Release();
-                DeleteDirtyMarker();
-                TryDelete(WorkingPath);
-                return CheckoutOutcome.NetworkUnreachable;
-            }
-
-            copyHash = ComputeHash(WorkingPath);
-
-            if (copyHash != HashAtCheckout)
-            {
-                _logger.LogInfo("CheckoutService: hash mismatch on retry — aborting checkout.");
-                _lockService.Release();
-                DeleteDirtyMarker();
-                TryDelete(WorkingPath);
-                return CheckoutOutcome.Failed;
-            }
+                CopyVerifyOutcome.Unreachable => CheckoutOutcome.NetworkUnreachable,
+                CopyVerifyOutcome.Unreadable  => CheckoutOutcome.SourceUnreadable,
+                _                             => CheckoutOutcome.Failed
+            };
         }
 
         // D' is verified. Before granting write access, make sure this app is new enough to
@@ -2215,6 +2157,15 @@ public sealed class CheckoutService : IDisposable
             _logger.LogInfo($"CheckoutService: cleaned up orphaned save snapshot: {saveTmpPath}");
         }
 
+        // Likewise an interrupted fresh-copy build (RefreshLocalCopyAfterFailedCheckAsync): derived from D, never
+        // holds user data.
+        var freshTmpPath = workingPath + FreshCopySuffix;
+        if (File.Exists(freshTmpPath))
+        {
+            TryDelete(freshTmpPath);
+            _logger.LogInfo($"CheckoutService: cleaned up orphaned fresh-copy temp file: {freshTmpPath}");
+        }
+
         bool hasWorking = File.Exists(workingPath);
         bool hasMarker  = File.Exists(markerPath);
 
@@ -2309,12 +2260,50 @@ public sealed class CheckoutService : IDisposable
     /// <param name="sourcePath">The database path D whose damaged working copy to archive.</param>
     /// <returns>The archive path, or null when the move failed (the file is deleted instead).</returns>
     public string? ArchiveCorruptWorkingCopy(string sourcePath)
+        => ArchiveCorruptFile(ComputeWorkingPath(sourcePath), deleteIfMoveFails: true);
+
+    /// <summary>
+    /// Sets aside the local copy of the current session — D' for a writer, D'' for a reader — because it keeps
+    /// failing its open-time integrity check (spec item 5, step 5d). The file is RENAMED to
+    /// <c>.corrupt-yyyyMMdd-HHmmss</c> beside where it was (with its WAL sidecar and any dirty marker handled as
+    /// <see cref="ArchiveCorruptWorkingCopy"/> does), never deleted: it is evidence for IT support and, for a writer
+    /// whose copy somehow held unsaved work, the only copy of it. If the rename fails the file is left exactly
+    /// where it is — this method never deletes the file itself — and null is returned.
+    ///
+    /// <para>Call it BEFORE <see cref="ResetAfterFailedOpenAsync"/>, which forgets <see cref="WorkingPath"/> (and
+    /// deletes a copy that has no dirty marker).</para>
+    /// </summary>
+    /// <returns>The path the file was renamed to, or null when there was no local copy to set aside or the rename failed.</returns>
+    public string? SetAsideFailedLocalCopy()
     {
-        var workingPath = ComputeWorkingPath(sourcePath);
-        var archivePath = workingPath + $".corrupt-{DateTime.Now:yyyyMMdd-HHmmss}";
+        if (string.IsNullOrEmpty(WorkingPath) || WorkingPath == SourcePath || !File.Exists(WorkingPath))
+            return null;
+
+        return ArchiveCorruptFile(WorkingPath, deleteIfMoveFails: false);
+    }
+
+    /// <summary>
+    /// Renames a damaged local file to a unique <c>.corrupt-yyyyMMdd-HHmmss</c> name beside it (a second archive
+    /// in the same second gets <c>-2</c>, <c>-3</c>, … — an earlier archive, which may hold a user's unsaved work,
+    /// is never overwritten), carries its WAL sidecar along, and removes its dirty marker and shared-memory file.
+    /// The one implementation behind <see cref="ArchiveCorruptWorkingCopy"/> and <see cref="SetAsideFailedLocalCopy"/>.
+    /// </summary>
+    /// <param name="workingPath">Full path of the damaged local file (D' or D'').</param>
+    /// <param name="deleteIfMoveFails">
+    /// True (crash recovery's long-standing behaviour): if the rename fails, delete the file instead, so a damaged
+    /// recovery file can never be offered again. False: leave the file and its marker untouched.
+    /// </param>
+    /// <returns>The archive path; null when the rename failed (and, with <paramref name="deleteIfMoveFails"/>, the file was deleted).</returns>
+    private string? ArchiveCorruptFile(string workingPath, bool deleteIfMoveFails)
+    {
+        var stamp       = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var archivePath = $"{workingPath}.corrupt-{stamp}";
+        for (var n = 2; File.Exists(archivePath); n++)
+            archivePath = $"{workingPath}.corrupt-{stamp}-{n}";
+
         try
         {
-            File.Move(workingPath, archivePath, overwrite: true);
+            File.Move(workingPath, archivePath, overwrite: false);
             // Archive the WAL sidecar too — after a crash it can hold committed data
             // not yet checkpointed into the .db, which a salvage attempt would need.
             try { File.Move(workingPath + "-wal", archivePath + "-wal", overwrite: true); } catch { }
@@ -2322,6 +2311,12 @@ public sealed class CheckoutService : IDisposable
         }
         catch (Exception ex)
         {
+            if (!deleteIfMoveFails)
+            {
+                _logger.LogInfo($"CheckoutService: could not set aside the damaged local file ({ex.Message}) — left where it is.");
+                return null;
+            }
+
             _logger.LogInfo($"CheckoutService: could not archive damaged working copy ({ex.Message}) — deleting instead.");
             TryDelete(workingPath);
             archivePath = null;
@@ -2329,6 +2324,157 @@ public sealed class CheckoutService : IDisposable
         TryDeleteWalSidecars(workingPath);
         TryDelete(workingPath + ".dirty");
         return archivePath;
+    }
+
+    /// <summary>
+    /// Suffix of the temporary file a fresh local copy is built in, beside the local copy it replaces. Swept at
+    /// the next start (<see cref="CleanupStaleCrashArtifacts"/>) if a crash leaves one behind.
+    /// </summary>
+    internal const string FreshCopySuffix = ".freshtmp";
+
+    /// <summary>
+    /// Makes ONE fresh local copy of the shared database after the open-time integrity check of the current local
+    /// copy failed with damage and the shared database itself passed (spec item 5, step 5d). Never throws; D is
+    /// never changed.
+    ///
+    /// <para><b>Writer</b> (<see cref="Mode"/> is <see cref="CheckoutMode.WriteAccess"/>, the lock is ours):</para>
+    /// <list type="number">
+    /// <item><description><b>Refuses if the local copy holds unsaved work</b> (it has a dirty marker):
+    /// <see cref="LocalCopyRefreshResult.HoldsUnsavedChanges"/>. Unsaved work must never be overwritten; the caller
+    /// sets that copy aside first (<see cref="ArchiveCorruptWorkingCopy"/>).</description></item>
+    /// <item><description>Takes the same in-flight gate as <see cref="SaveAsync"/>, so no save can interleave.</description></item>
+    /// <item><description>Hashes D, copies D to a temporary file beside D' and verifies that its hash equals the
+    /// hash of D just taken (<see cref="CopyAndVerifyAsync"/>, the checkout's own copy-and-verify step, with its one
+    /// retry).</description></item>
+    /// <item><description>Replaces D' with the verified file (its WAL sidecars are removed first) and updates
+    /// <see cref="HashAtCheckout"/> to D's hash, so a later save sees D as unchanged.</description></item>
+    /// </list>
+    /// <para>The write lock is never released or re-acquired — there is no window in which a colleague could take
+    /// it — and any failure leaves the lock held and whatever D' was as it was.</para>
+    ///
+    /// <para><b>Reader:</b> re-makes the read-only snapshot D'' (<see cref="SetupReadOnlySnapshotAsync"/>). A reader
+    /// holds no lock and has no unsaved work, so there is nothing to protect.</para>
+    /// </summary>
+    /// <returns>
+    /// <see cref="LocalCopyRefreshResult.Ok"/> when the local copy has been replaced by a verified copy of D;
+    /// <see cref="LocalCopyRefreshResult.Unreachable"/>, <see cref="LocalCopyRefreshResult.Unreadable"/> or
+    /// <see cref="LocalCopyRefreshResult.Failed"/> when it could not be made (the previous local copy is left in
+    /// place, or, for a reader whose snapshot failed, as <see cref="SetupReadOnlySnapshotAsync"/> leaves it);
+    /// <see cref="LocalCopyRefreshResult.HoldsUnsavedChanges"/> for a writer's copy with a dirty marker.
+    /// </returns>
+    public async Task<LocalCopyRefreshResult> RefreshLocalCopyAfterFailedCheckAsync()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(SourcePath))
+            {
+                _logger.LogInfo("CheckoutService: RefreshLocalCopy — no database is open.");
+                return LocalCopyRefreshResult.Failed;
+            }
+
+            _logger.LogBreadcrumb("RefreshLocalCopy: started", new() { ["mode"] = Mode.ToString() });
+
+            if (Mode != CheckoutMode.WriteAccess)
+            {
+                // A reader: D'' is just a snapshot. SetupReadOnlySnapshotAsync copies, verifies and replaces it
+                // and reports every failure as null (never throws).
+                var snapshot = await SetupReadOnlySnapshotAsync();
+                return snapshot is not null ? LocalCopyRefreshResult.Ok : LocalCopyRefreshResult.Failed;
+            }
+
+            return await RefreshWriterCopyAsync();
+        }
+        catch (Exception ex)
+        {
+            // The steps above report every failure they expect; this is the safety net, so the method keeps its
+            // promise never to throw. LogError: an unanticipated failure must reach the error reporter.
+            _logger.LogError(ex, "CheckoutService: unexpected exception while making a fresh local copy");
+            return LocalCopyRefreshResult.Failed;
+        }
+    }
+
+    /// <summary>
+    /// The writer half of <see cref="RefreshLocalCopyAfterFailedCheckAsync"/>; see there for the contract.
+    /// </summary>
+    /// <returns>The result. An unexpected exception propagates to the caller's safety net.</returns>
+    private async Task<LocalCopyRefreshResult> RefreshWriterCopyAsync()
+    {
+        if (!_lockService.IsWriter)
+        {
+            _logger.LogInfo("CheckoutService: RefreshLocalCopy refused — this session no longer holds the write lock.");
+            return LocalCopyRefreshResult.Failed;
+        }
+
+        // Unsaved work is never overwritten. The caller archives such a copy first; this is the backstop.
+        if (HasDirtyMarker)
+        {
+            _logger.LogInfo("CheckoutService: RefreshLocalCopy refused — the local copy holds unsaved changes.");
+            return LocalCopyRefreshResult.HoldsUnsavedChanges;
+        }
+
+        // The same gate as SaveAsync: a save and a replacement of D' must never interleave.
+        if (Interlocked.CompareExchange(ref _saveInFlight, 1, 0) != 0)
+        {
+            _logger.LogInfo("CheckoutService: RefreshLocalCopy refused — a save is in progress.");
+            return LocalCopyRefreshResult.Failed;
+        }
+
+        var tmpPath = WorkingPath + FreshCopySuffix;
+        try
+        {
+            var (hashCompleted, sourceHash, hashUnreadable) = await HashSourceAsync(SourcePath, "fresh local copy hash");
+            if (hashUnreadable)
+                return LocalCopyRefreshResult.Unreadable;
+            if (!hashCompleted || sourceHash is null)
+            {
+                _logger.LogInfo("CheckoutService: RefreshLocalCopy — hashing D timed out; network unreachable.");
+                return LocalCopyRefreshResult.Unreachable;
+            }
+
+            Directory.CreateDirectory(_workingDir);
+            TryDelete(tmpPath);
+
+            var copyOutcome = await CopyAndVerifyAsync(SourcePath, tmpPath, sourceHash, "fresh local copy");
+            if (copyOutcome != CopyVerifyOutcome.Ok)
+            {
+                TryDelete(tmpPath);
+                return copyOutcome switch
+                {
+                    CopyVerifyOutcome.Unreachable => LocalCopyRefreshResult.Unreachable,
+                    CopyVerifyOutcome.Unreadable  => LocalCopyRefreshResult.Unreadable,
+                    _                             => LocalCopyRefreshResult.Failed
+                };
+            }
+
+            // The verified copy replaces D'. D' is opened in WAL mode, so a stale -wal / -shm beside the file
+            // being replaced would be a corruption hazard on the next open: remove them first.
+            TryDeleteWalSidecars(WorkingPath);
+            try
+            {
+                NetworkFileOps.MoveWithRetry(tmpPath, WorkingPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                // D' itself is held by another program (or may not be replaced): leave things as they are.
+                _logger.LogInfo($"CheckoutService: RefreshLocalCopy — could not put the fresh copy in place ({ex.GetType().Name}: {ex.Message})");
+                TryDelete(tmpPath);
+                return DatabaseValidator.IsLockedOrAccessDenied(ex)
+                    ? LocalCopyRefreshResult.Unreadable
+                    : LocalCopyRefreshResult.Failed;
+            }
+
+            // D' now IS D as of sourceHash: that is the baseline every later save compares D against.
+            HashAtCheckout   = sourceHash;
+            _pendingSaveHash = null;
+            _logger.LogInfo("CheckoutService: RefreshLocalCopy — D' replaced by a fresh, verified copy of D.");
+            _logger.LogBreadcrumb("RefreshLocalCopy: Ok");
+            return LocalCopyRefreshResult.Ok;
+        }
+        finally
+        {
+            TryDelete(tmpPath);   // normally already moved away; never leave a stray behind on any path
+            Volatile.Write(ref _saveInFlight, 0);
+        }
     }
 
     /// <summary>
@@ -3510,6 +3656,103 @@ public sealed class CheckoutService : IDisposable
         }
     }
 
+    /// <summary>How <see cref="CopyAndVerifyAsync"/> ended.</summary>
+    internal enum CopyVerifyOutcome
+    {
+        /// <summary>The copy landed and hashes like the source.</summary>
+        Ok,
+
+        /// <summary>The copy (or its retry) stalled past the network deadline.</summary>
+        Unreachable,
+
+        /// <summary>The source could not be read: another program holds it open, or access is denied.</summary>
+        Unreadable,
+
+        /// <summary>Any other failure, including a copy that still does not match after the retry.</summary>
+        Failed
+    }
+
+    /// <summary>
+    /// Copies the shared database D to a LOCAL file and proves the copy is byte-identical to D — the one
+    /// copy-and-verify step shared by <see cref="CheckoutAsync"/> (D → D') and the fresh copy made after a failed
+    /// open-time check (<see cref="RefreshLocalCopyAfterFailedCheckAsync"/>). D is only read, never changed.
+    ///
+    /// <para><b>Sequence:</b> stream D to <paramref name="destPath"/> with the stall-aware chunked copy; hash the
+    /// result (local, no deadline needed) and compare it with <paramref name="expectedHash"/>, the hash of D taken
+    /// just before. A mismatch usually means D was being written during the copy, so it is tried once more; a second
+    /// mismatch is a failure. A failure of the RETRY stage deletes <paramref name="destPath"/> (a half-verified file
+    /// must not be mistaken for a good one); a failure of the first copy leaves whatever was written, as the checkout
+    /// always has.</para>
+    ///
+    /// <para>Never touches the lock, the marker or any session state: the caller decides what to give back.
+    /// <c>internal</c> so tests can drive its failure branches directly.</para>
+    /// </summary>
+    /// <param name="sourcePath">Full path of D (may be on a share).</param>
+    /// <param name="destPath">Full path of the local file to write (created or overwritten).</param>
+    /// <param name="expectedHash">Uppercase hex SHA-256 of D, taken just before the copy.</param>
+    /// <param name="stage">Short label for the log lines, e.g. "checkout".</param>
+    /// <returns>How it ended; see <see cref="CopyVerifyOutcome"/>.</returns>
+    /// <exception cref="IOException">The freshly written local file could not be hashed.</exception>
+    internal async Task<CopyVerifyOutcome> CopyAndVerifyAsync(
+        string sourcePath, string destPath, string expectedHash, string stage)
+    {
+        try
+        {
+            if (!await NetworkFileOps.CopyAsync(sourcePath, destPath))
+            {
+                _logger.LogInfo($"CheckoutService: {stage} copy timed out — network unreachable");
+                return CopyVerifyOutcome.Unreachable;
+            }
+        }
+        catch (Exception ex) when (DatabaseValidator.IsLockedOrAccessDenied(ex))
+        {
+            // D became held / unreadable between the hash and the copy: an ordinary, retryable condition.
+            _logger.LogInfo($"CheckoutService: {stage} — cannot read D to copy it ({ex.GetType().Name}: {ex.Message})");
+            return CopyVerifyOutcome.Unreadable;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"CheckoutService: failed to copy D to the local file ({stage})");
+            return CopyVerifyOutcome.Failed;
+        }
+
+        // Verify the copy. destPath is local — no timeout needed.
+        if (ComputeHash(destPath) == expectedHash)
+            return CopyVerifyOutcome.Ok;
+
+        _logger.LogInfo($"CheckoutService: {stage} — hash mismatch after copy, retrying once.");
+
+        bool retryCompleted;
+        try
+        {
+            retryCompleted = await NetworkFileOps.CopyAsync(sourcePath, destPath);
+        }
+        catch (Exception ex)
+        {
+            // A locked / access-denied D gets its own outcome so the user is told the real reason.
+            var unreadable = DatabaseValidator.IsLockedOrAccessDenied(ex);
+            _logger.LogInfo($"CheckoutService: {stage} retry copy failed ({ex.GetType().Name}: {ex.Message})");
+            TryDelete(destPath);
+            return unreadable ? CopyVerifyOutcome.Unreadable : CopyVerifyOutcome.Failed;
+        }
+
+        if (!retryCompleted)
+        {
+            _logger.LogInfo($"CheckoutService: {stage} retry copy timed out — network unreachable");
+            TryDelete(destPath);
+            return CopyVerifyOutcome.Unreachable;
+        }
+
+        if (ComputeHash(destPath) != expectedHash)
+        {
+            _logger.LogInfo($"CheckoutService: {stage} — hash mismatch on retry, giving up.");
+            TryDelete(destPath);
+            return CopyVerifyOutcome.Failed;
+        }
+
+        return CopyVerifyOutcome.Ok;
+    }
+
     /// <summary>
     /// Creates a consistent copy of a live SQLite database at <paramref name="sourcePath"/>
     /// using the SQLite Online Backup API. Unlike a raw file copy, this coordinates with
@@ -3587,6 +3830,30 @@ public sealed class CheckoutService : IDisposable
         try { File.WriteAllText(path, content); return true; } catch { return false; }
     }
 
+}
+
+/// <summary>
+/// How <see cref="CheckoutService.RefreshLocalCopyAfterFailedCheckAsync"/> ended (spec item 5, step 5d).
+/// </summary>
+public enum LocalCopyRefreshResult
+{
+    /// <summary>The local copy is now a freshly made, hash-verified copy of the shared database.</summary>
+    Ok,
+
+    /// <summary>The shared database could not be reached in time. Nothing was changed.</summary>
+    Unreachable,
+
+    /// <summary>The shared database (or, for a writer, the local file to be replaced) is held by another program, or access is denied. Nothing was changed.</summary>
+    Unreadable,
+
+    /// <summary>Any other failure, including a copy that would not verify. The previous local copy is left as it was.</summary>
+    Failed,
+
+    /// <summary>
+    /// A writer's local copy holds unsaved changes (it has a dirty marker) and was NOT replaced. The caller must set
+    /// it aside first; unsaved work is never overwritten.
+    /// </summary>
+    HoldsUnsavedChanges
 }
 
 /// <summary>Indicates whether this app instance holds the write lock.</summary>

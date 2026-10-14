@@ -456,6 +456,32 @@ public class BackupService : IDisposable
     /// </returns>
     public static IntegrityCheckResult CheckIntegrityDetailed(
         string dbPath, SqliteOpenMode mode = SqliteOpenMode.ReadOnly)
+        => CheckIntegrityWithSummary(dbPath, mode).Result;
+
+    /// <summary>
+    /// How many lines of <c>PRAGMA integrity_check</c> output <see cref="CheckIntegrityWithSummary"/> keeps in its
+    /// summary. SQLite can report up to 100 problems; the first few name the damaged pages and tables, and that is
+    /// all a log line or a damage report needs.
+    /// </summary>
+    internal const int IntegritySummaryMaxLines = 5;
+
+    /// <summary>
+    /// <see cref="CheckIntegrityDetailed"/> plus a short SQLite summary of why the file did not pass (spec item 5,
+    /// step 5d; the damage report of step 5e uses it). Never throws; the verdict is exactly the one
+    /// <see cref="CheckIntegrityDetailed"/> gives.
+    ///
+    /// <para><b>The summary</b> is null when the verdict is <see cref="IntegrityCheckResult.Ok"/>. When
+    /// <c>PRAGMA integrity_check</c> answered with problems (Damaged) it is the first
+    /// <see cref="IntegritySummaryMaxLines"/> lines of that output, one per line — these name pages and tables,
+    /// never row data. When the verdict came from an exception it is <c>SQLite error {code}: {message}</c> for a
+    /// <see cref="SqliteException"/>, or just the exception's type name for anything else (an I/O exception's
+    /// own message names the file path, which must never travel). Either way it carries no path and no data.</para>
+    /// </summary>
+    /// <param name="dbPath">Full path to the SQLite file to check.</param>
+    /// <param name="mode">Connection open mode — see <see cref="CheckIntegrity"/>.</param>
+    /// <returns>The verdict and the summary (null when the verdict is Ok).</returns>
+    public static (IntegrityCheckResult Result, string? Summary) CheckIntegrityWithSummary(
+        string dbPath, SqliteOpenMode mode = SqliteOpenMode.ReadOnly)
     {
         try
         {
@@ -469,10 +495,20 @@ public class BackupService : IDisposable
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "PRAGMA integrity_check;";
-            var result = cmd.ExecuteScalar() as string;
-            return string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase)
-                ? IntegrityCheckResult.Ok
-                : IntegrityCheckResult.Damaged;
+
+            // A healthy file answers with ONE row, "ok"; a damaged one with up to 100 rows of problems.
+            // Only the first few are kept (reading stops there), and the first row alone decides the verdict,
+            // exactly as when only the first row was read.
+            using var reader = cmd.ExecuteReader();
+            var lines = new List<string>(IntegritySummaryMaxLines);
+            while (lines.Count < IntegritySummaryMaxLines && reader.Read())
+                lines.Add(reader.IsDBNull(0) ? string.Empty : reader.GetString(0));
+
+            if (lines.Count > 0 && string.Equals(lines[0], "ok", StringComparison.OrdinalIgnoreCase))
+                return (IntegrityCheckResult.Ok, null);
+
+            return (IntegrityCheckResult.Damaged,
+                lines.Count > 0 ? string.Join("\n", lines) : "integrity_check returned no result");
         }
         catch (Exception ex)
         {
@@ -482,7 +518,7 @@ public class BackupService : IDisposable
             // user-facing banner, and a locked file is an ordinary condition.
             App.Logger.LogInfo(
                 $"BackupService: integrity check of '{dbPath}' classified as {verdict} ({ex.GetType().Name}: {ex.Message})");
-            return verdict;
+            return (verdict, SummarizeIntegrityException(ex));
         }
         finally
         {
@@ -540,6 +576,28 @@ public class BackupService : IDisposable
         // IOException / UnauthorizedAccessException — and, deliberately, every other exception
         // type — mean "could not examine the file", never "the file is bad".
         return IntegrityCheckResult.Unreadable;
+    }
+
+    /// <summary>
+    /// The summary for a verdict that came from an exception (see <see cref="CheckIntegrityWithSummary"/>): SQLite's
+    /// primary error code and its own message for a <see cref="SqliteException"/>
+    /// (<c>SQLite error 26: 'file is not a database'.</c>); only the exception's type name for anything else,
+    /// because an <see cref="IOException"/> message names the file path.
+    /// </summary>
+    /// <param name="ex">The exception caught around the open / <c>PRAGMA integrity_check</c>.</param>
+    /// <returns>A short, path-free description.</returns>
+    internal static string SummarizeIntegrityException(Exception ex)
+    {
+        if (ex is not SqliteException sqlite)
+            return $"{ex.GetType().Name} (not a SQLite error)";
+
+        // Microsoft.Data.Sqlite words its message "SQLite Error {code}: '{text}'." — the code is stated once, here.
+        var detail = sqlite.Message;
+        const string prefix = "SQLite Error ";
+        if (detail.StartsWith(prefix, StringComparison.Ordinal) && detail.IndexOf(": ", StringComparison.Ordinal) is var colon and > 0)
+            detail = detail[(colon + 2)..];
+
+        return $"SQLite error {sqlite.SqliteErrorCode & 0xFF}: {detail}";
     }
 
     // ── Internal helpers ─────────────────────────────────────────────────────
