@@ -202,14 +202,15 @@ public static class DatabaseValidator
 
     /// <summary>
     /// Reads the first 16 bytes of <paramref name="path"/> and compares them with
-    /// <see cref="SqliteHeaderMagic"/>. Blocking I/O — call it only through a deadline wrapper.
+    /// <see cref="SqliteHeaderMagic"/>. Blocking I/O — call it through a deadline wrapper when the path
+    /// may be on a network share (<see cref="DatabaseRestore"/> calls it directly on its LOCAL staged copy).
     /// Opened <see cref="FileShare.ReadWrite"/> so it coexists with any other process using the file.
     /// </summary>
     /// <param name="path">File to inspect.</param>
     /// <returns>True when the file starts with the SQLite signature.</returns>
     /// <exception cref="IOException">The file could not be opened or read (including a sharing violation).</exception>
     /// <exception cref="UnauthorizedAccessException">Access to the file is denied.</exception>
-    private static bool HasSqliteSignature(string path)
+    internal static bool HasSqliteSignature(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         Span<byte> header = stackalloc byte[16];

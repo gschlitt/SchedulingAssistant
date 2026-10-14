@@ -5123,4 +5123,269 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.False(File.Exists(missing), "The backup must not re-create the working copy.");
         Assert.False(File.Exists(dest));
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 18 — RestoreFromBackupAsync (spec item 5, step 5a)
+    //
+    // CheckoutService.RestoreFromBackupAsync wraps the shared DatabaseRestore routine (whose own stages are
+    // covered in DatabaseRestoreTests). What is proved HERE is the wrapper's contract: only a write-access
+    // session may restore; a save and a restore share one in-flight gate and can never interleave; a refusal
+    // leaves D and the session untouched; and after a restore the stale working copy can never be saved over
+    // the restored database (HashAtCheckout is deliberately left alone, so every later save is a
+    // SourceModified refusal).
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Creates a small SQLite backup file, in a "backups" sub-folder next to D, carrying a marker value that
+    /// <see cref="ReadTestValue"/> reads back — so a test can tell the backup's content from D's.
+    /// </summary>
+    /// <param name="marker">Value stored in the backup's <c>_test</c> table.</param>
+    /// <returns>Full path of the backup.</returns>
+    private string CreateBackupWithMarker(string marker)
+    {
+        var folder = Path.Combine(_tempDir, "backups");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, $"test_{Guid.NewGuid():N}.db");
+        CreateSqliteDb(path);
+        InsertTestValue(path, marker);
+        return path;
+    }
+
+    /// <summary>Checks out a fresh SQLite D (holding the value "old-d") for writing.</summary>
+    /// <param name="db">Path of D (created here).</param>
+    /// <returns>The service and its lock service.</returns>
+    private async Task<(CheckoutService svc, WriteLockService lockSvc)> CheckoutWriterWithValueAsync(string db)
+    {
+        var (svc, lockSvc) = CreateService();
+        CreateSqliteDb(db);
+        InsertTestValue(db, "old-d");
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        return (svc, lockSvc);
+    }
+
+    /// <summary>Everything currently in D's folder, sorted, for exact "no files were created" assertions.</summary>
+    private string[] SourceFolderEntries()
+        => Directory.GetFileSystemEntries(_tempDir).OrderBy(e => e, StringComparer.Ordinal).ToArray();
+
+    /// <summary>
+    /// A reader (another instance holds the lock, so this session is read-only) cannot restore: NotWriter,
+    /// D byte-identical, and no file of any kind is created beside it.
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_Reader_ReturnsNotWriter_AndTouchesNothing()
+    {
+        var db = DbPath();
+        CreateSqliteDb(db);
+        InsertTestValue(db, "old-d");
+        WriteExternalFreshLock(db);
+        var (svc, _) = CreateService();
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(db));
+        var backup = CreateBackupWithMarker("from-backup");
+        var hashBefore = DbFileTestHelpers.HashOf(db);
+        var entriesBefore = SourceFolderEntries();
+
+        var result = await svc.RestoreFromBackupAsync(backup);
+
+        Assert.Equal(RestoreOutcome.NotWriter, result.Outcome);
+        Assert.True(result.TargetUnchanged);
+        Assert.Equal(hashBefore, DbFileTestHelpers.HashOf(db));
+        Assert.Equal(entriesBefore, SourceFolderEntries());
+    }
+
+    /// <summary>A service that has not checked anything out is not a writer either.</summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_NothingCheckedOut_ReturnsNotWriter()
+    {
+        var (svc, _) = CreateService();
+
+        var result = await svc.RestoreFromBackupAsync(CreateBackupWithMarker("from-backup"));
+
+        Assert.Equal(RestoreOutcome.NotWriter, result.Outcome);
+    }
+
+    /// <summary>
+    /// A writer's restore succeeds: D holds the backup's content, the old D is kept beside it under the
+    /// "before restore" name and still opens, and nothing else is left behind. Then the crucial part: the
+    /// session's working copy is now STALE and a following save must refuse (SourceModified) — so the old
+    /// content with the user's unsaved edit can never be pushed over the restored database — while
+    /// HashAtCheckout is deliberately unchanged and the lock still held (ending the session is the caller's job).
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_Writer_RestoresD_AndALaterSaveCannotOverwriteIt()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWriterWithValueAsync(db);
+        InsertTestValue(svc.WorkingPath, "unsaved-edit");
+        svc.MarkDirty();
+        var hashAtCheckout = svc.HashAtCheckout;
+        var oldBytes = File.ReadAllBytes(db);
+        var backup = CreateBackupWithMarker("from-backup");
+
+        var result = await svc.RestoreFromBackupAsync(backup);
+
+        Assert.Equal(RestoreOutcome.Restored, result.Outcome);
+        Assert.True(result.Succeeded);
+        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(db));
+        Assert.Equal("from-backup", ReadTestValue(db));
+
+        // The replaced D is kept beside D, byte-for-byte, and still opens.
+        Assert.NotNull(result.PreRestoreCopyPath);
+        Assert.Equal(_tempDir, Path.GetDirectoryName(result.PreRestoreCopyPath));
+        Assert.Matches(@"^test \(before restore \d{4}-\d{2}-\d{2} \d{2}-\d{2}\)\.db$", Path.GetFileName(result.PreRestoreCopyPath)!);
+        Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
+        Assert.Equal("old-d", ReadTestValue(result.PreRestoreCopyPath!));
+        Assert.False(File.Exists(db + ".tmp"));
+
+        // The session is stale but intact: the hash is untouched on purpose, the lock still ours, D' still holds the edit.
+        Assert.Equal(hashAtCheckout, svc.HashAtCheckout);
+        Assert.True(lockSvc.IsWriter);
+        Assert.Equal("unsaved-edit", ReadTestValue(svc.WorkingPath));
+
+        // The in-flight gate was released (this is a real refusal, not "already in progress"), and the stale
+        // working copy cannot overwrite the restore.
+        var save = await svc.SaveAsync();
+        Assert.Equal(SaveOutcome.SourceModified, save);
+        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(db));
+        Assert.Equal("from-backup", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// D was changed by someone else after this session checked it out: TargetChanged, D keeps the external
+    /// content, nothing is created beside it, and the session carries on as a writer.
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_DModifiedExternally_ReturnsTargetChanged_AndKeepsTheExternalContent()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWriterWithValueAsync(db);
+        var backup = CreateBackupWithMarker("from-backup");
+        File.WriteAllText(db, "externally-changed");
+        var entriesBefore = SourceFolderEntries();
+
+        var result = await svc.RestoreFromBackupAsync(backup);
+
+        Assert.Equal(RestoreOutcome.TargetChanged, result.Outcome);
+        Assert.True(result.TargetUnchanged);
+        Assert.Equal("externally-changed", File.ReadAllText(db));
+        Assert.Equal(entriesBefore, SourceFolderEntries());
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// A save in flight (parked at the BeforeTmpVerifyAsync seam) makes a restore Busy: nothing is touched, and
+    /// the parked save then completes normally — the restore neither interleaved with it nor released its gate.
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_SaveInFlight_ReturnsBusy_AndTheSaveStillCompletes()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var backup = CreateBackupWithMarker("from-backup");
+        var parked  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.BeforeTmpVerifyAsync = async _ => { parked.TrySetResult(); await release.Task; };
+
+        var saveTask = svc.SaveAsync();
+        try
+        {
+            await parked.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var hashWhileParked = DbFileTestHelpers.HashOf(db);
+
+            var result = await svc.RestoreFromBackupAsync(backup);
+
+            Assert.Equal(RestoreOutcome.Busy, result.Outcome);
+            Assert.True(result.TargetUnchanged);
+            Assert.Equal(hashWhileParked, DbFileTestHelpers.HashOf(db));
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+
+        Assert.Equal(SaveOutcome.Success, await saveTask);
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+
+        // With the save finished the gate is free again, so the restore now proceeds.
+        svc.BeforeTmpVerifyAsync = null;
+        var after = await svc.RestoreFromBackupAsync(backup);
+        Assert.Equal(RestoreOutcome.Restored, after.Outcome);
+    }
+
+    /// <summary>
+    /// If the lock file has been removed, the restore refuses (LockLost) and nothing more: it does NOT
+    /// re-create the lock, raise WriteLockLost or demote the session — the normal save / heartbeat paths own
+    /// that. D is untouched and no file is created.
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_LockFileRemoved_ReturnsLockLost_WithoutDemotingTheSession()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWriterWithValueAsync(db);
+        var backup = CreateBackupWithMarker("from-backup");
+        var lockLost = false;
+        svc.WriteLockLost += _ => lockLost = true;
+        File.Delete(LockFileOf(db));
+        var hashBefore = DbFileTestHelpers.HashOf(db);
+        var entriesBefore = SourceFolderEntries();
+
+        var result = await svc.RestoreFromBackupAsync(backup);
+
+        Assert.Equal(RestoreOutcome.LockLost, result.Outcome);
+        Assert.False(lockLost, "A restore must not demote the session.");
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.False(File.Exists(LockFileOf(db)), "A restore must not re-create the lock file.");
+        Assert.Equal(hashBefore, DbFileTestHelpers.HashOf(db));
+        Assert.Equal(entriesBefore, SourceFolderEntries());
+    }
+
+    /// <summary>
+    /// The DEBUG fault plan reaches the routine: "cut the network once" (copy:1) fails the first restore with
+    /// Unreachable, D untouched and nothing left beside it, the session and its working copy fully usable
+    /// (a save still succeeds); the retry then restores.
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_InjectedCopyFault_ReturnsUnreachable_SessionContinues_RetrySucceeds()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWriterWithValueAsync(db);
+        svc.RestoreFaultPlan = RestoreFaultPlan.Parse("copy:1");
+        var backup = CreateBackupWithMarker("from-backup");
+        var hashBefore = DbFileTestHelpers.HashOf(db);
+        var entriesBefore = SourceFolderEntries();
+
+        var failed = await svc.RestoreFromBackupAsync(backup);
+
+        Assert.Equal(RestoreOutcome.Unreachable, failed.Outcome);
+        Assert.Equal(hashBefore, DbFileTestHelpers.HashOf(db));
+        Assert.Equal(entriesBefore, SourceFolderEntries());
+        Assert.True(lockSvc.IsWriter);
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());   // the session is fully usable after a refusal
+
+        var retry = await svc.RestoreFromBackupAsync(backup);
+        Assert.Equal(RestoreOutcome.Restored, retry.Outcome);
+        Assert.Equal("from-backup", ReadTestValue(db));
+    }
+
+    /// <summary>
+    /// An unconfirmed rename (injected) counts as "D may be replaced": the session is stale exactly as after
+    /// Restored — the pre-restore copy is reported and kept — and a following save refuses rather than risk
+    /// overwriting whatever D has become.
+    /// </summary>
+    [Fact]
+    public async Task RestoreFromBackupAsync_InjectedRenameFault_ReturnsRenameUnconfirmed_AndKeepsThePreRestoreCopy()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWriterWithValueAsync(db);
+        svc.RestoreFaultPlan = RestoreFaultPlan.Parse("rename");
+        var backup = CreateBackupWithMarker("from-backup");
+        var oldBytes = File.ReadAllBytes(db);
+
+        var result = await svc.RestoreFromBackupAsync(backup);
+
+        Assert.Equal(RestoreOutcome.RenameUnconfirmed, result.Outcome);
+        Assert.False(result.TargetUnchanged);
+        Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
+        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(db + ".tmp"));
+    }
 }

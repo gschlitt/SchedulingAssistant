@@ -92,23 +92,30 @@ public partial class App : Application
     /// <see cref="LockService"/> in this class so both exist by the time it runs (static initializers
     /// run in textual order).
     ///
-    /// <para>Also attaches the DEBUG-ONLY fault plan from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c>
-    /// environment variable (see <see cref="CheckoutFaultPlan"/>): <see cref="CheckoutFaultPlan.FromEnvironment"/>
-    /// returns null in Release builds, so a shipped build never injects a fault. A plan that is
-    /// attached is announced in the log, so a forgotten variable in a launch profile can't go unnoticed.</para>
+    /// <para>Also attaches the DEBUG-ONLY fault plans from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c> and
+    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c> environment variables (see <see cref="CheckoutFaultPlan"/> and
+    /// <see cref="RestoreFaultPlan"/>): their <c>FromEnvironment</c> methods return null in Release builds, so a
+    /// shipped build never injects a fault. A plan that is attached is announced in the log, so a forgotten
+    /// variable in a launch profile can't go unnoticed.</para>
     /// </summary>
-    /// <returns>The checkout service, with a fault plan only in a DEBUG build that has the variable set.</returns>
+    /// <returns>The checkout service, with fault plans only in a DEBUG build that has the variables set.</returns>
     private static CheckoutService CreateCheckoutService()
     {
         var service = new CheckoutService(LockService, Logger)
         {
-            FaultPlan = CheckoutFaultPlan.FromEnvironment()
+            FaultPlan        = CheckoutFaultPlan.FromEnvironment(),
+            RestoreFaultPlan = RestoreFaultPlan.FromEnvironment()
         };
 
         if (service.FaultPlan is { } plan)
             Logger.LogInfo(
                 $"[DEBUG fault injection] {CheckoutFaultPlan.EnvironmentVariableName} is set: " +
                 $"checkouts will fail as {plan.Fault}; {plan.Description}.");
+
+        if (service.RestoreFaultPlan is { } restorePlan)
+            Logger.LogInfo(
+                $"[DEBUG fault injection] {RestoreFaultPlan.EnvironmentVariableName} is set: " +
+                $"restores will fail at the {restorePlan.Fault} stage; {restorePlan.Description}.");
 
         return service;
     }

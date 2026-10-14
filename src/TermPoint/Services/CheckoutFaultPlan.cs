@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace TermPoint.Services;
 
 /// <summary>
@@ -60,6 +58,10 @@ public enum InjectedCheckoutFault
 /// machine can never change how a shipped build behaves. <see cref="Parse"/> and the consume methods
 /// are pure, so they are unit-tested in every configuration.</para>
 ///
+/// <para>The <c>value[:count[:skip]]</c> parsing and the thread-safe count/skip budget live in
+/// <see cref="DebugFaultBudget"/>, shared with <see cref="RestoreFaultPlan"/>; this class only maps the
+/// <c>value</c> text to <see cref="InjectedCheckoutFault"/> and decides which call kinds a fault answers.</para>
+///
 /// <para>One plan holds one fault. It is consulted by
 /// <see cref="CheckoutService.CheckoutAsync"/> (the three checkout faults) and
 /// <see cref="CheckoutService.SetupReadOnlySnapshotAsync"/> (the snapshot fault). Each fault counts only
@@ -70,57 +72,33 @@ public sealed class CheckoutFaultPlan
     /// <summary>The environment variable read (DEBUG builds only) by <see cref="FromEnvironment"/>.</summary>
     public const string EnvironmentVariableName = "TERMPOINT_DEBUG_FAIL_CHECKOUT";
 
-    /// <summary>Guards <see cref="_remaining"/> and <see cref="_skip"/>; checkouts and snapshot setups can overlap on thread-pool continuations.</summary>
-    private readonly object _gate = new();
-
-    /// <summary>How many more matching calls will fail; null = unlimited.</summary>
-    private int? _remaining;
-
-    /// <summary>How many more matching calls are let through before failures begin.</summary>
-    private int _skip;
+    /// <summary>The shared count/skip budget (see <see cref="DebugFaultBudget"/>); checkouts and snapshot setups can overlap on thread-pool continuations, and it is thread-safe.</summary>
+    private readonly DebugFaultBudget _budget;
 
     /// <summary>Creates a plan. Use <see cref="Parse"/>; the constructor does not validate.</summary>
     /// <param name="fault">The fault to inject.</param>
-    /// <param name="count">How many matching calls fail; null for every call.</param>
-    /// <param name="skip">How many matching calls to let through first.</param>
-    private CheckoutFaultPlan(InjectedCheckoutFault fault, int? count, int skip)
+    /// <param name="budget">How many matching calls fail, and how many are let through first.</param>
+    private CheckoutFaultPlan(InjectedCheckoutFault fault, DebugFaultBudget budget)
     {
-        Fault = fault;
-        _remaining = count;
-        _skip = skip;
+        Fault   = fault;
+        _budget = budget;
     }
 
     /// <summary>The fault this plan injects (never <see cref="InjectedCheckoutFault.None"/>).</summary>
     public InjectedCheckoutFault Fault { get; }
 
     /// <summary>How many more matching calls will fail (after the skipped ones), or null when the plan is unlimited.</summary>
-    public int? Remaining
-    {
-        get { lock (_gate) return _remaining; }
-    }
+    public int? Remaining => _budget.Remaining;
 
     /// <summary>How many more matching calls will be let through before failures begin.</summary>
-    public int Skip
-    {
-        get { lock (_gate) return _skip; }
-    }
+    public int Skip => _budget.Skip;
 
     /// <summary>
     /// A short, human-readable budget for the log line written when the plan is created or fires:
     /// "fails every call…" or "N more call(s) will fail", plus any calls still to be let through. Read
     /// after a call has been consumed, so a counted plan's last firing reads "0 more call(s) will fail".
     /// </summary>
-    public string Description
-    {
-        get
-        {
-            var (remaining, skip) = (Remaining, Skip);
-            var budget = remaining is null
-                ? "fails every call until the variable is cleared and TermPoint restarted"
-                : $"{remaining} more call(s) will fail";
-            return skip > 0 ? $"{skip} call(s) will be let through first, then it {budget}" : budget;
-        }
-    }
+    public string Description => _budget.Description;
 
     /// <summary>
     /// Parses <c>value[:count[:skip]]</c> (see the class remarks). Pure: no environment access.
@@ -129,14 +107,10 @@ public sealed class CheckoutFaultPlan
     /// <returns>The plan, or null when <paramref name="spec"/> is empty or not understood (garbage is ignored).</returns>
     public static CheckoutFaultPlan? Parse(string? spec)
     {
-        if (string.IsNullOrWhiteSpace(spec))
+        if (!DebugFaultBudget.TryParseSpec(spec, out var name, out var budget))
             return null;
 
-        var parts = spec.Split(':');
-        if (parts.Length > 3)
-            return null;
-
-        var fault = parts[0].Trim().ToLowerInvariant() switch
+        var fault = name switch
         {
             "unreachable" => InjectedCheckoutFault.Unreachable,
             "missing"     => InjectedCheckoutFault.Missing,
@@ -144,35 +118,9 @@ public sealed class CheckoutFaultPlan
             "snapshot"    => InjectedCheckoutFault.Snapshot,
             _             => InjectedCheckoutFault.None
         };
-        if (fault == InjectedCheckoutFault.None)
-            return null;
 
-        // count: absent or "*" = every call; otherwise a whole number >= 1.
-        int? count = null;
-        if (parts.Length > 1 && parts[1].Trim() != "*")
-        {
-            if (!TryParseWholeNumber(parts[1], out var n) || n < 1)
-                return null;
-            count = n;
-        }
-
-        // skip: absent = 0; otherwise a whole number >= 0.
-        var skip = 0;
-        if (parts.Length > 2 && !TryParseWholeNumber(parts[2], out skip))
-            return null;
-
-        return new CheckoutFaultPlan(fault, count, skip);
+        return fault == InjectedCheckoutFault.None ? null : new CheckoutFaultPlan(fault, budget);
     }
-
-    /// <summary>
-    /// Parses digits only — so "+1", "-1", "1.5", "1e3" and an empty string are all rejected — after
-    /// trimming surrounding whitespace. Overflow is a failure, not an exception.
-    /// </summary>
-    /// <param name="text">The token to parse.</param>
-    /// <param name="value">The parsed number (0 on failure).</param>
-    /// <returns>True when <paramref name="text"/> is a non-negative whole number that fits an int.</returns>
-    private static bool TryParseWholeNumber(string text, out int value)
-        => int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out value);
 
     /// <summary>
     /// Reads <see cref="EnvironmentVariableName"/> and parses it — in DEBUG builds only. In Release
@@ -200,7 +148,7 @@ public sealed class CheckoutFaultPlan
         fault = InjectedCheckoutFault.None;
         if (Fault is not (InjectedCheckoutFault.Unreachable or InjectedCheckoutFault.Missing or InjectedCheckoutFault.Unreadable))
             return false;
-        if (!TryConsume())
+        if (!_budget.TryConsume())
             return false;
 
         fault = Fault;
@@ -214,30 +162,5 @@ public sealed class CheckoutFaultPlan
     /// </summary>
     /// <returns>True when this snapshot attempt must fail.</returns>
     public bool TryConsumeSnapshotFault()
-        => Fault == InjectedCheckoutFault.Snapshot && TryConsume();
-
-    /// <summary>
-    /// Counts one matching call: lets it through while the skip allowance lasts, then spends one unit of
-    /// the failure budget.
-    /// </summary>
-    /// <returns>True when this call must fail; false when it is skipped or a counted plan is used up.</returns>
-    private bool TryConsume()
-    {
-        lock (_gate)
-        {
-            if (_skip > 0)
-            {
-                _skip--;
-                return false;
-            }
-
-            if (_remaining is null)
-                return true;
-            if (_remaining <= 0)
-                return false;
-
-            _remaining--;
-            return true;
-        }
-    }
+        => Fault == InjectedCheckoutFault.Snapshot && _budget.TryConsume();
 }

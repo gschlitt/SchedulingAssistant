@@ -862,11 +862,91 @@ thread**, so a downed share freezes the app ("Not Responding") for 30–60 s.
 - verify it, then rename it over `D`, reusing the save pipeline's atomic path;
 - keep the replaced `D` as a timestamped pre-restore file.
 
-**Open decisions.** Where the pre-restore copy goes: the backup folder, which some joiners may not
-have, or beside `D`. How long it is kept.
+**Findings (2026-10-13 layout).**
+- **Save & Backup restore:**
+  - discards the editor's unsaved changes;
+  - deletes the working copy and disposes services **before** the copy, so a failed copy closes the app with
+    the edits already gone.
+- **Chooser restore:**
+  - overwrites any existing destination with no lock check;
+  - its default destination is the **backup's** folder
+    ([DatabaseChooserViewModel.cs:526](src/TermPoint/ViewModels/DatabaseChooserViewModel.cs:526)), so it usually
+    creates a second database there instead of repairing the shared one.
+- **Startup integrity-failure dialog:**
+  - since item 4 checks `D` before checkout, it fires only when the **local** copy fails its check (in practice:
+    antivirus holding it — 4f);
+  - its backup list searches under the local copy's internal name (`<hash8>_<name>_*.db`), so it never finds a
+    backup;
+  - had it found one, it would have restored over the local copy, not `D`. The restore part is dead code.
+
+**Decisions (user, 2026-10-13).**
+- **Pre-restore copy:** beside `D`, named `<name> (before restore yyyy-MM-dd HH-mm).db`, never deleted automatically.
+  - That folder is always writable, because the restore writes there anyway, and the whole team can see the file.
+  - Backup rotation (`<name>_*.db`) never matches it.
+  - To undo a restore, use the chooser's Restore and browse to the file.
+- **Chooser default destination:** the database's own location, i.e. the folder of the last database opened.
+  - It falls back to the backup's folder when no database was opened before.
+  - Step 2 says plainly that the database there is replaced and where the current file is kept.
+- **Startup dialog:** remove the dead restore list, and fold in 4f's dialog half: "another program has the local copy
+  open — Try again" is told apart from "the local copy is damaged". Crash recovery's "Unsaved Changes Lost" half of 4f
+  stays separate.
+
+**Steps.**
+- **5a — shared routine plus tests, no UI.** The routine:
+  1. stages the backup locally and integrity-checks it, refusing a damaged backup;
+  2. keeps a verified pre-restore copy beside `D`;
+  3. streams the backup to `D.tmp` and verifies its hash;
+  4. checks that the lock is still ours and `D` is unchanged;
+  5. renames over `D` with the save's atomic rename, including its check for a rename that lands after its deadline.
+
+  Any failure before the rename leaves `D` as it was. A DEBUG-only `TERMPOINT_DEBUG_FAIL_RESTORE` switch fails a chosen
+  stage, for hand tests.
+- **5b — Save & Backup → Restore:**
+  - writer only: the buttons are disabled for readers and read-only licences;
+  - saves first; if that save fails, the restore doesn't start;
+  - a "Restoring…" wait dialog blocks edits;
+  - success → restart as today;
+  - failure → "database unchanged", and the session continues;
+  - rename unconfirmed → the app says so and closes. Nothing is lost, because everything was saved first.
+- **5c — Chooser restore:**
+  - a new destination is created the 4a way;
+  - for an existing destination, the routine takes its write lock first:
+    - lock held → refused, naming the holder;
+    - abandoned lock → refused, with a hint to open normally (which offers take-over) and restore from Save & Backup;
+  - then the lock is released and the database opens normally;
+  - the default destination is as decided above.
+- **5d — Startup integrity dialog:** as decided above.
+
+**Outcome 5a (2026-10-13).**
+- `Services/DatabaseRestore.cs` → `ReplaceAsync`: the nine-stage routine above. It never throws.
+  - Every outcome except `Restored` and `RenameUnconfirmed` leaves `D` byte-identical and removes what the run
+    created.
+  - A name collision never deletes an existing file.
+  - A backup with no SQLite header (including an empty file, which SQLite would accept as a valid empty database) is
+    refused as damaged.
+- `CheckoutService.RestoreFromBackupAsync` wraps the routine:
+  - writer only (`NotWriter` otherwise);
+  - takes the save's in-flight gate (`Busy` while a save runs, and saves are refused while a restore runs);
+  - after `Restored` / `RenameUnconfirmed` it stops autosave and **deliberately leaves `HashAtCheckout` stale**, so
+    every later save refuses (`SourceModified`) and the stale working copy can never be pushed over the restored `D`.
+    The caller must end the session (5b).
+- `TERMPOINT_DEBUG_FAIL_RESTORE` (DEBUG only): `backup | damaged | precopy | copy | verify | lock | rename`, with
+  `[:count[:skip]]`. Its parser is shared with `TERMPOINT_DEBUG_FAIL_CHECKOUT` via `DebugFaultBudget`.
+- Suite 1904 (+100).
+- Notes for 5b:
+  - block window close during a restore;
+  - an autosave tick during a restore raises the "already in progress" cue;
+  - add a TermPoint-schema check on the staged backup.
+- Not unit-tested: a timed-out rename that actually landed (no seam).
+
+**Behaviour changes for the release notes:**
+- restore is refused while someone else is editing;
+- readers can't restore;
+- Save & Backup restore keeps current edits in the pre-restore copy;
+- a "before restore" file appears beside the database.
 
 **Verification.** A restore by a reader is unavailable. A severed network mid-restore leaves `D`
-intact. The pre-restore copy exists and opens.
+intact. The pre-restore copy exists and opens. Network field test: cut the link mid-restore with clumsy.
 
 ---
 
@@ -2204,7 +2284,7 @@ stale takeover, same-machine dead-PID reclaim) and C1–C3 (kill mid-save, crash
 |---|---|
 | Colleague joins via the wizard while an editor session is active; editor's next save succeeds | 4 |
 | Second instance on the same machine during a live session (and during a frozen one): guard message, no Restore offer, no cleanup | 4 |
-| Restore from backup with the link black-holed mid-copy: `D` intact, pre-restore copy kept; reader cannot restore | 5 |
+| Restore from backup with the link black-holed mid-copy (Save & Backup and the chooser): `D` intact, "database unchanged" and the session continues; on success the "(before restore …)" copy beside `D` opens. Reader cannot restore. A chooser restore onto a database another machine is editing is refused with the holder's name | 5 |
 | **Local copy fails after validation** (clumsy drops the link during the D → D'' copy while another machine holds the write lock): "Couldn't Open the Database" appears; Try again succeeds once the link is back; Close leaves no session on `D` | 4 |
 | **Named-mutex single-instance guard on a real Mac:** a second copy on the same database is refused; a crashed or killed copy doesn't block a relaunch; a frozen one does | 4 |
 | **Stale-lock takeover, 3 networked computers (user asked 2026-10-13: must be integration-tested).** A = writer laptop, B and C = colleagues. **(1)** A edits without saving, then sleeps more than 3 min; B opens the database: "Database Lock Is Inactive" names A's user and computer and the idle minutes. **(2)** B leaves the prompt open, A wakes and resumes; B clicks Take over: "Database Is In Use Again", B is read-only, and A's lock is intact and A keeps editing. **(3)** A sleeps again; B takes over and edits and saves; A wakes: the lock-loss banner, A read-only. At A's next write-access open, "Restore Unsaved Changes?" leads to "Save a Copy…" because D changed. **(4)** As (3), but B saves nothing: A's changes restore into D. **(5)** B chooses "Open read-only"; A later exits cleanly: B's "Take over as writer" appears within about 60 s. **(6)** C opens while B's prompt is open: no double takeover. **(7)** Clock skew: set A's clock several minutes behind and confirm whether an active A is ever offered for takeover (the 9b concern). | 9 |

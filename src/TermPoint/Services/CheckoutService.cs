@@ -155,6 +155,16 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     internal CheckoutFaultPlan? FaultPlan { get; set; }
 
+    /// <summary>
+    /// DEBUG-ONLY fault injection for <see cref="RestoreFromBackupAsync"/> (spec item 5): when non-null, a
+    /// restore fails on purpose at the stage the plan names, so a severed network mid-restore, a damaged
+    /// backup, a lost lock or an unconfirmed rename can be exercised by hand. Null (the default) means every
+    /// real code path runs untouched. Only <c>App.Checkout</c> ever gets a plan, from
+    /// <see cref="Services.RestoreFaultPlan.FromEnvironment"/>, which returns null in Release builds, so shipped
+    /// builds never inject anything. Settable so tests can drive the plan directly.
+    /// </summary>
+    internal RestoreFaultPlan? RestoreFaultPlan { get; set; }
+
     // ── State ──────────────────────────────────────────────────────────────────
 
     private Timer?  _autoSaveTimer;
@@ -1665,6 +1675,106 @@ public sealed class CheckoutService : IDisposable
         _logger.LogBreadcrumb("Save: Success");
         _dispatch(() => SaveCompleted?.Invoke());
         return SaveOutcome.Success;
+    }
+
+    /// <summary>
+    /// Replaces the shared database D with the backup at <paramref name="backupPath"/>, safely, using the
+    /// shared <see cref="DatabaseRestore"/> routine: the backup is staged and integrity-checked locally, the
+    /// current D is kept beside itself as a verified "before restore" copy, and the backup reaches D through
+    /// <c>D.tmp</c> and the save's atomic rename. Any failure before the rename leaves D exactly as it was. See
+    /// <see cref="DatabaseRestore"/> for the stages and <see cref="RestoreOutcome"/> for the outcomes.
+    ///
+    /// <para><b>Gating:</b> only a session that holds write access can restore. A reader, a read-only licence or
+    /// a session that has lost its lock gets <see cref="RestoreOutcome.NotWriter"/> with nothing touched. The
+    /// restore takes the SAME in-flight gate as <see cref="SaveAsync"/>, so a save and a restore can never
+    /// interleave: if a save (or an autosave) is running the answer is <see cref="RestoreOutcome.Busy"/>, and
+    /// while a restore runs a concurrent save is refused as "already in progress". The lock is re-verified at the
+    /// start and again right before the swap; if it is no longer ours the restore simply refuses
+    /// (<see cref="RestoreOutcome.LockLost"/>); it never tries to recover a removed lock or demote the session.</para>
+    ///
+    /// <para><b>AFTER <see cref="RestoreOutcome.Restored"/> OR <see cref="RestoreOutcome.RenameUnconfirmed"/> THE
+    /// SESSION IS STALE, AND THE CALLER MUST END IT.</b> The working copy still holds the OLD database. This method
+    /// deliberately leaves <see cref="HashAtCheckout"/> unchanged: D no longer hashes to it, so every later
+    /// <see cref="SaveAsync"/> refuses with <see cref="SaveOutcome.SourceModified"/> and the stale working copy
+    /// can never be pushed over the restored database. Autosave is stopped. The caller must now release the lock
+    /// WITHOUT saving (<c>ReleaseAsync(saveFirst: false)</c>), discard the working copy and re-open D. It must
+    /// save first, <i>before</i> calling this method, if the user's edits matter: unsaved edits are not in the
+    /// restored database, and are in the pre-restore copy only if they were saved. Every other outcome leaves D,
+    /// the working copy and the session fully usable.</para>
+    /// </summary>
+    /// <param name="backupPath">Full path of the backup file to restore (may be on a share). It is only copied, never opened with SQLite.</param>
+    /// <returns>
+    /// The outcome. This method <b>does not throw</b>: an exception nobody anticipated comes back as
+    /// <see cref="RestoreOutcome.Failed"/> (and is logged with LogError). The result of a successful restore
+    /// carries <see cref="RestoreResult.PreRestoreCopyPath"/> and <see cref="RestoreResult.RestoredHash"/>.
+    /// </returns>
+    public async Task<RestoreResult> RestoreFromBackupAsync(string backupPath)
+    {
+        // Same gating as every other write: a restore is a write to D, so only the lock holder may do it.
+        // HashAtCheckout is the proof of what D looked like when this session last read or wrote it.
+        if (Mode != CheckoutMode.WriteAccess || !_lockService.IsWriter || HashAtCheckout is null)
+        {
+            _logger.LogInfo("CheckoutService: RestoreFromBackupAsync refused — this session does not hold write access.");
+            return new RestoreResult(RestoreOutcome.NotWriter);
+        }
+
+        // The same gate as SaveAsync: a restore and a save (manual, autosave or the exit save) must never
+        // interleave, or a save could push the working copy over the restored database mid-swap.
+        if (Interlocked.CompareExchange(ref _saveInFlight, 1, 0) != 0)
+        {
+            _logger.LogInfo("CheckoutService: RestoreFromBackupAsync refused — a save is in progress.");
+            return new RestoreResult(RestoreOutcome.Busy);
+        }
+
+        try
+        {
+            _logger.LogBreadcrumb("Restore: started");
+
+            var result = await DatabaseRestore.ReplaceAsync(
+                backupPath,
+                SourcePath,
+                HashAtCheckout,
+                VerifyLockForRestoreAsync,
+                DateTime.Now,
+                faultPlan: RestoreFaultPlan,
+                logger: _logger).ConfigureAwait(false);
+
+            // D has been (or may have been) replaced: this session is stale. Stop the autosave timer so it
+            // does not keep ticking into refusals. HashAtCheckout is left as it is ON PURPOSE (see above).
+            if (result.Outcome is RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed)
+                StopAutoSave();
+
+            _logger.LogBreadcrumb($"Restore: {result.Outcome}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            // DatabaseRestore.ReplaceAsync never throws, so this is a safety net only (a fault in the
+            // lock service, the logger, StopAutoSave...). LogError: it must reach the error reporter.
+            _logger.LogError(ex, "CheckoutService: unexpected exception in RestoreFromBackupAsync");
+            return new RestoreResult(RestoreOutcome.Failed, Error: ex);
+        }
+        finally
+        {
+            Volatile.Write(ref _saveInFlight, 0);
+        }
+    }
+
+    /// <summary>
+    /// Adapts <see cref="VerifyLockIsOursAsync"/> (with its one retry for a transient heartbeat-rename overlap)
+    /// to the routine's <see cref="RestoreLockCheck"/>. Deliberately does NOT call
+    /// <see cref="TryRecoverRemovedLockAsync"/> or <see cref="HandleLockLossAsync"/>: a restore that finds the
+    /// lock gone just refuses; the normal save/heartbeat paths deal with lock loss.
+    /// </summary>
+    /// <returns>Ours, NotOurs or Unreachable, mirroring the verification result.</returns>
+    private async Task<RestoreLockCheck> VerifyLockForRestoreAsync()
+    {
+        return await VerifyLockIsOursAsync().ConfigureAwait(false) switch
+        {
+            LockVerificationResult.Ours    => RestoreLockCheck.Ours,
+            LockVerificationResult.NotOurs => RestoreLockCheck.NotOurs,
+            _                              => RestoreLockCheck.Unreachable
+        };
     }
 
     /// <summary>
