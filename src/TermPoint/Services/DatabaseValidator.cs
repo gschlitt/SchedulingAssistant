@@ -43,10 +43,21 @@ public static class DatabaseValidator
     /// Validates the database file at <paramref name="path"/>.
     /// Uses <see cref="NetworkFileOps"/> for timeout-aware I/O so the caller does not
     /// hang when the path is on an unreachable network share.
+    ///
+    /// <para><b>Damage report (spec item 5, step 5e).</b> Positive evidence of damage inside the database
+    /// (<c>integrity_check</c> problems, SQLITE_CORRUPT) is also reported, once per run per kind, through
+    /// <see cref="DatabaseDamageReporter"/>. A file that is not a SQLite database at all, locked, unreadable or
+    /// unreachable is never reported. The returned value is unaffected.</para>
     /// </summary>
     /// <param name="path">
     /// Full path to the SQLite file to validate. May be <c>null</c> or empty.
     /// </param>
+    /// <param name="reportAs">
+    /// What kind of file this is, for the damage report. The default, the shared database, fits every caller that
+    /// checks a database; the chooser's check of a backup the user picked passes
+    /// <see cref="DamagedFileKind.BackupBeingRestored"/>.
+    /// </param>
+    /// <param name="logger">Receives the damage report; null uses the application logger. Tests pass their own.</param>
     /// <returns>
     /// <see cref="DatabaseValidationResult.Ok"/> when the file exists and passes
     /// <c>PRAGMA integrity_check</c>;
@@ -60,7 +71,10 @@ public static class DatabaseValidator
     /// opened for the check (held exclusively by another program, access denied, I/O error) —
     /// never reported as Corrupt.
     /// </returns>
-    public static async Task<DatabaseValidationResult> ValidateAsync(string? path)
+    public static async Task<DatabaseValidationResult> ValidateAsync(
+        string? path,
+        DamagedFileKind reportAs = DamagedFileKind.SharedDatabase,
+        IAppLogger? logger = null)
     {
         if (string.IsNullOrWhiteSpace(path))
             return DatabaseValidationResult.Missing;
@@ -77,11 +91,15 @@ public static class DatabaseValidator
         // Tri-state integrity check: a file another program holds open (sharing violation) or that
         // we may not read is Unreadable, NOT Corrupt — a user told their database is damaged may
         // restore a backup over a perfectly good, current file. A timeout stays Unreachable.
-        var (integrityCompleted, integrity) = await NetworkFileOps.CheckIntegrityDetailedAsync(path);
+        var (integrityCompleted, check) = await NetworkFileOps.CheckIntegrityWithSummaryAsync(path);
         if (!integrityCompleted)
             return DatabaseValidationResult.Unreachable;
 
-        return integrity switch
+        // Positive evidence of damage inside the database goes to the developers (once per run per kind); a file that
+        // is not a database at all, or that could not be read, does not. Never throws, never changes the answer.
+        DatabaseDamageReporter.ReportIfDamaged(reportAs, check.Evidence, check.Summary, logger);
+
+        return check.Result switch
         {
             IntegrityCheckResult.Ok         => DatabaseValidationResult.Ok,
             IntegrityCheckResult.Unreadable => DatabaseValidationResult.Unreadable,

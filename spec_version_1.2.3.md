@@ -17,7 +17,7 @@ will be verified.
 | 2 | Bundled SQLite engine security update (NU1903) | Dependency / security | **Done** |
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
-| 5 | Make Restore from backup safe | Data integrity | Accepted |
+| 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
 | 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
@@ -790,6 +790,17 @@ history of freezes. Run the 3-machine clumsy network protocol.
       version-gated, failed and refused opens never touch `D.tmp`, so no open from any computer can
       delete a colleague's in-flight save. A leftover `D.tmp` is simply overwritten by the next
       save.
+      - **Seen in the field (BugSnag, 1.2.2, 2026-10-13):** `FileNotFoundException`, "CheckoutService:
+        D.tmp rename failed" on a mapped-drive share. A save's verified `D.tmp` disappeared before its
+        rename. 1.2.2 calls `CleanupOrphanedTmpAsync` unconditionally on every startup and switch
+        (master `MainWindow.axaml.cs:538` and `:1005`), so any colleague opening the database (a
+        reader included) deletes an in-flight save's `D.tmp`.
+        - **Handled, no data lost:** `D` is untouched, the edits stay in `D′`, the user sees a "couldn't
+          save" banner, and the next save retries.
+        - **Fixed in 1.2.3** by this step.
+        - **Release note:** "Fixes an occasional 'couldn't save' message when a colleague opened the
+          database while you were saving."
+        - Screenshot: `exceptions_logged/`.
     - **Restore from backup** releases the guard before relaunching, so the relaunch isn't refused.
     - **Same-computer read-only banner:** "Read-only — {Username} is already editing this database
       in TermPoint on this computer. If that window has stopped responding, it can be ended in Task
@@ -1024,6 +1035,34 @@ reader), on startup and on switch.
 - **Found, to fix after 5e:** `MinimumVersionToWrite.ReadStamp` returns null for a locked or damaged `D′`, so the
   version gate is skipped, and the retry and fresh-copy paths never re-run it. This only matters once a release
   raises the stamp.
+
+**Outcome 5e (2026-10-14).**
+- **`IAppLogger.ReportHandled(ex, context, metadata, metadataTab, groupingKey)`.** Its default implementation writes
+  a local warning only. `FileAppLogger` writes a local REPORT line and then calls BugSnag `Notify` with context,
+  grouping hash and a metadata tab. It never re-throws and never shows a banner. Item 7 can reuse it.
+- **`IAppLogger.NotifyUser`** shows a banner without a BugSnag report.
+- **`DatabaseDamageReporter.ReportIfDamaged/Report`:**
+  - `DamagedFileKind` is SharedDatabase / LocalCopy / BackupSnapshot / BackupBeingRestored.
+  - One report per run per kind (per logger instance).
+  - `DatabaseDamagedException`, with a fixed message and grouping key per kind.
+  - The summary is sanitized: paths and database file names are redacted, the length is capped at 1000, and a regex
+    timeout withholds it.
+- **`BackupService.CheckIntegrityWithSummary`** returns `IntegrityCheckOutcome(Result, Summary, Evidence)`. Only
+  `IntegrityProblems` and `Corrupt` (code 11) are reported; `NotADatabase` (26/24, no header) and
+  locked/unreadable are not.
+- **Wired into:**
+  - `DatabaseValidator.ValidateAsync(path, reportAs, logger)`; the chooser's backup picker reports
+    `BackupBeingRestored`;
+  - `LocalCopyIntegrity.VerifyAtOpen` → `LocalCopy`;
+  - the backup snapshot → `BackupSnapshot`, plus the banner "The latest backup failed its integrity check, so it may
+    not be usable for a restore." (replacing `LogError(null, <path>)`);
+  - `DatabaseRestore` stage 3 → `BackupBeingRestored`.
+- **Injected DEBUG faults are never sent.**
+- **Tests:** a module initializer points the reporter at a silent logger, so the suite never sends real events.
+- **Not wired (left for item 7):** crash recovery's integrity check of a recovered working copy.
+- **Suite:** 2493.
+- **Hand test:** `tmp/item5e-test` holds a damaged copy and a non-database file. Delivery shows in BugSnag under
+  the development stage from a Debug build.
 
 **5c layout decisions (user, 2026-10-13).**
 - **Confirm before replacing.** When the destination already exists, "Restore and Open" first shows a confirmation in

@@ -68,6 +68,58 @@ public sealed class FileAppLogger : IAppLogger
         ErrorLogged?.Invoke(this, notificationMessage);
     }
 
+    /// <summary>
+    /// Writes a local log line (level REPORT) and sends the problem to BugSnag as a HANDLED error with the given
+    /// context, grouping key and metadata tab. Unlike <see cref="LogError"/> it does not re-throw when
+    /// <see cref="ThrowOnError"/> is set and does not raise <see cref="ErrorLogged"/> (no banner). Never throws:
+    /// Bugsnag's internal delivery queue may be disposed during termination, and a report must never take the
+    /// application down. A null <see cref="BugsnagClient"/> (tests, unconfigured builds) just skips the remote half.
+    /// </summary>
+    /// <param name="ex">A named exception describing the problem (it need not have been thrown).</param>
+    /// <param name="context">Short, stable description of what was happening; becomes the report's context.</param>
+    /// <param name="metadata">Optional key/value details, sent under <paramref name="metadataTab"/>. No paths, file names or user names.</param>
+    /// <param name="metadataTab">Name of the BugSnag tab that holds <paramref name="metadata"/>.</param>
+    /// <param name="groupingKey">Optional stable key that groups every report that carries it into one BugSnag issue.</param>
+    public void ReportHandled(
+        Exception ex,
+        string context,
+        IReadOnlyDictionary<string, string>? metadata = null,
+        string metadataTab = "details",
+        string? groupingKey = null)
+    {
+        try
+        {
+            Write("REPORT", context + AppLoggerText.FormatMetadata(metadata), ex);
+
+            BugsnagClient?.Notify(ex, report =>
+            {
+                report.Event.Context = context;
+                if (groupingKey is not null)
+                    report.Event.GroupingHash = groupingKey;
+                if (metadata is { Count: > 0 })
+                    report.Event.Metadata.Add(metadataTab, new Dictionary<string, string>(metadata));
+            });
+        }
+        catch (Exception)
+        {
+            // Includes ObjectDisposedException from a Bugsnag queue that is shutting down. Nothing to do:
+            // the local log line above has already been written.
+        }
+    }
+
+    /// <summary>
+    /// Writes a local log line (level WARN) and raises <see cref="ErrorLogged"/> with <paramref name="message"/>, so
+    /// <see cref="AppNotificationService"/> shows it in the notification banner. Sends NOTHING to BugSnag. Does not
+    /// honour <see cref="ThrowOnError"/>: there is no exception to re-throw.
+    /// </summary>
+    /// <param name="message">What to tell the user: one short sentence, with no paths or technical detail.</param>
+    public void NotifyUser(string message)
+    {
+        Write("WARN", message, null);
+        try { ErrorLogged?.Invoke(this, message); }
+        catch (Exception) { /* a faulty subscriber must not break the caller */ }
+    }
+
     public void LogWarning(string message, string? context = null)
         => Write("WARN", context ?? message, null);
 

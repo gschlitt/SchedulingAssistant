@@ -11,7 +11,20 @@ namespace TermPoint.Services;
 /// </param>
 /// <param name="Result">The verdict; meaningless unless <paramref name="Completed"/>.</param>
 /// <param name="Summary">SQLite's short account of why the copy did not pass; null when it passed.</param>
-public readonly record struct LocalCopyCheck(bool Completed, IntegrityCheckResult Result, string? Summary);
+/// <param name="Evidence">
+/// What lay behind a Damaged verdict (<see cref="DamageEvidence"/>); decides whether the damage is reported (spec item
+/// 5, step 5e). <see cref="DamageEvidence.None"/> for every other verdict.
+/// </param>
+/// <param name="Injected">
+/// True when the verdict was made up by the DEBUG fault plan (<see cref="IntegrityFaultPlan"/>). Fake damage is acted
+/// on like real damage, but is never reported to BugSnag.
+/// </param>
+public readonly record struct LocalCopyCheck(
+    bool Completed,
+    IntegrityCheckResult Result,
+    string? Summary,
+    DamageEvidence Evidence = DamageEvidence.None,
+    bool Injected = false);
 
 /// <summary>
 /// The open-time integrity check of the local copy — D' for a writer, D'' for a reader — and the re-check of the
@@ -53,7 +66,7 @@ public static class LocalCopyIntegrity
                 logger.LogInfo(
                     $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName}: the open-time check of the " +
                     $"local copy reports it as locked; {faults.Description}.");
-                return new LocalCopyCheck(true, IntegrityCheckResult.Unreadable, "DEBUG fault injection: locked");
+                return new LocalCopyCheck(true, IntegrityCheckResult.Unreadable, "DEBUG fault injection: locked", Injected: true);
             }
 
             if (faults.TryConsume(InjectedIntegrityFault.Damaged))
@@ -61,7 +74,8 @@ public static class LocalCopyIntegrity
                 logger.LogInfo(
                     $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName}: the open-time check of the " +
                     $"local copy reports it as damaged; {faults.Description}.");
-                return new LocalCopyCheck(true, IntegrityCheckResult.Damaged, "DEBUG fault injection: damaged");
+                return new LocalCopyCheck(true, IntegrityCheckResult.Damaged, "DEBUG fault injection: damaged",
+                    DamageEvidence.IntegrityProblems, Injected: true);
             }
 
             // The "shared database is damaged" story: the copy made from it fails its check too, until the
@@ -71,12 +85,13 @@ public static class LocalCopyIntegrity
                 logger.LogInfo(
                     $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName}: the open-time check of the " +
                     "local copy reports it as damaged (the shared database is meant to be damaged too).");
-                return new LocalCopyCheck(true, IntegrityCheckResult.Damaged, "DEBUG fault injection: shared database damaged");
+                return new LocalCopyCheck(true, IntegrityCheckResult.Damaged, "DEBUG fault injection: shared database damaged",
+                    DamageEvidence.IntegrityProblems, Injected: true);
             }
         }
 
         var (completed, check) = NetworkFileOps.CheckIntegrityWithSummaryAsync(path).GetAwaiter().GetResult();
-        return new LocalCopyCheck(completed, check.Result, check.Summary);
+        return new LocalCopyCheck(completed, check.Result, check.Summary, check.Evidence);
     }
 
     /// <summary>
@@ -90,8 +105,10 @@ public static class LocalCopyIntegrity
     /// <paramref name="retryDelay"/> and tries again, up to <paramref name="maxAttempts"/> attempts in all; if the
     /// last attempt is unreadable too, throws <c>DatabaseInUseException</c>. Each attempt is quiet: no dialog, no
     /// banner, no report.</description></item>
-    /// <item><description><b>Damaged</b> → throws <c>DatabaseCorruptException</c> at once, carrying SQLite's summary.
-    /// Damage is never retried: a damaged file does not heal by waiting.</description></item>
+    /// <item><description><b>Damaged</b> → reports positive evidence of damage to the developers
+    /// (<see cref="DatabaseDamageReporter"/>, kind <see cref="DamagedFileKind.LocalCopy"/>; never for an injected DEBUG
+    /// fault), then throws <c>DatabaseCorruptException</c> at once, carrying SQLite's summary. Damage is never retried:
+    /// a damaged file does not heal by waiting.</description></item>
     /// </list>
     /// </summary>
     /// <param name="path">Full path of the local copy (D' or D''), which must exist.</param>
@@ -131,6 +148,10 @@ public static class LocalCopyIntegrity
 
                 case IntegrityCheckResult.Damaged:
                     logger.LogInfo($"LocalCopyIntegrity: the local copy failed its integrity check ({run.Summary}).");
+                    // Spec item 5, step 5e: positive evidence of damage inside the copy goes to the developers (once per
+                    // run). A fault injected by the DEBUG plan never does. Never throws, and no path is sent.
+                    DatabaseDamageReporter.ReportIfDamaged(
+                        DamagedFileKind.LocalCopy, run.Evidence, run.Summary, logger, injected: run.Injected);
                     throw new DatabaseCorruptException(path, run.Summary);
             }
 
@@ -162,11 +183,12 @@ public static class LocalCopyIntegrity
         {
             logger.LogInfo(
                 $"[DEBUG fault injection] {IntegrityFaultPlan.EnvironmentVariableName}: the re-check of the shared " +
-                $"database reports it as damaged; {faults.Description}.");
+                $"database reports it as damaged; {faults.Description}. (It is not a real check, so nothing is reported.)");
             return DatabaseValidationResult.Corrupt;
         }
 
-        return await DatabaseValidator.ValidateAsync(sharedPath);
+        // The real check: the front-door validator reports positive evidence of damage as SharedDatabase (step 5e).
+        return await DatabaseValidator.ValidateAsync(sharedPath, logger: logger);
     }
 
     /// <summary>

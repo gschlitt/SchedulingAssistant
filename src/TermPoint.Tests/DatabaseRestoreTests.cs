@@ -227,6 +227,9 @@ public sealed class DatabaseRestoreTests : IDisposable
         /// <summary>Every <see cref="LogError"/> call.</summary>
         public List<(Exception? Ex, string? Context)> Errors { get; } = new();
 
+        /// <summary>Every <see cref="ReportHandled"/> call: the damage reports of spec item 5, step 5e.</summary>
+        public List<HandledReport> Handled { get; } = new();
+
         /// <inheritdoc/>
         public bool ThrowOnError { get; set; }
         /// <inheritdoc/>
@@ -239,6 +242,111 @@ public sealed class DatabaseRestoreTests : IDisposable
         public void LogInfo(string message, string? context = null) => Infos.Add(message);
         /// <inheritdoc/>
         public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
+        /// <inheritdoc/>
+        public void ReportHandled(
+            Exception ex, string context, IReadOnlyDictionary<string, string>? metadata = null,
+            string metadataTab = "details", string? groupingKey = null)
+            => Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey));
+    }
+
+    // ── Damage reporting (spec item 5, step 5e) ───────────────────────────────
+
+    /// <summary>
+    /// A backup with positive evidence of damage inside it (a trashed page) is refused as before AND reported once as a
+    /// damaged backup being restored — with SQLite's summary and none of the fixture's paths.
+    /// </summary>
+    [Fact]
+    public async Task ReplaceAsync_BackupHasACorruptedPage_IsReportedAsBackupBeingRestored()
+    {
+        var backup = BackupPath();
+        DbFileTestHelpers.CreateHealthyDatabase(backup);
+        DbFileTestHelpers.TrashPage(backup, 2);
+
+        await AssertBackupRefusedAsync(backup, RestoreOutcome.BackupDamaged);
+
+        var report = Assert.Single(_log.Handled);
+        Assert.Equal("BackupBeingRestored", report.Metadata!["kind"]);
+        Assert.Equal("Database damage: BackupBeingRestored", report.Context);
+        Assert.False(string.IsNullOrWhiteSpace(report.Metadata["summary"]));
+        foreach (var text in report.Metadata.Values.Append(report.Exception.Message).Append(report.Context))
+        {
+            Assert.DoesNotContain(_backupDir, text);
+            Assert.DoesNotContain(_localDir, text);
+            Assert.DoesNotContain(Path.GetFileName(backup), text);
+        }
+    }
+
+    /// <summary>
+    /// A backup that is not a SQLite database at all (random bytes, a text file, an empty file — the usual wrong-file
+    /// picks) is still refused as damaged but is NOT reported.
+    /// </summary>
+    [Theory]
+    [InlineData("random")]
+    [InlineData("text")]
+    [InlineData("empty")]
+    public async Task ReplaceAsync_BackupIsNotADatabase_IsRefusedButNotReported(string kind)
+    {
+        switch (kind)
+        {
+            case "random": File.WriteAllBytes(BackupPath(), Enumerable.Range(0, 8192).Select(i => (byte)(i * 31 + 7)).ToArray()); break;
+            case "text":   File.WriteAllText(BackupPath(), "this is a notes file somebody picked by mistake"); break;
+            case "empty":  File.WriteAllBytes(BackupPath(), Array.Empty<byte>()); break;
+        }
+
+        await AssertBackupRefusedAsync(BackupPath(), RestoreOutcome.BackupDamaged);
+
+        Assert.Empty(_log.Handled);
+    }
+
+    /// <summary>
+    /// The routine's own DEBUG <c>damaged</c> fault is refused as damaged but never reported — fake damage must not
+    /// reach BugSnag — and the log says so.
+    /// </summary>
+    [Fact]
+    public async Task ReplaceAsync_InjectedDamagedFault_IsNotReported_AndTheLogSaysSo()
+    {
+        var target = TargetPath();
+        var (_, oldHash) = CreateTarget(target);
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+
+        var result = await ReplaceAsync(backup, target, oldHash, plan: RestoreFaultPlan.Parse("damaged"));
+
+        Assert.Equal(RestoreOutcome.BackupDamaged, result.Outcome);
+        Assert.Empty(_log.Handled);
+        Assert.Contains(_log.Infos, m => m.Contains("injected by a DEBUG fault plan") && m.Contains("no report is sent"));
+    }
+
+    /// <summary>A healthy backup, and a healthy one that is not a TermPoint database, are not reported either.</summary>
+    [Fact]
+    public async Task ReplaceAsync_HealthyBackups_AreNotReported()
+    {
+        var target = TargetPath();
+        var (_, oldHash) = CreateTarget(target);
+        var good = BackupPath();
+        CreateMarkerDb(good, "from-backup");
+        var foreign = BackupPath("foreign.db");
+        CreateMarkerDb(foreign, "other program", termPointTables: false);
+
+        await ReplaceAsync(foreign, target, oldHash);          // refused: not a TermPoint database
+        var restored = await ReplaceAsync(good, target, oldHash);
+
+        Assert.Equal(RestoreOutcome.Restored, restored.Outcome);
+        Assert.Empty(_log.Handled);
+    }
+
+    /// <summary>Creating a database from a damaged backup (the chooser's new-destination path) reports it the same way.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_BackupWithACorruptedPage_IsReportedAsBackupBeingRestored()
+    {
+        var backup = BackupPath();
+        DbFileTestHelpers.CreateHealthyDatabase(backup);
+        DbFileTestHelpers.TrashPage(backup, pageNumber: 2);
+
+        var result = await CreateAsync(backup, TargetPath());
+
+        Assert.Equal(RestoreOutcome.BackupDamaged, result.Outcome);
+        Assert.Equal("BackupBeingRestored", Assert.Single(_log.Handled).Metadata!["kind"]);
     }
 
     // ── Success ───────────────────────────────────────────────────────────────

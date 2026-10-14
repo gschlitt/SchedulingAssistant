@@ -16,7 +16,7 @@ public class DatabaseCorruptException : Exception
     /// <summary>
     /// A short SQLite summary of the damage — the first lines of the <c>integrity_check</c> output, or SQLite's
     /// code and message — or null when none is available. Names pages and tables, never data and never a path.
-    /// For the log and, later, the damage report (spec item 5, step 5e).
+    /// For the log; the damage report (spec item 5, step 5e) is made earlier, where the damage is detected.
     /// </summary>
     public string? Summary { get; }
 

@@ -455,31 +455,18 @@ public static class NetworkFileOps
         => RunAsync(() => BackupService.CheckIntegrity(path), "CheckIntegrity");
 
     /// <summary>
-    /// Timeout-aware <see cref="BackupService.CheckIntegrityDetailed"/>: like
-    /// <see cref="CheckIntegrityAsync"/>, but distinguishes a damaged file from one that could
-    /// not be read right now (locked by another program, access denied). A timeout is still
-    /// reported as not completed — callers map that to "unreachable", never to damaged.
-    /// </summary>
-    /// <param name="path">Full path of the SQLite file to check (may be on a network share).</param>
-    /// <returns>
-    /// <c>(true, result)</c> when the operation completed within the deadline.
-    /// <c>(false, default)</c> on timeout; the result is meaningless then.
-    /// </returns>
-    public static Task<(bool Completed, IntegrityCheckResult Result)> CheckIntegrityDetailedAsync(string path)
-        => RunAsync(() => BackupService.CheckIntegrityDetailed(path), "CheckIntegrity");
-
-    /// <summary>
-    /// Timeout-aware <see cref="BackupService.CheckIntegrityWithSummary"/>: like
-    /// <see cref="CheckIntegrityDetailedAsync"/>, but also returns SQLite's short summary of why the file did
-    /// not pass (spec item 5, step 5d). A timeout is still reported as not completed — callers map that to
-    /// "unreachable", never to damaged.
+    /// Timeout-aware <see cref="BackupService.CheckIntegrityWithSummary"/>: like <see cref="CheckIntegrityAsync"/>,
+    /// but distinguishes a damaged file from one that could not be read right now (locked by another program,
+    /// access denied), and also returns SQLite's short summary of why the file did not pass (spec item 5, step 5d)
+    /// and the kind of evidence behind a damaged verdict (step 5e). A timeout is reported as not completed —
+    /// callers map that to "unreachable", never to damaged.
     /// </summary>
     /// <param name="path">Full path of the SQLite file to check.</param>
     /// <returns>
-    /// <c>(true, (result, summary))</c> when the operation completed within the deadline; the summary is null
+    /// <c>(true, outcome)</c> when the operation completed within the deadline; the outcome's summary is null
     /// for an Ok result. <c>(false, default)</c> on timeout; the check is meaningless then.
     /// </returns>
-    public static Task<(bool Completed, (IntegrityCheckResult Result, string? Summary) Check)> CheckIntegrityWithSummaryAsync(string path)
+    public static Task<(bool Completed, IntegrityCheckOutcome Check)> CheckIntegrityWithSummaryAsync(string path)
         => RunAsync(() => BackupService.CheckIntegrityWithSummary(path), "CheckIntegrity");
 
     // ── Generic fallbacks ─────────────────────────────────────────────────────

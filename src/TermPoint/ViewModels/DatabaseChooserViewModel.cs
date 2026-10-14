@@ -618,7 +618,8 @@ public partial class DatabaseChooserViewModel : ObservableObject
         var path = await PickBackupFileAsync();
         if (path is null) return;
 
-        var backupValidation = await DatabaseValidator.ValidateAsync(path);
+        // A damaged BACKUP is reported as such (spec item 5, step 5e), not as a damaged shared database.
+        var backupValidation = await DatabaseValidator.ValidateAsync(path, DamagedFileKind.BackupBeingRestored);
         if (backupValidation == DatabaseValidationResult.Unreachable)
         {
             RestoreError = NetworkFileOps.UnreachableMessage;

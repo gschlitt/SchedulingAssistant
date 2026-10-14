@@ -427,11 +427,18 @@ public static class DatabaseRestore
         /// <returns>Null to carry on; BackupDamaged on positive evidence of damage; BackupUnreadable if the check could not run; NotTermPointDatabase for a valid SQLite file without TermPoint's core tables.</returns>
         private async Task<RestoreResult?> CheckAndNormaliseStagedAsync()
         {
-            var verdict = Inject(InjectedRestoreFault.Damaged, "the staged backup is reported as damaged")
-                ? IntegrityCheckResult.Damaged
+            var injected = Inject(InjectedRestoreFault.Damaged, "the staged backup is reported as damaged");
+            var check = injected
+                ? new IntegrityCheckOutcome(IntegrityCheckResult.Damaged, "DEBUG fault injection: damaged", DamageEvidence.IntegrityProblems)
                 : await Task.Run(CheckStagedBackup).ConfigureAwait(false);
 
-            switch (verdict)
+            // Spec item 5, step 5e: positive evidence of damage inside the backup goes to the developers (once per run).
+            // A backup that is not a SQLite database at all (the usual wrong-file pick), one that could not be read, and a
+            // fault injected by the DEBUG plan are never reported. Never throws, and no path is sent.
+            DatabaseDamageReporter.ReportIfDamaged(
+                DamagedFileKind.BackupBeingRestored, check.Evidence, check.Summary, _log, injected);
+
+            switch (check.Result)
             {
                 case IntegrityCheckResult.Damaged:
                     _log.LogInfo("DatabaseRestore: the backup failed its integrity check — refusing to restore it");
@@ -766,13 +773,18 @@ public static class DatabaseRestore
         /// backup may carry a WAL-mode header (the open then needs to create temporary sidecars); the file is a
         /// private temporary copy, so that is harmless.
         /// </summary>
-        /// <returns>Ok, Damaged (positive evidence only) or Unreadable.</returns>
-        private IntegrityCheckResult CheckStagedBackup()
+        /// <returns>
+        /// The verdict — Ok, Damaged (positive evidence only) or Unreadable — with SQLite's summary and the evidence
+        /// behind a Damaged one. A file without the SQLite header is Damaged with
+        /// <see cref="DamageEvidence.NotADatabase"/>: refused, but not worth a damage report.
+        /// </returns>
+        private IntegrityCheckOutcome CheckStagedBackup()
         {
             if (!DatabaseValidator.HasSqliteSignature(_stagedPath))
-                return IntegrityCheckResult.Damaged;
+                return new IntegrityCheckOutcome(
+                    IntegrityCheckResult.Damaged, "the file does not start with the SQLite header", DamageEvidence.NotADatabase);
 
-            return BackupService.CheckIntegrityDetailed(_stagedPath, SqliteOpenMode.ReadWrite);
+            return BackupService.CheckIntegrityWithSummary(_stagedPath, SqliteOpenMode.ReadWrite);
         }
 
         /// <summary>

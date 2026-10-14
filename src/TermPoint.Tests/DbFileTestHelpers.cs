@@ -45,6 +45,32 @@ internal static class DbFileTestHelpers
     }
 
     /// <summary>
+    /// Creates a SQLite database that opens normally but for which <c>PRAGMA integrity_check</c> ANSWERS with problems
+    /// (rather than SQLite refusing the file as malformed): an index whose stored definition is rewritten, through
+    /// <c>writable_schema</c>, to cover a different column than the entries in it were built from, so every row is
+    /// "missing from the index". This is the "integrity_check problems" kind of damage, as opposed to the
+    /// SQLITE_CORRUPT kind that <see cref="TrashPage"/> usually produces (spec item 5, step 5e).
+    /// </summary>
+    /// <param name="path">Where to create the file.</param>
+    public static void CreateDatabaseWithIntegrityProblems(string path)
+    {
+        var cs = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString();
+        using (var conn = new SqliteConnection(cs))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                "CREATE TABLE Sections (id INTEGER PRIMARY KEY, code TEXT, title TEXT);" +
+                "INSERT INTO Sections VALUES (1, 'A', 'x'), (2, 'B', 'y'), (3, 'C', 'z');" +
+                "CREATE INDEX idx_sections_code ON Sections (code);" +
+                "PRAGMA writable_schema = ON;" +
+                "UPDATE sqlite_master SET sql = 'CREATE INDEX idx_sections_code ON Sections (title)' WHERE name = 'idx_sections_code';";
+            cmd.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+    }
+
+    /// <summary>
     /// Overwrites one whole page of a SQLite file with 0xFF bytes, leaving the file header
     /// (page 1) intact: the file still looks like a database but its b-tree is structurally broken.
     /// Page 2 is the root of the first table created, so it is always reachable by

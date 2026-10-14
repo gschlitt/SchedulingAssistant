@@ -35,6 +35,40 @@ public enum IntegrityCheckResult
 }
 
 /// <summary>
+/// WHAT kind of evidence lay behind a <see cref="IntegrityCheckResult.Damaged"/> verdict (spec item 5, step 5e).
+/// <see cref="IntegrityCheckResult.Damaged"/> deliberately lumps together "SQLite found problems INSIDE a database"
+/// and "this does not look like a SQLite database at all"; the damage report must tell them apart, because only the
+/// first is worth a developer's attention — the second is far more often a wrong file the user picked than damage.
+/// </summary>
+public enum DamageEvidence
+{
+    /// <summary>No evidence of damage: the file passed, could not be examined, or the verdict carries no evidence.</summary>
+    None,
+
+    /// <summary><c>PRAGMA integrity_check</c> ran and reported problems inside the database. Reportable.</summary>
+    IntegrityProblems,
+
+    /// <summary>SQLite refused the file as corrupt (SQLITE_CORRUPT, 11: "database disk image is malformed"). Reportable.</summary>
+    Corrupt,
+
+    /// <summary>
+    /// The file is not recognisable as a SQLite database: SQLITE_NOTADB (26), SQLITE_FORMAT (24), or a missing or
+    /// short SQLite header. Still a Damaged verdict (the file is unusable), but NOT reportable — it is usually a
+    /// wrong file, not damage.
+    /// </summary>
+    NotADatabase
+}
+
+/// <summary>
+/// The full account of one integrity check (<see cref="BackupService.CheckIntegrityWithSummary"/>): the verdict, SQLite's
+/// short summary of why the file did not pass, and the kind of evidence behind a Damaged verdict.
+/// </summary>
+/// <param name="Result">The verdict; exactly what <see cref="BackupService.CheckIntegrityDetailed"/> returns.</param>
+/// <param name="Summary">SQLite's short, path-free account of why the file did not pass; null when it passed.</param>
+/// <param name="Evidence">The evidence behind a Damaged verdict; <see cref="DamageEvidence.None"/> for every other verdict.</param>
+public readonly record struct IntegrityCheckOutcome(IntegrityCheckResult Result, string? Summary, DamageEvidence Evidence);
+
+/// <summary>
 /// Manages automated SQLite backups and companion section CSV exports.
 ///
 /// <para><b>Backup file naming:</b> <c>{dbName}_{yyyy-MM-dd_HH-mm-ss}.db</c> and
@@ -241,9 +275,10 @@ public class BackupService : IDisposable
             await Task.Run(() => VacuumIntoFreshConnection(localTmp));
 
             // Step 2 — integrity check on the local snapshot (non-fatal if it fails)
-            integrityOk = await Task.Run(() => CheckIntegrityOnFile(localTmp));
+            var snapshotCheck = await Task.Run(() => CheckIntegrityWithSummary(localTmp));
+            integrityOk = snapshotCheck.Result == IntegrityCheckResult.Ok;
             if (!integrityOk)
-                _logger.LogError(null, $"Integrity check failed on backup snapshot: {localTmp}");
+                ReportSnapshotFailedIntegrity(snapshotCheck);
 
             var copyCompleted = await NetworkFileOps.CopyAsync(localTmp, dbDest);
             if (!copyCompleted)
@@ -303,6 +338,42 @@ public class BackupService : IDisposable
         LastBackupResult = result;
         FireBackupCompleted();
         return result;
+    }
+
+    /// <summary>What the user is told when the backup snapshot fails its integrity check (no path, no technical detail).</summary>
+    public const string SnapshotFailedIntegrityNotice =
+        "The latest backup failed its integrity check, so it may not be usable for a restore.";
+
+    /// <summary>
+    /// Handles a backup snapshot that did not pass its integrity check (spec item 5, step 5e), replacing the old
+    /// <c>LogError(null, "…failed: {path}")</c>, which sent BugSnag a report with no exception and a local path.
+    /// <list type="bullet">
+    /// <item><description>Local log: one line with the verdict and SQLite's summary, and no path.</description></item>
+    /// <item><description>BugSnag: via <see cref="DatabaseDamageReporter"/> (kind
+    /// <see cref="DamagedFileKind.BackupSnapshot"/>), only on positive evidence of damage inside the database, and at
+    /// most once per run — a snapshot that merely could not be read is never reported.</description></item>
+    /// <item><description>The user: <see cref="SnapshotFailedIntegrityNotice"/> in the notification banner, as before
+    /// (<see cref="IAppLogger.NotifyUser"/>: a banner without a report).</description></item>
+    /// </list>
+    /// The backup itself carries on, as before (the snapshot is still copied; <see cref="BackupResult.IntegrityPassed"/>
+    /// records the failure). Never throws.
+    /// </summary>
+    /// <param name="check">The failed check of the snapshot.</param>
+    internal void ReportSnapshotFailedIntegrity(IntegrityCheckOutcome check)
+    {
+        try
+        {
+            _logger.LogWarning(
+                $"BackupService: the backup snapshot did not pass its integrity check ({check.Result}: {check.Summary}).");
+            DatabaseDamageReporter.ReportIfDamaged(DamagedFileKind.BackupSnapshot, check.Evidence, check.Summary, _logger);
+            _logger.NotifyUser(SnapshotFailedIntegrityNotice);
+        }
+        catch (Exception ex)
+        {
+            // A reporting problem must not turn a successful backup into a failed one.
+            try { _logger.LogInfo($"BackupService: could not report the failed snapshot check ({ex.GetType().Name})."); }
+            catch { /* the logger itself is failing */ }
+        }
     }
 
     /// <summary>
@@ -476,11 +547,17 @@ public class BackupService : IDisposable
     /// never row data. When the verdict came from an exception it is <c>SQLite error {code}: {message}</c> for a
     /// <see cref="SqliteException"/>, or just the exception's type name for anything else (an I/O exception's
     /// own message names the file path, which must never travel). Either way it carries no path and no data.</para>
+    ///
+    /// <para><b>The evidence</b> (<see cref="DamageEvidence"/>) says what lay behind a Damaged verdict, so the damage
+    /// report (step 5e) need not parse the summary text: <c>integrity_check</c> problems →
+    /// <see cref="DamageEvidence.IntegrityProblems"/>; SQLITE_CORRUPT → <see cref="DamageEvidence.Corrupt"/>;
+    /// SQLITE_NOTADB / SQLITE_FORMAT → <see cref="DamageEvidence.NotADatabase"/>. Every other verdict carries
+    /// <see cref="DamageEvidence.None"/>.</para>
     /// </summary>
     /// <param name="dbPath">Full path to the SQLite file to check.</param>
     /// <param name="mode">Connection open mode — see <see cref="CheckIntegrity"/>.</param>
-    /// <returns>The verdict and the summary (null when the verdict is Ok).</returns>
-    public static (IntegrityCheckResult Result, string? Summary) CheckIntegrityWithSummary(
+    /// <returns>The verdict, the summary (null when the verdict is Ok) and the evidence behind a Damaged verdict.</returns>
+    public static IntegrityCheckOutcome CheckIntegrityWithSummary(
         string dbPath, SqliteOpenMode mode = SqliteOpenMode.ReadOnly)
     {
         try
@@ -505,10 +582,13 @@ public class BackupService : IDisposable
                 lines.Add(reader.IsDBNull(0) ? string.Empty : reader.GetString(0));
 
             if (lines.Count > 0 && string.Equals(lines[0], "ok", StringComparison.OrdinalIgnoreCase))
-                return (IntegrityCheckResult.Ok, null);
+                return new IntegrityCheckOutcome(IntegrityCheckResult.Ok, null, DamageEvidence.None);
 
-            return (IntegrityCheckResult.Damaged,
-                lines.Count > 0 ? string.Join("\n", lines) : "integrity_check returned no result");
+            // Problems named by integrity_check are positive evidence of damage inside the database. An answer
+            // with no rows at all (not something SQLite does) is still Damaged, but names nothing to report.
+            return lines.Count > 0
+                ? new IntegrityCheckOutcome(IntegrityCheckResult.Damaged, string.Join("\n", lines), DamageEvidence.IntegrityProblems)
+                : new IntegrityCheckOutcome(IntegrityCheckResult.Damaged, "integrity_check returned no result", DamageEvidence.None);
         }
         catch (Exception ex)
         {
@@ -518,7 +598,7 @@ public class BackupService : IDisposable
             // user-facing banner, and a locked file is an ordinary condition.
             App.Logger.LogInfo(
                 $"BackupService: integrity check of '{dbPath}' classified as {verdict} ({ex.GetType().Name}: {ex.Message})");
-            return (verdict, SummarizeIntegrityException(ex));
+            return new IntegrityCheckOutcome(verdict, SummarizeIntegrityException(ex), ClassifyDamageEvidence(ex));
         }
         finally
         {
@@ -579,6 +659,34 @@ public class BackupService : IDisposable
     }
 
     /// <summary>
+    /// Says what kind of evidence of damage an exception thrown while opening or checking a database file is, for the
+    /// damage report (spec item 5, step 5e). Agrees with <see cref="ClassifyIntegrityException"/>: exactly the
+    /// exceptions that classify as Damaged carry evidence, and nothing else does.
+    /// <list type="bullet">
+    /// <item><description>SQLITE_CORRUPT (11) → <see cref="DamageEvidence.Corrupt"/>: SQLite recognised the file as one of
+    /// its databases and found it malformed.</description></item>
+    /// <item><description>SQLITE_NOTADB (26), SQLITE_FORMAT (24) → <see cref="DamageEvidence.NotADatabase"/>: far more often a
+    /// wrong file than damage, so it is not reported.</description></item>
+    /// <item><description>Anything else → <see cref="DamageEvidence.None"/>.</description></item>
+    /// </list>
+    /// Like <see cref="ClassifyIntegrityException"/> it looks at the primary code (the low byte).
+    /// </summary>
+    /// <param name="ex">The exception caught around the open / <c>PRAGMA integrity_check</c>.</param>
+    /// <returns>The evidence; <see cref="DamageEvidence.None"/> for anything that is not clear evidence of damage.</returns>
+    internal static DamageEvidence ClassifyDamageEvidence(Exception ex)
+    {
+        if (ex is not SqliteException sqlite)
+            return DamageEvidence.None;
+
+        return (sqlite.SqliteErrorCode & 0xFF) switch
+        {
+            SqliteCorrupt              => DamageEvidence.Corrupt,
+            SqliteNotADb or SqliteFormat => DamageEvidence.NotADatabase,
+            _                          => DamageEvidence.None
+        };
+    }
+
+    /// <summary>
     /// The summary for a verdict that came from an exception (see <see cref="CheckIntegrityWithSummary"/>): SQLite's
     /// primary error code and its own message for a <see cref="SqliteException"/>
     /// (<c>SQLite error 26: 'file is not a database'.</c>); only the exception's type name for anything else,
@@ -601,12 +709,6 @@ public class BackupService : IDisposable
     }
 
     // ── Internal helpers ─────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Runs <c>PRAGMA integrity_check</c> on an already-existing backup file using a
-    /// fresh read-only connection. Delegates to <see cref="CheckIntegrity"/>.
-    /// </summary>
-    private static bool CheckIntegrityOnFile(string path) => CheckIntegrity(path);
 
     /// <summary>
     /// Writes a human-readable CSV of all sections in the currently selected academic year.
