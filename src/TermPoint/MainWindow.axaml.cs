@@ -1874,7 +1874,18 @@ public partial class MainWindow : Window
     public Task ShowItDetailAsync(string title, string message)
         => ShowMessageAsync(title, message);
 
-    private async Task ShowMessageAsync(string title, string message)
+    private Task ShowMessageAsync(string title, string message)
+        => ShowMessageDialogAsync(this, title, message);
+
+    /// <summary>
+    /// Shows a modal one-button message dialog built in code and Topmost (see <see cref="ShowFatalAsync"/>). Static
+    /// and given its owner so any window can use it: this window through <see cref="ShowMessageAsync"/>, and the
+    /// database chooser, which runs before this window is shown.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    internal static async Task ShowMessageDialogAsync(Window owner, string title, string message)
     {
         var msg = new Window
         {
@@ -1903,7 +1914,7 @@ public partial class MainWindow : Window
         msg.Content = panel;
 
         ok.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
-        await msg.ShowDialog(this);
+        await msg.ShowDialog(owner);
     }
 
     // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
@@ -2479,7 +2490,23 @@ public partial class MainWindow : Window
     /// <param name="message">Body text; wraps automatically.</param>
     /// <param name="affirmative">Label of the confirming button (returned as true).</param>
     /// <param name="negative">Label of the declining button (returned as false).</param>
-    private async Task<bool> ShowChoiceAsync(string title, string message, string affirmative, string negative)
+    private Task<bool> ShowChoiceAsync(string title, string message, string affirmative, string negative)
+        => ShowChoiceDialogAsync(this, title, message, affirmative, negative);
+
+    /// <summary>
+    /// Shows a modal two-button dialog built in code and Topmost (see <see cref="ShowFatalAsync"/>). Static and
+    /// given its owner so any window can use it: this window through <see cref="ShowChoiceAsync"/>, and the
+    /// database chooser, which runs before this window is shown. Closing the dialog without a button counts as
+    /// the declining button.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="affirmative">Label of the confirming button (returned as true).</param>
+    /// <param name="negative">Label of the declining button (returned as false).</param>
+    /// <returns>True when the affirmative button was clicked.</returns>
+    internal static async Task<bool> ShowChoiceDialogAsync(
+        Window owner, string title, string message, string affirmative, string negative)
     {
         var result = false;
         var dlg = new Window
@@ -2506,7 +2533,7 @@ public partial class MainWindow : Window
 
         yes.Click += (_, _) => { result = true;  Dispatcher.UIThread.Post(() => dlg.Close()); };
         no.Click  += (_, _) => { result = false; Dispatcher.UIThread.Post(() => dlg.Close()); };
-        await dlg.ShowDialog(this);
+        await dlg.ShowDialog(owner);
         return result;
     }
 

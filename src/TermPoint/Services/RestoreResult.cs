@@ -2,12 +2,17 @@
 // desktop-only (it is excluded from the browser build in TermPoint.csproj). They are pure data, so keeping them
 // here lets RestorePrompt (the restore wording) compile and be unit-tested on both targets.
 
+using TermPoint.Models;
+
 namespace TermPoint.Services;
 
 /// <summary>
-/// Outcome of <see cref="DatabaseRestore.ReplaceAsync"/> (and of <see cref="CheckoutService.RestoreFromBackupAsync"/>,
-/// which wraps it). For EVERY value except <see cref="Restored"/> and <see cref="RenameUnconfirmed"/> the shared
-/// database D is exactly as it was before the call, and nothing the call created is left behind (no D.tmp, no
+/// Outcome of <see cref="DatabaseRestore.ReplaceAsync"/>, <see cref="DatabaseRestore.CreateFromBackupAsync"/> and of
+/// the checkout service's wrappers around them (<see cref="CheckoutService.RestoreFromBackupAsync"/>, which restores
+/// into the session's own database, and <see cref="CheckoutService.RestoreIntoAsync"/>, which restores into a
+/// database nobody has open). For EVERY value except <see cref="Restored"/>, <see cref="RenameUnconfirmed"/> and
+/// <see cref="Created"/> the destination is exactly as it was before the call (an existing database is
+/// byte-identical, a missing one is still missing), and nothing the call created is left behind (no D.tmp, no
 /// "before restore" file) — see <see cref="RestoreResult.TargetUnchanged"/>.
 /// </summary>
 public enum RestoreOutcome
@@ -77,8 +82,51 @@ public enum RestoreOutcome
     /// <summary>The location did not answer, or a transfer stalled past the network deadline. D unchanged.</summary>
     Unreachable,
 
-    /// <summary>Any other failure; see <see cref="RestoreResult.Error"/>. D unchanged.</summary>
-    Failed
+    /// <summary>
+    /// Any other failure; see <see cref="RestoreResult.Error"/>. D unchanged. When the cause is something the user
+    /// can act on and TermPoint can word precisely (the editing lock file could not be created), the sentence is in
+    /// <see cref="RestoreResult.Detail"/>.
+    /// </summary>
+    Failed,
+
+    /// <summary>
+    /// Produced by <see cref="DatabaseRestore.CreateFromBackupAsync"/> (and so by
+    /// <see cref="CheckoutService.RestoreIntoAsync"/> when the destination did not exist): the destination did not
+    /// exist and a new database now exists there, complete and in rollback-journal mode, holding the backup's
+    /// content. This is the only outcome besides <see cref="Restored"/> that is a success; it is NOT "unchanged"
+    /// (<see cref="RestoreResult.TargetUnchanged"/> is false) because a file now exists that did not before.
+    /// </summary>
+    Created,
+
+    /// <summary>
+    /// Produced on the create path: a file exists at the destination — it was there when the call started, or it
+    /// appeared while the backup was being prepared. That file was NOT touched and nothing was created. Also the
+    /// answer of <see cref="CheckoutService.RestoreIntoAsync"/> when the caller did not allow replacing and the
+    /// destination turned out to exist. Destination unchanged.
+    /// </summary>
+    AlreadyExists,
+
+    /// <summary>
+    /// Produced only by <see cref="CheckoutService.RestoreIntoAsync"/>: somebody else holds the editing lock on the
+    /// database (a live editor, or an abandoned lock that TermPoint's normal open would offer to take over), so
+    /// the restore was refused without touching anything. The holder is in <see cref="RestoreResult.Holder"/>. The
+    /// lock is never taken over or touched by a restore. Database unchanged.
+    /// </summary>
+    LockHeld
+}
+
+/// <summary>
+/// Which screen a restore message is for, so one <see cref="RestoreResult"/> can be worded for the place the user is
+/// looking at: the Save &amp; Backup panel (the app restarts afterwards) or the database chooser (the database opens
+/// afterwards). See <see cref="RestorePrompt.Describe(RestoreResult, RestoreContext)"/>.
+/// </summary>
+public enum RestoreContext
+{
+    /// <summary>The Save &amp; Backup panel: a restore into the database this session has open.</summary>
+    SaveAndBackup,
+
+    /// <summary>The database chooser: a restore into a database nobody has open.</summary>
+    Chooser
 }
 
 /// <summary>
@@ -98,36 +146,60 @@ public enum RestoreLockCheck
 }
 
 /// <summary>
-/// Result of <see cref="DatabaseRestore.ReplaceAsync"/>.
+/// Result of <see cref="DatabaseRestore.ReplaceAsync"/>, <see cref="DatabaseRestore.CreateFromBackupAsync"/> and the
+/// checkout service's restore wrappers.
 /// </summary>
 /// <param name="Outcome">What happened.</param>
 /// <param name="PreRestoreCopyPath">
 /// Full path of the kept copy of the replaced D, beside D. Set only for <see cref="RestoreOutcome.Restored"/> and
 /// <see cref="RestoreOutcome.RenameUnconfirmed"/>; for every other outcome the copy (if one was started) has been
-/// removed and this is null.
+/// removed and this is null (a created database replaced nothing, so it has no such copy either).
 /// </param>
 /// <param name="RestoredHash">
 /// SHA-256 (upper-case hex) of the file that was installed as D — the hash D has once the restore is complete.
-/// Set under the same conditions as <paramref name="PreRestoreCopyPath"/>; otherwise null.
+/// Set for <see cref="RestoreOutcome.Restored"/>, <see cref="RestoreOutcome.RenameUnconfirmed"/> and
+/// <see cref="RestoreOutcome.Created"/>; otherwise null.
 /// </param>
 /// <param name="Error">
 /// The exception behind a <see cref="RestoreOutcome.Failed"/>, <see cref="RestoreOutcome.FileInUse"/>,
 /// <see cref="RestoreOutcome.BackupUnreadable"/> or an exception-driven <see cref="RestoreOutcome.RenameUnconfirmed"/>
 /// outcome (null otherwise). Callers feed it to their existing error-message mapping.
 /// </param>
+/// <param name="Holder">
+/// For <see cref="RestoreOutcome.LockHeld"/> only: who holds the editing lock (as read from the lock file; fields
+/// may be blank or the unreadable-lock placeholder). Null for every other outcome.
+/// </param>
+/// <param name="CreatePath">
+/// True when the destination did not exist and the create path ran (<see cref="DatabaseRestore.CreateFromBackupAsync"/>),
+/// whatever the outcome — so a message can say "Nothing was created." instead of "Your database is unchanged."
+/// False for the replace path and for refusals that happen before either path is chosen.
+/// </param>
+/// <param name="Detail">
+/// An optional, user-presentable sentence that explains a <see cref="RestoreOutcome.Failed"/> precisely — today
+/// only why the editing lock file could not be created (Controlled Folder Access, a permission denial, a full disk).
+/// Null otherwise; <see cref="RestorePrompt"/> shows it in place of the generic failure sentence.
+/// </param>
 public sealed record RestoreResult(
     RestoreOutcome Outcome,
     string? PreRestoreCopyPath = null,
     string? RestoredHash = null,
-    Exception? Error = null)
+    Exception? Error = null,
+    LockFileData? Holder = null,
+    bool CreatePath = false,
+    string? Detail = null)
 {
-    /// <summary>True only when D was replaced and the replacement is confirmed.</summary>
-    public bool Succeeded => Outcome == RestoreOutcome.Restored;
+    /// <summary>
+    /// True when the restore finished and the destination holds the backup: <see cref="RestoreOutcome.Restored"/>
+    /// (an existing database was replaced and the replacement is confirmed) or <see cref="RestoreOutcome.Created"/>
+    /// (a new database was created).
+    /// </summary>
+    public bool Succeeded => Outcome is RestoreOutcome.Restored or RestoreOutcome.Created;
 
     /// <summary>
-    /// True for every outcome except <see cref="RestoreOutcome.Restored"/> and
-    /// <see cref="RestoreOutcome.RenameUnconfirmed"/>: D is exactly as it was, and the calling session may
-    /// carry on as if nothing had been attempted.
+    /// True for every outcome except <see cref="RestoreOutcome.Restored"/>, <see cref="RestoreOutcome.RenameUnconfirmed"/>
+    /// and <see cref="RestoreOutcome.Created"/>: the destination is exactly as it was (an existing database
+    /// byte-identical, a missing one still missing), and the caller may carry on as if nothing had been attempted.
     /// </summary>
-    public bool TargetUnchanged => Outcome is not (RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed);
+    public bool TargetUnchanged =>
+        Outcome is not (RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed or RestoreOutcome.Created);
 }

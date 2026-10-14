@@ -1,3 +1,4 @@
+using TermPoint.Models;
 using TermPoint.Services;
 using Xunit;
 
@@ -114,15 +115,19 @@ public sealed class RestorePromptTests
         Assert.Contains("Your database is unchanged.", message);
     }
 
-    /// <summary>The set of outcomes that leave D alone is everything except the two that may have replaced it (guards the theory above).</summary>
+    /// <summary>
+    /// The set of outcomes that leave the destination alone is everything except the three that change it — the two
+    /// that may have replaced D and the one that created a new database (guards the theory above).
+    /// </summary>
     [Fact]
-    public void TargetUnchangedOutcomes_AreAllButRestoredAndRenameUnconfirmed()
+    public void TargetUnchangedOutcomes_AreAllButRestoredRenameUnconfirmedAndCreated()
     {
         var unchanged = TargetUnchangedOutcomes().Select(o => (RestoreOutcome)o[0]).ToHashSet();
 
         Assert.DoesNotContain(RestoreOutcome.Restored, unchanged);
         Assert.DoesNotContain(RestoreOutcome.RenameUnconfirmed, unchanged);
-        Assert.Equal(Enum.GetValues<RestoreOutcome>().Length - 2, unchanged.Count);
+        Assert.DoesNotContain(RestoreOutcome.Created, unchanged);
+        Assert.Equal(Enum.GetValues<RestoreOutcome>().Length - 3, unchanged.Count);
     }
 
     /// <summary>An outcome value that does not exist still yields a true, safe sentence (nothing changed).</summary>
@@ -229,5 +234,259 @@ public sealed class RestorePromptTests
         Assert.False(string.IsNullOrWhiteSpace(title));
         Assert.Contains("the \"(before restore …)\" file", message);
         Assert.DoesNotContain("\"\"", message);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // The database chooser (spec item 5, step 5c)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>A holder as read from a lock file.</summary>
+    private static LockFileData Holder(string user = "jsmith", string machine = "LAPTOP-42")
+        => new() { Username = user, Machine = machine };
+
+    /// <summary>The chooser's fixed texts are the agreed wording.</summary>
+    [Fact]
+    public void ChooserConstants_AreTheAgreedWording()
+    {
+        Assert.Equal("Restore from Backup", RestorePrompt.ChooserConfirmTitle);
+        Assert.Equal("Your backup file will not be modified.", RestorePrompt.BackupNotModifiedNote);
+        Assert.Equal("Checking this location…", RestorePrompt.DestinationCheckingText);
+        Assert.Equal("A new database will be created here from the backup.", RestorePrompt.DestinationMissingText);
+        Assert.Equal("This location isn't responding right now.", RestorePrompt.DestinationUnreachableText);
+        Assert.Equal("That's the backup file itself — choose a different folder.", RestorePrompt.DestinationIsBackupFileText);
+        Assert.Equal("Restoring the backup…", RestorePrompt.RestoringText);
+    }
+
+    /// <summary>The status for an existing destination says what is replaced and what is kept, naming the kept file's start (no extension).</summary>
+    [Fact]
+    public void BuildDestinationExistsText_IsTheAgreedWording()
+    {
+        var text = RestorePrompt.BuildDestinationExistsText(Path.Combine(Path.GetTempPath(), "share", "History Dept.db"));
+
+        Assert.Equal(
+            "This replaces the database at this location for everyone who uses it. " +
+            "The current file is kept beside it as \"History Dept (before restore …)\".",
+            text);
+    }
+
+    /// <summary>The chooser's confirmation names the backup, the database and its folder, and what is kept; it appears only for a replacement.</summary>
+    [Fact]
+    public void BuildChooserConfirmMessage_IsTheAgreedWording()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "fileserver", "departments");
+        var text = RestorePrompt.BuildChooserConfirmMessage(
+            "History Dept_2026-10-13_13-00-00.db", Path.Combine(folder, "History Dept.db"));
+
+        Assert.Equal(
+            "Restore from backup:\n\nHistory Dept_2026-10-13_13-00-00.db\n\n" +
+            $"This replaces \"History Dept.db\" in {folder} for everyone who uses it. " +
+            "TermPoint keeps a copy of the database as it is now beside it, " +
+            "named \"History Dept (before restore …)\".\n\nContinue?",
+            text);
+    }
+
+    /// <summary>A confirmed restore into an existing database says what was kept (by name only) and that the database opens now.</summary>
+    [Fact]
+    public void Describe_Chooser_Restored_NamesThePreRestoreFile_AndSaysItOpensNow()
+    {
+        var (title, message) = RestorePrompt.Describe(ResultFor(RestoreOutcome.Restored), RestoreContext.Chooser);
+
+        Assert.Equal("Backup Restored", title);
+        Assert.Equal(
+            "The backup was restored. The database as it was just before the restore is kept beside it as " +
+            $"\"{PreRestoreName}\". It will open now.",
+            message);
+        Assert.DoesNotContain("fileserver", message);
+        Assert.DoesNotContain("restart", message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>A created database is announced plainly (the chooser shows no dialog for it, but the text exists).</summary>
+    [Fact]
+    public void Describe_Chooser_Created_SaysANewDatabaseWasCreated()
+    {
+        var (title, message) = RestorePrompt.Describe(new RestoreResult(RestoreOutcome.Created, CreatePath: true), RestoreContext.Chooser);
+
+        Assert.Equal("Backup Restored", title);
+        Assert.Equal("A new database was created from the backup. It will open now.", message);
+    }
+
+    /// <summary>A refused restore names the person editing and tells the user what to do, in the agreed words.</summary>
+    [Fact]
+    public void Describe_Chooser_LockHeld_NamesTheHolder_AndExplainsWhatToDo()
+    {
+        var (title, message) = RestorePrompt.Describe(new RestoreResult(RestoreOutcome.LockHeld, Holder: Holder()), RestoreContext.Chooser);
+
+        Assert.Equal(RestorePrompt.NotStartedTitle, title);
+        Assert.Equal(
+            "jsmith on LAPTOP-42 is editing this database, so it can't be restored right now. " +
+            "Restore it after they've closed it. If they're no longer using it, open the database normally " +
+            "(TermPoint will offer to take over), then restore from Configuration → Save & Backup.",
+            message);
+    }
+
+    /// <summary>The holder is named gracefully when the lock file gave little: just a name, just a machine, or nothing at all.</summary>
+    [Theory]
+    [InlineData("jsmith", "", "jsmith is editing this database")]
+    [InlineData("", "LAPTOP-42", "Someone on LAPTOP-42 is editing this database")]
+    [InlineData("", "", "An unknown user is editing this database")]
+    [InlineData("(corrupted)", "(corrupted)", "An unknown user is editing this database")]
+    public void Describe_Chooser_LockHeld_FallsBackWhenTheHolderIsPartlyUnknown(string user, string machine, string expectedStart)
+    {
+        var (_, message) = RestorePrompt.Describe(
+            new RestoreResult(RestoreOutcome.LockHeld, Holder: Holder(user, machine)), RestoreContext.Chooser);
+
+        Assert.StartsWith(expectedStart, message);
+    }
+
+    /// <summary>A missing holder (the lock file could not be read) does not throw and still gives a whole sentence.</summary>
+    [Fact]
+    public void Describe_LockHeld_WithoutAHolder_StillReadsWell_InBothContexts()
+    {
+        foreach (var context in Enum.GetValues<RestoreContext>())
+        {
+            var (_, message) = RestorePrompt.Describe(new RestoreResult(RestoreOutcome.LockHeld), context);
+
+            Assert.StartsWith("An unknown user is editing this database", message);
+        }
+    }
+
+    /// <summary>A file that appeared at the destination is explained, in the agreed words.</summary>
+    [Fact]
+    public void Describe_Chooser_AlreadyExists_IsTheAgreedWording()
+    {
+        var (title, message) = RestorePrompt.Describe(new RestoreResult(RestoreOutcome.AlreadyExists, CreatePath: true), RestoreContext.Chooser);
+
+        Assert.Equal("Restore Stopped", title);
+        Assert.Equal(
+            "A file appeared at this location while the backup was being prepared, so nothing was created. " +
+            "Choose the location again.",
+            message);
+    }
+
+    /// <summary>An unconfirmed rename stays in the chooser: the kept copy is named, and the user is told to open the database to see which version is in place.</summary>
+    [Fact]
+    public void Describe_Chooser_RenameUnconfirmed_IsTheAgreedWording()
+    {
+        var (title, message) = RestorePrompt.Describe(ResultFor(RestoreOutcome.RenameUnconfirmed), RestoreContext.Chooser);
+
+        Assert.Equal("Restore Not Confirmed", title);
+        Assert.Equal(
+            "The connection was lost at the last step, so TermPoint can't tell whether the restore finished. " +
+            $"Nothing is lost: a copy of the database as it was is kept as \"{PreRestoreName}\". " +
+            "Open the database once the connection is back to see which version is in place.",
+            message);
+        Assert.DoesNotContain("fileserver", message);
+        Assert.DoesNotContain("TermPoint will now close", message);
+    }
+
+    /// <summary>On the create path a refusal says "Nothing was created." instead of "Your database is unchanged."; on the replace path it is unchanged.</summary>
+    [Theory]
+    [MemberData(nameof(TargetUnchangedOutcomes))]
+    public void Describe_Chooser_UnchangedOutcomes_SayNothingWasCreated_OnTheCreatePath_AndUnchangedOtherwise(RestoreOutcome outcome)
+    {
+        // These have their own chooser wording, covered by the pinned tests above.
+        if (outcome is RestoreOutcome.AlreadyExists or RestoreOutcome.LockHeld)
+            return;
+
+        var (_, onCreate) = RestorePrompt.Describe(new RestoreResult(outcome, CreatePath: true), RestoreContext.Chooser);
+        var (_, onReplace) = RestorePrompt.Describe(new RestoreResult(outcome, CreatePath: false), RestoreContext.Chooser);
+
+        Assert.Contains("Nothing was created.", onCreate);
+        Assert.DoesNotContain("Your database is unchanged.", onCreate);
+        Assert.Contains("Your database is unchanged.", onReplace);
+        Assert.DoesNotContain("Nothing was created.", onReplace);
+    }
+
+    /// <summary>The create-path wording is only used in the chooser: Save &amp; Backup never says "Nothing was created.".</summary>
+    [Theory]
+    [MemberData(nameof(TargetUnchangedOutcomes))]
+    public void Describe_SaveAndBackup_NeverSaysNothingWasCreated(RestoreOutcome outcome)
+    {
+        var (_, message) = RestorePrompt.Describe(new RestoreResult(outcome, CreatePath: true));
+
+        Assert.DoesNotContain("Nothing was created.", message);
+    }
+
+    /// <summary>
+    /// A restore that failed for a reason TermPoint can word precisely (the lock file could not be created) shows that
+    /// reason, then that nothing changed. The lock-write texts carry the read-only banner's "Read-only — " prefix,
+    /// which is dropped inside a restore message.
+    /// </summary>
+    [Fact]
+    public void Describe_FailedWithADetail_ShowsTheDetailWithoutTheBannerPrefix()
+    {
+        var result = new RestoreResult(RestoreOutcome.Failed, Detail: "Read-only — this folder's security settings prevented TermPoint from opening the database for editing.");
+
+        var (title, message) = RestorePrompt.Describe(result, RestoreContext.Chooser);
+
+        Assert.Equal(RestorePrompt.NotStartedTitle, title);
+        Assert.Equal(
+            "The restore wasn't started. This folder's security settings prevented TermPoint from opening the database for editing. " +
+            "Your database is unchanged.",
+            message);
+    }
+
+    /// <summary><see cref="RestorePrompt.WithoutBannerPrefix"/>: strips and capitalises only a leading "Read-only — ".</summary>
+    [Theory]
+    [InlineData("Read-only — this folder is blocked.", "This folder is blocked.")]
+    [InlineData("  Read-only — disk is full.  ", "Disk is full.")]
+    [InlineData("The network location is not responding.", "The network location is not responding.")]
+    [InlineData("Not Read-only — here.", "Not Read-only — here.")]
+    [InlineData("Read-only — ", "")]
+    public void WithoutBannerPrefix_RemovesOnlyALeadingPrefix(string detail, string expected)
+        => Assert.Equal(expected, RestorePrompt.WithoutBannerPrefix(detail));
+
+    /// <summary>A plain Failed (no detail) is still the generic sentence.</summary>
+    [Fact]
+    public void Describe_FailedWithoutADetail_IsTheGenericSentence()
+    {
+        Assert.Equal(
+            ("Restore Stopped", "Something went wrong, so the restore was stopped. Your database is unchanged."),
+            RestorePrompt.Describe(new RestoreResult(RestoreOutcome.Failed), RestoreContext.Chooser));
+        Assert.Equal(
+            ("Restore Stopped", "Something went wrong, so the restore was stopped. Nothing was created."),
+            RestorePrompt.Describe(new RestoreResult(RestoreOutcome.Failed, CreatePath: true), RestoreContext.Chooser));
+    }
+
+    /// <summary>Every outcome has a non-empty title and message in BOTH contexts — the guard for an outcome added later.</summary>
+    [Theory]
+    [MemberData(nameof(AllOutcomes))]
+    public void Describe_EveryOutcome_HasATitleAndAMessage_InEveryContext(RestoreOutcome outcome)
+    {
+        foreach (var context in Enum.GetValues<RestoreContext>())
+        {
+            foreach (var createPath in new[] { false, true })
+            {
+                var (title, message) = RestorePrompt.Describe(
+                    new RestoreResult(outcome, PreRestorePath, Holder: Holder(), CreatePath: createPath), context);
+
+                Assert.False(string.IsNullOrWhiteSpace(title));
+                Assert.False(string.IsNullOrWhiteSpace(message));
+            }
+        }
+    }
+
+    /// <summary>The Save &amp; Backup context is the default, so every existing caller keeps its approved wording.</summary>
+    [Theory]
+    [MemberData(nameof(AllOutcomes))]
+    public void Describe_DefaultContext_IsSaveAndBackup(RestoreOutcome outcome)
+    {
+        var result = new RestoreResult(outcome, PreRestorePath, Holder: Holder());
+
+        Assert.Equal(RestorePrompt.Describe(result, RestoreContext.SaveAndBackup), RestorePrompt.Describe(result));
+    }
+
+    /// <summary>Only Restored, RenameUnconfirmed and Created change the destination; Succeeded is Restored or Created.</summary>
+    [Fact]
+    public void Outcomes_TargetUnchangedAndSucceeded_AreAsDocumented()
+    {
+        foreach (var outcome in Enum.GetValues<RestoreOutcome>())
+        {
+            var result = new RestoreResult(outcome);
+            var changes = outcome is RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed or RestoreOutcome.Created;
+
+            Assert.Equal(!changes, result.TargetUnchanged);
+            Assert.Equal(outcome is RestoreOutcome.Restored or RestoreOutcome.Created, result.Succeeded);
+        }
     }
 }

@@ -41,8 +41,9 @@
             </StackPanel>
         </Border>
 
-        <!--  Row 1: Scrollable content  -->
+        <!--  Row 1: Scrollable content — disabled as a whole while a restore runs (options, recents, Browse…, Change folder…)  -->
         <ScrollViewer Grid.Row="1"
+                      IsEnabled="{Binding !IsRestoring}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,20,24,8" Spacing="14">
@@ -277,10 +278,24 @@
                                             Margin="8,0,0,0"
                                             Command="{Binding ChangeRestoreFolderCommand}" />
                                 </Grid>
-                                <TextBlock Text="The backup will be copied to this location. Your backup file will not be modified."
-                                           FontSize="{StaticResource FontSizeSmall}"
-                                           Foreground="{StaticResource TextMuted}"
-                                           TextWrapping="Wrap" />
+                                <StackPanel Spacing="2">
+                                    <!--  Status of the destination (from a bounded probe). Two elements, one shown at a time, so a
+                                          problem is red without a class-conditioned style.  -->
+                                    <TextBlock Text="{Binding RestoreStatusText}"
+                                               IsVisible="{Binding !IsRestoreStatusProblem}"
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding RestoreStatusText}"
+                                               IsVisible="{Binding IsRestoreStatusProblem}"
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextError}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding BackupNotModifiedNote}"
+                                               FontSize="{StaticResource FontSizeSmall}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
                             </StackPanel>
 
                             <TextBlock Text="{Binding RestoreError}"
@@ -314,9 +329,17 @@
                 BorderThickness="0,1,0,0"
                 Padding="20,12">
             <Grid ColumnDefinitions="*,Auto,Auto">
+                <!--  Shown while a restore runs; the content above and both buttons are disabled meanwhile  -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding RestoringText}"
+                           IsVisible="{Binding IsRestoring}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           Foreground="{StaticResource TextMuted}"
+                           VerticalAlignment="Center" />
                 <Button Grid.Column="1"
                         Content="Exit TermPoint"
                         Margin="0,0,8,0"
+                        IsEnabled="{Binding !IsRestoring}"
                         Command="{Binding ExitCommand}" />
                 <Button Grid.Column="2"
                         Content="{Binding ContinueButtonText}"

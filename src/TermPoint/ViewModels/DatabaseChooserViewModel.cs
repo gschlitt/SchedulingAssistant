@@ -84,6 +84,31 @@ public enum ChooserOption
 }
 
 /// <summary>
+/// What the chooser knows about the restore destination, from its deadline-bounded probe (spec item 5c). Decides
+/// the Step 2 status text and whether Continue is enabled.
+/// </summary>
+public enum RestoreDestinationState
+{
+    /// <summary>No destination yet.</summary>
+    None,
+
+    /// <summary>The destination is being probed; Continue waits for the answer.</summary>
+    Checking,
+
+    /// <summary>A file is at the destination: restoring replaces it (after a confirmation), keeping the current file beside it.</summary>
+    Exists,
+
+    /// <summary>Nothing is at the destination: restoring creates a new database there.</summary>
+    Missing,
+
+    /// <summary>The destination did not answer in time; Continue stays disabled.</summary>
+    Unreachable,
+
+    /// <summary>The destination is the backup file itself, which must never be restored onto itself; Continue stays disabled.</summary>
+    IsBackupFile
+}
+
+/// <summary>
 /// View model for the database chooser window. Shown at startup to let the user
 /// pick from recent databases, browse for a file, restore from a backup, or create
 /// a new database via the wizard. In recovery mode, an error banner explains what
@@ -190,6 +215,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         Mode          = mode;
         Reason        = reason;
         LastKnownPath = lastKnownPath ?? "(not set)";
+        _lastKnownPathArgument = lastKnownPath;
 
         if (mode == ChooserMode.Recovery && reason.HasValue)
         {
@@ -334,9 +360,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
             return;
         }
 
-        Outcome      = ChooserOutcome.Resolved;
-        ResolvedPath = item.Path;
-        CloseRequested?.Invoke();
+        ResolveWith(item.Path);
     }
 
     // ── Always-open-recent checkbox ──────────────────────────────────────
@@ -453,21 +477,35 @@ public partial class DatabaseChooserViewModel : ObservableObject
         }
     }
 
-    // ── Restore from backup (same as old Option B) ───────────────────────
+    // ── Restore from backup (spec item 5, step 5c) ───────────────────────
+
+    /// <summary>
+    /// The raw database path the chooser was opened about (the constructor's argument, null when none), as opposed
+    /// to <see cref="LastKnownPath"/>, which is a display string ("(not set)" when there is none). Used to choose the
+    /// default restore destination (<see cref="RestoreDestination.SuggestRestorePath"/>).
+    /// </summary>
+    private readonly string? _lastKnownPathArgument;
 
     /// <summary>Path to the backup file chosen by the user.</summary>
     [ObservableProperty]
     private string? _backupPath;
 
-    partial void OnBackupPathChanged(string? value) =>
+    partial void OnBackupPathChanged(string? value)
+    {
+        // The backup may now be the very file the destination names, which changes the status and Continue.
+        BeginRestoreDestinationProbe();
         OnPropertyChanged(nameof(CanContinue));
+    }
 
-    /// <summary>Suggested full path where the backup will be copied (shown in Step 2).</summary>
+    /// <summary>Suggested full path where the backup will be restored (shown in Step 2).</summary>
     [ObservableProperty]
     private string? _restorePath;
 
-    partial void OnRestorePathChanged(string? value) =>
+    partial void OnRestorePathChanged(string? value)
+    {
+        BeginRestoreDestinationProbe();
         OnPropertyChanged(nameof(CanContinue));
+    }
 
     /// <summary>Error message for restore, or null when everything is valid.</summary>
     [ObservableProperty]
@@ -476,6 +514,70 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// <summary>Controls whether the Step 2 destination row is visible.</summary>
     [ObservableProperty]
     private bool _isBackupStepTwoVisible;
+
+    /// <summary>
+    /// True while the restore runs. The window disables every control (options, recents, Browse…, Change folder…,
+    /// Continue and Exit) and shows <see cref="RestoringText"/>; closing the window is blocked too, because exiting
+    /// mid-restore would leave a stray lock file behind.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isRestoring;
+
+    partial void OnIsRestoringChanged(bool value) => OnPropertyChanged(nameof(CanContinue));
+
+    /// <summary>The in-progress line shown while <see cref="IsRestoring"/> (text lives in <see cref="RestorePrompt"/>).</summary>
+    public string RestoringText => RestorePrompt.RestoringText;
+
+    /// <summary>The reassurance shown under the destination status: restoring never modifies the backup file.</summary>
+    public string BackupNotModifiedNote => RestorePrompt.BackupNotModifiedNote;
+
+    /// <summary>
+    /// What the chooser knows about the restore destination, from a deadline-bounded probe. Drives
+    /// <see cref="RestoreStatusText"/> and whether Continue is enabled (only Exists and Missing allow it).
+    /// </summary>
+    [ObservableProperty]
+    private RestoreDestinationState _restoreDestinationState = RestoreDestinationState.None;
+
+    partial void OnRestoreDestinationStateChanged(RestoreDestinationState value)
+    {
+        OnPropertyChanged(nameof(RestoreStatusText));
+        OnPropertyChanged(nameof(IsRestoreStatusProblem));
+        OnPropertyChanged(nameof(CanContinue));
+    }
+
+    /// <summary>
+    /// The Step 2 status line for the destination: what the restore will do there (replace the database that is
+    /// there, create a new one) or why it cannot be done (not responding, the backup file itself). Empty before a
+    /// destination exists. The wording lives in <see cref="RestorePrompt"/>.
+    /// </summary>
+    public string RestoreStatusText => RestoreDestinationState switch
+    {
+        RestoreDestinationState.Checking     => RestorePrompt.DestinationCheckingText,
+        RestoreDestinationState.Exists       => RestorePrompt.BuildDestinationExistsText(RestorePath ?? string.Empty),
+        RestoreDestinationState.Missing      => RestorePrompt.DestinationMissingText,
+        RestoreDestinationState.Unreachable  => RestorePrompt.DestinationUnreachableText,
+        RestoreDestinationState.IsBackupFile => RestorePrompt.DestinationIsBackupFileText,
+        _                                    => string.Empty
+    };
+
+    /// <summary>True when <see cref="RestoreStatusText"/> reports a problem (shown in the error colour) rather than information.</summary>
+    public bool IsRestoreStatusProblem =>
+        RestoreDestinationState is RestoreDestinationState.Unreachable or RestoreDestinationState.IsBackupFile;
+
+    /// <summary>
+    /// Incremented every time a new probe starts, so a probe that finishes after the destination changed again
+    /// can tell it is out of date and discard its answer.
+    /// </summary>
+    private int _restoreProbeVersion;
+
+    /// <summary>The most recent destination probe (completed when none is running). Exposed to tests so they can wait for the answer.</summary>
+    internal Task RestoreProbeTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// How the destination is probed: <see cref="NetworkFileOps.ProbeFileAsync"/> (deadline-bounded, tells "absent"
+    /// from "no answer"). A seam so tests can hold an answer back and release answers in any order.
+    /// </summary>
+    internal Func<string, Task<FileProbeResult>> DestinationProbe { get; set; } = NetworkFileOps.ProbeFileAsync;
 
     /// <summary>
     /// Injected by the window code-behind. Opens an OS file picker for backup files.
@@ -487,6 +589,25 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// restore destination.
     /// </summary>
     public Func<Task<string?>>? PickRestoreFolderAsync { get; set; }
+
+    /// <summary>
+    /// Injected by the window code-behind. Shows a modal two-button confirmation: (title, message, confirm label)
+    /// → true when the user confirmed. Used only when the restore would replace an existing database.
+    /// </summary>
+    public Func<string, string, string, Task<bool>>? ConfirmAsync { get; set; }
+
+    /// <summary>
+    /// Injected by the window code-behind. Shows a modal message with an OK button: (title, message). Used to
+    /// announce a completed restore before the database opens.
+    /// </summary>
+    public Func<string, string, Task>? ShowMessageAsync { get; set; }
+
+    /// <summary>
+    /// The operation that performs the restore: (backup path, destination path, may an existing database be
+    /// replaced) → result. Null (the default) means <see cref="CheckoutService.RestoreIntoAsync"/> on the app's
+    /// checkout service; tests replace it so no real files are needed.
+    /// </summary>
+    internal Func<string, string, bool, Task<RestoreResult>>? RestoreOperation { get; set; }
 
     /// <summary>Opens the file picker, validates the backup, and reveals Step 2.</summary>
     [RelayCommand]
@@ -516,35 +637,174 @@ public partial class DatabaseChooserViewModel : ObservableObject
             return;
         }
 
-        BackupPath  = path;
+        var suggested = RestoreDestination.SuggestRestorePath(path, _lastKnownPathArgument, AppSettings.Current.DatabasePath);
+        var nothingChanged = BackupPath == path && RestorePath == suggested;
+
+        BackupPath   = path;
         RestoreError = null;
-        SuggestRestorePath();
+        RestorePath  = suggested;
         IsBackupStepTwoVisible = true;
+
+        // Picking the same backup again changes neither property, so neither would start a probe — but the
+        // destination may have changed in the meantime (a file created, a share that went away): ask again.
+        if (nothingChanged)
+            BeginRestoreDestinationProbe();
     }
 
-    /// <summary>Builds a sensible default destination path for the restore operation.</summary>
-    private void SuggestRestorePath()
-    {
-        if (BackupPath is null) return;
-
-        var originalName = Path.GetFileName(AppSettings.Current.DatabasePath)
-                        ?? Path.GetFileName(BackupPath);
-        var folder = Path.GetDirectoryName(BackupPath)!;
-        RestorePath = Path.Combine(folder, originalName!);
-    }
-
-    /// <summary>Opens the folder picker and updates the restore destination.</summary>
+    /// <summary>
+    /// Opens the folder picker and moves the restore destination to the chosen folder. The file name stays the
+    /// one derived from the backup (<see cref="RestoreDestination.SuggestFileName"/>); only the folder changes.
+    /// </summary>
     [RelayCommand]
     private async Task ChangeRestoreFolder()
     {
-        if (PickRestoreFolderAsync is null) return;
+        if (PickRestoreFolderAsync is null || RestorePath is null) return;
 
         var folder = await PickRestoreFolderAsync();
         if (folder is null) return;
 
-        var originalName = Path.GetFileName(AppSettings.Current.DatabasePath)
-                        ?? Path.GetFileName(BackupPath!);
-        RestorePath = Path.Combine(folder, originalName!);
+        RestoreError = null;
+        RestorePath  = RestoreDestination.WithFolder(RestorePath, folder);
+    }
+
+    /// <summary>
+    /// Starts a fresh, deadline-bounded probe of <see cref="RestorePath"/> and updates
+    /// <see cref="RestoreDestinationState"/> when it answers — never blocking the UI. A destination that is the
+    /// backup file itself needs no probe and is refused at once. Called whenever the destination or the backup
+    /// changes; an answer that arrives after the destination changed again is discarded.
+    /// </summary>
+    private void BeginRestoreDestinationProbe()
+    {
+        var version     = ++_restoreProbeVersion;
+        var destination = RestorePath;
+
+        if (string.IsNullOrWhiteSpace(destination))
+        {
+            RestoreDestinationState = RestoreDestinationState.None;
+            RestoreProbeTask        = Task.CompletedTask;
+        }
+        else if (RestoreDestination.IsSameFile(BackupPath, destination))
+        {
+            RestoreDestinationState = RestoreDestinationState.IsBackupFile;
+            RestoreProbeTask        = Task.CompletedTask;
+        }
+        else
+        {
+            RestoreDestinationState = RestoreDestinationState.Checking;
+            RestoreProbeTask        = ProbeRestoreDestinationAsync(destination, version);
+        }
+
+        // The "replaces …" text names the destination, so it can change without the state changing.
+        OnPropertyChanged(nameof(RestoreStatusText));
+    }
+
+    /// <summary>
+    /// Probes <paramref name="destination"/> (<see cref="DestinationProbe"/>: bounded by the network deadline, tells
+    /// "absent" from "no answer") and publishes the answer, unless a newer probe has started.
+    /// </summary>
+    /// <param name="destination">The path to probe.</param>
+    /// <param name="version">The probe version this call belongs to; stale when it no longer equals the current one.</param>
+    private async Task ProbeRestoreDestinationAsync(string destination, int version)
+    {
+        var probe = await DestinationProbe(destination);
+        if (version != _restoreProbeVersion)
+            return;
+
+        RestoreDestinationState = probe switch
+        {
+            FileProbeResult.Exists  => RestoreDestinationState.Exists,
+            FileProbeResult.Missing => RestoreDestinationState.Missing,
+            _                       => RestoreDestinationState.Unreachable
+        };
+    }
+
+    /// <summary>
+    /// Restores the chosen backup to the chosen destination and, when that worked, resolves the chooser with the
+    /// destination so the database opens through the normal startup flow.
+    ///
+    /// <para>If the destination already holds a database the user first confirms ("This replaces … for everyone
+    /// who uses it"); creating a new file needs no confirmation. The decision is passed on as
+    /// <c>allowReplace</c>, so a database that appears at the destination after the user was told "a new database
+    /// will be created" is refused rather than replaced unconfirmed. While the restore runs
+    /// <see cref="IsRestoring"/> is true. A replaced database is announced with a "Backup Restored" message before
+    /// it opens; a created one just opens; every failure is shown inline and the user stays in the chooser.</para>
+    /// </summary>
+    private async Task RestoreFromBackupAndOpenAsync()
+    {
+        var backup    = BackupPath!;
+        var target    = RestorePath!;
+        var replacing = RestoreDestinationState == RestoreDestinationState.Exists;
+        RestoreError  = null;
+
+        if (replacing)
+        {
+            // Without a way to ask, never replace a database silently.
+            if (ConfirmAsync is null) return;
+
+            var confirmed = await ConfirmAsync(
+                RestorePrompt.ChooserConfirmTitle,
+                RestorePrompt.BuildChooserConfirmMessage(Path.GetFileName(backup), target),
+                RestorePrompt.ConfirmLabel);
+            if (!confirmed) return;
+        }
+
+        RestoreResult result;
+        IsRestoring = true;
+        try
+        {
+            var restore = RestoreOperation ?? DefaultRestoreOperation;
+            result = await restore(backup, target, replacing);
+        }
+        catch (Exception ex)
+        {
+            // RestoreIntoAsync never throws, so this is a safety net: never leave the chooser stuck "restoring".
+            App.Logger.LogError(ex, "DatabaseChooserViewModel: unexpected exception while restoring a backup");
+            result = new RestoreResult(RestoreOutcome.Failed, Error: ex);
+        }
+        finally
+        {
+            IsRestoring = false;
+        }
+
+        var (title, message) = RestorePrompt.Describe(result, RestoreContext.Chooser);
+        switch (result.Outcome)
+        {
+            case RestoreOutcome.Restored:
+                // The replaced database is kept beside it; say so, then open it.
+                if (ShowMessageAsync is not null)
+                    await ShowMessageAsync(title, message);
+                ResolveWith(target);
+                break;
+
+            case RestoreOutcome.Created:
+                ResolveWith(target);
+                break;
+
+            default:
+                // Stay in the chooser. The destination may have changed (a file appeared, a lock was released).
+                RestoreError = message;
+                BeginRestoreDestinationProbe();
+                break;
+        }
+    }
+
+    /// <summary>The production restore operation: <see cref="CheckoutService.RestoreIntoAsync"/> on the app's checkout service.</summary>
+    /// <param name="backup">The backup file.</param>
+    /// <param name="target">The destination database.</param>
+    /// <param name="allowReplace">Whether an existing database may be replaced.</param>
+    private static Task<RestoreResult> DefaultRestoreOperation(string backup, string target, bool allowReplace)
+        => App.Checkout.RestoreIntoAsync(backup, target, allowReplace);
+
+    /// <summary>
+    /// Resolves the chooser: the user picked (or restored to) <paramref name="path"/>, which
+    /// <see cref="MainWindow"/> opens next.
+    /// </summary>
+    /// <param name="path">The database to open.</param>
+    private void ResolveWith(string? path)
+    {
+        Outcome      = ChooserOutcome.Resolved;
+        ResolvedPath = path;
+        CloseRequested?.Invoke();
     }
 
     // ── Footer state ──────────────────────────────────────────────────────
@@ -557,13 +817,19 @@ public partial class DatabaseChooserViewModel : ObservableObject
     {
         get
         {
+            // Nothing can be started while a restore is running.
+            if (IsRestoring) return false;
+
             // A selected recent database is always openable
             if (SelectedRecentDatabase is not null) return true;
 
             return SelectedOption switch
             {
                 ChooserOption.BrowseForIt       => BrowsedPath is not null,
-                ChooserOption.RestoreFromBackup  => BackupPath is not null && RestorePath is not null,
+                // The destination must have answered (replace or create) and must not be the backup itself.
+                ChooserOption.RestoreFromBackup  => BackupPath is not null && RestorePath is not null
+                                                    && RestoreDestinationState is RestoreDestinationState.Exists
+                                                                               or RestoreDestinationState.Missing,
                 ChooserOption.CreateNew          => true,
                 _                                => false
             };
@@ -601,6 +867,9 @@ public partial class DatabaseChooserViewModel : ObservableObject
     [RelayCommand]
     private void Exit()
     {
+        // Exiting mid-restore would abandon it and leave a stray lock file; the window disables this too.
+        if (IsRestoring) return;
+
         Outcome = ChooserOutcome.None;
         CloseRequested?.Invoke();
     }
@@ -608,7 +877,8 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// <summary>
     /// Proceeds with the current selection — either a recent database or an action option.
     /// For recent databases, validates the path first (bounded ~5s) to avoid a 60s hang
-    /// on unreachable shares. For Restore, copies the backup file before signalling completion.
+    /// on unreachable shares. For Restore, restores the backup safely (see
+    /// <see cref="RestoreFromBackupAndOpenAsync"/>) before signalling completion.
     /// </summary>
     [RelayCommand]
     private async Task Continue()
@@ -626,33 +896,18 @@ public partial class DatabaseChooserViewModel : ObservableObject
                 return;
             }
 
-            Outcome      = ChooserOutcome.Resolved;
-            ResolvedPath = SelectedRecentDatabase.Path;
-            CloseRequested?.Invoke();
+            ResolveWith(SelectedRecentDatabase.Path);
             return;
         }
 
         switch (SelectedOption)
         {
             case ChooserOption.BrowseForIt:
-                Outcome      = ChooserOutcome.Resolved;
-                ResolvedPath = BrowsedPath;
-                CloseRequested?.Invoke();
+                ResolveWith(BrowsedPath);
                 break;
 
             case ChooserOption.RestoreFromBackup:
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(RestorePath!)!);
-                    File.Copy(BackupPath!, RestorePath!, overwrite: true);
-                    Outcome      = ChooserOutcome.Resolved;
-                    ResolvedPath = RestorePath;
-                    CloseRequested?.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    RestoreError = $"Could not restore the backup: {ex.Message}";
-                }
+                await RestoreFromBackupAndOpenAsync();
                 break;
 
             case ChooserOption.CreateNew:

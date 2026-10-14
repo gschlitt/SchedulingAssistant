@@ -49,36 +49,36 @@ First look (2026-10-09):
   The section card's property-line icons are exactly that: `InlineUIContainer`s built by
   `PropertyLinesBehavior` (item 21, step 3). Weigh it when deciding whether to take 12.1.4.
 
-| Order | Item | Why here |
-|---|---|---|
-| **Phase 1: Foundation** | | |
-| 1 | 1: Avalonia 12.1.3 (its 5 steps, one commit each), **with item 22 folded into step 1** | Every later manual test then runs on the framework we ship. Unblocks item 18. **Item 22 moved here (2026-10-09):** the bump broke mouse picks in the meeting editor, and item 22's fix is the cure (see item 1, "Regression found in step 1"). |
-| 2 | 2: SQLite security bump | The other dependency change, kept next to item 1. |
-| 3 | 18: Wizard Cancel hides instead of closing | Trivial once item 1 has landed. |
-| **Phase 2: Contained bug fixes** | | |
-| 4 | ~~22: AutoCompleteBox crash~~ | Moved into item 1. |
-| 5 | 17: CSV reader | Pure logic, unit-testable. |
-| 6 | 19: Wheel containment in popups | Input routing only. |
-| **Phase 3: Big UI change, early** | | |
-| 7 | 21: Lightweight section card | Moved early so the big visual change gets used throughout the rest of development. |
-| **Phase 4: Data model** | | |
-| 8 | 3: Unknown-field preservation + version gate | Release-order gate for future releases. Touches every entity, so it should land early. |
-| 9 | 8: Semester / AY empty and delete rules | Repository-level, unit-testable. |
-| **Phase 5: Startup, lock and restore** (shared files, strictly in sequence) | | |
-| 10 | 4: No direct opens; startup ordering; single-instance guard | |
-| 11 | 9: Stale-lock takeover | |
-| 12 | 5: Safe Restore | Builds the off-UI-thread copy helper. |
-| 13 | 16: Remaining UI-thread network I/O | Reuses item 5's helper. |
-| **Phase 6: Save messaging and exit** | | |
-| 14 | 10 + 11 + 12, as one piece | |
-| 15 | 15: Exit hardening + edit generation counter | After item 4, which also edits the end of `SaveAsync`. Sets up the close sequence that item 14 plugs into. |
-| 16 | 14: Unapplied editor changes on exit / DB switch | Adds the Apply / Discard / Cancel step to the start of item 15's close sequence. |
-| **Phase 7: Detection and observability** | | |
-| 17 | 13: Cloud-sync folder detection | |
-| 18 | 6: BugSnag scrubber | Must come before item 7. |
-| 19 | 7: Handled-failure BugSnag events | Last of the reliability items, so it reports from the finished code of items 4, 9 and 15. |
-| **Phase 8** | | |
-| 20 | 20: Load by subject | Parked. Re-measure memory after item 21, then decide. |
+| Order                                                                       | Item                                                                                   | Why here                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 1: Foundation**                                                     |                                                                                        |                                                                                                                                                                                                                                                |
+| 1                                                                           | 1: Avalonia 12.1.3 (its 5 steps, one commit each), **with item 22 folded into step 1** | Every later manual test then runs on the framework we ship. Unblocks item 18. **Item 22 moved here (2026-10-09):** the bump broke mouse picks in the meeting editor, and item 22's fix is the cure (see item 1, "Regression found in step 1"). |
+| 2                                                                           | 2: SQLite security bump                                                                | The other dependency change, kept next to item 1.                                                                                                                                                                                              |
+| 3                                                                           | 18: Wizard Cancel hides instead of closing                                             | Trivial once item 1 has landed.                                                                                                                                                                                                                |
+| **Phase 2: Contained bug fixes**                                            |                                                                                        |                                                                                                                                                                                                                                                |
+| 4                                                                           | ~~22: AutoCompleteBox crash~~                                                          | Moved into item 1.                                                                                                                                                                                                                             |
+| 5                                                                           | 17: CSV reader                                                                         | Pure logic, unit-testable.                                                                                                                                                                                                                     |
+| 6                                                                           | 19: Wheel containment in popups                                                        | Input routing only.                                                                                                                                                                                                                            |
+| **Phase 3: Big UI change, early**                                           |                                                                                        |                                                                                                                                                                                                                                                |
+| 7                                                                           | 21: Lightweight section card                                                           | Moved early so the big visual change gets used throughout the rest of development.                                                                                                                                                             |
+| **Phase 4: Data model**                                                     |                                                                                        |                                                                                                                                                                                                                                                |
+| 8                                                                           | 3: Unknown-field preservation + version gate                                           | Release-order gate for future releases. Touches every entity, so it should land early.                                                                                                                                                         |
+| 9                                                                           | 8: Semester / AY empty and delete rules                                                | Repository-level, unit-testable.                                                                                                                                                                                                               |
+| **Phase 5: Startup, lock and restore** (shared files, strictly in sequence) |                                                                                        |                                                                                                                                                                                                                                                |
+| 10                                                                          | 4: No direct opens; startup ordering; single-instance guard                            |                                                                                                                                                                                                                                                |
+| 11                                                                          | 9: Stale-lock takeover                                                                 |                                                                                                                                                                                                                                                |
+| 12                                                                          | 5: Safe Restore                                                                        | Builds the off-UI-thread copy helper.                                                                                                                                                                                                          |
+| 13                                                                          | 16: Remaining UI-thread network I/O                                                    | Reuses item 5's helper.                                                                                                                                                                                                                        |
+| **Phase 6: Save messaging and exit**                                        |                                                                                        |                                                                                                                                                                                                                                                |
+| 14                                                                          | 10 + 11 + 12, as one piece                                                             |                                                                                                                                                                                                                                                |
+| 15                                                                          | 15: Exit hardening + edit generation counter                                           | After item 4, which also edits the end of `SaveAsync`. Sets up the close sequence that item 14 plugs into.                                                                                                                                     |
+| 16                                                                          | 14: Unapplied editor changes on exit / DB switch                                       | Adds the Apply / Discard / Cancel step to the start of item 15's close sequence.                                                                                                                                                               |
+| **Phase 7: Detection and observability**                                    |                                                                                        |                                                                                                                                                                                                                                                |
+| 17                                                                          | 13: Cloud-sync folder detection                                                        |                                                                                                                                                                                                                                                |
+| 18                                                                          | 6: BugSnag scrubber                                                                    | Must come before item 7.                                                                                                                                                                                                                       |
+| 19                                                                          | 7: Handled-failure BugSnag events                                                      | Last of the reliability items, so it reports from the finished code of items 4, 9 and 15.                                                                                                                                                      |
+| **Phase 8**                                                                 |                                                                                        |                                                                                                                                                                                                                                                |
+| 20                                                                          | 20: Load by subject                                                                    | Parked. Re-measure memory after item 21, then decide.                                                                                                                                                                                          |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
@@ -174,14 +174,14 @@ line stopped at 12.0.5 (June 2026); 12.1.x is the maintained line.
 
 ### Behaviour changes: risk review
 
-| Change | Our exposure | Assessment |
-|---|---|---|
-| AutoCompleteBox focus handling rewritten. `GotFocus`/`LostFocus` are now the source of truth (#21749). | `LostFocusCommandBehavior` commits Start Time and Block Length on LostFocus. `OpenDropDownOnFocusBehavior` opens on click and runs manual Tab-through. Used in `SectionListView.axaml` and `MeetingListView.axaml`. | **Medium. This is the one data-entry path at risk.** If LostFocus now fires at a different moment (for example when clicking into the dropdown), a meeting time could be committed early or with a stale value. Must test by hand (see Verification). |
-| `SelectionChanged` is now raised when a collection `Reset` clears the selection (#20942). | `SelectionCommandBehavior` is the only routed `SelectionChanged` handler **in our code**. **Missed at review:** AutoCompleteBox's internal selection adapter also handles it. | ~~None~~ **Regression found in the step 1 manual pass (2026-10-09). Fixed by pulling item 22 into item 1.** See "Regression found in step 1" below. |
-| `TopLevel.Closed` is now raised from managed `Dispose` paths, with a double-call guard (#22045). | `wizard.Closed` → `tcs.TrySetResult()`; `note.Closed` → `_openNotes.Remove(note)`; `DetachedPanelWindow.OnClosed`. | **Low.** Handlers are idempotent. Hidden-not-closed windows may now raise `Closed` at app exit, after their work is done. Watch the detached-panel shutdown path. |
-| Dispatcher yields on every operation once shutdown starts (#22240). Queued work after shutdown is aborted, not drained. | Exit save runs inside `MainWindow.OnClosing` (`ReleaseAsync` → cleanup) **before** the final `Close()`, so nothing of ours is queued when shutdown starts. | **None for save integrity.** Verified by code read (`MainWindow.axaml.cs:153-215`). |
-| Focus traversal skips non-focusable containers (#21640); Tab-stop search loop fix (#21864). | Manual Tab-through in `OpenDropDownOnFocusBehavior`, which works around focus jumping to a `GridSplitter`. | **Low.** May change Tab order in editors and may make our workaround unnecessary. Test Tab and Shift+Tab through a meeting row. |
-| Rendering: region dirty-rect clipping off by default (12.1.0); Unicode/text-layout rework (12.0.5). | Schedule grid tiles pack text tightly on one line. | **Low.** Visual check that grid tile text, ellipsis, and wrapping are unchanged. |
+| Change                                                                                                                  | Our exposure                                                                                                                                                                                                        | Assessment                                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AutoCompleteBox focus handling rewritten. `GotFocus`/`LostFocus` are now the source of truth (#21749).                  | `LostFocusCommandBehavior` commits Start Time and Block Length on LostFocus. `OpenDropDownOnFocusBehavior` opens on click and runs manual Tab-through. Used in `SectionListView.axaml` and `MeetingListView.axaml`. | **Medium. This is the one data-entry path at risk.** If LostFocus now fires at a different moment (for example when clicking into the dropdown), a meeting time could be committed early or with a stale value. Must test by hand (see Verification). |
+| `SelectionChanged` is now raised when a collection `Reset` clears the selection (#20942).                               | `SelectionCommandBehavior` is the only routed `SelectionChanged` handler **in our code**. **Missed at review:** AutoCompleteBox's internal selection adapter also handles it.                                       | ~~None~~ **Regression found in the step 1 manual pass (2026-10-09). Fixed by pulling item 22 into item 1.** See "Regression found in step 1" below.                                                                                                   |
+| `TopLevel.Closed` is now raised from managed `Dispose` paths, with a double-call guard (#22045).                        | `wizard.Closed` → `tcs.TrySetResult()`; `note.Closed` → `_openNotes.Remove(note)`; `DetachedPanelWindow.OnClosed`.                                                                                                  | **Low.** Handlers are idempotent. Hidden-not-closed windows may now raise `Closed` at app exit, after their work is done. Watch the detached-panel shutdown path.                                                                                     |
+| Dispatcher yields on every operation once shutdown starts (#22240). Queued work after shutdown is aborted, not drained. | Exit save runs inside `MainWindow.OnClosing` (`ReleaseAsync` → cleanup) **before** the final `Close()`, so nothing of ours is queued when shutdown starts.                                                          | **None for save integrity.** Verified by code read (`MainWindow.axaml.cs:153-215`).                                                                                                                                                                   |
+| Focus traversal skips non-focusable containers (#21640); Tab-stop search loop fix (#21864).                             | Manual Tab-through in `OpenDropDownOnFocusBehavior`, which works around focus jumping to a `GridSplitter`.                                                                                                          | **Low.** May change Tab order in editors and may make our workaround unnecessary. Test Tab and Shift+Tab through a meeting row.                                                                                                                       |
+| Rendering: region dirty-rect clipping off by default (12.1.0); Unicode/text-layout rework (12.0.5).                     | Schedule grid tiles pack text tightly on one line.                                                                                                                                                                  | **Low.** Visual check that grid tile text, ellipsis, and wrapping are unchanged.                                                                                                                                                                      |
 
 **Data integrity:** the upgrade touches no persistence code, schema, or file format. The only
 data-adjacent risk is the AutoCompleteBox commit timing above. No migration is needed.
@@ -917,6 +917,29 @@ thread**, so a downed share freezes the app ("Not Responding") for 30–60 s.
   - the default destination is as decided above.
 - **5d — Startup integrity dialog:** as decided above.
 
+**5c layout decisions (user, 2026-10-13).**
+- **Confirm before replacing.** When the destination already exists, "Restore and Open" first shows a confirmation in
+  the Save & Backup wording ("This replaces the database for everyone who uses it…"). Creating a new file needs no
+  confirmation.
+- **Default destination, matched by name.**
+  - The file name comes from the backup (`<name>_<yyyy-MM-dd_HH-mm-ss>.db` → `<name>.db`); a backup not named that way
+    falls back to the last database's name, then the backup's own name.
+  - The folder is the last-opened database's folder (the chooser's known path, else `AppSettings.DatabasePath`) only
+    when that database has the same name. Otherwise it is the backup's own folder, so a backup of a different
+    database can never replace the last database by default.
+- **Step 2 text** follows a deadline-bounded probe of the destination: exists → "replaces … for everyone, current file
+  kept as …"; missing → "a new database will be created here"; unreachable → "this location isn't responding".
+- **Replace path:**
+  1. Take the write lock (held → refused, naming the holder, with the take-over hint).
+  2. Run the 5a routine.
+  3. Release the lock.
+  4. Show "Backup Restored", then open normally.
+- **Create path:** check the backup the same way, then place the file the 4a way. The `.tmp` → verify → no-overwrite
+  move is extracted from `NewDatabaseFile` and shared.
+- **While running:** an inline "Restoring the backup…", the chooser's buttons disabled, and its close blocked.
+- **Failures:** shown inline, in the RestorePrompt wording; the create path says "Nothing was created.". The user
+  stays in the chooser.
+
 **Outcome 5a (2026-10-13).**
 - `Services/DatabaseRestore.cs` → `ReplaceAsync`: the nine-stage routine above. It never throws.
   - Every outcome except `Restored` and `RenameUnconfirmed` leaves `D` byte-identical and removes what the run
@@ -961,6 +984,35 @@ thread**, so a downed share freezes the app ("Not Responding") for 30–60 s.
 - **Suite:** 1951.
 - **Known gap (accepted):** detached panels stay usable under the wait dialog. An edit made there during a restore
   that succeeds is lost.
+
+**Outcome 5c (2026-10-14, user hand-tested replace, undo, create, lock held and the `copy:1` fault).**
+- **`CheckoutService.RestoreIntoAsync(backup, target, allowReplace)`** restores into a database no session has open.
+  - It refuses `Busy` while a write session or the save gate is held, and `Failed` (with `Detail`) when the target is
+    the backup itself.
+  - It probes the target, then takes one of two paths:
+    - **Missing:** `DatabaseRestore.CreateFromBackupAsync` (stages 2–3, then `NewFilePlacement`, which never
+      overwrites).
+    - **Exists:** takes the write lock on the target (held → `LockHeld` with the holder; a lock file that can't be
+      written → `Failed` + `Detail`), hashes the target, runs `ReplaceAsync`, and always releases the lock and awaits
+      the lock file's removal.
+  - Session state is never touched.
+  - `VerifyLockIsOursAtAsync(path, recordNewHolder)` is a mechanical refactor; existing callers are unchanged.
+- **`NewFilePlacement`** is extracted from `NewDatabaseFile` (its tests are unchanged).
+- **`RestoreDestination.SuggestRestorePath`:**
+  - the name comes from a backup name or a "(before restore …)" name, so undoing a restore is natural;
+  - the folder is the last database's folder only when the names match;
+  - a destination that is the backup file itself is refused.
+- **New outcomes:** `Created`, `AlreadyExists`, `LockHeld`.
+- **`RestoreContext`:** the chooser wording ("It will open now."; "Nothing was created." on the create path). Save &
+  Backup texts are unchanged. Lock-write texts lose the banner's "Read-only — " prefix.
+- **Chooser:**
+  - a probe-driven step 2 status: replaces / will be created / not responding / is the backup itself;
+  - a confirmation only when replacing;
+  - `allowReplace` false when step 2 promised a new file;
+  - while running, the content and buttons are disabled, "Restoring the backup…" shows, and X/Alt+F4 are ignored;
+  - failures show inline.
+- **MainWindow's message and choice dialogs** are now static helpers that take an owner.
+- **Suite:** 2140.
 
 **Behaviour changes for the release notes:**
 - restore is refused while someone else is editing;

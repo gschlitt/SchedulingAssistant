@@ -88,6 +88,13 @@ public partial class DatabaseChooserWindow : Window
             return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
         };
 
+        // Dialogs for the restore flow, built the same way as every other modal dialog in the app (code-built,
+        // Topmost, closed through the dispatcher) by MainWindow's shared helpers, owned by this window.
+        Vm.ConfirmAsync = (title, message, confirmLabel) =>
+            MainWindow.ShowChoiceDialogAsync(this, title, message, confirmLabel, "Cancel");
+        Vm.ShowMessageAsync = (title, message) =>
+            MainWindow.ShowMessageDialogAsync(this, title, message);
+
         // Hide (not Close) when the VM signals completion, then notify the caller.
         Vm.CloseRequested += () =>
         {
@@ -95,11 +102,15 @@ public partial class DatabaseChooserWindow : Window
             ChooserCompleted?.Invoke(this, EventArgs.Empty);
         };
 
-        // Also intercept the X-button: cancel the close, hide, and signal.
+        // Also intercept the X-button (and Alt+F4): cancel the close, hide, and signal.
         // Vm.Outcome remains ChooserOutcome.None so the caller knows the user exited.
+        // While a restore is running do nothing at all: signalling would exit the app mid-restore and leave
+        // the database's lock file behind.
         Closing += (_, e) =>
         {
             e.Cancel = true;
+            if (Vm.IsRestoring) return;
+
             Hide();
             ChooserCompleted?.Invoke(this, EventArgs.Empty);
         };

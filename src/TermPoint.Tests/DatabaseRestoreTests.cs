@@ -940,4 +940,309 @@ public sealed class DatabaseRestoreTests : IDisposable
 
         Assert.False(file.StartsWith("BIOL-TT_", StringComparison.OrdinalIgnoreCase));
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // CreateFromBackupAsync (spec item 5, step 5c) — a restore into a destination that does not exist yet
+    //
+    // The recurring promise: only Created leaves anything behind; every other outcome creates NOTHING — no target,
+    // no target.tmp, nothing in the local staging folder (and, for a bad backup, not even the target's folder) —
+    // and a file that is already at the destination is never touched.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Runs the create path against the fixture folders.</summary>
+    /// <param name="backup">Backup path.</param>
+    /// <param name="target">The database to create.</param>
+    /// <param name="plan">Optional fault plan.</param>
+    private Task<RestoreResult> CreateAsync(string backup, string target, RestoreFaultPlan? plan = null)
+        => DatabaseRestore.CreateFromBackupAsync(backup, target, _localDir, plan, _log);
+
+    /// <summary>
+    /// The bytes the create path should produce for <paramref name="backup"/>: the same file after being converted
+    /// to rollback-journal mode (what the routine does to its staged copy), worked out on a scratch copy so the
+    /// backup itself is left alone.
+    /// </summary>
+    /// <param name="backup">The backup file.</param>
+    private byte[] NormalisedBytesOf(string backup)
+    {
+        var scratch = Path.Combine(_backupDir, $"normalise_{Guid.NewGuid():N}.db");
+        File.Copy(backup, scratch);
+        try
+        {
+            using (var conn = new SqliteConnection($"Data Source={scratch};Mode=ReadWrite;Pooling=False"))
+            {
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA journal_mode=DELETE";
+                cmd.ExecuteScalar();
+            }
+            SqliteConnection.ClearAllPools();
+            File.Delete(scratch + "-wal");
+            File.Delete(scratch + "-shm");
+            return File.ReadAllBytes(scratch);
+        }
+        finally
+        {
+            File.Delete(scratch);
+        }
+    }
+
+    /// <summary>
+    /// Asserts the create path left nothing anywhere: nothing in the share folder, nothing in the local staging
+    /// folder, and the result says the destination is unchanged on the create path.
+    /// </summary>
+    /// <param name="result">The result to check.</param>
+    private void AssertNothingCreated(RestoreResult result)
+    {
+        Assert.True(result.TargetUnchanged);
+        Assert.True(result.CreatePath);
+        Assert.False(result.Succeeded);
+        Assert.Null(result.PreRestoreCopyPath);
+        Assert.Null(result.RestoredHash);
+        Assert.Empty(ShareEntries());
+        Assert.Empty(Directory.GetFileSystemEntries(_localDir));
+    }
+
+    /// <summary>
+    /// The happy path: the new database holds exactly the backup as normalised to rollback-journal mode (a WAL-flagged
+    /// backup included), the result carries its hash, nothing else is on the share (no .tmp, no pre-restore file),
+    /// the local staging folder is empty, and the backup was only copied.
+    /// </summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_Success_CreatesTheNormalisedBackup_AndLeavesNoDebris()
+    {
+        var target = TargetPath();
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup", wal: true);
+        var backupBytes = File.ReadAllBytes(backup);
+        var expected = NormalisedBytesOf(backup);
+        Assert.Equal((byte)2, FormatVersions(backup).Write);   // sanity: the test backup really is WAL-flagged
+
+        var result = await CreateAsync(backup, target);
+
+        Assert.Equal(RestoreOutcome.Created, result.Outcome);
+        Assert.True(result.Succeeded);
+        Assert.False(result.TargetUnchanged);
+        Assert.True(result.CreatePath);
+        Assert.Null(result.Error);
+        Assert.Null(result.PreRestoreCopyPath);
+        Assert.Equal(expected, File.ReadAllBytes(target));
+        Assert.Equal(result.RestoredHash, Hash(target));
+        Assert.Equal("from-backup", ReadMarker(target));
+
+        Assert.Equal(((byte)1, (byte)1), FormatVersions(target));
+        Assert.Equal("delete", JournalModeOfCopy(target), ignoreCase: true);
+
+        Assert.False(File.Exists(target + ".tmp"));
+        Assert.Equal(new[] { target }, ShareEntries());
+        Assert.Empty(Directory.GetFileSystemEntries(_localDir));
+        Assert.Equal(backupBytes, File.ReadAllBytes(backup));
+    }
+
+    /// <summary>A destination folder that does not exist yet is created, as it is for a new database.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_MissingFolder_IsCreatedWithTheDatabase()
+    {
+        var target = Path.Combine(_shareDir, "new", "folder", "dept.db");
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+
+        var result = await CreateAsync(backup, target);
+
+        Assert.Equal(RestoreOutcome.Created, result.Outcome);
+        Assert.Equal("from-backup", ReadMarker(target));
+        Assert.Equal(new[] { target }, Directory.GetFileSystemEntries(Path.GetDirectoryName(target)!));
+    }
+
+    /// <summary>
+    /// A damaged, foreign, empty or missing backup creates nothing — and not even the destination's folder, which
+    /// the routine only makes once the backup has passed every check.
+    /// </summary>
+    [Theory]
+    [InlineData("random", RestoreOutcome.BackupDamaged)]
+    [InlineData("empty", RestoreOutcome.BackupDamaged)]
+    [InlineData("foreign", RestoreOutcome.NotTermPointDatabase)]
+    [InlineData("missing", RestoreOutcome.BackupUnreadable)]
+    public async Task CreateFromBackupAsync_BadBackup_CreatesNothing_NotEvenTheFolder(string kind, RestoreOutcome expected)
+    {
+        var backup = BackupPath();
+        switch (kind)
+        {
+            case "random":  File.WriteAllBytes(backup, Enumerable.Range(0, 4096).Select(i => (byte)(i * 31 + 7)).ToArray()); break;
+            case "empty":   File.WriteAllBytes(backup, []); break;
+            case "foreign": CreateMarkerDb(backup, "other program", termPointTables: false); break;
+            case "missing": break;   // the file is never created
+        }
+        var folder = Path.Combine(_shareDir, "not", "yet");
+        var target = Path.Combine(folder, "dept.db");
+
+        var result = await CreateAsync(backup, target);
+
+        Assert.Equal(expected, result.Outcome);
+        AssertNothingCreated(result);
+        Assert.False(Directory.Exists(folder));
+    }
+
+    /// <summary>A corrupted page in the backup is refused, creating nothing.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_BackupWithACorruptedPage_IsBackupDamaged_AndCreatesNothing()
+    {
+        var backup = BackupPath();
+        DbFileTestHelpers.CreateHealthyDatabase(backup);
+        DbFileTestHelpers.TrashPage(backup, pageNumber: 2);
+
+        var result = await CreateAsync(backup, TargetPath());
+
+        Assert.Equal(RestoreOutcome.BackupDamaged, result.Outcome);
+        AssertNothingCreated(result);
+    }
+
+    /// <summary>A file already at the destination is never touched: AlreadyExists, byte-identical, nothing staged, nothing else created.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_TargetExists_IsAlreadyExists_AndTheFileIsUntouched()
+    {
+        var target = TargetPath();
+        var (oldBytes, _) = CreateTarget(target);
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+
+        var result = await CreateAsync(backup, target);
+
+        Assert.Equal(RestoreOutcome.AlreadyExists, result.Outcome);
+        Assert.True(result.TargetUnchanged);
+        Assert.True(result.CreatePath);
+        AssertDatabaseUntouched(target, oldBytes);
+    }
+
+    /// <summary>
+    /// A file that appears at the destination WHILE the backup is being prepared is not overwritten either. The
+    /// logger plays the other user: it creates the file at the moment the routine announces that it is about to
+    /// place the new database — after the early probe, before the late one.
+    /// </summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_TargetAppearsBetweenTheProbes_IsAlreadyExists_AndTheFileIsUntouched()
+    {
+        var target = TargetPath();
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+        var someoneElsesBytes = new byte[] { 1, 2, 3, 4, 5 };
+        var logger = new CallbackLogger(message =>
+        {
+            if (message.Contains("about to place the new database", StringComparison.Ordinal))
+                File.WriteAllBytes(target, someoneElsesBytes);
+        });
+
+        var result = await DatabaseRestore.CreateFromBackupAsync(backup, target, _localDir, null, logger);
+
+        Assert.Equal(RestoreOutcome.AlreadyExists, result.Outcome);
+        Assert.True(result.TargetUnchanged);
+        Assert.Equal(someoneElsesBytes, File.ReadAllBytes(target));
+        Assert.Equal(new[] { target }, ShareEntries());
+        Assert.Empty(Directory.GetFileSystemEntries(_localDir));
+    }
+
+    /// <summary>
+    /// The DEBUG <c>copy</c> fault cuts the transfer to target.tmp: Unreachable, the truncated .tmp it left is
+    /// removed (and the removal awaited, so it is gone on return), no target exists, nothing is staged.
+    /// </summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_InjectedCopyFault_IsUnreachable_AndLeavesNothing()
+    {
+        var target = TargetPath();
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+
+        var result = await CreateAsync(backup, target, RestoreFaultPlan.Parse("copy"));
+
+        Assert.Equal(RestoreOutcome.Unreachable, result.Outcome);
+        AssertNothingCreated(result);
+        Assert.False(File.Exists(target));
+        Assert.False(File.Exists(target + ".tmp"));
+        Assert.Contains(_log.Infos, m => m.Contains("fault injection", StringComparison.OrdinalIgnoreCase) && m.Contains("cut part-way", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>A counted copy fault cuts the first create; the retry on the same destination then succeeds.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_CountedCopyFault_FailsOnce_ThenTheRetrySucceeds()
+    {
+        var target = TargetPath();
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+        var plan = RestoreFaultPlan.Parse("copy:1");
+
+        var first = await CreateAsync(backup, target, plan);
+        var retry = await CreateAsync(backup, target, plan);
+
+        Assert.Equal(RestoreOutcome.Unreachable, first.Outcome);
+        Assert.Equal(RestoreOutcome.Created, retry.Outcome);
+        Assert.Equal("from-backup", ReadMarker(target));
+        Assert.Equal(new[] { target }, ShareEntries());
+    }
+
+    /// <summary>The <c>backup</c> and <c>damaged</c> faults have a stage on the create path too.</summary>
+    [Theory]
+    [InlineData("backup", RestoreOutcome.Unreachable)]
+    [InlineData("damaged", RestoreOutcome.BackupDamaged)]
+    public async Task CreateFromBackupAsync_InjectedEarlyFaults_FailTheirStage_AndLeaveNothing(string spec, RestoreOutcome expected)
+    {
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+
+        var result = await CreateAsync(backup, TargetPath(), RestoreFaultPlan.Parse(spec));
+
+        Assert.Equal(expected, result.Outcome);
+        AssertNothingCreated(result);
+    }
+
+    /// <summary>The faults that belong to the replace path (lock, rename, …) do not fire on the create path and do not spend their budget.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_ReplaceOnlyFaults_DoNotFire()
+    {
+        var target = TargetPath();
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+        var plan = RestoreFaultPlan.Parse("rename:1")!;
+
+        var result = await CreateAsync(backup, target, plan);
+
+        Assert.Equal(RestoreOutcome.Created, result.Outcome);
+        Assert.Equal(1, plan.Remaining);
+    }
+
+    /// <summary>The create path never throws, whatever it is given.</summary>
+    [Fact]
+    public async Task CreateFromBackupAsync_EmptyBackupPath_IsFailed_AndNeverThrows()
+    {
+        var result = await CreateAsync("", TargetPath());
+
+        Assert.False(result.Succeeded);
+        Assert.True(result.CreatePath);
+        Assert.True(result.TargetUnchanged);
+        Assert.Empty(ShareEntries());
+    }
+
+    /// <summary>
+    /// A logger that calls back with every info message, so a test can act at an exact moment of the routine (it
+    /// plays "another user" in the race tests). Errors, warnings and breadcrumbs are ignored.
+    /// </summary>
+    private sealed class CallbackLogger : IAppLogger
+    {
+        private readonly Action<string> _onInfo;
+
+        /// <summary>Creates the logger.</summary>
+        /// <param name="onInfo">Called, synchronously on the logging thread, with each <see cref="LogInfo"/> message.</param>
+        public CallbackLogger(Action<string> onInfo) => _onInfo = onInfo;
+
+        /// <inheritdoc/>
+        public bool ThrowOnError { get; set; }
+        /// <inheritdoc/>
+        public event EventHandler<string>? ErrorLogged;
+        /// <inheritdoc/>
+        public void LogError(Exception? ex, string? context = null, bool unhandled = false) { }
+        /// <inheritdoc/>
+        public void LogWarning(string message, string? context = null) { }
+        /// <inheritdoc/>
+        public void LogInfo(string message, string? context = null) => _onInfo(message);
+        /// <inheritdoc/>
+        public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
+    }
 }

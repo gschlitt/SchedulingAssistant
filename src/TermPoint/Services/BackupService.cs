@@ -843,7 +843,7 @@ public class BackupService : IDisposable
     /// <c>ComputerScience_2026-03-20_14-30-00.db</c> → 2026-03-20 14:30:00.
     /// Returns null when the filename does not match the expected pattern.
     /// </summary>
-    private static DateTime? ParseTimestampFromFilename(string filePath)
+    internal static DateTime? ParseTimestampFromFilename(string filePath)
     {
         var name = Path.GetFileNameWithoutExtension(filePath);
         // Expected suffix: _yyyy-MM-dd_HH-mm-ss  (19 chars + 1 underscore = 20)
@@ -854,6 +854,25 @@ public class BackupService : IDisposable
                 System.Globalization.DateTimeStyles.None, out var dt))
             return dt;
         return null;
+    }
+
+    /// <summary>
+    /// The inverse of the backup naming (<c>{dbName}_{yyyy-MM-dd_HH-mm-ss}.db</c>): recovers the name of the
+    /// database a backup file is a backup of, e.g. <c>ComputerScience_2026-03-20_14-30-00.db</c> →
+    /// <c>ComputerScience</c>. Uses <see cref="ParseTimestampFromFilename"/> so the two can never disagree about
+    /// what a backup name looks like. The database chooser uses it to offer the original database's name as the
+    /// restore destination.
+    /// </summary>
+    /// <param name="filePath">A backup file name or full path.</param>
+    /// <returns>The database name without extension, or null when the name is not a backup name (no timestamp suffix, or nothing before it).</returns>
+    internal static string? TryGetDatabaseNameFromBackupFilename(string filePath)
+    {
+        if (ParseTimestampFromFilename(filePath) is null) return null;
+
+        var name = Path.GetFileNameWithoutExtension(filePath);
+        // The timestamp is the last 19 characters; the character before it must be the separating underscore,
+        // and something must come before that (an empty database name is not a backup name).
+        return name.Length > 20 && name[^20] == '_' ? name[..^20] : null;
     }
 
     /// <summary>

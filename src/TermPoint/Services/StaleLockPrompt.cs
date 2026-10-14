@@ -129,11 +129,12 @@ public static class StaleLockPrompt
 
     /// <summary>
     /// Names the holder for the takeover prompt: "name on machine", just the name, "Someone on machine",
-    /// or "An unknown user" when nothing usable is known.
+    /// or "An unknown user" when nothing usable is known. Shared with <see cref="RestorePrompt"/>, which names the
+    /// holder who blocked a restore the same way.
     /// </summary>
     /// <param name="holder">The holder, or null.</param>
     /// <returns>A phrase that can start a sentence.</returns>
-    private static string DescribeHolder(LockFileData? holder)
+    internal static string DescribeHolder(LockFileData? holder)
     {
         var name    = NameOrNull(holder);
         var machine = UsableOrNull(holder?.Machine);

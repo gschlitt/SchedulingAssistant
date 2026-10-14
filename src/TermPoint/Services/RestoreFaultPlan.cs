@@ -62,7 +62,10 @@ public enum InjectedRestoreFault
 /// for real work.</para>
 ///
 /// <para>A fault fires only at its own stage, and only calls that REACH that stage count against its budget
-/// (a restore refused earlier, for another reason, does not spend it). One plan holds one fault.</para>
+/// (a restore refused earlier, for another reason, does not spend it). One plan holds one fault. The create path
+/// (<see cref="DatabaseRestore.CreateFromBackupAsync"/>, a restore into a destination that does not exist yet) has
+/// no lock, pre-restore copy, verification or rename stage: only <c>backup</c>, <c>damaged</c> and <c>copy</c>
+/// fire there.</para>
 ///
 /// <para><b>Release builds ignore it entirely:</b> <see cref="FromEnvironment"/> is the only place the
 /// variable is read and its body is compiled out of Release (the same pattern as

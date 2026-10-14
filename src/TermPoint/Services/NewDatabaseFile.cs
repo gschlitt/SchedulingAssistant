@@ -53,6 +53,10 @@ public sealed record NewDatabaseResult(NewDatabaseOutcome Outcome, Exception? Er
 /// never be replaced, even if one appears while the new database is being built. A stray
 /// <c>D.tmp</c> left by a crash is cleaned up by the next open that gets write access
 /// (<see cref="CheckoutService.CleanupOrphanedTmpAsync"/>).</para>
+///
+/// <para>The folder / probe / <c>.tmp</c> / verify / no-overwrite-move steps live in
+/// <see cref="NewFilePlacement"/>, shared with <see cref="DatabaseRestore.CreateFromBackupAsync"/> (a database
+/// created from a backup), so both place their file the same, proven way.</para>
 /// </summary>
 public static class NewDatabaseFile
 {
@@ -72,66 +76,25 @@ public static class NewDatabaseFile
         var localPath = Path.Combine(
             localDirectory ?? Path.GetTempPath(),
             $"termpoint-new-{Guid.NewGuid():N}.db");
-        var shareTmpPath    = targetPath + ".tmp";
-        var shareTmpTouched = false;
 
         try
         {
-            // Make sure the target folder exists. Directory.CreateDirectory is a network round trip
-            // when the target is on a share, so it gets the same deadline as every other operation.
-            // (Block lambda on purpose: it selects the void RunAsync overload, which returns bool.)
-            var folder = Path.GetDirectoryName(targetPath);
-            if (!string.IsNullOrEmpty(folder))
-            {
-                var folderReady = await NetworkFileOps.RunAsync(
-                    () => { Directory.CreateDirectory(folder); }, "create database folder").ConfigureAwait(false);
-                if (!folderReady)
-                    return UnreachableResult("creating the database folder stalled");
-            }
+            // Make sure the target folder exists, then refuse before doing any work if the target is
+            // already there (or the location is dead). The placement steps are shared with restoring a
+            // backup into a new file (see NewFilePlacement).
+            var folder = await NewFilePlacement.EnsureFolderAsync(targetPath).ConfigureAwait(false);
+            if (folder is not null) return folder;
 
-            // Refuse before doing any work if the target is already there (or the location is dead).
-            var early = await ProbeTargetAsync(targetPath).ConfigureAwait(false);
+            var early = await NewFilePlacement.RefuseIfPresentAsync(targetPath).ConfigureAwait(false);
             if (early is not null) return early;
 
             // Build the finished file locally (schema + migrations + seed), in rollback mode.
             await Task.Run(() => BuildLocalFile(localPath)).ConfigureAwait(false);
 
-            // Re-check immediately before writing: building takes a moment and the target may have
-            // appeared (another user created the same name). Never overwrite.
-            var late = await ProbeTargetAsync(targetPath).ConfigureAwait(false);
-            if (late is not null) return late;
-
-            // Stream to D.tmp (stall-aware), verify the bytes arrived intact, then move into place
-            // WITHOUT overwrite so an existing D can never be clobbered.
-            var localHash = NetworkFileOps.ComputeHash(localPath);
-
-            shareTmpTouched = true;
-            if (!await NetworkFileOps.CopyAsync(localPath, shareTmpPath).ConfigureAwait(false))
-                return UnreachableResult("copy to the share stalled");
-
-            var (hashCompleted, remoteHash) = await NetworkFileOps.ComputeHashAsync(shareTmpPath).ConfigureAwait(false);
-            if (!hashCompleted)
-                return UnreachableResult("verification of the copy stalled");
-            if (!string.Equals(localHash, remoteHash, StringComparison.OrdinalIgnoreCase))
-                return new NewDatabaseResult(NewDatabaseOutcome.Failed,
-                    new IOException("The new database did not copy to the destination correctly."));
-
-            try
-            {
-                if (!await NetworkFileOps.MoveAsync(shareTmpPath, targetPath, overwrite: false).ConfigureAwait(false))
-                    return UnreachableResult("move into place stalled");
-            }
-            catch (IOException)
-            {
-                // The no-overwrite move refused. If D is there it appeared after the check above;
-                // report that distinctly (and leave D untouched). Anything else is a genuine failure.
-                if (await TargetExistsAsync(targetPath).ConfigureAwait(false))
-                    return new NewDatabaseResult(NewDatabaseOutcome.AlreadyExists);
-                throw;
-            }
-
-            shareTmpTouched = false;   // D.tmp became D — nothing to clean up
-            return new NewDatabaseResult(NewDatabaseOutcome.Created);
+            // Late probe, D.tmp, hash verify and the no-overwrite move. A leftover D.tmp is removed in the
+            // background (awaitTmpCleanup: false): the caller should not wait on a dead share, and anything
+            // missed is swept by CleanupOrphanedTmpAsync on the next write-access open.
+            return await NewFilePlacement.PlaceAsync(localPath, targetPath, awaitTmpCleanup: false).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -143,50 +106,7 @@ public static class NewDatabaseFile
         finally
         {
             DeleteLocalFiles(localPath);
-
-            // A failed attempt may leave a partial D.tmp on the share. Remove it, but don't make the
-            // caller wait: the delete is deadline-bounded and non-throwing, and anything it misses
-            // is swept by CleanupOrphanedTmpAsync on the next write-access open.
-            if (shareTmpTouched)
-                _ = NetworkFileOps.DeleteAsync(shareTmpPath);
         }
-    }
-
-    /// <summary>
-    /// Probes the target path and converts anything other than "answered: absent" into the result
-    /// the caller should return.
-    /// </summary>
-    /// <param name="targetPath">The path that must not exist.</param>
-    /// <returns>
-    /// <c>null</c> when the target is confirmed absent (carry on);
-    /// <see cref="NewDatabaseOutcome.AlreadyExists"/> when a file is there;
-    /// <see cref="NewDatabaseOutcome.Unreachable"/> when the location did not answer.
-    /// </returns>
-    private static async Task<NewDatabaseResult?> ProbeTargetAsync(string targetPath)
-    {
-        switch (await NetworkFileOps.ProbeFileAsync(targetPath).ConfigureAwait(false))
-        {
-            case FileProbeResult.Exists:
-                return new NewDatabaseResult(NewDatabaseOutcome.AlreadyExists);
-            case FileProbeResult.Unreachable:
-                return new NewDatabaseResult(NewDatabaseOutcome.Unreachable);
-            default:
-                return null;
-        }
-    }
-
-    /// <summary>Deadline-bounded existence check used to classify a refused no-overwrite move.</summary>
-    /// <param name="path">File to test.</param>
-    /// <returns>True only when the location answered and the file is there.</returns>
-    private static async Task<bool> TargetExistsAsync(string path)
-        => await NetworkFileOps.ProbeFileAsync(path).ConfigureAwait(false) == FileProbeResult.Exists;
-
-    /// <summary>Logs a stall and returns the matching <see cref="NewDatabaseOutcome.Unreachable"/> result.</summary>
-    /// <param name="what">Which step stalled (log text only).</param>
-    private static NewDatabaseResult UnreachableResult(string what)
-    {
-        App.Logger.LogInfo($"NewDatabaseFile: {what} — location unreachable");
-        return new NewDatabaseResult(NewDatabaseOutcome.Unreachable);
     }
 
     /// <summary>

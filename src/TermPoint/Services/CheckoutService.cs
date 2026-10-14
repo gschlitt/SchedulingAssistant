@@ -1767,14 +1767,265 @@ public sealed class CheckoutService : IDisposable
     /// lock gone just refuses; the normal save/heartbeat paths deal with lock loss.
     /// </summary>
     /// <returns>Ours, NotOurs or Unreachable, mirroring the verification result.</returns>
-    private async Task<RestoreLockCheck> VerifyLockForRestoreAsync()
+    private Task<RestoreLockCheck> VerifyLockForRestoreAsync()
+        => VerifyLockForRestoreAtAsync(SourcePath, recordNewHolder: true);
+
+    /// <summary>
+    /// <see cref="VerifyLockForRestoreAsync"/> for the lock on ANY database, not just the session's own: the
+    /// restore into a database nobody has open (<see cref="RestoreIntoAsync"/>) holds the lock on its target
+    /// through the same lock service, and asks this whether it is still ours.
+    /// </summary>
+    /// <param name="sourcePath">Full path of the database whose <c>.lock</c> file is checked.</param>
+    /// <param name="recordNewHolder">
+    /// True to remember a foreign holder in <see cref="LockLossNewHolder"/> (what the session's own checks do, for
+    /// the lock-loss banner); false for a restore into another database, which must not touch session state.
+    /// </param>
+    /// <returns>Ours, NotOurs or Unreachable, mirroring the verification result.</returns>
+    private async Task<RestoreLockCheck> VerifyLockForRestoreAtAsync(string sourcePath, bool recordNewHolder)
     {
-        return await VerifyLockIsOursAsync().ConfigureAwait(false) switch
+        return await VerifyLockIsOursAtAsync(sourcePath, recordNewHolder).ConfigureAwait(false) switch
         {
             LockVerificationResult.Ours    => RestoreLockCheck.Ours,
             LockVerificationResult.NotOurs => RestoreLockCheck.NotOurs,
             _                              => RestoreLockCheck.Unreachable
         };
+    }
+
+    /// <summary>
+    /// How long <see cref="RestoreIntoAsync"/> waits for the background deletion of the lock file it just
+    /// released. The deletion is one deadline-bounded read and one deadline-bounded delete
+    /// (<see cref="NetworkFileOps.TimeoutMs"/> each), so this is comfortably past both.
+    /// </summary>
+    internal const int RestoreLockReleaseWaitMs = 12_000;
+
+    /// <summary>
+    /// Restores a backup into a database that THIS app does not have open — the database chooser's restore, which
+    /// runs when no session exists (startup, recovery, "already open", after a failed switch). Unlike
+    /// <see cref="RestoreFromBackupAsync"/> there is no session to protect, so this method does not read or change
+    /// <see cref="SourcePath"/>, <see cref="WorkingPath"/>, <see cref="Mode"/>, <see cref="HashAtCheckout"/> or any
+    /// other session state. The caller opens the database afterwards through the normal startup flow.
+    ///
+    /// <para><b>What it does,</b> by what is at <paramref name="targetPath"/> (probed, deadline-bounded):</para>
+    /// <list type="bullet">
+    /// <item><description><b>Unreachable</b> — <see cref="RestoreOutcome.Unreachable"/>; nothing was touched.</description></item>
+    /// <item><description><b>Missing</b> — the create path, <see cref="DatabaseRestore.CreateFromBackupAsync"/>: the
+    /// backup is checked and a new database is placed the way a brand-new one is. No lock is needed (there is
+    /// nothing to protect), and nothing is ever overwritten: a file that appears meanwhile gives
+    /// <see cref="RestoreOutcome.AlreadyExists"/>.</description></item>
+    /// <item><description><b>Exists</b> — the replace path (only when <paramref name="allowReplace"/>; otherwise
+    /// <see cref="RestoreOutcome.AlreadyExists"/> and nothing is touched):
+    ///   <list type="number">
+    ///   <item><description>Take the write lock on the TARGET. Held by someone else → <see cref="RestoreOutcome.LockHeld"/>
+    ///   naming the holder (an abandoned lock too: a restore never takes a lock over; the user opens the database
+    ///   normally, which offers the take-over). The lock file could not even be created (Controlled Folder Access,
+    ///   permissions, a full disk) → <see cref="RestoreOutcome.Failed"/> carrying the reason in
+    ///   <see cref="RestoreResult.Detail"/>.</description></item>
+    ///   <item><description>Hash the target (deadline-bounded) and run <see cref="DatabaseRestore.ReplaceAsync"/> with
+    ///   that hash and a lock check for THIS target, so the routine's guarantees hold: any failure before the final
+    ///   rename leaves the database byte-identical.</description></item>
+    ///   <item><description>ALWAYS release the lock, and wait for its file to be deleted before returning: the caller's
+    ///   next step opens this same database, and its lock acquisition must not find our own just-released lock
+    ///   file.</description></item>
+    ///   </list></description></item>
+    /// </list>
+    ///
+    /// <para>Refused up front, touching nothing: <see cref="RestoreOutcome.Busy"/> when this service holds a write
+    /// lock or has a write session open, or a save is in flight (the chooser never runs then; this is the second
+    /// line of defence), and <see cref="RestoreOutcome.Failed"/> (with <see cref="RestoreResult.Detail"/>) when
+    /// <paramref name="targetPath"/> is the backup file itself.</para>
+    /// </summary>
+    /// <param name="backupPath">Full path of the backup file (may be on a share). It is only copied, never opened with SQLite.</param>
+    /// <param name="targetPath">Full path of the database to restore into (may be on a share, may not exist yet). It is never opened with SQLite.</param>
+    /// <param name="allowReplace">
+    /// True (the default) to replace a database found at the target. The chooser passes false when it showed the
+    /// user "a new database will be created here" and so asked no confirmation, so a database that appears at the
+    /// target meanwhile is refused (<see cref="RestoreOutcome.AlreadyExists"/>) instead of being replaced unconfirmed.
+    /// </param>
+    /// <returns>
+    /// The outcome. This method <b>does not throw</b>: an exception nobody anticipated comes back as
+    /// <see cref="RestoreOutcome.Failed"/> (and is logged with LogError). <see cref="RestoreOutcome.Restored"/> and
+    /// <see cref="RestoreOutcome.Created"/> mean the target now holds the backup and may be opened;
+    /// <see cref="RestoreOutcome.RenameUnconfirmed"/> means it might (the caller should NOT open it, but tell the
+    /// user); every other outcome leaves the target exactly as it was.
+    /// </returns>
+    public async Task<RestoreResult> RestoreIntoAsync(string backupPath, string targetPath, bool allowReplace = true)
+    {
+        // Second line of defence: a session that holds (or is writing to) a database must not have the lock
+        // service — which is shared with it — re-pointed at another database by TryAcquire.
+        if (_lockService.IsWriter || Mode == CheckoutMode.WriteAccess)
+        {
+            _logger.LogInfo("CheckoutService: RestoreIntoAsync refused — this app already has a database open for editing.");
+            return new RestoreResult(RestoreOutcome.Busy);
+        }
+
+        // Restoring a file onto itself would destroy the only copy. The chooser disables Continue first.
+        if (RestoreDestination.IsSameFile(backupPath, targetPath))
+        {
+            _logger.LogInfo("CheckoutService: RestoreIntoAsync refused — the destination is the backup file itself.");
+            return new RestoreResult(
+                RestoreOutcome.Failed,
+                Error:  new InvalidOperationException("The restore destination is the backup file itself."),
+                Detail: RestorePrompt.DestinationIsBackupFileText);
+        }
+
+        // The same gate as SaveAsync and RestoreFromBackupAsync, so none of them can interleave with another.
+        if (Interlocked.CompareExchange(ref _saveInFlight, 1, 0) != 0)
+        {
+            _logger.LogInfo("CheckoutService: RestoreIntoAsync refused — a save or restore is in progress.");
+            return new RestoreResult(RestoreOutcome.Busy);
+        }
+
+        try
+        {
+            _logger.LogBreadcrumb("Restore into: started");
+
+            var result = await RestoreIntoCoreAsync(backupPath, targetPath, allowReplace).ConfigureAwait(false);
+
+            _logger.LogBreadcrumb($"Restore into: {result.Outcome}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            // Everything below this method returns results instead of throwing, so this is a safety net only.
+            // LogError: it must reach the error reporter.
+            _logger.LogError(ex, "CheckoutService: unexpected exception in RestoreIntoAsync");
+            return new RestoreResult(RestoreOutcome.Failed, Error: ex);
+        }
+        finally
+        {
+            Volatile.Write(ref _saveInFlight, 0);
+        }
+    }
+
+    /// <summary>
+    /// The body of <see cref="RestoreIntoAsync"/> once its refusals have passed: probes the target and goes down the
+    /// create path (missing), the replace path (exists), or reports the location unreachable.
+    /// </summary>
+    /// <param name="backupPath">The backup file.</param>
+    /// <param name="targetPath">The database to restore into.</param>
+    /// <param name="allowReplace">Whether an existing database may be replaced.</param>
+    /// <returns>The outcome; see <see cref="RestoreIntoAsync"/>.</returns>
+    private async Task<RestoreResult> RestoreIntoCoreAsync(string backupPath, string targetPath, bool allowReplace)
+    {
+        switch (await NetworkFileOps.ProbeFileAsync(targetPath).ConfigureAwait(false))
+        {
+            case FileProbeResult.Unreachable:
+                _logger.LogInfo("CheckoutService: RestoreIntoAsync — the destination did not answer.");
+                return new RestoreResult(RestoreOutcome.Unreachable);
+
+            case FileProbeResult.Missing:
+                return await DatabaseRestore.CreateFromBackupAsync(
+                    backupPath, targetPath, faultPlan: RestoreFaultPlan, logger: _logger).ConfigureAwait(false);
+        }
+
+        // Something is there. Replacing it needs the caller's say-so.
+        if (!allowReplace)
+        {
+            _logger.LogInfo("CheckoutService: RestoreIntoAsync — a database is at the destination and replacing was not allowed.");
+            return new RestoreResult(RestoreOutcome.AlreadyExists);
+        }
+
+        return await ReplaceUnderLockAsync(backupPath, targetPath).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The replace path of <see cref="RestoreIntoAsync"/>: takes the write lock on the target, hashes it, runs
+    /// <see cref="DatabaseRestore.ReplaceAsync"/>, and always releases the lock again — waiting until its file is
+    /// gone. A lock that someone else holds is never taken over or touched.
+    ///
+    /// <para><b>Why the shared lock service:</b> it is the one that already knows how to read, judge and
+    /// heartbeat a lock file; the heartbeat keeps our lock alive through a slow network restore. TryAcquire first
+    /// releases whatever this service held, which is why <see cref="RestoreIntoAsync"/> refuses while it holds a
+    /// write lock. A <c>TryAcquire</c> that outlives its deadline may still create the lock file a moment later
+    /// (the same exposure <see cref="CheckoutAsync"/> has); the release in the <c>finally</c> clears our state
+    /// either way.</para>
+    /// </summary>
+    /// <param name="backupPath">The backup file.</param>
+    /// <param name="targetPath">The existing database to replace.</param>
+    /// <returns>LockHeld, Failed (lock file not writable), Unreachable, FileInUse, or whatever <see cref="DatabaseRestore.ReplaceAsync"/> returns.</returns>
+    private async Task<RestoreResult> ReplaceUnderLockAsync(string backupPath, string targetPath)
+    {
+        try
+        {
+            // 1. The write lock on the TARGET, deadline-bounded like CheckoutAsync's.
+            var acquireCompleted = await NetworkFileOps.RunAsync(
+                () => _lockService.TryAcquire(targetPath), "restore lock acquire").ConfigureAwait(false);
+            if (!acquireCompleted)
+            {
+                _logger.LogInfo("CheckoutService: RestoreIntoAsync — lock acquire timed out — network unreachable");
+                return new RestoreResult(RestoreOutcome.Unreachable);
+            }
+
+            if (!_lockService.IsWriter)
+            {
+                // Read what the lock service learned BEFORE the finally releases it (Release clears the holder).
+                if (_lockService.LockWriteError is { } writeError)
+                {
+                    _logger.LogInfo("CheckoutService: RestoreIntoAsync — the lock file could not be created.");
+                    return new RestoreResult(RestoreOutcome.Failed, Error: new IOException(writeError), Detail: writeError);
+                }
+
+                _logger.LogInfo("CheckoutService: RestoreIntoAsync — the database is locked by someone else; nothing was touched.");
+                return new RestoreResult(RestoreOutcome.LockHeld, Holder: _lockService.CurrentHolder);
+            }
+
+            // 2. The target's current hash: what ReplaceAsync insists it still has at the swap.
+            string? targetHash;
+            try
+            {
+                var hashCompleted = false;
+                (hashCompleted, targetHash) = await NetworkFileOps.ComputeHashAsync(targetPath).ConfigureAwait(false);
+                if (!hashCompleted)
+                {
+                    _logger.LogInfo("CheckoutService: RestoreIntoAsync — hashing the database timed out — network unreachable");
+                    return new RestoreResult(RestoreOutcome.Unreachable);
+                }
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // It was there a moment ago (the probe) and is gone now: someone moved or deleted it. Nothing was touched.
+                _logger.LogInfo($"CheckoutService: RestoreIntoAsync — the database disappeared ({ex.GetType().Name})");
+                return new RestoreResult(RestoreOutcome.Failed, Error: ex);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogInfo($"CheckoutService: RestoreIntoAsync — cannot read the database ({ex.GetType().Name}: {ex.Message})");
+                return new RestoreResult(RestoreOutcome.FileInUse, Error: ex);
+            }
+
+            // 3. The restore itself, with a lock check for THIS target that leaves the session's state alone.
+            return await DatabaseRestore.ReplaceAsync(
+                backupPath,
+                targetPath,
+                targetHash!,
+                () => VerifyLockForRestoreAtAsync(targetPath, recordNewHolder: false),
+                DateTime.Now,
+                faultPlan: RestoreFaultPlan,
+                logger: _logger).ConfigureAwait(false);
+        }
+        finally
+        {
+            // 4. Always give the lock back, and wait for its file to go before the caller opens this database.
+            _lockService.Release();
+            await WaitForLockReleaseAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Waits (bounded by <see cref="RestoreLockReleaseWaitMs"/>) for the background deletion of the lock file queued
+    /// by the last <see cref="WriteLockService.Release"/>. Never throws: the lock service's release task cannot
+    /// fault. If the share is too slow to finish in time, the file is left to the stale-lock handling (a later open
+    /// would wait for it, bounded, too).
+    /// </summary>
+    private async Task WaitForLockReleaseAsync()
+    {
+        var pending = _lockService.PendingRelease;
+        if (pending is null || pending.IsCompleted)
+            return;
+
+        var finished = await Task.WhenAny(pending, Task.Delay(RestoreLockReleaseWaitMs)).ConfigureAwait(false);
+        if (finished != pending)
+            _logger.LogInfo("CheckoutService: RestoreIntoAsync — the lock file's deletion did not finish in time.");
     }
 
     /// <summary>
@@ -2779,9 +3030,24 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="LockVerificationResult.Unreachable"/> — the network share could not be reached;
     ///     the caller should treat this as a transient failure, not a lock-loss event.
     /// </returns>
-    private async Task<LockVerificationResult> VerifyLockIsOursAsync()
+    private Task<LockVerificationResult> VerifyLockIsOursAsync()
+        => VerifyLockIsOursAtAsync(SourcePath, recordNewHolder: true);
+
+    /// <summary>
+    /// <see cref="VerifyLockIsOursAsync"/> for the lock on any database: the one-retry loop of that method, with the
+    /// database path passed in instead of read from <see cref="SourcePath"/>. The session's own checks call it with
+    /// <see cref="SourcePath"/> (through the parameterless method, so their behaviour is unchanged); a restore into a
+    /// database this app does not have open (<see cref="RestoreIntoAsync"/>) calls it with that database's path.
+    /// </summary>
+    /// <param name="sourcePath">Full path of the database whose <c>.lock</c> file is checked.</param>
+    /// <param name="recordNewHolder">
+    /// True to remember a foreign holder in <see cref="LockLossNewHolder"/> (for the session's lock-loss banner);
+    /// false when the check is not about the session's own database and must not touch session state.
+    /// </param>
+    /// <returns>The same three-way answer as <see cref="VerifyLockIsOursAsync"/>.</returns>
+    private async Task<LockVerificationResult> VerifyLockIsOursAtAsync(string sourcePath, bool recordNewHolder)
     {
-        var result = await VerifyLockIsOursOnceAsync();
+        var result = await VerifyLockIsOursOnceAtAsync(sourcePath, recordNewHolder);
 
         if (result == LockVerificationResult.NotOurs)
         {
@@ -2794,7 +3060,7 @@ public sealed class CheckoutService : IDisposable
                 $"CheckoutService: lock verification returned NotOurs — retrying in " +
                 $"{LockRetryDelayMs}ms to rule out a transient heartbeat-rename overlap.");
             await Task.Delay(LockRetryDelayMs);
-            result = await VerifyLockIsOursOnceAsync();
+            result = await VerifyLockIsOursOnceAtAsync(sourcePath, recordNewHolder);
         }
 
         return result;
@@ -2814,9 +3080,21 @@ public sealed class CheckoutService : IDisposable
     /// wrappers and the reachability probe for all file I/O. Called by
     /// <see cref="VerifyLockIsOursAsync"/>, which wraps it in a one-retry loop.
     /// </summary>
-    private async Task<LockVerificationResult> VerifyLockIsOursOnceAsync()
+    private Task<LockVerificationResult> VerifyLockIsOursOnceAsync()
+        => VerifyLockIsOursOnceAtAsync(SourcePath, recordNewHolder: true);
+
+    /// <summary>
+    /// <see cref="VerifyLockIsOursOnceAsync"/> for the lock on any database (see
+    /// <see cref="VerifyLockIsOursAtAsync"/> for why): the single-attempt check with the database path passed in.
+    /// The decision table, the reachability probe and the contended-read handling are exactly those of the
+    /// session's own check.
+    /// </summary>
+    /// <param name="sourcePath">Full path of the database whose <c>.lock</c> file is checked.</param>
+    /// <param name="recordNewHolder">True to remember a foreign holder in <see cref="LockLossNewHolder"/>; false to leave session state alone.</param>
+    /// <returns>Ours, NotOurs or Unreachable.</returns>
+    private async Task<LockVerificationResult> VerifyLockIsOursOnceAtAsync(string sourcePath, bool recordNewHolder)
     {
-        var lockPath = Path.ChangeExtension(SourcePath, ".lock");
+        var lockPath = Path.ChangeExtension(sourcePath, ".lock");
 
         // ── Step 1: Does D.lock exist? ───────────────────────────────────────
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(lockPath);
@@ -2828,13 +3106,13 @@ public sealed class CheckoutService : IDisposable
             // D.lock appears missing — but is the share actually reachable?
             // Probe the parent directory to distinguish a genuine deletion
             // from an SMB cache returning a stale "not found."
-            var sourceDir = Path.GetDirectoryName(SourcePath)!;
+            var sourceDir = Path.GetDirectoryName(sourcePath)!;
             var (dirCompleted, dirExists) = await NetworkFileOps.DirectoryExistsAsync(sourceDir);
             if (!dirCompleted || !dirExists)
                 return LockVerificationResult.Unreachable;
 
             // Share directory is reachable, so D.lock was genuinely deleted.
-            LockLossNewHolder = null;
+            if (recordNewHolder) LockLossNewHolder = null;
             return LockVerificationResult.NotOurs;
         }
 
@@ -2884,21 +3162,21 @@ public sealed class CheckoutService : IDisposable
 
             // Lock file belongs to a different session — capture the new holder
             // so the WriteLockLost handler can name them in the banner.
-            LockLossNewHolder = data;
+            if (recordNewHolder) LockLossNewHolder = data;
             return LockVerificationResult.NotOurs;
         }
         catch
         {
             // JSON parse failure — could be a truncated read from a flaky connection.
             // Same reachability probe: if the share directory is unreachable, blame the network.
-            var sourceDir = Path.GetDirectoryName(SourcePath)!;
+            var sourceDir = Path.GetDirectoryName(sourcePath)!;
             var (probeCompleted, _) = await NetworkFileOps.DirectoryExistsAsync(sourceDir);
             if (!probeCompleted)
                 return LockVerificationResult.Unreachable;
 
             // Share is reachable but the lock file is genuinely unreadable (corrupt).
             // Treat as external interference — no known new holder.
-            LockLossNewHolder = null;
+            if (recordNewHolder) LockLossNewHolder = null;
             return LockVerificationResult.NotOurs;
         }
     }

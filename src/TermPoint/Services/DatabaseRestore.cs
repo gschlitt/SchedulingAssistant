@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 
 namespace TermPoint.Services;
@@ -35,6 +36,13 @@ namespace TermPoint.Services;
 /// pre-restore copy this call wrote are deleted too — a "before restore" file never appears when no restore
 /// happened. After <see cref="RestoreOutcome.Restored"/> or <see cref="RestoreOutcome.RenameUnconfirmed"/> the
 /// share is left exactly as the restore left it.</para>
+///
+/// <para><b>Creating instead of replacing</b> (<see cref="CreateFromBackupAsync"/>, spec item 5c): when the
+/// destination does not exist there is no D to protect, so the routine stages, checks, normalises and hashes the
+/// backup exactly as above (stages 2 and 3 — the same code, not a copy) and then places the staged file the way a
+/// brand-new database is placed (<see cref="NewFilePlacement"/>: folder, early and late probe, <c>D.tmp</c>, hash
+/// verify, a move that can never overwrite). There is no lock, no hash comparison, no pre-restore copy and no
+/// rename over anything; a file that appears at the destination meanwhile is never touched.</para>
 /// </summary>
 public static class DatabaseRestore
 {
@@ -94,6 +102,48 @@ public static class DatabaseRestore
     }
 
     /// <summary>
+    /// Creates a NEW database at <paramref name="targetPath"/> from the backup at <paramref name="backupPath"/>.
+    /// The target must not exist; nothing that exists there is ever replaced or touched. The backup is staged
+    /// locally, integrity-checked, converted to rollback-journal mode, checked for TermPoint's core tables and
+    /// hashed exactly as in <see cref="ReplaceAsync"/>, then placed at the target the way
+    /// <see cref="NewDatabaseFile"/> places a brand-new database (<see cref="NewFilePlacement"/>): target folder
+    /// created, an early and a late probe, <c>target.tmp</c>, a hash check, and a move that refuses to overwrite.
+    /// A damaged, foreign or unreadable backup creates nothing — not even the folder.
+    /// Every operation on the share is deadline-bounded; local work runs on thread-pool threads. <b>Never
+    /// throws</b>: every failure, including an exception nobody anticipated, comes back as a
+    /// <see cref="RestoreResult"/>, whose <see cref="RestoreResult.CreatePath"/> is true.
+    ///
+    /// <para>Of the DEBUG faults (<see cref="RestoreFaultPlan"/>) only <c>backup</c>, <c>damaged</c> and <c>copy</c>
+    /// have a stage on this path.</para>
+    /// </summary>
+    /// <param name="backupPath">The backup file to restore (may be on a share). It is only ever copied — never opened with SQLite.</param>
+    /// <param name="targetPath">Full path of the database to create. It is only ever copied to and moved — never opened with SQLite.</param>
+    /// <param name="localDirectory">
+    /// Folder for the local staged copy. Defaults to the system temp folder; tests supply their own so they can
+    /// assert nothing is left behind. The staged file is always deleted.
+    /// </param>
+    /// <param name="faultPlan">DEBUG-only fault injection (null in a shipped build); see <see cref="RestoreFaultPlan"/>.</param>
+    /// <param name="logger">Logger for the outcome lines; defaults to <see cref="App.Logger"/>.</param>
+    /// <returns>
+    /// <see cref="RestoreOutcome.Created"/> when the new database exists and is complete;
+    /// <see cref="RestoreOutcome.AlreadyExists"/> when a file is (or appeared) at the target — untouched; otherwise
+    /// the first failure (damaged, foreign or unreadable backup, <see cref="RestoreOutcome.Unreachable"/>, …), with
+    /// nothing created.
+    /// </returns>
+    public static async Task<RestoreResult> CreateFromBackupAsync(
+        string backupPath,
+        string targetPath,
+        string? localDirectory = null,
+        RestoreFaultPlan? faultPlan = null,
+        IAppLogger? logger = null)
+    {
+        var run = new RestoreRun(
+            backupPath, targetPath, expectedTargetHash: null, checkLock: null, now: default,
+            localDirectory ?? Path.GetTempPath(), faultPlan, logger ?? App.Logger, creating: true);
+        return await run.ExecuteAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Builds the full path of the pre-restore copy: <c>&lt;name&gt; (before restore yyyy-MM-dd HH-mm)&lt;ext&gt;</c>
     /// in D's own folder, where <c>name</c> and <c>ext</c> are D's. A second and later <paramref name="attempt"/>
     /// inserts " (2)", " (3)", … before the extension, for a name that is already taken. The name never starts
@@ -116,6 +166,31 @@ public static class DatabaseRestore
     }
 
     /// <summary>
+    /// Recognises a pre-restore copy's file name (the format <see cref="PreRestoreCopyName"/> builds, including the
+    /// " (2)", " (3)", … of a second copy in the same minute) and recovers the name of the database it is a copy
+    /// of. Restoring that file is how a user undoes a restore, so the chooser uses this to offer the original
+    /// database's name as the destination. Kept beside <see cref="PreRestoreCopyName"/> so the two formats cannot
+    /// drift apart.
+    /// </summary>
+    /// <param name="path">A file name or full path.</param>
+    /// <returns>
+    /// The original database's file name with its extension (<c>dept.db</c> for
+    /// <c>dept (before restore 2026-10-13 14-05) (2).db</c>), or null when <paramref name="path"/> is not named like a pre-restore copy.
+    /// </returns>
+    internal static string? TryGetOriginalNameOfPreRestoreCopy(string path)
+    {
+        var match = PreRestoreNamePattern.Match(Path.GetFileName(path));
+        return match.Success ? match.Groups["name"].Value + match.Groups["ext"].Value : null;
+    }
+
+    /// <summary>
+    /// The shape of a pre-restore copy's file name: <c>&lt;name&gt; (before restore yyyy-MM-dd HH-mm)[ (n)]&lt;ext&gt;</c>.
+    /// </summary>
+    private static readonly Regex PreRestoreNamePattern = new(
+        @"^(?<name>.+) \(before restore \d{4}-\d{2}-\d{2} \d{2}-\d{2}\)(?: \(\d+\))?(?<ext>\.[^.]*)?$",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
     /// One execution of the restore: holds the inputs, the bookkeeping the cleanup needs (which files this run
     /// created), and one method per stage. A fresh instance per call keeps <see cref="ReplaceAsync"/> reentrant.
     /// </summary>
@@ -125,8 +200,16 @@ public static class DatabaseRestore
 
         private readonly string _backupPath;
         private readonly string _targetPath;
-        private readonly string _expectedTargetHash;
-        private readonly Func<Task<RestoreLockCheck>> _checkLock;
+
+        /// <summary>D's hash as the caller last knew it. Null on the create path, which has no D to compare.</summary>
+        private readonly string? _expectedTargetHash;
+
+        /// <summary>The caller's "is the write lock still ours?" question. Null on the create path, which takes no lock.</summary>
+        private readonly Func<Task<RestoreLockCheck>>? _checkLock;
+
+        /// <summary>True for <see cref="CreateFromBackupAsync"/> (no D exists), false for <see cref="ReplaceAsync"/>.</summary>
+        private readonly bool _creating;
+
         private readonly DateTime _now;
         private readonly string _localDirectory;
         private readonly RestoreFaultPlan? _faults;
@@ -166,11 +249,16 @@ public static class DatabaseRestore
         /// <summary>True once the swap (D.tmp over D) has been started, after which D's state is no longer known to be unchanged.</summary>
         private bool _swapAttempted;
 
-        /// <summary>Creates the run. See <see cref="DatabaseRestore.ReplaceAsync"/> for the parameters.</summary>
+        /// <summary>
+        /// Creates the run. See <see cref="DatabaseRestore.ReplaceAsync"/> and
+        /// <see cref="DatabaseRestore.CreateFromBackupAsync"/> for the parameters.
+        /// </summary>
+        /// <param name="creating">True for the create path; then <paramref name="expectedTargetHash"/>, <paramref name="checkLock"/> and <paramref name="now"/> are unused and may be null/default.</param>
         public RestoreRun(
-            string backupPath, string targetPath, string expectedTargetHash,
-            Func<Task<RestoreLockCheck>> checkLock, DateTime now,
-            string localDirectory, RestoreFaultPlan? faultPlan, IAppLogger logger)
+            string backupPath, string targetPath, string? expectedTargetHash,
+            Func<Task<RestoreLockCheck>>? checkLock, DateTime now,
+            string localDirectory, RestoreFaultPlan? faultPlan, IAppLogger logger,
+            bool creating = false)
         {
             _backupPath         = backupPath;
             _targetPath         = targetPath;
@@ -180,6 +268,7 @@ public static class DatabaseRestore
             _localDirectory     = localDirectory;
             _faults             = faultPlan;
             _log                = logger;
+            _creating           = creating;
 
             _stagedPath    = Path.Combine(localDirectory, $"termpoint-restore-{Guid.NewGuid():N}.db");
             _targetTmpPath = targetPath + ".tmp";
@@ -198,7 +287,9 @@ public static class DatabaseRestore
             {
                 try
                 {
-                    result = await RunStagesAsync().ConfigureAwait(false);
+                    result = _creating
+                        ? await RunCreateStagesAsync().ConfigureAwait(false)
+                        : await RunStagesAsync().ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -213,7 +304,8 @@ public static class DatabaseRestore
                 await CleanupAsync(result).ConfigureAwait(false);
                 if (result is not null)
                     _log.LogInfo($"DatabaseRestore: {result.Outcome} " +
-                                 (result.TargetUnchanged ? "(database unchanged)" : "(database replaced or replacement unconfirmed)"));
+                                 (result.TargetUnchanged ? (_creating ? "(nothing created)" : "(database unchanged)")
+                                  : _creating ? "(database created)" : "(database replaced or replacement unconfirmed)"));
             }
         }
 
@@ -252,6 +344,28 @@ public static class DatabaseRestore
             return await SwapAsync().ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// The create path: refuse early if something is already at the target, stage and check the backup (the
+        /// very same stages 2 and 3 as the replace path), then place the staged file the way a new database is
+        /// placed. Returns at the first stage that reports a result.
+        /// </summary>
+        /// <returns><see cref="RestoreOutcome.Created"/>, or the first failure — with nothing created.</returns>
+        private async Task<RestoreResult> RunCreateStagesAsync()
+        {
+            // C1. Cheap refusal before any work: a file already there (or a dead location) ends it here.
+            if (await NewFilePlacement.RefuseIfPresentAsync(_targetPath).ConfigureAwait(false) is { } present)
+                return FromPlacement(present);
+
+            // C2. Stage the backup locally (shared with the replace path).
+            if (await StageBackupAsync().ConfigureAwait(false) is { } stageFailure) return stageFailure;
+
+            // C3. Integrity-check, normalise, TermPoint-tables check and hash (shared with the replace path).
+            if (await CheckAndNormaliseStagedAsync().ConfigureAwait(false) is { } checkFailure) return checkFailure;
+
+            // C4. Folder, late probe, D.tmp, hash verify, no-overwrite move. Only now is anything created.
+            return await PlaceNewFileAsync().ConfigureAwait(false);
+        }
+
         // ── Stages ────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -267,7 +381,7 @@ public static class DatabaseRestore
                 return Result(RestoreOutcome.LockLost);
             }
 
-            switch (await _checkLock().ConfigureAwait(false))
+            switch (await _checkLock!().ConfigureAwait(false))
             {
                 case RestoreLockCheck.Ours:
                     return null;
@@ -487,6 +601,45 @@ public static class DatabaseRestore
                 return Stalled("verifying D.tmp");
 
             return HashesEqual(hash, _restoredHash) ? null : TornTransfer();
+        }
+
+        /// <summary>
+        /// Create path, last step: makes the target's folder and hands the staged file to the shared placement
+        /// pipeline, which probes again, streams to <c>D.tmp</c> (through <see cref="CopyForCreateAsync"/> so the
+        /// DEBUG <c>copy</c> fault can cut it), verifies the hash and moves it into place without overwrite. A
+        /// leftover <c>D.tmp</c> is removed and awaited before this returns, so "nothing was created" is literally true.
+        /// </summary>
+        /// <returns>Created, AlreadyExists, Unreachable or Failed; an IO exception propagates to <see cref="FromException"/>.</returns>
+        private async Task<RestoreResult> PlaceNewFileAsync()
+        {
+            _log.LogInfo("DatabaseRestore: about to place the new database at the destination");
+
+            if (await NewFilePlacement.EnsureFolderAsync(_targetPath, _log).ConfigureAwait(false) is { } folder)
+                return FromPlacement(folder);
+
+            var placed = await NewFilePlacement.PlaceAsync(
+                _stagedPath, _targetPath, awaitTmpCleanup: true,
+                localHash: _restoredHash, copyAsync: CopyForCreateAsync, logger: _log).ConfigureAwait(false);
+            return FromPlacement(placed);
+        }
+
+        /// <summary>
+        /// The transfer to <c>D.tmp</c> on the create path: the real stall-aware copy, unless the DEBUG
+        /// <c>copy</c> fault is armed, in which case a truncated <c>D.tmp</c> is left behind (the debris a severed
+        /// transfer really leaves) and the copy reports a stall.
+        /// </summary>
+        /// <param name="source">The staged local file.</param>
+        /// <param name="destination">D.tmp.</param>
+        /// <returns>True when the copy completed; false when it stalled.</returns>
+        private async Task<bool> CopyForCreateAsync(string source, string destination)
+        {
+            if (Inject(InjectedRestoreFault.Copy, "the transfer to D.tmp is cut part-way"))
+            {
+                await WritePartialTargetTmpAsync().ConfigureAwait(false);
+                return false;
+            }
+
+            return await NetworkFileOps.CopyAsync(source, destination).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -721,8 +874,31 @@ public static class DatabaseRestore
         /// <param name="error">The exception behind it, if any.</param>
         private RestoreResult Result(RestoreOutcome outcome, Exception? error = null)
         {
-            var changed = outcome is RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed;
-            return new RestoreResult(outcome, changed ? _preRestorePath : null, changed ? _restoredHash : null, error);
+            var changed = outcome is RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed or RestoreOutcome.Created;
+            return new RestoreResult(
+                outcome, changed ? _preRestorePath : null, changed ? _restoredHash : null, error,
+                CreatePath: _creating);
+        }
+
+        /// <summary>
+        /// Translates the shared placement pipeline's result (<see cref="NewDatabaseResult"/>) to a restore result,
+        /// logging the two refusals. Used by the create path only.
+        /// </summary>
+        /// <param name="placement">The placement step's result.</param>
+        private RestoreResult FromPlacement(NewDatabaseResult placement)
+        {
+            switch (placement.Outcome)
+            {
+                case NewDatabaseOutcome.Created:
+                    return Result(RestoreOutcome.Created);
+                case NewDatabaseOutcome.AlreadyExists:
+                    _log.LogInfo("DatabaseRestore: a file is already at the destination — nothing was created");
+                    return Result(RestoreOutcome.AlreadyExists);
+                case NewDatabaseOutcome.Unreachable:
+                    return Stalled("placing the new database");
+                default:
+                    return Result(RestoreOutcome.Failed, error: placement.Error);
+            }
         }
 
         /// <summary>Logs a stall and returns the matching Unreachable result.</summary>
