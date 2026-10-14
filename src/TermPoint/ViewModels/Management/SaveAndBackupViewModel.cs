@@ -17,6 +17,25 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
 
     private readonly BackupService _backupService;
     private readonly IDialogService _dialogService;
+    private readonly WriteLockService _lockService;
+
+    // ── Restore availability ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// True when this session holds the write lock (the person editing the database). Restore replaces the
+    /// database for everyone, so it is available to the writer only: this gates <see cref="RestoreCommand"/>
+    /// and with it every row's Restore button. Raised again whenever the lock state changes.
+    /// </summary>
+    public bool IsWriteEnabled => _lockService.IsWriter;
+
+    /// <summary>The explanatory text shown above the list of backups (see <see cref="RestorePrompt.PanelDescription"/>).</summary>
+    public string RestoreDescription => RestorePrompt.PanelDescription;
+
+    /// <summary>
+    /// The note shown while Restore is unavailable, i.e. when <see cref="IsWriteEnabled"/> is false
+    /// (see <see cref="RestorePrompt.ReadOnlyNote"/>).
+    /// </summary>
+    public string RestoreUnavailableNote => RestorePrompt.ReadOnlyNote;
 
     // ── Autosave settings ────────────────────────────────────────────────────
 
@@ -71,19 +90,25 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Injected by <see cref="MainWindowViewModel"/> when opening the Settings flyout.
-    /// Called with the full path of the selected backup .db file.
-    /// The caller is responsible for the close-connection / copy-file / restart sequence.
+    /// Called with the full path of the selected backup .db file, after the user has confirmed.
+    /// The callee owns the whole operation (<c>MainWindow.RestoreFromBackupAsync</c>): it saves the user's
+    /// current changes first, runs the safe restore (<see cref="DatabaseRestore"/>) under a wait dialog,
+    /// reports any failure itself (the database is unchanged and the session simply continues), and on
+    /// success closes and restarts TermPoint.
     /// </summary>
     public Func<string, Task>? RestoreCallback { get; set; }
 
     /// <param name="backupService">Singleton backup service.</param>
     /// <param name="dialogService">Used for backup-now error reporting and restore confirmation.</param>
+    /// <param name="lockService">Write-lock state: restore is available to the writer only.</param>
     public SaveAndBackupViewModel(
         BackupService backupService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        WriteLockService lockService)
     {
         _backupService  = backupService;
         _dialogService  = dialogService;
+        _lockService    = lockService;
 
         // Initialise fields from persisted settings.
         var s = AppSettings.Current;
@@ -97,6 +122,9 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
 
         // Refresh the status line and entry list after every backup.
         _backupService.BackupCompleted += OnBackupCompleted;
+
+        // Restore is writer-only: re-evaluate the buttons whenever the lock is gained or lost.
+        _lockService.LockStateChanged += OnLockStateChanged;
 
         _ = RefreshBackupListAsync();
     }
@@ -143,26 +171,55 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Initiates restoration of <paramref name="entry"/>. Shows a confirmation dialog,
-    /// then delegates to <see cref="RestoreCallback"/> (set by <see cref="MainWindowViewModel"/>)
-    /// which handles closing the connection, overwriting the database file, and restarting.
+    /// CanExecute for <see cref="RestoreCommand"/>: only the person editing the database (the write-lock holder)
+    /// may restore, because a restore replaces the database for everyone. A reader, or a licence that is
+    /// read-only, gets disabled buttons.
+    /// </summary>
+    /// <returns>True when this session holds the write lock.</returns>
+    private bool CanRestore() => _lockService.IsWriter;
+
+    /// <summary>
+    /// Initiates restoration of <paramref name="entry"/>. Refuses outright unless this session is the writer
+    /// (the buttons are already disabled then; this is the second line of defence). Otherwise shows the
+    /// confirmation dialog (<see cref="RestorePrompt.BuildConfirmMessage"/>) and, if confirmed, hands the
+    /// backup's path to <see cref="RestoreCallback"/> (set by <see cref="MainWindowViewModel"/>), which saves
+    /// the current changes, restores safely and restarts TermPoint.
     /// </summary>
     /// <param name="entry">The backup entry selected for restore.</param>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanRestore))]
     private async Task Restore(BackupEntryViewModel entry)
     {
         if (RestoreCallback is null) return;
 
+        if (!_lockService.IsWriter)
+        {
+            await _dialogService.ShowError(RestorePrompt.Describe(new RestoreResult(RestoreOutcome.NotWriter)).Message);
+            return;
+        }
+
         bool confirmed = await _dialogService.Confirm(
-            $"Restore from backup:\n\n{entry.TimestampDisplay}\n\n" +
-            "This will replace the current database with the selected backup. " +
-            "The application will restart automatically.\n\n" +
-            "Continue?",
-            confirmLabel: "Restore");
+            RestorePrompt.BuildConfirmMessage(
+                entry.TimestampDisplay,
+                DatabaseNameFor(App.Checkout.SourcePath, AppSettings.Current.DatabasePath)),
+            confirmLabel: RestorePrompt.ConfirmLabel);
 
         if (!confirmed) return;
 
         await RestoreCallback(entry.DbPath);
+    }
+
+    /// <summary>
+    /// The database's file name without its extension — the start of the name of the "(before restore …)" copy
+    /// the confirmation promises.
+    /// </summary>
+    /// <param name="sourcePath">The open database's path (the checkout's source); may be empty before anything is open.</param>
+    /// <param name="fallbackPath">The configured database path, used when <paramref name="sourcePath"/> is empty; may be null.</param>
+    /// <returns>The name, or "database" when neither path names a file.</returns>
+    internal static string DatabaseNameFor(string? sourcePath, string? fallbackPath)
+    {
+        var path = string.IsNullOrWhiteSpace(sourcePath) ? fallbackPath : sourcePath;
+        var name = Path.GetFileNameWithoutExtension(path ?? string.Empty);
+        return string.IsNullOrEmpty(name) ? "database" : name;
     }
 
     // ── Internal helpers ─────────────────────────────────────────────────────
@@ -193,10 +250,21 @@ public partial class SaveAndBackupViewModel : ViewModelBase, IDisposable
         _ = RefreshBackupListAsync();
     }
 
-    /// <summary>Unsubscribes from BackupService.BackupCompleted to prevent memory leaks.</summary>
+    /// <summary>
+    /// Called when the write lock is gained or lost (on the UI thread): re-evaluates
+    /// <see cref="IsWriteEnabled"/> and every Restore button.
+    /// </summary>
+    private void OnLockStateChanged()
+    {
+        OnPropertyChanged(nameof(IsWriteEnabled));
+        RestoreCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Unsubscribes from BackupService.BackupCompleted and the lock-state event to prevent memory leaks.</summary>
     public void Dispose()
     {
         _backupService.BackupCompleted -= OnBackupCompleted;
+        _lockService.LockStateChanged -= OnLockStateChanged;
     }
 }
 

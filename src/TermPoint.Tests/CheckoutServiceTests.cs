@@ -5137,7 +5137,9 @@ public sealed class CheckoutServiceTests : IDisposable
 
     /// <summary>
     /// Creates a small SQLite backup file, in a "backups" sub-folder next to D, carrying a marker value that
-    /// <see cref="ReadTestValue"/> reads back — so a test can tell the backup's content from D's.
+    /// <see cref="ReadTestValue"/> reads back — so a test can tell the backup's content from D's. The file also
+    /// gets the (empty) core tables <c>Sections</c>, <c>Semesters</c> and <c>AcademicYears</c>, because the
+    /// restore routine refuses a backup that is not recognisably a TermPoint database.
     /// </summary>
     /// <param name="marker">Value stored in the backup's <c>_test</c> table.</param>
     /// <returns>Full path of the backup.</returns>
@@ -5147,6 +5149,13 @@ public sealed class CheckoutServiceTests : IDisposable
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, $"test_{Guid.NewGuid():N}.db");
         CreateSqliteDb(path);
+        using (var conn = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = string.Concat(DatabaseRestore.RequiredTables.Select(t => $"CREATE TABLE {t} (key TEXT, data TEXT); "));
+            cmd.ExecuteNonQuery();
+        }
         InsertTestValue(path, marker);
         return path;
     }

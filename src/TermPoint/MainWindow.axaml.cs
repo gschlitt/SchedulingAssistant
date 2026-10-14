@@ -164,6 +164,38 @@ public partial class MainWindow : Window
     // Prevents double-close when OnClosing cancels itself to run async shutdown.
     private bool _shuttingDown;
 
+    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
+    // RestoreFromBackupAsync sets these; OnClosing reads them. See RestoreFromBackupAsync for the sequence.
+
+    /// <summary>
+    /// True from the moment a restore starts saving the user's changes until the restore's outcome is known.
+    /// While true, <see cref="OnClosing"/> refuses every close request: the window must never close while the
+    /// database is being replaced, or the final save/teardown would race the restore. Reset in a
+    /// <c>finally</c>, so it can never stay stuck.
+    /// </summary>
+    private bool _restoreInProgress;
+
+    /// <summary>
+    /// True once a restore has replaced D (or may have: an unconfirmed rename) and the application is about to
+    /// close. <see cref="OnClosing"/> then tears the session down WITHOUT saving — the working copy is stale,
+    /// and a save would be refused anyway — and discards the working copy and its crash marker: the restored D
+    /// supersedes them, and everything was saved BEFORE the restore started, so nothing is lost.
+    /// </summary>
+    private bool _endSessionAfterRestore;
+
+    /// <summary>
+    /// The path of D as it was when the restore began (captured before anything is torn down). Used to discard
+    /// the crash marker of the session that is ending (<see cref="CheckoutService.DiscardCrash"/>).
+    /// </summary>
+    private string? _restoredSourcePath;
+
+    /// <summary>
+    /// True when <see cref="OnClosing"/> should start a fresh copy of TermPoint after the single-instance guard
+    /// is released: after a confirmed restore ("TermPoint will now restart"). False after an unconfirmed
+    /// one, where the user is told to reopen TermPoint themselves once the connection is back.
+    /// </summary>
+    private bool _relaunchAfterClose;
+
     /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
     /// Cancels the first close event to run async shutdown (save to D, release lock), then
@@ -176,6 +208,16 @@ public partial class MainWindow : Window
 
         if (_shuttingDown) return; // Second pass — let it close.
 
+        // A restore is saving the user's changes and replacing the database right now. Closing the window
+        // mid-way would race the restore with the exit save and teardown, so refuse; the restore closes the
+        // window itself when it is finished (or the user can close it once it has reported a failure).
+        if (_restoreInProgress)
+        {
+            e.Cancel = true;
+            App.Logger.LogInfo("MainWindow: close request ignored — a restore from backup is in progress.");
+            return;
+        }
+
         e.Cancel = true; // Defer: run async save first.
         _shuttingDown = true;
 
@@ -185,36 +227,44 @@ public partial class MainWindow : Window
             if (App.Services?.GetService(typeof(BackupService)) is BackupService bs)
                 bs.StopSession();
 
-            // Stop autosave and save D' → D (releases lock on success).
-            var wasWriteMode = App.Checkout.Mode == CheckoutMode.WriteAccess;
-            App.Checkout.StopAutoSave();
-            var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode);
-
-            // Close any detached panels / sticky notes BEFORE disposing the DI container,
-            // so windows whose content binds to view models are torn down while those VMs
-            // still exist. ShutdownMode.OnMainWindowClose would close them anyway, but doing
-            // it here is deterministic and suppresses the detach-reattach side effect.
-            CloseSecondaryWindows();
-
-            // Dispose the DI container, which closes the SQLite connection cleanly.
-            (App.Services as IDisposable)?.Dispose();
-
-            // Delete the working copy ONLY when its content is safely in D (save
-            // succeeded) or nothing was ever edited (no dirty marker). Otherwise the
-            // working copy and its marker are deliberately left behind: they are the
-            // only copy of the user's unsaved changes, and the next launch will offer
-            // to restore them. (ReleaseAsync has already parked the write lock
-            // appropriately for each failure kind.)
-            if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
+            if (_endSessionAfterRestore)
             {
-                App.Checkout.CleanupWorkingCopy();
+                // The database has just been replaced by a restore: end the stale session without saving.
+                await EndSessionAfterRestoreAsync();
             }
-            else if (wasWriteMode)
+            else
             {
-                await ShowMessageAsync("Changes Not Saved",
-                    "Your latest changes could not be saved to the database. " +
-                    "They have been kept, and TermPoint will offer to restore them " +
-                    "the next time you open this database.");
+                // Stop autosave and save D' → D (releases lock on success).
+                var wasWriteMode = App.Checkout.Mode == CheckoutMode.WriteAccess;
+                App.Checkout.StopAutoSave();
+                var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode);
+
+                // Close any detached panels / sticky notes BEFORE disposing the DI container,
+                // so windows whose content binds to view models are torn down while those VMs
+                // still exist. ShutdownMode.OnMainWindowClose would close them anyway, but doing
+                // it here is deterministic and suppresses the detach-reattach side effect.
+                CloseSecondaryWindows();
+
+                // Dispose the DI container, which closes the SQLite connection cleanly.
+                (App.Services as IDisposable)?.Dispose();
+
+                // Delete the working copy ONLY when its content is safely in D (save
+                // succeeded) or nothing was ever edited (no dirty marker). Otherwise the
+                // working copy and its marker are deliberately left behind: they are the
+                // only copy of the user's unsaved changes, and the next launch will offer
+                // to restore them. (ReleaseAsync has already parked the write lock
+                // appropriately for each failure kind.)
+                if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
+                {
+                    App.Checkout.CleanupWorkingCopy();
+                }
+                else if (wasWriteMode)
+                {
+                    await ShowMessageAsync("Changes Not Saved",
+                        "Your latest changes could not be saved to the database. " +
+                        "They have been kept, and TermPoint will offer to restore them " +
+                        "the next time you open this database.");
+                }
             }
         }
         catch (Exception ex)
@@ -230,6 +280,12 @@ public partial class MainWindow : Window
         // them. Not strictly needed (the OS drops the guard when the process ends) but explicit, and it
         // runs even when the teardown above threw. Never throws.
         App.InstanceGuard.ReleaseAll();
+
+        // After a confirmed restore, start the fresh copy of TermPoint. Only now: the guard is released (a
+        // copy started earlier would be refused as "already open"), the lock is given back and the working
+        // copy is gone, so the new copy opens the restored database from a clean state.
+        if (_relaunchAfterClose)
+            RelaunchApplication();
 
         // ── Shutdown checkpoint #1 ───────────────────────────────────────────
         // Managed teardown (save → release lock → dispose DI container → cleanup
@@ -1848,6 +1904,286 @@ public partial class MainWindow : Window
 
         ok.Click += (_, _) => Dispatcher.UIThread.Post(() => msg.Close());
         await msg.ShowDialog(this);
+    }
+
+    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
+
+    /// <summary>
+    /// Restores <paramref name="backupPath"/> over the open database, safely. Called (after the user has
+    /// confirmed) from <see cref="MainWindowViewModel"/>, like <see cref="SwitchDatabaseAsync"/>, because it
+    /// is window-lifecycle work: a wait dialog, a blocked close, and a close and restart at the end.
+    ///
+    /// <para><b>Sequence.</b></para>
+    /// <list type="number">
+    /// <item><description>Only the writer may restore; anyone else is told so and nothing happens.</description></item>
+    /// <item><description>Autosave is stopped (an autosave tick must not collide with the restore's use of the
+    /// save gate) and window closing is blocked (<see cref="_restoreInProgress"/>).</description></item>
+    /// <item><description>Under a wait dialog that blocks edits: the user's changes are SAVED FIRST; if that save
+    /// fails the restore is never started. Then <see cref="CheckoutService.RestoreFromBackupAsync"/> runs the
+    /// shared safe restore (<see cref="DatabaseRestore"/>), which keeps the replaced database beside it.</description></item>
+    /// <item><description>Every outcome that leaves the database unchanged is reported and the session simply
+    /// continues (autosave resumes). <see cref="RestoreOutcome.Restored"/> and
+    /// <see cref="RestoreOutcome.RenameUnconfirmed"/> are reported and then the window is closed: the normal
+    /// close path (<see cref="OnClosing"/>) ends the stale session without saving, and after a confirmed restore
+    /// restarts TermPoint.</description></item>
+    /// </list>
+    ///
+    /// <para>Nothing is ever lost: the changes were saved before the restore began, so they are in the
+    /// pre-restore copy; a failed save means the restore did not start.</para>
+    /// </summary>
+    /// <param name="backupPath">Full path of the backup .db file to restore (may be on a share).</param>
+    public async Task RestoreFromBackupAsync(string backupPath)
+    {
+        // Only the writer may restore: it replaces the database for everyone, and only the lock holder has a
+        // session that can be saved first and ended cleanly.
+        if (App.Checkout.Mode != CheckoutMode.WriteAccess)
+        {
+            await ShowRestoreMessageAsync(new RestoreResult(RestoreOutcome.NotWriter));
+            return;
+        }
+
+        if (_restoreInProgress)
+        {
+            App.Logger.LogInfo("MainWindow: RestoreFromBackupAsync ignored — a restore is already in progress.");
+            return;
+        }
+
+        // Captured now, before anything is torn down: OnClosing needs it to discard this session's crash marker.
+        var sourcePath = App.Checkout.SourcePath;
+
+        _restoreInProgress = true;
+        App.Checkout.StopAutoSave();
+
+        // Null means "the save failed, so the restore was never started".
+        RestoreResult? result;
+        try
+        {
+            result = await RunWithWaitDialogAsync(
+                RestorePrompt.WaitTitle,
+                RestorePrompt.WaitMessage,
+                () => SaveThenRestoreAsync(backupPath));
+        }
+        catch (Exception ex)
+        {
+            // SaveAsync and RestoreFromBackupAsync never throw, so this is a safety net only.
+            App.Logger.LogError(ex, "MainWindow: unexpected exception while restoring from a backup");
+            result = new RestoreResult(RestoreOutcome.Failed, Error: ex);
+        }
+        finally
+        {
+            _restoreInProgress = false;
+        }
+
+        // The save failed: the restore was not started. (SaveAsync has already shown its own save banner.)
+        if (result is null)
+        {
+            await ShowMessageAsync(RestorePrompt.NotStartedTitle, RestorePrompt.SaveFailedMessage);
+            ResumeAutoSave();
+            return;
+        }
+
+        // Every other outcome that leaves D alone: say what happened; the session simply continues.
+        if (result.TargetUnchanged)
+        {
+            await ShowRestoreMessageAsync(result);
+            ResumeAutoSave();
+            return;
+        }
+
+        // Restored or RenameUnconfirmed: the session is stale. Arrange the end of the session FIRST, so that
+        // even if the window is closed by other means while the message is up (the OS shutting down, say) the
+        // normal close path still ends it correctly instead of trying to save the stale working copy.
+        _endSessionAfterRestore = true;
+        _restoredSourcePath     = sourcePath;
+        _relaunchAfterClose     = result.Outcome == RestoreOutcome.Restored;
+
+        // Stop the periodic backup timer: a backup of the now-stale working copy must never appear as the
+        // newest backup.
+        try
+        {
+            if (App.Services?.GetService(typeof(BackupService)) is BackupService backupService)
+                backupService.StopSession();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "MainWindow: could not stop the periodic backup after a restore");
+        }
+
+        try
+        {
+            await ShowRestoreMessageAsync(result);
+        }
+        finally
+        {
+            Close(); // OnClosing ends the stale session and, after a confirmed restore, restarts TermPoint.
+        }
+    }
+
+    /// <summary>
+    /// The work behind the wait dialog: saves the user's current changes, and only if that succeeded runs the
+    /// restore. Neither call throws.
+    /// </summary>
+    /// <param name="backupPath">The backup to restore.</param>
+    /// <returns>The restore's result, or null when the save did not succeed (so the restore was not started).</returns>
+    private static async Task<RestoreResult?> SaveThenRestoreAsync(string backupPath)
+    {
+        // Autosave was stopped before this, but stopping the timer doesn't stop a tick that is already
+        // saving. Wait for it (bounded), or our save would hit the in-flight gate and be skipped as
+        // "already in progress" — reported to the user as a failed save. Same as ReleaseAsync's exit save.
+        await App.Checkout.WaitForInFlightSaveAsync();
+
+        var save = await App.Checkout.SaveAsync();
+        if (save != SaveOutcome.Success)
+        {
+            App.Logger.LogInfo($"MainWindow: restore not started — the save before it ended with {save}.");
+            return null;
+        }
+
+        return await App.Checkout.RestoreFromBackupAsync(backupPath);
+    }
+
+    /// <summary>
+    /// Shows the message for a restore result (<see cref="RestorePrompt.Describe"/>) in the standard message dialog.
+    /// </summary>
+    /// <param name="result">The result to describe.</param>
+    private Task ShowRestoreMessageAsync(RestoreResult result)
+    {
+        var (title, message) = RestorePrompt.Describe(result);
+        return ShowMessageAsync(title, message);
+    }
+
+    /// <summary>
+    /// Restarts autosave after a restore that left the database unchanged, if the user has it switched on and
+    /// this session is still the writer. (The restore stopped it so no autosave tick could collide with it.)
+    /// </summary>
+    private static void ResumeAutoSave()
+    {
+        if (AppSettings.Current.AutoSaveEnabled && App.Checkout.Mode == CheckoutMode.WriteAccess)
+            App.Checkout.StartAutoSave();
+    }
+
+    /// <summary>
+    /// Ends the session of a database that a restore has just replaced. Called by <see cref="OnClosing"/> when
+    /// <see cref="_endSessionAfterRestore"/> is set. Unlike the normal exit it does NOT save (the working copy is
+    /// stale and a save would be refused): it releases the write lock, closes the secondary windows, disposes
+    /// the services, and then ALWAYS deletes the working copy and its crash marker — the restored D supersedes
+    /// them, and all the user's changes were saved before the restore started. Deleting the marker also keeps
+    /// the next start from mistaking the leftovers for a crash.
+    /// </summary>
+    private async Task EndSessionAfterRestoreAsync()
+    {
+        try
+        {
+            App.Checkout.StopAutoSave();
+            await App.Checkout.ReleaseAsync(saveFirst: false);
+
+            CloseSecondaryWindows();
+
+            // Closes the SQLite connection; only then can the working copy be deleted.
+            (App.Services as IDisposable)?.Dispose();
+        }
+        finally
+        {
+            App.Checkout.CleanupWorkingCopy();
+            if (!string.IsNullOrEmpty(_restoredSourcePath))
+                App.Checkout.DiscardCrash(_restoredSourcePath);
+        }
+    }
+
+    /// <summary>
+    /// Starts a fresh copy of TermPoint (after a confirmed restore). Never throws: if it cannot be started the
+    /// application still closes, and the user reopens it by hand.
+    /// </summary>
+    private static void RelaunchApplication()
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (exePath is null)
+            {
+                App.Logger.LogInfo("MainWindow: cannot restart after the restore — the executable path is unknown.");
+                return;
+            }
+
+            PlatformProcess.LaunchExecutable(exePath);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "MainWindow: could not restart TermPoint after the restore");
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="work"/> while a modal wait dialog with no buttons is up, and closes the dialog
+    /// when the work ends. The user cannot dismiss the dialog (its Closing is cancelled until the work is
+    /// over), so nothing can be edited meanwhile. Built in code and Topmost like every other modal dialog here
+    /// (see <see cref="ShowFatalAsync"/>), so it can never open behind the main window or a sticky note.
+    ///
+    /// <para><b>The work is never orphaned:</b> it is started BEFORE the dialog is shown and is always awaited
+    /// to completion before this method returns — even if showing the dialog throws, in which case the work
+    /// simply runs without a dialog.</para>
+    /// </summary>
+    /// <typeparam name="T">The type the work produces.</typeparam>
+    /// <param name="title">Dialog title.</param>
+    /// <param name="message">Dialog body text.</param>
+    /// <param name="work">The work to run; started immediately on the calling (UI) thread, as usual for an async method.</param>
+    /// <returns>Whatever <paramref name="work"/> returns.</returns>
+    /// <exception cref="Exception">Any exception <paramref name="work"/> throws is rethrown here, after the dialog has closed.</exception>
+    private async Task<T> RunWithWaitDialogAsync<T>(string title, string message, Func<Task<T>> work)
+    {
+        var workTask = work();
+        var workFinished = false;
+
+        var dlg = new Window
+        {
+            Title = title,
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = true,
+            Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = (double)(this.FindResource("FontSizeNormal") ?? 14d)
+        });
+        dlg.Content = panel;
+
+        // No buttons, and the title-bar X / Alt+F4 are refused until the work has ended.
+        dlg.Closing += (_, e) => { if (!workFinished) e.Cancel = true; };
+
+        // When the work ends, one way or the other, let the dialog close. The work's own exception (if any)
+        // is not handled here: it is observed so it is never "unobserved", and rethrown by the final await.
+        async Task CloseWhenWorkEndsAsync()
+        {
+            try { await workTask; }
+            catch { /* rethrown to the caller by `await workTask` below */ }
+
+            workFinished = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                try { dlg.Close(); }
+                catch (Exception ex) { App.Logger.LogInfo($"MainWindow: closing the wait dialog failed ({ex.GetType().Name}: {ex.Message})"); }
+            });
+        }
+        _ = CloseWhenWorkEndsAsync();
+
+        try
+        {
+            await dlg.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            // Could not show the dialog. The work is already running and must still be waited for.
+            App.Logger.LogError(ex, "MainWindow: could not show the wait dialog; continuing without it");
+        }
+
+        return await workTask;
     }
 
     // ── CheckoutService helpers ──────────────────────────────────────────────

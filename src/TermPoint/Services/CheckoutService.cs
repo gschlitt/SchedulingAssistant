@@ -2197,9 +2197,11 @@ public sealed class CheckoutService : IDisposable
     /// Waits (bounded) for any in-flight <see cref="SaveAsync"/> to finish. A save is
     /// bounded by a handful of 5-second-capped network operations plus retries, so the
     /// 60-second ceiling comfortably covers the worst case without risking a hung
-    /// shutdown if something unforeseen wedges the save.
+    /// shutdown if something unforeseen wedges the save. Also awaited by the restore from backup
+    /// (<c>MainWindow.RestoreFromBackupAsync</c>) before its own save-first, so an autosave tick that is
+    /// already running doesn't turn "save, then restore" into "the save failed, restore not started".
     /// </summary>
-    private async Task WaitForInFlightSaveAsync()
+    internal async Task WaitForInFlightSaveAsync()
     {
         const int maxWaitMs = 60_000, pollMs = 50;
         for (var waited = 0; waited < maxWaitMs && Volatile.Read(ref _saveInFlight) == 1; waited += pollMs)

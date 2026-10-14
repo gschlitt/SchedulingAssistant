@@ -144,10 +144,20 @@
                     FontWeight="SemiBold"
                     Text="Restore from Backup" />
 
+                <!--  Texts live in Services/RestorePrompt.cs (spec item 5b)  -->
                 <TextBlock
                     FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextDimLabel}"
-                    Text="Restoring replaces the current database with the selected backup and restarts the application. The current database is not kept."
+                    Text="{Binding RestoreDescription}"
+                    TextWrapping="Wrap" />
+
+                <!--  Readers: the Restore buttons are disabled (RestoreCommand's CanExecute); say why  -->
+                <TextBlock
+                    FontSize="{StaticResource FontSizeNormal}"
+                    FontStyle="Italic"
+                    Foreground="{StaticResource TextDimLabel}"
+                    IsVisible="{Binding !IsWriteEnabled}"
+                    Text="{Binding RestoreUnavailableNote}"
                     TextWrapping="Wrap" />
 
                 <!--  Empty state — shown when backup entries list is empty  -->

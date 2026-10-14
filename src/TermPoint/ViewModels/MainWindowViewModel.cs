@@ -920,68 +920,18 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToHelp() => OpenFlyout<HelpViewModel>("Help");
 
 #if !BROWSER
-    private async Task RestoreFromBackupAsync(string backupDbPath)
-    {
-        var mainDbPath = AppSettings.Current.DatabasePath;
-        if (mainDbPath is null) return;
-
-        try
-        {
-            // Tear the current session down the same way a clean shutdown does, so the
-            // relaunched instance starts from a consistent state. Mirrors MainWindow.OnClosing /
-            // SwitchDatabaseAsync: stop the backup timer, then release the checkout WITHOUT a
-            // final save (saveFirst:false) — the backup we're about to restore must win, and
-            // releasing also flips Mode to ReadOnly so the impending Shutdown→OnClosing pass
-            // doesn't attempt a redundant save-back over the freshly restored database.
-            _services.GetRequiredService<BackupService>().StopSession();
-            await App.Checkout.ReleaseAsync(saveFirst: false);
-
-            // Close the DB connection (dispose DI), THEN delete the working copy and its dirty
-            // marker. Clearing both is what prevents the relaunched instance from mistaking the
-            // leftovers for a crash and showing a false "did not close cleanly" message.
-            // (The stale edits are discarded either way, so this is UX, not data loss.)
-            (App.Services as IDisposable)?.Dispose();
-            App.Checkout.CleanupWorkingCopy();
-            App.Checkout.DiscardCrash(mainDbPath);
-
-            File.Copy(backupDbPath, mainDbPath, overwrite: true);
-
-            // The relaunched copy starts while this process is still alive (Shutdown below is not
-            // instant), so give back the single-instance guard first or the new copy would be refused
-            // as "TermPoint is already open". It was held until now so no other TermPoint could start
-            // sorting through this database's files while they were being replaced.
-            App.InstanceGuard.ReleaseAll();
-
-            var exePath = Environment.ProcessPath;
-            if (exePath is not null)
-                Services.PlatformProcess.LaunchExecutable(exePath);
-
-            // Launching a new process does NOT exit this one. Shut the current instance down
-            // so the user gets a true restart (as the confirmation dialog promised) rather than
-            // a second window left beside a now-defunct original whose services are disposed.
-            (Avalonia.Application.Current?.ApplicationLifetime
-                as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
-                ?.Shutdown();
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogError(ex, "Restore failed — DI may be disposed; showing plain error window");
-            if (MainWindowReference is { } win)
-            {
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-                    MainWindow.ShowFatalAsync(
-                        win,
-                        title:   "Restore Failed",
-                        heading: "Could not restore the database.",
-                        detail:  ex.Message,
-                        footer:  "The application will now close."));
-            }
-
-            (Avalonia.Application.Current?.ApplicationLifetime
-                as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
-                ?.Shutdown();
-        }
-    }
+    /// <summary>
+    /// Restores <paramref name="backupDbPath"/> over the open database. Wired to the Save &amp; Backup
+    /// flyout's Restore buttons (and the Configuration shortcut in the More menu) after the user has
+    /// confirmed. This is only a forward: the work is window-lifecycle work — it saves the user's changes
+    /// first, runs the shared safe restore (<see cref="DatabaseRestore"/>) under a wait dialog, and on
+    /// success closes and restarts the application — so it lives in
+    /// <see cref="MainWindow.RestoreFromBackupAsync"/>, like <see cref="MainWindow.SwitchDatabaseAsync"/>.
+    /// A failed restore leaves the database unchanged, tells the user, and the session simply continues.
+    /// </summary>
+    /// <param name="backupDbPath">Full path of the backup .db file to restore.</param>
+    private Task RestoreFromBackupAsync(string backupDbPath)
+        => MainWindowReference?.RestoreFromBackupAsync(backupDbPath) ?? Task.CompletedTask;
 #endif
 
     // ── Dev Tools ─────────────────────────────────────────────────────────

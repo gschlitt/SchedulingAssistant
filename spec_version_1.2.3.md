@@ -939,6 +939,29 @@ thread**, so a downed share freezes the app ("Not Responding") for 30–60 s.
   - add a TermPoint-schema check on the staged backup.
 - Not unit-tested: a timed-out rename that actually landed (no seam).
 
+**Outcome 5b (2026-10-13, user hand-tested A–D on a scratch copy).**
+- **`MainWindow.RestoreFromBackupAsync`:** writer only.
+  1. Autosave is stopped and the window is blocked from closing.
+  2. Under a no-button "Restoring the Backup" wait dialog, it waits for any in-flight autosave
+     (`WaitForInFlightSaveAsync`, now internal), saves, and only on success runs the restore.
+  3. On a failed save, or any outcome that leaves D unchanged, the user sees a message, autosave resumes and the
+     session continues.
+  4. On `Restored` / `RenameUnconfirmed`, the backup timer is stopped, the message is shown and the window closes.
+     `OnClosing` (`_endSessionAfterRestore`) then releases without saving, closes secondary windows, disposes, and
+     always discards the working copy and crash marker. After `Restored` it relaunches TermPoint once the instance
+     guard is released.
+  5. The window being closed some other way while the result message is up still ends the session this way.
+- **`MainWindowViewModel.RestoreFromBackupAsync`** now just forwards to the window. The old `File.Copy` teardown is
+  gone.
+- **`Services/RestorePrompt.cs`** holds every restore text (approved wording).
+- **`Services/RestoreResult.cs`:** the outcome types, browser-safe.
+- **New outcome `NotTermPointDatabase`:** the staged backup must contain `Sections`, `Semesters` and `AcademicYears`.
+- **`SaveAndBackupViewModel`:** `RestoreCommand` is writer-only (follows `LockStateChanged`). The panel text and
+  read-only note are bound in `SaveAndBackupView.axaml`.
+- **Suite:** 1951.
+- **Known gap (accepted):** detached panels stay usable under the wait dialog. An edit made there during a restore
+  that succeeds is lost.
+
 **Behaviour changes for the release notes:**
 - restore is refused while someone else is editing;
 - readers can't restore;

@@ -4,126 +4,6 @@ using Microsoft.Data.Sqlite;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Outcome of <see cref="DatabaseRestore.ReplaceAsync"/> (and of <see cref="CheckoutService.RestoreFromBackupAsync"/>,
-/// which wraps it). For EVERY value except <see cref="Restored"/> and <see cref="RenameUnconfirmed"/> the shared
-/// database D is exactly as it was before the call, and nothing the call created is left behind (no D.tmp, no
-/// "before restore" file) — see <see cref="RestoreResult.TargetUnchanged"/>.
-/// </summary>
-public enum RestoreOutcome
-{
-    /// <summary>
-    /// D was replaced by the backup and the replacement is confirmed. The replaced D is kept beside it as the
-    /// pre-restore copy (<see cref="RestoreResult.PreRestoreCopyPath"/>). The caller's session on the OLD D is
-    /// now stale and must be ended without saving.
-    /// </summary>
-    Restored,
-
-    /// <summary>
-    /// The final rename (D.tmp over D) timed out or failed in a way that could not be confirmed either way, so D
-    /// MAY have been replaced — or may still be replaced a moment later by the abandoned move (a "ghost
-    /// rename"). The pre-restore copy is kept and, after a timed-out move, D.tmp is left in place. Treat it like
-    /// <see cref="Restored"/>: the session is stale and must be ended without saving.
-    /// </summary>
-    RenameUnconfirmed,
-
-    /// <summary>
-    /// Produced only by <see cref="CheckoutService.RestoreFromBackupAsync"/>: this session does not hold write
-    /// access (a reader, a read-only licence, or write access already lost), so nothing was touched. D unchanged.
-    /// </summary>
-    NotWriter,
-
-    /// <summary>
-    /// Produced only by <see cref="CheckoutService.RestoreFromBackupAsync"/>: a save (or another restore) is in
-    /// flight on this session, and a restore must never interleave with it. Nothing was touched. D unchanged.
-    /// </summary>
-    Busy,
-
-    /// <summary>
-    /// The backup is positively damaged: it is not a SQLite database (wrong signature, or empty), or SQLite's
-    /// integrity check on the local staged copy failed. D unchanged.
-    /// </summary>
-    BackupDamaged,
-
-    /// <summary>
-    /// The backup could not be read or examined: it is missing, another program holds it, access was denied, or
-    /// the integrity check could not run. Says nothing about its health. D unchanged.
-    /// </summary>
-    BackupUnreadable,
-
-    /// <summary>
-    /// D no longer has the hash the caller last knew (someone else wrote it, or a late rename landed), so it
-    /// could not safely be replaced. D is left exactly as found.
-    /// </summary>
-    TargetChanged,
-
-    /// <summary>
-    /// D, D.tmp or the pre-restore file is held by another program (antivirus, backup or sync software) or access
-    /// to it was denied. Usually transient. D unchanged.
-    /// </summary>
-    FileInUse,
-
-    /// <summary>The write lock on D is no longer ours, so no restore was done. D unchanged.</summary>
-    LockLost,
-
-    /// <summary>The location did not answer, or a transfer stalled past the network deadline. D unchanged.</summary>
-    Unreachable,
-
-    /// <summary>Any other failure; see <see cref="RestoreResult.Error"/>. D unchanged.</summary>
-    Failed
-}
-
-/// <summary>
-/// The answer to "is the caller's write lock on D still ours?", asked twice during a restore: at the start and
-/// immediately before the swap. Mirrors the checkout service's three-way lock verification.
-/// </summary>
-public enum RestoreLockCheck
-{
-    /// <summary>The lock file exists and belongs to this session.</summary>
-    Ours,
-
-    /// <summary>The lock file is gone or belongs to someone else (the location is reachable, so this is real).</summary>
-    NotOurs,
-
-    /// <summary>The location could not be reached, so the lock could not be checked. Transient, not a lock loss.</summary>
-    Unreachable
-}
-
-/// <summary>
-/// Result of <see cref="DatabaseRestore.ReplaceAsync"/>.
-/// </summary>
-/// <param name="Outcome">What happened.</param>
-/// <param name="PreRestoreCopyPath">
-/// Full path of the kept copy of the replaced D, beside D. Set only for <see cref="RestoreOutcome.Restored"/> and
-/// <see cref="RestoreOutcome.RenameUnconfirmed"/>; for every other outcome the copy (if one was started) has been
-/// removed and this is null.
-/// </param>
-/// <param name="RestoredHash">
-/// SHA-256 (upper-case hex) of the file that was installed as D — the hash D has once the restore is complete.
-/// Set under the same conditions as <paramref name="PreRestoreCopyPath"/>; otherwise null.
-/// </param>
-/// <param name="Error">
-/// The exception behind a <see cref="RestoreOutcome.Failed"/>, <see cref="RestoreOutcome.FileInUse"/>,
-/// <see cref="RestoreOutcome.BackupUnreadable"/> or an exception-driven <see cref="RestoreOutcome.RenameUnconfirmed"/>
-/// outcome (null otherwise). Callers feed it to their existing error-message mapping.
-/// </param>
-public sealed record RestoreResult(
-    RestoreOutcome Outcome,
-    string? PreRestoreCopyPath = null,
-    string? RestoredHash = null,
-    Exception? Error = null)
-{
-    /// <summary>True only when D was replaced and the replacement is confirmed.</summary>
-    public bool Succeeded => Outcome == RestoreOutcome.Restored;
-
-    /// <summary>
-    /// True for every outcome except <see cref="RestoreOutcome.Restored"/> and
-    /// <see cref="RestoreOutcome.RenameUnconfirmed"/>: D is exactly as it was, and the calling session may
-    /// carry on as if nothing had been attempted.
-    /// </summary>
-    public bool TargetUnchanged => Outcome is not (RestoreOutcome.Restored or RestoreOutcome.RenameUnconfirmed);
-}
-
-/// <summary>
 /// Replaces the shared database D with a backup, safely — the one restore routine shared by every restore site
 /// (spec item 5). It never opens D or the backup on the share with SQLite, never leaves a half-written D, and
 /// keeps what it replaced.
@@ -140,7 +20,8 @@ public sealed record RestoreResult(
 /// <item><description>Check the caller's write lock is still ours.</description></item>
 /// <item><description>Stage the backup into a LOCAL temporary file.</description></item>
 /// <item><description>Integrity-check the staged copy (a damaged backup is refused), normalise it to
-/// rollback-journal mode (WAL must never be active on a shared file) and hash it.</description></item>
+/// rollback-journal mode (WAL must never be active on a shared file), check that it is a TermPoint database
+/// at all (a valid SQLite file without TermPoint's core tables is refused) and hash it.</description></item>
 /// <item><description>Confirm D still has the hash the caller last knew.</description></item>
 /// <item><description>Keep the replaced D as a verified pre-restore copy beside D.</description></item>
 /// <item><description>Stream the staged backup to <c>D.tmp</c>.</description></item>
@@ -162,6 +43,14 @@ public static class DatabaseRestore
     /// rest add " (2)", " (3)", …) before giving up. Two restores in the same minute need only a second name.
     /// </summary>
     internal const int MaxPreRestoreNameAttempts = 20;
+
+    /// <summary>
+    /// The tables a backup must contain to count as a TermPoint database (stage 3). These three have existed
+    /// since the very first TermPoint version, so every backup ever made has them; a SQLite file without them
+    /// is some other program's database. Deliberately short: a newer table (added by a later release) must
+    /// never make an older, perfectly good backup look foreign.
+    /// </summary>
+    internal static readonly string[] RequiredTables = ["Sections", "Semesters", "AcademicYears"];
 
     /// <summary>
     /// Replaces <paramref name="targetPath"/> (D) with the backup at <paramref name="backupPath"/>, keeping the
@@ -418,9 +307,10 @@ public static class DatabaseRestore
         }
 
         /// <summary>
-        /// Stage 3: refuses a damaged backup, converts the staged copy to rollback-journal mode and hashes it.
+        /// Stage 3: refuses a damaged backup, converts the staged copy to rollback-journal mode, refuses a file
+        /// that is not a TermPoint database, and hashes it.
         /// </summary>
-        /// <returns>Null to carry on; BackupDamaged on positive evidence of damage; BackupUnreadable if the check could not run.</returns>
+        /// <returns>Null to carry on; BackupDamaged on positive evidence of damage; BackupUnreadable if the check could not run; NotTermPointDatabase for a valid SQLite file without TermPoint's core tables.</returns>
         private async Task<RestoreResult?> CheckAndNormaliseStagedAsync()
         {
             var verdict = Inject(InjectedRestoreFault.Damaged, "the staged backup is reported as damaged")
@@ -438,11 +328,25 @@ public static class DatabaseRestore
             }
 
             // Local work (the staged file is not on the share): no deadline needed.
-            await Task.Run(() =>
+            var isTermPoint = await Task.Run(() =>
             {
                 NormaliseStagedBackup();
+
+                // After normalising (so the file is a plain rollback-journal database) and BEFORE hashing: a
+                // foreign database is refused without ever computing the hash D would get.
+                if (!StagedBackupHasTermPointTables())
+                    return false;
+
                 _restoredHash = NetworkFileOps.ComputeHash(_stagedPath);
+                return true;
             }).ConfigureAwait(false);
+
+            if (!isTermPoint)
+            {
+                _log.LogInfo("DatabaseRestore: the backup is a SQLite database but not a TermPoint one — refusing to restore it");
+                return Result(RestoreOutcome.NotTermPointDatabase);
+            }
+
             return null;
         }
 
@@ -742,6 +646,30 @@ public static class DatabaseRestore
                 stream.ReadExactly(header);
             if (header[18] == 2 || header[19] == 2)
                 throw new InvalidOperationException("The staged backup could not be converted out of WAL mode.");
+        }
+
+        /// <summary>
+        /// Checks that the LOCAL staged copy contains every table in <see cref="RequiredTables"/>. Table names
+        /// are compared case-insensitively, as SQLite itself does. Read-only and unpooled (<c>Pooling=False</c>),
+        /// so the connection holds nothing open once it is disposed and the staged file can be deleted at once.
+        /// </summary>
+        /// <returns>True when all of the required tables exist.</returns>
+        /// <exception cref="SqliteException">The staged file could not be queried (the integrity check has already passed, so this is unexpected; it surfaces as a Failed result).</exception>
+        private bool StagedBackupHasTermPointTables()
+        {
+            var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            using (var conn = new SqliteConnection($"Data Source={_stagedPath};Mode=ReadOnly;Pooling=False"))
+            {
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table'";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                    found.Add(reader.GetString(0));
+            }
+
+            return RequiredTables.All(found.Contains);
         }
 
         /// <summary>

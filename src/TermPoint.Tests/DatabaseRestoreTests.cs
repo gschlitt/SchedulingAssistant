@@ -69,9 +69,12 @@ public sealed class DatabaseRestoreTests : IDisposable
     /// Creates a real SQLite database at <paramref name="path"/> holding one row, <paramref name="marker"/>, in a
     /// <c>marker</c> table — so a test can tell WHICH database a file is by content. Pooling is off so no handle
     /// outlives the call. With <paramref name="wal"/> the file is left with a WAL-mode header (bytes 18/19 = 2),
-    /// as an older or hand-picked backup might be.
+    /// as an older or hand-picked backup might be. With <paramref name="termPointTables"/> (the default) the file
+    /// also carries empty <c>Sections</c>, <c>Semesters</c> and <c>AcademicYears</c> tables — the minimum the
+    /// routine requires of a backup before it accepts it as a TermPoint database; pass false for a "foreign"
+    /// SQLite file that has only the marker table.
     /// </summary>
-    private static void CreateMarkerDb(string path, string marker, bool wal = false)
+    private static void CreateMarkerDb(string path, string marker, bool wal = false, bool termPointTables = true)
     {
         using var conn = new SqliteConnection($"Data Source={path};Pooling=False");
         conn.Open();
@@ -84,7 +87,10 @@ public sealed class DatabaseRestoreTests : IDisposable
         }
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "CREATE TABLE marker (val TEXT); INSERT INTO marker VALUES (@v);";
+        var tables = termPointTables
+            ? string.Concat(DatabaseRestore.RequiredTables.Select(t => $"CREATE TABLE {t} (key TEXT, data TEXT); "))
+            : string.Empty;
+        cmd.CommandText = tables + "CREATE TABLE marker (val TEXT); INSERT INTO marker VALUES (@v);";
         cmd.Parameters.AddWithValue("@v", marker);
         cmd.ExecuteNonQuery();
     }
@@ -378,6 +384,68 @@ public sealed class DatabaseRestoreTests : IDisposable
         DbFileTestHelpers.TrashPage(backup, 2);
 
         await AssertBackupRefusedAsync(backup, RestoreOutcome.BackupDamaged);
+    }
+
+    /// <summary>
+    /// A perfectly healthy SQLite file that is not a TermPoint database (no Sections / Semesters / AcademicYears
+    /// tables — some other program's database picked by mistake) is refused: NotTermPointDatabase, D
+    /// byte-identical, no D.tmp, no pre-restore file, and nothing left in the local staging folder.
+    /// </summary>
+    [Fact]
+    public async Task ReplaceAsync_BackupIsValidSqliteButNotTermPoint_IsNotTermPointDatabase()
+    {
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup", termPointTables: false);
+
+        var result = await AssertBackupRefusedAsync(backup, RestoreOutcome.NotTermPointDatabase);
+
+        Assert.Null(result.Error);
+        Assert.False(File.Exists(TargetPath() + ".tmp"));
+        Assert.False(File.Exists(ExpectedPreRestorePath()));
+    }
+
+    /// <summary>
+    /// All three core tables are required, not just one of them: a database that has Sections and Semesters but
+    /// not AcademicYears is still not accepted.
+    /// </summary>
+    [Fact]
+    public async Task ReplaceAsync_BackupMissingOneCoreTable_IsNotTermPointDatabase()
+    {
+        var backup = BackupPath();
+        using (var conn = new SqliteConnection($"Data Source={backup};Pooling=False"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE Sections (key TEXT, data TEXT); CREATE TABLE Semesters (key TEXT, data TEXT);";
+            cmd.ExecuteNonQuery();
+        }
+
+        await AssertBackupRefusedAsync(backup, RestoreOutcome.NotTermPointDatabase);
+    }
+
+    /// <summary>
+    /// A backup carrying the three core tables plus any number of others (here, an unknown future table) is
+    /// accepted: only the missing core tables matter, never extra ones.
+    /// </summary>
+    [Fact]
+    public async Task ReplaceAsync_BackupWithCoreTablesAndExtras_IsRestored()
+    {
+        var target = TargetPath();
+        var (_, oldHash) = CreateTarget(target);
+        var backup = BackupPath();
+        CreateMarkerDb(backup, "from-backup");
+        using (var conn = new SqliteConnection($"Data Source={backup};Pooling=False"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE SomeFutureTable (key TEXT, data TEXT);";
+            cmd.ExecuteNonQuery();
+        }
+
+        var result = await ReplaceAsync(backup, target, oldHash);
+
+        Assert.Equal(RestoreOutcome.Restored, result.Outcome);
+        Assert.Equal("from-backup", ReadMarker(target));
     }
 
     /// <summary>A backup that is not there is unreadable (it says nothing about damage) and D is untouched.</summary>
