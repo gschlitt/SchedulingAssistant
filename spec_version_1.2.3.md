@@ -1748,6 +1748,25 @@ item 5's helper.
     Sections row) without the colleague's change;
   - the crash files are discarded only after that, then a normal open of D, which keeps the colleague's change.
   - The log shows AlreadyExists, AlreadyExists, Created, and the lock released before the dialog.
+- Committed as 9f97d8a.
+
+**Step 16b outcome (2026-10-14; code and tests done; accepted on tests, no hand test, by decision).**
+- **Built as planned:** `StartupWizardViewModel.DescribeDbFailure` became `internal static async
+  DescribeDbFailureAsync(ex, dbPath, verb, writeProbe = null)`.
+  - The default probe (`ProbeFolderWritableAsync`) runs `WriteAccessProbe.CanCreateFileIn` through
+    `NetworkFileOps.RunAsync`: thread pool, 5 s deadline.
+  - A stall returns the wizard's existing `UnreachableLocationMessage`, now `internal const`, wording unchanged.
+    Every other message and branch is unchanged.
+  - The three call sites (step 1a open, step 3 create ×2) now await it. `Next` is an async `[RelayCommand]`, so it
+    stays disabled while the probe runs.
+  - `DescribeWriteBlock` stays on the UI thread; it does only string and local-path work, no file I/O.
+- **Tests:** `WizardDbFailureMessageTests` (14), through the `writeProbe` seam so no test waits on the deadline:
+  - the folder-not-writable exception is never probed; a stall gives the network message and probes once;
+  - write-block wording with and without the IT suffix; the generic fallback for both verbs;
+  - the folder (or null) handed to the probe; the default probe on a real writable folder and a missing one.
+  - Laptop suite: 2570 passed, 21 skipped.
+- **Why no hand test:** the new branch needs a share that stops answering (clumsy set-up). The unit tests cover
+  every branch, and the change only affects the wording of an error that has already happened. No data path.
 
 ---
 

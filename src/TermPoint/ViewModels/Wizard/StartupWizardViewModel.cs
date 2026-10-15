@@ -259,9 +259,10 @@ public partial class StartupWizardViewModel : ViewModelBase
     // ── Validation ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Inline error shown when the chosen database location cannot be reached (step 3: create).
+    /// Inline error shown when the chosen database location cannot be reached (step 3: create, and
+    /// <see cref="DescribeDbFailureAsync"/> when its folder probe stalls). Internal so tests can assert it.
     /// </summary>
-    private const string UnreachableLocationMessage =
+    internal const string UnreachableLocationMessage =
         "Cannot reach the database location — check your network connection and try again.";
 
     /// <summary>
@@ -356,7 +357,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            s1a.ErrorMessage = DescribeDbFailure(ex, dbPath, "open");
+            s1a.ErrorMessage = await DescribeDbFailureAsync(ex, dbPath, "open");
             App.Logger.LogError(ex, "StartupWizard: step 1a existing-DB validation failed");
             return false;
         }
@@ -412,7 +413,7 @@ public partial class StartupWizardViewModel : ViewModelBase
                         return false;
                     default: // Failed — same error mapping the old in-place create used
                         App.Logger.LogError(created.Error, "StartupWizard: step 3 DB creation failed");
-                        s3.ErrorMessage = DescribeDbFailure(
+                        s3.ErrorMessage = await DescribeDbFailureAsync(
                             created.Error ?? new IOException("The database could not be created."), dbPath, "create");
                         return false;
                 }
@@ -452,7 +453,7 @@ public partial class StartupWizardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            s3.ErrorMessage = DescribeDbFailure(ex, dbPath, "create");
+            s3.ErrorMessage = await DescribeDbFailureAsync(ex, dbPath, "create");
             App.Logger.LogError(ex, "StartupWizard: step 3 DB creation failed");
             return false;
         }
@@ -466,11 +467,45 @@ public partial class StartupWizardViewModel : ViewModelBase
     /// known folder such as Documents) — it returns neutral, actionable guidance instead of the raw
     /// exception text. All other failures fall back to the original "Could not {verb} the database"
     /// message.
+    ///
+    /// <para><b>Why this is async (spec item 16, step 16b).</b> Deciding whether the folder is a write
+    /// block means creating and deleting a test file in it (<see cref="WriteAccessProbe.CanCreateFileIn"/>).
+    /// This method runs only on failure paths, which is exactly when the chosen folder may be on a dead
+    /// network share — a synchronous probe on the UI thread would freeze the wizard for the SMB timeout
+    /// (30–60 s) before any error appeared. The probe therefore runs on the thread pool under the
+    /// <see cref="NetworkFileOps"/> deadline, and no network I/O happens on the UI thread.</para>
+    ///
+    /// <para>Branches, in order:</para>
+    /// <list type="number">
+    ///   <item><description><paramref name="ex"/> is a <see cref="DatabaseFolderNotWritableException"/>:
+    ///   its own <c>UserMessage</c> / <c>ItDetail</c> are used and the probe is not run at all.</description></item>
+    ///   <item><description>Otherwise the folder is probed. If the probe does not finish within the
+    ///   deadline, the location is unreachable: the wizard's network message
+    ///   (<see cref="UnreachableLocationMessage"/>) is returned and the folder is not probed again.</description></item>
+    ///   <item><description>The probe finished and the folder cannot accept a new file: the write-block
+    ///   wording from <see cref="WriteAccessProbe.DescribeWriteBlock"/> is returned (with the
+    ///   "Ask your IT department" suffix when there is IT detail).</description></item>
+    ///   <item><description>The probe finished and the folder is writable: the failure was something else,
+    ///   so the generic "Could not {verb} the database: {message}" fallback is returned.</description></item>
+    /// </list>
     /// </summary>
     /// <param name="ex">The exception thrown while opening or creating the database.</param>
     /// <param name="dbPath">The full database path the user chose.</param>
     /// <param name="verb">"open" or "create", used only in the generic fallback message.</param>
-    private static string DescribeDbFailure(Exception ex, string? dbPath, string verb)
+    /// <param name="writeProbe">
+    /// Test seam only — production callers pass <c>null</c>. Replaces the folder write probe: receives the
+    /// folder to test (null when <paramref name="dbPath"/> is blank) and returns whether the probe finished
+    /// within the deadline (<c>Completed</c>) and, when it did, whether a file could be created
+    /// (<c>CanCreate</c>). The default probe is <see cref="ProbeFolderWritableAsync"/>.
+    /// </param>
+    /// <returns>The single inline error string the wizard shows for the failed step.</returns>
+    /// <exception cref="Exception">
+    /// Does not throw for I/O trouble: the default probe's underlying call never throws and a stalled probe
+    /// is reported as a message, not an exception.
+    /// </exception>
+    internal static async Task<string> DescribeDbFailureAsync(
+        Exception ex, string? dbPath, string verb,
+        Func<string?, Task<(bool Completed, bool CanCreate)>>? writeProbe = null)
     {
         var folder = string.IsNullOrWhiteSpace(dbPath) ? null : Path.GetDirectoryName(dbPath);
 
@@ -479,16 +514,26 @@ public partial class StartupWizardViewModel : ViewModelBase
 
         if (ex is DatabaseFolderNotWritableException dfnw)
         {
-            // Open path: DatabaseContext already classified and worded this.
+            // Open path: DatabaseContext already classified and worded this. No probe needed.
             userMessage = dfnw.UserMessage;
             itDetail    = dfnw.ItDetail;
         }
-        else if (!WriteAccessProbe.CanCreateFileIn(folder))
+        else
         {
             // Create path: the throw happened before DatabaseContext (e.g. the wizard's own
             // Directory.CreateDirectory). The probe is the gate — only treat it as a write block
-            // when the folder genuinely cannot accept a new file.
-            (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(folder);
+            // when the folder genuinely cannot accept a new file. It runs off the UI thread under
+            // the NetworkFileOps deadline (step 16b); the await resumes on the UI thread.
+            var probe = writeProbe ?? ProbeFolderWritableAsync;
+            var (completed, canCreate) = await probe(folder);
+
+            // The probe stalled: the folder is on a share that is not answering. Say so, and do not
+            // probe again (that would just wait out another deadline).
+            if (!completed)
+                return UnreachableLocationMessage;
+
+            if (!canCreate)
+                (userMessage, itDetail) = WriteAccessProbe.DescribeWriteBlock(folder);
         }
 
         if (userMessage is null)
@@ -499,6 +544,24 @@ public partial class StartupWizardViewModel : ViewModelBase
         return itDetail is null
             ? userMessage
             : userMessage + "\n\nAsk your IT department for details.";
+    }
+
+    /// <summary>
+    /// Default folder write probe for <see cref="DescribeDbFailureAsync"/>: runs
+    /// <see cref="WriteAccessProbe.CanCreateFileIn"/> on the thread pool under the
+    /// <see cref="NetworkFileOps"/> deadline, so a dead share cannot freeze the UI thread.
+    /// </summary>
+    /// <param name="folder">The folder to test; null or blank simply cannot accept a file.</param>
+    /// <returns>
+    /// <c>(true, canCreate)</c> when the probe finished within the deadline; <c>(false, false)</c> when it
+    /// timed out (the answer is then unknown, so <c>CanCreate</c> carries no meaning).
+    /// </returns>
+    private static async Task<(bool Completed, bool CanCreate)> ProbeFolderWritableAsync(string? folder)
+    {
+        var (completed, canCreate) = await NetworkFileOps.RunAsync(
+            () => WriteAccessProbe.CanCreateFileIn(folder),
+            "probe database folder write access");
+        return (completed, completed && canCreate);
     }
 
     // ── Commit ───────────────────────────────────────────────────────────────
