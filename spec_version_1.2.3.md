@@ -597,7 +597,7 @@ that must refuse to edit.
    - a raise failure is refused in a raising release (injected constant);
    - after a fresh copy, the gate re-runs: it blocks to read-only, and a raise lands in the new `D′`.
 
-**Step 3c outcome (2026-10-14; code and tests done, hand test pending).**
+**Step 3c outcome (2026-10-14; code, tests and hand test done).**
 - **Built as planned,** with one change found in review (decision, 2026-10-14):
   - **`ReadStamp` is four-way:** found / no stamp / couldn't read / **damaged**.
   - **Damaged** means SQLite says the file is corrupt or not a database. It is classified by the same rule as 5d's
@@ -613,12 +613,19 @@ that must refuse to edit.
   - fault value `stamp[:n]`;
   - test seams `StampReader`, `StampRaiser`, `GateRetryDelay`.
 - **Tests:** 66 new. The full suite passes (2,559).
-- **Hand tests** (to do on database copies):
-  - `stamp:3` → the "in use" prompt; Try again opens; Close leaves no lock;
+- **Hand-tested 2026-10-14** (laptop, Debug build, on copies of a local database; each result confirmed in the log):
+  - `stamp:3` → the "in use" prompt. Try again opens. Close, and closing the prompt with its X, leave no lock and
+    no copy, with no second checkout;
   - `stamp:2` → opens normally;
   - `damaged:1` → the gate runs twice, then the database opens;
-  - a copy with page 1 damaged below a valid header → "may be damaged" and the recovery chooser, not "in use";
-  - a copy stamped `1.2.5` → the "needs TermPoint 1.2.5" banner.
+  - the **startup** database damaged in place (page 1 below a valid header) → the recovery chooser, "failed an
+    integrity check and may be damaged", not "in use";
+  - a copy stamped `1.2.5` → opens read-only with the "needs TermPoint 1.2.5" banner (other-channels wording).
+  - **Note on the damaged-copy test:** it has to be the startup database, damaged while TermPoint is closed.
+    Opening a damaged file any other way is refused up front by `DatabaseValidator`, before checkout. The
+    chooser's Browse says "does not appear to be a valid database"; File → Open and Recent go through
+    `DatabaseSwitchPrecheck`. The startup check also runs before checkout, so no hand test reaches the gate's own
+    damaged branch. That branch is covered by the unit tests only.
 
 ---
 
@@ -1685,6 +1692,62 @@ The restore copies are covered by item 5.
 
 **Fix direction.** Route them through `NetworkFileOps` with a deadline, off the UI thread, sharing
 item 5's helper.
+
+**Survey (2026-10-14).**
+- **New-database folder creation: already fixed.** File → New and wizard step 3 both go through `NewDatabaseFile`
+  → `NewFilePlacement.EnsureFolderAsync`, which puts a deadline on `Directory.CreateDirectory` (item 5, step 5c).
+- **Recovered-copy export: still raw.** `MainWindow.ExportRecoveredCopyAsync` runs `File.Copy(D′, dest,
+  overwrite: true)` on the UI thread. Besides the freeze:
+  - **It can overwrite D.** The export is offered only after a recovery conflict, and the write lock has already
+    been released. If the user picks D's own file and confirms the replace, D is overwritten with their stale
+    version with no lock held. That silently erases colleagues' saves, breaks an active editor's next save, and
+    if that editor's save lands afterwards, the user's edits (already discarded) exist nowhere. A copy that dies
+    partway leaves D truncated. The same hole is in 1.2.2.
+  - **WAL:** it copies D′ without its `-wal`. It is correct today only because `InspectCrashRecovery`'s ReadWrite
+    integrity check (pool cleared) folds the WAL in just before. Nothing states or tests that dependency.
+- **Found in the sweep:** the wizard's `DescribeDbFailure` runs `WriteAccessProbe.CanCreateFileIn(folder)`
+  synchronously on the UI thread, on the failure paths of open and create, which is when a share is most
+  likely dead.
+
+**Plan (user-approved 2026-10-14).**
+- **16a — recovered-copy export: snapshot, then place; never overwrite.**
+  - New `CheckoutService.ExportRecoveredCopyAsync(sourcePath, destPath)`. It snapshots D′ locally with the SQLite
+    backup API (`BackupSqliteDatabase`, as save step 1 does: WAL-proof, rollback mode), then places the snapshot
+    with `NewFilePlacement.PlaceAsync` **unchanged** (no-overwrite move). It never throws and returns
+    `NewDatabaseResult`.
+  - The save dialog's overwrite prompt is off (`ShowOverwritePrompt = false`). An existing file, **D included**,
+    is refused with "choose a new name", and the export is offered again. When D is missing, creating it at D's
+    path is allowed (decision).
+  - Unreachable gives the network message, and the export is offered again. The crash artifacts are discarded
+    only after a confirmed export (unchanged).
+  - The conflict message gains a hint: a kept version can replace the database with "Restore from a backup" in
+    the startup chooser (item 5c), which takes the lock, keeps the replaced D and checks the file.
+  - The wording moves to a testable prompt class, as with `LocalCopyCheckPrompt`.
+- **16b — wizard failure-path probe: deadline, off the UI thread.** `DescribeDbFailure` becomes async and runs
+  the probe through `NetworkFileOps.RunAsync`. A stall shows the network message.
+- **Data:** 16a only reads D′. MinimumVersionToWrite: No (nothing new is saved). No AXAML changes.
+
+**Step 16a outcome (2026-10-14; code, tests and hand test done).**
+- **Built as planned, no deviations:**
+  - `CheckoutService.ExportRecoveredCopyAsync`, with its body in `SnapshotAndPlaceRecoveredCopyAsync`;
+  - the new `Services/RecoveryConflictPrompt.cs` (pure text, compiles on both targets);
+  - `MainWindow`: `ShowOverwritePrompt = false` and one message per outcome. The re-offer loop is unchanged.
+- **Tests:** 18 new.
+  - `RecoveredCopyExportTests` (8): rollback-mode copy, nothing left behind; **WAL-only changes reach the export**
+    (the test first proves that a raw copy would miss them); an existing file and D are refused untouched; D's path
+    is allowed when D is missing; D′ and its marker are left alone; D′ missing or unreadable → Failed with nothing
+    created; the local scratch folder is empty in every case.
+  - `RecoveryConflictPromptTests` (10).
+  - Laptop suite: 2556 passed, 21 skipped (BIOL-only).
+- **Hand-tested 2026-10-14** on copies (laptop, Debug build):
+  - an edit left only in D′'s `-wal` by Stop Debugging, then a simulated colleague's save to D;
+  - Restore → conflict prompt with the new paragraph;
+  - Save a Copy… onto D → "Choose a New Name", D untouched; onto another existing file → the same, its hash
+    unchanged;
+  - a new name → Created: rollback mode, integrity ok, no sidecars or `.tmp`, and it holds the edit (the one extra
+    Sections row) without the colleague's change;
+  - the crash files are discarded only after that, then a normal open of D, which keeps the colleague's change.
+  - The log shows AlreadyExists, AlreadyExists, Created, and the lock released before the dialog.
 
 ---
 

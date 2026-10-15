@@ -2441,6 +2441,116 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Saves the unsaved changes held in the crash-recovery file D' of <paramref name="sourcePath"/> as a NEW,
+    /// standalone database at <paramref name="destPath"/> (spec item 16, step 16a). Offered after a
+    /// <see cref="CheckoutOutcome.RecoveryConflict"/>: D changed since the crash, so the unsaved changes cannot be
+    /// resumed, and this keeps them as a separate file the user can open later.
+    ///
+    /// <para><b>Snapshot, then place.</b> D' is copied with the SQLite Online Backup API into a temporary LOCAL file
+    /// (<see cref="BackupSqliteDatabase"/>, exactly as a save does), and only that finished, quiescent snapshot is
+    /// placed at <paramref name="destPath"/> with <see cref="NewFilePlacement.PlaceAsync"/>. The snapshot is needed
+    /// because D' is a WAL-mode database: recent commits may live only in its <c>-wal</c> file, which a raw
+    /// <c>File.Copy</c> of the <c>.db</c> would silently leave behind. The backup reads through the WAL and writes a
+    /// self-contained, rollback-mode file, so the export holds every change and WAL is never active on a file the
+    /// user may put on a share.</para>
+    ///
+    /// <para><b>Never overwrites.</b> The destination must not exist. This is not a nicety: the user is free to pick
+    /// any path in the save dialog, including D itself, and by now the write lock has been released. An overwrite of D
+    /// here would replace the department's database with the user's stale version, with no lock held, silently
+    /// erasing every colleague's save made since the crash (and corrupting an editor that has D open). So an existing
+    /// file, D included, is refused with <see cref="NewDatabaseOutcome.AlreadyExists"/> and the caller asks for a
+    /// new name. Creating a file at D's path is allowed only when D does not exist (nothing is lost then).
+    /// A user who really wants their version to become the database uses "Restore from a backup" in the startup
+    /// chooser, which takes the write lock and keeps the replaced database.</para>
+    ///
+    /// <para><b>Safe for the shared database and for D'.</b> D' is only read; D' and its <c>.dirty</c> marker are
+    /// never deleted, moved or edited here (the caller discards them with <see cref="DiscardCrash"/> only after a
+    /// confirmed export). D is never opened or written. Every operation on the destination's location is
+    /// deadline-bounded (<see cref="NetworkFileOps"/>), and the snapshot runs on a thread-pool thread, so a dead
+    /// share cannot freeze the UI.</para>
+    ///
+    /// <para>Never throws: failures come back in the result. A leftover <c>dest.tmp</c> is removed before returning
+    /// (nothing else would ever sweep one beside a file the user chose), and the local snapshot and its sidecars are
+    /// always deleted.</para>
+    /// </summary>
+    /// <param name="sourcePath">The shared database path D whose crash-recovery file D' to export.</param>
+    /// <param name="destPath">Full path of the file to create. It must not exist.</param>
+    /// <param name="localDirectory">
+    /// Folder for the temporary local snapshot. Defaults to the system temp folder; tests supply their own so they
+    /// can assert nothing is left behind.
+    /// </param>
+    /// <returns>
+    /// <see cref="NewDatabaseOutcome.Created"/> when <paramref name="destPath"/> now holds the complete export;
+    /// <see cref="NewDatabaseOutcome.AlreadyExists"/> when a file is (or appeared) there, untouched;
+    /// <see cref="NewDatabaseOutcome.Unreachable"/> when the destination did not answer in time;
+    /// <see cref="NewDatabaseOutcome.Failed"/> for anything else (D' missing or unreadable, an IO error), with the
+    /// exception in <see cref="NewDatabaseResult.Error"/>.
+    /// </returns>
+    public async Task<NewDatabaseResult> ExportRecoveredCopyAsync(
+        string sourcePath, string destPath, string? localDirectory = null)
+    {
+        var localPath = Path.Combine(
+            localDirectory ?? Path.GetTempPath(),
+            $"termpoint-recovered-{Guid.NewGuid():N}.db");
+
+        NewDatabaseResult result;
+        try
+        {
+            result = await SnapshotAndPlaceRecoveredCopyAsync(sourcePath, destPath, localPath).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Never throws: the caller turns the result into a user message and logs the error itself.
+            result = new NewDatabaseResult(NewDatabaseOutcome.Failed, ex);
+        }
+        finally
+        {
+            // The local snapshot is scratch: delete it with every sidecar SQLite may have made. Best effort.
+            TryDelete(localPath);
+            TryDeleteWalSidecars(localPath);
+            TryDelete(localPath + "-journal");
+        }
+
+        _logger.LogInfo(
+            $"CheckoutService: recovered-copy export to '{destPath}': {result.Outcome}" +
+            (result.Error is null ? "" : $" ({result.Error.Message})"));
+        return result;
+    }
+
+    /// <summary>
+    /// The body of <see cref="ExportRecoveredCopyAsync"/>: refuses early, takes the local snapshot of D', and places it.
+    /// Exceptions propagate to the caller, which converts them to a Failed result and removes the local snapshot.
+    /// </summary>
+    /// <param name="sourcePath">The shared database path D whose crash-recovery file D' to export.</param>
+    /// <param name="destPath">Full path of the file to create (never overwritten).</param>
+    /// <param name="localPath">Full path of the temporary local snapshot to create.</param>
+    /// <returns>The outcome, as <see cref="ExportRecoveredCopyAsync"/> documents it.</returns>
+    /// <exception cref="IOException">A file operation failed (the snapshot, or the transfer to the destination).</exception>
+    /// <exception cref="UnauthorizedAccessException">Access to the destination was denied.</exception>
+    /// <exception cref="SqliteException">D' could not be read as a database.</exception>
+    private async Task<NewDatabaseResult> SnapshotAndPlaceRecoveredCopyAsync(
+        string sourcePath, string destPath, string localPath)
+    {
+        // Nothing to export: report it without creating anything (BackupSqliteDatabase would also refuse to
+        // create a missing D', but saying so up front gives a clear error).
+        var workingPath = ComputeWorkingPath(sourcePath);
+        if (!File.Exists(workingPath))
+            return new NewDatabaseResult(NewDatabaseOutcome.Failed,
+                new FileNotFoundException("The unsaved changes to export were not found.", workingPath));
+
+        // Cheap refusal before any work: the destination is already taken (D included) or does not answer.
+        var early = await NewFilePlacement.RefuseIfPresentAsync(destPath).ConfigureAwait(false);
+        if (early is not null) return early;
+
+        // Snapshot D' locally (WAL-proof, rollback mode), then place it without overwrite. PlaceAsync re-checks the
+        // destination just before writing, because the snapshot takes a moment. The leftover-.tmp removal is
+        // awaited: nothing else would ever sweep a stray dest.tmp beside a file the user chose.
+        await Task.Run(() => BackupSqliteDatabase(workingPath, localPath)).ConfigureAwait(false);
+        return await NewFilePlacement.PlaceAsync(localPath, destPath, awaitTmpCleanup: true, logger: _logger)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Moves a damaged crash-recovery working copy aside (suffix
     /// <c>.corrupt-yyyyMMdd-HHmmss</c>) instead of deleting it, and removes its dirty
     /// marker. Archiving rather than deleting preserves a salvage option — a corrupt

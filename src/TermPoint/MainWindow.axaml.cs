@@ -2437,7 +2437,9 @@ public partial class MainWindow : Window
     /// and are intact, but D was modified since the crash (or the marker is unverifiable),
     /// so restoring them automatically would overwrite someone else's work. Offers to
     /// export the unsaved version as a separate file, then discards the crash artifacts.
-    /// A cancelled save-picker re-offers the choice rather than silently discarding.
+    /// A cancelled save-picker, a name that is already taken, an unreachable location or a
+    /// failed copy re-offers the choice rather than silently discarding. The texts live in
+    /// <see cref="RecoveryConflictPrompt"/>.
     /// </summary>
     /// <param name="sourcePath">The database path whose recovery hit a conflict.</param>
     private async Task HandleRecoveryConflictAsync(string sourcePath)
@@ -2446,19 +2448,18 @@ public partial class MainWindow : Window
 
         while (info is not null)
         {
-            var export = await ShowChoiceAsync("Can't Restore Unsaved Changes",
-                "The database has been changed since your unsaved changes were made, " +
-                "so they can't be restored automatically.\n\n" +
-                "Would you like to save your version as a separate file instead? " +
-                "You can open it later from Files → Open Database.",
-                "Save a Copy…", "Discard");
+            var export = await ShowChoiceAsync(
+                RecoveryConflictPrompt.ConflictTitle,
+                RecoveryConflictPrompt.ConflictMessage,
+                RecoveryConflictPrompt.SaveCopyButton, RecoveryConflictPrompt.DiscardButton);
 
             if (!export)
                 break;
 
-            // Only stop asking once the copy actually landed — a cancelled picker or a
-            // failed copy must not silently destroy the user's last copy of their edits.
-            if (await ExportRecoveredCopyAsync(sourcePath, info.WorkingPath))
+            // Only stop asking once the copy actually landed — a cancelled picker, a refused
+            // name, an unreachable location or a failed copy must not silently destroy the
+            // user's last copy of their edits.
+            if (await ExportRecoveredCopyAsync(sourcePath))
                 break;
         }
 
@@ -2466,37 +2467,54 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Shows a save-file picker and copies the recovered working copy to the chosen
-    /// location. The exported file is a complete, standalone database that can be opened
-    /// via Files → Open Database.
+    /// Shows a save-file picker and saves the unsaved changes held in the crash-recovery file
+    /// as a NEW database at the chosen location. The exported file is a complete, standalone
+    /// database that can be opened via Files → Open Database.
+    ///
+    /// <para>The work is done by <see cref="CheckoutService.ExportRecoveredCopyAsync"/>: a
+    /// local snapshot (so changes still in the recovery file's WAL are included), placed without
+    /// overwrite on a deadline, off the UI thread. The picker's own overwrite prompt is OFF
+    /// (<c>ShowOverwritePrompt = false</c>) because an existing file — the shared database
+    /// itself included — is never replaced: the user is told to choose a new name and the caller
+    /// offers the export again. An unreachable location gets the network message, also followed
+    /// by another offer.</para>
     /// </summary>
-    /// <param name="sourcePath">Original database path D (used for the suggested filename).</param>
-    /// <param name="workingPath">The intact working copy holding the unsaved changes.</param>
-    /// <returns>True when the copy was written; false on picker cancel or copy failure.</returns>
-    private async Task<bool> ExportRecoveredCopyAsync(string sourcePath, string workingPath)
+    /// <param name="sourcePath">Original database path D (used for the suggested filename and to find its recovery file).</param>
+    /// <returns>True when the copy was written; false on picker cancel, a refused name, an unreachable location or a failure.</returns>
+    private async Task<bool> ExportRecoveredCopyAsync(string sourcePath)
     {
-        var suggested = Path.GetFileNameWithoutExtension(sourcePath) + " (recovered).db";
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title             = "Save Recovered Copy",
-            SuggestedFileName = suggested,
-            DefaultExtension  = "db",
+            Title               = RecoveryConflictPrompt.SaveDialogTitle,
+            SuggestedFileName   = RecoveryConflictPrompt.SuggestedFileName(sourcePath),
+            DefaultExtension    = "db",
+            ShowOverwritePrompt = false,
         });
 
         var destPath = file?.TryGetLocalPath();
         if (destPath is null) return false; // user cancelled
 
-        try
+        var result = await App.Checkout.ExportRecoveredCopyAsync(sourcePath, destPath);
+
+        switch (result.Outcome)
         {
-            File.Copy(workingPath, destPath, overwrite: true);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogError(ex, "Failed to export recovered copy");
-            await ShowMessageAsync("Export Failed",
-                $"Could not save the copy: {ex.Message}");
-            return false;
+            case NewDatabaseOutcome.Created:
+                return true;
+
+            case NewDatabaseOutcome.AlreadyExists:
+                await ShowMessageAsync(
+                    RecoveryConflictPrompt.AlreadyExistsTitle, RecoveryConflictPrompt.AlreadyExistsMessage);
+                return false;
+
+            case NewDatabaseOutcome.Unreachable:
+                await ShowMessageAsync(DatabaseSwitchPrecheck.UnreachableTitle, NetworkFileOps.UnreachableMessage);
+                return false;
+
+            default:
+                App.Logger.LogError(result.Error, "Failed to export recovered copy");
+                await ShowMessageAsync(
+                    RecoveryConflictPrompt.ExportFailedTitle, RecoveryConflictPrompt.ExportFailedMessage(result.Error));
+                return false;
         }
     }
 
