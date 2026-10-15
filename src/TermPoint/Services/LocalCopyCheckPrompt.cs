@@ -32,6 +32,14 @@ public static class LocalCopyCheckPrompt
         "files, often antivirus or backup software checking a file that was just copied. This usually clears in " +
         "a few seconds.";
 
+    /// <summary>
+    /// Body of the prompt shown when TermPoint could not prepare a read-only view of a database at all (the
+    /// read-only open path, <c>MainWindow.SetupSnapshotOrAskAsync</c>), with <see cref="TryAgainButton"/> and
+    /// <see cref="CloseButton"/>. Shown under <see cref="CouldntOpenTitle"/>.
+    /// </summary>
+    public const string CouldntMakeCopyMessage =
+        "TermPoint couldn't open this database. Check the network connection, then try again.";
+
     /// <summary>Label of the "in use" prompt's confirming button: try opening again.</summary>
     public const string TryAgainButton = "Try again";
 

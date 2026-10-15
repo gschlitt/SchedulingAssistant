@@ -25,6 +25,15 @@ public sealed class LocalCopyCheckPromptTests
         Assert.Equal("Close", LocalCopyCheckPrompt.CloseButton);
     }
 
+    /// <summary>The read-only open failure message (spec item 12) is the approved wording, verbatim.</summary>
+    [Fact]
+    public void CouldntMakeCopyMessage_IsTheApprovedWording()
+    {
+        Assert.Equal(
+            "TermPoint couldn't open this database. Check the network connection, then try again.",
+            LocalCopyCheckPrompt.CouldntMakeCopyMessage);
+    }
+
     /// <summary>The "damaged" message and its title are the approved wording; the title is the front door's own damaged title.</summary>
     [Fact]
     public void DamagedMessage_IsTheApprovedWording()
@@ -70,7 +79,7 @@ public sealed class LocalCopyCheckPromptTests
             LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton,
             LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage,
             LocalCopyCheckPrompt.DamagedSharedTitle, LocalCopyCheckPrompt.DamagedSharedMessage,
-            LocalCopyCheckPrompt.KeepsFailingMessage
+            LocalCopyCheckPrompt.KeepsFailingMessage, LocalCopyCheckPrompt.CouldntMakeCopyMessage
         };
 
         foreach (var text in texts)

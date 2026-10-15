@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using Microsoft.Data.Sqlite;
+using TermPoint.Exceptions;
 using TermPoint.Models;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,6 +10,24 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Manages the checkout / save lifecycle for every database the app opens.
+///
+/// <para><b>The four rules for the shared database</b> (CLAUDE.md). The shared database is a SQLite file on a
+/// network share, with no database server. The code that saves, locks, exits, switches, restores and recovers it is
+/// held to four rules, and every change to those paths in this class is checked against them before it is laid out:</para>
+/// <list type="number">
+///   <item><b>The shared database only changes by one atomic rename of a copy that has been checked.</b></item>
+///   <item><b>Never write it unless the lock is ours and the database is exactly as we last saw it.</b></item>
+///   <item><b>Never delete the only copy of someone's unsaved work until a copy exists somewhere else.</b> The
+///         guarantee must come from the data layer (for example, a closed connection), never from a dialog that
+///         hides the controls: a modal blocks only the main window, not detached panels, sticky notes, focus-loss
+///         saves or background work.</item>
+///   <item><b>Never confuse the user.</b>
+///         <list type="bullet">
+///           <item>Every message says what happened, whether their work is safe, and what to do next.</item>
+///           <item>Never ask about something the user has already dealt with.</item>
+///           <item>One message per problem, in plain words: no "working copy" or "local copy", no paths, no log text.</item>
+///         </list></item>
+/// </list>
 ///
 /// <para><b>Write-access mode:</b> When a database D is opened and the write lock is
 /// available, <see cref="CheckoutAsync"/> acquires the lock, copies D to a local working
@@ -1337,7 +1356,10 @@ public sealed class CheckoutService : IDisposable
     /// A <see cref="SaveOutcome"/> describing the result. <b>This method does not throw</b> (spec item 4,
     /// step 4c): a plain file error on D, D.tmp or D' (a sharing violation, access denied, a vanished
     /// file) and any exception nobody anticipated come back as <see cref="SaveOutcome.CopyError"/> with a
-    /// <see cref="SaveFailed"/> banner, leaving D untouched and D' + the dirty marker in place. Callers
+    /// <see cref="SaveFailed"/> banner (exactly one, with a <see cref="SavePrompt"/> text and no
+    /// <see cref="IAppLogger.LogError"/> call, so no second banner; the problem is reported through
+    /// <see cref="IAppLogger.ReportHandled"/> instead, see <see cref="ReportSaveFailure"/>), leaving D
+    /// untouched and D' + the dirty marker in place. Callers
     /// (the Save button, autosave, the exit save in <see cref="ReleaseAsync"/>) can therefore rely on the
     /// outcome alone.
     /// </returns>
@@ -1371,12 +1393,15 @@ public sealed class CheckoutService : IDisposable
             // CopyError branch (lock parked via Suspend, D' + marker kept for recovery) instead of
             // reaching OnClosing / the UI-thread last-resort handler through an exception.
             //
-            // LogError (not LogInfo): an exception we did not anticipate must still reach Bugsnag.
+            // ReportSaveFailure (not LogError): an exception we did not anticipate must still reach
+            // Bugsnag, but as ONE path-free handled report — LogError would also raise ErrorLogged and
+            // put a second, red banner next to the save banner (spec item 12).
             // Nothing is deleted here — we cannot know whether D.tmp or the local snapshot belong to
             // this save; a leftover D.tmp is overwritten by the next save, and the local snapshot is
             // swept at startup.
-            _logger.LogError(ex, "CheckoutService: unexpected exception in SaveAsync — treating as a failed save");
-            RaiseTransientSaveError(SaveUnexpectedFailureMessage, isAutoSave);
+            ReportSaveFailure(SaveStep.Unexpected, ex,
+                "unexpected exception in SaveAsync — treating as a failed save", isAutoSave);
+            RaiseTransientSaveError(SavePrompt.UnexpectedMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
         finally
@@ -1390,80 +1415,120 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Raises <see cref="SaveFailed"/> for a transient <see cref="SaveOutcome.CopyError"/>.
-    /// For an autosave the message gains a "will retry automatically" note and the banner
-    /// is marked auto-dismissing (the next autosave cycle retries on its own); for a manual
-    /// save the message is shown as-is and the banner stays until the next successful save.
+    /// The banner text is <see cref="SavePrompt.ForTransientFailure"/> of <paramref name="message"/>:
+    /// the retry note that fits how the save started (autosave: "TermPoint will try again
+    /// automatically."; manual: "Try saving again in a moment."). The banner is marked auto-dismissing
+    /// for an autosave (the next autosave cycle retries on its own) and stays until the next
+    /// successful save for a manual one.
     /// </summary>
-    /// <param name="message">Base human-readable error message.</param>
+    /// <param name="message">A transient <see cref="SavePrompt"/> text (one that ends "Your changes are kept.").</param>
     /// <param name="isAutoSave">Whether the originating save was an autosave.</param>
     private void RaiseTransientSaveError(string message, bool isAutoSave)
+        => RaiseSaveError(SavePrompt.ForTransientFailure(message, isAutoSave), isAutoSave);
+
+    /// <summary>
+    /// The one place that dispatches <see cref="SaveFailed"/> for a failed save: raises it on the UI thread
+    /// with <paramref name="text"/> exactly as given.
+    /// </summary>
+    /// <param name="text">The complete banner text.</param>
+    /// <param name="autoDismiss">True when the banner may disappear by itself; false when it must stay.</param>
+    private void RaiseSaveError(string text, bool autoDismiss)
+        => _dispatch(() => SaveFailed?.Invoke(text, autoDismiss));
+
+    /// <summary>
+    /// The save steps already sent to the error reporter this session (see <see cref="ReportSaveFailure"/>).
+    /// Guarded by <c>lock</c> on itself: saves run on background threads.
+    /// </summary>
+    private readonly HashSet<SaveStep> _reportedSaveSteps = new();
+
+    /// <summary>
+    /// Records a save failure that is NOT an ordinary retryable condition, without raising
+    /// <see cref="IAppLogger.ErrorLogged"/> (so the save banner is the only banner). Replaces the
+    /// <c>LogError</c> calls the save path used to make (spec item 12).
+    ///
+    /// <para>1. A LOCAL log line with the full original exception (paths in it are fine: it never leaves
+    /// this computer). 2. A handled report to the error reporter, ONCE PER SESSION PER STEP: a persistent
+    /// fault such as a full share would otherwise send one report per autosave cycle. The report carries a
+    /// <see cref="SaveFailedException"/> (fixed text per step plus the original's type name, never its
+    /// message, never an inner exception) and metadata of step, exception type, HRESULT and autosave flag:
+    /// no paths, file names or user names. The banner is raised by the caller every time; only the report is
+    /// throttled. Never throws.</para>
+    /// </summary>
+    /// <param name="step">Which step of the save failed.</param>
+    /// <param name="original">The exception that was caught, or null when there is none.</param>
+    /// <param name="logContext">Short description of the failure, for the local log line.</param>
+    /// <param name="isAutoSave">Whether the failing save was an autosave (goes into the report's metadata).</param>
+    private void ReportSaveFailure(SaveStep step, Exception? original, string logContext, bool isAutoSave)
     {
-        var text = isAutoSave
-            ? message + " The app will retry automatically."
-            : message;
-        _dispatch(() => SaveFailed?.Invoke(text, isAutoSave));
+        try
+        {
+            _logger.LogInfo(original is null
+                ? $"CheckoutService: {logContext}"
+                : $"CheckoutService: {logContext} — {original}");
+
+            bool firstTime;
+            lock (_reportedSaveSteps)
+                firstTime = _reportedSaveSteps.Add(step);
+            if (!firstTime)
+                return;
+
+            var metadata = new Dictionary<string, string>
+            {
+                ["step"]          = step.ToString(),
+                ["exceptionType"] = original?.GetType().Name ?? "none",
+                ["hresult"]       = original is null ? "none" : $"0x{original.HResult:X8}",
+                ["autoSave"]      = isAutoSave.ToString()
+            };
+
+            _logger.ReportHandled(
+                SaveFailedException.Create(step, original?.GetType().Name),
+                context:     $"Save failed: {step}",
+                metadata:    metadata,
+                metadataTab: "save",
+                groupingKey: $"save-failed:{step}");
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a handled save failure into a crash.
+        }
     }
 
     /// <summary>
-    /// Banner text when a save step could not open or read the shared database file (D or D.tmp) because
-    /// another program holds it (antivirus, backup or sync software), access was denied, or the file is
-    /// not there. Transient: the same wording is used for autosave and manual saves (the autosave variant
-    /// gains "The app will retry automatically." from <see cref="RaiseTransientSaveError"/>).
-    /// </summary>
-    internal const string SaveFileInUseMessage =
-        "TermPoint couldn't save because the database file is in use by another program or can't be accessed.";
-
-    /// <summary>
-    /// Banner text when the local working copy D' — not the shared database — is missing at save time
-    /// (deleted or moved while the app was running). Nothing was written to D.
-    /// </summary>
-    internal const string SaveWorkingCopyMissingMessage =
-        "TermPoint couldn't save because its local working copy of the database is missing.";
-
-    /// <summary>
-    /// Banner text for the final safety net in <see cref="SaveAsync"/>: an exception nobody anticipated.
-    /// The user's changes are in D' (and its dirty marker), whatever went wrong.
-    /// </summary>
-    internal const string SaveUnexpectedFailureMessage =
-        "The save failed unexpectedly. Your changes are kept.";
-
-    /// <summary>
-    /// Logs a plain file error from a save step that touches the shared location (the D.tmp copy, the
-    /// D.tmp verify, the rename onto D) and returns the text for the transient save banner.
+    /// Classifies a plain file error from a save step that touches the shared location (the D.tmp copy, the
+    /// D.tmp verify, the rename onto D), records it where appropriate, and returns the text for the
+    /// transient save banner.
     ///
     /// <para>Three cases:</para>
     /// <list type="bullet">
     /// <item><description>A file another program holds open, or one we may not access
-    /// (<see cref="DatabaseValidator.IsLockedOrAccessDenied"/>): an ordinary, retryable condition. Logged
-    /// quietly (LogError would add a Bugsnag report and a second, generic error banner next to the save
-    /// banner); banner <see cref="SaveFileInUseMessage"/>.</description></item>
+    /// (<see cref="DatabaseValidator.IsLockedOrAccessDenied"/>): an ordinary, retryable condition. Written to
+    /// the local log only, nothing reported; banner <see cref="SavePrompt.InUseMessage"/>.</description></item>
     /// <item><description>A file or folder that is not there (<see cref="FileNotFoundException"/> /
     /// <see cref="DirectoryNotFoundException"/> — e.g. D.tmp deleted between the copy and the verify):
-    /// unexpected, so LogError (it reaches Bugsnag); the same <see cref="SaveFileInUseMessage"/> banner
-    /// ("…or can't be accessed") rather than a raw .NET message quoting a path.</description></item>
-    /// <item><description>Any other I/O error (disk full, network name deleted, …): LogError, and the
-    /// banner is <paramref name="otherErrorPrefix"/> followed by the exception's own message.</description></item>
+    /// unexpected, so it is reported once per step (<see cref="ReportSaveFailure"/>); the same
+    /// <see cref="SavePrompt.InUseMessage"/> banner ("…or can't be accessed").</description></item>
+    /// <item><description>Any other I/O error (disk full, network name deleted, …): reported the same way;
+    /// banner <see cref="SavePrompt.WriteFailedMessage"/>.</description></item>
     /// </list>
+    /// No case calls <c>LogError</c>, and no banner text contains the exception's message.
     /// </summary>
     /// <param name="ex">The exception the step threw.</param>
-    /// <param name="logContext">Short description of the failing step, for the log line.</param>
-    /// <param name="otherErrorPrefix">
-    /// Banner wording for an error that is neither a lock / access denial nor a missing file, ending in
-    /// ": " — the exception message is appended.
-    /// </param>
-    /// <returns>The message to pass to <see cref="RaiseTransientSaveError"/>.</returns>
-    private string DescribeSaveFileError(Exception ex, string logContext, string otherErrorPrefix)
+    /// <param name="step">Which step threw (<see cref="SaveStep.CopyToLocation"/>, <see cref="SaveStep.VerifyAtLocation"/> or <see cref="SaveStep.Rename"/>).</param>
+    /// <param name="logContext">Short description of the failing step, for the local log line.</param>
+    /// <param name="isAutoSave">Whether the failing save was an autosave (goes into the report's metadata).</param>
+    /// <returns>The <see cref="SavePrompt"/> text to pass to <see cref="RaiseTransientSaveError"/>.</returns>
+    private string DescribeSaveFileError(Exception ex, SaveStep step, string logContext, bool isAutoSave)
     {
         if (DatabaseValidator.IsLockedOrAccessDenied(ex))
         {
             _logger.LogInfo($"CheckoutService: {logContext} — file in use or access denied ({ex.GetType().Name}: {ex.Message})");
-            return SaveFileInUseMessage;
+            return SavePrompt.InUseMessage;
         }
 
-        _logger.LogError(ex, $"CheckoutService: {logContext}");
+        ReportSaveFailure(step, ex, logContext, isAutoSave);
         return ex is FileNotFoundException or DirectoryNotFoundException
-            ? SaveFileInUseMessage
-            : otherErrorPrefix + ex.Message;
+            ? SavePrompt.InUseMessage
+            : SavePrompt.WriteFailedMessage;
     }
 
     /// <summary>
@@ -1545,7 +1610,7 @@ public sealed class CheckoutService : IDisposable
         if (lockResult == LockVerificationResult.Unreachable)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -1577,14 +1642,14 @@ public sealed class CheckoutService : IDisposable
 
             if (sourceUnreadable)
             {
-                RaiseTransientSaveError(SaveFileInUseMessage, isAutoSave);
+                RaiseTransientSaveError(SavePrompt.InUseMessage, isAutoSave);
                 return SaveOutcome.CopyError;
             }
 
             if (!hashCompleted)
             {
                 _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-                RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+                RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
                 return SaveOutcome.CopyError;
             }
 
@@ -1641,11 +1706,13 @@ public sealed class CheckoutService : IDisposable
                 // opens D' with Mode=ReadWrite, so a working copy that has vanished (on macOS an open file can
                 // be deleted under a running app) fails the open instead of being re-created EMPTY and pushed
                 // over D. Say so plainly rather than quoting SQLite's "unable to open database file".
-                var msg = File.Exists(WorkingPath)
-                    ? $"Failed to snapshot the database: {ex.Message}"
-                    : SaveWorkingCopyMissingMessage;
-                _logger.LogError(ex, "CheckoutService: local save snapshot failed");
-                RaiseTransientSaveError(msg, isAutoSave);
+                ReportSaveFailure(SaveStep.Snapshot, ex, "local save snapshot failed", isAutoSave);
+                if (File.Exists(WorkingPath))
+                    RaiseTransientSaveError(SavePrompt.PrepareFailedMessage, isAutoSave);
+                else
+                    // Not transient: retrying can never succeed, so no retry note and the banner is sticky
+                    // even for an autosave.
+                    RaiseSaveError(SavePrompt.SessionFileMissingMessage, autoDismiss: false);
                 return SaveOutcome.CopyError;
             }
 
@@ -1659,8 +1726,8 @@ public sealed class CheckoutService : IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CheckoutService: could not hash local save snapshot");
-                RaiseTransientSaveError($"Failed to prepare the save: {ex.Message}", isAutoSave);
+                ReportSaveFailure(SaveStep.SnapshotHash, ex, "could not hash local save snapshot", isAutoSave);
+                RaiseTransientSaveError(SavePrompt.PrepareFailedMessage, isAutoSave);
                 return SaveOutcome.CopyError;
             }
 
@@ -1677,7 +1744,7 @@ public sealed class CheckoutService : IDisposable
                 {
                     _logger.LogInfo("CheckoutService: snapshot → D.tmp copy stalled — network unreachable");
                     await NetworkFileOps.DeleteAsync(tmpPath);
-                    RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+                    RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
                     return SaveOutcome.CopyError;
                 }
             }
@@ -1687,7 +1754,7 @@ public sealed class CheckoutService : IDisposable
                 // is a retryable lock/access condition — see DescribeSaveFileError. The delete is
                 // best effort: it fails harmlessly while the other program still holds D.tmp, and a
                 // leftover D.tmp is simply overwritten by the next save.
-                var msg = DescribeSaveFileError(ex, "D.tmp copy failed", "Failed to write to database location: ");
+                var msg = DescribeSaveFileError(ex, SaveStep.CopyToLocation, "D.tmp copy failed", isAutoSave);
                 await NetworkFileOps.DeleteAsync(tmpPath);
                 RaiseTransientSaveError(msg, isAutoSave);
                 return SaveOutcome.CopyError;
@@ -1720,7 +1787,7 @@ public sealed class CheckoutService : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            var msg = DescribeSaveFileError(ex, "D.tmp verification could not read the file", "Failed to verify the saved copy: ");
+            var msg = DescribeSaveFileError(ex, SaveStep.VerifyAtLocation, "D.tmp verification could not read the file", isAutoSave);
             await NetworkFileOps.DeleteAsync(tmpPath);
             RaiseTransientSaveError(msg, isAutoSave);
             return SaveOutcome.CopyError;
@@ -1730,7 +1797,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D.tmp verification hash stalled — network unreachable");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -1739,7 +1806,7 @@ public sealed class CheckoutService : IDisposable
             _logger.LogInfo("CheckoutService: D.tmp does not match the local snapshot — torn transfer; aborting save.");
             _logger.LogBreadcrumb("Save: TornTransfer");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            RaiseTransientSaveError("The save could not be verified after writing.", isAutoSave);
+            RaiseTransientSaveError(SavePrompt.VerifyFailedMessage, isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -1768,7 +1835,7 @@ public sealed class CheckoutService : IDisposable
                     // restart — is recognized as ours instead of as a foreign write.
                     RecordPendingSaveHash(newSourceHash);
                     _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                    RaiseTransientSaveError(NetworkFileOps.UnreachableMessage, isAutoSave);
+                    RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
                     return SaveOutcome.CopyError;
                 }
             }
@@ -1780,7 +1847,7 @@ public sealed class CheckoutService : IDisposable
             // recording the pending hash is harmless when the ghost never lands
             // (it simply never matches anything).
             RecordPendingSaveHash(newSourceHash);
-            var msg = DescribeSaveFileError(ex, "D.tmp rename failed", "Failed to finalize save: ");
+            var msg = DescribeSaveFileError(ex, SaveStep.Rename, "D.tmp rename failed", isAutoSave);
             await NetworkFileOps.DeleteAsync(tmpPath);
             RaiseTransientSaveError(msg, isAutoSave);
             return SaveOutcome.CopyError;
@@ -2312,13 +2379,11 @@ public sealed class CheckoutService : IDisposable
             // clear in milliseconds), then warn the user honestly.
             if (!WriteDirtyMarker() && !WriteDirtyMarker())
             {
-                _logger.LogError(null,
-                    "CheckoutService: could not write the dirty marker — crash protection degraded for this session.");
-                _dispatch(() => SaveFailed?.Invoke(
-                    "TermPoint couldn't create its crash-protection file for this session. " +
-                    "Saving still works normally, but unsaved changes may not be recoverable " +
-                    "after a crash — save your work frequently.",
-                    true));
+                // ReportSaveFailure, not LogError: one banner (the warning below), one path-free report.
+                ReportSaveFailure(SaveStep.CrashProtectionMarker, null,
+                    "could not write the dirty marker — crash protection degraded for this session.",
+                    isAutoSave: false);
+                RaiseSaveError(SavePrompt.CrashProtectionMessage, autoDismiss: true);
             }
             _dispatch(() => BecameDirty?.Invoke());
         }
@@ -3892,7 +3957,7 @@ public sealed class CheckoutService : IDisposable
     /// user decision, so it cannot spin.</para>
     /// </summary>
     /// <param name="askTryAgainAsync">
-    /// Called after each failed attempt. Shows the "couldn't make a local copy" prompt and returns
+    /// Called after each failed attempt. Shows the <see cref="LocalCopyCheckPrompt.CouldntMakeCopyMessage"/> prompt and returns
     /// true for "Try again", false for "Close". Not called after a successful attempt.
     /// </param>
     /// <returns>The path to D'' on success; <c>null</c> when the user chose not to try again.</returns>

@@ -1050,8 +1050,7 @@ public partial class MainWindow : Window
     private Task<string?> SetupSnapshotOrAskAsync()
         => App.Checkout.SetupReadOnlySnapshotWithRetryAsync(() => ShowChoiceAsync(
             LocalCopyCheckPrompt.CouldntOpenTitle,
-            "TermPoint couldn't make a local copy of this database. " +
-            "Check the network connection, then try again.",
+            LocalCopyCheckPrompt.CouldntMakeCopyMessage,
             LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton));
 
     /// <summary>

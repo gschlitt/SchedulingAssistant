@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using TermPoint.Exceptions;
 using TermPoint.Services;
 using System;
 using System.IO;
@@ -124,16 +125,20 @@ public sealed class CheckoutServiceTests : IDisposable
     /// (Group 13). Null (the default) uses the real TermPoint assembly version, which is
     /// irrelevant to every test whose database carries no stamp.
     /// </param>
+    /// <param name="logger">
+    /// Logger to inject; null (the default) uses a no-op <see cref="NullLogger"/>. Pass a
+    /// <see cref="RecordingAppLogger"/> to assert what a failed save logs and reports (spec item 12).
+    /// </param>
     /// <returns>
     /// A tuple of the service and its lock service so tests can simulate external lock
     /// holders or verify the lock state directly.
     /// </returns>
-    private (CheckoutService svc, WriteLockService lockSvc) CreateService(Version? appVersion = null)
+    private (CheckoutService svc, WriteLockService lockSvc) CreateService(Version? appVersion = null, IAppLogger? logger = null)
     {
         var lockSvc = new WriteLockService();
         var svc     = new CheckoutService(
             lockService: lockSvc,
-            logger:      new NullLogger(),
+            logger:      logger ?? new NullLogger(),
             dispatch:    action => action(),    // synchronous — events fire immediately
             workingDir:  _workingDir,
             appVersion:  appVersion);
@@ -4823,10 +4828,11 @@ public sealed class CheckoutServiceTests : IDisposable
     /// marker written — the state in which a failed save must keep everything.
     /// </summary>
     /// <param name="db">Path of D (created here).</param>
+    /// <param name="logger">Logger to inject (see <see cref="CreateService"/>); null uses the no-op logger.</param>
     /// <returns>The service and its lock service.</returns>
-    private async Task<(CheckoutService svc, WriteLockService lockSvc)> CheckoutWithUnsavedEditAsync(string db)
+    private async Task<(CheckoutService svc, WriteLockService lockSvc)> CheckoutWithUnsavedEditAsync(string db, IAppLogger? logger = null)
     {
-        var (svc, lockSvc) = CreateService();
+        var (svc, lockSvc) = CreateService(logger: logger);
         CreateSqliteDb(db);
         Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
         InsertTestValue(svc.WorkingPath, "unsaved-edit");
@@ -4864,7 +4870,7 @@ public sealed class CheckoutServiceTests : IDisposable
             outcome = await svc.SaveAsync();   // must NOT throw
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         Assert.False(File.Exists(db + ".tmp"), "Nothing may be written to the share when D cannot be read.");
         AssertSessionKept(svc, lockSvc);
@@ -4874,7 +4880,7 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// The same failure during an AUTOSAVE: same outcome, but the banner gains the "will retry
+    /// The same failure during an AUTOSAVE: same outcome, but the banner gains the "will try again
     /// automatically" note and is marked auto-dismissing.
     /// </summary>
     [FactWindowsOnly]
@@ -4889,7 +4895,7 @@ public sealed class CheckoutServiceTests : IDisposable
             outcome = await svc.SaveAsync(isAutoSave: true);
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveFileInUseMessage + " The app will retry automatically.", true), Assert.Single(banners));
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: true), true), Assert.Single(banners));
     }
 
     /// <summary>
@@ -4911,7 +4917,7 @@ public sealed class CheckoutServiceTests : IDisposable
             outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         AssertTmpUntouched(tmp);
         AssertSessionKept(svc, lockSvc);
@@ -4938,7 +4944,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         Assert.False(File.Exists(db + ".tmp"));
         AssertSessionKept(svc, lockSvc);
@@ -4975,7 +4981,7 @@ public sealed class CheckoutServiceTests : IDisposable
         }
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveFileInUseMessage, false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         AssertSessionKept(svc, lockSvc);
 
@@ -5006,7 +5012,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveWorkingCopyMissingMessage, false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.SessionFileMissingMessage, false), Assert.Single(banners));
         Assert.False(File.Exists(workingCopy), "A missing working copy must never be re-created (empty) by the save.");
         Assert.False(File.Exists(workingCopy + ".savetmp"));
         Assert.False(File.Exists(db + ".tmp"));
@@ -5057,7 +5063,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.SaveAsync();   // must NOT throw
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((CheckoutService.SaveUnexpectedFailureMessage, false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.UnexpectedMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.True(finished, "SaveFinished must still fire so the Saving… indicator clears.");
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         AssertSessionKept(svc, lockSvc);
@@ -5085,6 +5091,197 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.True(File.Exists(LockFileOf(db)));
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Spec item 12 — a failed save shows exactly ONE banner (the save banner), in plain words, and sends
+    // ONE path-free handled report. Before: every unexpected failure also called LogError, whose ErrorLogged
+    // event produced a second, red banner carrying log text, and several banners quoted the raw .NET message.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Asserts the item-12 contract for one failed save: exactly one save banner with the expected text and
+    /// dismiss flag; no LogError (so no ErrorLogged, so no second banner); exactly one handled report naming
+    /// <paramref name="step"/> whose exception message, context, grouping key and every metadata value carry
+    /// neither the test's folders nor the database file name; and a local log line naming the original
+    /// exception's type (when there was one).
+    /// </summary>
+    /// <param name="logger">The recording logger the service was built with.</param>
+    /// <param name="banners">The banners captured from the service.</param>
+    /// <param name="db">Path of D, whose file name and folder must not appear in the report.</param>
+    /// <param name="expectedText">The complete expected banner text.</param>
+    /// <param name="expectedAutoDismiss">The expected auto-dismiss flag.</param>
+    /// <param name="step">The step the report must name.</param>
+    /// <param name="originalTypeName">The original exception's type name, or null when there was none.</param>
+    private void AssertOneBannerOneReport(
+        RecordingAppLogger logger, List<(string Message, bool AutoDismiss)> banners, string db,
+        string expectedText, bool expectedAutoDismiss, SaveStep step, string? originalTypeName)
+    {
+        Assert.Equal((expectedText, expectedAutoDismiss), Assert.Single(banners));
+        Assert.Empty(logger.Errors);
+
+        var report = Assert.Single(logger.Handled);
+        var failure = Assert.IsType<SaveFailedException>(report.Exception);
+        Assert.Equal(step, failure.Step);
+        Assert.Equal(originalTypeName, failure.OriginalType);
+        Assert.Equal($"save-failed:{step}", report.GroupingKey);
+        Assert.Equal($"Save failed: {step}", report.Context);
+        Assert.Null(failure.InnerException);
+
+        var everythingSent = new List<string>
+        {
+            report.Exception.Message, report.Context, report.GroupingKey ?? "", report.MetadataTab
+        };
+        everythingSent.AddRange(report.Metadata?.Values ?? Enumerable.Empty<string>());
+        foreach (var text in everythingSent)
+        {
+            Assert.DoesNotContain(_tempDir, text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(_workingDir, text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(Path.GetFileName(db), text, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (originalTypeName is not null)
+            Assert.Contains(logger.Infos, line => line.Contains(originalTypeName));
+    }
+
+    /// <summary>The safety net: one banner, no LogError, one report of step Unexpected.</summary>
+    [Fact]
+    public async Task SaveAsync_UnexpectedException_RaisesOneBanner_AndOnePathFreeReport()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var banners = CaptureSaveBanners(svc);
+        svc.BeforeTmpVerifyAsync = _ => throw new InvalidOperationException("unexpected, on purpose: " + db);
+
+        await svc.SaveAsync();
+
+        AssertOneBannerOneReport(logger, banners, db,
+            SavePrompt.ForTransientFailure(SavePrompt.UnexpectedMessage, isAutoSave: false), false,
+            SaveStep.Unexpected, nameof(InvalidOperationException));
+    }
+
+    /// <summary>D.tmp vanishes before the verify: one in-use banner, one report of step VerifyAtLocation.</summary>
+    [Fact]
+    public async Task SaveAsync_TmpVanishesBeforeVerify_RaisesOneBanner_AndOnePathFreeReport()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var banners = CaptureSaveBanners(svc);
+        svc.BeforeTmpVerifyAsync = path => { File.Delete(path); return Task.CompletedTask; };
+
+        await svc.SaveAsync();
+
+        var report = Assert.Single(logger.Handled);
+        var originalType = ((SaveFailedException)report.Exception).OriginalType;
+        Assert.True(originalType is nameof(FileNotFoundException) or nameof(DirectoryNotFoundException), originalType);
+        AssertOneBannerOneReport(logger, banners, db,
+            SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false,
+            SaveStep.VerifyAtLocation, originalType);
+    }
+
+    /// <summary>
+    /// D' deleted before the save: one "files for this session" banner that is STICKY even for an autosave
+    /// (retrying can never succeed, so no retry note), one report of step Snapshot.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_WorkingCopyDeleted_AutoSave_RaisesOneStickyBanner_AndOnePathFreeReport()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var banners = CaptureSaveBanners(svc);
+        SqliteConnection.ClearAllPools();
+        File.Delete(svc.WorkingPath);
+
+        await svc.SaveAsync(isAutoSave: true);
+
+        var originalType = ((SaveFailedException)Assert.Single(logger.Handled).Exception).OriginalType;
+        Assert.NotNull(originalType);
+        AssertOneBannerOneReport(logger, banners, db,
+            SavePrompt.SessionFileMissingMessage, expectedAutoDismiss: false,
+            SaveStep.Snapshot, originalType);
+    }
+
+    /// <summary>
+    /// D' held exclusively (another program has it open) when the snapshot is taken: SQLite cannot open it, the
+    /// file still exists, so one "couldn't prepare the save" banner and one report of step Snapshot.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task SaveAsync_WorkingCopyHeldExclusively_RaisesOneBanner_AndOnePathFreeReport()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var banners = CaptureSaveBanners(svc);
+        SqliteConnection.ClearAllPools();
+
+        using (DbFileTestHelpers.LockExclusively(svc.WorkingPath))
+            await svc.SaveAsync();
+
+        var originalType = ((SaveFailedException)Assert.Single(logger.Handled).Exception).OriginalType;
+        Assert.NotNull(originalType);
+        AssertOneBannerOneReport(logger, banners, db,
+            SavePrompt.ForTransientFailure(SavePrompt.PrepareFailedMessage, isAutoSave: false), false,
+            SaveStep.Snapshot, originalType);
+    }
+
+    /// <summary>
+    /// MarkDirty with the marker path blocked by a directory: the crash-protection warning is the only banner
+    /// (auto-dismissing), nothing goes through LogError, and one report of step CrashProtectionMarker is sent
+    /// with no original exception.
+    /// </summary>
+    [Fact]
+    public async Task MarkDirty_MarkerWriteFails_RaisesOneBanner_AndOnePathFreeReport()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = CreateService(logger: logger);
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var markerPath = svc.WorkingPath + ".dirty";
+        Directory.CreateDirectory(markerPath);
+
+        try
+        {
+            svc.MarkDirty();
+        }
+        finally
+        {
+            Directory.Delete(markerPath);
+        }
+
+        AssertOneBannerOneReport(logger, banners, db,
+            SavePrompt.CrashProtectionMessage, expectedAutoDismiss: true,
+            SaveStep.CrashProtectionMarker, originalTypeName: null);
+        var metadata = Assert.Single(logger.Handled).Metadata!;
+        Assert.Equal("none", metadata["exceptionType"]);
+        Assert.Equal("none", metadata["hresult"]);
+    }
+
+    /// <summary>
+    /// A persistent fault must not send one report per autosave cycle: the same failing step twice gives two
+    /// banners (the user still sees each failure) but ONE handled report; the second leaves only a local line.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_SameFailureTwice_RaisesTwoBanners_ButOnlyOneReport()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var banners = CaptureSaveBanners(svc);
+        svc.BeforeTmpVerifyAsync = _ => throw new InvalidOperationException("unexpected, on purpose");
+
+        await svc.SaveAsync(isAutoSave: true);
+        var infosAfterFirst = logger.Infos.Count;
+        await svc.SaveAsync(isAutoSave: true);
+
+        Assert.Equal(2, banners.Count);
+        Assert.Single(logger.Handled);
+        Assert.Empty(logger.Errors);
+        Assert.Contains(logger.Infos.Skip(infosAfterFirst), line => line.Contains(nameof(InvalidOperationException)));
     }
 
     /// <summary>

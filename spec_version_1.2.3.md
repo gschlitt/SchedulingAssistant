@@ -22,9 +22,9 @@ will be verified.
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
-| 10 | "Save aborted" dead end: give a next step | UX | Accepted |
-| 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted |
-| 12 | Save-specific error banner for exceptions during save | UX | Accepted |
+| 10 | "Save aborted" dead end: give a next step | UX | Accepted; **plan approved 2026-10-14** (10a, 10b) |
+| 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted; **plan approved 2026-10-14** |
+| 12 | Save-specific error banner for exceptions during save | UX | **Done** (2026-10-15, on the tests; no hand test). Plan approved 2026-10-14 |
 | 13 | Cloud-sync folder detection gaps | Data integrity / UX | Accepted |
 | 14 | Unapplied editor changes are lost on exit or database switch | Data loss | Accepted |
 | 15 | Exit-path hardening and the mid-save edit gap | Data loss | Accepted |
@@ -1568,6 +1568,74 @@ Autosave quietly stops, and the user keeps working into a dead end.
 **Fix direction.** A persistent banner that says autosave has stopped, explains what it means, and
 offers **Save a Copy now**. Item 4 removes the most common trigger, but this state can still occur.
 
+**Order for items 10–12 (user-approved 2026-10-14):** 12 → 10a → 10b → 11, one commit each. Every step is checked
+against the four rules for the shared database (CLAUDE.md, "Production Cautions").
+
+**Survey (2026-10-14).**
+- **What happens today on `SourceModified`** (`CheckoutService.cs:1610`):
+  - a sticky save banner, "The database was modified outside this session. Save aborted.";
+  - autosave stops, and every manual save is refused the same way;
+  - the session **keeps the write lock**, so colleagues stay read-only, and keeps accepting edits that can never be
+    saved;
+  - at exit, the generic "Changes Not Saved"; at the next open, "Restore Unsaved Changes?", then "Can't Restore
+    Unsaved Changes", then Save a Copy… (16a);
+  - other save messages can replace the banner, and some of them dismiss themselves.
+- **Likeliest trigger in the field:** a colleague still on 1.2.2 joins through the wizard. 1.2.2 opens `D` directly
+  and changes its header (item 4's table, row 1), so a 1.2.3 editor's saves are refused although no data changed.
+  **Release note:** update every machine in a department together.
+- **Design history.** A first plan (banner plus Save a Copy…, the session stays the writer) asked the user twice more
+  about changes he had already saved. A second blocked edits with a modal dialog, which blocks only the main window:
+  not detached panels, sticky notes, focus-loss saves (Scheduling Notes) or background work. The approved plan
+  follows rules 3 and 4: the user's choice ends the session, and the connection is closed before anything is copied
+  or deleted.
+
+**Plan (user-approved 2026-10-14).**
+- **10a — the conflict banner, and a choice that ends the session.**
+  - **Service:** `CheckoutService` gets a `SaveConflict` state, set at `SourceModified` and cleared only by a new
+    checkout, and a `SaveConflictDetected` event that replaces the `SaveFailed` call there.
+  - **View model:** its own banner state, so no other save message can replace or dismiss it. **No Dismiss button.**
+    Text: *"TermPoint can't save your changes: the database was changed elsewhere since you opened it, so autosave has
+    stopped. Save your version as a separate file, or discard your changes, and TermPoint will reopen the current
+    database."* Buttons: **[Save a Copy…] [Discard Changes]**.
+  - **Save a Copy…:**
+    1. the save picker (16a's title and suggested name, no overwrite prompt);
+    2. the early refusal (`RefuseIfPresentAsync`): a file that exists, or a location that isn't responding, gets its
+       message and returns to the banner with nothing changed;
+    3. **end the session** as a database switch does: stop autosave, release the lock **without saving**, dispose the
+       services (this closes the connection). From here nothing in any window can write the changes;
+    4. export the closed file with 16a's `ExportRecoveredCopyAsync`, under a wait dialog ("Saving your version…");
+    5. **`Created`:** delete the kept changes (D′ and its marker), tell the user *"Your version was saved as "X". You
+       can open it any time from Files → Open Database. TermPoint will now reopen the current database."*, and open
+       the current database. **Any other outcome:** keep them and open the current database; crash recovery offers
+       them again (16a's loop: Save a Copy… / Discard). Nothing is lost either way.
+  - **Discard Changes:** confirm (*"Discard the changes you made since your last save? This can't be undone."*
+    **[Discard] [Cancel]**), end the session, delete the kept changes, open the current database.
+  - **Until item 14 lands:** both choices refuse while an inline editor is open (`IsAnyPanelEditing`): "Apply or
+    cancel the open edit first." An unapplied edit is not in the database at all.
+  - **Reopen failure** (for example, the share drops): the normal failed-switch path, i.e. the chooser. The copy is
+    already saved.
+  - **Texts** live in a pure `SaveConflictPrompt` class, pinned by tests (no "working copy" / "local copy").
+  - **.axaml:** the banner in `MainView.axaml` (warn the user before editing it).
+- **10b — the question at close.** Closing (or switching databases) while the conflict is pending asks: *"Your changes
+  can't be saved to the database because it was changed elsewhere. Save your version as a separate file before
+  TermPoint closes? If you close anyway, your changes are kept and TermPoint will ask again the next time you open
+  this database."* **[Save a Copy…] [Close Anyway]**.
+  - **Save a Copy…:** after the normal teardown (the connection is closed), export the closed file; on `Created`,
+    delete the kept changes and close quietly. On failure, keep them.
+  - **Close Anyway:** the changes are kept, the exit message says why, and the next open shows today's prompts. This
+    is the only path that asks again, and only after the user declined twice.
+- **The four rules.** 1–2: the conflicted session never writes `D`. 3: the kept changes are deleted only after a
+  confirmed copy or a confirmed Discard, and the copy is taken from a closed file. 4: no path asks about something
+  the user already dealt with, except Close Anyway.
+- **Verification (hand test, on a database copy).** With TermPoint open on the copy and edits made, change `D` with
+  the colleague script (`handtest_16a.py colleague`), then save: the banner appears. Rows:
+  1. Save a Copy…: the copy holds the edits, the current database opens with the colleague's change, and a later
+     close and reopen are quiet;
+  2. a name that exists: refused, nothing changed, the banner stays;
+  3. Discard Changes: Cancel first, then Discard;
+  4. an open inline editor: both choices refused;
+  5. close with the conflict pending: both answers of the question.
+
 ---
 
 ## 11 — Reader Refresh: report failures honestly and recover the connection
@@ -1583,6 +1651,35 @@ offers **Save a Copy now**. Item 4 removes the most common trigger, but this sta
 **Fix direction.** Show a refresh failure in the UI with the last *successful* refresh time.
 Always reopen the connection on the prior copy when the overwrite fails.
 
+**Survey (2026-10-14).** Both problems are confirmed.
+- `RefreshData` (`MainWindowViewModel.cs:786`) only logs the outcome, and sets the tooltip's time whatever happened.
+  Some failures also put up a red banner with log text, from the `LogError` calls in `RefreshReadOnlySnapshotAsync`.
+- `RefreshReadOnlySnapshotAsync` (`CheckoutService.cs:2189`): if the rename onto D″ fails after `beforeOverwrite`
+  has closed the connection, it returns without calling `afterOverwrite`. The same happens if the reopen throws. Every
+  later read then fails until restart.
+
+**Plan (user-approved 2026-10-14).**
+- **Service:** once `beforeOverwrite` has run, the reopen always runs: on the new data if the swap worked, on the
+  previous D″ if not. A failed reopen retries 3 × 1 s. New outcomes: `ReplaceFailed` (previous data, the session
+  still works) and `ConnectionLost` (the reopen failed every time). `LogError` becomes `LogInfo` / `ReportHandled`, so
+  no red log-text banner.
+- **View model:**
+  - the tooltip shows the time of the last refresh that worked;
+  - a failure goes in the yellow save-error row (readers never save, so it is free):
+    - location not responding: *"Couldn't refresh — the database location isn't responding. Showing data from
+      2:14 PM."*;
+    - anything else: *"Couldn't refresh just now. Showing data from 2:14 PM. Try again in a moment."*;
+    - before any refresh has worked, "from 2:14 PM" becomes "from when the database was opened";
+  - the next refresh that works clears it;
+  - `ConnectionLost` stays up: *"TermPoint couldn't reopen the database after a refresh. Close TermPoint and open it
+    again."*;
+  - no list reload after a failure.
+- **DEBUG switch:** `TERMPOINT_DEBUG_FAIL_REFRESH=unreachable|replace|reopen[:count[:skip]]`, parsed by the shared
+  `DebugFaultBudget`.
+- **Tests:** a failed swap reopens on the previous data, which stays readable (`ReplaceFailed`); a reopen that fails
+  once is retried; one that always fails gives `ConnectionLost`; a failure leaves the tooltip's time unchanged.
+- **Verification (hand test):** each failure kind through the DEBUG switch, then a working refresh clears the message.
+
 ---
 
 ## 12 — Save-specific error banner for exceptions during save
@@ -1592,6 +1689,187 @@ Always reopen the connection on the prior copy when the overwrite fails.
 
 **Fix direction.** Route save-path exceptions to the save-error banner, with wording consistent
 with item 10.
+
+**Survey (2026-10-14).** Mostly done already by item 4c: `SaveAsync` no longer throws, and an unexpected exception
+becomes `CopyError` with the normal save banner. What is left:
+- **Two banners per failure.** Every `LogError` raises `ErrorLogged`, so `AppNotificationService` adds a red
+  notification carrying the log text beside the save banner. The save-path sites:
+  - the `SaveAsync` safety net (`CheckoutService.cs:1378`);
+  - snapshot failed (`:1647`) and snapshot hash failed (`:1662`);
+  - `DescribeSaveFileError`'s non-lock branch (`:1463`);
+  - `MarkDirty`'s crash-protection failure (`:2315`, `LogError(null, …)`).
+
+  A fault that persists (a full disk, say) adds one more red notice each autosave cycle, each with its own Dismiss.
+- **Wording.**
+  - `SaveWorkingCopyMissingMessage` says "its local working copy".
+  - Several banners append a raw .NET message ("Failed to snapshot the database: …", "Failed to prepare the save: …",
+    "Failed to write to database location: …", "Failed to verify the saved copy: …", "Failed to finalize save: …"),
+    which can carry a path.
+  - The read-only open failure (`MainWindow.axaml.cs:1053`) says "TermPoint couldn't make a local copy of this
+    database."
+- **Debug builds only:** `LogError` re-throws while `ThrowOnError` is set, so `SaveAsync` can still throw there.
+
+**Plan (user-approved 2026-10-14).**
+- **One banner:** the five save-path `LogError` calls become `ReportHandled` (a local log line plus a handled BugSnag
+  event; no banner, never re-throws). **Privacy, as in 5e:** the reported exception is a named one with fixed text per
+  save step (the step and the original exception's type, no paths); the full original exception goes to a local
+  `LogInfo` line. `MarkDirty`'s report gets a named exception instead of null (a small piece of item 7).
+- **Plain words (rule 4):** every save banner says what happened, that the changes are kept, and what happens next
+  (autosave retries by itself; a manual save can be tried again). No raw exception text, paths or log text. The exact
+  texts go in the step 12 brief, and tests pin them.
+  - Missing file: *"TermPoint couldn't save because one of its files for this session is missing."*
+  - Read-only open failure: a `LocalCopyCheckPrompt` constant, *"TermPoint couldn't open this database. Check the
+    network connection, then try again."* (covered by that class's no-"local copy" test).
+- **The four rules** (CLAUDE.md) go into `CheckoutService`'s class comment, in this step's commit.
+- **Tests:** each kind of failed save raises exactly one `SaveFailed`, no `ErrorLogged` (`RecordingAppLogger`), and
+  one handled report with no path in its exception text, context or metadata; no save text contains "working copy",
+  "local copy", a path or a raw exception message.
+- **Verification:** on the tests; no hand test.
+
+### Step 12 brief (for Sonnet, written 2026-10-15)
+
+You are implementing step 12 of the TermPoint 1.2.3 spec (`spec_version_1.2.3.md`, item 12). Read CLAUDE.md first,
+especially "Production Cautions" and "The four rules for the shared database". Work on branch `Version_1.2.3`. **Do
+not commit and do not create branches.** No `.axaml` file is touched by this step; if you find you need one, stop and
+say so.
+
+**Goal.** A failed save shows exactly one banner (the yellow save-error row), in plain words, and sends a path-free
+handled report to BugSnag. Today each unexpected save failure also calls `LogError`, which raises `ErrorLogged`, so
+`AppNotificationService` adds a second, red banner carrying log text; and several save banners append a raw .NET
+message that can contain a path.
+
+**What stays the same.** No file operation changes: the save pipeline (`CheckoutService.SaveAsyncCore`, steps 1–6),
+its outcomes, what is deleted when, and which banners auto-dismiss. Only logging calls and banner texts change. That
+is how this step keeps rules 1–3; rule 4 is what it improves.
+
+**Out of scope (do not touch):**
+- the `SourceModified` banner ("The database was modified outside this session. Save aborted.", `CheckoutService.cs`
+  step 2): item 10a replaces it;
+- the refresh path (`RefreshReadOnlySnapshotAsync` and its `LogError`s): item 11;
+- the restore paths, the heartbeat / lock-removed / lock-lost messages, the autosave tick's `LogError`
+  (`StartAutoSave`), `MainWindowViewModel`, and any `.axaml`.
+
+**1. Banner texts: new class `Services/SavePrompt.cs`.** A pure `public static class SavePrompt`, modelled on
+`RestorePrompt` and `LocalCopyCheckPrompt` (XML comments on every member). Move the three constants out of
+`CheckoutService` (`SaveFileInUseMessage`, `SaveWorkingCopyMissingMessage`, `SaveUnexpectedFailureMessage`) and
+delete them there. Texts, verbatim:
+
+| Constant | Used for | Text |
+|---|---|---|
+| `InUseMessage` | D or D.tmp held by another program, access denied, or D.tmp gone (today's `SaveFileInUseMessage` cases) | TermPoint couldn't save because the database file is in use by another program or can't be accessed. Your changes are kept. |
+| `UnreachableMessage` | every save step that times out (replaces `NetworkFileOps.UnreachableMessage` **in the save path only**; leave that constant and its other users alone) | TermPoint couldn't save because the database location isn't responding. Your changes are kept. |
+| `PrepareFailedMessage` | snapshot of D′ failed while D′ exists; hashing the local snapshot failed | TermPoint couldn't prepare the save on this computer. Your changes are kept. |
+| `WriteFailedMessage` | any other I/O error in the D.tmp copy, the D.tmp verify or the rename (today's `otherErrorPrefix + ex.Message`) | TermPoint couldn't save because writing to the database location failed. Your changes are kept. |
+| `VerifyFailedMessage` | torn transfer (D.tmp hash ≠ snapshot hash) | TermPoint couldn't save because the file it wrote to the database location didn't pass its check. The database wasn't changed, and your changes are kept. |
+| `UnexpectedMessage` | `SaveAsync`'s safety net | TermPoint couldn't save because of an unexpected problem. Your changes are kept. |
+| `SessionFileMissingMessage` | snapshot failed because D′ no longer exists | TermPoint couldn't save because one of its files for this session is missing, so changes since your last save can't be saved. Close TermPoint and open the database again. |
+| `CrashProtectionMessage` | `MarkDirty` could not write the dirty marker (today's inline text, moved verbatim) | TermPoint couldn't create its crash-protection file for this session. Saving still works normally, but unsaved changes may not be recoverable after a crash — save your work frequently. |
+| `AutoSaveRetrySuffix` | appended for an autosave | " TermPoint will try again automatically." |
+| `ManualRetrySuffix` | appended for a manual save | " Try saving again in a moment." |
+
+Add `public static string ForTransientFailure(string message, bool isAutoSave)` returning `message` plus the right
+suffix. `RaiseTransientSaveError` uses it (it currently appends " The app will retry automatically." for autosaves
+and nothing for manual saves).
+
+**`SessionFileMissingMessage` is not transient:** retrying can never succeed, so it gets no suffix and is always
+sticky (`SaveFailed(text, false)`), for autosaves too. Add a small private `RaiseSaveError(string text, bool
+autoDismiss)` (the one place that dispatches `SaveFailed`) and have `RaiseTransientSaveError` call it.
+
+Wire every save-path banner to these constants: the `Unreachable` branches (steps 1, 2, 3c, 4, 5), `SourceUnreadable`
+(step 2), the snapshot and hash catches (step 3), `DescribeSaveFileError`, the torn transfer (step 4), the safety net,
+and `MarkDirty`. After this, no save banner is built from an exception's message.
+
+**2. Read-only open failure.** Add to `LocalCopyCheckPrompt`:
+`public const string CouldntMakeCopyMessage = "TermPoint couldn't open this database. Check the network connection,
+then try again.";` Use it in `MainWindow.SetupSnapshotOrAskAsync` (`MainWindow.axaml.cs:1053`, replacing the inline
+"couldn't make a local copy" text), and add it to `LocalCopyCheckPromptTests.NoText_MentionsWorkingCopies_Paths_OrCorruption`
+plus a verbatim pin. Update the doc comment near `CheckoutService.cs:3895` that names the "couldn't make a local copy"
+prompt.
+
+**3. The named exception: `Exceptions/SaveFailedException.cs`.** Model it on `DatabaseDamagedException`:
+- `public enum SaveStep { Unexpected, Snapshot, SnapshotHash, CopyToLocation, VerifyAtLocation, Rename, CrashProtectionMarker }`
+  (same file or its own; XML comment per value).
+- `public sealed class SaveFailedException : Exception` with `Step` and `OriginalType` (the original exception's
+  `GetType().Name`, or null). Message = `MessageFor(step)` (fixed text per step, e.g. "Save failed while copying to
+  the database location"), followed by `" (" + OriginalType + ")"` when there is one. **Never** the original's
+  message, and **no `InnerException`**: BugSnag sends inner exceptions, and their messages carry paths.
+- Build it thrown-and-caught on the spot so it carries a stack trace, as `DatabaseDamageReporter.CreateException` does.
+
+**4. Reporting: one private helper in `CheckoutService`.**
+`private void ReportSaveFailure(SaveStep step, Exception? original, string logContext, bool isAutoSave)`:
+1. a local `LogInfo` line with the full original (`$"CheckoutService: {logContext} — {original}"`, or just the context
+   when `original` is null). This line stays local, so paths in it are fine;
+2. `_logger.ReportHandled(exception, context: $"Save failed: {step}", metadata, metadataTab: "save", groupingKey:
+   $"save-failed:{step}")`. Metadata: `step`, `exceptionType` (or "none"), `hresult` as `0x` + 8 hex digits (or
+   "none"), `autoSave`. Nothing else: no paths, file names or user names;
+3. **once per session per step:** keep a `HashSet<SaveStep>` on the service. A repeat of the same step only writes
+   the local line. (A persistent fault, such as a full share, would otherwise send one report per autosave cycle.)
+   The banner is still raised every time; only the report is throttled.
+
+Replace these `LogError` calls with `ReportSaveFailure`:
+
+| Site | Step |
+|---|---|
+| `SaveAsync` safety net (`_logger.LogError(ex, "…unexpected exception in SaveAsync…")`) | `Unexpected` |
+| step 3a snapshot catch | `Snapshot` |
+| step 3b hash catch | `SnapshotHash` |
+| `DescribeSaveFileError`'s non-lock branch | from its caller: `CopyToLocation`, `VerifyAtLocation`, `Rename` (add a `SaveStep` parameter; keep the quiet `LogInfo` lock / access-denied branch as is) |
+| `MarkDirty` (`_logger.LogError(null, …)`) | `CrashProtectionMarker`, `original` = null |
+
+`ReportHandled` never re-throws, so the Debug-only `ThrowOnError` re-throw no longer applies on these paths. Update
+the comments that say "LogError (not LogInfo): … must reach Bugsnag" and the `DescribeSaveFileError` and `SaveAsync`
+`<returns>` docs to describe the new behaviour.
+
+**5. The four rules in `CheckoutService`'s class comment.** Add a `<para><b>The four rules for the shared
+database</b> …</para>` block (near the top of the existing class `<summary>`), copying the four rules and the
+sub-bullets of rule 4 from CLAUDE.md verbatim as an XML `<list type="number">`, with one sentence saying every change
+to the save, lock, exit, switch, restore and recovery paths is checked against them.
+
+**6. Tests.**
+- **`SavePromptTests` (new):** each constant pinned verbatim; `ForTransientFailure` for both values of `isAutoSave`;
+  every text contains none of "working copy", "local copy", "Failed to", "exception", ":\\" ; every text used with
+  `ForTransientFailure` contains "Your changes are kept."
+- **`SaveFailedExceptionTests` (new):** a `[Theory]` over every `SaveStep`: given an original `IOException` whose
+  message is a full path (`Path.Combine(Path.GetTempPath(), "secret-folder", "dept.db")`), the exception's message
+  contains the step's fixed text and the type name, but neither "secret-folder" nor "dept.db"; `InnerException` is
+  null; the stack trace is not null.
+- **`CheckoutServiceTests`:** add a `CreateService` overload (or optional parameter) that takes an `IAppLogger`, and
+  use `RecordingAppLogger`. For each failure kind below assert: exactly one `SaveFailed` with the expected
+  `SavePrompt` text; `logger.Errors` empty (so no `ErrorLogged`, so no red banner); exactly one `logger.Handled`
+  whose exception message, context, grouping key and every metadata value contain neither the test's temp folder nor
+  the database file name; and an `Infos` line naming the original exception type.
+  - unexpected exception (the existing `BeforeTmpVerifyAsync` throw) → `Unexpected`;
+  - D.tmp vanishes before the verify (existing seam) → `VerifyAtLocation`, `InUseMessage`;
+  - D′ deleted before the save → `Snapshot`, `SessionFileMissingMessage`, sticky for an autosave too;
+  - `MarkDirty` with the marker path blocked by a directory → `CrashProtectionMarker`, `CrashProtectionMessage`
+    (extend `MarkDirty_MarkerWriteFails_RaisesDegradedProtectionWarning` or add a sibling);
+  - D′ held exclusively (`DbFileTestHelpers.LockExclusively`, `[FactWindowsOnly]`) → `Snapshot`,
+    `PrepareFailedMessage`. If SQLite does not reliably fail the backup this way, drop this case and say so.
+- **Throttle:** the same failure twice in one session gives two banners and one `Handled`; the second leaves only a
+  local line.
+- **Existing tests:** the 4c tests (`SaveAsync_SourceHeldExclusively_…` onward, ~line 4840) and any others that pin
+  save banners or `NetworkFileOps.UnreachableMessage` for a save now expect the `SavePrompt` texts. Change the
+  expected texts only, never what a test checks about files, the lock or outcomes.
+
+**7. Checks before you report.**
+- Compile: `dotnet build src/TermPoint/TermPoint.csproj -f net10.0 -t:Compile --no-restore -v q`
+- Scoped: `dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --nologo -v q -o "$TEMP/sa-build" --filter
+  "FullyQualifiedName~CheckoutService|FullyQualifiedName~SavePrompt|FullyQualifiedName~SaveFailedException|FullyQualifiedName~LocalCopyCheckPrompt"`
+- Full suite with the same `-o "$TEMP/sa-build"`, then delete `$TEMP/sa-build`. Laptop baseline after 16b: 2570 passed
+  + 21 skipped. Report the new counts.
+- `grep` the save path for any remaining `LogError` in `SaveAsync`, `SaveAsyncCore`, `DescribeSaveFileError` and
+  `MarkDirty` (there should be none) and for `ex.Message` in banner texts (none).
+
+**Report back:** files changed, the final text of every banner, the test counts, anything you dropped or could not
+do, and anything in the save path that still reaches `LogError`.
+
+**Step 12 outcome (2026-10-15).** Implemented as briefed (Sonnet; Opus reviewed the diff and re-ran the compile check
+and the full suite: 2590 passed + 21 skipped = 2611). New: `Services/SavePrompt.cs`, `Exceptions/SaveFailedException.cs`
+(with `SaveStep`), `SavePromptTests`, `SaveFailedExceptionTests`; six new `CheckoutServiceTests` (one banner, no
+`LogError`, one path-free report, for each kind, plus the throttle). The D′-held-exclusively case worked on Windows
+and stayed in. One wording note: `VerifyFailedMessage` keeps "…and your changes are kept." mid-sentence, so the
+"changes are kept" test is case-insensitive. Out-of-scope `LogError`s (restore, refresh, checkout copy, heartbeat,
+autosave tick) are unchanged; items 7 and 11 cover them.
 
 ---
 
