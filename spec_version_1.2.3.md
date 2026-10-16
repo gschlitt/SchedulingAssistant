@@ -1583,6 +1583,11 @@ against the four rules for the shared database (CLAUDE.md, "Production Cautions"
 - **Likeliest trigger in the field:** a colleague still on 1.2.2 joins through the wizard. 1.2.2 opens `D` directly
   and changes its header (item 4's table, row 1), so a 1.2.3 editor's saves are refused although no data changed.
   **Release note:** update every machine in a department together.
+- **Readers don't trigger it (probe, 2026-10-15, `FrontDoorCheckProbeTests`).** On a D written by a real save (D′ in
+  WAL with its connection open), the front-door check (`DatabaseValidator.ValidateAsync`, the one place that opens D
+  with SQLite, read-only) and a reader's checkout and refresh leave D byte-identical, leave no `-wal`/`-shm`/`-journal`
+  beside it and hold no handle on it; the writer's next save succeeds. A saved D advertises rollback-journal mode
+  (header bytes 18/19 = 1/1), so the WAL concern does not arise.
 - **Design history.** A first plan (banner plus Save a Copy…, the session stays the writer) asked the user twice more
   about changes he had already saved. A second blocked edits with a modal dialog, which blocks only the main window:
   not detached panels, sticky notes, focus-loss saves (Scheduling Notes) or background work. The approved plan
