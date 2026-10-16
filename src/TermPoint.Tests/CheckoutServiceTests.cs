@@ -1077,12 +1077,22 @@ public sealed class CheckoutServiceTests : IDisposable
 
         await svc.CheckoutAsync(db);
 
+        // Spec item 10, step 10a: a refused save raises SaveConflictDetected (and sets HasSaveConflict),
+        // and no longer raises the old "Save aborted" SaveFailed banner.
+        var conflictRaised = 0;
+        var saveFailedRaised = false;
+        svc.SaveConflictDetected += () => conflictRaised++;
+        svc.SaveFailed += (_, _) => saveFailedRaised = true;
+
         // Simulate an external process writing to D while our session holds D'.
         File.WriteAllText(db, "externally-changed");
 
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.True(svc.HasSaveConflict);
+        Assert.Equal(1, conflictRaised);
+        Assert.False(saveFailedRaised, "a SourceModified refusal must not raise SaveFailed any more.");
         // D must still contain the externally-changed content — not overwritten.
         Assert.Equal("externally-changed", File.ReadAllText(db));
     }

@@ -352,6 +352,82 @@ public partial class MainWindowViewModel : ViewModelBase
         _saveErrorDismissTimer.Start();
     }
 
+    // ── Save conflict (spec item 10, step 10a) ────────────────────────────────
+
+    /// <summary>
+    /// True once a save was refused because the shared database was changed elsewhere since this session opened it
+    /// (<see cref="CheckoutService.HasSaveConflict"/>), which shows the persistent save-conflict banner. This is
+    /// deliberately separate from <see cref="SaveErrorMessage"/>: NOTHING clears it except ending the session — no
+    /// Dismiss button, and <see cref="ClearSaveError"/>, <see cref="DismissSaveError"/> and
+    /// <see cref="SetSaveError"/> leave it alone. A reopened database gets a new view model, which starts cleared.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasSaveConflict;
+
+    /// <summary>
+    /// True while the user's choice from the save-conflict banner (Save a Copy… / Discard Changes) is being carried
+    /// out. Disables both banner buttons so a double-click cannot start two resolutions.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveConflictCopyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveConflictDiscardCommand))]
+    private bool _isResolvingSaveConflict;
+
+    /// <summary>Text of the save-conflict banner (<see cref="SaveConflictPrompt.BannerMessage"/>).</summary>
+    public string SaveConflictMessage => SaveConflictPrompt.BannerMessage;
+
+    /// <summary>Label of the banner's Save a Copy… button (<see cref="SaveConflictPrompt.SaveCopyButton"/>).</summary>
+    public string SaveConflictCopyLabel => SaveConflictPrompt.SaveCopyButton;
+
+    /// <summary>Label of the banner's Discard Changes button (<see cref="SaveConflictPrompt.DiscardChangesButton"/>).</summary>
+    public string SaveConflictDiscardLabel => SaveConflictPrompt.DiscardChangesButton;
+
+    /// <summary>
+    /// Called by MainWindow when <c>CheckoutService.SaveConflictDetected</c> fires. Shows the persistent
+    /// save-conflict banner. Idempotent: the event fires on every refused save. Also clears any current save-error
+    /// banner, which the conflict banner supersedes (a later, different save error may still appear there).
+    /// </summary>
+    internal void ShowSaveConflict()
+    {
+        if (HasSaveConflict) return;
+        ClearSaveError();
+        HasSaveConflict = true;
+    }
+
+    /// <summary>True when a banner button may run: no resolution is already under way.</summary>
+    private bool CanResolveSaveConflict() => !IsResolvingSaveConflict;
+
+    /// <summary>
+    /// The banner's Save a Copy… button: saves the user's version as a separate file, then reopens the current
+    /// database. The work is window-lifecycle work and lives in <see cref="MainWindow.ResolveSaveConflictAsync"/>.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanResolveSaveConflict))]
+    private Task SaveConflictCopy() => ResolveSaveConflictAsync(saveCopy: true);
+
+    /// <summary>
+    /// The banner's Discard Changes button: discards the user's changes after confirmation, then reopens the
+    /// current database. The work lives in <see cref="MainWindow.ResolveSaveConflictAsync"/>.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanResolveSaveConflict))]
+    private Task SaveConflictDiscard() => ResolveSaveConflictAsync(saveCopy: false);
+
+    /// <summary>
+    /// Runs the chosen resolution through the main window, keeping <see cref="IsResolvingSaveConflict"/> set
+    /// around it so both banner buttons are disabled meanwhile.
+    /// </summary>
+    /// <param name="saveCopy">True for Save a Copy…, false for Discard Changes.</param>
+    private async Task ResolveSaveConflictAsync(bool saveCopy)
+    {
+#if !BROWSER
+        if (MainWindowReference is null || IsResolvingSaveConflict) return;
+        IsResolvingSaveConflict = true;
+        try { await MainWindowReference.ResolveSaveConflictAsync(saveCopy); }
+        finally { IsResolvingSaveConflict = false; }
+#else
+        await Task.CompletedTask; // the browser demo never saves, so it never has a save conflict
+#endif
+    }
+
     // ── Write-lock properties ─────────────────────────────────────────────────
 
     /// <summary>

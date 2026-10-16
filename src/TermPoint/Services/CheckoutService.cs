@@ -362,6 +362,19 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     public string? RequiredAppVersion { get; private set; }
 
+    /// <summary>
+    /// True once a save has been refused with <see cref="SaveOutcome.SourceModified"/>: the shared database was
+    /// changed by someone else since this session opened it, so this session's changes can never be written to it
+    /// (spec item 10, step 10a).
+    ///
+    /// <para><b>Sticky.</b> Nothing clears it while the session lives: not a later successful-looking save, not the
+    /// user dismissing a banner. It is cleared only by a NEW checkout (the first thing <see cref="CheckoutAsync"/>
+    /// does) and by <see cref="ResetAfterFailedOpenAsync"/>, which forgets the session. The main window reads it to
+    /// decide whether the "save a copy / discard" choice applies; the matching event is
+    /// <see cref="SaveConflictDetected"/>.</para>
+    /// </summary>
+    public bool HasSaveConflict { get; private set; }
+
     // ── Events ─────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -445,13 +458,24 @@ public sealed class CheckoutService : IDisposable
     /// display to the user. The <c>bool</c> parameter is <c>autoDismiss</c>: when
     /// <c>true</c> the error is transient and the banner should clear itself after a
     /// short delay (a background autosave will retry on its own); when <c>false</c>
-    /// the error is sticky and requires user attention (e.g. lock lost, source
-    /// modified, or a failed manual save).</para>
-    /// Autosave stops when this is raised for <see cref="SaveOutcome.LockLost"/>
-    /// or <see cref="SaveOutcome.SourceModified"/>; it continues on
-    /// <see cref="SaveOutcome.CopyError"/> (transient — worth retrying).
+    /// the error is sticky and requires user attention (e.g. lock lost or a failed
+    /// manual save).</para>
+    /// <para>A <see cref="SaveOutcome.SourceModified"/> refusal does NOT raise this event: it raises
+    /// <see cref="SaveConflictDetected"/> instead, which the main window shows as its own persistent banner.</para>
+    /// Autosave stops after <see cref="SaveOutcome.LockLost"/> or <see cref="SaveOutcome.SourceModified"/>; it
+    /// continues on <see cref="SaveOutcome.CopyError"/> (transient — worth retrying).
     /// </summary>
     public event Action<string, bool>? SaveFailed;
+
+    /// <summary>
+    /// Raised on the UI thread when a save is refused with <see cref="SaveOutcome.SourceModified"/> (the shared
+    /// database was changed elsewhere since this session opened it), after <see cref="HasSaveConflict"/> has been
+    /// set. Replaces the <see cref="SaveFailed"/> call that used to be made here (spec item 10, step 10a).
+    ///
+    /// <para><b>Raised on EVERY refused save</b>, not just the first (a manual save after autosave stopped is refused
+    /// the same way), so handlers must be idempotent.</para>
+    /// </summary>
+    public event Action? SaveConflictDetected;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -551,6 +575,7 @@ public sealed class CheckoutService : IDisposable
     {
         SourcePath = sourcePath;
         LockLossNewHolder = null;
+        HasSaveConflict = false;    // a new checkout starts from a fresh copy of D — no conflict yet
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
         _staleHolderAtDetection = null;   // a takeover may only act on THIS checkout's stale judgement
@@ -1672,11 +1697,13 @@ public sealed class CheckoutService : IDisposable
                 }
                 else
                 {
-                    const string msg = "The database was modified outside this session. Save aborted.";
-                    _logger.LogInfo("CheckoutService: source hash mismatch — " + msg);
+                    _logger.LogInfo("CheckoutService: source hash mismatch — the database was modified outside this session; save refused.");
                     _logger.LogBreadcrumb("Save: SourceModified");
-                    // Sticky: a genuine conflict the user must resolve — never auto-dismiss.
-                    _dispatch(() => SaveFailed?.Invoke(msg, false));
+                    // A genuine conflict the user must resolve (spec item 10, step 10a). Not a SaveFailed
+                    // banner: the sticky state is HasSaveConflict, and the main window shows its own
+                    // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
+                    HasSaveConflict = true;
+                    _dispatch(() => SaveConflictDetected?.Invoke());
                     return SaveOutcome.SourceModified;
                 }
             }
@@ -3056,6 +3083,7 @@ public sealed class CheckoutService : IDisposable
         // Forget everything about the failed attempt (and the previous session): from here on there is
         // no working copy for CleanupWorkingCopy / HasDirtyMarker to find.
         SourcePath              = string.Empty;
+        HasSaveConflict         = false;
         WorkingPath             = string.Empty;
         ReadOnlyWorkingPath     = null;
         IsReadOnlyMode          = false;
@@ -3123,7 +3151,7 @@ public sealed class CheckoutService : IDisposable
 
         var outcome = await SaveAsync(isAutoSave: true);
         if (outcome is SaveOutcome.LockLost or SaveOutcome.SourceModified)
-            StopAutoSave(); // SaveFailed event is already raised inside SaveAsync.
+            StopAutoSave(); // SaveFailed / SaveConflictDetected is already raised inside SaveAsync.
         // CopyError: keep the timer running — transient, worth retrying next cycle.
     }
 

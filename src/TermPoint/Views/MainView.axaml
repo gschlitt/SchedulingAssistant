@@ -436,30 +436,67 @@
 			</DockPanel>
 		</Border>
 
-		<!--  Save-error banner  -->
-		<Border
-			Grid.Row="2"
-			Padding="12,4"
-			Background="{StaticResource NotificationWarningBackground}"
-			BorderBrush="{StaticResource NotificationWarningBorder}"
-			BorderThickness="0,0,0,1"
-			IsVisible="{Binding ShowSaveError}">
-			<DockPanel>
-				<Button
-					Margin="8,0,0,0"
-					Padding="8,2"
-					Command="{Binding DismissSaveErrorCommand}"
-					Content="Dismiss"
-					DockPanel.Dock="Right"
-					FontSize="{StaticResource FontSizeNormal}" />
-				<TextBlock
-					VerticalAlignment="Center"
-					FontSize="{StaticResource FontSizeNormal}"
-					Foreground="{StaticResource NotificationWarningText}"
-					Text="{Binding SaveErrorMessage}"
-					TextWrapping="NoWrap" />
-			</DockPanel>
-		</Border>
+		<!--
+			Row 2 holds two stacked banners: the persistent save-conflict banner (spec item 10, step 10a) above the
+			ordinary save-error banner. The StackPanel keeps the grid's row numbering unchanged; a collapsed banner
+			takes no space.
+		-->
+		<StackPanel Grid.Row="2">
+			<!--  Save-conflict banner: no Dismiss button — only Save a Copy… or Discard Changes ends it  -->
+			<Border
+				Padding="12,4"
+				Background="{StaticResource NotificationWarningBackground}"
+				BorderBrush="{StaticResource NotificationWarningBorder}"
+				BorderThickness="0,0,0,1"
+				IsVisible="{Binding HasSaveConflict}">
+				<DockPanel>
+					<Button
+						Margin="8,0,0,0"
+						Padding="8,2"
+						Command="{Binding SaveConflictDiscardCommand}"
+						Content="{Binding SaveConflictDiscardLabel}"
+						DockPanel.Dock="Right"
+						FontSize="{StaticResource FontSizeNormal}" />
+					<Button
+						Margin="8,0,0,0"
+						Padding="8,2"
+						Command="{Binding SaveConflictCopyCommand}"
+						Content="{Binding SaveConflictCopyLabel}"
+						DockPanel.Dock="Right"
+						FontSize="{StaticResource FontSizeNormal}" />
+					<TextBlock
+						VerticalAlignment="Center"
+						FontSize="{StaticResource FontSizeNormal}"
+						Foreground="{StaticResource NotificationWarningText}"
+						Text="{Binding SaveConflictMessage}"
+						TextWrapping="Wrap" />
+				</DockPanel>
+			</Border>
+
+			<!--  Save-error banner  -->
+			<Border
+				Padding="12,4"
+				Background="{StaticResource NotificationWarningBackground}"
+				BorderBrush="{StaticResource NotificationWarningBorder}"
+				BorderThickness="0,0,0,1"
+				IsVisible="{Binding ShowSaveError}">
+				<DockPanel>
+					<Button
+						Margin="8,0,0,0"
+						Padding="8,2"
+						Command="{Binding DismissSaveErrorCommand}"
+						Content="Dismiss"
+						DockPanel.Dock="Right"
+						FontSize="{StaticResource FontSizeNormal}" />
+					<TextBlock
+						VerticalAlignment="Center"
+						FontSize="{StaticResource FontSizeNormal}"
+						Foreground="{StaticResource NotificationWarningText}"
+						Text="{Binding SaveErrorMessage}"
+						TextWrapping="NoWrap" />
+				</DockPanel>
+			</Border>
+		</StackPanel>
 
 		<!--  Notification banner  -->
 		<Border

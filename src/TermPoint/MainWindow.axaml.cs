@@ -175,6 +175,18 @@ public partial class MainWindow : Window
     /// </summary>
     private bool _restoreInProgress;
 
+    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
+
+    /// <summary>
+    /// True while the user's choice from the save-conflict banner (Save a Copy… / Discard Changes) is ending the
+    /// session, from the moment it is confirmed until the kept changes have been saved elsewhere or discarded
+    /// (<see cref="ResolveKeptChangesAsync"/>). While true, <see cref="OnClosing"/> refuses every close request,
+    /// exactly as for <see cref="_restoreInProgress"/>: closing mid-way would race the teardown. Reset in a
+    /// <c>finally</c>, so it can never stay stuck; it is also reset as soon as the kept changes are resolved,
+    /// because the reopening that follows is no more delicate than an ordinary database switch.
+    /// </summary>
+    private bool _saveConflictInProgress;
+
     /// <summary>
     /// True once a restore has replaced D (or may have: an unconfirmed rename) and the application is about to
     /// close. <see cref="OnClosing"/> then tears the session down WITHOUT saving — the working copy is stale,
@@ -215,6 +227,15 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             App.Logger.LogInfo("MainWindow: close request ignored — a restore from backup is in progress.");
+            return;
+        }
+
+        // Same rule while the user's choice from the save-conflict banner is ending the session: the changes
+        // are being saved elsewhere or discarded, and a close now would race that teardown.
+        if (_saveConflictInProgress)
+        {
+            e.Cancel = true;
+            App.Logger.LogInfo("MainWindow: close request ignored — a save-conflict resolution is in progress.");
             return;
         }
 
@@ -1285,6 +1306,7 @@ public partial class MainWindow : Window
         // to avoid accumulation across database switches.
         App.Checkout.SaveCompleted   -= OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      -= OnCheckoutSaveFailed;
+        App.Checkout.SaveConflictDetected -= OnCheckoutSaveConflictDetected;
         App.Checkout.WriteLockLost -= OnWriteLockLost;
         App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
         App.Checkout.SaveStarted     -= OnCheckoutSaveStarted;
@@ -1292,6 +1314,7 @@ public partial class MainWindow : Window
         App.Checkout.SaveAlreadyInProgress -= OnCheckoutSaveAlreadyInProgress;
         App.Checkout.SaveCompleted   += OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      += OnCheckoutSaveFailed;
+        App.Checkout.SaveConflictDetected += OnCheckoutSaveConflictDetected;
         App.Checkout.WriteLockLost += OnWriteLockLost;
         App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
         App.Checkout.SaveStarted     += OnCheckoutSaveStarted;
@@ -1555,6 +1578,13 @@ public partial class MainWindow : Window
     /// invitation to create an empty database at a path that has moved. With <c>true</c>, a target
     /// that already EXISTS is refused too (File → New never adopts an existing file).
     /// </param>
+    /// <param name="resolveKeptChanges">
+    /// Null for every caller except the save-conflict banner (<see cref="ResolveSaveConflictAsync"/>, spec item 10,
+    /// step 10a). When given, the current session is ended WITHOUT saving (its save would be refused anyway, and must
+    /// never write D), its unsaved changes are NOT cleaned up as a normal switch would, and this callback — handed
+    /// the old database's path D — decides their fate (save them as a separate file, or discard them) once the
+    /// services are closed. See <see cref="SwitchCoreAsync"/>. Never carried into the chooser's retries.
+    /// </param>
     /// <returns>
     /// <c>true</c> ONLY when the REQUESTED database ended up open: the checkout succeeded (write access
     /// or the read-only snapshot) and the services and window were set up for it. <c>false</c> on every
@@ -1569,9 +1599,10 @@ public partial class MainWindow : Window
     /// write into "the open database" — File → New — MUST check it; others may ignore it.</para>
     /// </returns>
     public async Task<bool> SwitchDatabaseAsync(
-        string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false)
+        string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false,
+        Func<string, Task>? resolveKeptChanges = null)
     {
-        var result = await SwitchCoreAsync(newDatabasePath, isNewDatabase, createIfMissing);
+        var result = await SwitchCoreAsync(newDatabasePath, isNewDatabase, createIfMissing, resolveKeptChanges);
 
         if (result == SwitchResult.NoDatabaseOpen)
             await RecoverToDatabaseChooserAsync(newDatabasePath);
@@ -1589,6 +1620,13 @@ public partial class MainWindow : Window
     /// <param name="newDatabasePath">Full path of the database (D) to switch to.</param>
     /// <param name="isNewDatabase">See <see cref="SwitchDatabaseAsync"/>.</param>
     /// <param name="createIfMissing">See <see cref="SwitchDatabaseAsync"/>.</param>
+    /// <param name="resolveKeptChanges">
+    /// See <see cref="SwitchDatabaseAsync"/>. When non-null this is a save-conflict resolution, and three things
+    /// differ from an ordinary switch: the old session is released with <c>saveFirst: false</c>; the services are
+    /// closed as usual; and then this callback runs INSTEAD of the usual cleanup of the old working copy (which would
+    /// delete the user's only copy of their changes). The pre-check and the single-instance guard still run first,
+    /// so a refusal leaves the session untouched.
+    /// </param>
     /// <returns>
     /// <see cref="SwitchResult.Opened"/>; <see cref="SwitchResult.StayedOnCurrentDatabase"/> after a refusal
     /// that left the open database untouched; or <see cref="SwitchResult.NoDatabaseOpen"/> (after a failure
@@ -1596,7 +1634,8 @@ public partial class MainWindow : Window
     /// switch itself is reported in a dialog and returned, not thrown.
     /// </returns>
     private async Task<SwitchResult> SwitchCoreAsync(
-        string newDatabasePath, bool isNewDatabase, bool createIfMissing)
+        string newDatabasePath, bool isNewDatabase, bool createIfMissing,
+        Func<string, Task>? resolveKeptChanges = null)
     {
         App.Logger.LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
         var phase = SwitchPhase.BeforeTeardown;
@@ -1644,10 +1683,14 @@ public partial class MainWindow : Window
             _isDatabaseOpen = false;
 
             // Release the current checkout (saves if dirty) before opening the new DB.
-            var oldDbName    = Path.GetFileNameWithoutExtension(App.Checkout.SourcePath);
-            var wasWriteMode = App.Checkout.Mode == CheckoutMode.WriteAccess;
+            var oldSourcePath = App.Checkout.SourcePath;
+            var oldDbName     = Path.GetFileNameWithoutExtension(oldSourcePath);
+            var wasWriteMode  = App.Checkout.Mode == CheckoutMode.WriteAccess;
             App.Checkout.StopAutoSave();
-            var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode);
+
+            // A save-conflict resolution (resolveKeptChanges != null) NEVER saves: the save would be refused
+            // (D changed elsewhere) and must never write D. The lock is simply given back.
+            var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode && resolveKeptChanges is null);
 
             // Capture the current semester selection before DI teardown so it can be
             // restored after reinit without touching AppSettings (avoids a disk round-trip
@@ -1672,11 +1715,26 @@ public partial class MainWindow : Window
             // retries — never meet a disposed container.
             App.ReleaseServices();
 
+            if (resolveKeptChanges is not null)
+            {
+                // ── SAVE-CONFLICT RESOLUTION (spec item 10, step 10a) ────────────────────────────
+                // THE ORDINARY CLEANUP BELOW MUST NOT RUN HERE. With saveFirst:false the release
+                // reports Success, so "saveOutcome == Success" would DELETE D' — and D' holds the
+                // user's changes, which were never written anywhere else. They are the only copy.
+                //
+                // The services are closed (App.ReleaseServices above closed the connection), so from
+                // here nothing in any window can write D'. The callback saves D' as a separate file
+                // and deletes it only after that copy is confirmed, or deletes it after a confirmed
+                // Discard — and if it fails or throws, D' and its marker stay: the reopen's crash
+                // recovery offers them again (spec item 16a's loop), or the failed-switch path
+                // (ResetAfterFailedOpenAsync) keeps a marked D'. Nothing is deleted in a catch.
+                await resolveKeptChanges(oldSourcePath);
+            }
             // Delete the old D' ONLY when its content is safely in the old D (save
             // succeeded) or nothing was edited (no dirty marker). Otherwise leave the
             // working copy and marker behind — the next time the user opens that
             // database they'll be offered their unsaved changes back.
-            if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
+            else if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
             {
                 App.Checkout.CleanupWorkingCopy();
             }
@@ -2494,7 +2552,23 @@ public partial class MainWindow : Window
         if (destPath is null) return false; // user cancelled
 
         var result = await App.Checkout.ExportRecoveredCopyAsync(sourcePath, destPath);
+        return await ShowExportOutcomeAsync(result);
+    }
 
+    /// <summary>
+    /// Turns the result of exporting the kept unsaved changes as a separate file
+    /// (<see cref="CheckoutService.ExportRecoveredCopyAsync"/>, or the early
+    /// <see cref="NewFilePlacement.RefuseIfPresentAsync"/> refusal) into what the user sees: nothing for
+    /// <see cref="NewDatabaseOutcome.Created"/>; for a name that is taken, a location that does not answer, or a
+    /// failure, the matching message (texts in <see cref="RecoveryConflictPrompt"/> and
+    /// <see cref="DatabaseSwitchPrecheck"/>). The one mapping shared by crash recovery
+    /// (<see cref="ExportRecoveredCopyAsync(string)"/>) and the save-conflict banner
+    /// (<see cref="ResolveSaveConflictAsync"/>).
+    /// </summary>
+    /// <param name="result">The export (or early-refusal) result.</param>
+    /// <returns>True when the copy was written (<see cref="NewDatabaseOutcome.Created"/>); false otherwise, after the message was shown.</returns>
+    private async Task<bool> ShowExportOutcomeAsync(NewDatabaseResult result)
+    {
         switch (result.Outcome)
         {
             case NewDatabaseOutcome.Created:
@@ -2514,6 +2588,171 @@ public partial class MainWindow : Window
                 await ShowMessageAsync(
                     RecoveryConflictPrompt.ExportFailedTitle, RecoveryConflictPrompt.ExportFailedMessage(result.Error));
                 return false;
+        }
+    }
+
+    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
+
+    /// <summary>
+    /// Carries out the user's choice from the save-conflict banner (<see cref="CheckoutService.HasSaveConflict"/>):
+    /// <b>Save a Copy…</b> keeps their version as a separate file, <b>Discard Changes</b> gives it up; either way the
+    /// session ends and the current database is reopened. Called from <see cref="MainWindowViewModel"/>, like
+    /// <see cref="SwitchDatabaseAsync"/>, because it is window-lifecycle work.
+    ///
+    /// <para><b>Sequence (the order matters):</b></para>
+    /// <list type="number">
+    /// <item><description>Ignored unless a conflict is pending and no resolution is already running.</description></item>
+    /// <item><description>Refused while an inline editor is open (<see cref="MainWindowViewModel.IsAnyPanelEditing"/>):
+    /// an edit that has not been applied is not in the database at all. Nothing is changed.</description></item>
+    /// <item><description>Save a Copy…: the save picker (16a's title and suggested name, no overwrite prompt), then
+    /// the EARLY refusal (<see cref="NewFilePlacement.RefuseIfPresentAsync"/>): a file that exists, or a location
+    /// that does not answer, gets its message and returns to the banner with nothing changed. Discard Changes: a
+    /// confirmation; Cancel returns to the banner.</description></item>
+    /// <item><description>Closing is blocked (<see cref="_saveConflictInProgress"/>) and the session is ended by the
+    /// normal database switch to the SAME database, with a callback (<see cref="ResolveKeptChangesAsync"/>) that
+    /// runs once the services — and with them the connection to the kept changes — are closed. See
+    /// <see cref="SwitchCoreAsync"/> for why nothing is saved and nothing is deleted on that path.</description></item>
+    /// </list>
+    ///
+    /// <para>A failed reopen follows the normal failed-switch path (the database chooser); the user's version is
+    /// already saved, or still kept for crash recovery to offer again.</para>
+    /// </summary>
+    /// <param name="saveCopy">True for Save a Copy…, false for Discard Changes.</param>
+    public async Task ResolveSaveConflictAsync(bool saveCopy)
+    {
+        if (!App.Checkout.HasSaveConflict || _saveConflictInProgress)
+        {
+            App.Logger.LogInfo("MainWindow: ResolveSaveConflictAsync ignored — no conflict is pending, or one is already being resolved.");
+            return;
+        }
+
+        // An unapplied inline edit is not in the database at all (item 14 will handle it later): refuse first.
+        if (DataContext is MainWindowViewModel { IsAnyPanelEditing: true })
+        {
+            App.Logger.LogBreadcrumb("SaveConflict: refused — an editor is open");
+            await ShowMessageAsync(SaveConflictPrompt.EditorOpenTitle, SaveConflictPrompt.EditorOpenMessage);
+            return;
+        }
+
+        var sourcePath = App.Checkout.SourcePath;
+
+        // Everything the user can still back out of happens BEFORE the session is touched.
+        string? destPath = null;
+        if (saveCopy)
+        {
+            App.Logger.LogBreadcrumb("SaveConflict: Save a Copy chosen");
+            destPath = await PickRecoveredCopyPathAsync(sourcePath);
+            if (destPath is null) return; // cancelled
+
+            // Early refusal: a name that is taken, or a location that doesn't answer, returns to the banner.
+            var early = await NewFilePlacement.RefuseIfPresentAsync(destPath);
+            if (early is not null)
+            {
+                App.Logger.LogBreadcrumb("SaveConflict: destination refused", new() { ["outcome"] = early.Outcome.ToString() });
+                await ShowExportOutcomeAsync(early);
+                return;
+            }
+        }
+        else
+        {
+            App.Logger.LogBreadcrumb("SaveConflict: Discard Changes chosen");
+            var confirmed = await ShowChoiceAsync(
+                SaveConflictPrompt.DiscardConfirmTitle, SaveConflictPrompt.DiscardConfirmMessage,
+                SaveConflictPrompt.DiscardConfirmButton, SaveConflictPrompt.DiscardCancelButton);
+            if (!confirmed)
+            {
+                App.Logger.LogBreadcrumb("SaveConflict: Discard cancelled");
+                return;
+            }
+        }
+
+        _saveConflictInProgress = true;
+        try
+        {
+            // The normal switch to the SAME database ends this session (never saving it) and reopens D.
+            await SwitchDatabaseAsync(
+                sourcePath,
+                resolveKeptChanges: keptSourcePath => ResolveKeptChangesAsync(keptSourcePath, destPath));
+        }
+        finally
+        {
+            _saveConflictInProgress = false;
+        }
+    }
+
+    /// <summary>
+    /// Shows the save picker in which the user chooses where to save their version as a separate file: the title
+    /// and suggested name of crash recovery's export (<see cref="RecoveryConflictPrompt"/>), and no overwrite
+    /// prompt (an existing file is never replaced; the caller refuses it).
+    /// </summary>
+    /// <param name="sourcePath">The shared database D (for the suggested file name).</param>
+    /// <returns>The chosen full path, or null when the user cancelled (or the choice has no local path).</returns>
+    private async Task<string?> PickRecoveredCopyPathAsync(string sourcePath)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title               = RecoveryConflictPrompt.SaveDialogTitle,
+            SuggestedFileName   = RecoveryConflictPrompt.SuggestedFileName(sourcePath),
+            DefaultExtension    = "db",
+            ShowOverwritePrompt = false,
+        });
+
+        return file?.TryGetLocalPath();
+    }
+
+    /// <summary>
+    /// The callback <see cref="ResolveSaveConflictAsync"/> hands to <see cref="SwitchCoreAsync"/>: runs once the
+    /// session has ended and its services — and with them the connection to the kept changes — are closed, so
+    /// nothing in any window can write them any more. It either keeps the user's version as a separate file or
+    /// discards it.
+    ///
+    /// <para><b>The kept changes are deleted only after a confirmed copy or a confirmed Discard.</b> With
+    /// <paramref name="destPath"/>, the export runs under a wait dialog; only <see cref="NewDatabaseOutcome.Created"/>
+    /// deletes them (<see cref="CheckoutService.DiscardCrash"/>) and tells the user. Any other outcome shows its
+    /// message and KEEPS them: the reopen's crash recovery then offers them again. Nothing is deleted in a
+    /// <c>catch</c>: an unexpected exception propagates (the switch's failure path keeps a marked working copy).</para>
+    /// </summary>
+    /// <param name="sourcePath">The shared database D whose kept changes to save elsewhere or discard.</param>
+    /// <param name="destPath">The file to save the user's version as, or null to discard it.</param>
+    private async Task ResolveKeptChangesAsync(string sourcePath, string? destPath)
+    {
+        try
+        {
+            App.Logger.LogBreadcrumb("SaveConflict: session ended");
+
+            if (destPath is null)
+            {
+                App.Checkout.DiscardCrash(sourcePath);
+                App.Logger.LogInfo("MainWindow: save conflict — the user's changes were discarded.");
+                App.Logger.LogBreadcrumb("SaveConflict: discarded");
+                return;
+            }
+
+            var result = await RunWithWaitDialogAsync(
+                SaveConflictPrompt.SavingTitle,
+                SaveConflictPrompt.SavingMessage,
+                () => App.Checkout.ExportRecoveredCopyAsync(sourcePath, destPath));
+            App.Logger.LogBreadcrumb("SaveConflict: export finished", new() { ["outcome"] = result.Outcome.ToString() });
+
+            if (result.Outcome == NewDatabaseOutcome.Created)
+            {
+                // The copy exists, so the kept changes are no longer the only copy.
+                App.Checkout.DiscardCrash(sourcePath);
+                App.Logger.LogInfo("MainWindow: save conflict — the user's version was saved as a separate file; the kept changes were deleted.");
+                await ShowMessageAsync(SaveConflictPrompt.SavedTitle,
+                    SaveConflictPrompt.SavedMessage(Path.GetFileName(destPath)));
+            }
+            else
+            {
+                // Keep the kept changes: crash recovery offers them again when the database reopens.
+                App.Logger.LogInfo("MainWindow: save conflict — the copy was not saved; the changes are kept.");
+                await ShowExportOutcomeAsync(result);
+            }
+        }
+        finally
+        {
+            // The kept changes are saved elsewhere, discarded, or deliberately kept: closing is safe again.
+            _saveConflictInProgress = false;
         }
     }
 
@@ -2556,6 +2795,17 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel vm)
             vm.SetSaveError(message, autoDismiss);
+    }
+
+    /// <summary>
+    /// Handles <see cref="CheckoutService.SaveConflictDetected"/>: a save was refused because the shared database
+    /// was changed elsewhere since this session opened it. Shows the persistent save-conflict banner (idempotent:
+    /// the event fires on every refused save).
+    /// </summary>
+    private void OnCheckoutSaveConflictDetected()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ShowSaveConflict();
     }
 
     /// <summary>

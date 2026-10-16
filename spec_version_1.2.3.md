@@ -22,7 +22,7 @@ will be verified.
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
-| 10 | "Save aborted" dead end: give a next step | UX | Accepted; **plan approved 2026-10-14** (10a, 10b) |
+| 10 | "Save aborted" dead end: give a next step | UX | In progress: **10a done 2026-10-16** (user hand-tested rows 1–4). 10b next. Plan approved 2026-10-14 |
 | 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted; **plan approved 2026-10-14** |
 | 12 | Save-specific error banner for exceptions during save | UX | **Done** (2026-10-15, on the tests; no hand test). Plan approved 2026-10-14 |
 | 13 | Cloud-sync folder detection gaps | Data integrity / UX | Accepted |
@@ -1599,9 +1599,10 @@ against the four rules for the shared database (CLAUDE.md, "Production Cautions"
   - **Service:** `CheckoutService` gets a `SaveConflict` state, set at `SourceModified` and cleared only by a new
     checkout, and a `SaveConflictDetected` event that replaces the `SaveFailed` call there.
   - **View model:** its own banner state, so no other save message can replace or dismiss it. **No Dismiss button.**
-    Text: *"TermPoint can't save your changes: the database was changed elsewhere since you opened it, so autosave has
-    stopped. Save your version as a separate file, or discard your changes, and TermPoint will reopen the current
-    database."* Buttons: **[Save a Copy…] [Discard Changes]**.
+    Text: *"TermPoint can't save your changes: the database was changed elsewhere since you opened it. Save your
+    version as a separate file, or discard your changes, and TermPoint will reopen the current database."* Buttons:
+    **[Save a Copy…] [Discard Changes]**. (Reworded 2026-10-16, user: the "so autosave has stopped" clause was dropped,
+    because the refused save may have been a manual one.)
   - **Save a Copy…:**
     1. the save picker (16a's title and suggested name, no overwrite prompt);
     2. the early refusal (`RefuseIfPresentAsync`): a file that exists, or a location that isn't responding, gets its
@@ -1640,6 +1641,35 @@ against the four rules for the shared database (CLAUDE.md, "Production Cautions"
   3. Discard Changes: Cancel first, then Discard;
   4. an open inline editor: both choices refused;
   5. close with the conflict pending: both answers of the question.
+
+**Step 10a outcome (2026-10-16; user hand-tested rows 1–4, all passed).**
+- **Service:** `CheckoutService.HasSaveConflict` (sticky; set at the `SourceModified` refusal, cleared only by
+  `CheckoutAsync` and `ResetAfterFailedOpenAsync`) and the `SaveConflictDetected` event, raised on every refused save
+  in place of `SaveFailed`. The "Save aborted" text is gone.
+- **Texts:** `Services/SaveConflictPrompt.cs`, pinned by `SaveConflictPromptTests`. The picker reuses 16a's title and
+  suggested name.
+- **Banner:** its own state in `MainWindowViewModel` (`HasSaveConflict`, no Dismiss; it clears the yellow row when it
+  appears) and its own row in `MainView.axaml` (row 2 is now a StackPanel: the conflict banner above the save-error
+  banner). Both buttons are disabled while a choice runs.
+- **Ending the session:** `MainWindow.ResolveSaveConflictAsync` refuses while an inline editor is open, runs the
+  picker and early refusal (or the Discard confirmation) before anything is touched, blocks closing, and then calls
+  the normal `SwitchDatabaseAsync` to the same database with a new `resolveKeptChanges` callback. On that path
+  `SwitchCoreAsync` releases **without saving** and, after `App.ReleaseServices()` has closed the connection, runs the
+  callback **instead of** the usual working-copy cleanup (which, with no save, would have deleted the only copy).
+  The callback exports under a wait dialog and calls `DiscardCrash` only on `Created` or after a confirmed Discard.
+  The chooser's retries never carry it. The export-result messages are shared with crash recovery
+  (`ShowExportOutcomeAsync`).
+- **The four rules.** 1–2: this path never writes D. 3: the kept changes are deleted only after a confirmed copy or
+  a confirmed Discard, the copy is taken from a closed file, and an exception keeps them (failed-switch path). 4: one
+  banner, no paths, file name only in the "saved as" message.
+- **Known rough edge (rare):** if the destination is taken *between* the early refusal and the copy (or the copy
+  fails), the user sees the existing "Choose a New Name" / "Export Failed" message, then the reopen's crash recovery
+  asks "Restore Unsaved Changes?" before 16a's Save a Copy… / Discard. Nothing is lost. The approved plan accepts it.
+- **Tests:** +12 (`SaveConflictTests`: real files, a WAL-mode D′ with its connection open, the full
+  refuse → release → export → discard path, export onto an existing file; `SaveConflictPromptTests`). Suite: 2604
+  passed + 21 skipped.
+- **Hand test (2026-10-16):** rows 1–4 passed, on a database copy changed with `tmp/handtest_10a.py colleague`
+  (replaces the 16a script, which was on the other machine). The banner was reworded during the test (see the plan).
 
 ---
 
