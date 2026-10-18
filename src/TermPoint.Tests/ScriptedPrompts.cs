@@ -116,6 +116,17 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
         return this;
     }
 
+    /// <summary>Expects work run under a wait dialog; the work then runs, and its result is returned to the caller.</summary>
+    /// <param name="title">The exact dialog title.</param>
+    /// <param name="text">The exact body text, or null to accept any.</param>
+    /// <param name="before">Optional action run when the dialog is shown, before the work starts (to observe the world at that moment).</param>
+    /// <returns>This instance, for chaining.</returns>
+    public ScriptedPrompts ExpectWait(string title, string? text = null, Action? before = null)
+    {
+        _script.Enqueue(new Step(PromptKind.Wait, title, text, null, before));
+        return this;
+    }
+
     /// <summary>Expects the save-file picker and answers it.</summary>
     /// <param name="title">The exact picker title.</param>
     /// <param name="chosenPath">The path the "user" picks, or null for a cancelled picker.</param>

@@ -103,8 +103,38 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <inheritdoc/>
     public bool IsDatabaseOpen { get; set; }
 
+    /// <summary>
+    /// What <see cref="IsInlineEditorOpen"/> reports; false by default. A leave-group test sets it to true to model
+    /// "a panel has an inline editor open" (spec item 9.1, step 9.1c).
+    /// </summary>
+    public bool InlineEditorOpen { get; set; }
+
     /// <inheritdoc/>
-    public bool IsInlineEditorOpen => false;
+    public bool IsInlineEditorOpen => InlineEditorOpen;
+
+    /// <summary>Runs inside <see cref="ReleaseServices"/>, before it closes the connection (lets a test observe the world at that moment); null for none.</summary>
+    public Action? OnReleaseServices { get; set; }
+
+    /// <summary>Runs inside <see cref="DisposeServices"/>, before it closes the connection (lets a test observe the world at that moment); null for none.</summary>
+    public Action? OnDisposeServices { get; set; }
+
+    /// <summary>
+    /// When non-null, <see cref="DisposeServices"/> throws it (after tracing and running <see cref="OnDisposeServices"/>),
+    /// modelling a container whose disposal fails during the window-close teardown.
+    /// </summary>
+    public Exception? DisposeServicesFailure { get; set; }
+
+    /// <summary>
+    /// Runs inside <see cref="RelaunchApplication"/>. The fake NEVER starts a process (the executable of a test run is
+    /// the test host); this hook only lets a test record the world at the moment the lifecycle asked for a relaunch.
+    /// </summary>
+    public Action? OnRelaunch { get; set; }
+
+    /// <summary>
+    /// The surface <see cref="CaptureLockLossSurface"/> hands out. One instance per host, so a test configures it
+    /// (<see cref="FakeLockLossSurface.HasViewModel"/> and the rest) before the lost-lock handler runs.
+    /// </summary>
+    public FakeLockLossSurface LockLossSurface { get; }
 
     /// <summary>Creates the fake.</summary>
     /// <param name="trace">Receives a line "host:..." for every call.</param>
@@ -118,6 +148,7 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
         _logger   = logger;
         _checkout = checkout;
         _faults   = faults;
+        LockLossSurface = new FakeLockLossSurface(trace, CloseConnection);
     }
 
     /// <inheritdoc/>
@@ -157,6 +188,7 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     public void ReleaseServices()
     {
         _trace($"host:ReleaseServices(built={_servicesBuilt}, connection={ConnectionOpen})");
+        OnReleaseServices?.Invoke();
         CloseConnection();
         _servicesBuilt = false;
     }
@@ -165,6 +197,9 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     public void DisposeServices()
     {
         _trace($"host:DisposeServices(built={_servicesBuilt}, connection={ConnectionOpen})");
+        OnDisposeServices?.Invoke();
+        if (DisposeServicesFailure is not null)
+            throw DisposeServicesFailure;
         CloseConnection();
     }
 
@@ -209,12 +244,18 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     }
 
     /// <inheritdoc/>
-    public void RelaunchApplication() => _trace("host:RelaunchApplication");
+    public void RelaunchApplication()
+    {
+        _trace("host:RelaunchApplication");
+        OnRelaunch?.Invoke();
+    }
 
     /// <inheritdoc/>
-    /// <exception cref="NotSupportedException">Always: the lost-lock path is not driven by any test yet (the 9.1c tests supply a surface).</exception>
     public ILockLossSurface CaptureLockLossSurface()
-        => throw new NotSupportedException("The lost-lock surface is not exercised until the 9.1c tests.");
+    {
+        _trace("host:CaptureLockLossSurface");
+        return LockLossSurface;
+    }
 
     /// <summary>
     /// Makes a user edit through the open connection and marks the session dirty — what a first write through
@@ -255,5 +296,87 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
         _connection?.Dispose();
         _connection = null;
         SqliteConnection.ClearAllPools();
+    }
+}
+
+/// <summary>
+/// A recording stand-in for <see cref="ILockLossSurface"/> (spec item 9.1, step 9.1c): the window's view model and
+/// data connection as the lost-write-lock handler sees them. Every call is written to the shared, ordered trace as
+/// "surface:..." and the banner texts are kept in <see cref="SaveErrors"/>. A test can model a window with no view
+/// model or no connection, and make the connection reopen (or the section reload) fail.
+/// </summary>
+internal sealed class FakeLockLossSurface : ILockLossSurface
+{
+    /// <summary>Where each call is also written (the test's shared, ordered trace).</summary>
+    private readonly Action<string> _trace;
+
+    /// <summary>
+    /// Closes the host's real connection to the working file. The real surface closes the database context's
+    /// connection, which is what lets the demotion delete D' (an open handle would block it), so the fake must close
+    /// the host's connection too or the demotion's file handling would behave differently from production.
+    /// </summary>
+    private readonly Action _closeHostConnection;
+
+    /// <summary>Whether a root view model was captured; true by default.</summary>
+    public bool HasViewModel { get; set; } = true;
+
+    /// <summary>Whether a data connection was captured; true by default.</summary>
+    public bool HasConnection { get; set; } = true;
+
+    /// <summary>When non-null, <see cref="ReinitializeConnection"/> throws it (the real one throws <see cref="InvalidOperationException"/>).</summary>
+    public Exception? ReinitializeFailure { get; set; }
+
+    /// <summary>When non-null, <see cref="ReloadSections"/> throws it.</summary>
+    public Exception? ReloadFailure { get; set; }
+
+    /// <summary>Runs inside <see cref="ReinitializeConnection"/>, before it can throw, with the path (lets a test snapshot the files at that moment); null for none.</summary>
+    public Action<string>? OnReinitialize { get; set; }
+
+    /// <summary>Every <see cref="ShowSaveError"/> text, in order.</summary>
+    public List<string> SaveErrors { get; } = new();
+
+    /// <summary>Every path <see cref="ReinitializeConnection"/> was called with, in order.</summary>
+    public List<string> ReinitializedPaths { get; } = new();
+
+    /// <summary>Creates the surface.</summary>
+    /// <param name="trace">Receives a line "surface:..." for every call.</param>
+    /// <param name="closeHostConnection">Closes the host's connection to the working file (called by <see cref="CloseConnection"/> when <see cref="HasConnection"/>).</param>
+    public FakeLockLossSurface(Action<string> trace, Action closeHostConnection)
+    {
+        _trace               = trace;
+        _closeHostConnection = closeHostConnection;
+    }
+
+    /// <inheritdoc/>
+    public void ShowSaveError(string text)
+    {
+        SaveErrors.Add(text);
+        _trace("surface:ShowSaveError");
+    }
+
+    /// <inheritdoc/>
+    public void CloseConnection()
+    {
+        _trace("surface:CloseConnection");
+        if (HasConnection)
+            _closeHostConnection();
+    }
+
+    /// <inheritdoc/>
+    public void ReinitializeConnection(string path)
+    {
+        ReinitializedPaths.Add(path);
+        _trace($"surface:ReinitializeConnection({Path.GetFileName(path)})");
+        OnReinitialize?.Invoke(path);
+        if (ReinitializeFailure is not null)
+            throw ReinitializeFailure;
+    }
+
+    /// <inheritdoc/>
+    public void ReloadSections()
+    {
+        _trace("surface:ReloadSections");
+        if (ReloadFailure is not null)
+            throw ReloadFailure;
     }
 }

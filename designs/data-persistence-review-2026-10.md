@@ -418,6 +418,22 @@ implementations, the wiring of `CheckoutService` events to the view model, and t
     existing wizard tests rewrite its `DatabasePath` to a temp test file on every run. Fixing P5 (a test-only
     settings folder) is a prerequisite for the 9.3 harness.
 - **9.1c:** move kept and stranded work, leave and lost lock, with their tests.
+  **Done 2026-10-18:** move committed as `2af8f06`: the close teardown (`TeardownForCloseAsync`), restore from a
+  backup, 10a's conflict-banner resolution and the lost-lock body (`HandleWriteLockLostAsync`), with their shared
+  state. New seams: `ISessionHost.RelaunchApplication` (so tests never start a process) and `ILockLossSurface`
+  (captures the view model and connection once, exactly as the handler did). `MainWindow` keeps thin shells for
+  `OnClosing`, `OnWriteLockLost` and the view models' delegates. A block-by-block comparison against the old code
+  shows only the allowed edits.
+  - **Characterisation tests:** 28 in `SessionLifecycleLeaveTests`, sharing `SessionLifecycleTestBase` with the 9.1b
+    tests. Suite: 2664 passed + 21 skipped.
+  - **Quirks pinned, existing behaviour:**
+    - after a lost lock, a failed reconnect is still followed by a section-list reload on the closed connection
+      (logged, harmless);
+    - if disposing the services throws during close, the working-copy cleanup after it is skipped. The save had
+      already succeeded, so no data is lost, but a stale working file is left behind;
+    - when 10a's late copy fails, the reopen shows "Can't Restore Unsaved Changes" (goes with the redesign);
+    - the tests read `CheckoutService`'s private autosave timer by reflection; there is no public "is autosave
+      running" property.
 - **9.1d:** the hand smoke test, then commit.
 
 Each sub-step is implemented by Sonnet from a brief; Opus reviews the diff (moved-lines view) and re-runs the
