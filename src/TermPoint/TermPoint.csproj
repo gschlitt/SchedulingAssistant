@@ -80,6 +80,8 @@
     <Compile Remove="ViewModels\Management\SaveAndBackupViewModel.cs" />
     <Compile Remove="ViewModels\Management\NewDatabaseViewModel.cs" />
     <Compile Remove="MainWindow.axaml.cs" />
+    <Compile Remove="Services\ILifecyclePrompts.cs" />
+    <Compile Remove="Services\ISessionHost.cs" />
     <Compile Remove="Views\SplashScreen.axaml.cs" />
     <Compile Remove="Views\DatabaseChooserWindow.axaml.cs" />
     <Compile Remove="Views\Wizard\**\*.cs" />

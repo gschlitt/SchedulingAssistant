@@ -24,7 +24,7 @@ using System.Reflection;
 
 namespace TermPoint;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 {
     private DetachedPanelWindow? _sectionViewWindow;
     private DetachedPanelWindow? _workloadWindow;
@@ -245,8 +245,7 @@ public partial class MainWindow : Window
         try
         {
             // Stop the periodic backup timer before disposing the container.
-            if (App.Services?.GetService(typeof(BackupService)) is BackupService bs)
-                bs.StopSession();
+            Host.StopBackupSession();
 
             if (_endSessionAfterRestore)
             {
@@ -264,10 +263,10 @@ public partial class MainWindow : Window
                 // so windows whose content binds to view models are torn down while those VMs
                 // still exist. ShutdownMode.OnMainWindowClose would close them anyway, but doing
                 // it here is deterministic and suppresses the detach-reattach side effect.
-                CloseSecondaryWindows();
+                Host.CloseSecondaryWindows();
 
                 // Dispose the DI container, which closes the SQLite connection cleanly.
-                (App.Services as IDisposable)?.Dispose();
+                Host.DisposeServices();
 
                 // Delete the working copy ONLY when its content is safely in D (save
                 // succeeded) or nothing was ever edited (no dirty marker). Otherwise the
@@ -281,7 +280,7 @@ public partial class MainWindow : Window
                 }
                 else if (wasWriteMode)
                 {
-                    await ShowMessageAsync("Changes Not Saved",
+                    await Prompts.ShowMessageAsync("Changes Not Saved",
                         "Your latest changes could not be saved to the database. " +
                         "They have been kept, and TermPoint will offer to restore them " +
                         "the next time you open this database.");
@@ -723,7 +722,7 @@ public partial class MainWindow : Window
         MainWindowViewModel vm;
         try
         {
-            var opened = await OpenWithLocalCopyCheckAsync(() => App.InitializeServices(App.Checkout.WorkingPath));
+            var opened = await OpenWithLocalCopyCheckAsync(() => Host.OpenServices(App.Checkout.WorkingPath));
             if (opened.ViewModel is null)
             {
                 // Nothing is open and nothing may be saved: the session has been ended and the user told why.
@@ -739,7 +738,7 @@ public partial class MainWindow : Window
                 // there). The guard taken for this database is given back first, so the pick may be this same
                 // database after a restore, or another one. The caller opens the pick through the same steps.
                 App.InstanceGuard.ReleaseAll();
-                return await ShowDatabaseChooserAsync(ChooserMode.Recovery, RecoveryReason.Corrupt, canonicalPath);
+                return await Prompts.ChooseDatabaseAsync(ChooserMode.Recovery, RecoveryReason.Corrupt, canonicalPath);
             }
 
             vm = opened.ViewModel;
@@ -750,7 +749,7 @@ public partial class MainWindow : Window
             // protected known folder such as Documents). Show a neutral, actionable message, offer
             // the technical detail for IT on request, then close — the user can reopen and pick a
             // different location.
-            await ShowMessageAsync("Can't Save to This Folder", blockedEx.UserMessage);
+            await Prompts.ShowMessageAsync("Can't Save to This Folder", blockedEx.UserMessage);
 
             if (!string.IsNullOrEmpty(blockedEx.ItDetail))
             {
@@ -758,7 +757,7 @@ public partial class MainWindow : Window
                     "Technical Details",
                     "Would you like to see technical details for your IT support?");
                 if (wantDetails)
-                    await ShowMessageAsync("Technical Details (for IT)", blockedEx.ItDetail);
+                    await Prompts.ShowMessageAsync("Technical Details (for IT)", blockedEx.ItDetail);
             }
 
             (Avalonia.Application.Current?.ApplicationLifetime as
@@ -768,7 +767,7 @@ public partial class MainWindow : Window
         }
 
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
-        await SetupMainWindowAsync(canonicalPath, vm);
+        await Host.SetupWindowAsync(canonicalPath, vm);
 
         // Restored unsaved changes are still only in the working copy — make them
         // durable right away rather than leaving them one crash away from a second
@@ -825,7 +824,7 @@ public partial class MainWindow : Window
     /// A Topmost dialog like every other message here, so it can never open behind the main window.
     /// </summary>
     private Task ShowAlreadyOpenMessageAsync()
-        => ShowMessageAsync(DatabaseInstanceGuard.AlreadyOpenTitle, DatabaseInstanceGuard.AlreadyOpenMessage);
+        => Prompts.ShowMessageAsync(DatabaseInstanceGuard.AlreadyOpenTitle, DatabaseInstanceGuard.AlreadyOpenMessage);
 
     /// <summary>
     /// Startup only: shows the database chooser in recovery mode with <see cref="RecoveryReason.AlreadyOpen"/>
@@ -836,7 +835,7 @@ public partial class MainWindow : Window
     /// <param name="refusedPath">The database that is already open elsewhere; shown beneath the banner.</param>
     /// <returns>The database the user picked, or null when they exited or started the wizard.</returns>
     private Task<string?> ShowAlreadyOpenChooserAsync(string refusedPath)
-        => ShowDatabaseChooserAsync(ChooserMode.Recovery, RecoveryReason.AlreadyOpen, refusedPath);
+        => Prompts.ChooseDatabaseAsync(ChooserMode.Recovery, RecoveryReason.AlreadyOpen, refusedPath);
 
     /// <summary>
     /// Runs the full checkout sequence for <paramref name="sourcePath"/> and returns
@@ -910,7 +909,7 @@ public partial class MainWindow : Window
                     // The wording (who, how long, and the warning that the holder's unsaved changes
                     // can't go into the database) lives in StaleLockPrompt so it can be unit-tested.
                     // Closing the dialog counts as "Open read-only": never take over by accident.
-                    var take = await ShowChoiceAsync(
+                    var take = await Prompts.ShowChoiceAsync(
                         StaleLockPrompt.TakeOverTitle,
                         StaleLockPrompt.BuildTakeOverMessage(App.Checkout.CurrentHolder, DateTime.UtcNow),
                         StaleLockPrompt.TakeOverButton,
@@ -922,7 +921,7 @@ public partial class MainWindow : Window
                     // wait. Cancelling (or closing it) is exactly "Open read-only".
                     var wait = take ? App.Checkout.GetTakeOverWait() : TimeSpan.Zero;
                     if (wait > TimeSpan.Zero)
-                        take = await ShowStaleLockWaitAsync(wait);
+                        take = await Prompts.ShowStaleLockWaitAsync(wait);
 
                     if (take)
                     {
@@ -945,7 +944,7 @@ public partial class MainWindow : Window
                         }
                         if (forceOutcome == CheckoutOutcome.NetworkUnreachable)
                         {
-                            await ShowMessageAsync("Network Unreachable",
+                            await Prompts.ShowMessageAsync("Network Unreachable",
                                 "Cannot reach the database — check your network connection and try again.");
                             return null;
                         }
@@ -953,7 +952,7 @@ public partial class MainWindow : Window
                         {
                             // D is held open by another program (or access denied). The lock was
                             // released again; no read-only fallback is possible (it must read D too).
-                            await ShowMessageAsync(DatabaseSwitchPrecheck.UnreadableTitle,
+                            await Prompts.ShowMessageAsync(DatabaseSwitchPrecheck.UnreadableTitle,
                                 DatabaseChooserViewModel.UnreadableDatabaseMessage);
                             return null;
                         }
@@ -967,7 +966,7 @@ public partial class MainWindow : Window
                         {
                             // The holder woke up (or someone else took the lock) while the prompt was
                             // open; nothing was deleted. Say so, then open read-only below.
-                            await ShowMessageAsync(StaleLockPrompt.ActiveAgainTitle,
+                            await Prompts.ShowMessageAsync(StaleLockPrompt.ActiveAgainTitle,
                                 StaleLockPrompt.BuildActiveAgainMessage(App.Checkout.CurrentHolder));
                         }
                         // Otherwise lost the race to another instance — fall through to read-only setup.
@@ -990,14 +989,14 @@ public partial class MainWindow : Window
                 }
 
             case CheckoutOutcome.NetworkUnreachable:
-                await ShowMessageAsync("Network Unreachable",
+                await Prompts.ShowMessageAsync("Network Unreachable",
                     "Cannot reach the database — check your network connection and try again.");
                 return null;
 
             case CheckoutOutcome.SourceMissing:
                 // D vanished between the caller's checks (or its creation) and checkout. Nothing
                 // was locked or created, and there is no safe fallback — tell the user and stop.
-                await ShowMessageAsync(DatabaseSwitchPrecheck.MissingTitle,
+                await Prompts.ShowMessageAsync(DatabaseSwitchPrecheck.MissingTitle,
                     DatabaseSwitchPrecheck.MissingMessage(sourcePath));
                 return null;
 
@@ -1005,7 +1004,7 @@ public partial class MainWindow : Window
                 // D exists but another program holds it open (or access is denied). The checkout
                 // already released any lock it took and left no working copy behind (crash-recovery
                 // data, if any, is kept). A retry will usually succeed — and this is NOT damage.
-                await ShowMessageAsync(DatabaseSwitchPrecheck.UnreadableTitle,
+                await Prompts.ShowMessageAsync(DatabaseSwitchPrecheck.UnreadableTitle,
                     DatabaseChooserViewModel.UnreadableDatabaseMessage);
                 return null;
 
@@ -1017,7 +1016,7 @@ public partial class MainWindow : Window
                 return await AskTryAgainAfterVersionCheckAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
 
             default: // Failed
-                await ShowMessageAsync("Checkout Failed",
+                await Prompts.ShowMessageAsync("Checkout Failed",
                     "Could not open the database for editing. " +
                     "The application will open in read-only mode.");
                 // Open read-only on D''. Crash artifacts (if any) stay on disk for the next
@@ -1046,7 +1045,7 @@ public partial class MainWindow : Window
     private async Task<string?> AskTryAgainAfterVersionCheckAsync(
         string sourcePath, bool recoverUnsaved, bool ignoreObserverMode)
     {
-        var tryAgain = await ShowChoiceAsync(
+        var tryAgain = await Prompts.ShowChoiceAsync(
             LocalCopyCheckPrompt.CouldntOpenTitle,
             LocalCopyCheckPrompt.InUseMessage,
             LocalCopyCheckPrompt.TryAgainButton,
@@ -1069,7 +1068,7 @@ public partial class MainWindow : Window
     /// shown, which is the contract <see cref="RunCheckoutAsync"/> documents for a <c>null</c> return.
     /// </returns>
     private Task<string?> SetupSnapshotOrAskAsync()
-        => App.Checkout.SetupReadOnlySnapshotWithRetryAsync(() => ShowChoiceAsync(
+        => App.Checkout.SetupReadOnlySnapshotWithRetryAsync(() => Prompts.ShowChoiceAsync(
             LocalCopyCheckPrompt.CouldntOpenTitle,
             LocalCopyCheckPrompt.CouldntMakeCopyMessage,
             LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton));
@@ -1081,7 +1080,7 @@ public partial class MainWindow : Window
     /// declined a stale-lock takeover).
     /// </summary>
     private Task ShowRecoveryDeferredMessageAsync()
-        => ShowMessageAsync("Unsaved Changes Kept",
+        => Prompts.ShowMessageAsync("Unsaved Changes Kept",
             "Someone else is currently editing this database, so your unsaved changes " +
             "can't be restored right now. They have been kept, and TermPoint will offer " +
             "to restore them the next time you open this database with write access.");
@@ -1184,7 +1183,7 @@ public partial class MainWindow : Window
                 switch (action)
                 {
                     case LocalCopyAction.ShowInUseDialog:
-                        if (!await ShowChoiceAsync(
+                        if (!await Prompts.ShowChoiceAsync(
                                 LocalCopyCheckPrompt.CouldntOpenTitle,
                                 LocalCopyCheckPrompt.InUseMessage,
                                 LocalCopyCheckPrompt.TryAgainButton,
@@ -1198,7 +1197,7 @@ public partial class MainWindow : Window
                         // and say so honestly. Asking again then finds no marker.
                         recoveredChangesHandled = true;
                         App.Checkout.ArchiveCorruptWorkingCopy(sharedPath);
-                        await ShowMessageAsync(
+                        await Prompts.ShowMessageAsync(
                             LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
                         break;
 
@@ -1210,7 +1209,7 @@ public partial class MainWindow : Window
                     case LocalCopyAction.MakeFreshCopy:
                         // Nothing has the local copy open (the gate throws before any connection is made), but
                         // release the half-built services anyway so nothing can.
-                        App.ReleaseServices();
+                        Host.ReleaseServices();
                         // Made → open again. Otherwise ask the table again: a copy that couldn't be made because the
                         // shared location stopped responding or a file was held gets the front-door message for that;
                         // any other failure gets "keeps failing".
@@ -1222,13 +1221,13 @@ public partial class MainWindow : Window
                     case LocalCopyAction.ShowKeepsFailing:
                         // Kept, not deleted: the bad file is evidence for IT. Then the session ends.
                         App.Checkout.SetAsideFailedLocalCopy();
-                        await ShowMessageAsync(
+                        await Prompts.ShowMessageAsync(
                             LocalCopyCheckPrompt.CouldntOpenTitle, LocalCopyCheckPrompt.KeepsFailingMessage,
                             LocalCopyCheckPrompt.CloseButton);
                         return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: false);
 
                     case LocalCopyAction.ShowDamagedThenRecoveryChooser:
-                        await ShowMessageAsync(
+                        await Prompts.ShowMessageAsync(
                             LocalCopyCheckPrompt.DamagedSharedTitle, LocalCopyCheckPrompt.DamagedSharedMessage);
                         return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: true);
 
@@ -1236,7 +1235,7 @@ public partial class MainWindow : Window
                     case LocalCopyAction.ShowUnreachableMessage:
                     case LocalCopyAction.ShowMissingMessage:
                         var (title, message) = LocalCopyCheckPrompt.FrontDoorMessage(shared, sharedPath);
-                        await ShowMessageAsync(title, message);
+                        await Prompts.ShowMessageAsync(title, message);
                         return await GiveUpLocalCopyOpenAsync(sharedDatabaseDamaged: false);
 
                     default:
@@ -1269,7 +1268,7 @@ public partial class MainWindow : Window
     {
         App.Logger.LogInfo("LocalCopyCheck: giving up on this open — ending the session without saving.");
 
-        try { App.ReleaseServices(); }
+        try { Host.ReleaseServices(); }
         catch (Exception ex) { App.Logger.LogError(ex, "LocalCopyCheck: could not dispose the services of the failed open"); }
 
         try { await App.Checkout.ResetAfterFailedOpenAsync(); }
@@ -1668,7 +1667,7 @@ public partial class MainWindow : Window
                 ReleaseSwitchTargetGuard();
 
                 App.Logger.LogInfo($"SwitchDatabase: refused before teardown — {precheck.Title}");
-                await ShowMessageAsync(precheck.Title, precheck.Message);
+                await Prompts.ShowMessageAsync(precheck.Title, precheck.Message);
 
                 // The open database (if any) is untouched: stay on it. With NO database open (retrying
                 // from the chooser, the post-wizard open) there is nothing to stay on — the chooser follows.
@@ -1706,14 +1705,13 @@ public partial class MainWindow : Window
             }
 
             // Stop the periodic backup timer BEFORE disposing the DI container.
-            if (App.Services?.GetService(typeof(BackupService)) is BackupService oldBackup)
-                oldBackup.StopSession();
+            Host.StopBackupSession();
 
             // Close the old DatabaseContext (and all other DI singletons) NOW, before
             // CheckoutAsync copies D to D'. Also clears App.Services (the same "nothing open" value
             // as at startup), so the lines above — which this method runs again when the chooser
             // retries — never meet a disposed container.
-            App.ReleaseServices();
+            Host.ReleaseServices();
 
             if (resolveKeptChanges is not null)
             {
@@ -1740,7 +1738,7 @@ public partial class MainWindow : Window
             }
             else if (wasWriteMode)
             {
-                await ShowMessageAsync("Changes Not Saved",
+                await Prompts.ShowMessageAsync("Changes Not Saved",
                     $"Your latest changes to \"{oldDbName}\" could not be saved. " +
                     "They have been kept, and TermPoint will offer to restore them " +
                     "the next time you open that database.");
@@ -1775,14 +1773,14 @@ public partial class MainWindow : Window
                         break;
 
                     case NewDatabaseOutcome.Unreachable:
-                        await ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
+                        await Prompts.ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
                         return await AbandonFailedSwitchAsync();
 
                     case NewDatabaseOutcome.AlreadyExists:
                         // Someone created a file with this name while we were building ours. It was
                         // not touched; don't silently open somebody else's database as "the new one".
                         // (Same wording as the pre-check's refusal of an existing file for File → New.)
-                        await ShowMessageAsync(DatabaseSwitchPrecheck.AlreadyExistsTitle,
+                        await Prompts.ShowMessageAsync(DatabaseSwitchPrecheck.AlreadyExistsTitle,
                             DatabaseSwitchPrecheck.AlreadyExistsMessage(newDatabasePath));
                         return await AbandonFailedSwitchAsync();
 
@@ -1824,7 +1822,7 @@ public partial class MainWindow : Window
             // read-only D'' when the version gate ran again on the fresh copy and found it needs a newer
             // TermPoint. (checkoutPath above is that file for the first call; it is only used for the null test.)
             var opened = await OpenWithLocalCopyCheckAsync(
-                () => App.InitializeServices(App.Checkout.WorkingPath, savedYearId, savedSemesterIds));
+                () => Host.OpenServices(App.Checkout.WorkingPath, savedYearId, savedSemesterIds));
             if (opened.ViewModel is null)
             {
                 if (opened.SharedDatabaseDamaged)
@@ -1841,7 +1839,7 @@ public partial class MainWindow : Window
             // Delegate the rest of window wiring (backup session, DataContext,
             // checkout event (re-)subscription, autosave restart, etc.) to the
             // shared helper used by every startup path.
-            await SetupMainWindowAsync(canonicalPath, vm);
+            await Host.SetupWindowAsync(canonicalPath, vm);
 
             // The new database is now open and wired to the window (_isDatabaseOpen). The steps below
             // are refinements: a failure in one of them must not turn an open database into a failed
@@ -1869,7 +1867,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "Failed to switch database");
-            await ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
+            await Prompts.ShowMessageAsync("Error", $"Failed to switch to database: {ex.Message}");
 
             // Past the point of no return the previous database is gone: clean up and go to the chooser.
             // Before it, the open database (if any) was never touched and stays — and so does its guard;
@@ -1921,7 +1919,7 @@ public partial class MainWindow : Window
         _isDatabaseOpen = false;
         App.Logger.LogInfo("SwitchDatabase: failed after the previous database was closed — returning to the no-database state.");
 
-        try { App.ReleaseServices(); }
+        try { Host.ReleaseServices(); }
         catch (Exception ex) { App.Logger.LogError(ex, "SwitchDatabase: could not dispose the services of the failed attempt"); }
 
         try { await App.Checkout.ResetAfterFailedOpenAsync(); }
@@ -1983,8 +1981,8 @@ public partial class MainWindow : Window
     {
         // Nothing bound to the closed database may be visible or clickable behind the chooser or the
         // error dialogs that follow it. Idempotent, so the repeat visits of the loop cost nothing.
-        CoverWindowForNoDatabase();
-        return ShowDatabaseChooserAsync(ChooserMode.Recovery, _noDatabaseReason, failedPath);
+        Host.CoverWindowForNoDatabase();
+        return Prompts.ChooseDatabaseAsync(ChooserMode.Recovery, _noDatabaseReason, failedPath);
     }
 
 
@@ -2210,7 +2208,7 @@ public partial class MainWindow : Window
         RestoreResult? result;
         try
         {
-            result = await RunWithWaitDialogAsync(
+            result = await Prompts.RunWithWaitAsync(
                 RestorePrompt.WaitTitle,
                 RestorePrompt.WaitMessage,
                 () => SaveThenRestoreAsync(backupPath));
@@ -2229,7 +2227,7 @@ public partial class MainWindow : Window
         // The save failed: the restore was not started. (SaveAsync has already shown its own save banner.)
         if (result is null)
         {
-            await ShowMessageAsync(RestorePrompt.NotStartedTitle, RestorePrompt.SaveFailedMessage);
+            await Prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, RestorePrompt.SaveFailedMessage);
             ResumeAutoSave();
             return;
         }
@@ -2253,8 +2251,7 @@ public partial class MainWindow : Window
         // newest backup.
         try
         {
-            if (App.Services?.GetService(typeof(BackupService)) is BackupService backupService)
-                backupService.StopSession();
+            Host.StopBackupSession();
         }
         catch (Exception ex)
         {
@@ -2301,7 +2298,7 @@ public partial class MainWindow : Window
     private Task ShowRestoreMessageAsync(RestoreResult result)
     {
         var (title, message) = RestorePrompt.Describe(result);
-        return ShowMessageAsync(title, message);
+        return Prompts.ShowMessageAsync(title, message);
     }
 
     /// <summary>
@@ -2329,10 +2326,10 @@ public partial class MainWindow : Window
             App.Checkout.StopAutoSave();
             await App.Checkout.ReleaseAsync(saveFirst: false);
 
-            CloseSecondaryWindows();
+            Host.CloseSecondaryWindows();
 
             // Closes the SQLite connection; only then can the working copy be deleted.
-            (App.Services as IDisposable)?.Dispose();
+            Host.DisposeServices();
         }
         finally
         {
@@ -2467,7 +2464,7 @@ public partial class MainWindow : Window
             // The crash damaged the unsaved data beyond SQLite's own journal recovery.
             // Archive it (support-level salvage stays possible) and tell the user honestly.
             App.Checkout.ArchiveCorruptWorkingCopy(sourcePath);
-            await ShowMessageAsync(
+            await Prompts.ShowMessageAsync(
                 LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
             return false;
         }
@@ -2475,7 +2472,7 @@ public partial class MainWindow : Window
         // Neutral phrasing: these artifacts can come from a crash, a failed
         // save-on-exit, or a lock-loss demotion — "did not close properly" would
         // be wrong for the latter two.
-        var restore = await ShowChoiceAsync("Restore Unsaved Changes?",
+        var restore = await Prompts.ShowChoiceAsync("Restore Unsaved Changes?",
             "Unsaved changes from a previous session with this database were kept." +
             "\n\nWould you like to restore them?",
             "Restore", "Discard");
@@ -2505,7 +2502,7 @@ public partial class MainWindow : Window
 
         while (info is not null)
         {
-            var export = await ShowChoiceAsync(
+            var export = await Prompts.ShowChoiceAsync(
                 RecoveryConflictPrompt.ConflictTitle,
                 RecoveryConflictPrompt.ConflictMessage,
                 RecoveryConflictPrompt.SaveCopyButton, RecoveryConflictPrompt.DiscardButton);
@@ -2540,15 +2537,10 @@ public partial class MainWindow : Window
     /// <returns>True when the copy was written; false on picker cancel, a refused name, an unreachable location or a failure.</returns>
     private async Task<bool> ExportRecoveredCopyAsync(string sourcePath)
     {
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title               = RecoveryConflictPrompt.SaveDialogTitle,
-            SuggestedFileName   = RecoveryConflictPrompt.SuggestedFileName(sourcePath),
-            DefaultExtension    = "db",
-            ShowOverwritePrompt = false,
-        });
-
-        var destPath = file?.TryGetLocalPath();
+        var destPath = await Prompts.PickSaveFileAsync(
+            RecoveryConflictPrompt.SaveDialogTitle,
+            RecoveryConflictPrompt.SuggestedFileName(sourcePath),
+            "db");
         if (destPath is null) return false; // user cancelled
 
         var result = await App.Checkout.ExportRecoveredCopyAsync(sourcePath, destPath);
@@ -2575,17 +2567,17 @@ public partial class MainWindow : Window
                 return true;
 
             case NewDatabaseOutcome.AlreadyExists:
-                await ShowMessageAsync(
+                await Prompts.ShowMessageAsync(
                     RecoveryConflictPrompt.AlreadyExistsTitle, RecoveryConflictPrompt.AlreadyExistsMessage);
                 return false;
 
             case NewDatabaseOutcome.Unreachable:
-                await ShowMessageAsync(DatabaseSwitchPrecheck.UnreachableTitle, NetworkFileOps.UnreachableMessage);
+                await Prompts.ShowMessageAsync(DatabaseSwitchPrecheck.UnreachableTitle, NetworkFileOps.UnreachableMessage);
                 return false;
 
             default:
                 App.Logger.LogError(result.Error, "Failed to export recovered copy");
-                await ShowMessageAsync(
+                await Prompts.ShowMessageAsync(
                     RecoveryConflictPrompt.ExportFailedTitle, RecoveryConflictPrompt.ExportFailedMessage(result.Error));
                 return false;
         }
@@ -2627,10 +2619,10 @@ public partial class MainWindow : Window
         }
 
         // An unapplied inline edit is not in the database at all (item 14 will handle it later): refuse first.
-        if (DataContext is MainWindowViewModel { IsAnyPanelEditing: true })
+        if (Host.IsInlineEditorOpen)
         {
             App.Logger.LogBreadcrumb("SaveConflict: refused — an editor is open");
-            await ShowMessageAsync(SaveConflictPrompt.EditorOpenTitle, SaveConflictPrompt.EditorOpenMessage);
+            await Prompts.ShowMessageAsync(SaveConflictPrompt.EditorOpenTitle, SaveConflictPrompt.EditorOpenMessage);
             return;
         }
 
@@ -2656,7 +2648,7 @@ public partial class MainWindow : Window
         else
         {
             App.Logger.LogBreadcrumb("SaveConflict: Discard Changes chosen");
-            var confirmed = await ShowChoiceAsync(
+            var confirmed = await Prompts.ShowChoiceAsync(
                 SaveConflictPrompt.DiscardConfirmTitle, SaveConflictPrompt.DiscardConfirmMessage,
                 SaveConflictPrompt.DiscardConfirmButton, SaveConflictPrompt.DiscardCancelButton);
             if (!confirmed)
@@ -2689,15 +2681,10 @@ public partial class MainWindow : Window
     /// <returns>The chosen full path, or null when the user cancelled (or the choice has no local path).</returns>
     private async Task<string?> PickRecoveredCopyPathAsync(string sourcePath)
     {
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title               = RecoveryConflictPrompt.SaveDialogTitle,
-            SuggestedFileName   = RecoveryConflictPrompt.SuggestedFileName(sourcePath),
-            DefaultExtension    = "db",
-            ShowOverwritePrompt = false,
-        });
-
-        return file?.TryGetLocalPath();
+        return await Prompts.PickSaveFileAsync(
+            RecoveryConflictPrompt.SaveDialogTitle,
+            RecoveryConflictPrompt.SuggestedFileName(sourcePath),
+            "db");
     }
 
     /// <summary>
@@ -2728,7 +2715,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var result = await RunWithWaitDialogAsync(
+            var result = await Prompts.RunWithWaitAsync(
                 SaveConflictPrompt.SavingTitle,
                 SaveConflictPrompt.SavingMessage,
                 () => App.Checkout.ExportRecoveredCopyAsync(sourcePath, destPath));
@@ -2739,7 +2726,7 @@ public partial class MainWindow : Window
                 // The copy exists, so the kept changes are no longer the only copy.
                 App.Checkout.DiscardCrash(sourcePath);
                 App.Logger.LogInfo("MainWindow: save conflict — the user's version was saved as a separate file; the kept changes were deleted.");
-                await ShowMessageAsync(SaveConflictPrompt.SavedTitle,
+                await Prompts.ShowMessageAsync(SaveConflictPrompt.SavedTitle,
                     SaveConflictPrompt.SavedMessage(Path.GetFileName(destPath)));
             }
             else
@@ -3371,4 +3358,80 @@ public partial class MainWindow : Window
         existingWindow = win;
         win.Show(this);
     }
+
+    // ── Lifecycle seams (designs/data-persistence-review-2026-10.md, step 9.1a) ─────────────────────────────────────
+    // ILifecyclePrompts and ISessionHost are the two interfaces a future non-UI session-lifecycle class will
+    // depend on. This window implements both EXPLICITLY, each member delegating to the code that already
+    // existed, so introducing them changes no behaviour. The lifecycle methods below call themselves through
+    // the two accessors, which is what lets those methods later move out of this file unchanged.
+
+    /// <summary>This window seen as the lifecycle's way of asking or telling the user.</summary>
+    private ILifecyclePrompts Prompts => this;
+
+    /// <summary>This window seen as the lifecycle's way of touching the window and the service container.</summary>
+    private ISessionHost Host => this;
+
+    /// <inheritdoc cref="ILifecyclePrompts.ShowMessageAsync"/>
+    Task ILifecyclePrompts.ShowMessageAsync(string title, string message, string buttonLabel)
+        => ShowMessageAsync(title, message, buttonLabel);
+
+    /// <inheritdoc cref="ILifecyclePrompts.ShowChoiceAsync"/>
+    Task<bool> ILifecyclePrompts.ShowChoiceAsync(string title, string message, string affirmative, string negative)
+        => ShowChoiceAsync(title, message, affirmative, negative);
+
+    /// <inheritdoc cref="ILifecyclePrompts.RunWithWaitAsync{T}"/>
+    Task<T> ILifecyclePrompts.RunWithWaitAsync<T>(string title, string message, Func<Task<T>> work)
+        => RunWithWaitDialogAsync(title, message, work);
+
+    /// <inheritdoc cref="ILifecyclePrompts.PickSaveFileAsync"/>
+    async Task<string?> ILifecyclePrompts.PickSaveFileAsync(string title, string suggestedFileName, string defaultExtension)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title               = title,
+            SuggestedFileName   = suggestedFileName,
+            DefaultExtension    = defaultExtension,
+            ShowOverwritePrompt = false,
+        });
+
+        return file?.TryGetLocalPath();
+    }
+
+    /// <inheritdoc cref="ILifecyclePrompts.ShowStaleLockWaitAsync"/>
+    Task<bool> ILifecyclePrompts.ShowStaleLockWaitAsync(TimeSpan remaining)
+        => ShowStaleLockWaitAsync(remaining);
+
+    /// <inheritdoc cref="ILifecyclePrompts.ChooseDatabaseAsync"/>
+    Task<string?> ILifecyclePrompts.ChooseDatabaseAsync(ChooserMode mode, RecoveryReason? reason, string? lastKnownPath)
+        => ShowDatabaseChooserAsync(mode, reason, lastKnownPath);
+
+    /// <inheritdoc cref="ISessionHost.OpenServices"/>
+    MainWindowViewModel ISessionHost.OpenServices(
+        string workingPath, string? restoreAcademicYearId, IReadOnlySet<string>? restoreSemesterIds)
+        => App.InitializeServices(workingPath, restoreAcademicYearId, restoreSemesterIds);
+
+    /// <inheritdoc cref="ISessionHost.ReleaseServices"/>
+    void ISessionHost.ReleaseServices() => App.ReleaseServices();
+
+    /// <inheritdoc cref="ISessionHost.DisposeServices"/>
+    void ISessionHost.DisposeServices() => (App.Services as IDisposable)?.Dispose();
+
+    /// <inheritdoc cref="ISessionHost.StopBackupSession"/>
+    void ISessionHost.StopBackupSession()
+    {
+        if (App.Services?.GetService(typeof(BackupService)) is BackupService backup)
+            backup.StopSession();
+    }
+
+    /// <inheritdoc cref="ISessionHost.CloseSecondaryWindows"/>
+    void ISessionHost.CloseSecondaryWindows() => CloseSecondaryWindows();
+
+    /// <inheritdoc cref="ISessionHost.IsInlineEditorOpen"/>
+    bool ISessionHost.IsInlineEditorOpen => DataContext is MainWindowViewModel { IsAnyPanelEditing: true };
+
+    /// <inheritdoc cref="ISessionHost.SetupWindowAsync"/>
+    Task ISessionHost.SetupWindowAsync(string dbPath, MainWindowViewModel vm) => SetupMainWindowAsync(dbPath, vm);
+
+    /// <inheritdoc cref="ISessionHost.CoverWindowForNoDatabase"/>
+    void ISessionHost.CoverWindowForNoDatabase() => CoverWindowForNoDatabase();
 }

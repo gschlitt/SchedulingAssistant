@@ -22,7 +22,7 @@ will be verified.
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
-| 10 | "Save aborted" dead end: give a next step | UX | In progress: **10a done 2026-10-16** (user hand-tested rows 1–4). 10b next. Plan approved 2026-10-14 |
+| 10 | "Save aborted" dead end: give a next step | UX | **Redesigned 2026-10-18**: see `designs/data-persistence-review-2026-10.md`, section 8. 10a (done 2026-10-16) is kept and reworked; 10b and the 10c outline are shelved (`tmp/shelved/`) |
 | 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted; **plan approved 2026-10-14** |
 | 12 | Save-specific error banner for exceptions during save | UX | **Done** (2026-10-15, on the tests; no hand test). Plan approved 2026-10-14 |
 | 13 | Cloud-sync folder detection gaps | Data integrity / UX | Accepted |
@@ -1561,6 +1561,10 @@ takeover safer.
 ---
 
 ## 10 — "Save aborted" dead end: give a next step
+
+> **Redesigned 2026-10-18.** Kept changes are no longer asked about: the design note in
+> `designs/data-persistence-review-2026-10.md` (section 8) replaces the rest of this item's plan. The text below is
+> the history up to step 10a.
 
 **Problem.** "The database was modified outside this session. Save aborted." offers no action.
 Autosave quietly stops, and the user keeps working into a dead end.
