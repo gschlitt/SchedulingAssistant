@@ -208,6 +208,14 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
         return CapturedSelection is not null;
     }
 
+    /// <inheritdoc/>
+    public void RelaunchApplication() => _trace("host:RelaunchApplication");
+
+    /// <inheritdoc/>
+    /// <exception cref="NotSupportedException">Always: the lost-lock path is not driven by any test yet (the 9.1c tests supply a surface).</exception>
+    public ILockLossSurface CaptureLockLossSurface()
+        => throw new NotSupportedException("The lost-lock surface is not exercised until the 9.1c tests.");
+
     /// <summary>
     /// Makes a user edit through the open connection and marks the session dirty — what a first write through
     /// the real <c>DatabaseContext</c> does (it calls <see cref="CheckoutService.MarkDirty"/>).

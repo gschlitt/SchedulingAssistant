@@ -122,4 +122,21 @@ public interface ISessionHost
     /// <param name="semesterIds">The selected semesters' IDs, or null when nothing was captured.</param>
     /// <returns>True when a selection was captured; false otherwise (both outputs are then null).</returns>
     bool TryCaptureSemesterSelection(out string? yearId, out IReadOnlySet<string>? semesterIds);
+
+    /// <summary>
+    /// Starts a fresh copy of TermPoint (today <c>MainWindow</c>'s private <c>RelaunchApplication</c>), used after
+    /// a confirmed restore once the single-instance guard has been released. Never throws: if the new copy cannot
+    /// be started the application still closes and the user reopens it by hand. A seam so that a test never
+    /// launches a process (the executable of a test run is the test host).
+    /// </summary>
+    void RelaunchApplication();
+
+    /// <summary>
+    /// Captures, at this moment, the objects the lost-write-lock handler works on: the window's root view model
+    /// (<c>DataContext as MainWindowViewModel</c>) and the open data connection
+    /// (<c>App.Services?.GetService&lt;IDatabaseContext&gt;() as DatabaseContext</c>). The handler calls it ONCE at
+    /// its start and uses the returned object throughout, exactly as it used the two captured locals before.
+    /// </summary>
+    /// <returns>A surface holding the captured view model and connection (either may be absent).</returns>
+    ILockLossSurface CaptureLockLossSurface();
 }

@@ -169,50 +169,6 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     // Prevents double-close when OnClosing cancels itself to run async shutdown.
     private bool _shuttingDown;
 
-    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
-    // RestoreFromBackupAsync sets these; OnClosing reads them. See RestoreFromBackupAsync for the sequence.
-
-    /// <summary>
-    /// True from the moment a restore starts saving the user's changes until the restore's outcome is known.
-    /// While true, <see cref="OnClosing"/> refuses every close request: the window must never close while the
-    /// database is being replaced, or the final save/teardown would race the restore. Reset in a
-    /// <c>finally</c>, so it can never stay stuck.
-    /// </summary>
-    private bool _restoreInProgress;
-
-    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
-
-    /// <summary>
-    /// True while the user's choice from the save-conflict banner (Save a Copy… / Discard Changes) is ending the
-    /// session, from the moment it is confirmed until the kept changes have been saved elsewhere or discarded
-    /// (<see cref="ResolveKeptChangesAsync"/>). While true, <see cref="OnClosing"/> refuses every close request,
-    /// exactly as for <see cref="_restoreInProgress"/>: closing mid-way would race the teardown. Reset in a
-    /// <c>finally</c>, so it can never stay stuck; it is also reset as soon as the kept changes are resolved,
-    /// because the reopening that follows is no more delicate than an ordinary database switch.
-    /// </summary>
-    private bool _saveConflictInProgress;
-
-    /// <summary>
-    /// True once a restore has replaced D (or may have: an unconfirmed rename) and the application is about to
-    /// close. <see cref="OnClosing"/> then tears the session down WITHOUT saving — the working copy is stale,
-    /// and a save would be refused anyway — and discards the working copy and its crash marker: the restored D
-    /// supersedes them, and everything was saved BEFORE the restore started, so nothing is lost.
-    /// </summary>
-    private bool _endSessionAfterRestore;
-
-    /// <summary>
-    /// The path of D as it was when the restore began (captured before anything is torn down). Used to discard
-    /// the crash marker of the session that is ending (<see cref="CheckoutService.DiscardCrash"/>).
-    /// </summary>
-    private string? _restoredSourcePath;
-
-    /// <summary>
-    /// True when <see cref="OnClosing"/> should start a fresh copy of TermPoint after the single-instance guard
-    /// is released: after a confirmed restore ("TermPoint will now restart"). False after an unconfirmed
-    /// one, where the user is told to reopen TermPoint themselves once the connection is back.
-    /// </summary>
-    private bool _relaunchAfterClose;
-
     /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
     /// Cancels the first close event to run async shutdown (save to D, release lock), then
@@ -228,7 +184,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // A restore is saving the user's changes and replacing the database right now. Closing the window
         // mid-way would race the restore with the exit save and teardown, so refuse; the restore closes the
         // window itself when it is finished (or the user can close it once it has reported a failure).
-        if (_restoreInProgress)
+        if (Lifecycle.IsRestoreInProgress)
         {
             e.Cancel = true;
             App.Logger.LogInfo("MainWindow: close request ignored — a restore from backup is in progress.");
@@ -237,7 +193,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
         // Same rule while the user's choice from the save-conflict banner is ending the session: the changes
         // are being saved elsewhere or discarded, and a close now would race that teardown.
-        if (_saveConflictInProgress)
+        if (Lifecycle.IsSaveConflictResolutionInProgress)
         {
             e.Cancel = true;
             App.Logger.LogInfo("MainWindow: close request ignored — a save-conflict resolution is in progress.");
@@ -247,77 +203,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         e.Cancel = true; // Defer: run async save first.
         _shuttingDown = true;
 
-        try
-        {
-            // Stop the periodic backup timer before disposing the container.
-            Host.StopBackupSession();
-
-            if (_endSessionAfterRestore)
-            {
-                // The database has just been replaced by a restore: end the stale session without saving.
-                await EndSessionAfterRestoreAsync();
-            }
-            else
-            {
-                // Stop autosave and save D' → D (releases lock on success).
-                var wasWriteMode = App.Checkout.Mode == CheckoutMode.WriteAccess;
-                App.Checkout.StopAutoSave();
-                var saveOutcome = await App.Checkout.ReleaseAsync(saveFirst: wasWriteMode);
-
-                // Close any detached panels / sticky notes BEFORE disposing the DI container,
-                // so windows whose content binds to view models are torn down while those VMs
-                // still exist. ShutdownMode.OnMainWindowClose would close them anyway, but doing
-                // it here is deterministic and suppresses the detach-reattach side effect.
-                Host.CloseSecondaryWindows();
-
-                // Dispose the DI container, which closes the SQLite connection cleanly.
-                Host.DisposeServices();
-
-                // Delete the working copy ONLY when its content is safely in D (save
-                // succeeded) or nothing was ever edited (no dirty marker). Otherwise the
-                // working copy and its marker are deliberately left behind: they are the
-                // only copy of the user's unsaved changes, and the next launch will offer
-                // to restore them. (ReleaseAsync has already parked the write lock
-                // appropriately for each failure kind.)
-                if (saveOutcome == SaveOutcome.Success || !App.Checkout.HasDirtyMarker)
-                {
-                    App.Checkout.CleanupWorkingCopy();
-                }
-                else if (wasWriteMode)
-                {
-                    await Prompts.ShowMessageAsync("Changes Not Saved",
-                        "Your latest changes could not be saved to the database. " +
-                        "They have been kept, and TermPoint will offer to restore them " +
-                        "the next time you open this database.");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log but still allow the window to close — don't leave the user
-            // stuck with an uncloseable window.
-            App.Logger.LogError(ex, "Error during shutdown — some changes may not have been saved");
-        }
-
-        // Give back the single-instance guard LAST: it protects the working copy that was just saved
-        // or deliberately kept (a failed final save keeps D' and its dirty marker for the next start), so
-        // a second TermPoint must not be able to start sorting through those files until we are done with
-        // them. Not strictly needed (the OS drops the guard when the process ends) but explicit, and it
-        // runs even when the teardown above threw. Never throws.
-        App.InstanceGuard.ReleaseAll();
-
-        // After a confirmed restore, start the fresh copy of TermPoint. Only now: the guard is released (a
-        // copy started earlier would be refused as "already open"), the lock is given back and the working
-        // copy is gone, so the new copy opens the restored database from a clean state.
-        if (_relaunchAfterClose)
-            RelaunchApplication();
-
-        // ── Shutdown checkpoint #1 ───────────────────────────────────────────
-        // Managed teardown (save → release lock → dispose DI container → cleanup
-        // working copy) has finished. Pairs with checkpoint #2 in Program.Main:
-        // if BOTH lines are logged but TermPoint.exe lingers, the leftover is a
-        // debugger/native artifact, not our code.
-        App.Logger.LogInfo("[Shutdown] Managed teardown complete; closing main window.");
+        await Lifecycle.TeardownForCloseAsync();
 
         Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
     }   
@@ -1088,181 +974,12 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// confirmed) from <see cref="MainWindowViewModel"/>, like <see cref="SwitchDatabaseAsync"/>, because it
     /// is window-lifecycle work: a wait dialog, a blocked close, and a close and restart at the end.
     ///
-    /// <para><b>Sequence.</b></para>
-    /// <list type="number">
-    /// <item><description>Only the writer may restore; anyone else is told so and nothing happens.</description></item>
-    /// <item><description>Autosave is stopped (an autosave tick must not collide with the restore's use of the
-    /// save gate) and window closing is blocked (<see cref="_restoreInProgress"/>).</description></item>
-    /// <item><description>Under a wait dialog that blocks edits: the user's changes are SAVED FIRST; if that save
-    /// fails the restore is never started. Then <see cref="CheckoutService.RestoreFromBackupAsync"/> runs the
-    /// shared safe restore (<see cref="DatabaseRestore"/>), which keeps the replaced database beside it.</description></item>
-    /// <item><description>Every outcome that leaves the database unchanged is reported and the session simply
-    /// continues (autosave resumes). <see cref="RestoreOutcome.Restored"/> and
-    /// <see cref="RestoreOutcome.RenameUnconfirmed"/> are reported and then the window is closed: the normal
-    /// close path (<see cref="OnClosing"/>) ends the stale session without saving, and after a confirmed restore
-    /// restarts TermPoint.</description></item>
-    /// </list>
-    ///
-    /// <para>Nothing is ever lost: the changes were saved before the restore began, so they are in the
-    /// pre-restore copy; a failed save means the restore did not start.</para>
+    /// <para>One-line delegate to <see cref="SessionLifecycle.RestoreFromBackupAsync"/>, which holds the full
+    /// sequence and its documentation.</para>
     /// </summary>
     /// <param name="backupPath">Full path of the backup .db file to restore (may be on a share).</param>
-    public async Task RestoreFromBackupAsync(string backupPath)
-    {
-        // Only the writer may restore: it replaces the database for everyone, and only the lock holder has a
-        // session that can be saved first and ended cleanly.
-        if (App.Checkout.Mode != CheckoutMode.WriteAccess)
-        {
-            await ShowRestoreMessageAsync(new RestoreResult(RestoreOutcome.NotWriter));
-            return;
-        }
-
-        if (_restoreInProgress)
-        {
-            App.Logger.LogInfo("MainWindow: RestoreFromBackupAsync ignored — a restore is already in progress.");
-            return;
-        }
-
-        // Captured now, before anything is torn down: OnClosing needs it to discard this session's crash marker.
-        var sourcePath = App.Checkout.SourcePath;
-
-        _restoreInProgress = true;
-        App.Checkout.StopAutoSave();
-
-        // Null means "the save failed, so the restore was never started".
-        RestoreResult? result;
-        try
-        {
-            result = await Prompts.RunWithWaitAsync(
-                RestorePrompt.WaitTitle,
-                RestorePrompt.WaitMessage,
-                () => SaveThenRestoreAsync(backupPath));
-        }
-        catch (Exception ex)
-        {
-            // SaveAsync and RestoreFromBackupAsync never throw, so this is a safety net only.
-            App.Logger.LogError(ex, "MainWindow: unexpected exception while restoring from a backup");
-            result = new RestoreResult(RestoreOutcome.Failed, Error: ex);
-        }
-        finally
-        {
-            _restoreInProgress = false;
-        }
-
-        // The save failed: the restore was not started. (SaveAsync has already shown its own save banner.)
-        if (result is null)
-        {
-            await Prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, RestorePrompt.SaveFailedMessage);
-            ResumeAutoSave();
-            return;
-        }
-
-        // Every other outcome that leaves D alone: say what happened; the session simply continues.
-        if (result.TargetUnchanged)
-        {
-            await ShowRestoreMessageAsync(result);
-            ResumeAutoSave();
-            return;
-        }
-
-        // Restored or RenameUnconfirmed: the session is stale. Arrange the end of the session FIRST, so that
-        // even if the window is closed by other means while the message is up (the OS shutting down, say) the
-        // normal close path still ends it correctly instead of trying to save the stale working copy.
-        _endSessionAfterRestore = true;
-        _restoredSourcePath     = sourcePath;
-        _relaunchAfterClose     = result.Outcome == RestoreOutcome.Restored;
-
-        // Stop the periodic backup timer: a backup of the now-stale working copy must never appear as the
-        // newest backup.
-        try
-        {
-            Host.StopBackupSession();
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogError(ex, "MainWindow: could not stop the periodic backup after a restore");
-        }
-
-        try
-        {
-            await ShowRestoreMessageAsync(result);
-        }
-        finally
-        {
-            Close(); // OnClosing ends the stale session and, after a confirmed restore, restarts TermPoint.
-        }
-    }
-
-    /// <summary>
-    /// The work behind the wait dialog: saves the user's current changes, and only if that succeeded runs the
-    /// restore. Neither call throws.
-    /// </summary>
-    /// <param name="backupPath">The backup to restore.</param>
-    /// <returns>The restore's result, or null when the save did not succeed (so the restore was not started).</returns>
-    private static async Task<RestoreResult?> SaveThenRestoreAsync(string backupPath)
-    {
-        // Autosave was stopped before this, but stopping the timer doesn't stop a tick that is already
-        // saving. Wait for it (bounded), or our save would hit the in-flight gate and be skipped as
-        // "already in progress" — reported to the user as a failed save. Same as ReleaseAsync's exit save.
-        await App.Checkout.WaitForInFlightSaveAsync();
-
-        var save = await App.Checkout.SaveAsync();
-        if (save != SaveOutcome.Success)
-        {
-            App.Logger.LogInfo($"MainWindow: restore not started — the save before it ended with {save}.");
-            return null;
-        }
-
-        return await App.Checkout.RestoreFromBackupAsync(backupPath);
-    }
-
-    /// <summary>
-    /// Shows the message for a restore result (<see cref="RestorePrompt.Describe"/>) in the standard message dialog.
-    /// </summary>
-    /// <param name="result">The result to describe.</param>
-    private Task ShowRestoreMessageAsync(RestoreResult result)
-    {
-        var (title, message) = RestorePrompt.Describe(result);
-        return Prompts.ShowMessageAsync(title, message);
-    }
-
-    /// <summary>
-    /// Restarts autosave after a restore that left the database unchanged, if the user has it switched on and
-    /// this session is still the writer. (The restore stopped it so no autosave tick could collide with it.)
-    /// </summary>
-    private static void ResumeAutoSave()
-    {
-        if (AppSettings.Current.AutoSaveEnabled && App.Checkout.Mode == CheckoutMode.WriteAccess)
-            App.Checkout.StartAutoSave();
-    }
-
-    /// <summary>
-    /// Ends the session of a database that a restore has just replaced. Called by <see cref="OnClosing"/> when
-    /// <see cref="_endSessionAfterRestore"/> is set. Unlike the normal exit it does NOT save (the working copy is
-    /// stale and a save would be refused): it releases the write lock, closes the secondary windows, disposes
-    /// the services, and then ALWAYS deletes the working copy and its crash marker — the restored D supersedes
-    /// them, and all the user's changes were saved before the restore started. Deleting the marker also keeps
-    /// the next start from mistaking the leftovers for a crash.
-    /// </summary>
-    private async Task EndSessionAfterRestoreAsync()
-    {
-        try
-        {
-            App.Checkout.StopAutoSave();
-            await App.Checkout.ReleaseAsync(saveFirst: false);
-
-            Host.CloseSecondaryWindows();
-
-            // Closes the SQLite connection; only then can the working copy be deleted.
-            Host.DisposeServices();
-        }
-        finally
-        {
-            App.Checkout.CleanupWorkingCopy();
-            if (!string.IsNullOrEmpty(_restoredSourcePath))
-                App.Checkout.DiscardCrash(_restoredSourcePath);
-        }
-    }
+    public Task RestoreFromBackupAsync(string backupPath)
+        => Lifecycle.RestoreFromBackupAsync(backupPath);
 
     /// <summary>
     /// Starts a fresh copy of TermPoint (after a confirmed restore). Never throws: if it cannot be started the
@@ -1368,157 +1085,12 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// session ends and the current database is reopened. Called from <see cref="MainWindowViewModel"/>, like
     /// <see cref="SwitchDatabaseAsync"/>, because it is window-lifecycle work.
     ///
-    /// <para><b>Sequence (the order matters):</b></para>
-    /// <list type="number">
-    /// <item><description>Ignored unless a conflict is pending and no resolution is already running.</description></item>
-    /// <item><description>Refused while an inline editor is open (<see cref="MainWindowViewModel.IsAnyPanelEditing"/>):
-    /// an edit that has not been applied is not in the database at all. Nothing is changed.</description></item>
-    /// <item><description>Save a Copy…: the save picker (16a's title and suggested name, no overwrite prompt), then
-    /// the EARLY refusal (<see cref="NewFilePlacement.RefuseIfPresentAsync"/>): a file that exists, or a location
-    /// that does not answer, gets its message and returns to the banner with nothing changed. Discard Changes: a
-    /// confirmation; Cancel returns to the banner.</description></item>
-    /// <item><description>Closing is blocked (<see cref="_saveConflictInProgress"/>) and the session is ended by the
-    /// normal database switch to the SAME database, with a callback (<see cref="ResolveKeptChangesAsync"/>) that
-    /// runs once the services — and with them the connection to the kept changes — are closed. See
-    /// <see cref="SessionLifecycle.SwitchCoreAsync"/> for why nothing is saved and nothing is deleted on that path.</description></item>
-    /// </list>
-    ///
-    /// <para>A failed reopen follows the normal failed-switch path (the database chooser); the user's version is
-    /// already saved, or still kept for crash recovery to offer again.</para>
+    /// <para>One-line delegate to <see cref="SessionLifecycle.ResolveSaveConflictAsync"/>, which holds the full
+    /// sequence and its documentation.</para>
     /// </summary>
     /// <param name="saveCopy">True for Save a Copy…, false for Discard Changes.</param>
-    public async Task ResolveSaveConflictAsync(bool saveCopy)
-    {
-        if (!App.Checkout.HasSaveConflict || _saveConflictInProgress)
-        {
-            App.Logger.LogInfo("MainWindow: ResolveSaveConflictAsync ignored — no conflict is pending, or one is already being resolved.");
-            return;
-        }
-
-        // An unapplied inline edit is not in the database at all (item 14 will handle it later): refuse first.
-        if (Host.IsInlineEditorOpen)
-        {
-            App.Logger.LogBreadcrumb("SaveConflict: refused — an editor is open");
-            await Prompts.ShowMessageAsync(SaveConflictPrompt.EditorOpenTitle, SaveConflictPrompt.EditorOpenMessage);
-            return;
-        }
-
-        var sourcePath = App.Checkout.SourcePath;
-
-        // Everything the user can still back out of happens BEFORE the session is touched.
-        string? destPath = null;
-        if (saveCopy)
-        {
-            App.Logger.LogBreadcrumb("SaveConflict: Save a Copy chosen");
-            destPath = await PickRecoveredCopyPathAsync(sourcePath);
-            if (destPath is null) return; // cancelled
-
-            // Early refusal: a name that is taken, or a location that doesn't answer, returns to the banner.
-            var early = await NewFilePlacement.RefuseIfPresentAsync(destPath);
-            if (early is not null)
-            {
-                App.Logger.LogBreadcrumb("SaveConflict: destination refused", new() { ["outcome"] = early.Outcome.ToString() });
-                await Lifecycle.ShowExportOutcomeAsync(early);
-                return;
-            }
-        }
-        else
-        {
-            App.Logger.LogBreadcrumb("SaveConflict: Discard Changes chosen");
-            var confirmed = await Prompts.ShowChoiceAsync(
-                SaveConflictPrompt.DiscardConfirmTitle, SaveConflictPrompt.DiscardConfirmMessage,
-                SaveConflictPrompt.DiscardConfirmButton, SaveConflictPrompt.DiscardCancelButton);
-            if (!confirmed)
-            {
-                App.Logger.LogBreadcrumb("SaveConflict: Discard cancelled");
-                return;
-            }
-        }
-
-        _saveConflictInProgress = true;
-        try
-        {
-            // The normal switch to the SAME database ends this session (never saving it) and reopens D.
-            await SwitchDatabaseAsync(
-                sourcePath,
-                resolveKeptChanges: keptSourcePath => ResolveKeptChangesAsync(keptSourcePath, destPath));
-        }
-        finally
-        {
-            _saveConflictInProgress = false;
-        }
-    }
-
-    /// <summary>
-    /// Shows the save picker in which the user chooses where to save their version as a separate file: the title
-    /// and suggested name of crash recovery's export (<see cref="RecoveryConflictPrompt"/>), and no overwrite
-    /// prompt (an existing file is never replaced; the caller refuses it).
-    /// </summary>
-    /// <param name="sourcePath">The shared database D (for the suggested file name).</param>
-    /// <returns>The chosen full path, or null when the user cancelled (or the choice has no local path).</returns>
-    private async Task<string?> PickRecoveredCopyPathAsync(string sourcePath)
-    {
-        return await Prompts.PickSaveFileAsync(
-            RecoveryConflictPrompt.SaveDialogTitle,
-            RecoveryConflictPrompt.SuggestedFileName(sourcePath),
-            "db");
-    }
-
-    /// <summary>
-    /// The callback <see cref="ResolveSaveConflictAsync"/> hands to <see cref="SessionLifecycle.SwitchCoreAsync"/>: runs once the
-    /// session has ended and its services — and with them the connection to the kept changes — are closed, so
-    /// nothing in any window can write them any more. It either keeps the user's version as a separate file or
-    /// discards it.
-    ///
-    /// <para><b>The kept changes are deleted only after a confirmed copy or a confirmed Discard.</b> With
-    /// <paramref name="destPath"/>, the export runs under a wait dialog; only <see cref="NewDatabaseOutcome.Created"/>
-    /// deletes them (<see cref="CheckoutService.DiscardCrash"/>) and tells the user. Any other outcome shows its
-    /// message and KEEPS them: the reopen's crash recovery then offers them again. Nothing is deleted in a
-    /// <c>catch</c>: an unexpected exception propagates (the switch's failure path keeps a marked working copy).</para>
-    /// </summary>
-    /// <param name="sourcePath">The shared database D whose kept changes to save elsewhere or discard.</param>
-    /// <param name="destPath">The file to save the user's version as, or null to discard it.</param>
-    private async Task ResolveKeptChangesAsync(string sourcePath, string? destPath)
-    {
-        try
-        {
-            App.Logger.LogBreadcrumb("SaveConflict: session ended");
-
-            if (destPath is null)
-            {
-                App.Checkout.DiscardCrash(sourcePath);
-                App.Logger.LogInfo("MainWindow: save conflict — the user's changes were discarded.");
-                App.Logger.LogBreadcrumb("SaveConflict: discarded");
-                return;
-            }
-
-            var result = await Prompts.RunWithWaitAsync(
-                SaveConflictPrompt.SavingTitle,
-                SaveConflictPrompt.SavingMessage,
-                () => App.Checkout.ExportRecoveredCopyAsync(sourcePath, destPath));
-            App.Logger.LogBreadcrumb("SaveConflict: export finished", new() { ["outcome"] = result.Outcome.ToString() });
-
-            if (result.Outcome == NewDatabaseOutcome.Created)
-            {
-                // The copy exists, so the kept changes are no longer the only copy.
-                App.Checkout.DiscardCrash(sourcePath);
-                App.Logger.LogInfo("MainWindow: save conflict — the user's version was saved as a separate file; the kept changes were deleted.");
-                await Prompts.ShowMessageAsync(SaveConflictPrompt.SavedTitle,
-                    SaveConflictPrompt.SavedMessage(Path.GetFileName(destPath)));
-            }
-            else
-            {
-                // Keep the kept changes: crash recovery offers them again when the database reopens.
-                App.Logger.LogInfo("MainWindow: save conflict — the copy was not saved; the changes are kept.");
-                await Lifecycle.ShowExportOutcomeAsync(result);
-            }
-        }
-        finally
-        {
-            // The kept changes are saved elsewhere, discarded, or deliberately kept: closing is safe again.
-            _saveConflictInProgress = false;
-        }
-    }
+    public Task ResolveSaveConflictAsync(bool saveCopy)
+        => Lifecycle.ResolveSaveConflictAsync(saveCopy);
 
     // ── CheckoutService event handlers ───────────────────────────────────────
 
@@ -1577,15 +1149,11 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// verification discovered that the write lock is no longer ours (taken over,
     /// deleted, or its <c>SessionGuid</c> was modified).
     ///
-    /// <para>Builds a cause-specific banner from <paramref name="reason"/> and
-    /// <see cref="CheckoutService.LockLossNewHolder"/>, then demotes the session to
-    /// read-only <b>in place</b> without swapping the DataContext. The banner is set
-    /// <b>before</b> demotion so that even a failed demotion leaves the user informed.</para>
-    ///
-    /// <para>The user is directed to restart the app to re-bid for write access;
-    /// we deliberately do not auto-reacquire, because doing so would silently trample
-    /// whoever now holds the lock.</para>
+    /// <para>Logs the loss, hops to the UI thread and hands over to
+    /// <see cref="SessionLifecycle.HandleWriteLockLostAsync"/>, which holds the banner, the in-place demotion to
+    /// read-only and their documentation.</para>
     /// </summary>
+    /// <param name="reason">Why the write lock was lost.</param>
     private async void OnWriteLockLost(WriteLockLostReason reason)
     {
         try
@@ -1598,98 +1166,13 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             $"MainWindow: mid-session write-lock loss (reason={reason}) — demoting to read-only in place.");
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            try
-            {
-                var banner = BuildLockLossBanner(reason);
-
-                var vm       = DataContext as MainWindowViewModel;
-                var dbContext = App.Services?.GetService<IDatabaseContext>() as DatabaseContext;
-
-                // Set the banner BEFORE demotion so it is visible even if demotion throws.
-                vm?.SetSaveError(banner, autoDismiss: false);
-
-                async Task BeforeClose()
-                {
-                    await Task.CompletedTask;
-                    dbContext?.CloseConnection();
-                }
-
-                async Task AfterOpen()
-                {
-                    await Task.CompletedTask;
-                    if (dbContext is not null && !string.IsNullOrEmpty(App.Checkout.WorkingPath))
-                    {
-                        try
-                        {
-                            dbContext.ReinitializeConnection(App.Checkout.WorkingPath);
-                        }
-                        catch (System.Exception ex)
-                        {
-                            App.Logger.LogError(ex, "OnWriteLockLost: ReinitializeConnection failed — database is unavailable until reopened");
-                            vm?.SetSaveError(
-                                "The database connection could not be restored after losing write access. " +
-                                "Please close and reopen the database file.",
-                                autoDismiss: false);
-                        }
-                    }
-                }
-
-                var ok = await App.Checkout.DemoteToReadOnlyAsync(BeforeClose, AfterOpen);
-
-                if (ok && vm is not null)
-                {
-                    try { vm.SectionListVm.ReloadFromDatabase(); }
-                    catch (System.Exception ex)
-                    {
-                        App.Logger.LogError(ex, "OnWriteLockLost: post-demote reload failed");
-                    }
-                }
-            }
-            catch (System.Exception ex)
-            {
-                App.Logger.LogError(ex, "OnWriteLockLost: demotion failed");
-            }
+            await Lifecycle.HandleWriteLockLostAsync(reason);
         });
         }
         catch (System.Exception ex)
         {
             App.Logger.LogError(ex, "OnWriteLockLost: dispatch failed");
         }
-    }
-
-    /// <summary>
-    /// Builds a user-facing banner string explaining why write access was lost,
-    /// using the <paramref name="reason"/> enum and the identity of the new holder
-    /// (if any) from <see cref="CheckoutService.LockLossNewHolder"/>.
-    /// </summary>
-    private static string BuildLockLossBanner(WriteLockLostReason reason)
-    {
-        var sb = new System.Text.StringBuilder();
-
-        if (reason == WriteLockLostReason.TakenOver)
-        {
-            var holder = App.Checkout.LockLossNewHolder;
-            if (holder is not null && !string.IsNullOrWhiteSpace(holder.Username))
-                sb.Append($"Write access was taken over by {holder.Username} on {holder.Machine}.");
-            else
-                sb.Append("Write access was taken over by another user.");
-        }
-        else
-        {
-            sb.Append(
-                "The database lock file was removed by another program " +
-                "(possibly antivirus or cloud sync software).");
-        }
-
-        // Built BEFORE demotion runs, so HasDirtyMarker still reflects the write
-        // session: DemoteToReadOnlyAsync preserves D' + marker exactly when it is true.
-        sb.Append(App.Checkout.HasDirtyMarker
-            ? " Your unsaved changes have been kept — TermPoint will offer to restore " +
-              "them the next time you open this database with write access."
-            : " There were no unsaved changes at the time.");
-        sb.Append(" You can regain write access by exiting and restarting TermPoint.");
-
-        return sb.ToString();
     }
 
     private Task<bool> ShowYesNoAsync(string title, string message)
@@ -2258,6 +1741,15 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         return false;
     }
 
+    /// <inheritdoc cref="ISessionHost.RelaunchApplication"/>
+    void ISessionHost.RelaunchApplication() => RelaunchApplication();
+
+    /// <inheritdoc cref="ISessionHost.CaptureLockLossSurface"/>
+    ILockLossSurface ISessionHost.CaptureLockLossSurface()
+        => new LockLossSurface(
+            DataContext as MainWindowViewModel,
+            App.Services?.GetService<IDatabaseContext>() as DatabaseContext);
+
     /// <summary>
     /// Adapter that lets the session lifecycle use the root view model without referencing its type: it
     /// implements <see cref="IOpenedDatabase"/> by calling exactly the members the lifecycle used to call on the
@@ -2279,5 +1771,49 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         /// <inheritdoc cref="IOpenedDatabase.RestoreSemesterSelection"/>
         public void RestoreSemesterSelection(string yearId, IReadOnlySet<string> semesterIds)
             => ViewModel.SemesterContext.RestoreSelection(yearId, semesterIds);
+    }
+
+    /// <summary>
+    /// The view model and data connection the lost-write-lock handler captured once at its start
+    /// (<see cref="ISessionHost.CaptureLockLossSurface"/>), exposed through <see cref="ILockLossSurface"/> so the
+    /// lifecycle never references either type. Each member is the verbatim use the handler made of the captured
+    /// locals, including the null-propagation.
+    /// </summary>
+    private sealed class LockLossSurface : ILockLossSurface
+    {
+        /// <summary>The window's root view model at the moment of capture, or null.</summary>
+        private readonly MainWindowViewModel? _vm;
+
+        /// <summary>The open data connection at the moment of capture, or null.</summary>
+        private readonly DatabaseContext? _dbContext;
+
+        /// <summary>Holds the two captured objects.</summary>
+        /// <param name="vm">The window's root view model, or null when the data context was something else.</param>
+        /// <param name="dbContext">The open data connection, or null when no container exists.</param>
+        public LockLossSurface(MainWindowViewModel? vm, DatabaseContext? dbContext)
+        {
+            _vm        = vm;
+            _dbContext = dbContext;
+        }
+
+        /// <inheritdoc cref="ILockLossSurface.HasConnection"/>
+        public bool HasConnection => _dbContext is not null;
+
+        /// <inheritdoc cref="ILockLossSurface.HasViewModel"/>
+        public bool HasViewModel => _vm is not null;
+
+        /// <inheritdoc cref="ILockLossSurface.ShowSaveError"/>
+        public void ShowSaveError(string text) => _vm?.SetSaveError(text, autoDismiss: false);
+
+        /// <inheritdoc cref="ILockLossSurface.CloseConnection"/>
+        public void CloseConnection() => _dbContext?.CloseConnection();
+
+        /// <inheritdoc cref="ILockLossSurface.ReinitializeConnection"/>
+        /// <exception cref="NullReferenceException">No connection was captured (<see cref="HasConnection"/> is false).</exception>
+        public void ReinitializeConnection(string path) => _dbContext!.ReinitializeConnection(path);
+
+        /// <inheritdoc cref="ILockLossSurface.ReloadSections"/>
+        /// <exception cref="NullReferenceException">No view model was captured (<see cref="HasViewModel"/> is false).</exception>
+        public void ReloadSections() => _vm!.SectionListVm.ReloadFromDatabase();
     }
 }
