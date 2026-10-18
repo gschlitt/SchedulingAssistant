@@ -33,13 +33,11 @@ public sealed class AppSettingsTests : IDisposable
 {
     // ── Fixture ───────────────────────────────────────────────────────────────
 
-    // Mirrors the private path computed inside AppSettings so the fixture can save/restore
-    // the real settings file without reflection.
-    private static readonly string SettingsDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint");
+    // The settings file AppSettings reads and writes. Since P5 the test assembly redirects it to a private temp
+    // folder (TestAssemblyGuards), so these tests never touch the developer's real settings.json.
+    private static readonly string SettingsPath = AppSettings.SettingsFilePath;
 
-    private static readonly string SettingsPath =
-        Path.Combine(SettingsDir, "settings.json");
+    private static readonly string SettingsDir = Path.GetDirectoryName(SettingsPath)!;
 
     private static readonly string SettingsTmpPath = SettingsPath + ".tmp";
 

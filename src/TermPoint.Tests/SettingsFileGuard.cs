@@ -12,12 +12,15 @@ namespace TermPoint.Tests;
 /// </summary>
 internal sealed class SettingsFileGuard : IDisposable
 {
-    /// <summary>Folder of the settings file (mirrors the private path inside <see cref="AppSettings"/>).</summary>
-    private static readonly string SettingsDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint");
+    /// <summary>
+    /// The settings file. Since P5 this is the test run's private copy (<see cref="AppSettings.SettingsFilePath"/>,
+    /// redirected by <see cref="TestAssemblyGuards"/>), never the developer's real one; the guard still restores it
+    /// so each test starts from the same baseline.
+    /// </summary>
+    private static string SettingsPath => AppSettings.SettingsFilePath;
 
-    /// <summary>The settings file.</summary>
-    private static readonly string SettingsPath = Path.Combine(SettingsDir, "settings.json");
+    /// <summary>Folder of the settings file.</summary>
+    private static string SettingsDir => Path.GetDirectoryName(SettingsPath)!;
 
     /// <summary>The file's content when the guard was created; null when it did not exist.</summary>
     private readonly string? _savedJson;

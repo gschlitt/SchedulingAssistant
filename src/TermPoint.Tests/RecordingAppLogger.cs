@@ -98,4 +98,31 @@ internal static class TestAssemblyGuards
     [ModuleInitializer]
     internal static void KeepDamageReportsAwayFromBugsnag()
         => DatabaseDamageReporter.DefaultLogger = static () => SilentDamageLogger;
+
+    /// <summary>
+    /// The private settings folder this test run uses instead of <c>%AppData%\TermPoint</c> (spec parking lot P5):
+    /// one per test process, so a run can never read or overwrite the developer's real <c>settings.json</c>.
+    /// </summary>
+    internal static string SettingsDirectory { get; } =
+        Path.Combine(Path.GetTempPath(), $"termpoint-test-settings-{Environment.ProcessId}");
+
+    /// <summary>
+    /// Runs once, when the test assembly loads, before any test: points <see cref="AppSettings"/> at
+    /// <see cref="SettingsDirectory"/>, starting empty, and removes that folder when the test process exits
+    /// (best effort).
+    /// </summary>
+    [ModuleInitializer]
+    internal static void KeepSettingsAwayFromTheRealFile()
+    {
+        try { if (Directory.Exists(SettingsDirectory)) Directory.Delete(SettingsDirectory, recursive: true); }
+        catch { /* best effort: a leftover folder from a reused process id only holds test settings */ }
+
+        AppSettings.SettingsDirectoryOverride = SettingsDirectory;
+
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) =>
+        {
+            try { Directory.Delete(SettingsDirectory, recursive: true); }
+            catch { /* best effort */ }
+        };
+    }
 }

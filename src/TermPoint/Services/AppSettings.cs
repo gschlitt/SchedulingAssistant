@@ -12,11 +12,25 @@ namespace TermPoint.Services;
 /// </summary>
 public class AppSettings
 {
-    private static readonly string SettingsDir =
+    /// <summary>The settings folder every real run uses: <c>%AppData%\TermPoint</c>.</summary>
+    private static readonly string DefaultSettingsDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint");
 
-    private static readonly string SettingsPath =
-        Path.Combine(SettingsDir, "settings.json");
+    /// <summary>
+    /// Test-only: when set, the settings file is read from and written to this folder instead of
+    /// <see cref="DefaultSettingsDir"/>. The test assembly sets it once, before any test runs, so no test can read or
+    /// overwrite the developer's real <c>settings.json</c> (spec parking lot P5). Always null in the app.
+    /// </summary>
+    internal static string? SettingsDirectoryOverride { get; set; }
+
+    /// <summary>The folder holding the settings file: the test override when set, otherwise the real one.</summary>
+    private static string SettingsDir => SettingsDirectoryOverride ?? DefaultSettingsDir;
+
+    /// <summary>Full path of the settings file.</summary>
+    private static string SettingsPath => Path.Combine(SettingsDir, "settings.json");
+
+    /// <summary>Full path of the settings file, for tests that inspect or replace it.</summary>
+    internal static string SettingsFilePath => SettingsPath;
 
     /// <summary>
     /// Guards <see cref="_instance"/> initialization and all <see cref="Save"/> /

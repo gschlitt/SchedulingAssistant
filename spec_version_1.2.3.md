@@ -2903,8 +2903,16 @@ candidate; do it before the first release that raises MinimumVersionToWrite.**
   - `IInitializeWithWindow` with the main window handle for the Store dialogs.
 - **Payoff:** a much smaller mixed-version window for everyone, so item 3's gate rarely triggers.
 
-**P5. Unit tests write the developer's real `settings.json` (noted 2026-10-10). LOW RISK,
-PRE-EXISTING.**
+**P5. Unit tests write the developer's real `settings.json` (noted 2026-10-10). FIXED 2026-10-18.**
+- **Worse than first noted:** `WizardRoutingTests` run the setup wizard, which saves `DatabasePath` for a temp
+  `test_wizard_….db` without any restore, so every full test run left the developer's startup database pointing at
+  a deleted temp file.
+- **Fix:** `AppSettings.SettingsDirectoryOverride` (internal, test-only, null in the app). The test assembly's
+  module initializer (`TestAssemblyGuards.KeepSettingsAwayFromTheRealFile`) points it at
+  `%TEMP%	ermpoint-test-settings-<pid>`, empty at start and removed at exit. `SettingsFileGuard` and
+  `AppSettingsTests` now use `AppSettings.SettingsFilePath` instead of copying the real path. Verified: the real
+  file keeps its timestamp and contents through a full run (2636 passed + 21 skipped).
+- **Original note:**
 - `AppSettingsTests` (and, since item 23, `SettingsFileGuard`-based Preferences tests) save
   `AppSettings` to `%APPDATA%\TermPoint\settings.json` and restore it afterwards.
 - **Risk on a dev machine:** if a Debug TermPoint saves its settings during a test run, that save
