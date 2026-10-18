@@ -1,5 +1,4 @@
 using TermPoint.Exceptions;
-using TermPoint.ViewModels;
 
 namespace TermPoint.Services;
 
@@ -15,20 +14,21 @@ namespace TermPoint.Services;
 public interface ISessionHost
 {
     /// <summary>
-    /// Builds the full service container over <paramref name="workingPath"/> and returns the root view model
-    /// (today <c>App.InitializeServices</c>). Disposes any previous container first.
+    /// Builds the full service container over <paramref name="workingPath"/> and returns the opened database
+    /// (today <c>App.InitializeServices</c>, whose root view model the host wraps in an <see cref="IOpenedDatabase"/>).
+    /// Disposes any previous container first.
     /// </summary>
     /// <param name="workingPath">Path to the local database file: D' (writer) or D'' (reader).</param>
     /// <param name="restoreAcademicYearId">Academic year ID to restore. Defaults to the settings value.</param>
     /// <param name="restoreSemesterIds">Semester IDs to restore. Defaults to the settings value.</param>
-    /// <returns>The root view model, with the services built over <paramref name="workingPath"/>.</returns>
+    /// <returns>The opened database, with the services built over <paramref name="workingPath"/>.</returns>
     /// <exception cref="DatabaseInUseException">
     /// The local copy could not be examined on any of the integrity-check attempts (another program on this
     /// computer has it open). The services have been built but nothing was read; the caller must release them
     /// (<see cref="ReleaseServices"/>) if it gives up.
     /// </exception>
     /// <exception cref="DatabaseCorruptException">The local copy shows positive evidence of damage (the services are built as above).</exception>
-    MainWindowViewModel OpenServices(
+    IOpenedDatabase OpenServices(
         string workingPath,
         string? restoreAcademicYearId = null,
         IReadOnlySet<string>? restoreSemesterIds = null);
@@ -71,13 +71,55 @@ public interface ISessionHost
     /// per-database setup.
     /// </summary>
     /// <param name="dbPath">The canonical path of the shared database that was opened (D).</param>
-    /// <param name="vm">The root view model returned by <see cref="OpenServices"/>.</param>
+    /// <param name="opened">The opened database returned by <see cref="OpenServices"/>.</param>
     /// <returns>A task that completes when the window is wired up.</returns>
-    Task SetupWindowAsync(string dbPath, MainWindowViewModel vm);
+    Task SetupWindowAsync(string dbPath, IOpenedDatabase opened);
 
     /// <summary>
     /// Covers the window with the loading curtain and clears its data context, for the state in which no
     /// database is open (so a stale view of a closed database cannot be seen or used). Idempotent.
     /// </summary>
     void CoverWindowForNoDatabase();
+
+    /// <summary>
+    /// True from the moment a database has been completely wired to the window (<see cref="SetupWindowAsync"/>
+    /// sets it as its last step) until the next switch starts taking it apart, or its wiring fails part-way.
+    /// Tracked explicitly, never inferred from the container or the data context: whether a refused or failed
+    /// switch may leave the user on the current database, or must send them to the database chooser because
+    /// nothing is open, hangs on it (see <see cref="DatabaseSwitchRecovery.Decide"/>). False at launch, during
+    /// the startup wizard, and after any failed switch. The lifecycle reads it and clears it; the window sets it.
+    /// </summary>
+    bool IsDatabaseOpen { get; set; }
+
+    /// <summary>
+    /// Closes the main window (today the <c>Close()</c> calls on the startup give-up paths). The window's
+    /// closing handler then runs as it always has.
+    /// </summary>
+    void CloseWindow();
+
+    /// <summary>
+    /// Asks the application to shut down (today the classic-desktop lifetime's <c>Shutdown()</c>), with no
+    /// window involved. A no-op when the application has no classic-desktop lifetime.
+    /// </summary>
+    void ShutDown();
+
+    /// <summary>
+    /// The window half of the last-resort failure path when the database chooser itself cannot be shown after a
+    /// failed switch: restores the window from any minimised state, shows the startup-error dialog for
+    /// <paramref name="ex"/>, then shuts the application down. The caller logs the exception first.
+    /// </summary>
+    /// <param name="ex">The failure to show to the user.</param>
+    /// <returns>A task that completes when the error dialog has closed and the shutdown has been requested.</returns>
+    Task ReportFatalAndShutDownAsync(Exception ex);
+
+    /// <summary>
+    /// Reads the current academic year and semester selection from the open container, so it can be restored
+    /// after the container is rebuilt without touching the saved settings. Reports nothing when no container
+    /// exists (the wizard's existing-database path, before any database was opened) or no academic year is
+    /// selected.
+    /// </summary>
+    /// <param name="yearId">The selected academic year's ID, or null when nothing was captured.</param>
+    /// <param name="semesterIds">The selected semesters' IDs, or null when nothing was captured.</param>
+    /// <returns>True when a selection was captured; false otherwise (both outputs are then null).</returns>
+    bool TryCaptureSemesterSelection(out string? yearId, out IReadOnlySet<string>? semesterIds);
 }
