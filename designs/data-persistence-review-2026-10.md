@@ -402,6 +402,21 @@ implementations, the wiring of `CheckoutService` events to the view model, and t
   `Host` (64 call sites). The two identical save-picker blocks became one member. The suite is unchanged: 2604
   passed + 21 skipped.
 - **9.1b:** move the open and switch groups, with their characterisation tests.
+  **Done 2026-10-18 (uncommitted):** `Services/SessionLifecycle.cs` holds the open, recovery-at-open and switch
+  code (about 1,260 lines out of `MainWindow`), plus `Services/IOpenedDatabase.cs` (the view model stays out of the
+  lifecycle) and five new `ISessionHost` members (`IsDatabaseOpen`, `CloseWindow`, `ShutDown`,
+  `ReportFatalAndShutDownAsync`, `TryCaptureSemesterSelection`). A method-by-method comparison against the old code
+  shows only the allowed edits. `MainWindow` creates the lifecycle on first use, because the XAML previewer
+  constructs the window and the constructor never touched `App`'s statics before.
+  - **Characterisation tests:** 32 in `SessionLifecycleTests`, with `ScriptedPrompts` and `FakeSessionHost`. The
+    host runs the real open-time integrity gate. Known-bad behaviour is pinned by name (`Pins_F1`, `Pins_F6`,
+    `Pins_F10`). Suite: 2636 passed + 21 skipped.
+  - **Quirks pinned, existing behaviour:** after "Can't Restore" → Save a Copy, the open still runs a needless save
+    of the fresh copy (harmless; goes with the redesign); the startup failure paths leave the single-instance guard
+    held while the app closes.
+  - **P5 is live:** the new tests leave the real `settings.json` untouched (they use `SettingsFileGuard`), but the
+    existing wizard tests rewrite its `DatabasePath` to a temp test file on every run. Fixing P5 (a test-only
+    settings folder) is a prerequisite for the 9.3 harness.
 - **9.1c:** move kept and stranded work, leave and lost lock, with their tests.
 - **9.1d:** the hand smoke test, then commit.
 
