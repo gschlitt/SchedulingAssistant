@@ -139,10 +139,14 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
 
     /// <summary>Expects the stale-lock wait dialog and answers it.</summary>
     /// <param name="completed">True when the wait ran to the end; false when the user cancelled.</param>
+    /// <param name="before">
+    /// Optional action run when the wait is shown, before the answer is given (the harness advances its fake clock
+    /// here, because a real wait would let that much time pass).
+    /// </param>
     /// <returns>This instance, for chaining.</returns>
-    public ScriptedPrompts ExpectStaleLockWait(bool completed)
+    public ScriptedPrompts ExpectStaleLockWait(bool completed, Action? before = null)
     {
-        _script.Enqueue(new Step(PromptKind.StaleLockWait, null, null, completed, null));
+        _script.Enqueue(new Step(PromptKind.StaleLockWait, null, null, completed, before));
         return this;
     }
 

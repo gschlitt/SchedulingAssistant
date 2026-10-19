@@ -269,6 +269,19 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
         _checkout.MarkDirty();
     }
 
+    /// <summary>
+    /// Makes a user edit with caller-supplied SQL through the open connection and marks the session dirty, exactly as
+    /// <see cref="Edit"/> does but for any table (the multi-computer harness writes its traceable
+    /// <c>_harness_edits</c> rows with it).
+    /// </summary>
+    /// <param name="sql">The statement to run on the working file.</param>
+    /// <exception cref="InvalidOperationException">No connection is open.</exception>
+    public void EditWith(string sql)
+    {
+        Exec(sql);
+        _checkout.MarkDirty();
+    }
+
     /// <summary>Forgets the recorded calls (not the open connection), so a test can start a new step from a clean slate.</summary>
     public void ClearRecords()
     {

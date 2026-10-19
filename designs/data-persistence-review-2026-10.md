@@ -562,6 +562,21 @@ them from the list one by one, and the harness proves each is gone.
 **Sub-steps, one commit each:**
 - **9.3a:** the world, the actors and the traceable edits, with five hand-written walks (the hand smoke test rows,
   automated).
+  **Done 2026-10-19 (uncommitted):**
+  - **Location:** `src/TermPoint.Tests/Harness/` (`World`, `Computer`, `Inspector`, `HarnessWalkTests`). It sits in the
+    existing test project, not a new one, so it reuses the lifecycle fakes. `[HarnessFact]` skips it unless
+    `TERMPOINT_HARNESS=1` is set.
+  - **Crashes:** between actions, by freezing the disk, discarding the objects and restoring the frozen files.
+  - **The five walks pass:** clean hand-over, crash and Restore, stale-lock takeover, lost lock, and the 1.2.2
+    colleague conflict. Normal suite: 2694 passed + 26 skipped (the 5 walks).
+  - **Walk 3 needed one adaptation:** Alice closes before Bob restarts. While she still holds the lock, Bob's
+    Restore ends in "Unsaved Changes Kept" (F6) instead of reaching "Can't Restore".
+  - **Gaps for 9.3b/c:**
+    - no sleep/wake event yet;
+    - heartbeat and poll ticks only when a walk calls them;
+    - the stale-lock prompt's age text reads the real clock (`StaleLockPrompt.BuildTakeOverMessage(…,
+      DateTime.UtcNow)` in the lifecycle), so under fake time it reads "for a while";
+    - edits per file are inspected on request, not tracked automatically.
 - **9.3b:** the invariants and the story printer.
 - **9.3c:** the three strategies, the shrinker and the known-problems list.
 - **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
